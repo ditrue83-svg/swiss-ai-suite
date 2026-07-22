@@ -1,0 +1,1499 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SwissAI Suite — Admin AI & Subsidy AI per le PMI svizzere</title>
+<meta name="description" content="SwissAI Suite trasforma lettere, moduli e bandi di Confederazione, Cantoni e Comuni in azioni concrete: spiegazioni semplici, scadenze, checklist e incentivi pertinenti." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2300A3FF'/%3E%3Cstop offset='1' stop-color='%234DEAFF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='6' fill='url(%23g)'/%3E%3Crect x='13' y='6' width='6' height='20' fill='white'/%3E%3Crect x='6' y='13' width='20' height='6' fill='white'/%3E%3C/svg%3E" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+<style>
+:root {
+  /* Palette AI-Swisse (ai-swisse.com): base chiara, ink navy, accento azzurro neon */
+  --accent: hsl(199, 100%, 50%);
+  --accent-dark: hsl(199, 100%, 42%);
+  --accent-text: hsl(202, 100%, 36%);
+  --accent-soft: hsl(199, 100%, 96%);
+  --neon-glow: hsla(199, 100%, 60%, 0.35);
+  --grad-start: hsl(199, 100%, 50%);
+  --grad-end: hsl(187, 100%, 65%);
+  --ink: hsl(220, 40%, 13%);
+  --ink-soft: hsl(220, 25%, 30%);
+  --muted: hsl(220, 10%, 40%);
+  --line: hsl(210, 20%, 90%);
+  --bg: hsl(210, 20%, 98%);
+  --card: #ffffff;
+  --red: hsl(0, 84%, 60%);
+  --red-soft: hsl(0, 84%, 96%);
+  --red-dark: hsl(0, 72%, 45%);
+  --green: #2f855a;
+  --green-soft: #e6f4ec;
+  --amber: #b7791f;
+  --amber-soft: #fdf3e0;
+  --radius: 12px;
+  font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.55; display: flex; min-height: 100vh; }
+button { font: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--ink); }
+a { color: var(--accent-text); }
+
+.sidebar { width: 232px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
+.brand-mark { width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, var(--grad-start), var(--grad-end)); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 20px; box-shadow: 0 0 16px var(--neon-glow); }
+.brand-name { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; }
+.brand-sub { font-size: 11px; color: var(--muted); margin-top: -2px; }
+.nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 14px 10px 6px; }
+.nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px; border: none; background: none; border-radius: 8px; color: var(--ink-soft); font-weight: 500; font-size: 14px; }
+.nav-btn:hover { background: var(--bg); }
+.nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+.nav-icon { width: 20px; text-align: center; }
+.sidebar-footer { margin-top: auto; padding: 12px 10px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
+
+.main { flex: 1; padding: 28px 36px 60px; max-width: 1120px; }
+.page { display: none; }
+.page.active { display: block; }
+.page-head { margin-bottom: 22px; }
+.page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
+.page-desc { color: var(--muted); margin-top: 4px; max-width: 640px; }
+.demo-banner { background: var(--accent-soft); color: var(--accent-text); border: 1px solid hsl(199, 100%, 86%); padding: 8px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.card + .card { margin-top: 16px; }
+.card-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+@media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .main { padding: 20px; } .sidebar { position: static; height: auto; } body { flex-direction: column; } }
+
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-weight: 600; font-size: 14px; }
+.btn:hover { border-color: hsl(210, 20%, 80%); background: var(--bg); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 18px var(--neon-glow); }
+.btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+.btn-sm { padding: 5px 11px; font-size: 13px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+.badge-alta { background: var(--red-soft); color: var(--red-dark); }
+.badge-media { background: var(--amber-soft); color: var(--amber); }
+.badge-bassa { background: var(--green-soft); color: var(--green); }
+.badge-neutral { background: hsl(210, 20%, 94%); color: var(--ink-soft); }
+.badge-blue { background: var(--accent-soft); color: var(--accent-text); }
+
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.field label { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.field input, .field select, .field textarea { border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; background: #fff; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid hsla(199, 100%, 50%, 0.3); border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 120px; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.check-pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 6px 13px; font-size: 13px; background: #fff; cursor: pointer; user-select: none; }
+.check-pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+
+.result-row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.result-row:first-child { border-top: none; }
+.result-label { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.checklist-item { display: flex; align-items: flex-start; gap: 9px; padding: 7px 0; cursor: pointer; }
+.checklist-item input { margin-top: 4px; accent-color: var(--accent); }
+.checklist-item.done span { text-decoration: line-through; color: var(--muted); }
+.draft-box { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px; white-space: pre-wrap; font-size: 14px; }
+.warn-box { background: var(--red-soft); border: 1px solid hsl(0, 84%, 86%); color: var(--red-dark); border-radius: 8px; padding: 12px 14px; font-size: 14px; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; }
+.info-box { background: var(--amber-soft); border: 1px solid #ecd9ae; color: var(--amber); border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+
+.list-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.list-row:first-of-type { border-top: none; }
+.list-main { flex: 1; min-width: 200px; }
+.list-title { font-weight: 600; font-size: 14px; }
+.list-sub { font-size: 13px; color: var(--muted); margin-top: 1px; }
+.empty { color: var(--muted); font-size: 14px; padding: 18px 0; text-align: center; }
+
+.match-head { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.match-score { width: 62px; height: 62px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-weight: 800; font-size: 17px; border: 4px solid var(--line); color: var(--ink-soft); }
+.match-score.hi { border-color: var(--accent); color: var(--accent-text); box-shadow: 0 0 14px var(--neon-glow); }
+.match-score.mid { border-color: var(--amber); color: var(--amber); }
+.detail-list { list-style: none; }
+.detail-list li { padding: 4px 0 4px 22px; position: relative; font-size: 14px; }
+.detail-list li::before { content: '•'; position: absolute; left: 8px; color: var(--accent); font-weight: 700; }
+.detail-list.ok li::before { content: '✓'; color: var(--green); }
+.detail-list.warn li::before { content: '?'; color: var(--amber); }
+.detail-list.bad li::before { content: '✕'; color: var(--red); }
+
+.quiz-q { padding: 14px 0; border-top: 1px solid var(--line); }
+.quiz-q:first-child { border-top: none; }
+.quiz-opts { display: flex; gap: 8px; margin-top: 8px; }
+.quiz-opt { padding: 6px 18px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 13px; font-weight: 600; }
+.quiz-opt.sel-si { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+.quiz-opt.sel-no { background: var(--red-soft); border-color: var(--red); color: var(--red-dark); }
+.quiz-opt.sel-ns { background: hsl(210, 20%, 94%); border-color: hsl(210, 10%, 65%); color: var(--ink-soft); }
+
+.price-card { position: relative; display: flex; flex-direction: column; }
+.price-card.featured { border-color: var(--accent); box-shadow: 0 4px 24px var(--neon-glow); }
+.price-tag { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
+.price-tag small { font-size: 14px; font-weight: 500; color: var(--muted); }
+.price-feats { list-style: none; margin: 14px 0 18px; flex: 1; }
+.price-feats li { padding: 5px 0 5px 24px; position: relative; font-size: 14px; }
+.price-feats li::before { content: '✓'; position: absolute; left: 4px; color: var(--accent-text); font-weight: 700; }
+.featured-flag { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: linear-gradient(100deg, var(--grad-start), var(--grad-end)); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
+
+.hero { padding: 34px 0 10px; }
+.hero h1 { font-size: 32px; letter-spacing: -0.6px; line-height: 1.2; max-width: 700px; }
+.hero h1 em { background: linear-gradient(100deg, var(--grad-start), var(--grad-end)); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: normal; }
+.hero p { color: var(--ink-soft); max-width: 620px; margin-top: 12px; font-size: 16px; }
+.hero-actions { display: flex; gap: 12px; margin-top: 22px; }
+.module-card { border-top: 3px solid var(--accent); }
+.module-kicker { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-text); }
+.footnote { font-size: 12px; color: var(--muted); margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.tab { border: none; background: none; padding: 9px 14px; font-size: 14px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; }
+.tab.active { color: var(--accent-text); border-bottom-color: var(--accent); }
+
+.upload-zone { border: 2px dashed var(--line); border-radius: var(--radius); padding: 26px; text-align: center; color: var(--muted); background: #fff; cursor: pointer; }
+.upload-zone:hover { border-color: var(--accent); color: var(--accent-text); }
+
+.toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: #fff; padding: 11px 18px; border-radius: 9px; font-size: 14px; box-shadow: 0 6px 22px rgba(0,0,0,0.25); z-index: 50; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
+.toast.show { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">+</div>
+    <div>
+      <div class="brand-name">SwissAI Suite</div>
+      <div class="brand-sub">per le PMI svizzere</div>
+    </div>
+  </div>
+  <div class="nav-section">Piattaforma</div>
+  <button class="nav-btn active" data-page="home"><span class="nav-icon">⌂</span> Panoramica</button>
+  <button class="nav-btn" data-page="deadlines"><span class="nav-icon">🗓</span> Scadenziario</button>
+  <div class="nav-section">Moduli</div>
+  <button class="nav-btn" data-page="admin"><span class="nav-icon">📄</span> Admin AI — Documenti</button>
+  <button class="nav-btn" data-page="subsidy"><span class="nav-icon">💰</span> Subsidy AI — Incentivi</button>
+  <button class="nav-btn" data-page="archive"><span class="nav-icon">🗂</span> Archivio documenti</button>
+  <div class="nav-section">Account</div>
+  <button class="nav-btn" data-page="pricing"><span class="nav-icon">🏷</span> Piani e prezzi</button>
+  <div class="sidebar-footer">
+    Demo MVP · Dati salvati solo in locale.<br />
+    Non costituisce consulenza legale o fiscale.
+  </div>
+</aside>
+
+<main class="main">
+
+  <!-- ============ HOME ============ -->
+  <section class="page active" id="page-home">
+    <div class="hero">
+      <h1>L'amministrazione svizzera è complessa.<br /><em>La tua giornata non deve esserlo.</em></h1>
+      <p>SwissAI Suite trasforma lettere, moduli e bandi di Confederazione, Cantoni e Comuni in azioni concrete:
+        spiegazioni semplici, scadenze, checklist operative e incentivi realmente pertinenti alla tua impresa.
+        In italiano, tedesco e francese.</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" data-page="admin">Analizza un documento</button>
+        <button class="btn" data-page="subsidy">Trova incentivi</button>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:28px">
+      <div class="card module-card">
+        <div class="module-kicker">Modulo 1</div>
+        <div class="card-title" style="margin-top:6px">Swiss Admin AI</div>
+        <p style="color:var(--ink-soft);font-size:14px">Carica una lettera, un PDF o un'email: il sistema identifica ente,
+          lingua e scadenze, spiega il contenuto in linguaggio semplice, genera la checklist delle azioni e una bozza di
+          risposta formale nella lingua corretta.</p>
+        <button class="btn btn-sm" style="margin-top:12px" data-page="admin">Apri Admin AI →</button>
+      </div>
+      <div class="card module-card">
+        <div class="module-kicker">Modulo 2</div>
+        <div class="card-title" style="margin-top:6px">Swiss Subsidy AI</div>
+        <p style="color:var(--ink-soft);font-size:14px">Crea il profilo della tua impresa e descrivi il progetto: il motore
+          lo confronta con un database di programmi federali e cantonali e mostra solo gli incentivi compatibili, con
+          verifica di idoneità guidata.</p>
+        <button class="btn btn-sm" style="margin-top:12px" data-page="subsidy">Apri Subsidy AI →</button>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card">
+        <div class="card-title">Prossime scadenze</div>
+        <div id="home-tasks"></div>
+        <button class="btn btn-sm" style="margin-top:10px" data-page="deadlines">Vai allo scadenziario →</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Documenti analizzati di recente</div>
+        <div id="home-docs"></div>
+        <button class="btn btn-sm" style="margin-top:10px" data-page="archive">Vai all'archivio →</button>
+      </div>
+    </div>
+
+    <div class="footnote">SwissAI Suite è uno strumento di supporto amministrativo. Le analisi sono generate
+      automaticamente e non sostituiscono la consulenza legale, fiscale o fiduciaria. Quando il sistema non è sicuro,
+      lo segnala e invita a una verifica manuale.</div>
+  </section>
+
+  <!-- ============ ADMIN AI ============ -->
+  <section class="page" id="page-admin">
+    <div class="page-head">
+      <div class="page-title">Swiss Admin AI</div>
+      <div class="page-desc">Carica un PDF, incolla un'email o una lettera: il sistema identifica ente, lingua, scadenze
+        e genera checklist e bozza di risposta.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">1 · Documento da analizzare</div>
+      <div class="upload-zone" id="upload-zone">Trascina qui un PDF o un file di testo, oppure clicca per selezionarlo</div>
+      <input type="file" id="file-input" accept=".pdf,.txt,.md,.eml,text/plain,application/pdf" style="display:none" />
+      <div class="field" style="margin-top:16px">
+        <label>Oppure incolla il testo della comunicazione</label>
+        <textarea id="doc-text" placeholder="Incolla qui il contenuto della lettera o dell'email…"></textarea>
+      </div>
+      <div class="field">
+        <label>Titolo (facoltativo)</label>
+        <input id="doc-title" placeholder="Es. Lettera cassa AVS agosto" />
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" id="analyze-btn">Analizza documento</button>
+        <span style="color:var(--muted);font-size:13px">Prova con un esempio:</span>
+        <span id="samples"></span>
+      </div>
+      <div id="admin-error"></div>
+    </div>
+
+    <div id="analysis-result"></div>
+  </section>
+
+  <!-- ============ SUBSIDY AI ============ -->
+  <section class="page" id="page-subsidy">
+    <div class="page-head">
+      <div class="page-title">Swiss Subsidy AI</div>
+      <div class="page-desc">Profilo aziendale → matching con programmi federali e cantonali → verifica di idoneità
+        guidata. Copertura demo: Confederazione + Cantone Ticino.</div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="tab-profile">1 · Profilo impresa</button>
+      <button class="tab" id="tab-results">2 · Incentivi compatibili</button>
+    </div>
+    <div id="subsidy-body"></div>
+    <div class="footnote">Database dimostrativo di programmi (Confederazione + Ticino), con fonte e data di ultima
+      verifica per ogni voce. La compatibilità è una stima, non un'idoneità ufficiale: importi, requisiti e scadenze
+      vanno confermati sulla fonte ufficiale indicata.</div>
+  </section>
+
+  <!-- ============ SCADENZIARIO ============ -->
+  <section class="page" id="page-deadlines">
+    <div class="page-head">
+      <div class="page-title">Scadenziario</div>
+      <div class="page-desc">Tutte le scadenze create dalle analisi dei documenti e dagli incentivi, con promemoria di
+        urgenza.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Aggiungi scadenza manuale</div>
+      <div class="grid-3">
+        <div class="field"><label>Titolo</label><input id="task-title" placeholder="Es. Inviare conteggio AVS" /></div>
+        <div class="field"><label>Ente / riferimento</label><input id="task-ente" placeholder="Es. Cassa di compensazione" /></div>
+        <div class="field"><label>Data di scadenza</label><input type="date" id="task-date" /></div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="task-add">Aggiungi</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Scadenze
+        <span style="margin-left:auto;display:flex;gap:6px" id="task-filters"></span>
+      </div>
+      <div id="task-list"></div>
+    </div>
+  </section>
+
+  <!-- ============ ARCHIVIO ============ -->
+  <section class="page" id="page-archive">
+    <div class="page-head">
+      <div class="page-title">Archivio documenti</div>
+      <div class="page-desc">Tutti i documenti analizzati, con filtri per urgenza e stato della checklist.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span id="archive-count"></span>
+        <span style="margin-left:auto;display:flex;gap:6px" id="archive-filters"></span>
+      </div>
+      <div id="archive-list"></div>
+    </div>
+    <div id="archive-detail"></div>
+  </section>
+
+  <!-- ============ PREZZI ============ -->
+  <section class="page" id="page-pricing">
+    <div class="page-head">
+      <div class="page-title">Piani e prezzi</div>
+      <div class="page-desc">Un abbonamento unico per entrambi i moduli: Swiss Admin AI e Swiss Subsidy AI. Prezzi in
+        CHF, IVA esclusa.</div>
+    </div>
+    <div class="grid-4" id="pricing-cards"></div>
+    <div class="footnote">Aspetti garantiti su tutti i piani: dati ospitati in Svizzera, separazione dei dati tra
+      aziende, controllo degli accessi, trasparenza sui limiti dell'analisi automatica. L'output non costituisce
+      consulenza legale, fiscale o fiduciaria; in caso di incertezza il sistema chiede una verifica, non inventa.</div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ================================================================
+   SwissAI Suite — versione sito statico (HTML + vanilla JS)
+   Moduli: Swiss Admin AI (analisi documenti) + Swiss Subsidy AI
+   (matching incentivi). Persistenza in localStorage.
+   ================================================================ */
+
+/* ---------------- utils ---------------- */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('swissai.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('swissai.' + k, JSON.stringify(v)); } catch {} },
+};
+let docs = store.get('docs', []);
+let tasks = store.get('tasks', []);
+let profile = store.get('profile', null);
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+function formatDate(d) {
+  if (!d) return null;
+  return new Date(d).toLocaleDateString('it-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+/* ================================================================
+   MOTORE ADMIN AI (deterministico; punto d'integrazione LLM:
+   analyzeDocument mantiene la stessa firma input/output)
+   ================================================================ */
+const MONTHS = {
+  gennaio: 1, febbraio: 2, marzo: 3, aprile: 4, maggio: 5, giugno: 6, luglio: 7, agosto: 8, settembre: 9, ottobre: 10, novembre: 11, dicembre: 12,
+  januar: 1, februar: 2, 'märz': 3, maerz: 3, april: 4, mai: 5, juni: 6, juli: 7, august: 8, september: 9, oktober: 10, november: 11, dezember: 12,
+  janvier: 1, 'février': 2, fevrier: 2, mars: 3, avril: 4, juin: 6, juillet: 7, 'août': 8, aout: 8, septembre: 9, octobre: 10, novembre: 11, 'décembre': 12, decembre: 12,
+};
+const LANG_HINTS = {
+  de: ['der', 'die', 'das', 'und', 'für', 'wir', 'sie', 'nicht', 'bitte', 'sehr geehrte', 'mit freundlichen', 'ihre', 'bis', 'frist', 'unterlagen', 'gemäss'],
+  fr: ['le', 'la', 'les', 'nous', 'vous', 'madame', 'monsieur', 'veuillez', 'délai', 'salutations', 'votre', 'dans', 'concernant', 'agréer'],
+  it: ['il', 'la', 'gli', 'che', 'per', 'gentile', 'spettabile', 'siamo', 'entro', 'cordiali', 'vostra', 'documenti', 'termine', 'distinti'],
+};
+const LANG_LABEL = { de: 'Tedesco', fr: 'Francese', it: 'Italiano' };
+const ENTITIES = [
+  { keys: ['ausgleichskasse', 'cassa di compensazione', 'caisse de compensation', 'avs', 'ahv', ' ai ', 'assegni familiari'], ente: 'Cassa di compensazione AVS/AI', categoria: 'Assicurazioni sociali' },
+  { keys: ['mehrwertsteuer', 'mwst', 'estv', 'afc', 'imposta sul valore aggiunto', 'tva', 'amministrazione federale delle contribuzioni', 'eidgenössische steuerverwaltung'], ente: 'Amministrazione federale delle contribuzioni (AFC) — IVA', categoria: 'Fisco federale' },
+  { keys: ['suva', 'infortuni', 'unfallversicherung', 'assurance-accidents', 'laa', 'uvg'], ente: 'SUVA / Assicurazione infortuni', categoria: 'Assicurazioni' },
+  { keys: ['divisione delle contribuzioni', 'steuerverwaltung', 'administration fiscale', 'imposta alla fonte', 'quellensteuer', 'ufficio circondariale di tassazione', 'dichiarazione fiscale', 'imposta cantonale'], ente: 'Autorità fiscale cantonale', categoria: 'Fisco cantonale' },
+  { keys: ['betreibungsamt', 'ufficio esecuzione', 'office des poursuites', 'precetto esecutivo', 'zahlungsbefehl'], ente: 'Ufficio esecuzione e fallimenti', categoria: 'Esecuzioni' },
+  { keys: ['comune di', 'gemeinde', 'municipio', 'commune de', 'cancelleria comunale', 'stadtverwaltung'], ente: 'Amministrazione comunale', categoria: 'Comune' },
+  { keys: ['cassa pensioni', 'pensionskasse', 'caisse de pension', 'lpp', 'bvg', 'previdenza professionale'], ente: 'Cassa pensioni (LPP)', categoria: 'Previdenza' },
+  { keys: ['cassa malati', 'krankenkasse', 'assicurazione malattia', 'perdita di guadagno', 'indennità giornaliera'], ente: 'Assicurazione malattia / perdita di guadagno', categoria: 'Assicurazioni' },
+  { keys: ['ufficio del lavoro', 'arbeitsamt', 'seco', 'permesso di lavoro', 'arbeitsbewilligung', 'ufficio della migrazione', 'lavoro ridotto'], ente: 'Autorità del lavoro / migrazione', categoria: 'Lavoro' },
+  { keys: ['registro di commercio', 'handelsregister', 'registre du commerce'], ente: 'Registro di commercio', categoria: 'Registro di commercio' },
+  { keys: ['versicherung', 'assicurazione', 'assurance', 'polizza', 'police'], ente: 'Compagnia assicurativa', categoria: 'Assicurazioni' },
+];
+const DOC_TYPES = [
+  { tipo: 'sollecito', label: 'Sollecito di pagamento', keys: ['mahnung', 'sollecito', 'rappel', 'diffida', 'zahlungserinnerung', 'mancato pagamento'] },
+  { tipo: 'richiesta_documenti', label: 'Richiesta di documenti / informazioni', keys: ['einreichen', 'nachreichen', 'inviarci', 'trasmetterci', 'unterlagen', 'documenti seguenti', 'fornire i seguenti', 'veuillez nous faire parvenir', 'documents suivants', 'benötigen wir', 'vi invitiamo a presentare'] },
+  { tipo: 'pagamento', label: 'Fattura / richiesta di pagamento', keys: ['rechnung', 'fattura', 'facture', 'zahlung', 'pagamento', 'versamento', 'importo dovuto', 'betrag', 'montant', 'conguaglio', 'acconti'] },
+  { tipo: 'dichiarazione', label: 'Dichiarazione / conteggio da presentare', keys: ['deklaration', 'dichiarazione', 'déclaration', 'abrechnung', 'conteggio', 'décompte', 'rendiconto', 'formulario allegato'] },
+  { tipo: 'controllo', label: 'Controllo / revisione', keys: ['kontrolle', 'controllo', 'contrôle', 'revision', 'revisione', 'verifica contabile', 'ispezione', 'audit'] },
+  { tipo: 'decisione', label: 'Decisione / notifica ufficiale', keys: ['verfügung', 'decisione', 'décision', 'notifica', 'entscheid', 'reclamo', 'einsprache', 'opposizione', 'ricorso'] },
+];
+const DEADLINE_KEYWORDS = ['entro', 'scadenza', 'termine', 'al più tardi', 'bis zum', 'bis am', 'bis spätestens', 'spätestens', 'frist', 'innert', 'innerhalb', 'délai', 'au plus tard', 'avant le', "jusqu'au", 'dans les'];
+const REQUESTED_DOCS = [
+  { keys: ['lohnausweis', 'certificato di salario', 'certificat de salaire'], label: 'Certificati di salario dei dipendenti' },
+  { keys: ['jahresrechnung', 'bilancio', 'bilan', 'chiusura annuale', 'conti annuali'], label: 'Bilancio / conti annuali' },
+  { keys: ['erfolgsrechnung', 'conto economico', 'compte de résultat'], label: 'Conto economico' },
+  { keys: ['lohnliste', 'lista dei salari', 'liste des salaires', 'lohndeklaration', 'dichiarazione dei salari', 'massa salariale', 'lohnsumme'], label: 'Dichiarazione delle masse salariali' },
+  { keys: ['belege', 'giustificativi', 'justificatifs', 'ricevute', 'pezze giustificative'], label: 'Giustificativi / ricevute' },
+  { keys: ['vertrag', 'contratto', 'contrat'], label: 'Copia del contratto' },
+  { keys: ['polizza', 'police', 'versicherungspolice'], label: 'Polizza assicurativa' },
+  { keys: ['iban', 'coordinate bancarie', 'bankverbindung'], label: 'Coordinate bancarie (IBAN)' },
+  { keys: ['formular', 'formulario', 'formulaire', 'modulo'], label: 'Formulario compilato e firmato' },
+  { keys: ['estratto del registro di commercio', 'handelsregisterauszug', 'extrait du registre'], label: 'Estratto del registro di commercio' },
+];
+const CHECKLIST_BY_TYPE = {
+  sollecito: ['Verificare se il pagamento è già stato effettuato', 'Controllare importo, riferimento e periodo indicati', 'Effettuare il pagamento entro la scadenza indicata', 'Conservare la ricevuta di pagamento', 'In caso di contestazione, rispondere per iscritto prima della scadenza'],
+  richiesta_documenti: ["Leggere l'elenco dei documenti richiesti", 'Recuperare i documenti presso contabilità / fiduciaria', 'Verificare che i documenti siano completi e firmati', 'Inviare i documenti entro la scadenza (tenere copia)', 'Annotare la conferma di ricezione'],
+  pagamento: ["Verificare la correttezza dell'importo e del periodo", 'Registrare la fattura in contabilità', 'Pianificare il pagamento entro la scadenza', 'Archiviare la comunicazione'],
+  dichiarazione: ['Raccogliere i dati necessari per la dichiarazione', 'Compilare il formulario / portale online indicato', 'Far verificare i dati (interno o fiduciaria)', 'Inviare la dichiarazione entro la scadenza', 'Archiviare copia della dichiarazione inviata'],
+  controllo: ['Annotare la data del controllo in agenda', 'Preparare i documenti indicati nella comunicazione', 'Informare la fiduciaria / il responsabile amministrativo', 'Predisporre uno spazio e una persona di riferimento per il giorno del controllo'],
+  decisione: ['Leggere attentamente il contenuto della decisione', "Verificare il termine per un'eventuale opposizione o ricorso", 'Decidere se accettare o contestare la decisione', 'In caso di dubbio, consultare la fiduciaria o un legale prima della scadenza'],
+  informativa: ['Leggere la comunicazione e valutare se richiede azioni', 'Inoltrare alla persona interessata in azienda', 'Archiviare il documento'],
+};
+const RISK_BY_TYPE = {
+  sollecito: 'Possibili interessi di mora, spese di richiamo o avvio di una procedura esecutiva.',
+  pagamento: 'In caso di mancato pagamento: richiami, interessi di mora e possibili spese aggiuntive.',
+  decisione: 'Se il termine di opposizione scade, la decisione diventa definitiva e vincolante.',
+  dichiarazione: "Possibile tassazione d'ufficio o multa per mancata presentazione.",
+  richiesta_documenti: "L'ente può decidere sulla base degli atti disponibili o applicare una tassazione d'ufficio.",
+};
+const REPLY_TEMPLATES = {
+  it: {
+    saluto: 'Gentili Signore e Signori,',
+    corpo: {
+      sollecito: 'facciamo riferimento al vostro sollecito. Il pagamento di {importo} è stato disposto in data odierna. Vi preghiamo di scusare il ritardo e restiamo a disposizione per eventuali chiarimenti.',
+      richiesta_documenti: 'facciamo riferimento alla vostra comunicazione. In allegato vi trasmettiamo i documenti richiesti. Restiamo a disposizione per ulteriori informazioni.',
+      pagamento: 'confermiamo la ricezione della vostra fattura. Il pagamento di {importo} sarà effettuato entro il termine indicato.',
+      dichiarazione: 'facciamo riferimento alla vostra comunicazione. La dichiarazione richiesta sarà trasmessa entro il termine indicato. Vi preghiamo di contattarci in caso di necessità.',
+      controllo: 'confermiamo la ricezione della vostra comunicazione relativa al controllo annunciato. La data proposta è confermata; i documenti richiesti saranno predisposti.',
+      decisione: 'confermiamo la ricezione della vostra decisione. Ci riserviamo di esaminarla e, se necessario, di presentare osservazioni entro il termine indicato.',
+      informativa: "confermiamo la ricezione della vostra comunicazione e vi ringraziamo per l'informazione.",
+    },
+    chiusura: 'Distinti saluti,\n{azienda}',
+  },
+  de: {
+    saluto: 'Sehr geehrte Damen und Herren,',
+    corpo: {
+      sollecito: 'wir beziehen uns auf Ihre Mahnung. Die Zahlung von {importo} wurde heute veranlasst. Wir bitten, die Verspätung zu entschuldigen, und stehen für Rückfragen gerne zur Verfügung.',
+      richiesta_documenti: 'wir beziehen uns auf Ihr Schreiben. In der Beilage erhalten Sie die gewünschten Unterlagen. Für weitere Auskünfte stehen wir gerne zur Verfügung.',
+      pagamento: 'wir bestätigen den Erhalt Ihrer Rechnung. Die Zahlung von {importo} erfolgt innert der angegebenen Frist.',
+      dichiarazione: 'wir beziehen uns auf Ihr Schreiben. Die verlangte Deklaration wird innert der angegebenen Frist eingereicht.',
+      controllo: 'wir bestätigen den Erhalt Ihrer Ankündigung der Kontrolle. Der vorgeschlagene Termin ist bestätigt; die verlangten Unterlagen werden bereitgestellt.',
+      decisione: 'wir bestätigen den Erhalt Ihrer Verfügung. Wir behalten uns vor, diese zu prüfen und innert Frist allfällige Einwände geltend zu machen.',
+      informativa: 'wir bestätigen den Erhalt Ihres Schreibens und danken für die Information.',
+    },
+    chiusura: 'Freundliche Grüsse\n{azienda}',
+  },
+  fr: {
+    saluto: 'Madame, Monsieur,',
+    corpo: {
+      sollecito: "nous nous référons à votre rappel. Le paiement de {importo} a été effectué ce jour. Nous vous prions d'excuser ce retard et restons à votre disposition.",
+      richiesta_documenti: 'nous nous référons à votre courrier. Vous trouverez en annexe les documents demandés. Nous restons à votre disposition pour tout complément.',
+      pagamento: 'nous confirmons la réception de votre facture. Le paiement de {importo} sera effectué dans le délai indiqué.',
+      dichiarazione: 'nous nous référons à votre courrier. La déclaration demandée sera transmise dans le délai indiqué.',
+      controllo: 'nous confirmons la réception de votre annonce de contrôle. La date proposée est confirmée; les documents demandés seront préparés.',
+      decisione: "nous confirmons la réception de votre décision. Nous nous réservons le droit de l'examiner et de formuler nos observations dans le délai imparti.",
+      informativa: "nous confirmons la réception de votre courrier et vous remercions pour l'information.",
+    },
+    chiusura: 'Veuillez agréer, Madame, Monsieur, nos salutations distinguées.\n{azienda}',
+  },
+};
+
+function norm(text) { return ' ' + text.toLowerCase().replace(/\s+/g, ' ') + ' '; }
+function detectLanguage(text) {
+  const t = norm(text);
+  let best = 'it', bestScore = -1;
+  for (const [lang, hints] of Object.entries(LANG_HINTS)) {
+    let score = 0;
+    for (const h of hints) {
+      const re = new RegExp('\\b' + h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g');
+      score += (t.match(re) || []).length;
+    }
+    if (score > bestScore) { bestScore = score; best = lang; }
+  }
+  return best;
+}
+function parseDates(text) {
+  const found = [];
+  const numeric = /\b(\d{1,2})[.\/](\d{1,2})[.\/](\d{2,4})\b/g;
+  let m;
+  while ((m = numeric.exec(text)) !== null) {
+    const day = +m[1], month = +m[2];
+    let year = +m[3];
+    if (year < 100) year += 2000;
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2000 && year <= 2100) {
+      found.push({ date: new Date(year, month - 1, day), index: m.index, raw: m[0] });
+    }
+  }
+  const monthNames = Object.keys(MONTHS).join('|');
+  const textual = new RegExp('\\b(\\d{1,2})(?:er|o|\\.|)?\\s+(' + monthNames + ')\\s+(\\d{4})\\b', 'gi');
+  while ((m = textual.exec(text)) !== null) {
+    const month = MONTHS[m[2].toLowerCase()];
+    if (month) found.push({ date: new Date(+m[3], month - 1, +m[1]), index: m.index, raw: m[0] });
+  }
+  return found;
+}
+function findDeadline(text) {
+  const dates = parseDates(text);
+  if (dates.length === 0) return null;
+  const t = text.toLowerCase();
+  const withKeyword = dates.filter((d) => {
+    const ctx = t.slice(Math.max(0, d.index - 70), d.index + d.raw.length + 20);
+    return DEADLINE_KEYWORDS.some((k) => ctx.includes(k));
+  });
+  const today = new Date();
+  const future = (arr) => arr.filter((d) => d.date >= today);
+  const pick = (arr) => arr.sort((a, b) => a.date - b.date)[0];
+  if (withKeyword.length > 0) return pick(future(withKeyword)) || pick(withKeyword);
+  const fut = future(dates);
+  return fut.length > 0 ? pick(fut) : null;
+}
+function detectEntity(text) {
+  const t = norm(text);
+  for (const e of ENTITIES) if (e.keys.some((k) => t.includes(k))) return e;
+  return { ente: 'Ente non identificato con certezza', categoria: 'Da verificare', uncertain: true };
+}
+function detectDocType(text) {
+  const t = norm(text);
+  let best = null, bestScore = 0;
+  for (const d of DOC_TYPES) {
+    const score = d.keys.reduce((s, k) => s + (t.includes(k) ? 1 : 0), 0);
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+  return best || { tipo: 'informativa', label: 'Comunicazione informativa' };
+}
+function detectAmount(text) {
+  const m = text.match(/(?:CHF|Fr\.|SFr\.)\s?([\d'’.,]+\d)/);
+  return m ? 'CHF ' + m[1] : null;
+}
+function detectRequestedDocs(text, docType) {
+  const t = norm(text);
+  const list = REQUESTED_DOCS.filter((d) => d.keys.some((k) => t.includes(k))).map((d) => d.label);
+  if (list.length === 0 && docType.tipo === 'richiesta_documenti') {
+    list.push('Documenti indicati nella lettera (elenco da verificare manualmente)');
+  }
+  return list;
+}
+function urgencyFrom(docType, deadline) {
+  const days = deadline ? Math.ceil((deadline.date - new Date()) / 86400000) : null;
+  if (docType.tipo === 'sollecito') return { level: 'alta', days };
+  if (days !== null && days <= 10) return { level: 'alta', days };
+  if (days !== null && days <= 30) return { level: 'media', days };
+  if (docType.tipo === 'decisione' || docType.tipo === 'controllo') return { level: 'media', days };
+  return { level: 'bassa', days };
+}
+function buildReply(lang, docType, amount, companyName) {
+  const tpl = REPLY_TEMPLATES[lang] || REPLY_TEMPLATES.it;
+  const corpo = (tpl.corpo[docType.tipo] || tpl.corpo.informativa).replace('{importo}', amount || '[importo]');
+  return tpl.saluto + '\n\n' + corpo + '\n\n' + tpl.chiusura.replace('{azienda}', companyName || '[Nome azienda]');
+}
+function analyzeDocument(text, opts = {}) {
+  const lang = detectLanguage(text);
+  const entity = detectEntity(text);
+  const docType = detectDocType(text);
+  const deadline = findDeadline(text);
+  const amount = detectAmount(text);
+  const requestedDocs = detectRequestedDocs(text, docType);
+  const urgency = urgencyFrom(docType, deadline);
+
+  let confidencePoints = 0;
+  if (!entity.uncertain) confidencePoints++;
+  if (docType.tipo !== 'informativa') confidencePoints++;
+  if (deadline) confidencePoints++;
+  if (text.length > 200) confidencePoints++;
+  const confidence = confidencePoints >= 3 ? 'alta' : confidencePoints === 2 ? 'media' : 'bassa';
+
+  const parts = [];
+  parts.push(`Si tratta di: ${docType.label.toLowerCase()}${entity.uncertain ? '' : ' da parte di ' + entity.ente}.`);
+  if (lang !== 'it') parts.push(`Il documento è in ${LANG_LABEL[lang].toLowerCase()}: qui sotto trovi la spiegazione in italiano.`);
+  if (amount) parts.push(`È indicato un importo di ${amount}.`);
+  if (deadline) parts.push(`La scadenza individuata è il ${formatDate(deadline.date)}${urgency.days !== null && urgency.days >= 0 ? ` (tra ${urgency.days} giorni)` : ''}.`);
+  else parts.push('Non è stata individuata una scadenza esplicita: verifica manualmente il documento.');
+
+  return {
+    id: 'doc-' + Date.now(),
+    createdAt: new Date().toISOString(),
+    title: opts.title || docType.label,
+    inBreve: parts.join(' '),
+    lingua: lang,
+    linguaLabel: LANG_LABEL[lang],
+    ente: entity.ente,
+    enteCategoria: entity.categoria,
+    enteIncerto: !!entity.uncertain,
+    tipo: docType.tipo,
+    tipoLabel: docType.label,
+    urgenza: urgency.level,
+    giorniAllaScadenza: urgency.days,
+    scadenza: deadline ? deadline.date.toISOString() : null,
+    importo: amount,
+    checklist: (CHECKLIST_BY_TYPE[docType.tipo] || CHECKLIST_BY_TYPE.informativa).map((c, i) => ({ id: i, text: c, done: false })),
+    documentiRichiesti: requestedDocs,
+    rischio: RISK_BY_TYPE[docType.tipo] || null,
+    bozzaRisposta: buildReply(lang, docType, amount, opts.companyName),
+    confidenza: confidence,
+    testoOriginale: text,
+  };
+}
+
+const SAMPLE_DOCUMENTS = [
+  {
+    id: 'de-avs', label: 'Lettera in tedesco — Cassa AVS', title: 'Ausgleichskasse — Lohndeklaration 2025',
+    text: `Ausgleichskasse des Kantons Zürich
+Postfach, 8087 Zürich
+
+Betreff: Lohndeklaration 2025 — fehlende Unterlagen
+
+Sehr geehrte Damen und Herren
+
+Für die Abrechnung der AHV/IV/EO-Beiträge 2025 benötigen wir noch folgende Unterlagen: die vollständige Lohnliste 2025 sowie die Lohnausweise der im Jahresverlauf ausgetretenen Mitarbeitenden.
+
+Wir bitten Sie, uns die Unterlagen bis spätestens 15.08.2026 einzureichen. Ohne Ihre Angaben müssen wir die Lohnsumme einschätzen, was zu höheren Beiträgen führen kann.
+
+Für Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüssen
+Ausgleichskasse des Kantons Zürich`,
+  },
+  {
+    id: 'fr-tva', label: 'Lettera in francese — AFC (sollecito IVA)', title: 'AFC — Rappel décompte TVA',
+    text: `Administration fédérale des contributions AFC
+Division principale de la TVA, 3003 Berne
+
+Concerne: Rappel — décompte TVA 1er trimestre 2026
+
+Madame, Monsieur,
+
+Malgré notre courrier précédent, nous n'avons pas encore reçu votre décompte TVA pour le 1er trimestre 2026 ni le paiement correspondant.
+
+Nous vous prions de nous faire parvenir le décompte et de verser le montant dû de CHF 8'450.00 au plus tard le 05.08.2026. À défaut, des intérêts moratoires seront perçus et une procédure de poursuite pourra être engagée.
+
+Veuillez agréer, Madame, Monsieur, nos salutations distinguées.
+
+Administration fédérale des contributions`,
+  },
+  {
+    id: 'it-comune', label: 'Lettera in italiano — Comune', title: 'Comune di Lugano — Controllo tassa rifiuti',
+    text: `Comune di Lugano — Cancelleria comunale
+Piazza della Riforma 1, 6900 Lugano
+
+Oggetto: Verifica della tassa rifiuti aziendale — sopralluogo
+
+Spettabile Ditta,
+
+vi informiamo che il nostro servizio effettuerà un controllo relativo alla tassa rifiuti per le attività economiche. Il sopralluogo è previsto per il 10.09.2026 presso la vostra sede.
+
+Vi invitiamo a presentare in tale occasione il formulario allegato debitamente compilato e i giustificativi relativi allo smaltimento dei rifiuti speciali.
+
+Per eventuali domande potete contattare il nostro ufficio.
+
+Distinti saluti
+Cancelleria comunale di Lugano`,
+  },
+];
+
+/* ================================================================
+   MOTORE SUBSIDY AI — regole strutturate + interpretazione testo
+   ================================================================ */
+const SETTORI = [
+  { id: 'industria', label: 'Industria / manifattura' },
+  { id: 'costruzioni', label: 'Costruzioni / impiantistica' },
+  { id: 'commercio', label: 'Commercio' },
+  { id: 'servizi', label: 'Servizi / consulenza' },
+  { id: 'ict', label: 'ICT / software' },
+  { id: 'turismo', label: 'Turismo / ristorazione' },
+  { id: 'sanita', label: 'Sanità / sociale' },
+  { id: 'trasporti', label: 'Trasporti / logistica' },
+];
+const TIPI_PROGETTO = [
+  { id: 'innovazione', label: 'Innovazione / R&S' },
+  { id: 'energia', label: 'Energia / efficienza energetica' },
+  { id: 'digitalizzazione', label: 'Digitalizzazione' },
+  { id: 'formazione', label: 'Formazione del personale' },
+  { id: 'mobilita', label: 'Mobilità / veicoli' },
+  { id: 'assunzioni', label: 'Assunzioni / occupazione' },
+  { id: 'export', label: 'Export / internazionalizzazione' },
+  { id: 'edilizia', label: 'Immobili / risanamento' },
+];
+const CANTONI = ['Ticino', 'Zurigo', 'Berna', 'Ginevra', 'Vaud', 'Grigioni', 'Altro'];
+const FORME_GIURIDICHE = ['SA', 'Sagl', 'Ditta individuale', 'Società in nome collettivo', 'Associazione / altro'];
+const FASCE_FATTURATO = ["< CHF 500'000", "CHF 500'000 – 2 mio", 'CHF 2 – 10 mio', '> CHF 10 mio', 'Preferisco non indicare'];
+const PROJECT_KEYWORDS = {
+  innovazione: ['innovazione', 'ricerca', 'sviluppo', 'r&s', 'prototipo', 'brevetto', 'nuovo prodotto', 'startup', 'tecnologia'],
+  energia: ['energia', 'energetic', 'fotovoltaico', 'solare', 'pompa di calore', 'riscaldamento', 'isolamento', 'efficienza', 'led', 'elettrico'],
+  digitalizzazione: ['digital', 'software', 'gestionale', 'erp', 'e-commerce', 'sito web', 'automazione', 'cloud', 'informatic'],
+  formazione: ['formazione', 'corso', 'apprendist', 'qualifica', 'riqualifica', 'competenze'],
+  mobilita: ['veicolo', 'furgone', 'auto elettrica', 'mobilità', 'flotta', 'ricarica', 'colonnina', 'bici'],
+  assunzioni: ['assunzione', 'assumere', 'personale', 'disoccupat', 'collocamento', 'posto di lavoro'],
+  export: ['export', 'estero', 'internazional', 'fiera', 'mercati esteri'],
+  edilizia: ['risanamento', 'ristrutturazione', 'immobile', 'stabile', 'capannone', 'edificio', 'tetto', 'facciata'],
+};
+const PROGRAMS = [
+  {
+    id: 'innosuisse', programma: 'Innosuisse — Progetti di innovazione con partner di ricerca', ente: 'Confederazione (Innosuisse)',
+    area: ['ALL'], settori: ['ALL'], minDipendenti: 1, maxDipendenti: 250, tipiProgetto: ['innovazione', 'digitalizzazione'],
+    requisiti: ['Collaborazione con un partner di ricerca svizzero (università, SUPSI, ecc.)', 'Progetto con contenuto innovativo e potenziale di mercato', 'Capacità di finanziare la propria parte dei costi (cash + in kind)'],
+    esclusioni: ['Attività di routine senza contenuto innovativo'],
+    contributo: 'Fino al 50% dei costi di progetto (quota del partner di ricerca)',
+    scadenza: "Presentazione possibile tutto l'anno", avvisoPrima: true,
+    avvisoTesto: "La domanda deve essere approvata PRIMA dell'inizio del progetto: i costi già sostenuti non sono riconosciuti.",
+    documenti: ['Descrizione del progetto', 'Piano dei costi', 'Accordo con il partner di ricerca', 'Dati aziendali'],
+    fonte: 'https://www.innosuisse.admin.ch', dataVerifica: '2026-07-01',
+    domande: [
+      { id: 'q1', testo: 'Il progetto prevede una collaborazione con un istituto di ricerca svizzero?', peso: 3, requisito: 'Partner di ricerca' },
+      { id: 'q2', testo: 'Il progetto sviluppa un prodotto, servizio o processo nuovo per il mercato?', peso: 3, requisito: 'Contenuto innovativo' },
+      { id: 'q3', testo: "L'azienda può coprire la propria parte dei costi di progetto?", peso: 2, requisito: 'Capacità finanziaria' },
+      { id: 'q4', testo: 'Il progetto NON è ancora iniziato?', peso: 3, requisito: 'Progetto non avviato' },
+    ],
+  },
+  {
+    id: 'programma-edifici', programma: 'Il Programma Edifici — risanamento energetico', ente: 'Confederazione + Cantoni',
+    area: ['ALL'], settori: ['ALL'], minDipendenti: 0, maxDipendenti: 100000, tipiProgetto: ['energia', 'edilizia'],
+    requisiti: ['Immobile situato in Svizzera di proprietà o in diritto di superficie', 'Intervento ammissibile: isolamento termico, sostituzione riscaldamento fossile, ecc.', 'Rispetto dei requisiti tecnici minimi del programma cantonale'],
+    esclusioni: ['Edifici nuovi (solo risanamenti)', 'Lavori già iniziati prima della domanda'],
+    contributo: 'Contributo per m² di superficie isolata o forfait per impianto (varia per Cantone)',
+    scadenza: "Domanda in ogni momento, prima dell'inizio dei lavori", avvisoPrima: true,
+    avvisoTesto: "La domanda va presentata e approvata PRIMA dell'inizio dei lavori, pena la perdita del contributo.",
+    documenti: ['Formulario cantonale', 'Preventivi dei lavori', 'Certificato CECE (se richiesto)', 'Estratto del registro fondiario'],
+    fonte: 'https://www.ilprogrammaedifici.ch', dataVerifica: '2026-06-15',
+    domande: [
+      { id: 'q1', testo: "L'azienda è proprietaria dell'immobile da risanare?", peso: 3, requisito: 'Proprietà immobile' },
+      { id: 'q2', testo: 'I lavori NON sono ancora iniziati?', peso: 3, requisito: 'Lavori non iniziati' },
+      { id: 'q3', testo: "L'intervento riguarda isolamento o sostituzione di un riscaldamento fossile?", peso: 2, requisito: 'Intervento ammissibile' },
+    ],
+  },
+  {
+    id: 'prokilowatt', programma: 'ProKilowatt — efficienza elettrica nelle imprese', ente: 'Confederazione (UFE)',
+    area: ['ALL'], settori: ['industria', 'commercio', 'servizi', 'trasporti', 'turismo', 'costruzioni'], minDipendenti: 1, maxDipendenti: 100000, tipiProgetto: ['energia'],
+    requisiti: ['Misure che riducono il consumo elettrico (illuminazione LED, motori efficienti, refrigerazione…)', 'Le misure non sarebbero economicamente sostenibili senza contributo', 'Domanda tramite bando o programma di sostegno attivo'],
+    esclusioni: ['Misure già obbligatorie per legge', 'Progetti già avviati'],
+    contributo: "Fino al 30% dei costi d'investimento",
+    scadenza: "Bandi periodici durante l'anno", avvisoPrima: true,
+    avvisoTesto: "L'impegno d'acquisto deve avvenire solo DOPO la conferma del contributo.",
+    documenti: ['Descrizione delle misure', 'Calcolo del risparmio elettrico', 'Preventivi'],
+    fonte: 'https://www.prokw.ch', dataVerifica: '2026-05-20',
+    domande: [
+      { id: 'q1', testo: 'Il progetto riduce il consumo di energia elettrica in modo misurabile?', peso: 3, requisito: 'Risparmio elettrico' },
+      { id: 'q2', testo: "L'investimento NON è ancora stato ordinato o pagato?", peso: 3, requisito: 'Investimento non avviato' },
+    ],
+  },
+  {
+    id: 'ti-linn', programma: "Ticino — Legge per l'innovazione economica (LInn)", ente: 'Cantone Ticino (DFE)',
+    area: ['Ticino'], settori: ['industria', 'ict', 'servizi'], minDipendenti: 1, maxDipendenti: 500, tipiProgetto: ['innovazione', 'digitalizzazione', 'export'],
+    requisiti: ['Sede o attività economica in Ticino', 'Progetto di innovazione di prodotto o processo, o partecipazione a fiere internazionali', "Sostenibilità finanziaria dell'azienda"],
+    esclusioni: ['Attività commerciali pure senza componente innovativa'],
+    contributo: "Contributo a fondo perso fino al 25% dell'investimento ammissibile",
+    scadenza: "Domanda in ogni momento, prima dell'avvio del progetto", avvisoPrima: true,
+    avvisoTesto: 'Il progetto non deve essere avviato prima della decisione di sostegno.',
+    documenti: ['Business plan / descrizione progetto', 'Ultimi due bilanci', 'Preventivi', 'Estratto registro di commercio'],
+    fonte: 'https://www4.ti.ch/dfe/de/use/sostegno', dataVerifica: '2026-07-10',
+    domande: [
+      { id: 'q1', testo: "L'azienda ha sede operativa in Ticino?", peso: 3, requisito: 'Sede in Ticino' },
+      { id: 'q2', testo: 'Il progetto introduce un prodotto o processo nuovo o migliorato?', peso: 3, requisito: 'Innovazione' },
+      { id: 'q3', testo: 'Gli ultimi bilanci mostrano una situazione finanziaria sostenibile?', peso: 2, requisito: 'Solidità finanziaria' },
+      { id: 'q4', testo: 'Il progetto NON è ancora stato avviato?', peso: 3, requisito: 'Progetto non avviato' },
+    ],
+  },
+  {
+    id: 'ti-energia', programma: 'Ticino — Incentivi cantonali efficienza energetica (FER)', ente: 'Cantone Ticino',
+    area: ['Ticino'], settori: ['ALL'], minDipendenti: 0, maxDipendenti: 100000, tipiProgetto: ['energia', 'edilizia', 'mobilita'],
+    requisiti: ['Intervento realizzato in Ticino', 'Tipologie sostenute: fotovoltaico, pompe di calore, risanamenti, mobilità elettrica (secondo decreti annuali)', "Domanda prima dell'inizio dei lavori"],
+    esclusioni: ['Interventi già eseguiti'],
+    contributo: 'Incentivi cantonali secondo il decreto in vigore (importi per kW / m² / veicolo)',
+    scadenza: 'Fino ad esaurimento dei fondi annuali', avvisoPrima: true,
+    avvisoTesto: 'Fondi limitati ed esauribili: presentare la domanda PRIMA dei lavori e verificare la disponibilità residua.',
+    documenti: ['Formulario cantonale', 'Preventivi', "Documentazione tecnica dell'impianto"],
+    fonte: 'https://www4.ti.ch/dfe/de/se/sportello', dataVerifica: '2026-06-30',
+    domande: [
+      { id: 'q1', testo: "L'intervento si trova in Ticino?", peso: 3, requisito: 'Territorio' },
+      { id: 'q2', testo: 'I lavori NON sono ancora iniziati?', peso: 3, requisito: 'Lavori non iniziati' },
+      { id: 'q3', testo: "L'intervento rientra nelle tipologie sostenute dal decreto in vigore?", peso: 2, requisito: 'Tipologia ammissibile' },
+    ],
+  },
+  {
+    id: 'ti-lrilocc', programma: "Ticino — Incentivi all'assunzione (L-Rilocc)", ente: 'Cantone Ticino (Sezione del lavoro)',
+    area: ['Ticino'], settori: ['ALL'], minDipendenti: 1, maxDipendenti: 100000, tipiProgetto: ['assunzioni'],
+    requisiti: ['Assunzione di una persona iscritta a un Ufficio regionale di collocamento (URC) del Ticino', 'Contratto di lavoro di durata indeterminata o determinata significativa', "Richiesta presentata prima dell'inizio del rapporto di lavoro"],
+    esclusioni: ['Sostituzione di personale licenziato per creare il posto sussidiato'],
+    contributo: 'Incentivo finanziario temporaneo sul salario (percentuale decrescente)',
+    scadenza: "Prima dell'inizio del rapporto di lavoro", avvisoPrima: true,
+    avvisoTesto: "La richiesta va inoltrata PRIMA dell'assunzione: contratti già firmati e iniziati non sono incentivabili.",
+    documenti: ['Formulario di richiesta', 'Bozza del contratto di lavoro', 'Profilo del candidato'],
+    fonte: 'https://www4.ti.ch/dfe/de/sdl', dataVerifica: '2026-07-05',
+    domande: [
+      { id: 'q1', testo: 'La persona da assumere è iscritta a un URC ticinese?', peso: 3, requisito: 'Candidato iscritto URC' },
+      { id: 'q2', testo: 'Il rapporto di lavoro NON è ancora iniziato?', peso: 3, requisito: 'Assunzione non avviata' },
+      { id: 'q3', testo: 'Il posto non sostituisce personale licenziato di recente?', peso: 2, requisito: 'Nessuna sostituzione abusiva' },
+    ],
+  },
+  {
+    id: 'pronovo', programma: 'Pronovo — Rimunerazione unica per impianti fotovoltaici', ente: 'Confederazione (Pronovo AG)',
+    area: ['ALL'], settori: ['ALL'], minDipendenti: 0, maxDipendenti: 100000, tipiProgetto: ['energia', 'edilizia'],
+    requisiti: ['Impianto fotovoltaico nuovo collegato alla rete', 'Notifica e domanda secondo la procedura Pronovo'],
+    esclusioni: [],
+    contributo: 'Rimunerazione unica: contributo base + contributo per kW installato (circa 20-30% dei costi)',
+    scadenza: 'Domanda dopo la messa in servizio, secondo procedura', avvisoPrima: false, avvisoTesto: null,
+    documenti: ['Certificato di collaudo', "Dati dell'impianto", 'Coordinate bancarie'],
+    fonte: 'https://pronovo.ch', dataVerifica: '2026-06-01',
+    domande: [
+      { id: 'q1', testo: "L'impianto fotovoltaico è nuovo e collegato alla rete elettrica?", peso: 3, requisito: 'Impianto ammissibile' },
+      { id: 'q2', testo: 'La potenza installata è di almeno 2 kW?', peso: 2, requisito: 'Potenza minima' },
+    ],
+  },
+  {
+    id: 'formazione-continua', programma: 'Assegni e sostegno alla formazione continua', ente: 'Confederazione + Cantone',
+    area: ['ALL'], settori: ['ALL'], minDipendenti: 1, maxDipendenti: 100000, tipiProgetto: ['formazione'],
+    requisiti: ['Corsi riconosciuti (federali o cantonali) o preparazione a esami federali', 'Per i corsi con esame federale: contributo diretto ai partecipanti (fino al 50%)'],
+    esclusioni: ['Formazione interna non certificata'],
+    contributo: 'Fino al 50% dei costi dei corsi di preparazione agli esami federali',
+    scadenza: "Domanda dopo l'esame (contributo federale) o secondo bando cantonale", avvisoPrima: false, avvisoTesto: null,
+    documenti: ['Fattura del corso', 'Attestato di partecipazione', "Decisione d'esame"],
+    fonte: 'https://www.sbfi.admin.ch', dataVerifica: '2026-05-10',
+    domande: [
+      { id: 'q1', testo: 'Il corso prepara a un esame federale (APF/EPS) o è riconosciuto dal Cantone?', peso: 3, requisito: 'Corso riconosciuto' },
+      { id: 'q2', testo: 'I costi del corso sono documentabili con fatture?', peso: 2, requisito: 'Costi documentati' },
+    ],
+  },
+  {
+    id: 'fondo-tecnologico', programma: 'Fondo per le tecnologie — fideiussioni cleantech', ente: 'Confederazione (UFAM)',
+    area: ['ALL'], settori: ['industria', 'ict', 'costruzioni', 'trasporti'], minDipendenti: 1, maxDipendenti: 500, tipiProgetto: ['innovazione', 'energia'],
+    requisiti: ['Prodotto o processo che riduce le emissioni o il consumo di risorse', 'Modello di business promettente e necessità di finanziamento tramite prestito'],
+    esclusioni: ['Aziende senza prospettiva di rimborso del prestito'],
+    contributo: 'Fideiussione su prestiti fino a CHF 3 mio (non è un contributo a fondo perso)',
+    scadenza: 'Domanda in ogni momento', avvisoPrima: false, avvisoTesto: null,
+    documenti: ['Business plan', 'Piano finanziario', 'Descrizione della tecnologia'],
+    fonte: 'https://www.fondo-per-le-tecnologie.ch', dataVerifica: '2026-04-15',
+    domande: [
+      { id: 'q1', testo: 'Il prodotto/processo riduce emissioni di gas serra o consumo di risorse?', peso: 3, requisito: 'Impatto climatico' },
+      { id: 'q2', testo: "L'azienda cerca un prestito bancario (non un contributo a fondo perso)?", peso: 3, requisito: 'Finanziamento tramite prestito' },
+    ],
+  },
+  {
+    id: 'sge-export', programma: "Switzerland Global Enterprise — sostegno all'export", ente: 'Confederazione (S-GE)',
+    area: ['ALL'], settori: ['industria', 'ict', 'servizi', 'commercio'], minDipendenti: 1, maxDipendenti: 250, tipiProgetto: ['export'],
+    requisiti: ['Prodotto o servizio con potenziale di export', 'Interesse per consulenza paese, fiere o ricerche di mercato'],
+    esclusioni: [],
+    contributo: 'Consulenza di base gratuita, servizi e padiglioni fieristici a tariffa agevolata',
+    scadenza: 'Nessuna scadenza — servizio continuo', avvisoPrima: false, avvisoTesto: null,
+    documenti: ['Profilo aziendale', 'Descrizione del prodotto/servizio'],
+    fonte: 'https://www.s-ge.com', dataVerifica: '2026-06-20',
+    domande: [
+      { id: 'q1', testo: "L'azienda ha un prodotto/servizio già vendibile sul mercato svizzero?", peso: 2, requisito: 'Prodotto maturo' },
+      { id: 'q2', testo: 'Esiste un mercato estero target identificato?', peso: 2, requisito: 'Mercato target' },
+    ],
+  },
+  {
+    id: 'ti-mobilita', programma: 'Ticino — Incentivi mobilità elettrica aziendale', ente: 'Cantone Ticino + Comuni',
+    area: ['Ticino'], settori: ['ALL'], minDipendenti: 0, maxDipendenti: 100000, tipiProgetto: ['mobilita', 'energia'],
+    requisiti: ['Veicolo elettrico nuovo immatricolato in Ticino o infrastruttura di ricarica in Ticino', 'Rispetto delle condizioni del decreto in vigore (categorie e massimali)', "Domanda prima dell'acquisto, secondo la procedura cantonale"],
+    esclusioni: ['Veicoli già acquistati o immatricolati prima della domanda'],
+    contributo: 'Contributo forfettario per veicolo e per stazione di ricarica (secondo decreto)',
+    scadenza: 'Fino ad esaurimento dei fondi', avvisoPrima: true,
+    avvisoTesto: "Verificare la procedura: di norma la domanda va presentata PRIMA dell'acquisto del veicolo.",
+    documenti: ['Formulario cantonale', 'Offerta del concessionario', 'Carta grigia (dopo immatricolazione)'],
+    fonte: 'https://www4.ti.ch/dt/da/sm', dataVerifica: '2026-07-12',
+    domande: [
+      { id: 'q1', testo: 'Il veicolo o la colonnina saranno in Ticino?', peso: 3, requisito: 'Territorio' },
+      { id: 'q2', testo: "L'acquisto NON è ancora stato effettuato?", peso: 3, requisito: 'Acquisto non effettuato' },
+    ],
+  },
+  {
+    id: 'digitalizzazione-pmi', programma: 'Sostegno alla digitalizzazione delle PMI (programmi regionali NPR)', ente: 'Confederazione + Cantoni (Nuova politica regionale)',
+    area: ['Ticino', 'Grigioni', 'Altro'], settori: ['industria', 'turismo', 'commercio', 'servizi', 'ict'], minDipendenti: 1, maxDipendenti: 250, tipiProgetto: ['digitalizzazione', 'innovazione'],
+    requisiti: ['Sede in una regione beneficiaria della Nuova politica regionale', 'Progetto che aumenta la competitività (digitalizzazione di processi, nuovi canali)', 'Cofinanziamento aziendale'],
+    esclusioni: ['Semplice acquisto di hardware senza progetto'],
+    contributo: 'Contributi o prestiti agevolati secondo il programma cantonale',
+    scadenza: 'Secondo bandi cantonali', avvisoPrima: true,
+    avvisoTesto: "Molti bandi NPR richiedono la domanda prima dell'avvio del progetto.",
+    documenti: ['Descrizione del progetto', 'Piano dei costi', 'Dati aziendali'],
+    fonte: 'https://regiosuisse.ch', dataVerifica: '2026-05-28',
+    domande: [
+      { id: 'q1', testo: 'Il progetto digitalizza processi o canali di vendita (non solo hardware)?', peso: 3, requisito: 'Progetto strutturato' },
+      { id: 'q2', testo: "L'azienda può cofinanziare almeno il 50% dei costi?", peso: 2, requisito: 'Cofinanziamento' },
+    ],
+  },
+];
+
+function interpretProjectDescription(text) {
+  if (!text) return [];
+  const t = text.toLowerCase();
+  const matches = [];
+  for (const [tipo, keywords] of Object.entries(PROJECT_KEYWORDS)) {
+    const hits = keywords.filter((k) => t.includes(k));
+    if (hits.length > 0) matches.push({ tipo, hits: hits.length });
+  }
+  return matches.sort((a, b) => b.hits - a.hits).map((m) => m.tipo);
+}
+function labelTipo(id) {
+  const t = TIPI_PROGETTO.find((x) => x.id === id);
+  return t ? t.label : id;
+}
+function matchPrograms(p) {
+  const results = [];
+  const progetti = new Set(p.progetti || []);
+  for (const prog of PROGRAMS) {
+    const reasons = [], missing = [];
+    let score = 0;
+    const geoOk = prog.area.includes('ALL') || prog.area.includes(p.cantone);
+    if (!geoOk) continue;
+    if (!prog.area.includes('ALL')) { score += 20; reasons.push(`Programma dedicato al Cantone ${p.cantone}`); }
+    else { score += 16; reasons.push('Programma disponibile in tutta la Svizzera'); }
+
+    const tipiMatch = prog.tipiProgetto.filter((t) => progetti.has(t));
+    if (tipiMatch.length === 0) continue;
+    score += Math.round(28 + 12 * (tipiMatch.length / prog.tipiProgetto.length));
+    reasons.push('Progetto compatibile: ' + tipiMatch.map(labelTipo).join(', '));
+
+    if (p.settore && prog.settori.includes(p.settore)) { score += 20; reasons.push('Settore aziendale espressamente tra quelli ammessi'); }
+    else if (prog.settori.includes('ALL')) score += 16;
+    else if (!p.settore) { score += 10; missing.push('Settore aziendale non indicato nel profilo'); }
+    else { score += 4; missing.push('Il settore indicato non è tra quelli tipicamente ammessi'); }
+
+    const dip = Number(p.dipendenti);
+    if (!Number.isFinite(dip) || p.dipendenti === '' || p.dipendenti == null) { score += 10; missing.push('Numero di dipendenti non indicato'); }
+    else if (dip >= prog.minDipendenti && dip <= prog.maxDipendenti) { score += 20; reasons.push('Dimensione aziendale nel target del programma'); }
+    else missing.push(`Dimensione fuori target (richiesti ${prog.minDipendenti}–${prog.maxDipendenti === 100000 ? '∞' : prog.maxDipendenti} dipendenti)`);
+
+    for (const r of prog.requisiti) missing.push('Da verificare: ' + r);
+
+    const pct = score;
+    if (pct < 40) continue;
+    const known = ['cantone', 'settore', 'dipendenti'].filter((f) => p[f] !== '' && p[f] != null).length;
+    const confidence = known === 3 ? 'alta' : known === 2 ? 'media' : 'bassa';
+    results.push({ program: prog, score: pct, confidence, reasons, missing });
+  }
+  return results.sort((a, b) => b.score - a.score);
+}
+function evaluateEligibility(program, answers) {
+  let totalWeight = 0, okWeight = 0, answered = 0;
+  const satisfied = [], failed = [], unknown = [];
+  for (const q of program.domande) {
+    totalWeight += q.peso;
+    const a = answers[q.id];
+    if (a === 'si') { okWeight += q.peso; answered++; satisfied.push(q.requisito); }
+    else if (a === 'no') { answered++; failed.push(q.requisito); }
+    else unknown.push(q.requisito);
+  }
+  const ratio = totalWeight > 0 ? okWeight / totalWeight : 0;
+  const answeredRatio = program.domande.length > 0 ? answered / program.domande.length : 0;
+  let idoneita;
+  if (failed.length > 0 && ratio < 0.5) idoneita = 'bassa';
+  else if (ratio >= 0.8 && failed.length === 0) idoneita = 'alta';
+  else idoneita = 'media';
+  const confidence = answeredRatio === 1 ? 'alta' : answeredRatio >= 0.5 ? 'media' : 'bassa';
+  return {
+    idoneita, confidence, satisfied, failed, unknown,
+    nextSteps: [
+      ...(failed.length > 0 ? ['Chiarire i requisiti non soddisfatti prima di procedere'] : []),
+      ...(unknown.length > 0 ? ['Completare la verifica dei requisiti mancanti'] : []),
+      'Consultare la fonte ufficiale per confermare condizioni e importi',
+      ...(program.avvisoPrima ? ["NON avviare il progetto/acquisto prima della conferma dell'ente"] : []),
+      'Preparare i documenti richiesti per la candidatura',
+    ],
+  };
+}
+
+/* ================================================================
+   NAVIGAZIONE
+   ================================================================ */
+function goto(page) {
+  document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
+  $('#page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
+  if (page === 'home') renderHome();
+  if (page === 'deadlines') renderTasks();
+  if (page === 'archive') renderArchive();
+  if (page === 'subsidy') renderSubsidy();
+  window.scrollTo(0, 0);
+}
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-page]');
+  if (btn) goto(btn.dataset.page);
+});
+
+/* ================================================================
+   HOME
+   ================================================================ */
+function renderHome() {
+  const openTasks = tasks.filter((t) => t.stato !== 'fatto' && t.scadenza).sort((a, b) => new Date(a.scadenza) - new Date(b.scadenza)).slice(0, 5);
+  $('#home-tasks').innerHTML = openTasks.length === 0
+    ? '<div class="empty">Nessuna scadenza in agenda. Analizza un documento per iniziare.</div>'
+    : openTasks.map((t) => `
+      <div class="list-row">
+        <div class="list-main"><div class="list-title">${esc(t.titolo)}</div><div class="list-sub">${esc(t.ente)}</div></div>
+        <span class="badge badge-${esc(t.urgenza || 'neutral')}">${formatDate(t.scadenza)}</span>
+      </div>`).join('');
+  const recent = [...docs].reverse().slice(0, 5);
+  $('#home-docs').innerHTML = recent.length === 0
+    ? '<div class="empty">Nessun documento analizzato finora.</div>'
+    : recent.map((d) => `
+      <div class="list-row">
+        <div class="list-main"><div class="list-title">${esc(d.title)}</div><div class="list-sub">${esc(d.ente)} · ${esc(d.linguaLabel)}</div></div>
+        <span class="badge badge-${esc(d.urgenza)}">${esc(d.urgenza)}</span>
+      </div>`).join('');
+}
+
+/* ================================================================
+   ADMIN AI
+   ================================================================ */
+let currentDoc = null;
+
+$('#samples').innerHTML = SAMPLE_DOCUMENTS.map((s, i) => `<button class="btn btn-sm" data-sample="${i}">${esc(s.label)}</button>`).join(' ');
+document.addEventListener('click', (e) => {
+  const s = e.target.closest('[data-sample]');
+  if (!s) return;
+  const sample = SAMPLE_DOCUMENTS[+s.dataset.sample];
+  $('#doc-text').value = sample.text;
+  $('#doc-title').value = sample.title;
+  runAnalysis(sample.text, sample.title);
+});
+$('#analyze-btn').addEventListener('click', () => {
+  const text = $('#doc-text').value;
+  $('#admin-error').innerHTML = '';
+  if (text.trim().length < 40) {
+    $('#admin-error').innerHTML = '<div class="info-box" style="margin-top:12px">Inserisci il testo completo della comunicazione (almeno qualche riga).</div>';
+    return;
+  }
+  runAnalysis(text, $('#doc-title').value);
+});
+$('#upload-zone').addEventListener('click', () => $('#file-input').click());
+$('#upload-zone').addEventListener('dragover', (e) => e.preventDefault());
+$('#upload-zone').addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
+$('#file-input').addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+async function extractPdfText(file) {
+  if (!window.pdfjsLib) throw new Error('Libreria PDF non disponibile (offline). Incolla il testo manualmente.');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map((it) => it.str).join(' ') + '\n';
+  }
+  return text;
+}
+async function handleFile(file) {
+  if (!file) return;
+  $('#admin-error').innerHTML = '';
+  const zone = $('#upload-zone');
+  const orig = zone.textContent;
+  zone.textContent = 'Estrazione del testo in corso…';
+  try {
+    let content = '';
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      content = await extractPdfText(file);
+      if (content.trim().length < 40) throw new Error("Il PDF non contiene testo estraibile (probabile scansione). Incolla il testo manualmente; l'OCR è in roadmap.");
+    } else if (file.type.startsWith('image/')) {
+      throw new Error('OCR delle immagini in roadmap: incolla il testo della lettera.');
+    } else {
+      content = await file.text();
+    }
+    const title = file.name.replace(/\.[^.]+$/, '');
+    $('#doc-text').value = content;
+    $('#doc-title').value = title;
+    runAnalysis(content, title);
+  } catch (err) {
+    $('#admin-error').innerHTML = '<div class="info-box" style="margin-top:12px">' + esc(err.message || 'Impossibile leggere il file.') + '</div>';
+  } finally {
+    zone.textContent = orig;
+  }
+}
+
+function runAnalysis(text, title) {
+  currentDoc = analyzeDocument(text, { title: title || undefined });
+  docs.push(currentDoc);
+  store.set('docs', docs);
+  renderResult();
+  showToast('Documento analizzato e salvato in archivio');
+  $('#analysis-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderResult() {
+  const r = currentDoc;
+  if (!r) { $('#analysis-result').innerHTML = ''; return; }
+  $('#analysis-result').innerHTML = `
+  <div class="card">
+    <div class="card-title">2 · Risultato dell'analisi
+      <span class="badge badge-${esc(r.urgenza)}">urgenza ${esc(r.urgenza)}</span>
+      <span class="badge badge-neutral">confidenza ${esc(r.confidenza)}</span>
+    </div>
+    ${r.confidenza === 'bassa' ? '<div class="info-box" style="margin-bottom:12px">L\'analisi automatica ha una confidenza bassa: verifica manualmente il documento prima di agire.</div>' : ''}
+    <div class="result-row"><div class="result-label">In breve</div><div>${esc(r.inBreve)}</div></div>
+    <div class="result-row"><div class="result-label">Ente mittente</div>
+      <div>${esc(r.ente)} <span class="badge badge-neutral">${esc(r.enteCategoria)}</span>
+      ${r.enteIncerto ? '<span class="badge badge-media">da verificare</span>' : ''}</div></div>
+    <div class="result-row"><div class="result-label">Lingua</div><div>${esc(r.linguaLabel)}</div></div>
+    <div class="result-row"><div class="result-label">Tipo di documento</div><div>${esc(r.tipoLabel)}</div></div>
+    ${r.importo ? `<div class="result-row"><div class="result-label">Importo</div><div>${esc(r.importo)}</div></div>` : ''}
+    <div class="result-row"><div class="result-label">Scadenza</div><div>
+      ${r.scadenza
+        ? `<strong>${formatDate(r.scadenza)}</strong>${r.giorniAllaScadenza != null && r.giorniAllaScadenza >= 0 ? ` <span style="color:var(--muted)">· tra ${r.giorniAllaScadenza} giorni</span>` : ''}
+           <button class="btn btn-sm" style="margin-left:12px" id="create-deadline">+ Crea scadenza</button>`
+        : 'Nessuna scadenza esplicita individuata — verifica manuale consigliata.'}
+    </div></div>
+    <div class="result-row"><div class="result-label">Cosa devi fare</div><div>
+      ${r.checklist.map((c) => `
+        <label class="checklist-item${c.done ? ' done' : ''}">
+          <input type="checkbox" data-check="${c.id}" ${c.done ? 'checked' : ''} />
+          <span>${esc(c.text)}</span>
+        </label>`).join('')}
+    </div></div>
+    <div class="result-row"><div class="result-label">Documenti richiesti</div><div>
+      ${r.documentiRichiesti.length > 0
+        ? `<ul class="detail-list">${r.documentiRichiesti.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>`
+        : '<span style="color:var(--muted)">Nessun documento specifico individuato nel testo.</span>'}
+    </div></div>
+    <div class="result-row"><div class="result-label">Rischio se non agisci</div><div>
+      ${r.rischio ? esc(r.rischio) : '<span style="color:var(--muted)">Non determinabile con sufficiente certezza — da verificare con l\'ente.</span>'}
+    </div></div>
+    <div class="result-row"><div class="result-label">Bozza di risposta (${esc(r.linguaLabel)})</div><div>
+      <div class="draft-box">${esc(r.bozzaRisposta)}</div>
+      <button class="btn btn-sm" style="margin-top:8px" id="copy-draft">Copia bozza</button>
+      <span style="font-size:12px;color:var(--muted);margin-left:10px">Bozza generata automaticamente: rileggi e adatta prima dell'invio.</span>
+    </div></div>
+  </div>`;
+
+  const createBtn = $('#create-deadline');
+  if (createBtn) createBtn.addEventListener('click', () => {
+    addTask({ titolo: currentDoc.title, ente: currentDoc.ente, scadenza: currentDoc.scadenza, urgenza: currentDoc.urgenza, docId: currentDoc.id });
+  });
+  $('#copy-draft').addEventListener('click', () => {
+    navigator.clipboard?.writeText(currentDoc.bozzaRisposta);
+    showToast('Bozza copiata negli appunti');
+  });
+  document.querySelectorAll('#analysis-result [data-check]').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const item = currentDoc.checklist.find((c) => c.id === +cb.dataset.check);
+      if (item) item.done = cb.checked;
+      store.set('docs', docs);
+      cb.closest('.checklist-item').classList.toggle('done', cb.checked);
+    });
+  });
+}
+
+/* ================================================================
+   SCADENZIARIO
+   ================================================================ */
+let taskFilter = 'aperte';
+const STATI = { da_fare: 'Da fare', in_corso: 'In corso', fatto: 'Fatto' };
+
+function addTask(task) {
+  tasks.push({ id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), stato: 'da_fare', ...task });
+  store.set('tasks', tasks);
+  showToast('Scadenza aggiunta allo scadenziario');
+}
+$('#task-add').addEventListener('click', () => {
+  const titolo = $('#task-title').value.trim();
+  if (!titolo) return;
+  const dateVal = $('#task-date').value;
+  const days = dateVal ? Math.ceil((new Date(dateVal) - new Date()) / 86400000) : null;
+  addTask({
+    titolo,
+    ente: $('#task-ente').value.trim() || 'Inserimento manuale',
+    scadenza: dateVal ? new Date(dateVal).toISOString() : null,
+    urgenza: days != null && days <= 10 ? 'alta' : days != null && days <= 30 ? 'media' : 'bassa',
+  });
+  $('#task-title').value = ''; $('#task-ente').value = ''; $('#task-date').value = '';
+  renderTasks();
+});
+function renderTasks() {
+  $('#task-filters').innerHTML = ['aperte', 'fatte', 'tutte'].map((f) =>
+    `<button class="btn btn-sm${taskFilter === f ? ' btn-primary' : ''}" data-tfilter="${f}">${f}</button>`).join('');
+  const visible = tasks
+    .filter((t) => (taskFilter === 'aperte' ? t.stato !== 'fatto' : taskFilter === 'tutte' ? true : t.stato === 'fatto'))
+    .sort((a, b) => new Date(a.scadenza || '2100-01-01') - new Date(b.scadenza || '2100-01-01'));
+  $('#task-list').innerHTML = visible.length === 0
+    ? '<div class="empty">Nessuna scadenza in questa vista.</div>'
+    : visible.map((t) => {
+      const d = t.scadenza ? Math.ceil((new Date(t.scadenza) - new Date()) / 86400000) : null;
+      return `
+      <div class="list-row">
+        <div class="list-main"><div class="list-title">${esc(t.titolo)}</div>
+          <div class="list-sub">${esc(t.ente)}${t.nota ? ' · ' + esc(t.nota) : ''}</div></div>
+        ${t.scadenza
+          ? `<span class="badge badge-${esc(t.urgenza)}">${formatDate(t.scadenza)}${d != null && d >= 0 ? ` · ${d} gg` : d != null ? ' · scaduta' : ''}</span>`
+          : '<span class="badge badge-neutral">senza data</span>'}
+        <select data-tstato="${esc(t.id)}" style="border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:13px">
+          ${Object.entries(STATI).map(([k, v]) => `<option value="${k}"${t.stato === k ? ' selected' : ''}>${v}</option>`).join('')}
+        </select>
+        <button class="btn btn-sm" data-tdel="${esc(t.id)}">✕</button>
+      </div>`;
+    }).join('');
+}
+document.addEventListener('click', (e) => {
+  const f = e.target.closest('[data-tfilter]');
+  if (f) { taskFilter = f.dataset.tfilter; renderTasks(); }
+  const del = e.target.closest('[data-tdel]');
+  if (del) { tasks = tasks.filter((t) => t.id !== del.dataset.tdel); store.set('tasks', tasks); renderTasks(); }
+});
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-tstato]');
+  if (sel) {
+    const t = tasks.find((x) => x.id === sel.dataset.tstato);
+    if (t) { t.stato = sel.value; store.set('tasks', tasks); renderTasks(); }
+  }
+});
+
+/* ================================================================
+   ARCHIVIO
+   ================================================================ */
+let archiveFilter = 'tutte';
+let openDocId = null;
+
+function renderArchive() {
+  $('#archive-filters').innerHTML = ['tutte', 'alta', 'media', 'bassa'].map((f) =>
+    `<button class="btn btn-sm${archiveFilter === f ? ' btn-primary' : ''}" data-afilter="${f}">${f}</button>`).join('');
+  const visible = [...docs].reverse().filter((d) => archiveFilter === 'tutte' || d.urgenza === archiveFilter);
+  $('#archive-count').textContent = `Documenti (${visible.length})`;
+  $('#archive-list').innerHTML = visible.length === 0
+    ? '<div class="empty">Nessun documento in archivio. Analizza una comunicazione in Admin AI.</div>'
+    : visible.map((d) => {
+      const done = d.checklist.filter((c) => c.done).length;
+      return `
+      <div class="list-row">
+        <div class="list-main"><div class="list-title">${esc(d.title)}</div>
+          <div class="list-sub">${esc(d.ente)} · ${esc(d.tipoLabel)} · ${esc(d.linguaLabel)}${d.scadenza ? ' · scade il ' + formatDate(d.scadenza) : ''}</div></div>
+        <span class="badge badge-neutral">${done}/${d.checklist.length} azioni</span>
+        <span class="badge badge-${esc(d.urgenza)}">${esc(d.urgenza)}</span>
+        <button class="btn btn-sm" data-aopen="${esc(d.id)}">${openDocId === d.id ? 'Chiudi' : 'Apri'}</button>
+        <button class="btn btn-sm" data-adel="${esc(d.id)}">✕</button>
+      </div>`;
+    }).join('');
+
+  const open = docs.find((d) => d.id === openDocId);
+  $('#archive-detail').innerHTML = !open ? '' : `
+  <div class="card">
+    <div class="card-title">${esc(open.title)}</div>
+    <div class="result-row"><div class="result-label">In breve</div><div>${esc(open.inBreve)}</div></div>
+    <div class="result-row"><div class="result-label">Checklist</div><div>
+      ${open.checklist.map((c) => `
+        <div class="checklist-item${c.done ? ' done' : ''}"><input type="checkbox" ${c.done ? 'checked' : ''} disabled /><span>${esc(c.text)}</span></div>`).join('')}
+    </div></div>
+    <div class="result-row"><div class="result-label">Bozza di risposta</div><div class="draft-box">${esc(open.bozzaRisposta)}</div></div>
+    <div class="result-row"><div class="result-label">Testo originale</div><div class="draft-box" style="max-height:220px;overflow:auto">${esc(open.testoOriginale)}</div></div>
+  </div>`;
+}
+document.addEventListener('click', (e) => {
+  const f = e.target.closest('[data-afilter]');
+  if (f) { archiveFilter = f.dataset.afilter; renderArchive(); }
+  const op = e.target.closest('[data-aopen]');
+  if (op) { openDocId = openDocId === op.dataset.aopen ? null : op.dataset.aopen; renderArchive(); }
+  const del = e.target.closest('[data-adel]');
+  if (del) {
+    docs = docs.filter((d) => d.id !== del.dataset.adel);
+    if (openDocId === del.dataset.adel) openDocId = null;
+    store.set('docs', docs);
+    renderArchive();
+  }
+});
+
+/* ================================================================
+   SUBSIDY AI
+   ================================================================ */
+let subsidyStep = profile ? 'results' : 'profile';
+let profileDraft = profile ? { ...profile } : {
+  ragioneSociale: '', idi: '', cantone: 'Ticino', comune: '', formaGiuridica: 'Sagl',
+  settore: '', dipendenti: '', fatturato: 'Preferisco non indicare',
+  immobili: false, veicoli: false, progetti: [], descrizione: '',
+};
+let selectedProgramId = null;
+let quizAnswers = {};
+let quizVerdict = null;
+
+$('#tab-profile').addEventListener('click', () => { subsidyStep = 'profile'; renderSubsidy(); });
+$('#tab-results').addEventListener('click', () => {
+  if (profileDraft.progetti.length > 0 || interpretProjectDescription(profileDraft.descrizione).length > 0) startSearch();
+  else showToast('Completa prima il profilo');
+});
+
+function startSearch() {
+  const sugg = interpretProjectDescription(profileDraft.descrizione);
+  for (const s of sugg) if (!profileDraft.progetti.includes(s)) profileDraft.progetti.push(s);
+  if (profileDraft.progetti.length === 0) { showToast('Indica almeno un tipo di progetto o descrivi il progetto previsto'); return; }
+  profile = { ...profileDraft };
+  store.set('profile', profile);
+  subsidyStep = 'results';
+  selectedProgramId = null;
+  quizVerdict = null;
+  renderSubsidy();
+}
+
+function renderSubsidy() {
+  $('#tab-profile').classList.toggle('active', subsidyStep === 'profile');
+  $('#tab-results').classList.toggle('active', subsidyStep === 'results');
+  if (subsidyStep === 'profile') renderProfileForm();
+  else if (selectedProgramId) renderProgramDetail();
+  else renderResults();
+}
+
+function renderProfileForm() {
+  const p = profileDraft;
+  const sugg = interpretProjectDescription(p.descrizione).filter((s) => !p.progetti.includes(s));
+  $('#subsidy-body').innerHTML = `
+  <div class="card">
+    <div class="card-title">Profilo aziendale</div>
+    <div class="grid-2">
+      <div class="field"><label>Ragione sociale</label><input id="p-rs" value="${esc(p.ragioneSociale)}" placeholder="Es. Rossi Impianti Sagl" /></div>
+      <div class="field"><label>Numero IDI / CHE</label><input id="p-idi" value="${esc(p.idi)}" placeholder="CHE-123.456.789" /></div>
+      <div class="field"><label>Cantone</label><select id="p-cantone">${CANTONI.map((c) => `<option${p.cantone === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+      <div class="field"><label>Comune</label><input id="p-comune" value="${esc(p.comune)}" placeholder="Es. Lugano" /></div>
+      <div class="field"><label>Forma giuridica</label><select id="p-fg">${FORME_GIURIDICHE.map((f) => `<option${p.formaGiuridica === f ? ' selected' : ''}>${f}</option>`).join('')}</select></div>
+      <div class="field"><label>Settore (NOGA semplificato)</label><select id="p-settore">
+        <option value="">— Seleziona —</option>
+        ${SETTORI.map((s) => `<option value="${s.id}"${p.settore === s.id ? ' selected' : ''}>${s.label}</option>`).join('')}
+      </select></div>
+      <div class="field"><label>Numero di dipendenti</label><input type="number" min="0" id="p-dip" value="${esc(p.dipendenti)}" placeholder="Es. 12" /></div>
+      <div class="field"><label>Fascia di fatturato</label><select id="p-fatt">${FASCE_FATTURATO.map((f) => `<option${p.fatturato === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>Situazione</label><div class="checks">
+      <span class="check-pill${p.immobili ? ' on' : ''}" id="p-immobili">Possiede o utilizza immobili</span>
+      <span class="check-pill${p.veicoli ? ' on' : ''}" id="p-veicoli">Ha veicoli aziendali</span>
+    </div></div>
+    <div class="field"><label>Progetti e investimenti previsti</label><div class="checks">
+      ${TIPI_PROGETTO.map((t) => `<span class="check-pill${p.progetti.includes(t.id) ? ' on' : ''}" data-prog="${t.id}">${t.label}</span>`).join('')}
+    </div></div>
+    <div class="field"><label>Descrivi il progetto con parole tue (l'AI lo interpreta)</label>
+      <textarea id="p-desc" style="min-height:90px" placeholder="Es. Vogliamo installare un impianto fotovoltaico sul tetto del capannone e sostituire due furgoni diesel con veicoli elettrici…">${esc(p.descrizione)}</textarea>
+      <div id="p-sugg" style="font-size:13px;color:var(--accent-text)">${sugg.length > 0 ? 'Dalla descrizione il sistema riconosce anche: ' + sugg.map(labelTipo).join(', ') + ' — verranno inclusi nella ricerca.' : ''}</div>
+    </div>
+    <button class="btn btn-primary" id="p-search">Trova incentivi compatibili</button>
+  </div>`;
+
+  const bind = (id, key) => $(id).addEventListener('input', (e) => { profileDraft[key] = e.target.value; });
+  bind('#p-rs', 'ragioneSociale'); bind('#p-idi', 'idi'); bind('#p-comune', 'comune'); bind('#p-dip', 'dipendenti');
+  $('#p-cantone').addEventListener('change', (e) => { profileDraft.cantone = e.target.value; });
+  $('#p-fg').addEventListener('change', (e) => { profileDraft.formaGiuridica = e.target.value; });
+  $('#p-settore').addEventListener('change', (e) => { profileDraft.settore = e.target.value; });
+  $('#p-fatt').addEventListener('change', (e) => { profileDraft.fatturato = e.target.value; });
+  $('#p-immobili').addEventListener('click', () => { profileDraft.immobili = !profileDraft.immobili; $('#p-immobili').classList.toggle('on'); });
+  $('#p-veicoli').addEventListener('click', () => { profileDraft.veicoli = !profileDraft.veicoli; $('#p-veicoli').classList.toggle('on'); });
+  document.querySelectorAll('[data-prog]').forEach((pill) => pill.addEventListener('click', () => {
+    const id = pill.dataset.prog;
+    if (profileDraft.progetti.includes(id)) profileDraft.progetti = profileDraft.progetti.filter((x) => x !== id);
+    else profileDraft.progetti.push(id);
+    pill.classList.toggle('on');
+  }));
+  $('#p-desc').addEventListener('input', (e) => {
+    profileDraft.descrizione = e.target.value;
+    const s = interpretProjectDescription(e.target.value).filter((x) => !profileDraft.progetti.includes(x));
+    $('#p-sugg').textContent = s.length > 0 ? 'Dalla descrizione il sistema riconosce anche: ' + s.map(labelTipo).join(', ') + ' — verranno inclusi nella ricerca.' : '';
+  });
+  $('#p-search').addEventListener('click', startSearch);
+}
+
+function renderResults() {
+  const matches = matchPrograms(profile);
+  const settoreLabel = profile.settore ? (SETTORI.find((s) => s.id === profile.settore)?.label || profile.settore) : '';
+  $('#subsidy-body').innerHTML = `
+  <div class="demo-banner">${matches.length} programmi potenzialmente compatibili per
+    <strong>${esc(profile.ragioneSociale || 'la tua impresa')}</strong> (${esc(profile.cantone)}${settoreLabel ? ', ' + esc(settoreLabel) : ''}).
+    Ordinati per compatibilità stimata. <a href="#" id="edit-profile">Modifica profilo</a></div>
+  ${matches.length === 0 ? '<div class="card"><div class="empty">Nessun programma compatibile trovato con i criteri attuali. Prova ad ampliare i tipi di progetto nel profilo.</div></div>' : ''}
+  ${matches.map((m) => `
+    <div class="card">
+      <div class="match-head">
+        <div class="match-score ${m.score >= 75 ? 'hi' : m.score >= 55 ? 'mid' : ''}">${m.score}%</div>
+        <div style="flex:1;min-width:250px">
+          <div class="list-title" style="font-size:16px">${esc(m.program.programma)}</div>
+          <div class="list-sub">${esc(m.program.ente)} · ${esc(m.program.contributo)}</div>
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-neutral">confidenza ${esc(m.confidence)}</span>
+            ${m.program.avvisoPrima ? '<span class="badge badge-alta">⚠ domanda prima di agire</span>' : ''}
+            <span class="badge badge-blue">${esc(m.program.scadenza)}</span>
+          </div>
+        </div>
+        <button class="btn btn-sm" data-open-prog="${esc(m.program.id)}">Apri scheda →</button>
+      </div>
+    </div>`).join('')}`;
+  $('#edit-profile')?.addEventListener('click', (e) => { e.preventDefault(); subsidyStep = 'profile'; renderSubsidy(); });
+  document.querySelectorAll('[data-open-prog]').forEach((b) => b.addEventListener('click', () => {
+    selectedProgramId = b.dataset.openProg;
+    quizAnswers = {};
+    quizVerdict = null;
+    renderSubsidy();
+    window.scrollTo(0, 0);
+  }));
+}
+
+function renderProgramDetail() {
+  const matches = matchPrograms(profile);
+  const m = matches.find((x) => x.program.id === selectedProgramId);
+  if (!m) { selectedProgramId = null; renderResults(); return; }
+  const p = m.program;
+  $('#subsidy-body').innerHTML = `
+  <button class="btn btn-sm" style="margin-bottom:14px" id="back-results">← Torna ai risultati</button>
+  <div class="card">
+    <div class="card-title" style="font-size:18px">${esc(p.programma)}</div>
+    ${p.avvisoPrima ? `<div class="warn-box" style="margin-bottom:14px"><span>⚠️</span><span>${esc(p.avvisoTesto)}</span></div>` : ''}
+    <div class="result-row"><div class="result-label">Ente</div><div>${esc(p.ente)}</div></div>
+    <div class="result-row"><div class="result-label">Compatibilità</div>
+      <div><strong>${m.score}%</strong> <span class="badge badge-neutral">confidenza ${esc(m.confidence)}</span></div></div>
+    <div class="result-row"><div class="result-label">Contributo</div><div>${esc(p.contributo)}</div></div>
+    <div class="result-row"><div class="result-label">Perché è pertinente</div>
+      <div><ul class="detail-list ok">${m.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div></div>
+    <div class="result-row"><div class="result-label">Requisiti da verificare</div>
+      <div><ul class="detail-list warn">${m.missing.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div></div>
+    <div class="result-row"><div class="result-label">Esclusioni</div>
+      <div>${p.esclusioni.length > 0 ? `<ul class="detail-list bad">${p.esclusioni.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : '<span style="color:var(--muted)">Nessuna esclusione specifica indicata.</span>'}</div></div>
+    <div class="result-row"><div class="result-label">Scadenza</div>
+      <div>${esc(p.scadenza)} <button class="btn btn-sm" style="margin-left:10px" id="prog-deadline">+ Aggiungi allo scadenziario</button></div></div>
+    <div class="result-row"><div class="result-label">Documenti per la candidatura</div>
+      <div><ul class="detail-list">${p.documenti.map((d) => `<li>${esc(d)}</li>`).join('')}</ul></div></div>
+    <div class="result-row"><div class="result-label">Fonte ufficiale</div>
+      <div><a href="${esc(p.fonte)}" target="_blank" rel="noreferrer">${esc(p.fonte)}</a>
+      <span class="badge badge-neutral" style="margin-left:8px">ultima verifica: ${esc(p.dataVerifica)}</span></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Verifica di idoneità guidata</div>
+    <p style="font-size:14px;color:var(--ink-soft);margin-bottom:6px">Rispondi a queste domande per passare da
+      «potrebbe essere interessante» a una valutazione operativa. La conferma finale spetta sempre all'ente.</p>
+    ${p.domande.map((q) => `
+      <div class="quiz-q">
+        <div style="font-weight:600;font-size:14px">${esc(q.testo)}</div>
+        <div class="quiz-opts">
+          ${[['si', 'Sì'], ['no', 'No'], ['ns', 'Non so']].map(([val, label]) =>
+            `<button class="quiz-opt${quizAnswers[q.id] === val ? ' sel-' + val : ''}" data-q="${q.id}" data-val="${val}">${label}</button>`).join('')}
+        </div>
+      </div>`).join('')}
+    <button class="btn btn-primary" style="margin-top:14px" id="calc-eligibility">Calcola idoneità</button>
+    <div id="verdict">${quizVerdict ? verdictHTML(quizVerdict) : ''}</div>
+  </div>`;
+
+  $('#back-results').addEventListener('click', () => { selectedProgramId = null; renderSubsidy(); });
+  $('#prog-deadline').addEventListener('click', () => {
+    addTask({ titolo: 'Candidatura: ' + p.programma, ente: p.ente, scadenza: null, nota: p.scadenza, urgenza: p.avvisoPrima ? 'alta' : 'media' });
+  });
+  document.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => {
+    quizAnswers[b.dataset.q] = b.dataset.val;
+    document.querySelectorAll(`[data-q="${b.dataset.q}"]`).forEach((x) => { x.className = 'quiz-opt'; });
+    b.classList.add('sel-' + b.dataset.val);
+  }));
+  $('#calc-eligibility').addEventListener('click', () => {
+    quizVerdict = evaluateEligibility(p, quizAnswers);
+    $('#verdict').innerHTML = verdictHTML(quizVerdict);
+  });
+}
+
+function verdictHTML(v) {
+  const badgeClass = v.idoneita === 'alta' ? 'bassa' : v.idoneita === 'media' ? 'media' : 'alta';
+  return `
+  <div style="margin-top:18px">
+    <div class="card-title">Esito:
+      <span class="badge badge-${badgeClass}">idoneità ${esc(v.idoneita)}</span>
+      <span class="badge badge-neutral">confidenza ${esc(v.confidence)}</span>
+    </div>
+    ${v.satisfied.length > 0 ? `<div class="result-row"><div class="result-label">Requisiti soddisfatti</div>
+      <div><ul class="detail-list ok">${v.satisfied.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div></div>` : ''}
+    ${v.failed.length > 0 ? `<div class="result-row"><div class="result-label">Requisiti non soddisfatti</div>
+      <div><ul class="detail-list bad">${v.failed.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div></div>` : ''}
+    ${v.unknown.length > 0 ? `<div class="result-row"><div class="result-label">Ancora da verificare</div>
+      <div><ul class="detail-list warn">${v.unknown.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div></div>` : ''}
+    <div class="result-row"><div class="result-label">Prossimi passi</div>
+      <div><ul class="detail-list">${v.nextSteps.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div></div>
+  </div>`;
+}
+
+/* ================================================================
+   PREZZI
+   ================================================================ */
+const PLANS = [
+  { nome: 'Basic', prezzo: 49, target: 'Microimprese', features: ['Fino a 20 analisi documenti / mese', 'Spiegazioni multilingue IT · DE · FR', 'Checklist e scadenziario personale', 'Ricerca incentivi (5 verifiche / mese)', '1 utente'] },
+  { nome: 'Business', prezzo: 149, target: 'PMI in crescita', featured: true, features: ['Analisi documenti illimitate', 'Bozze di risposta formali', 'Scadenziario di team con assegnazioni', 'Verifiche di idoneità incentivi illimitate', 'Fino a 5 utenti'] },
+  { nome: 'Pro', prezzo: 299, target: 'Aziende strutturate', features: ['Tutto di Business', 'Inbox amministrativa (analisi automatica email)', 'Workflow avanzati e integrazioni', 'Monitoraggio continuo nuovi incentivi', 'Utenti illimitati'] },
+  { nome: 'Fiduciarie', prezzo: null, target: 'Studi fiduciari e consulenti', features: ['Gestione multi-cliente centralizzata', 'Vista aggregata scadenze di tutti i clienti', 'Report incentivi per portafoglio clienti', 'Onboarding e supporto dedicati', 'Prezzo su misura'] },
+];
+$('#pricing-cards').innerHTML = PLANS.map((p) => `
+  <div class="card price-card${p.featured ? ' featured' : ''}">
+    ${p.featured ? '<div class="featured-flag">Più scelto</div>' : ''}
+    <div class="card-title" style="margin-bottom:2px">${p.nome}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">${p.target}</div>
+    <div class="price-tag">${p.prezzo ? `CHF ${p.prezzo}<small> /mese</small>` : '<span style="font-size:20px">Su misura</span>'}</div>
+    <ul class="price-feats">${p.features.map((f) => `<li>${f}</li>`).join('')}</ul>
+    <button class="btn${p.featured ? ' btn-primary' : ''}">${p.prezzo ? 'Inizia la prova gratuita' : 'Contattaci'}</button>
+  </div>`).join('');
+
+/* ---------------- init ---------------- */
+renderHome();
+renderTasks();
+renderArchive();
+renderSubsidy();
+</script>
+</body>
+</html>

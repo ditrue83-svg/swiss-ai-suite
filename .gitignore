@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+react/node_modules/
+
+# build output
+dist/
+react/dist/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.claude/
+.vscode/
+.idea/
