@@ -31,47 +31,99 @@
   --amber: #b7791f;
   --amber-soft: #fdf3e0;
   --radius: 12px;
+  --radius-sm: 8px;
+  /* ombre molto leggere (look premium/fintech, non glow) */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
+  --focus-ring: 0 0 0 3px hsla(199, 100%, 50%, 0.35);
+  --topbar-h: 56px;
   font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.55; display: flex; min-height: 100vh; }
-button { font: inherit; cursor: pointer; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.55; display: flex; min-height: 100vh; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+button { font: inherit; cursor: pointer; color: inherit; }
 input, select, textarea { font: inherit; color: var(--ink); }
 a { color: var(--accent-text); }
+/* focus accessibile e coerente su tutti gli elementi interattivi */
+:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px; }
+.ic { width: 20px; height: 20px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.ic-sm { width: 16px; height: 16px; }
 
-.sidebar { width: 232px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
-.brand-mark { width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, var(--grad-start), var(--grad-end)); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 20px; box-shadow: 0 0 16px var(--neon-glow); }
-.brand-name { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; }
-.brand-sub { font-size: 11px; color: var(--muted); margin-top: -2px; }
-.nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 14px 10px 6px; }
-.nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px; border: none; background: none; border-radius: 8px; color: var(--ink-soft); font-weight: 500; font-size: 14px; }
-.nav-btn:hover { background: var(--bg); }
+.sidebar { width: 240px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--line); padding: 18px 14px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
+.brand-mark { width: 32px; height: 32px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; color: #fff; flex-shrink: 0; }
+.brand-mark .ic { width: 18px; height: 18px; stroke-width: 2.25; }
+.brand-name { font-weight: 700; font-size: 15px; letter-spacing: -0.2px; }
+.brand-sub { font-size: 11px; color: var(--muted); margin-top: -1px; }
+.demo-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--amber); background: var(--amber-soft); border: 1px solid #ecd9ae; padding: 2px 7px; border-radius: 99px; }
+.demo-pill.block { margin: 0 8px 8px; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; padding: 14px 10px 6px; }
+.nav-btn { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 8px 10px; border: none; background: none; border-radius: var(--radius-sm); color: var(--ink-soft); font-weight: 500; font-size: 14px; transition: background .12s, color .12s; }
+.nav-btn:hover { background: var(--bg); color: var(--ink); }
 .nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
-.nav-icon { width: 20px; text-align: center; }
-.sidebar-footer { margin-top: auto; padding: 12px 10px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
+.nav-btn .ic { color: var(--muted); }
+.nav-btn:hover .ic, .nav-btn.active .ic { color: var(--accent-text); }
+.sidebar-footer { margin-top: auto; padding: 12px 10px 2px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); line-height: 1.5; }
 
-.main { flex: 1; padding: 28px 36px 60px; max-width: 1120px; }
+/* top bar mobile + drawer (nascosti su desktop) */
+.topbar { display: none; }
+.drawer { display: none; }
+.drawer-overlay { display: none; }
+@media (max-width: 900px) {
+  body { flex-direction: column; }
+  .sidebar { display: none; }
+  .topbar {
+    display: flex; align-items: center; gap: 12px; height: var(--topbar-h);
+    padding: 0 14px; background: #fff; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 40;
+  }
+  .topbar .brand { padding: 0; }
+  .hamburger { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fff; color: var(--ink); }
+  .hamburger:hover { background: var(--bg); }
+  .topbar-demo { margin-left: auto; }
+  .drawer {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw;
+    background: #fff; border-right: 1px solid var(--line); z-index: 60;
+    padding: 16px 14px; display: flex; flex-direction: column; gap: 2px;
+    transform: translateX(-100%); transition: transform .22s ease; overflow-y: auto;
+  }
+  .drawer.open { transform: translateX(0); box-shadow: var(--shadow-md); }
+  .drawer-overlay { display: block; position: fixed; inset: 0; background: rgba(16,24,40,0.4); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .22s; }
+  .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+  .drawer-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: #fff; color: var(--ink-soft); }
+}
+
+.main { flex: 1; padding: 30px 40px 64px; max-width: 1160px; width: 100%; }
 .page { display: none; }
-.page.active { display: block; }
-.page-head { margin-bottom: 22px; }
-.page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
-.page-desc { color: var(--muted); margin-top: 4px; max-width: 640px; }
-.demo-banner { background: var(--accent-soft); color: var(--accent-text); border: 1px solid hsl(199, 100%, 86%); padding: 8px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
+.page.active { display: block; animation: fade-in .18s ease; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.page-head { margin-bottom: 24px; }
+.page-title { font-size: 25px; font-weight: 700; letter-spacing: -0.4px; }
+.page-desc { color: var(--muted); margin-top: 5px; max-width: 640px; font-size: 14.5px; }
+.demo-banner { background: var(--accent-soft); color: var(--accent-text); border: 1px solid hsl(199, 100%, 86%); padding: 9px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 20px; }
 
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow-xs); }
 .card + .card { margin-top: 16px; }
-.card-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.card-title { font-size: 15px; font-weight: 700; letter-spacing: -0.1px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.section-title { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; margin: 4px 0 12px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-@media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .main { padding: 20px; } .sidebar { position: static; height: auto; } body { flex-direction: column; } }
+@media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .main { padding: 20px 18px 48px; } }
 
-.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-weight: 600; font-size: 14px; }
-.btn:hover { border-color: hsl(210, 20%, 80%); background: var(--bg); }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 18px var(--neon-glow); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: #fff; color: var(--ink); font-weight: 600; font-size: 14px; transition: background .12s, border-color .12s, box-shadow .12s; }
+.btn:hover { border-color: hsl(210, 20%, 78%); background: var(--bg); }
+.btn .ic { color: var(--muted); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: var(--shadow-xs); }
 .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
-.btn-sm { padding: 5px 11px; font-size: 13px; }
+.btn-primary .ic { color: #fff; }
+.btn-ghost { border-color: transparent; background: none; }
+.btn-ghost:hover { background: var(--bg); border-color: transparent; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-icon { padding: 7px; width: 34px; height: 34px; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
@@ -80,15 +132,21 @@ a { color: var(--accent-text); }
 .badge-bassa { background: var(--green-soft); color: var(--green); }
 .badge-neutral { background: hsl(210, 20%, 94%); color: var(--ink-soft); }
 .badge-blue { background: var(--accent-soft); color: var(--accent-text); }
+.badge .ic { width: 13px; height: 13px; stroke-width: 2; }
+.btn-link { background: none; border: none; color: var(--accent-text); font-weight: 600; font-size: inherit; padding: 2px 4px; border-radius: 6px; text-decoration: underline; cursor: pointer; }
+.btn-link:hover { color: var(--accent-dark); }
 
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
 .field label { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.group-label { font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; display: block; }
 .field input, .field select, .field textarea { border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; background: #fff; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid hsla(199, 100%, 50%, 0.3); border-color: var(--accent); }
 .field textarea { resize: vertical; min-height: 120px; }
 .checks { display: flex; flex-wrap: wrap; gap: 8px; }
-.check-pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 6px 13px; font-size: 13px; background: #fff; cursor: pointer; user-select: none; }
+.check-pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 7px 14px; font-size: 13px; font-weight: 500; color: var(--ink-soft); background: #fff; cursor: pointer; user-select: none; transition: background .12s, border-color .12s, color .12s; }
+.check-pill:hover { border-color: hsl(210, 20%, 78%); background: var(--bg); }
 .check-pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.check-pill[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
 
 .result-row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
 .result-row:first-child { border-top: none; }
@@ -108,8 +166,11 @@ a { color: var(--accent-text); }
 .empty { color: var(--muted); font-size: 14px; padding: 18px 0; text-align: center; }
 
 .match-head { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
-.match-score { width: 62px; height: 62px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-weight: 800; font-size: 17px; border: 4px solid var(--line); color: var(--ink-soft); }
-.match-score.hi { border-color: var(--accent); color: var(--accent-text); box-shadow: 0 0 14px var(--neon-glow); }
+.match-body { flex: 1; min-width: 240px; }
+.match-name { font-size: 16px; }
+.badge-row { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.match-score { width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-weight: 800; font-size: 16px; border: 3px solid var(--line); color: var(--ink-soft); }
+.match-score.hi { border-color: var(--accent); color: var(--accent-text); }
 .match-score.mid { border-color: var(--amber); color: var(--amber); }
 .detail-list { list-style: none; }
 .detail-list li { padding: 4px 0 4px 22px; position: relative; font-size: 14px; }
@@ -127,109 +188,196 @@ a { color: var(--accent-text); }
 .quiz-opt.sel-ns { background: hsl(210, 20%, 94%); border-color: hsl(210, 10%, 65%); color: var(--ink-soft); }
 
 .price-card { position: relative; display: flex; flex-direction: column; }
-.price-card.featured { border-color: var(--accent); box-shadow: 0 4px 24px var(--neon-glow); }
-.price-tag { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
+.price-card.featured { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.price-tag { font-size: 29px; font-weight: 800; letter-spacing: -0.5px; }
 .price-tag small { font-size: 14px; font-weight: 500; color: var(--muted); }
+.price-target { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.price-custom { font-size: 20px; }
 .price-feats { list-style: none; margin: 14px 0 18px; flex: 1; }
-.price-feats li { padding: 5px 0 5px 24px; position: relative; font-size: 14px; }
+.price-feats li { padding: 6px 0 6px 24px; position: relative; font-size: 14px; }
 .price-feats li::before { content: '✓'; position: absolute; left: 4px; color: var(--accent-text); font-weight: 700; }
-.featured-flag { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: linear-gradient(100deg, var(--grad-start), var(--grad-end)); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
+.featured-flag { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; padding: 3px 12px; border-radius: 99px; }
 
-.hero { padding: 34px 0 10px; }
-.hero h1 { font-size: 32px; letter-spacing: -0.6px; line-height: 1.2; max-width: 700px; }
-.hero h1 em { background: linear-gradient(100deg, var(--grad-start), var(--grad-end)); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: normal; }
-.hero p { color: var(--ink-soft); max-width: 620px; margin-top: 12px; font-size: 16px; }
-.hero-actions { display: flex; gap: 12px; margin-top: 22px; }
+.hero { padding: 20px 0 8px; }
+.hero h1 { font-size: 30px; letter-spacing: -0.6px; line-height: 1.22; max-width: 640px; }
+.hero h1 em { color: var(--accent-text); font-style: normal; }
+.hero p { color: var(--ink-soft); max-width: 600px; margin-top: 12px; font-size: 15.5px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
 .module-card { border-top: 3px solid var(--accent); }
 .module-kicker { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-text); }
-.footnote { font-size: 12px; color: var(--muted); margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; }
+.footnote { font-size: 12px; color: var(--muted); margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; line-height: 1.6; }
 
-.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
-.tab { border: none; background: none; padding: 9px 14px; font-size: 14px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { border: none; background: none; padding: 9px 14px; font-size: 14px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0; transition: color .12s; }
+.tab:hover { color: var(--ink); }
 .tab.active { color: var(--accent-text); border-bottom-color: var(--accent); }
 
-.upload-zone { border: 2px dashed var(--line); border-radius: var(--radius); padding: 26px; text-align: center; color: var(--muted); background: #fff; cursor: pointer; }
-.upload-zone:hover { border-color: var(--accent); color: var(--accent-text); }
+.upload-zone { display: block; width: 100%; border: 2px dashed var(--line); border-radius: var(--radius); padding: 26px; text-align: center; font-size: 14px; color: var(--muted); background: #fff; cursor: pointer; transition: border-color .12s, color .12s, background .12s; }
+.upload-zone:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
 
-.toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: #fff; padding: 11px 18px; border-radius: 9px; font-size: 14px; box-shadow: 0 6px 22px rgba(0,0,0,0.25); z-index: 50; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
+/* ---------- Dashboard ---------- */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; }
+.kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 6px; }
+.kpi-value { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+.kpi-value small { font-size: 14px; font-weight: 600; color: var(--muted); }
+.kpi-sub { font-size: 12px; color: var(--muted); }
+.kpi.accent { border-top: 3px solid var(--accent); }
+.kpi.alert { border-top: 3px solid var(--red); }
+.kpi .kpi-value.hot { color: var(--red-dark); }
+
+/* barre orizzontali (magnitudine) */
+.bar-row { display: grid; grid-template-columns: 120px 1fr 42px; align-items: center; gap: 10px; padding: 6px 0; }
+.bar-cat { font-size: 13px; color: var(--ink-soft); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.bar-track { background: hsl(210, 20%, 94%); border-radius: 6px; height: 22px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 6px; background: var(--accent); min-width: 3px; transition: width .4s ease; }
+.bar-fill.s-alta { background: var(--red); }
+.bar-fill.s-media { background: var(--amber); }
+.bar-fill.s-bassa { background: var(--green); }
+.bar-val { font-size: 13px; font-weight: 700; color: var(--ink); text-align: right; }
+.bar-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.dot-alta { background: var(--red); } .dot-media { background: var(--amber); } .dot-bassa { background: var(--green); }
+
+/* meter completamento */
+.meter { display: flex; align-items: center; gap: 16px; }
+.meter-num { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; color: var(--accent-text); }
+.meter-track { flex: 1; background: hsl(210, 20%, 92%); border-radius: 99px; height: 10px; overflow: hidden; }
+.meter-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
+
+.chart-empty { color: var(--muted); font-size: 13px; padding: 16px 0; text-align: center; }
+.lang-card { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lang-title { font-weight: 600; font-size: 13px; color: var(--ink-soft); margin-right: 4px; }
+.lang-chip { font-size: 13px; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; }
+.lang-chip b { color: var(--ink); font-weight: 700; }
+
+/* ---------- KPI compatti (dashboard/home) ---------- */
+.kpi-value { display: flex; align-items: baseline; gap: 8px; }
+.kpi-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); margin-bottom: 10px; }
+.kpi-ico.warn { background: var(--red-soft); color: var(--red-dark); }
+.kpi-ico.ok { background: var(--green-soft); color: var(--green); }
+.kpi-ico.amb { background: var(--amber-soft); color: var(--amber); }
+
+/* ---------- greeting / home operativa ---------- */
+.greeting { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.greeting-sub { color: var(--muted); margin-top: 4px; font-size: 15px; }
+
+/* righe azione con priorità (home + dashboard) */
+.action-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid var(--line); }
+.action-row:first-child { border-top: none; }
+.action-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); display: grid; place-items: center; flex-shrink: 0; background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
+.action-ico.p-alta { background: var(--red-soft); color: var(--red-dark); border-color: transparent; }
+.action-ico.p-media { background: var(--amber-soft); color: var(--amber); border-color: transparent; }
+.action-ico.p-bassa { background: var(--accent-soft); color: var(--accent-text); border-color: transparent; }
+.action-main { flex: 1; min-width: 0; }
+.action-title { font-weight: 600; font-size: 14px; }
+.action-sub { font-size: 13px; color: var(--muted); margin-top: 1px; }
+.action-meta { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.action-link { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--accent-text); background: none; border: none; padding: 4px; border-radius: 6px; }
+.action-link:hover { text-decoration: underline; }
+.priority-empty { display: flex; align-items: center; gap: 12px; padding: 20px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); font-size: 14px; background: var(--card); }
+.priority-empty .ic { color: var(--green); }
+
+/* utility per ridurre inline style */
+.mt-10 { margin-top: 10px; } .mt-12 { margin-top: 12px; } .mt-14 { margin-top: 14px; } .mt-16 { margin-top: 16px; } .mt-28 { margin-top: 28px; }
+.mb-12 { margin-bottom: 12px; } .mb-14 { margin-bottom: 14px; }
+.row-wrap { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.push-right { margin-left: auto; }
+.filter-group { margin-left: auto; display: flex; gap: 6px; }
+.muted-sm { color: var(--muted); font-size: 13px; }
+.text-muted { color: var(--muted); }
+.hint-accent { font-size: 13px; color: var(--accent-text); }
+.stack-sm > * + * { margin-top: 8px; }
+.select-inline { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 9px; font-size: 13px; background: #fff; }
+
+.toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: #fff; padding: 11px 18px; border-radius: var(--radius-sm); font-size: 14px; box-shadow: var(--shadow-md); z-index: 80; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; max-width: min(90vw, 360px); }
 .toast.show { opacity: 1; transform: none; }
+
+/* ---------- responsive fine (<600px) ---------- */
+@media (max-width: 600px) {
+  body { font-size: 14.5px; }
+  .main { padding: 16px 14px 44px; }
+  .page-title { font-size: 22px; }
+  .greeting { font-size: 22px; }
+  .hero h1 { font-size: 25px; }
+  .card { padding: 16px; }
+  .result-row { grid-template-columns: 1fr; gap: 4px; padding: 12px 0; }
+  .result-label { color: var(--muted); }
+  .bar-row { grid-template-columns: 96px 1fr 34px; gap: 8px; }
+  .btn-block-mobile { width: 100%; }
+  .hero-actions { width: 100%; }
+  .hero-actions .btn { flex: 1 1 auto; }
+  .list-row, .action-row { gap: 10px; }
+  .badge { white-space: nowrap; }
+  .list-main, .action-main { flex-basis: 100%; }
+  .filter-group { width: 100%; margin-left: 0; }
+  .filter-group .btn { flex: 1; }
+  .kpi-value { font-size: 26px; }
+}
 </style>
 </head>
 <body>
 
-<aside class="sidebar">
+<!-- ============ TOP BAR (solo mobile) ============ -->
+<header class="topbar" role="banner">
+  <button class="hamburger" id="menu-open" aria-label="Apri il menu di navigazione" aria-controls="drawer" aria-expanded="false"></button>
   <div class="brand">
-    <div class="brand-mark">+</div>
+    <div class="brand-mark" id="brand-mark-top" aria-hidden="true"></div>
+    <div class="brand-name">SwissAI Suite</div>
+  </div>
+  <span class="demo-pill topbar-demo">Demo</span>
+</header>
+
+<!-- ============ SIDEBAR (desktop) ============ -->
+<aside class="sidebar" aria-label="Navigazione principale">
+  <div class="brand">
+    <div class="brand-mark" id="brand-mark-side" aria-hidden="true"></div>
     <div>
       <div class="brand-name">SwissAI Suite</div>
       <div class="brand-sub">per le PMI svizzere</div>
     </div>
   </div>
-  <div class="nav-section">Piattaforma</div>
-  <button class="nav-btn active" data-page="home"><span class="nav-icon">⌂</span> Panoramica</button>
-  <button class="nav-btn" data-page="deadlines"><span class="nav-icon">🗓</span> Scadenziario</button>
-  <div class="nav-section">Moduli</div>
-  <button class="nav-btn" data-page="admin"><span class="nav-icon">📄</span> Admin AI — Documenti</button>
-  <button class="nav-btn" data-page="subsidy"><span class="nav-icon">💰</span> Subsidy AI — Incentivi</button>
-  <button class="nav-btn" data-page="archive"><span class="nav-icon">🗂</span> Archivio documenti</button>
-  <div class="nav-section">Account</div>
-  <button class="nav-btn" data-page="pricing"><span class="nav-icon">🏷</span> Piani e prezzi</button>
+  <span class="demo-pill block">Ambiente demo</span>
+  <nav class="nav" id="nav-desktop" aria-label="Sezioni"></nav>
   <div class="sidebar-footer">
-    Demo MVP · Dati salvati solo in locale.<br />
-    Non costituisce consulenza legale o fiscale.
+    Prototipo dimostrativo · dati salvati solo in questo browser.<br />
+    Non costituisce consulenza legale, fiscale o fiduciaria.
   </div>
+</aside>
+
+<!-- ============ DRAWER (mobile) ============ -->
+<div class="drawer-overlay" id="drawer-overlay" hidden></div>
+<aside class="drawer" id="drawer" aria-label="Menu di navigazione" aria-hidden="true">
+  <button class="drawer-close" id="menu-close" aria-label="Chiudi il menu"></button>
+  <div class="brand">
+    <div class="brand-mark" id="brand-mark-drawer" aria-hidden="true"></div>
+    <div>
+      <div class="brand-name">SwissAI Suite</div>
+      <div class="brand-sub">per le PMI svizzere</div>
+    </div>
+  </div>
+  <span class="demo-pill block">Ambiente demo</span>
+  <nav class="nav" id="nav-mobile" aria-label="Sezioni"></nav>
 </aside>
 
 <main class="main">
 
-  <!-- ============ HOME ============ -->
+  <!-- ============ HOME (operativa) ============ -->
   <section class="page active" id="page-home">
-    <div class="hero">
-      <h1>L'amministrazione svizzera è complessa.<br /><em>La tua giornata non deve esserlo.</em></h1>
-      <p>SwissAI Suite trasforma lettere, moduli e bandi di Confederazione, Cantoni e Comuni in azioni concrete:
-        spiegazioni semplici, scadenze, checklist operative e incentivi realmente pertinenti alla tua impresa.
-        In italiano, tedesco e francese.</p>
-      <div class="hero-actions">
-        <button class="btn btn-primary" data-page="admin">Analizza un documento</button>
-        <button class="btn" data-page="subsidy">Trova incentivi</button>
-      </div>
-    </div>
-
-    <div class="grid-2" style="margin-top:28px">
-      <div class="card module-card">
-        <div class="module-kicker">Modulo 1</div>
-        <div class="card-title" style="margin-top:6px">Swiss Admin AI</div>
-        <p style="color:var(--ink-soft);font-size:14px">Carica una lettera, un PDF o un'email: il sistema identifica ente,
-          lingua e scadenze, spiega il contenuto in linguaggio semplice, genera la checklist delle azioni e una bozza di
-          risposta formale nella lingua corretta.</p>
-        <button class="btn btn-sm" style="margin-top:12px" data-page="admin">Apri Admin AI →</button>
-      </div>
-      <div class="card module-card">
-        <div class="module-kicker">Modulo 2</div>
-        <div class="card-title" style="margin-top:6px">Swiss Subsidy AI</div>
-        <p style="color:var(--ink-soft);font-size:14px">Crea il profilo della tua impresa e descrivi il progetto: il motore
-          lo confronta con un database di programmi federali e cantonali e mostra solo gli incentivi compatibili, con
-          verifica di idoneità guidata.</p>
-        <button class="btn btn-sm" style="margin-top:12px" data-page="subsidy">Apri Subsidy AI →</button>
-      </div>
-    </div>
-
-    <div class="grid-2" style="margin-top:16px">
-      <div class="card">
-        <div class="card-title">Prossime scadenze</div>
-        <div id="home-tasks"></div>
-        <button class="btn btn-sm" style="margin-top:10px" data-page="deadlines">Vai allo scadenziario →</button>
-      </div>
-      <div class="card">
-        <div class="card-title">Documenti analizzati di recente</div>
-        <div id="home-docs"></div>
-        <button class="btn btn-sm" style="margin-top:10px" data-page="archive">Vai all'archivio →</button>
-      </div>
-    </div>
-
+    <div id="home-body"></div>
     <div class="footnote">SwissAI Suite è uno strumento di supporto amministrativo. Le analisi sono generate
       automaticamente e non sostituiscono la consulenza legale, fiscale o fiduciaria. Quando il sistema non è sicuro,
       lo segnala e invita a una verifica manuale.</div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="page" id="page-dashboard">
+    <div class="page-head">
+      <div class="page-title">Dashboard</div>
+      <div class="page-desc">Il quadro operativo della tua impresa: documenti, scadenze e incentivi in sintesi.</div>
+    </div>
+    <div id="dashboard-body"></div>
   </section>
 
   <!-- ============ ADMIN AI ============ -->
@@ -242,22 +390,22 @@ a { color: var(--accent-text); }
 
     <div class="card">
       <div class="card-title">1 · Documento da analizzare</div>
-      <div class="upload-zone" id="upload-zone">Trascina qui un PDF o un file di testo, oppure clicca per selezionarlo</div>
-      <input type="file" id="file-input" accept=".pdf,.txt,.md,.eml,text/plain,application/pdf" style="display:none" />
-      <div class="field" style="margin-top:16px">
-        <label>Oppure incolla il testo della comunicazione</label>
+      <button type="button" class="upload-zone" id="upload-zone" aria-label="Carica un PDF o un file di testo da analizzare">Trascina qui un PDF o un file di testo, oppure clicca per selezionarlo</button>
+      <input type="file" id="file-input" accept=".pdf,.txt,.md,.eml,text/plain,application/pdf" hidden />
+      <div class="field mt-16">
+        <label for="doc-text">Oppure incolla il testo della comunicazione</label>
         <textarea id="doc-text" placeholder="Incolla qui il contenuto della lettera o dell'email…"></textarea>
       </div>
       <div class="field">
-        <label>Titolo (facoltativo)</label>
+        <label for="doc-title">Titolo (facoltativo)</label>
         <input id="doc-title" placeholder="Es. Lettera cassa AVS agosto" />
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-primary" id="analyze-btn">Analizza documento</button>
-        <span style="color:var(--muted);font-size:13px">Prova con un esempio:</span>
-        <span id="samples"></span>
+      <div class="row-wrap">
+        <button class="btn btn-primary btn-block-mobile" id="analyze-btn">Analizza documento</button>
+        <span class="muted-sm">Prova con un esempio:</span>
+        <span class="row-wrap" id="samples"></span>
       </div>
-      <div id="admin-error"></div>
+      <div id="admin-error" role="alert" aria-live="assertive"></div>
     </div>
 
     <div id="analysis-result"></div>
@@ -290,15 +438,15 @@ a { color: var(--accent-text); }
     <div class="card">
       <div class="card-title">Aggiungi scadenza manuale</div>
       <div class="grid-3">
-        <div class="field"><label>Titolo</label><input id="task-title" placeholder="Es. Inviare conteggio AVS" /></div>
-        <div class="field"><label>Ente / riferimento</label><input id="task-ente" placeholder="Es. Cassa di compensazione" /></div>
-        <div class="field"><label>Data di scadenza</label><input type="date" id="task-date" /></div>
+        <div class="field"><label for="task-title">Titolo</label><input id="task-title" placeholder="Es. Inviare conteggio AVS" /></div>
+        <div class="field"><label for="task-ente">Ente / riferimento</label><input id="task-ente" placeholder="Es. Cassa di compensazione" /></div>
+        <div class="field"><label for="task-date">Data di scadenza</label><input type="date" id="task-date" /></div>
       </div>
-      <button class="btn btn-primary btn-sm" id="task-add">Aggiungi</button>
+      <button class="btn btn-primary btn-sm btn-block-mobile" id="task-add">Aggiungi</button>
     </div>
     <div class="card">
       <div class="card-title">Scadenze
-        <span style="margin-left:auto;display:flex;gap:6px" id="task-filters"></span>
+        <span class="filter-group" id="task-filters"></span>
       </div>
       <div id="task-list"></div>
     </div>
@@ -312,7 +460,7 @@ a { color: var(--accent-text); }
     </div>
     <div class="card">
       <div class="card-title"><span id="archive-count"></span>
-        <span style="margin-left:auto;display:flex;gap:6px" id="archive-filters"></span>
+        <span class="filter-group" id="archive-filters"></span>
       </div>
       <div id="archive-list"></div>
     </div>
@@ -323,18 +471,26 @@ a { color: var(--accent-text); }
   <section class="page" id="page-pricing">
     <div class="page-head">
       <div class="page-title">Piani e prezzi</div>
-      <div class="page-desc">Un abbonamento unico per entrambi i moduli: Swiss Admin AI e Swiss Subsidy AI. Prezzi in
-        CHF, IVA esclusa.</div>
+      <div class="page-desc">Prezzi indicativi per la futura versione di produzione, per entrambi i moduli: Swiss
+        Admin AI e Swiss Subsidy AI. Importi in CHF, IVA esclusa.</div>
     </div>
+    <div class="demo-banner" role="note">Questo è un <strong>prototipo dimostrativo</strong>: i piani non sono
+      attivabili e nessun pagamento o registrazione è possibile. Le richieste di accesso pilota non vengono inviate.</div>
     <div class="grid-4" id="pricing-cards"></div>
-    <div class="footnote">Aspetti garantiti su tutti i piani: dati ospitati in Svizzera, separazione dei dati tra
-      aziende, controllo degli accessi, trasparenza sui limiti dell'analisi automatica. L'output non costituisce
-      consulenza legale, fiscale o fiduciaria; in caso di incertezza il sistema chiede una verifica, non inventa.</div>
+    <div class="card mt-16">
+      <div class="card-title">Previsto per la versione di produzione</div>
+      <p class="muted-sm">Le seguenti caratteristiche <strong>non sono presenti in questo prototipo</strong> e sono
+        obiettivi della futura versione di produzione: hosting dei dati in Svizzera, separazione dei dati tra aziende
+        (multi-tenant), controllo degli accessi e ruoli, registro delle attività. Oggi i dati restano solo nel tuo
+        browser (localStorage).</p>
+    </div>
+    <div class="footnote">L'output non costituisce consulenza legale, fiscale o fiduciaria; in caso di incertezza
+      il sistema segnala di verificare e non inventa dati.</div>
   </section>
 
 </main>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 'use strict';
@@ -367,6 +523,31 @@ function formatDate(d) {
   if (!d) return null;
   return new Date(d).toLocaleDateString('it-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
+
+/* ---------------- icone SVG (line-icons, currentColor) ---------------- */
+const ICONS = {
+  logo: '<path d="M12 5v14M5 12h14"/>',
+  home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.6V20h13V9.6"/>',
+  dashboard: '<rect x="3" y="3" width="7.5" height="8" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.2"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.2"/><rect x="3" y="14" width="7.5" height="7" rx="1.2"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',
+  document: '<path d="M6.5 3h6.5l5 5v12.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V3.5a.5.5 0 0 1 .5-.5Z"/><path d="M13 3v5h5"/>',
+  banknote: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
+  archive: '<rect x="3" y="4" width="18" height="4.5" rx="1.2"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 12h4"/>',
+  tag: '<path d="M3.6 11 11 3.6a2 2 0 0 1 1.4-.6H19a2 2 0 0 1 2 2v6.6a2 2 0 0 1-.6 1.4L13 20.4a2 2 0 0 1-2.8 0l-6.6-6.6a2 2 0 0 1 0-2.8Z"/><circle cx="16" cy="8" r="1.3"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/>',
+  checkCircle: '<circle cx="12" cy="12" r="8.5"/><path d="m8.4 12 2.5 2.5 4.7-5.2"/>',
+  fileSearch: '<path d="M6.5 3h6l5 5v3.2"/><path d="M12.5 3v5h5"/><path d="M6.5 3A.5.5 0 0 0 6 3.5V21a.5.5 0 0 0 .5.5H12"/><circle cx="16.5" cy="16.5" r="2.7"/><path d="m18.6 18.6 1.9 1.9"/>',
+  star: '<path d="m12 4 2.35 4.76 5.25.76-3.8 3.7.9 5.23L12 16.9l-4.7 2.47.9-5.23-3.8-3.7 5.25-.76z"/>',
+  alert: '<path d="M12 4.8 20.5 19.5a1 1 0 0 1-.87 1.5H4.37a1 1 0 0 1-.87-1.5Z"/><path d="M12 10v4.2M12 17.5h.01"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  trash: '<path d="M4 6.5h16M9.5 6.5V4.5h5v2M6 6.5 7 20a1 1 0 0 0 1 .9h8a1 1 0 0 0 1-.9l1-13.5M10 10v7M14 10v7"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.6"/>',
+  arrowRight: '<path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"/>',
+  building: '<rect x="5" y="3.5" width="14" height="17" rx="1.2"/><path d="M9 7.5h.01M15 7.5h.01M9 11h.01M15 11h.01M9 14.5h.01M15 14.5h.01M10 20.5v-3h4v3"/>',
+  inbox: '<path d="M4 13.5 6 5.5a1.5 1.5 0 0 1 1.45-1.1h9.1A1.5 1.5 0 0 1 18 5.5l2 8"/><path d="M4 13.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5.5h-5l-1.2 2H9.2L8 13.5Z"/>',
+};
+function icon(name, cls) { return `<svg class="ic ${cls || ''}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`; }
 
 /* ================================================================
    MOTORE ADMIN AI (deterministico; punto d'integrazione LLM:
@@ -969,13 +1150,67 @@ function evaluateEligibility(program, answers) {
 }
 
 /* ================================================================
-   NAVIGAZIONE
+   NAVIGAZIONE — config unica per sidebar desktop e drawer mobile
    ================================================================ */
+const NAV = [
+  { section: 'Piattaforma' },
+  { id: 'home', label: 'Panoramica', icon: 'home' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'deadlines', label: 'Scadenziario', icon: 'calendar' },
+  { section: 'Moduli' },
+  { id: 'admin', label: 'Admin AI — Documenti', icon: 'document' },
+  { id: 'subsidy', label: 'Subsidy AI — Incentivi', icon: 'banknote' },
+  { id: 'archive', label: 'Archivio documenti', icon: 'archive' },
+  { section: 'Account' },
+  { id: 'pricing', label: 'Piani e prezzi', icon: 'tag' },
+];
+let currentPage = 'home';
+
+function navHTML() {
+  return NAV.map((it) => it.section
+    ? `<div class="nav-section">${it.section}</div>`
+    : `<button type="button" class="nav-btn${it.id === currentPage ? ' active' : ''}" data-page="${it.id}" aria-label="${it.label}"${it.id === currentPage ? ' aria-current="page"' : ''}>${icon(it.icon)}<span>${it.label}</span></button>`
+  ).join('');
+}
+function renderNav() {
+  $('#nav-desktop').innerHTML = navHTML();
+  $('#nav-mobile').innerHTML = navHTML();
+  ['#brand-mark-side', '#brand-mark-top', '#brand-mark-drawer'].forEach((s) => { const el = $(s); if (el) el.innerHTML = icon('logo'); });
+  $('#menu-open').innerHTML = icon('menu');
+  $('#menu-close').innerHTML = icon('close');
+}
+
+/* drawer mobile */
+function openDrawer() {
+  $('#drawer').classList.add('open');
+  $('#drawer').setAttribute('aria-hidden', 'false');
+  const o = $('#drawer-overlay'); o.hidden = false; requestAnimationFrame(() => o.classList.add('open'));
+  $('#menu-open').setAttribute('aria-expanded', 'true');
+  document.body.style.overflow = 'hidden';
+  $('#menu-close').focus();
+}
+function closeDrawer() {
+  const d = $('#drawer'); if (!d.classList.contains('open')) return;
+  d.classList.remove('open');
+  d.setAttribute('aria-hidden', 'true');
+  const o = $('#drawer-overlay'); o.classList.remove('open');
+  setTimeout(() => { if (!d.classList.contains('open')) o.hidden = true; }, 220);
+  $('#menu-open').setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
+
 function goto(page) {
+  currentPage = page;
   document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
   $('#page-' + page).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
+  document.querySelectorAll('.nav-btn').forEach((b) => {
+    const on = b.dataset.page === page;
+    b.classList.toggle('active', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  closeDrawer();
   if (page === 'home') renderHome();
+  if (page === 'dashboard') renderDashboard();
   if (page === 'deadlines') renderTasks();
   if (page === 'archive') renderArchive();
   if (page === 'subsidy') renderSubsidy();
@@ -985,27 +1220,268 @@ document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-page]');
   if (btn) goto(btn.dataset.page);
 });
+$('#menu-open').addEventListener('click', openDrawer);
+$('#menu-close').addEventListener('click', closeDrawer);
+$('#drawer-overlay').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
 
 /* ================================================================
-   HOME
+   HOME operativa — saluto + Priorità di oggi
    ================================================================ */
+function greetingText() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buongiorno';
+  if (h < 18) return 'Buon pomeriggio';
+  return 'Buonasera';
+}
+
+// Raccoglie le priorità operative da scadenze, documenti e incentivi.
+function collectPriorities() {
+  const now = new Date();
+  const daysTo = (d) => Math.ceil((new Date(d) - now) / 86400000);
+  const items = [];
+  // 1) scadenze urgenti (aperte) entro 10 giorni o scadute
+  tasks.filter((t) => t.stato !== 'fatto' && t.scadenza).forEach((t) => {
+    const dd = daysTo(t.scadenza);
+    if (dd <= 10) items.push({
+      pr: dd <= 3 ? 'alta' : 'media', ico: 'calendar', order: dd,
+      title: esc(t.titolo),
+      sub: esc(t.ente) + (dd < 0 ? ` · scaduta da ${Math.abs(dd)} gg` : dd === 0 ? ' · scade oggi' : ` · tra ${dd} gg`),
+      page: 'deadlines', cta: 'Vai allo scadenziario',
+    });
+  });
+  // 2) documenti con urgenza alta
+  docs.filter((d) => d.urgenza === 'alta').forEach((d) => {
+    const undone = d.checklist.filter((c) => !c.done).length;
+    items.push({
+      pr: 'alta', ico: 'document', order: -100,
+      title: esc(d.title),
+      sub: esc(d.ente) + ' · urgenza alta' + (undone ? ` · ${undone} azioni da completare` : ' · azioni completate'),
+      page: 'archive', cta: 'Apri archivio',
+    });
+  });
+  // 3) azioni incomplete su documenti non ad alta urgenza
+  docs.filter((d) => d.urgenza !== 'alta' && d.checklist.some((c) => !c.done)).slice(0, 3).forEach((d) => {
+    const undone = d.checklist.filter((c) => !c.done).length;
+    items.push({
+      pr: 'media', ico: 'checkCircle', order: 20,
+      title: esc(d.title),
+      sub: `${undone} azioni da completare · ${esc(d.ente)}`,
+      page: 'archive', cta: 'Apri archivio',
+    });
+  });
+  // 4) incentivi che richiedono la domanda prima di avviare il progetto
+  if (profile) {
+    matchPrograms(profile).filter((m) => m.program.avvisoPrima).slice(0, 3).forEach((m) => {
+      items.push({
+        pr: 'media', ico: 'banknote', order: 40,
+        title: esc(m.program.programma),
+        sub: 'Domanda da presentare PRIMA di avviare il progetto · ' + esc(m.program.ente),
+        page: 'subsidy', cta: 'Vai agli incentivi',
+      });
+    });
+  }
+  const rank = { alta: 0, media: 1, bassa: 2 };
+  return items.sort((a, b) => (rank[a.pr] - rank[b.pr]) || (a.order - b.order));
+}
+
 function renderHome() {
-  const openTasks = tasks.filter((t) => t.stato !== 'fatto' && t.scadenza).sort((a, b) => new Date(a.scadenza) - new Date(b.scadenza)).slice(0, 5);
-  $('#home-tasks').innerHTML = openTasks.length === 0
-    ? '<div class="empty">Nessuna scadenza in agenda. Analizza un documento per iniziare.</div>'
-    : openTasks.map((t) => `
+  const hasData = docs.length > 0 || tasks.length > 0 || !!profile;
+  const top = collectPriorities().slice(0, 7);
+
+  const priorityBlock = top.length === 0
+    ? `<div class="priority-empty">${icon('checkCircle')}<div>Nessuna priorità urgente al momento: sei in pari con scadenze e documenti.</div></div>`
+    : `<div class="card">
+        <div class="card-title">Priorità di oggi</div>
+        ${top.map((it) => `
+          <div class="action-row">
+            <div class="action-ico p-${it.pr}">${icon(it.ico, 'ic-sm')}</div>
+            <div class="action-main"><div class="action-title">${it.title}</div><div class="action-sub">${it.sub}</div></div>
+            <div class="action-meta">
+              <span class="badge badge-${it.pr}">${it.pr}</span>
+              <button class="action-link" data-page="${it.page}" aria-label="${it.cta}">${icon('arrowRight', 'ic-sm')}</button>
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+  const intro = hasData ? '' : `
+    <div class="grid-2 mt-16">
+      <div class="card module-card">
+        <div class="module-kicker">Modulo 1</div>
+        <div class="card-title mt-10">Swiss Admin AI</div>
+        <p class="muted-sm">Carica una lettera, un PDF o un'email: il sistema identifica ente, lingua e scadenze,
+          spiega il contenuto e prepara checklist e bozza di risposta nella lingua corretta.</p>
+        <button class="btn btn-sm mt-12" data-page="admin">Apri Admin AI ${icon('arrowRight', 'ic-sm')}</button>
+      </div>
+      <div class="card module-card">
+        <div class="module-kicker">Modulo 2</div>
+        <div class="card-title mt-10">Swiss Subsidy AI</div>
+        <p class="muted-sm">Crea il profilo dell'impresa e descrivi il progetto: il motore lo confronta con i
+          programmi federali e cantonali e mostra solo gli incentivi compatibili, con verifica di idoneità.</p>
+        <button class="btn btn-sm mt-12" data-page="subsidy">Apri Subsidy AI ${icon('arrowRight', 'ic-sm')}</button>
+      </div>
+    </div>`;
+
+  $('#home-body').innerHTML = `
+    <div class="page-head">
+      <div class="greeting">${greetingText()}</div>
+      <div class="greeting-sub">Ecco cosa richiede attenzione nella tua azienda.</div>
+    </div>
+    <div class="row-wrap">
+      <button class="btn btn-primary btn-block-mobile" data-page="admin">${icon('document', 'ic-sm')} Analizza un documento</button>
+      <button class="btn" data-page="subsidy">${icon('banknote', 'ic-sm')} Trova incentivi</button>
+      <button class="btn btn-ghost" data-page="deadlines">${icon('calendar', 'ic-sm')} Scadenziario</button>
+    </div>
+    <div class="mt-16">${priorityBlock}</div>
+    ${intro}`;
+}
+
+/* ================================================================
+   DASHBOARD — statistiche calcolate da docs / tasks / profile.
+   Forme: stat tile per i KPI, barre a tinta unica per le grandezze,
+   colori di stato (rosso/ambra/verde) con etichetta per l'urgenza.
+   ================================================================ */
+const SHORT_TIPO = {
+  sollecito: 'Sollecito', richiesta_documenti: 'Richiesta doc.', pagamento: 'Fattura',
+  dichiarazione: 'Dichiarazione', controllo: 'Controllo', decisione: 'Decisione', informativa: 'Informativa',
+};
+
+// rows: [{cat, val, cls?, dotCls?}] — barre orizzontali proporzionali al massimo.
+function dashBars(rows) {
+  const max = Math.max(1, ...rows.map((r) => r.val));
+  return rows.map((r) => `
+    <div class="bar-row">
+      <div class="bar-cat">${r.dotCls ? `<span class="bar-dot ${r.dotCls}"></span>` : ''}${esc(r.cat)}</div>
+      <div class="bar-track"><div class="bar-fill ${r.cls || ''}" style="width:${Math.round((r.val / max) * 100)}%"></div></div>
+      <div class="bar-val">${r.val}</div>
+    </div>`).join('');
+}
+
+function renderDashboard() {
+  const now = new Date();
+  const daysTo = (d) => Math.ceil((new Date(d) - now) / 86400000);
+  const openTasks = tasks.filter((t) => t.stato !== 'fatto');
+  const withDate = openTasks.filter((t) => t.scadenza);
+
+  // KPI operativi: cosa deve fare l'imprenditore
+  let openActions = 0;
+  docs.forEach((d) => { openActions += d.checklist.filter((c) => !c.done).length; });
+  const docsWithOpen = docs.filter((d) => d.checklist.some((c) => !c.done)).length;
+  const next7 = withDate.filter((t) => daysTo(t.scadenza) <= 7);
+  const overdue7 = next7.filter((t) => daysTo(t.scadenza) < 0).length;
+  const toVerify = docs.filter((d) => d.confidenza !== 'alta' || d.enteIncerto);
+  const matches = profile ? matchPrograms(profile) : [];
+  const priorityIncentives = matches.filter((m) => m.program.avvisoPrima).length;
+
+  // completamento checklist
+  let totChecks = 0, doneChecks = 0;
+  docs.forEach((d) => d.checklist.forEach((c) => { totChecks++; if (c.done) doneChecks++; }));
+  const compPct = totChecks ? Math.round((doneChecks / totChecks) * 100) : 0;
+
+  // statistiche secondarie
+  const urg = { alta: 0, media: 0, bassa: 0 };
+  const langCount = {}, tipoCount = {};
+  docs.forEach((d) => {
+    if (urg[d.urgenza] != null) urg[d.urgenza]++;
+    langCount[d.linguaLabel] = (langCount[d.linguaLabel] || 0) + 1;
+    const k = SHORT_TIPO[d.tipo] || d.tipoLabel;
+    tipoCount[k] = (tipoCount[k] || 0) + 1;
+  });
+  const tipoRows = Object.entries(tipoCount).sort((a, b) => b[1] - a[1]).map(([cat, val]) => ({ cat, val }));
+  const langInline = Object.entries(langCount).sort((a, b) => b[1] - a[1])
+    .map(([cat, val]) => `<span class="lang-chip">${esc(cat)} <b>${val}</b></span>`).join('');
+
+  const horizon = { 'Scadute': 0, 'Entro 30 gg': 0, '31–90 gg': 0, 'Oltre 90 gg': 0 };
+  withDate.forEach((t) => {
+    const d = daysTo(t.scadenza);
+    if (d < 0) horizon['Scadute']++; else if (d <= 30) horizon['Entro 30 gg']++;
+    else if (d <= 90) horizon['31–90 gg']++; else horizon['Oltre 90 gg']++;
+  });
+
+  const priorities = collectPriorities().slice(0, 8);
+  const prossimeAzioni = priorities.length === 0
+    ? `<div class="priority-empty">${icon('checkCircle')}<div>Nessuna azione prioritaria: sei in pari.</div></div>`
+    : priorities.map((it) => `
+        <div class="action-row">
+          <div class="action-ico p-${it.pr}">${icon(it.ico, 'ic-sm')}</div>
+          <div class="action-main"><div class="action-title">${it.title}</div><div class="action-sub">${it.sub}</div></div>
+          <div class="action-meta"><span class="badge badge-${it.pr}">${it.pr}</span>
+            <button class="action-link" data-page="${it.page}" aria-label="${it.cta}">${icon('arrowRight', 'ic-sm')}</button></div>
+        </div>`).join('');
+
+  $('#dashboard-body').innerHTML = `
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-ico ok">${icon('checkCircle', 'ic-sm')}</div>
+      <div class="kpi-label">Azioni da completare</div>
+      <div class="kpi-value">${openActions}</div>
+      <div class="kpi-sub">${docsWithOpen} documenti coinvolti</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-ico ${next7.length ? 'warn' : ''}">${icon('clock', 'ic-sm')}</div>
+      <div class="kpi-label">Scadenze prossimi 7 gg</div>
+      <div class="kpi-value ${overdue7 ? 'hot' : ''}">${next7.length}</div>
+      <div class="kpi-sub">${overdue7 ? overdue7 + ' già scadute' : 'nessuna scaduta'}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-ico ${toVerify.length ? 'amb' : ''}">${icon('fileSearch', 'ic-sm')}</div>
+      <div class="kpi-label">Documenti da verificare</div>
+      <div class="kpi-value">${toVerify.length}</div>
+      <div class="kpi-sub">confidenza bassa o ente incerto</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-ico">${icon('star', 'ic-sm')}</div>
+      <div class="kpi-label">Incentivi prioritari</div>
+      <div class="kpi-value">${profile ? priorityIncentives : '—'}</div>
+      <div class="kpi-sub">${profile ? 'domanda prima di agire' : 'crea un profilo'}</div>
+    </div>
+  </div>
+
+  <div class="card mt-16">
+    <div class="card-title">Prossime azioni</div>
+    <div class="muted-sm" style="margin-top:-6px;margin-bottom:8px">Ordinate per priorità e scadenza.</div>
+    ${prossimeAzioni}
+  </div>
+
+  <div class="grid-2 mt-16">
+    <div class="card"><div class="card-title">Scadenze in arrivo</div>
+      ${withDate.length === 0 ? '<div class="chart-empty">Nessuna scadenza con data.</div>' : dashBars(
+        Object.entries(horizon).map(([cat, val]) => ({ cat, val, cls: cat === 'Scadute' && val > 0 ? 's-alta' : '' })))}
+    </div>
+    <div class="card"><div class="card-title">Completamento azioni</div>
+      ${totChecks === 0 ? '<div class="chart-empty">Nessuna checklist ancora. Analizza un documento.</div>' : `
+        <div class="meter"><div class="meter-num">${compPct}%</div>
+          <div class="meter-track"><div class="meter-fill" style="width:${compPct}%"></div></div></div>
+        <div class="kpi-sub mt-10">${doneChecks} di ${totChecks} azioni completate su tutti i documenti</div>`}
+    </div>
+  </div>
+
+  ${profile ? `
+  <div class="card mt-16"><div class="card-title">Incentivi compatibili</div>
+    <div class="muted-sm" style="margin-top:-6px;margin-bottom:10px">${matches.length} programmi · ${priorityIncentives} con avviso «domanda prima di agire».</div>
+    ${matches.slice(0, 3).map((m) => `
       <div class="list-row">
-        <div class="list-main"><div class="list-title">${esc(t.titolo)}</div><div class="list-sub">${esc(t.ente)}</div></div>
-        <span class="badge badge-${esc(t.urgenza || 'neutral')}">${formatDate(t.scadenza)}</span>
-      </div>`).join('');
-  const recent = [...docs].reverse().slice(0, 5);
-  $('#home-docs').innerHTML = recent.length === 0
-    ? '<div class="empty">Nessun documento analizzato finora.</div>'
-    : recent.map((d) => `
-      <div class="list-row">
-        <div class="list-main"><div class="list-title">${esc(d.title)}</div><div class="list-sub">${esc(d.ente)} · ${esc(d.linguaLabel)}</div></div>
-        <span class="badge badge-${esc(d.urgenza)}">${esc(d.urgenza)}</span>
-      </div>`).join('');
+        <div class="list-main"><div class="list-title">${esc(m.program.programma)}</div><div class="list-sub">${esc(m.program.ente)}</div></div>
+        ${m.program.avvisoPrima ? '<span class="badge badge-alta">prima di agire</span>' : ''}
+        <span class="badge ${m.score >= 75 ? 'badge-bassa' : m.score >= 55 ? 'badge-media' : 'badge-neutral'}">${m.score}%</span>
+      </div>`).join('')}
+    <button class="btn btn-sm mt-10" data-page="subsidy">Vedi tutti gli incentivi ${icon('arrowRight', 'ic-sm')}</button>
+  </div>` : ''}
+
+  <div class="section-title mt-28">Statistiche documenti</div>
+  <div class="grid-2">
+    <div class="card"><div class="card-title">Documenti per urgenza</div>
+      ${docs.length === 0 ? '<div class="chart-empty">Nessun documento analizzato.</div>' : dashBars([
+        { cat: 'Alta', val: urg.alta, cls: 's-alta', dotCls: 'dot-alta' },
+        { cat: 'Media', val: urg.media, cls: 's-media', dotCls: 'dot-media' },
+        { cat: 'Bassa', val: urg.bassa, cls: 's-bassa', dotCls: 'dot-bassa' },
+      ])}
+    </div>
+    <div class="card"><div class="card-title">Documenti per tipo</div>
+      ${tipoRows.length === 0 ? '<div class="chart-empty">Nessun documento analizzato.</div>' : dashBars(tipoRows)}
+    </div>
+  </div>
+  ${docs.length ? `<div class="card mt-16 lang-card"><span class="lang-title">Lingue dei documenti</span> ${langInline}</div>` : ''}`;
 }
 
 /* ================================================================
@@ -1190,10 +1666,10 @@ function renderTasks() {
         ${t.scadenza
           ? `<span class="badge badge-${esc(t.urgenza)}">${formatDate(t.scadenza)}${d != null && d >= 0 ? ` · ${d} gg` : d != null ? ' · scaduta' : ''}</span>`
           : '<span class="badge badge-neutral">senza data</span>'}
-        <select data-tstato="${esc(t.id)}" style="border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:13px">
+        <select data-tstato="${esc(t.id)}" class="select-inline" aria-label="Stato di: ${esc(t.titolo)}">
           ${Object.entries(STATI).map(([k, v]) => `<option value="${k}"${t.stato === k ? ' selected' : ''}>${v}</option>`).join('')}
         </select>
-        <button class="btn btn-sm" data-tdel="${esc(t.id)}">✕</button>
+        <button class="btn btn-sm btn-icon" data-tdel="${esc(t.id)}" aria-label="Elimina scadenza: ${esc(t.titolo)}">${icon('trash', 'ic-sm')}</button>
       </div>`;
     }).join('');
 }
@@ -1232,8 +1708,8 @@ function renderArchive() {
           <div class="list-sub">${esc(d.ente)} · ${esc(d.tipoLabel)} · ${esc(d.linguaLabel)}${d.scadenza ? ' · scade il ' + formatDate(d.scadenza) : ''}</div></div>
         <span class="badge badge-neutral">${done}/${d.checklist.length} azioni</span>
         <span class="badge badge-${esc(d.urgenza)}">${esc(d.urgenza)}</span>
-        <button class="btn btn-sm" data-aopen="${esc(d.id)}">${openDocId === d.id ? 'Chiudi' : 'Apri'}</button>
-        <button class="btn btn-sm" data-adel="${esc(d.id)}">✕</button>
+        <button class="btn btn-sm" data-aopen="${esc(d.id)}" aria-expanded="${openDocId === d.id}">${openDocId === d.id ? 'Chiudi' : 'Apri'}</button>
+        <button class="btn btn-sm btn-icon" data-adel="${esc(d.id)}" aria-label="Elimina documento: ${esc(d.title)}">${icon('trash', 'ic-sm')}</button>
       </div>`;
     }).join('');
 
@@ -1310,30 +1786,30 @@ function renderProfileForm() {
   <div class="card">
     <div class="card-title">Profilo aziendale</div>
     <div class="grid-2">
-      <div class="field"><label>Ragione sociale</label><input id="p-rs" value="${esc(p.ragioneSociale)}" placeholder="Es. Rossi Impianti Sagl" /></div>
-      <div class="field"><label>Numero IDI / CHE</label><input id="p-idi" value="${esc(p.idi)}" placeholder="CHE-123.456.789" /></div>
-      <div class="field"><label>Cantone</label><select id="p-cantone">${CANTONI.map((c) => `<option${p.cantone === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
-      <div class="field"><label>Comune</label><input id="p-comune" value="${esc(p.comune)}" placeholder="Es. Lugano" /></div>
-      <div class="field"><label>Forma giuridica</label><select id="p-fg">${FORME_GIURIDICHE.map((f) => `<option${p.formaGiuridica === f ? ' selected' : ''}>${f}</option>`).join('')}</select></div>
-      <div class="field"><label>Settore (NOGA semplificato)</label><select id="p-settore">
+      <div class="field"><label for="p-rs">Ragione sociale</label><input id="p-rs" value="${esc(p.ragioneSociale)}" placeholder="Es. Rossi Impianti Sagl" /></div>
+      <div class="field"><label for="p-idi">Numero IDI / CHE</label><input id="p-idi" value="${esc(p.idi)}" placeholder="CHE-123.456.789" /></div>
+      <div class="field"><label for="p-cantone">Cantone</label><select id="p-cantone">${CANTONI.map((c) => `<option${p.cantone === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+      <div class="field"><label for="p-comune">Comune</label><input id="p-comune" value="${esc(p.comune)}" placeholder="Es. Lugano" /></div>
+      <div class="field"><label for="p-fg">Forma giuridica</label><select id="p-fg">${FORME_GIURIDICHE.map((f) => `<option${p.formaGiuridica === f ? ' selected' : ''}>${f}</option>`).join('')}</select></div>
+      <div class="field"><label for="p-settore">Settore (NOGA semplificato)</label><select id="p-settore">
         <option value="">— Seleziona —</option>
         ${SETTORI.map((s) => `<option value="${s.id}"${p.settore === s.id ? ' selected' : ''}>${s.label}</option>`).join('')}
       </select></div>
-      <div class="field"><label>Numero di dipendenti</label><input type="number" min="0" id="p-dip" value="${esc(p.dipendenti)}" placeholder="Es. 12" /></div>
-      <div class="field"><label>Fascia di fatturato</label><select id="p-fatt">${FASCE_FATTURATO.map((f) => `<option${p.fatturato === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select></div>
+      <div class="field"><label for="p-dip">Numero di dipendenti</label><input type="number" min="0" id="p-dip" value="${esc(p.dipendenti)}" placeholder="Es. 12" /></div>
+      <div class="field"><label for="p-fatt">Fascia di fatturato</label><select id="p-fatt">${FASCE_FATTURATO.map((f) => `<option${p.fatturato === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select></div>
     </div>
-    <div class="field"><label>Situazione</label><div class="checks">
-      <span class="check-pill${p.immobili ? ' on' : ''}" id="p-immobili">Possiede o utilizza immobili</span>
-      <span class="check-pill${p.veicoli ? ' on' : ''}" id="p-veicoli">Ha veicoli aziendali</span>
+    <div class="field"><span class="group-label">Situazione</span><div class="checks" role="group" aria-label="Situazione aziendale">
+      <button type="button" class="check-pill${p.immobili ? ' on' : ''}" id="p-immobili" aria-pressed="${p.immobili}">Possiede o utilizza immobili</button>
+      <button type="button" class="check-pill${p.veicoli ? ' on' : ''}" id="p-veicoli" aria-pressed="${p.veicoli}">Ha veicoli aziendali</button>
     </div></div>
-    <div class="field"><label>Progetti e investimenti previsti</label><div class="checks">
-      ${TIPI_PROGETTO.map((t) => `<span class="check-pill${p.progetti.includes(t.id) ? ' on' : ''}" data-prog="${t.id}">${t.label}</span>`).join('')}
+    <div class="field"><span class="group-label">Progetti e investimenti previsti</span><div class="checks" role="group" aria-label="Progetti e investimenti previsti">
+      ${TIPI_PROGETTO.map((t) => `<button type="button" class="check-pill${p.progetti.includes(t.id) ? ' on' : ''}" data-prog="${t.id}" aria-pressed="${p.progetti.includes(t.id)}">${t.label}</button>`).join('')}
     </div></div>
-    <div class="field"><label>Descrivi il progetto con parole tue (l'AI lo interpreta)</label>
-      <textarea id="p-desc" style="min-height:90px" placeholder="Es. Vogliamo installare un impianto fotovoltaico sul tetto del capannone e sostituire due furgoni diesel con veicoli elettrici…">${esc(p.descrizione)}</textarea>
-      <div id="p-sugg" style="font-size:13px;color:var(--accent-text)">${sugg.length > 0 ? 'Dalla descrizione il sistema riconosce anche: ' + sugg.map(labelTipo).join(', ') + ' — verranno inclusi nella ricerca.' : ''}</div>
+    <div class="field"><label for="p-desc">Descrivi il progetto con parole tue (l'AI lo interpreta)</label>
+      <textarea id="p-desc" placeholder="Es. Vogliamo installare un impianto fotovoltaico sul tetto del capannone e sostituire due furgoni diesel con veicoli elettrici…">${esc(p.descrizione)}</textarea>
+      <div id="p-sugg" class="hint-accent">${sugg.length > 0 ? 'Dalla descrizione il sistema riconosce anche: ' + sugg.map(labelTipo).join(', ') + ' — verranno inclusi nella ricerca.' : ''}</div>
     </div>
-    <button class="btn btn-primary" id="p-search">Trova incentivi compatibili</button>
+    <button class="btn btn-primary btn-block-mobile" id="p-search">Trova incentivi compatibili</button>
   </div>`;
 
   const bind = (id, key) => $(id).addEventListener('input', (e) => { profileDraft[key] = e.target.value; });
@@ -1342,13 +1818,20 @@ function renderProfileForm() {
   $('#p-fg').addEventListener('change', (e) => { profileDraft.formaGiuridica = e.target.value; });
   $('#p-settore').addEventListener('change', (e) => { profileDraft.settore = e.target.value; });
   $('#p-fatt').addEventListener('change', (e) => { profileDraft.fatturato = e.target.value; });
-  $('#p-immobili').addEventListener('click', () => { profileDraft.immobili = !profileDraft.immobili; $('#p-immobili').classList.toggle('on'); });
-  $('#p-veicoli').addEventListener('click', () => { profileDraft.veicoli = !profileDraft.veicoli; $('#p-veicoli').classList.toggle('on'); });
+  const togglePill = (elId, key) => $(elId).addEventListener('click', () => {
+    profileDraft[key] = !profileDraft[key];
+    $(elId).classList.toggle('on', profileDraft[key]);
+    $(elId).setAttribute('aria-pressed', String(profileDraft[key]));
+  });
+  togglePill('#p-immobili', 'immobili');
+  togglePill('#p-veicoli', 'veicoli');
   document.querySelectorAll('[data-prog]').forEach((pill) => pill.addEventListener('click', () => {
     const id = pill.dataset.prog;
-    if (profileDraft.progetti.includes(id)) profileDraft.progetti = profileDraft.progetti.filter((x) => x !== id);
-    else profileDraft.progetti.push(id);
-    pill.classList.toggle('on');
+    const on = !profileDraft.progetti.includes(id);
+    if (on) profileDraft.progetti.push(id);
+    else profileDraft.progetti = profileDraft.progetti.filter((x) => x !== id);
+    pill.classList.toggle('on', on);
+    pill.setAttribute('aria-pressed', String(on));
   }));
   $('#p-desc').addEventListener('input', (e) => {
     profileDraft.descrizione = e.target.value;
@@ -1364,22 +1847,22 @@ function renderResults() {
   $('#subsidy-body').innerHTML = `
   <div class="demo-banner">${matches.length} programmi potenzialmente compatibili per
     <strong>${esc(profile.ragioneSociale || 'la tua impresa')}</strong> (${esc(profile.cantone)}${settoreLabel ? ', ' + esc(settoreLabel) : ''}).
-    Ordinati per compatibilità stimata. <a href="#" id="edit-profile">Modifica profilo</a></div>
+    Ordinati per compatibilità stimata. <button type="button" class="btn-link" id="edit-profile">Modifica profilo</button></div>
   ${matches.length === 0 ? '<div class="card"><div class="empty">Nessun programma compatibile trovato con i criteri attuali. Prova ad ampliare i tipi di progetto nel profilo.</div></div>' : ''}
   ${matches.map((m) => `
     <div class="card">
       <div class="match-head">
         <div class="match-score ${m.score >= 75 ? 'hi' : m.score >= 55 ? 'mid' : ''}">${m.score}%</div>
-        <div style="flex:1;min-width:250px">
-          <div class="list-title" style="font-size:16px">${esc(m.program.programma)}</div>
+        <div class="match-body">
+          <div class="list-title match-name">${esc(m.program.programma)}</div>
           <div class="list-sub">${esc(m.program.ente)} · ${esc(m.program.contributo)}</div>
-          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <div class="badge-row">
             <span class="badge badge-neutral">confidenza ${esc(m.confidence)}</span>
-            ${m.program.avvisoPrima ? '<span class="badge badge-alta">⚠ domanda prima di agire</span>' : ''}
+            ${m.program.avvisoPrima ? `<span class="badge badge-alta">${icon('alert', 'ic-sm')} domanda prima di agire</span>` : ''}
             <span class="badge badge-blue">${esc(m.program.scadenza)}</span>
           </div>
         </div>
-        <button class="btn btn-sm" data-open-prog="${esc(m.program.id)}">Apri scheda →</button>
+        <button class="btn btn-sm" data-open-prog="${esc(m.program.id)}">Apri scheda ${icon('arrowRight', 'ic-sm')}</button>
       </div>
     </div>`).join('')}`;
   $('#edit-profile')?.addEventListener('click', (e) => { e.preventDefault(); subsidyStep = 'profile'; renderSubsidy(); });
@@ -1401,7 +1884,7 @@ function renderProgramDetail() {
   <button class="btn btn-sm" style="margin-bottom:14px" id="back-results">← Torna ai risultati</button>
   <div class="card">
     <div class="card-title" style="font-size:18px">${esc(p.programma)}</div>
-    ${p.avvisoPrima ? `<div class="warn-box" style="margin-bottom:14px"><span>⚠️</span><span>${esc(p.avvisoTesto)}</span></div>` : ''}
+    ${p.avvisoPrima ? `<div class="warn-box mb-14">${icon('alert')}<span>${esc(p.avvisoTesto)}</span></div>` : ''}
     <div class="result-row"><div class="result-label">Ente</div><div>${esc(p.ente)}</div></div>
     <div class="result-row"><div class="result-label">Compatibilità</div>
       <div><strong>${m.score}%</strong> <span class="badge badge-neutral">confidenza ${esc(m.confidence)}</span></div></div>
@@ -1481,15 +1964,20 @@ const PLANS = [
 ];
 $('#pricing-cards').innerHTML = PLANS.map((p) => `
   <div class="card price-card${p.featured ? ' featured' : ''}">
-    ${p.featured ? '<div class="featured-flag">Più scelto</div>' : ''}
-    <div class="card-title" style="margin-bottom:2px">${p.nome}</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">${p.target}</div>
-    <div class="price-tag">${p.prezzo ? `CHF ${p.prezzo}<small> /mese</small>` : '<span style="font-size:20px">Su misura</span>'}</div>
+    ${p.featured ? '<div class="featured-flag">Consigliato</div>' : ''}
+    <div class="card-title">${p.nome}</div>
+    <div class="price-target">${p.target}</div>
+    <div class="price-tag">${p.prezzo ? `CHF ${p.prezzo}<small> /mese</small>` : '<span class="price-custom">Su misura</span>'}</div>
     <ul class="price-feats">${p.features.map((f) => `<li>${f}</li>`).join('')}</ul>
-    <button class="btn${p.featured ? ' btn-primary' : ''}">${p.prezzo ? 'Inizia la prova gratuita' : 'Contattaci'}</button>
+    <button class="btn${p.featured ? ' btn-primary' : ''}" data-pilot="${esc(p.nome)}">Richiedi accesso pilota</button>
   </div>`).join('');
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pilot]');
+  if (b) showToast('Demo: la richiesta di accesso pilota non viene inviata in questo prototipo.');
+});
 
 /* ---------------- init ---------------- */
+renderNav();
 renderHome();
 renderTasks();
 renderArchive();
