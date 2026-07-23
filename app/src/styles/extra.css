@@ -1,0 +1,65 @@
+/* ============================================================================
+   Aggiunte per la versione SaaS (auth, onboarding, shell, stati).
+   Riusano gli stessi token/design di app.css: nessun redesign.
+   ============================================================================ */
+
+#root { width: 100%; }
+
+/* ---- Shell applicativa (riproduce il layout del prototipo) ---- */
+.app-shell { display: flex; min-height: 100vh; width: 100%; }
+@media (max-width: 900px) { .app-shell { flex-direction: column; } }
+
+/* ---- Box account (sidebar/drawer) + logout ---- */
+.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.account-row { display: flex; align-items: center; gap: 10px; padding: 4px 4px; }
+.account-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.account-info { min-width: 0; }
+.account-name { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.account-email { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.account-actions { display: flex; gap: 6px; }
+.account-actions .btn { flex: 1; }
+
+/* ---- Selettore azienda (multi-tenant ready) ---- */
+.company-switch { padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); margin-bottom: 8px; }
+.company-switch .cs-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.company-switch .cs-name { font-weight: 700; font-size: 13.5px; letter-spacing: -0.2px; }
+.company-switch .cs-meta { font-size: 11.5px; color: var(--muted); }
+.company-switch select { width: 100%; margin-top: 4px; }
+.role-chip { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; }
+
+/* ---- Schermate centrate (auth / onboarding / stati globali) ---- */
+.centered-screen { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; padding: 28px 18px; background: var(--bg); }
+.auth-card { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 28px; }
+.onboarding-card { max-width: 640px; }
+.auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.auth-title { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }
+.auth-sub { color: var(--muted); font-size: 14px; margin-top: 3px; margin-bottom: 18px; }
+.auth-alt { margin-top: 16px; font-size: 13.5px; color: var(--muted); text-align: center; }
+.auth-alt .btn-link { font-size: 13.5px; }
+.auth-actions { margin-top: 6px; }
+.auth-actions .btn { width: 100%; }
+.form-error { background: var(--red-soft); border: 1px solid hsl(0,84%,86%); color: var(--red-dark); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; margin-bottom: 14px; display: flex; gap: 8px; align-items: flex-start; }
+.form-success { background: var(--green-soft); border: 1px solid #c6e6d2; color: var(--green); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13.5px; margin-bottom: 14px; }
+.field-hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* ---- Stati globali (loading/error/empty) ---- */
+.app-loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); }
+.spinner-lg { width: 30px; height: 30px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+.state-error { display: flex; gap: 10px; align-items: flex-start; background: var(--red-soft); border: 1px solid hsl(0,84%,86%); color: var(--red-dark); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 14px; }
+.state-error .ic { flex-shrink: 0; margin-top: 1px; }
+
+/* ---- Skeleton (loading discreto) ---- */
+.skeleton { background: linear-gradient(90deg, hsl(210,20%,93%) 25%, hsl(210,20%,88%) 37%, hsl(210,20%,93%) 63%); background-size: 400% 100%; animation: skel 1.3s ease infinite; border-radius: 6px; }
+@keyframes skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+.skel-line { height: 12px; margin: 8px 0; }
+.skel-kpi { height: 96px; border-radius: var(--radius); }
+.skel-card { height: 120px; border-radius: var(--radius); }
+
+/* piccole utility aggiuntive */
+.mt-8 { margin-top: 8px; } .mt-20 { margin-top: 20px; } .mt-24 { margin-top: 24px; }
+.mb-8 { margin-bottom: 8px; } .mb-16 { margin-bottom: 16px; } .mb-18 { margin-bottom: 18px; }
+.text-center { text-align: center; }
+.w-full { width: 100%; }
+.spin-btn { position: relative; }
+.divider { height: 1px; background: var(--line); margin: 16px 0; }
+.badge-alta.badge, .badge-media.badge, .badge-bassa.badge { white-space: nowrap; }

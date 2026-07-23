@@ -1,10 +1,19 @@
 # dependencies
 node_modules/
-react/node_modules/
 
 # build output
 dist/
-react/dist/
+dist-ssr/
+
+# env / segreti — non committare MAI chiavi reali
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# supabase CLI (stato locale)
+supabase/.temp/
+supabase/.branches/
 
 # logs
 *.log

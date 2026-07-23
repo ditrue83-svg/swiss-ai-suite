@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+dist-ssr/
+
+# env (mai committare segreti)
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# supabase CLI local
+supabase/.temp/
+supabase/.branches/
+
+# logs / editor
+*.log
+.DS_Store
+.vscode/*
+!.vscode/extensions.json

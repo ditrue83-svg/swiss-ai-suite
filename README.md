@@ -9,37 +9,47 @@ SaaS per le PMI svizzere con due moduli:
 - **Swiss Subsidy AI** — costruisce il profilo aziendale (IDI/CHE, Cantone, settore,
   dimensione, progetti previsti), interpreta la descrizione libera del progetto e la
   confronta con un database strutturato di programmi (Confederazione + Ticino):
-  compatibilità stimata con livello di confidenza, scheda incentivo con fonte ufficiale e
-  data di ultima verifica, verifica di idoneità guidata e avvisi "domanda prima di agire".
+  **rilevanza** (pertinenza al progetto) tenuta distinta dall'**idoneità** (hard/soft rule ed
+  esclusioni valutabili), scheda incentivo con fonte ufficiale e data di verifica, verifica
+  guidata e avvisi "domanda prima di agire".
 
-Completano la piattaforma: scadenziario con promemoria, archivio documenti con filtri per
-urgenza e pagina piani/prezzi (Basic 49 / Business 149 / Pro 299 / Fiduciarie su misura).
-Grafica allineata ai colori di [ai-swisse.com](https://ai-swisse.com).
+Completano la piattaforma: scadenziario, archivio documenti, pratiche incentivi e pagina
+piani/prezzi. Grafica allineata ai colori di [ai-swisse.com](https://ai-swisse.com).
 
-## Due versioni nello stesso repository
+## Cartelle
 
 | Cartella | Cos'è | Come si avvia |
 |----------|-------|---------------|
-| [`html/`](html/) | Sito statico in **un unico file** `index.html` (vanilla JS, nessuna dipendenza da installare). | Apri `html/index.html` nel browser, oppure servi la cartella con un server statico. Pronto per GitHub Pages. |
-| [`react/`](react/) | Stessa app in **React + Vite**, con motori in `src/engine/`. | `cd react && npm install && npm run dev` → http://localhost:5173 |
+| [`app/`](app/) | **L'applicazione vera.** SaaS multi-tenant su **Supabase** (Auth, PostgreSQL, Storage privato, RLS) in React + TypeScript, con analisi documenti tramite **Claude** lato server. È la versione su cui prosegue lo sviluppo. | `cd app && npm install`, configura `.env` (vedi [app/README.md](app/README.md)) → `npm run dev` |
+| [`html/`](html/) | Prototipo dimostrativo in **un unico file** `index.html` (vanilla JS, `localStorage`, nessuna dipendenza). Resta il riferimento del design. | Apri `html/index.html` nel browser. Pronto per GitHub Pages. |
+| [`react/`](react/) | Primo scaffold React/JS senza backend. **Superato da `app/`**, conservato solo per storico. | `cd react && npm install && npm run dev` |
 
-Le due versioni sono funzionalmente equivalenti: stessi motori di analisi documenti e
-matching incentivi, stessa interfaccia.
+## Architettura di `app/`
 
-## Architettura
+- **Multi-tenant dal principio**: utente e azienda sono concetti separati (`profiles`,
+  `companies`, `company_members`, `company_profiles`); un utente può appartenere a più aziende
+  (base per la futura vista fiduciaria).
+- **Row Level Security su tutte le tabelle aziendali**: si accede a una risorsa solo se si è
+  membri della sua company. Le policy usano funzioni `SECURITY DEFINER` per evitare ricorsione;
+  l'onboarding passa da un'RPC atomica. Migrazioni SQL versionate in `app/supabase/migrations`.
+- **Storage privato** (`company-documents`) con signed URL e policy per membership: il contenuto
+  dei documenti non sta nel database.
+- **Service layer** che isola UI, logica e accesso al DB.
+- **Analisi documenti**: `analysisService` sceglie il motore senza che la UI se ne accorga —
+  Claude tramite Edge Function server-side (la chiave API non tocca mai il browser), oppure il
+  motore deterministico locale come fallback o per chi non vuole inviare nulla all'esterno.
+- **Le citazioni dell'AI sono verificate**: ogni frase citata deve esistere alla lettera nel
+  documento, altrimenti viene scartata e l'azione declassata da "dal documento" a "suggerimento".
+  Gli offset di evidenziazione sono ricalcolati localmente, mai presi dal modello.
 
-- I motori sono **deterministici** (rilevamento lingua, enti, date/scadenze, classificazione,
-  checklist, bozze; matching "regole + interpretazione testo").
-- I due punti previsti per l'integrazione di un LLM sono `analyzeDocument()` (Admin AI) e
-  `interpretProjectDescription()` (Subsidy AI): mantengono la stessa firma input/output.
-- Persistenza lato client in `localStorage` (demo).
+## Stato e limiti
 
-## Limiti (per progetto)
-
-- Dati dei programmi **dimostrativi**: ogni scheda espone fonte ufficiale e data di verifica;
-  la compatibilità è una stima, non un'idoneità ufficiale.
-- L'output non costituisce consulenza legale, fiscale o fiduciaria; con confidenza bassa il
-  sistema chiede una verifica manuale invece di inventare.
-- Una versione di produzione richiederebbe: backend con autenticazione e separazione dei dati
-  per azienda, hosting in Svizzera (nLPD), pipeline di aggiornamento del database programmi e
-  l'integrazione LLM nei due punti indicati.
+- Il **database dei programmi di incentivo è dimostrativo**: ogni scheda espone fonte ufficiale e
+  data di verifica; la rilevanza è una stima di pertinenza, l'idoneità non sostituisce la
+  valutazione dell'ente.
+- L'output non costituisce consulenza legale, fiscale o fiduciaria; in caso di incertezza il
+  sistema la dichiara invece di inventare.
+- In modalità AI il testo del documento viene inviato all'API di Anthropic: da valutare
+  nell'informativa privacy (la modalità `deterministic` tiene tutto dentro Supabase).
+- Non ancora implementati: OCR, Registro IDI live, database incentivi reale, pagamenti,
+  email/calendar, interfaccia fiduciaria completa, copertura dei 26 Cantoni.

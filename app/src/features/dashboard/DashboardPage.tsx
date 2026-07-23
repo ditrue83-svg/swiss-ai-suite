@@ -1,0 +1,186 @@
+// Dashboard alimentata da Supabase (documenti, scadenze, incentivi, pratiche).
+import { Link } from 'react-router-dom';
+import { Icon } from '@/components/ui/Icon';
+import { ErrorState, SkeletonKpiGrid, SkeletonCard } from '@/components/ui/states';
+import { useOverview, type OverviewData } from './useOverview';
+import { collectPriorities, activeCasesCount } from './overview';
+import { daysUntil } from '@/lib/format';
+
+const SHORT_TIPO: Record<string, string> = {
+  sollecito: 'Sollecito', richiesta_documenti: 'Richiesta doc.', pagamento: 'Fattura',
+  dichiarazione: 'Dichiarazione', controllo: 'Controllo', decisione: 'Decisione', informativa: 'Informativa',
+};
+
+interface BarRow { cat: string; val: number; cls?: string; dotCls?: string }
+function Bars({ rows }: { rows: BarRow[] }) {
+  const max = Math.max(1, ...rows.map((r) => r.val));
+  return (
+    <>
+      {rows.map((r) => (
+        <div className="bar-row" key={r.cat}>
+          <div className="bar-cat">{r.dotCls && <span className={`bar-dot ${r.dotCls}`} />}{r.cat}</div>
+          <div className="bar-track"><div className={`bar-fill ${r.cls ?? ''}`} style={{ width: `${Math.round((r.val / max) * 100)}%` }} /></div>
+          <div className="bar-val">{r.val}</div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function DashboardBody({ data }: { data: OverviewData }) {
+  const { tasks, analyses, matches, cases } = data;
+  const openTasks = tasks.filter((t) => t.status !== 'completed');
+  const withDate = openTasks.filter((t) => t.dueDate);
+
+  let openActions = 0;
+  analyses.forEach((a) => { openActions += a.actions.filter((c) => !c.done).length; });
+  const docsWithOpen = analyses.filter((a) => a.actions.some((c) => !c.done)).length;
+  const next7 = withDate.filter((t) => (daysUntil(t.dueDate) ?? 99) <= 7);
+  const overdue7 = next7.filter((t) => (daysUntil(t.dueDate) ?? 0) < 0).length;
+  const toVerify = analyses.filter((a) => a.confidence !== 'alta' || a.senderUncertain);
+  const relevantCount = matches.length;
+  const activeCases = activeCasesCount(cases);
+
+  let totChecks = 0, doneChecks = 0;
+  analyses.forEach((a) => a.actions.forEach((c) => { totChecks++; if (c.done) doneChecks++; }));
+  const compPct = totChecks ? Math.round((doneChecks / totChecks) * 100) : 0;
+
+  const urg = { alta: 0, media: 0, bassa: 0 };
+  const langCount: Record<string, number> = {};
+  const tipoCount: Record<string, number> = {};
+  analyses.forEach((a) => {
+    urg[a.urgency]++;
+    langCount[a.languageLabel] = (langCount[a.languageLabel] || 0) + 1;
+    const k = (a.documentType && SHORT_TIPO[a.documentType]) || a.documentTypeLabel;
+    tipoCount[k] = (tipoCount[k] || 0) + 1;
+  });
+  const tipoRows = Object.entries(tipoCount).sort((a, b) => b[1] - a[1]).map(([cat, val]) => ({ cat, val }));
+
+  const horizon: Record<string, number> = { 'Scadute': 0, 'Entro 30 gg': 0, '31–90 gg': 0, 'Oltre 90 gg': 0 };
+  withDate.forEach((t) => {
+    const d = daysUntil(t.dueDate) ?? 0;
+    if (d < 0) horizon['Scadute']++; else if (d <= 30) horizon['Entro 30 gg']++; else if (d <= 90) horizon['31–90 gg']++; else horizon['Oltre 90 gg']++;
+  });
+
+  const priorities = collectPriorities(data).slice(0, 8);
+
+  return (
+    <>
+      <div className="kpi-grid">
+        <div className="kpi">
+          <div className="kpi-ico ok"><Icon name="checkCircle" className="ic-sm" /></div>
+          <div className="kpi-label">Azioni da completare</div>
+          <div className="kpi-value">{openActions}</div>
+          <div className="kpi-sub">{docsWithOpen} documenti coinvolti</div>
+        </div>
+        <div className="kpi">
+          <div className={`kpi-ico ${next7.length ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
+          <div className="kpi-label">Scadenze prossimi 7 gg</div>
+          <div className={`kpi-value ${overdue7 ? 'hot' : ''}`}>{next7.length}</div>
+          <div className="kpi-sub">{overdue7 ? overdue7 + ' già scadute' : 'nessuna scaduta'}</div>
+        </div>
+        <div className="kpi">
+          <div className={`kpi-ico ${toVerify.length ? 'amb' : ''}`}><Icon name="fileSearch" className="ic-sm" /></div>
+          <div className="kpi-label">Documenti da verificare</div>
+          <div className="kpi-value">{toVerify.length}</div>
+          <div className="kpi-sub">confidenza bassa o ente incerto</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-ico"><Icon name="star" className="ic-sm" /></div>
+          <div className="kpi-label">Incentivi rilevanti</div>
+          <div className="kpi-value">{relevantCount}</div>
+          <div className="kpi-sub">{relevantCount ? 'idoneità da verificare' : 'completa il profilo incentivi'}</div>
+        </div>
+      </div>
+
+      <div className="card mt-16">
+        <div className="card-title">Prossime azioni</div>
+        <div className="muted-sm" style={{ marginTop: '-6px', marginBottom: '8px' }}>Ordinate per priorità e scadenza.</div>
+        {priorities.length === 0 ? (
+          <div className="priority-empty"><Icon name="checkCircle" /><div>Nessuna azione prioritaria: sei in pari.</div></div>
+        ) : priorities.map((it, i) => (
+          <div className="action-row" key={i}>
+            <div className={`action-ico p-${it.priority}`}><Icon name={it.icon} className="ic-sm" /></div>
+            <div className="action-main"><div className="action-title">{it.title}</div><div className="action-sub">{it.sub}</div></div>
+            <div className="action-meta"><span className={`badge badge-${it.priority}`}>{it.priority}</span>
+              <Link className="action-link" to={it.to} aria-label={it.cta}><Icon name="arrowRight" className="ic-sm" /></Link></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid-2 mt-16">
+        <div className="card"><div className="card-title">Scadenze in arrivo</div>
+          {withDate.length === 0 ? <div className="chart-empty">Nessuna scadenza con data.</div> : (
+            <Bars rows={Object.entries(horizon).map(([cat, val]) => ({ cat, val, cls: cat === 'Scadute' && val > 0 ? 's-alta' : '' }))} />
+          )}
+        </div>
+        <div className="card"><div className="card-title">Completamento azioni</div>
+          {totChecks === 0 ? <div className="chart-empty">Nessuna checklist ancora. Analizza un documento.</div> : (
+            <>
+              <div className="meter"><div className="meter-num">{compPct}%</div>
+                <div className="meter-track"><div className="meter-fill" style={{ width: `${compPct}%` }} /></div></div>
+              <div className="kpi-sub mt-10">{doneChecks} di {totChecks} azioni completate su tutti i documenti</div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {relevantCount > 0 && (
+        <div className="card mt-16"><div className="card-title">Incentivi &amp; pratiche</div>
+          <div className="dash-inc-stats">
+            <span className="lang-chip">{relevantCount} <b>rilevanti</b></span>
+            <span className="lang-chip">{relevantCount} <b>idoneità da verificare</b></span>
+            <span className="lang-chip">{activeCases} <b>pratiche attive</b></span>
+          </div>
+          {matches.slice(0, 3).map((m) => (
+            <div className="list-row" key={m.program.id}>
+              <div className="list-main"><div className="list-title">{m.program.name}</div><div className="list-sub">{m.program.authority}</div></div>
+              {m.program.mustApplyBeforeStart && <span className="badge badge-alta">prima di agire</span>}
+              <span className="badge badge-neutral">Rilevanza {m.relevanceScore}%</span>
+              <span className="badge badge-media">Idoneità da verificare</span>
+            </div>
+          ))}
+          <Link className="btn btn-sm mt-10" to="/subsidy">Vedi tutti gli incentivi <Icon name="arrowRight" className="ic-sm" /></Link>
+        </div>
+      )}
+
+      <div className="section-title mt-28">Statistiche documenti</div>
+      <div className="grid-2">
+        <div className="card"><div className="card-title">Documenti per urgenza</div>
+          {analyses.length === 0 ? <div className="chart-empty">Nessun documento analizzato.</div> : (
+            <Bars rows={[
+              { cat: 'Alta', val: urg.alta, cls: 's-alta', dotCls: 'dot-alta' },
+              { cat: 'Media', val: urg.media, cls: 's-media', dotCls: 'dot-media' },
+              { cat: 'Bassa', val: urg.bassa, cls: 's-bassa', dotCls: 'dot-bassa' },
+            ]} />
+          )}
+        </div>
+        <div className="card"><div className="card-title">Documenti per tipo</div>
+          {tipoRows.length === 0 ? <div className="chart-empty">Nessun documento analizzato.</div> : <Bars rows={tipoRows} />}
+        </div>
+      </div>
+      {analyses.length > 0 && (
+        <div className="card mt-16 lang-card"><span className="lang-title">Lingue dei documenti</span>
+          {Object.entries(langCount).sort((a, b) => b[1] - a[1]).map(([cat, val]) => (
+            <span className="lang-chip" key={cat}>{cat} <b>{val}</b></span>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+export function DashboardPage() {
+  const { loading, error, data, reload } = useOverview();
+  return (
+    <>
+      <div className="page-head">
+        <div className="page-title">Dashboard</div>
+        <div className="page-desc">Il quadro operativo della tua impresa: documenti, scadenze e incentivi in sintesi.</div>
+      </div>
+      {loading && <><SkeletonKpiGrid /><div className="mt-16"><SkeletonCard /></div></>}
+      {error && <ErrorState message={error} onRetry={reload} />}
+      {!loading && !error && data && <DashboardBody data={data} />}
+    </>
+  );
+}
