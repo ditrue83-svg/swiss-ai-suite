@@ -122,6 +122,8 @@ a { color: var(--accent-text); }
 .btn-primary .ic { color: #fff; }
 .btn-ghost { border-color: transparent; background: none; }
 .btn-ghost:hover { background: var(--bg); border-color: transparent; }
+.btn-danger { border-color: var(--red); color: var(--red-dark); background: var(--red-soft); }
+.btn-danger:hover { background: hsl(0,84%,92%); border-color: var(--red); }
 .btn-sm { padding: 6px 12px; font-size: 13px; }
 .btn-icon { padding: 7px; width: 34px; height: 34px; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -213,8 +215,123 @@ a { color: var(--accent-text); }
 .tab:hover { color: var(--ink); }
 .tab.active { color: var(--accent-text); border-bottom-color: var(--accent); }
 
-.upload-zone { display: block; width: 100%; border: 2px dashed var(--line); border-radius: var(--radius); padding: 26px; text-align: center; font-size: 14px; color: var(--muted); background: #fff; cursor: pointer; transition: border-color .12s, color .12s, background .12s; }
-.upload-zone:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.upload-zone { display: block; width: 100%; border: 2px dashed var(--line); border-radius: var(--radius); padding: 22px; text-align: center; font-size: 14px; color: var(--muted); background: #fff; cursor: pointer; transition: border-color .12s, color .12s, background .12s; }
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.uz-icon { width: 40px; height: 40px; margin: 0 auto 8px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
+.uz-icon .ic { width: 22px; height: 22px; }
+.uz-title { font-weight: 600; color: var(--ink); font-size: 14px; }
+.uz-formats { margin-top: 8px; display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.uz-fmt { font-size: 11px; font-weight: 700; letter-spacing: .03em; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
+.uz-ocr { margin-top: 10px; font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.uz-ocr .ic { width: 14px; height: 14px; }
+.file-status { margin-top: 12px; }
+.file-chip { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--bg); }
+.file-chip .fc-ico { color: var(--accent-text); flex-shrink: 0; }
+.file-chip .fc-main { flex: 1; min-width: 0; }
+.file-chip .fc-name { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-chip .fc-sub { font-size: 12px; color: var(--muted); }
+.file-chip.err { border-color: hsl(0,84%,86%); background: var(--red-soft); }
+.file-chip.err .fc-ico { color: var(--red-dark); }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Admin AI: vista analisi ---------- */
+.ax-header { display: flex; flex-direction: column; gap: 12px; }
+.ax-head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.ax-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+.ax-badges { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+.ax-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.ax-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: 4px 11px; }
+.ax-chip .ic { width: 14px; height: 14px; color: var(--muted); }
+.ax-chip b { color: var(--ink); font-weight: 600; }
+
+.ax-callout { border: 1px solid hsl(199,100%,86%); background: linear-gradient(0deg, var(--accent-soft), var(--accent-soft)); border-radius: var(--radius); padding: 18px 20px; margin-top: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ax-callout .co-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--accent); color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+.ax-callout .co-main { flex: 1; min-width: 200px; }
+.ax-callout .co-kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text); }
+.ax-callout .co-action { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; margin-top: 2px; }
+.ax-callout .co-when { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+.ax-callout .co-when b { color: var(--ink); }
+
+.ax-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+@media (max-width: 900px) { .ax-grid { grid-template-columns: 1fr; } }
+.ax-doc { position: sticky; top: 16px; }
+@media (max-width: 900px) { .ax-doc { position: static; } }
+.ax-doc-view { white-space: pre-wrap; word-break: break-word; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px; max-height: 62vh; overflow: auto; }
+.ax-doc-view mark.ev-hl { background: hsl(48, 100%, 78%); color: var(--ink); border-radius: 3px; padding: 0 1px; box-shadow: 0 0 0 3px hsl(48,100%,78%); }
+.ax-col > .card + .card { margin-top: 16px; }
+
+/* evidence "Mostra nel documento" */
+.ev-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--accent-text); background: none; border: none; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
+.ev-btn:hover { text-decoration: underline; }
+.ev-btn .ic { width: 13px; height: 13px; }
+.ev-quote { margin-top: 6px; font-size: 12.5px; color: var(--ink-soft); background: var(--bg); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: 7px 10px; font-style: italic; display: none; }
+.ev-quote.show { display: block; }
+/* origine azione: estratta dal documento vs suggerita */
+.origin-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; padding: 1px 7px; border-radius: 5px; vertical-align: middle; white-space: nowrap; }
+.origin-badge .ic { width: 11px; height: 11px; }
+.ob-ex { color: var(--accent-text); background: var(--accent-soft); }
+.ob-sg { color: var(--muted); background: hsl(210,20%,94%); }
+.ax-callout .origin-badge { margin-left: 2px; }
+
+/* card scadenza dedicata */
+.deadline-card { display: flex; align-items: center; gap: 14px; }
+.deadline-card .dl-ico { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
+.deadline-card .dl-main { flex: 1; min-width: 0; }
+.dl-kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.dl-date { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+.dl-rem { font-size: 13px; margin-top: 1px; }
+.lvl-scaduta .dl-ico { background: var(--red-soft); color: var(--red-dark); } .lvl-scaduta .dl-rem { color: var(--red-dark); font-weight: 600; }
+.lvl-urgente .dl-ico { background: var(--red-soft); color: var(--red-dark); } .lvl-urgente .dl-rem { color: var(--red-dark); font-weight: 600; }
+.lvl-prossima .dl-ico { background: var(--amber-soft); color: var(--amber); } .lvl-prossima .dl-rem { color: var(--amber); }
+.lvl-nessuna .dl-ico { background: var(--accent-soft); color: var(--accent-text); } .lvl-nessuna .dl-rem { color: var(--muted); }
+.deadline-none { display: flex; align-items: flex-start; gap: 10px; color: var(--ink-soft); font-size: 14px; }
+.deadline-none .ic { color: var(--muted); flex-shrink: 0; margin-top: 1px; }
+
+/* checklist dominante */
+.ax-actions-card { border-top: 3px solid var(--accent); }
+.ax-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ax-progress .pg-label { font-size: 13px; font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
+.ax-progress .meter-track { height: 8px; }
+.action-item { display: flex; align-items: flex-start; gap: 11px; padding: 12px 0; border-top: 1px solid var(--line); }
+.action-item:first-of-type { border-top: none; }
+.action-item input[type=checkbox] { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+.action-item .ai-main { flex: 1; min-width: 0; }
+.action-item .ai-text { font-size: 14px; font-weight: 500; }
+.action-item.done .ai-text { text-decoration: line-through; color: var(--muted); }
+.action-item .ai-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.mini-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ink-soft); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+.mini-btn:hover { border-color: var(--accent); color: var(--accent-text); }
+.mini-btn .ic { width: 13px; height: 13px; }
+
+/* da verificare */
+.verify-box { list-style: none; }
+.verify-box li { position: relative; padding: 7px 0 7px 26px; font-size: 13.5px; color: var(--ink-soft); border-top: 1px solid var(--line); }
+.verify-box li:first-child { border-top: none; }
+.verify-box li::before { content: '?'; position: absolute; left: 4px; top: 7px; width: 16px; height: 16px; font-size: 11px; font-weight: 800; color: var(--amber); background: var(--amber-soft); border-radius: 50%; display: grid; place-items: center; }
+.verify-ok { display: flex; align-items: center; gap: 8px; color: var(--green); font-size: 13.5px; }
+
+/* rischio etichettato */
+.risk-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 8px; border-radius: 6px; }
+.risk-explicit { background: var(--red-soft); color: var(--red-dark); }
+.risk-possible { background: var(--amber-soft); color: var(--amber); }
+.risk-unknown { background: hsl(210,20%,94%); color: var(--ink-soft); }
+.risk-text { font-size: 14px; margin-top: 8px; }
+
+/* editor bozza */
+.draft-editor textarea { width: 100%; min-height: 190px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13.5px; line-height: 1.6; resize: vertical; background: #fff; font-family: inherit; }
+.draft-editor textarea:focus { outline: 2px solid hsla(199,100%,50%,0.3); border-color: var(--accent); }
+.draft-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+.draft-controls .dc-field { display: flex; flex-direction: column; gap: 4px; }
+.draft-controls label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.draft-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+/* empty state con CTA */
+.empty-cta { text-align: center; padding: 34px 20px; }
+.empty-cta .ec-ico { width: 48px; height: 48px; margin: 0 auto 12px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; }
+.empty-cta .ec-title { font-weight: 700; font-size: 15px; }
+.empty-cta .ec-sub { color: var(--muted); font-size: 13.5px; margin: 4px 0 14px; }
+@media (max-width: 600px) { .ax-doc-view { max-height: 40vh; } .draft-controls { gap: 8px; } }
 
 /* ---------- Dashboard ---------- */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
@@ -290,6 +407,65 @@ a { color: var(--accent-text); }
 .hint-accent { font-size: 13px; color: var(--accent-text); }
 .stack-sm > * + * { margin-top: 8px; }
 .select-inline { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 9px; font-size: 13px; background: #fff; }
+
+/* ---------- Subsidy AI ---------- */
+.dash-inc-stats { display: flex; gap: 8px; flex-wrap: wrap; margin: -2px 0 12px; }
+.stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; }
+.step-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); color: var(--muted); display: grid; place-items: center; font-size: 13px; font-weight: 700; flex-shrink: 0; background: #fff; }
+.step-dot.active { border-color: var(--accent); color: var(--accent-text); box-shadow: var(--focus-ring); }
+.step-dot.done { border-color: var(--accent); background: var(--accent); color: #fff; }
+.step-line { height: 2px; flex: 1; background: var(--line); max-width: 60px; }
+
+.prog-card .prog-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.prog-main { flex: 1; min-width: 220px; }
+.prog-name { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; }
+.rel-badge { flex-shrink: 0; width: 66px; text-align: center; border: 2px solid var(--line); border-radius: 10px; padding: 8px 4px; }
+.rel-badge.hi { border-color: var(--accent); }
+.rel-badge.mid { border-color: var(--amber); }
+.rel-badge .rb-num { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; color: var(--ink); }
+.rel-badge.hi .rb-num { color: var(--accent-text); } .rel-badge.mid .rb-num { color: var(--amber); }
+.rel-badge .rb-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.rel-badge.sm { width: auto; display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 10px; border-radius: 8px; }
+.rel-badge.sm .rb-num { font-size: 15px; } .rel-badge.sm .rb-lbl { font-size: 10px; }
+
+.source-card { background: hsl(210, 20%, 98.5%); }
+.source-grid { display: grid; grid-template-columns: 130px 1fr; gap: 8px 14px; align-items: baseline; }
+@media (max-width: 600px) { .source-grid { grid-template-columns: 1fr; gap: 2px 0; } .source-grid .src-k { margin-top: 8px; } }
+.src-k { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.src-v { font-size: 14px; word-break: break-word; }
+.ds-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 99px; }
+.ds-ok { background: var(--green-soft); color: var(--green); }
+.ds-warn { background: var(--amber-soft); color: var(--amber); }
+.ds-demo { background: var(--accent-soft); color: var(--accent-text); }
+
+.req-hard-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--red-dark); background: var(--red-soft); padding: 1px 6px; border-radius: 5px; }
+.req-soft-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); background: hsl(210,20%,94%); padding: 1px 6px; border-radius: 5px; }
+
+.quiz-progress { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.quiz-question { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; margin: 6px 0 12px; }
+.quiz-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.quiz-live { font-size: 13px; color: var(--muted); }
+
+.verdict-head { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius-sm); margin-bottom: 8px; }
+.verdict-head .vh-ico { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
+.vh-kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.vh-title { font-size: 17px; font-weight: 800; letter-spacing: -0.3px; }
+.vh-ok { background: var(--green-soft); } .vh-ok .vh-ico { background: var(--green); color: #fff; } .vh-ok .vh-title { color: var(--green); }
+.vh-warn { background: var(--amber-soft); } .vh-warn .vh-ico { background: var(--amber); color: #fff; } .vh-warn .vh-title { color: var(--amber); }
+.vh-bad { background: var(--red-soft); } .vh-bad .vh-ico { background: var(--red); color: #fff; } .vh-bad .vh-title { color: var(--red-dark); }
+
+.pratica-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+/* lista requisiti con stato per-elemento (esito verifica) */
+.state-list { list-style: none; }
+.state-list li { position: relative; padding: 7px 0 7px 26px; font-size: 14px; border-top: 1px solid var(--line); }
+.state-list li:first-child { border-top: none; }
+.state-list li::before { position: absolute; left: 3px; top: 8px; width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+.state-list li.st-ok::before { content: '✓'; color: var(--green); background: var(--green-soft); }
+.state-list li.st-bad::before { content: '✕'; color: var(--red-dark); background: var(--red-soft); }
+.state-list li.st-warn::before { content: '?'; color: var(--amber); background: var(--amber-soft); }
+.state-list .st-note { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin-left: 4px; }
+.state-list li.st-bad .st-note { color: var(--red-dark); }
+.state-list li.st-ok .st-note { color: var(--green); }
 
 .toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: #fff; padding: 11px 18px; border-radius: var(--radius-sm); font-size: 14px; box-shadow: var(--shadow-md); z-index: 80; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; max-width: min(90vw, 360px); }
 .toast.show { opacity: 1; transform: none; }
@@ -390,8 +566,16 @@ a { color: var(--accent-text); }
 
     <div class="card">
       <div class="card-title">1 · Documento da analizzare</div>
-      <button type="button" class="upload-zone" id="upload-zone" aria-label="Carica un PDF o un file di testo da analizzare">Trascina qui un PDF o un file di testo, oppure clicca per selezionarlo</button>
+      <button type="button" class="upload-zone" id="upload-zone" aria-label="Carica un PDF, un'email o un file di testo da analizzare">
+        <span class="uz-icon" aria-hidden="true" id="uz-icon"></span>
+        <span class="uz-title">Trascina qui un file o clicca per selezionarlo</span>
+        <span class="uz-formats">
+          <span class="uz-fmt">PDF</span><span class="uz-fmt">EMAIL</span><span class="uz-fmt">TXT</span>
+        </span>
+        <span class="uz-ocr" id="uz-ocr"></span>
+      </button>
       <input type="file" id="file-input" accept=".pdf,.txt,.md,.eml,text/plain,application/pdf" hidden />
+      <div class="file-status" id="file-status"></div>
       <div class="field mt-16">
         <label for="doc-text">Oppure incolla il testo della comunicazione</label>
         <textarea id="doc-text" placeholder="Incolla qui il contenuto della lettera o dell'email…"></textarea>
@@ -415,17 +599,19 @@ a { color: var(--accent-text); }
   <section class="page" id="page-subsidy">
     <div class="page-head">
       <div class="page-title">Swiss Subsidy AI</div>
-      <div class="page-desc">Profilo aziendale → matching con programmi federali e cantonali → verifica di idoneità
-        guidata. Copertura demo: Confederazione + Cantone Ticino.</div>
+      <div class="page-desc">Profilo aziendale → programmi <strong>rilevanti</strong> → verifica di <strong>idoneità</strong>
+        con hard rule → pratica. Rilevanza e idoneità sono due cose distinte. Copertura demo: Confederazione + Cantone Ticino.</div>
     </div>
     <div class="tabs">
       <button class="tab active" id="tab-profile">1 · Profilo impresa</button>
-      <button class="tab" id="tab-results">2 · Incentivi compatibili</button>
+      <button class="tab" id="tab-results">2 · Incentivi rilevanti</button>
+      <button class="tab" id="tab-cases">3 · Le mie pratiche</button>
     </div>
     <div id="subsidy-body"></div>
-    <div class="footnote">Database dimostrativo di programmi (Confederazione + Ticino), con fonte e data di ultima
-      verifica per ogni voce. La compatibilità è una stima, non un'idoneità ufficiale: importi, requisiti e scadenze
-      vanno confermati sulla fonte ufficiale indicata.</div>
+    <div class="footnote"><strong>Dati dimostrativi — verificare la fonte ufficiale.</strong> Il database di programmi
+      è a scopo di prototipo. La «Rilevanza» misura la pertinenza al progetto, non la probabilità di ottenere il
+      contributo; l'«Idoneità» è una stima basata sulle tue risposte e non sostituisce la valutazione dell'ente.
+      Importi, requisiti e scadenze vanno sempre confermati sulla fonte ufficiale.</div>
   </section>
 
   <!-- ============ SCADENZIARIO ============ -->
@@ -510,6 +696,7 @@ const store = {
 let docs = store.get('docs', []);
 let tasks = store.get('tasks', []);
 let profile = store.get('profile', null);
+let pratiche = store.get('pratiche', []);
 
 let toastTimer = null;
 function showToast(msg) {
@@ -614,9 +801,16 @@ const RISK_BY_TYPE = {
   dichiarazione: "Possibile tassazione d'ufficio o multa per mancata presentazione.",
   richiesta_documenti: "L'ente può decidere sulla base degli atti disponibili o applicare una tassazione d'ufficio.",
 };
+// Parole chiave che indicano una conseguenza ESPLICITA nel testo del documento.
+const RISK_EXPLICIT_KEYWORDS = [
+  'interessi di mora', 'procedura esecutiva', 'precetto esecutivo', 'esecuzione', 'diffida', 'tassazione d\'ufficio', 'multa', 'penale', 'spese di richiamo', 'sollecito',
+  'intérêts moratoires', 'poursuite', 'majoration', 'amende', 'mise en demeure',
+  'verzugszins', 'betreibung', 'mahngebühr', 'säumniszuschlag', 'ermessenseinschätzung', 'busse', 'mahnung',
+];
 const REPLY_TEMPLATES = {
   it: {
-    saluto: 'Gentili Signore e Signori,',
+    saluti: { formale: 'Gentili Signore e Signori,', conciso: 'Salve,', cordiale: 'Buongiorno,' },
+    chiusure: { formale: 'Distinti saluti,\n{azienda}', conciso: 'Cordiali saluti,\n{azienda}', cordiale: 'Un caro saluto,\n{azienda}' },
     corpo: {
       sollecito: 'facciamo riferimento al vostro sollecito. Il pagamento di {importo} è stato disposto in data odierna. Vi preghiamo di scusare il ritardo e restiamo a disposizione per eventuali chiarimenti.',
       richiesta_documenti: 'facciamo riferimento alla vostra comunicazione. In allegato vi trasmettiamo i documenti richiesti. Restiamo a disposizione per ulteriori informazioni.',
@@ -626,10 +820,10 @@ const REPLY_TEMPLATES = {
       decisione: 'confermiamo la ricezione della vostra decisione. Ci riserviamo di esaminarla e, se necessario, di presentare osservazioni entro il termine indicato.',
       informativa: "confermiamo la ricezione della vostra comunicazione e vi ringraziamo per l'informazione.",
     },
-    chiusura: 'Distinti saluti,\n{azienda}',
   },
   de: {
-    saluto: 'Sehr geehrte Damen und Herren,',
+    saluti: { formale: 'Sehr geehrte Damen und Herren,', conciso: 'Guten Tag,', cordiale: 'Guten Tag,' },
+    chiusure: { formale: 'Freundliche Grüsse\n{azienda}', conciso: 'Freundliche Grüsse\n{azienda}', cordiale: 'Herzliche Grüsse\n{azienda}' },
     corpo: {
       sollecito: 'wir beziehen uns auf Ihre Mahnung. Die Zahlung von {importo} wurde heute veranlasst. Wir bitten, die Verspätung zu entschuldigen, und stehen für Rückfragen gerne zur Verfügung.',
       richiesta_documenti: 'wir beziehen uns auf Ihr Schreiben. In der Beilage erhalten Sie die gewünschten Unterlagen. Für weitere Auskünfte stehen wir gerne zur Verfügung.',
@@ -639,10 +833,10 @@ const REPLY_TEMPLATES = {
       decisione: 'wir bestätigen den Erhalt Ihrer Verfügung. Wir behalten uns vor, diese zu prüfen und innert Frist allfällige Einwände geltend zu machen.',
       informativa: 'wir bestätigen den Erhalt Ihres Schreibens und danken für die Information.',
     },
-    chiusura: 'Freundliche Grüsse\n{azienda}',
   },
   fr: {
-    saluto: 'Madame, Monsieur,',
+    saluti: { formale: 'Madame, Monsieur,', conciso: 'Bonjour,', cordiale: 'Bonjour,' },
+    chiusure: { formale: 'Veuillez agréer, Madame, Monsieur, nos salutations distinguées.\n{azienda}', conciso: 'Cordialement,\n{azienda}', cordiale: 'Bien cordialement,\n{azienda}' },
     corpo: {
       sollecito: "nous nous référons à votre rappel. Le paiement de {importo} a été effectué ce jour. Nous vous prions d'excuser ce retard et restons à votre disposition.",
       richiesta_documenti: 'nous nous référons à votre courrier. Vous trouverez en annexe les documents demandés. Nous restons à votre disposition pour tout complément.',
@@ -652,9 +846,9 @@ const REPLY_TEMPLATES = {
       decisione: "nous confirmons la réception de votre décision. Nous nous réservons le droit de l'examiner et de formuler nos observations dans le délai imparti.",
       informativa: "nous confirmons la réception de votre courrier et vous remercions pour l'information.",
     },
-    chiusura: 'Veuillez agréer, Madame, Monsieur, nos salutations distinguées.\n{azienda}',
   },
 };
+const TONI = { formale: 'Formale', conciso: 'Conciso', cordiale: 'Cordiale' };
 
 function norm(text) { return ' ' + text.toLowerCase().replace(/\s+/g, ' ') + ' '; }
 function detectLanguage(text) {
@@ -719,15 +913,40 @@ function detectDocType(text) {
   }
   return best || { tipo: 'informativa', label: 'Comunicazione informativa' };
 }
+/* ---- evidence: porzione verificabile del testo originale attorno a un match ---- */
+function evidenceAt(text, index, matchLen) {
+  if (index == null || index < 0) return null;
+  let s = text.lastIndexOf('\n', index); s = s < 0 ? 0 : s + 1;
+  let e = text.indexOf('\n', index + matchLen); if (e < 0) e = text.length;
+  let quote = text.slice(s, e).trim();
+  if (quote.length > 240) {
+    const from = Math.max(s, index - 90), to = Math.min(e, index + matchLen + 90);
+    quote = (from > s ? '… ' : '') + text.slice(from, to).trim() + (to < e ? ' …' : '');
+  }
+  return { quote, start: index, end: index + matchLen };
+}
+// individua la prima keyword (case-insensitive) nel testo originale e ne ricava l'evidence
+function findKeywordEvidence(text, keys) {
+  const low = text.toLowerCase();
+  for (const k of keys) {
+    const i = low.indexOf(k.toLowerCase());
+    if (i >= 0) return evidenceAt(text, i, k.length);
+  }
+  return null;
+}
 function detectAmount(text) {
   const m = text.match(/(?:CHF|Fr\.|SFr\.)\s?([\d'’.,]+\d)/);
-  return m ? 'CHF ' + m[1] : null;
+  if (!m) return null;
+  return { value: 'CHF ' + m[1], evidence: evidenceAt(text, m.index, m[0].length) };
 }
 function detectRequestedDocs(text, docType) {
-  const t = norm(text);
-  const list = REQUESTED_DOCS.filter((d) => d.keys.some((k) => t.includes(k))).map((d) => d.label);
+  const list = [];
+  for (const d of REQUESTED_DOCS) {
+    const ev = findKeywordEvidence(text, d.keys);
+    if (ev) list.push({ label: d.label, evidence: ev });
+  }
   if (list.length === 0 && docType.tipo === 'richiesta_documenti') {
-    list.push('Documenti indicati nella lettera (elenco da verificare manualmente)');
+    list.push({ label: 'Documenti indicati nella lettera (elenco da verificare manualmente)', evidence: null });
   }
   return list;
 }
@@ -739,19 +958,47 @@ function urgencyFrom(docType, deadline) {
   if (docType.tipo === 'decisione' || docType.tipo === 'controllo') return { level: 'media', days };
   return { level: 'bassa', days };
 }
-function buildReply(lang, docType, amount, companyName) {
-  const tpl = REPLY_TEMPLATES[lang] || REPLY_TEMPLATES.it;
-  const corpo = (tpl.corpo[docType.tipo] || tpl.corpo.informativa).replace('{importo}', amount || '[importo]');
-  return tpl.saluto + '\n\n' + corpo + '\n\n' + tpl.chiusura.replace('{azienda}', companyName || '[Nome azienda]');
+// livello scadenza: scaduta / urgente / prossima / nessuna (o 'none' se assente)
+function deadlineLevel(days) {
+  if (days == null) return 'none';
+  if (days < 0) return 'scaduta';
+  if (days <= 7) return 'urgente';
+  if (days <= 30) return 'prossima';
+  return 'nessuna';
 }
+// rischio etichettato: esplicito (con evidence) / possibile / non determinabile
+function detectRisk(text, docType) {
+  const ev = findKeywordEvidence(text, RISK_EXPLICIT_KEYWORDS);
+  if (ev) return { text: RISK_BY_TYPE[docType.tipo] || 'Il documento indica esplicitamente possibili conseguenze in caso di mancato adempimento.', level: 'explicit', evidence: ev };
+  if (RISK_BY_TYPE[docType.tipo]) return { text: RISK_BY_TYPE[docType.tipo], level: 'possible', evidence: null };
+  return { text: 'Non determinabile dal documento.', level: 'unknown', evidence: null };
+}
+function buildReply(lang, docType, amount, companyName, tone) {
+  const tpl = REPLY_TEMPLATES[lang] || REPLY_TEMPLATES.it;
+  tone = tone && tpl.saluti[tone] ? tone : 'formale';
+  const corpo = (tpl.corpo[docType.tipo] || tpl.corpo.informativa).replace('{importo}', amount || '[importo]');
+  return tpl.saluti[tone] + '\n\n' + corpo + '\n\n' + tpl.chiusure[tone].replace('{azienda}', companyName || '[Nome azienda]');
+}
+
+// Punto d'integrazione LLM/multimodale: analyzeDocument mantiene la firma
+// (text, opts) -> DocumentAnalysis. Un motore AI potrà popolare gli stessi campi
+// (incl. le evidence) senza cambiare l'interfaccia.
 function analyzeDocument(text, opts = {}) {
   const lang = detectLanguage(text);
   const entity = detectEntity(text);
   const docType = detectDocType(text);
   const deadline = findDeadline(text);
-  const amount = detectAmount(text);
+  const amountObj = detectAmount(text);
+  const amount = amountObj ? amountObj.value : null;
   const requestedDocs = detectRequestedDocs(text, docType);
   const urgency = urgencyFrom(docType, deadline);
+  const rischio = detectRisk(text, docType);
+  const tone = 'formale';
+  const companyName = opts.companyName || (typeof profile !== 'undefined' && profile ? profile.ragioneSociale : null);
+
+  const senderEvidence = entity.uncertain ? null : findKeywordEvidence(text, entity.keys || []);
+  const deadlineEvidence = deadline ? evidenceAt(text, deadline.index, deadline.raw.length) : null;
+  const amountEvidence = amountObj ? amountObj.evidence : null;
 
   let confidencePoints = 0;
   if (!entity.uncertain) confidencePoints++;
@@ -759,6 +1006,25 @@ function analyzeDocument(text, opts = {}) {
   if (deadline) confidencePoints++;
   if (text.length > 200) confidencePoints++;
   const confidence = confidencePoints >= 3 ? 'alta' : confidencePoints === 2 ? 'media' : 'bassa';
+
+  // elenco esplicito delle cose di cui il motore NON è sicuro
+  const daVerificare = [];
+  if (entity.uncertain) daVerificare.push('Ente mittente non identificato con certezza');
+  if (docType.tipo === 'informativa') daVerificare.push('Tipo di documento non determinato con certezza');
+  if (!deadline) daVerificare.push('Nessuna scadenza esplicita individuata nel testo');
+  if (rischio.level !== 'explicit') daVerificare.push('Conseguenze del mancato adempimento non confermate dal documento');
+  if (lang !== 'it' && confidence !== 'alta') daVerificare.push('Traduzione/interpretazione da confermare per un documento non in italiano');
+
+  // Azioni SUGGERITE: derivano dai template generici, non da frasi del documento.
+  const suggestedActions = (CHECKLIST_BY_TYPE[docType.tipo] || CHECKLIST_BY_TYPE.informativa)
+    .map((c) => ({ text: c, sourceType: 'suggested', evidence: null }));
+  // Azioni ESTRATTE: collegate in modo affidabile a una frase del documento. Il motore
+  // deterministico collega con sicurezza solo la scadenza esplicita; per tutto il resto
+  // preferisce 'suggested' per non far sembrare estratto ciò che non lo è.
+  const extractedActions = [];
+  if (deadlineEvidence) extractedActions.push({ text: `Agire entro la scadenza indicata (${formatDate(deadline.date)})`, sourceType: 'extracted', evidence: deadlineEvidence });
+  const checklist = [...suggestedActions, ...extractedActions]
+    .map((c, i) => ({ id: i, text: c.text, done: false, sourceType: c.sourceType, evidence: c.evidence }));
 
   const parts = [];
   parts.push(`Si tratta di: ${docType.label.toLowerCase()}${entity.uncertain ? '' : ' da parte di ' + entity.ente}.`);
@@ -768,6 +1034,7 @@ function analyzeDocument(text, opts = {}) {
   else parts.push('Non è stata individuata una scadenza esplicita: verifica manualmente il documento.');
 
   return {
+    schemaVersion: 2,
     id: 'doc-' + Date.now(),
     createdAt: new Date().toISOString(),
     title: opts.title || docType.label,
@@ -777,19 +1044,53 @@ function analyzeDocument(text, opts = {}) {
     ente: entity.ente,
     enteCategoria: entity.categoria,
     enteIncerto: !!entity.uncertain,
+    senderEvidence,
     tipo: docType.tipo,
     tipoLabel: docType.label,
     urgenza: urgency.level,
     giorniAllaScadenza: urgency.days,
     scadenza: deadline ? deadline.date.toISOString() : null,
+    scadenzaLivello: deadlineLevel(urgency.days),
+    deadlineEvidence,
     importo: amount,
-    checklist: (CHECKLIST_BY_TYPE[docType.tipo] || CHECKLIST_BY_TYPE.informativa).map((c, i) => ({ id: i, text: c, done: false })),
+    amountEvidence,
+    azionePrincipale: checklist[0] ? checklist[0].text : null,
+    azionePrincipaleSource: checklist[0] ? checklist[0].sourceType : 'suggested',
+    checklist,
     documentiRichiesti: requestedDocs,
-    rischio: RISK_BY_TYPE[docType.tipo] || null,
-    bozzaRisposta: buildReply(lang, docType, amount, opts.companyName),
+    rischio,
+    daVerificare,
+    bozzaRisposta: buildReply(lang, docType, amount, companyName, tone),
+    bozzaLang: lang,
+    bozzaTone: tone,
     confidenza: confidence,
     testoOriginale: text,
   };
+}
+
+// Compat: normalizza documenti salvati con lo schema precedente (v1).
+function normalizeDoc(d) {
+  if (!d) return d;
+  if (typeof d.rischio === 'string' || d.rischio == null) {
+    d.rischio = d.rischio ? { text: d.rischio, level: 'possible', evidence: null } : { text: 'Non determinabile dal documento.', level: 'unknown', evidence: null };
+  }
+  d.documentiRichiesti = (d.documentiRichiesti || []).map((x) => (typeof x === 'string' ? { label: x, evidence: null } : x));
+  if (!Array.isArray(d.daVerificare)) {
+    d.daVerificare = [];
+    if (d.enteIncerto) d.daVerificare.push('Ente mittente non identificato con certezza');
+    if (!d.scadenza) d.daVerificare.push('Nessuna scadenza esplicita individuata nel testo');
+    if (d.rischio.level !== 'explicit') d.daVerificare.push('Conseguenze del mancato adempimento non confermate dal documento');
+  }
+  d.checklist = (d.checklist || []).map((c, i) => ({ id: c.id != null ? c.id : i, text: c.text, done: !!c.done, sourceType: c.sourceType || 'suggested', evidence: c.evidence || null }));
+  if (d.azionePrincipale == null) d.azionePrincipale = d.checklist[0] ? d.checklist[0].text : null;
+  if (d.azionePrincipaleSource == null) d.azionePrincipaleSource = d.checklist[0] ? d.checklist[0].sourceType : 'suggested';
+  if (d.scadenzaLivello == null) d.scadenzaLivello = deadlineLevel(d.giorniAllaScadenza != null ? d.giorniAllaScadenza : (d.scadenza ? Math.ceil((new Date(d.scadenza) - new Date()) / 86400000) : null));
+  if (d.bozzaLang == null) d.bozzaLang = d.lingua;
+  if (d.bozzaTone == null) d.bozzaTone = 'formale';
+  if (d.senderEvidence === undefined) d.senderEvidence = null;
+  if (d.deadlineEvidence === undefined) d.deadlineEvidence = null;
+  if (d.amountEvidence === undefined) d.amountEvidence = null;
+  return d;
 }
 
 const SAMPLE_DOCUMENTS = [
@@ -907,6 +1208,7 @@ const PROGRAMS = [
     area: ['ALL'], settori: ['ALL'], minDipendenti: 0, maxDipendenti: 100000, tipiProgetto: ['energia', 'edilizia'],
     requisiti: ['Immobile situato in Svizzera di proprietà o in diritto di superficie', 'Intervento ammissibile: isolamento termico, sostituzione riscaldamento fossile, ecc.', 'Rispetto dei requisiti tecnici minimi del programma cantonale'],
     esclusioni: ['Edifici nuovi (solo risanamenti)', 'Lavori già iniziati prima della domanda'],
+    esclusioniEval: [{ text: 'Edifici nuovi (solo risanamenti)', question: 'Si tratta di un edificio nuovo (e non di un risanamento)?', triggeringAnswer: 'si' }],
     contributo: 'Contributo per m² di superficie isolata o forfait per impianto (varia per Cantone)',
     scadenza: "Domanda in ogni momento, prima dell'inizio dei lavori", avvisoPrima: true,
     avvisoTesto: "La domanda va presentata e approvata PRIMA dell'inizio dei lavori, pena la perdita del contributo.",
@@ -923,14 +1225,15 @@ const PROGRAMS = [
     area: ['ALL'], settori: ['industria', 'commercio', 'servizi', 'trasporti', 'turismo', 'costruzioni'], minDipendenti: 1, maxDipendenti: 100000, tipiProgetto: ['energia'],
     requisiti: ['Misure che riducono il consumo elettrico (illuminazione LED, motori efficienti, refrigerazione…)', 'Le misure non sarebbero economicamente sostenibili senza contributo', 'Domanda tramite bando o programma di sostegno attivo'],
     esclusioni: ['Misure già obbligatorie per legge', 'Progetti già avviati'],
+    esclusioniEval: [{ text: 'Misure già obbligatorie per legge', question: 'Le misure previste sono già obbligatorie per legge?', triggeringAnswer: 'si' }],
     contributo: "Fino al 30% dei costi d'investimento",
     scadenza: "Bandi periodici durante l'anno", avvisoPrima: true,
     avvisoTesto: "L'impegno d'acquisto deve avvenire solo DOPO la conferma del contributo.",
     documenti: ['Descrizione delle misure', 'Calcolo del risparmio elettrico', 'Preventivi'],
     fonte: 'https://www.prokw.ch', dataVerifica: '2026-05-20',
     domande: [
-      { id: 'q1', testo: 'Il progetto riduce il consumo di energia elettrica in modo misurabile?', peso: 3, requisito: 'Risparmio elettrico' },
-      { id: 'q2', testo: "L'investimento NON è ancora stato ordinato o pagato?", peso: 3, requisito: 'Investimento non avviato' },
+      { id: 'q1', testo: 'Il progetto riduce il consumo di energia elettrica in modo misurabile?', peso: 3, hard: true, requisito: 'Risparmio elettrico' },
+      { id: 'q2', testo: "L'investimento NON è ancora stato ordinato o pagato?", peso: 3, hard: true, requisito: 'Investimento non avviato' },
     ],
   },
   {
@@ -938,6 +1241,7 @@ const PROGRAMS = [
     area: ['Ticino'], settori: ['industria', 'ict', 'servizi'], minDipendenti: 1, maxDipendenti: 500, tipiProgetto: ['innovazione', 'digitalizzazione', 'export'],
     requisiti: ['Sede o attività economica in Ticino', 'Progetto di innovazione di prodotto o processo, o partecipazione a fiere internazionali', "Sostenibilità finanziaria dell'azienda"],
     esclusioni: ['Attività commerciali pure senza componente innovativa'],
+    esclusioniEval: [{ text: 'Attività commerciali pure senza componente innovativa', question: "Si tratta di un'attività puramente commerciale, senza componente innovativa?", triggeringAnswer: 'si' }],
     contributo: "Contributo a fondo perso fino al 25% dell'investimento ammissibile",
     scadenza: "Domanda in ogni momento, prima dell'avvio del progetto", avvisoPrima: true,
     avvisoTesto: 'Il progetto non deve essere avviato prima della decisione di sostegno.',
@@ -1084,66 +1388,162 @@ function labelTipo(id) {
   const t = TIPI_PROGETTO.find((x) => x.id === id);
   return t ? t.label : id;
 }
-function matchPrograms(p) {
-  const results = [];
-  const progetti = new Set(p.progetti || []);
-  for (const prog of PROGRAMS) {
-    const reasons = [], missing = [];
-    let score = 0;
-    const geoOk = prog.area.includes('ALL') || prog.area.includes(p.cantone);
-    if (!geoOk) continue;
-    if (!prog.area.includes('ALL')) { score += 20; reasons.push(`Programma dedicato al Cantone ${p.cantone}`); }
-    else { score += 16; reasons.push('Programma disponibile in tutta la Svizzera'); }
-
-    const tipiMatch = prog.tipiProgetto.filter((t) => progetti.has(t));
-    if (tipiMatch.length === 0) continue;
-    score += Math.round(28 + 12 * (tipiMatch.length / prog.tipiProgetto.length));
-    reasons.push('Progetto compatibile: ' + tipiMatch.map(labelTipo).join(', '));
-
-    if (p.settore && prog.settori.includes(p.settore)) { score += 20; reasons.push('Settore aziendale espressamente tra quelli ammessi'); }
-    else if (prog.settori.includes('ALL')) score += 16;
-    else if (!p.settore) { score += 10; missing.push('Settore aziendale non indicato nel profilo'); }
-    else { score += 4; missing.push('Il settore indicato non è tra quelli tipicamente ammessi'); }
-
-    const dip = Number(p.dipendenti);
-    if (!Number.isFinite(dip) || p.dipendenti === '' || p.dipendenti == null) { score += 10; missing.push('Numero di dipendenti non indicato'); }
-    else if (dip >= prog.minDipendenti && dip <= prog.maxDipendenti) { score += 20; reasons.push('Dimensione aziendale nel target del programma'); }
-    else missing.push(`Dimensione fuori target (richiesti ${prog.minDipendenti}–${prog.maxDipendenti === 100000 ? '∞' : prog.maxDipendenti} dipendenti)`);
-
-    for (const r of prog.requisiti) missing.push('Da verificare: ' + r);
-
-    const pct = score;
-    if (pct < 40) continue;
-    const known = ['cantone', 'settore', 'dipendenti'].filter((f) => p[f] !== '' && p[f] != null).length;
-    const confidence = known === 3 ? 'alta' : known === 2 ? 'media' : 'bassa';
-    results.push({ program: prog, score: pct, confidence, reasons, missing });
-  }
-  return results.sort((a, b) => b.score - a.score);
+/* ================================================================
+   Modello programma normalizzato — pronto per dati affidabili / futura
+   integrazione con fonti live. NB: adatta i dati demo esistenti al nuovo
+   modello SENZA inventare importi, condizioni o scadenze.
+   ================================================================ */
+const SUPPORT_TYPE_LABEL = {
+  grant: 'Contributo a fondo perso', tax_relief: 'Sgravio fiscale', guarantee: 'Fideiussione',
+  loan: 'Prestito agevolato', reimbursement: 'Rimborso', advisory: 'Consulenza', other: 'Altro',
+};
+function deriveSupportType(contributo) {
+  const t = (contributo || '').toLowerCase();
+  if (t.includes('fideiussione')) return 'guarantee';
+  if (t.includes('prestito')) return 'loan';
+  if (t.includes('consulenza') || t.includes('gratuita')) return 'advisory';
+  if (t.includes('rimborso')) return 'reimbursement';
+  if (t.includes('sgravio') || t.includes('deduzione') || t.includes('fiscale')) return 'tax_relief';
+  return 'grant';
 }
-function evaluateEligibility(program, answers) {
-  let totalWeight = 0, okWeight = 0, answered = 0;
-  const satisfied = [], failed = [], unknown = [];
-  for (const q of program.domande) {
-    totalWeight += q.peso;
-    const a = answers[q.id];
-    if (a === 'si') { okWeight += q.peso; answered++; satisfied.push(q.requisito); }
-    else if (a === 'no') { answered++; failed.push(q.requisito); }
-    else unknown.push(q.requisito);
-  }
-  const ratio = totalWeight > 0 ? okWeight / totalWeight : 0;
-  const answeredRatio = program.domande.length > 0 ? answered / program.domande.length : 0;
-  let idoneita;
-  if (failed.length > 0 && ratio < 0.5) idoneita = 'bassa';
-  else if (ratio >= 0.8 && failed.length === 0) idoneita = 'alta';
-  else idoneita = 'media';
-  const confidence = answeredRatio === 1 ? 'alta' : answeredRatio >= 0.5 ? 'media' : 'bassa';
+function toProgramModel(p) {
+  const requirements = (p.domande || []).map((q) => ({
+    id: q.id, text: q.requisito, question: q.testo, mustBe: 'si',
+    // hard/soft: usa il campo ESPLICITO q.hard quando presente (obiettivo: derivarlo dal
+    // dato ufficialmente verificato). FALLBACK sul peso SOLO per retrocompatibilità del
+    // dataset demo (peso 3 = gating). Da rimuovere quando i dati saranno verificati alla fonte.
+    hard: (q.hard != null) ? !!q.hard : (q.peso >= 3),
+  }));
+  // Esclusioni: quelle VALUTABILI arrivano da p.esclusioniEval (domanda affidabile scritta a
+  // mano nel dato sorgente). Le stringhe legacy restano INFORMATIVE (evaluable:false): non si
+  // inventano domande dal testo generico né si usano per decidere automaticamente l'idoneità.
+  const evalTexts = new Set((p.esclusioniEval || []).map((e) => e.text));
+  const exclusions = [
+    ...(p.esclusioniEval || []).map((e, i) => ({ id: 'xe' + i, text: e.text, question: e.question, triggeringAnswer: e.triggeringAnswer, evaluable: true })),
+    ...(p.esclusioni || []).filter((t) => !evalTexts.has(t)).map((t, i) => ({ id: 'xi' + i, text: t, question: null, triggeringAnswer: null, evaluable: false })),
+  ];
   return {
-    idoneita, confidence, satisfied, failed, unknown,
+    id: p.id, name: p.programma, authority: p.ente,
+    supportType: deriveSupportType(p.contributo),
+    geography: p.area, targetSectors: p.settori, companySize: { min: p.minDipendenti, max: p.maxDipendenti },
+    projectTypes: p.tipiProgetto,
+    requirements,
+    hardRequirements: requirements.filter((r) => r.hard),
+    softRequirements: requirements.filter((r) => !r.hard),
+    exclusions,
+    evaluableExclusions: exclusions.filter((x) => x.evaluable),
+    informativeExclusions: exclusions.filter((x) => !x.evaluable),
+    contributionDescription: p.contributo,
+    applicationWindow: p.scadenza,
+    mustApplyBeforeStart: !!p.avvisoPrima,
+    mustApplyBeforeStartText: p.avvisoTesto || null,
+    documentsRequired: p.documenti || [],
+    officialSourceUrl: p.fonte, sourceTitle: p.ente + ' — pagina ufficiale del programma',
+    validFrom: null, validUntil: null,
+    lastCheckedAt: p.dataVerifica || null, lastChangedAt: null,
+    dataStatus: 'demo',
+  };
+}
+const PROGRAMS_MODEL = PROGRAMS.map(toProgramModel);
+function getProgram(id) { return PROGRAMS_MODEL.find((x) => x.id === id); }
+
+/* RILEVANZA: quanto il programma sembra pertinente al progetto dell'azienda.
+   NON è la probabilità di ottenere il contributo. */
+function computeRelevance(profile, prog) {
+  const progetti = new Set(profile.progetti || []);
+  const reasons = [], gaps = [];
+  const geoOk = prog.geography.includes('ALL') || prog.geography.includes(profile.cantone);
+  if (!geoOk) return null;
+  let score = 0;
+  if (!prog.geography.includes('ALL')) { score += 20; reasons.push(`Programma dedicato al Cantone ${profile.cantone}`); }
+  else { score += 16; reasons.push('Programma disponibile in tutta la Svizzera'); }
+  const tipiMatch = prog.projectTypes.filter((t) => progetti.has(t));
+  if (tipiMatch.length === 0) return null;
+  score += Math.round(28 + 12 * (tipiMatch.length / prog.projectTypes.length));
+  reasons.push('Progetto pertinente: ' + tipiMatch.map(labelTipo).join(', '));
+  if (profile.settore && prog.targetSectors.includes(profile.settore)) { score += 20; reasons.push('Settore aziendale tra quelli ammessi'); }
+  else if (prog.targetSectors.includes('ALL')) score += 16;
+  else if (!profile.settore) { score += 10; gaps.push('Settore aziendale non indicato nel profilo'); }
+  else { score += 4; gaps.push('Il settore indicato non è tra quelli tipicamente ammessi'); }
+  const dip = Number(profile.dipendenti);
+  if (!Number.isFinite(dip) || profile.dipendenti === '' || profile.dipendenti == null) { score += 10; gaps.push('Numero di dipendenti non indicato'); }
+  else if (dip >= prog.companySize.min && dip <= prog.companySize.max) { score += 20; reasons.push('Dimensione aziendale nel target'); }
+  else gaps.push(`Dimensione fuori target (${prog.companySize.min}–${prog.companySize.max === 100000 ? '∞' : prog.companySize.max} dipendenti)`);
+  return { score: Math.min(100, score), reasons, gaps };
+}
+
+// priorità: solo da dati disponibili (rilevanza + must-apply-before-start).
+function priorityOf(rel, prog) {
+  if (prog.mustApplyBeforeStart && rel >= 65) return { level: 'alta', reason: 'Rilevante e con domanda da presentare prima di iniziare' };
+  if (rel >= 60) return { level: 'media', reason: 'Programma rilevante da approfondire' };
+  return { level: 'bassa', reason: 'Rilevanza moderata' };
+}
+
+// matching: ordina per RILEVANZA. L'idoneità NON entra nel punteggio.
+function matchPrograms(profile) {
+  const out = [];
+  for (const prog of PROGRAMS_MODEL) {
+    const rel = computeRelevance(profile, prog);
+    if (!rel || rel.score < 40) continue;
+    out.push({
+      program: prog, relevanceScore: rel.score, reasons: rel.reasons, profileGaps: rel.gaps,
+      reqToVerify: prog.requirements.length + prog.evaluableExclusions.length, priority: priorityOf(rel.score, prog),
+    });
+  }
+  return out.sort((a, b) => b.relevanceScore - a.relevanceScore);
+}
+
+/* IDONEITÀ: valuta le risposte contro hard/soft rules.
+   Una hard rule fallita rende il programma "ineligible" a prescindere dal resto. */
+const ELIGIBILITY_LABEL = {
+  unknown: 'Requisiti da verificare', likely: 'Probabilmente idoneo',
+  unlikely: 'Probabilmente non idoneo', ineligible: 'Non idoneo',
+};
+const ELIGIBILITY_BADGE = { unknown: 'media', likely: 'bassa', unlikely: 'alta', ineligible: 'alta' };
+// Domande del questionario: hard requirements, poi esclusioni VALUTABILI (bloccanti), poi soft.
+function subsidyQuestions(prog) {
+  return [
+    ...prog.hardRequirements.map((r) => ({ key: r.id, question: r.question, kind: 'hard', ref: r })),
+    ...prog.evaluableExclusions.map((x) => ({ key: x.id, question: x.question, kind: 'excl', ref: x })),
+    ...prog.softRequirements.map((r) => ({ key: r.id, question: r.question, kind: 'soft', ref: r })),
+  ];
+}
+function evaluateEligibility(prog, answers) {
+  const satisfied = [], failed = [], unknown = [];
+  for (const r of prog.requirements) {
+    const a = answers[r.id];
+    if (a === r.mustBe) satisfied.push(r);
+    else if (a === 'si' || a === 'no') failed.push(r); // risposta opposta a mustBe
+    else unknown.push(r);
+  }
+  // esclusioni valutabili: risposta === triggeringAnswer → esclusione ATTIVATA (blocca)
+  const exTriggered = [], exCleared = [], exUnknown = [];
+  for (const x of prog.evaluableExclusions) {
+    const a = answers[x.id];
+    if (a === x.triggeringAnswer) exTriggered.push(x);
+    else if (a === 'si' || a === 'no') exCleared.push(x);
+    else exUnknown.push(x);
+  }
+  const hardFailed = failed.filter((r) => r.hard);
+  const hardUnknown = unknown.some((r) => r.hard);
+  let status, cause = null;
+  // Precedenza assoluta: esclusione attivata o hard requirement fallito → ineligible.
+  if (exTriggered.length) { status = 'ineligible'; cause = { type: 'exclusion', item: exTriggered[0] }; }
+  else if (hardFailed.length) { status = 'ineligible'; cause = { type: 'requirement', item: hardFailed[0] }; }
+  else if (hardUnknown || exUnknown.length) status = 'unknown';
+  else if (failed.length === 0 && unknown.length === 0) status = 'likely';
+  else if (failed.length > 0 && satisfied.length === 0) status = 'unlikely';
+  else status = 'unknown'; // soft fallita ma con hard soddisfatte: mai ineligible in automatico
+  return {
+    status, cause,
+    satisfied, failed, unknown,
+    exclusions: { triggered: exTriggered, cleared: exCleared, unknown: exUnknown, informative: prog.informativeExclusions },
     nextSteps: [
-      ...(failed.length > 0 ? ['Chiarire i requisiti non soddisfatti prima di procedere'] : []),
-      ...(unknown.length > 0 ? ['Completare la verifica dei requisiti mancanti'] : []),
-      'Consultare la fonte ufficiale per confermare condizioni e importi',
-      ...(program.avvisoPrima ? ["NON avviare il progetto/acquisto prima della conferma dell'ente"] : []),
+      ...(status === 'ineligible' && cause ? [(cause.type === 'exclusion' ? 'Esclusione attivata' : 'Requisito obbligatorio non soddisfatto') + ': «' + cause.item.text + '». Il programma non sembra applicabile a questo caso.'] : []),
+      ...((unknown.length > 0 || exUnknown.length > 0) ? ['Completare la verifica dei punti ancora aperti'] : []),
+      ...(prog.informativeExclusions.length ? ['Verificare manualmente le esclusioni non ancora valutabili automaticamente'] : []),
+      'Confermare condizioni, importi e scadenze sulla fonte ufficiale',
+      ...(prog.mustApplyBeforeStart ? ["NON avviare il progetto/acquisto prima della conferma dell'ente"] : []),
       'Preparare i documenti richiesti per la candidatura',
     ],
   };
@@ -1272,11 +1672,11 @@ function collectPriorities() {
   });
   // 4) incentivi che richiedono la domanda prima di avviare il progetto
   if (profile) {
-    matchPrograms(profile).filter((m) => m.program.avvisoPrima).slice(0, 3).forEach((m) => {
+    matchPrograms(profile).filter((m) => m.program.mustApplyBeforeStart).slice(0, 3).forEach((m) => {
       items.push({
         pr: 'media', ico: 'banknote', order: 40,
-        title: esc(m.program.programma),
-        sub: 'Domanda da presentare PRIMA di avviare il progetto · ' + esc(m.program.ente),
+        title: esc(m.program.name),
+        sub: 'Domanda da presentare PRIMA di avviare il progetto · ' + esc(m.program.authority),
         page: 'subsidy', cta: 'Vai agli incentivi',
       });
     });
@@ -1371,7 +1771,9 @@ function renderDashboard() {
   const overdue7 = next7.filter((t) => daysTo(t.scadenza) < 0).length;
   const toVerify = docs.filter((d) => d.confidenza !== 'alta' || d.enteIncerto);
   const matches = profile ? matchPrograms(profile) : [];
-  const priorityIncentives = matches.filter((m) => m.program.avvisoPrima).length;
+  const relevantCount = matches.length;
+  // pratiche attive = candidature vere (non preliminari/riferimento) non ancora chiuse
+  const activeCases = pratiche.filter((pr) => pr.stato !== 'chiusa' && (pr.kind == null || pr.kind === 'candidatura')).length;
 
   // completamento checklist
   let totChecks = 0, doneChecks = 0;
@@ -1431,9 +1833,9 @@ function renderDashboard() {
     </div>
     <div class="kpi">
       <div class="kpi-ico">${icon('star', 'ic-sm')}</div>
-      <div class="kpi-label">Incentivi prioritari</div>
-      <div class="kpi-value">${profile ? priorityIncentives : '—'}</div>
-      <div class="kpi-sub">${profile ? 'domanda prima di agire' : 'crea un profilo'}</div>
+      <div class="kpi-label">Incentivi rilevanti</div>
+      <div class="kpi-value">${profile ? relevantCount : '—'}</div>
+      <div class="kpi-sub">${profile ? 'idoneità da verificare' : 'crea un profilo'}</div>
     </div>
   </div>
 
@@ -1457,13 +1859,18 @@ function renderDashboard() {
   </div>
 
   ${profile ? `
-  <div class="card mt-16"><div class="card-title">Incentivi compatibili</div>
-    <div class="muted-sm" style="margin-top:-6px;margin-bottom:10px">${matches.length} programmi · ${priorityIncentives} con avviso «domanda prima di agire».</div>
+  <div class="card mt-16"><div class="card-title">Incentivi & pratiche</div>
+    <div class="dash-inc-stats">
+      <span class="lang-chip">${relevantCount} <b>rilevanti</b></span>
+      <span class="lang-chip">${relevantCount} <b>idoneità da verificare</b></span>
+      <span class="lang-chip">${activeCases} <b>pratiche attive</b></span>
+    </div>
     ${matches.slice(0, 3).map((m) => `
       <div class="list-row">
-        <div class="list-main"><div class="list-title">${esc(m.program.programma)}</div><div class="list-sub">${esc(m.program.ente)}</div></div>
-        ${m.program.avvisoPrima ? '<span class="badge badge-alta">prima di agire</span>' : ''}
-        <span class="badge ${m.score >= 75 ? 'badge-bassa' : m.score >= 55 ? 'badge-media' : 'badge-neutral'}">${m.score}%</span>
+        <div class="list-main"><div class="list-title">${esc(m.program.name)}</div><div class="list-sub">${esc(m.program.authority)}</div></div>
+        ${m.program.mustApplyBeforeStart ? '<span class="badge badge-alta">prima di agire</span>' : ''}
+        <span class="badge badge-neutral">Rilevanza ${m.relevanceScore}%</span>
+        <span class="badge badge-media">Idoneità da verificare</span>
       </div>`).join('')}
     <button class="btn btn-sm mt-10" data-page="subsidy">Vedi tutti gli incentivi ${icon('arrowRight', 'ic-sm')}</button>
   </div>` : ''}
@@ -1507,10 +1914,40 @@ $('#analyze-btn').addEventListener('click', () => {
   }
   runAnalysis(text, $('#doc-title').value);
 });
+$('#uz-icon').innerHTML = icon('document');
+$('#uz-ocr').innerHTML = icon('fileSearch', 'ic-sm') + '<span>Scansioni e foto — supporto OCR previsto</span>';
 $('#upload-zone').addEventListener('click', () => $('#file-input').click());
-$('#upload-zone').addEventListener('dragover', (e) => e.preventDefault());
-$('#upload-zone').addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
+$('#upload-zone').addEventListener('dragover', (e) => { e.preventDefault(); $('#upload-zone').classList.add('drag'); });
+$('#upload-zone').addEventListener('dragleave', () => $('#upload-zone').classList.remove('drag'));
+$('#upload-zone').addEventListener('drop', (e) => { e.preventDefault(); $('#upload-zone').classList.remove('drag'); handleFile(e.dataTransfer.files[0]); });
 $('#file-input').addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+function formatBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1024 / 1024).toFixed(1) + ' MB';
+}
+function clearFileStatus() {
+  $('#file-status').innerHTML = '';
+  $('#file-input').value = '';
+}
+function renderFileChip(file, state, msg) {
+  const fs = $('#file-status');
+  if (state === 'loading') {
+    fs.innerHTML = `<div class="file-chip"><span class="spinner"></span>
+      <div class="fc-main"><div class="fc-name">${esc(file.name)}</div><div class="fc-sub">Estrazione del testo in corso…</div></div></div>`;
+  } else if (state === 'ok') {
+    fs.innerHTML = `<div class="file-chip"><span class="fc-ico">${icon('document')}</span>
+      <div class="fc-main"><div class="fc-name">${esc(file.name)}</div><div class="fc-sub">${formatBytes(file.size)} · testo estratto</div></div>
+      <button class="btn btn-sm btn-icon" id="file-remove" aria-label="Rimuovi il file">${icon('close', 'ic-sm')}</button></div>`;
+    $('#file-remove').addEventListener('click', clearFileStatus);
+  } else if (state === 'err') {
+    fs.innerHTML = `<div class="file-chip err"><span class="fc-ico">${icon('alert')}</span>
+      <div class="fc-main"><div class="fc-name">${esc(file.name)}</div><div class="fc-sub">${esc(msg || 'Errore di lettura')}</div></div>
+      <button class="btn btn-sm btn-icon" id="file-remove" aria-label="Rimuovi il file">${icon('close', 'ic-sm')}</button></div>`;
+    $('#file-remove').addEventListener('click', clearFileStatus);
+  }
+}
 
 async function extractPdfText(file) {
   if (!window.pdfjsLib) throw new Error('Libreria PDF non disponibile (offline). Incolla il testo manualmente.');
@@ -1528,100 +1965,279 @@ async function extractPdfText(file) {
 async function handleFile(file) {
   if (!file) return;
   $('#admin-error').innerHTML = '';
-  const zone = $('#upload-zone');
-  const orig = zone.textContent;
-  zone.textContent = 'Estrazione del testo in corso…';
+  renderFileChip(file, 'loading');
   try {
     let content = '';
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
       content = await extractPdfText(file);
-      if (content.trim().length < 40) throw new Error("Il PDF non contiene testo estraibile (probabile scansione). Incolla il testo manualmente; l'OCR è in roadmap.");
+      if (content.trim().length < 40) throw new Error("Il PDF sembra una scansione senza testo. L'OCR è previsto: per ora incolla il testo manualmente.");
     } else if (file.type.startsWith('image/')) {
-      throw new Error('OCR delle immagini in roadmap: incolla il testo della lettera.');
+      throw new Error("Immagine ricevuta: l'OCR è previsto ma non ancora disponibile. Incolla il testo della lettera.");
     } else {
       content = await file.text();
     }
     const title = file.name.replace(/\.[^.]+$/, '');
     $('#doc-text').value = content;
     $('#doc-title').value = title;
+    renderFileChip(file, 'ok');
     runAnalysis(content, title);
   } catch (err) {
-    $('#admin-error').innerHTML = '<div class="info-box" style="margin-top:12px">' + esc(err.message || 'Impossibile leggere il file.') + '</div>';
-  } finally {
-    zone.textContent = orig;
+    renderFileChip(file, 'err', err.message || 'Impossibile leggere il file.');
   }
 }
 
+// Dedup di sessione: analizzare di nuovo lo stesso input aggiorna la stessa
+// voce d'archivio invece di crearne una nuova.
+const analyzedKeys = new Map();
 function runAnalysis(text, title) {
-  currentDoc = analyzeDocument(text, { title: title || undefined });
-  docs.push(currentDoc);
+  const key = (title || '').trim() + '¦' + text.trim();
+  const fresh = analyzeDocument(text, { title: title || undefined });
+  const existingId = analyzedKeys.get(key);
+  if (existingId) {
+    const idx = docs.findIndex((d) => d.id === existingId);
+    fresh.id = existingId;
+    // preserva stato checklist e bozza modificata sull'analisi esistente
+    if (idx >= 0) {
+      const prev = docs[idx];
+      fresh.checklist.forEach((c, i) => { if (prev.checklist[i]) c.done = prev.checklist[i].done; });
+      if (prev.bozzaRisposta) fresh.bozzaRisposta = prev.bozzaRisposta;
+      if (prev.bozzaLang) fresh.bozzaLang = prev.bozzaLang;
+      if (prev.bozzaTone) fresh.bozzaTone = prev.bozzaTone;
+      docs[idx] = fresh;
+    } else docs.push(fresh);
+  } else {
+    docs.push(fresh);
+    analyzedKeys.set(key, fresh.id);
+  }
+  currentDoc = fresh;
   store.set('docs', docs);
   renderResult();
-  showToast('Documento analizzato e salvato in archivio');
+  showToast(existingId ? 'Analisi aggiornata' : 'Documento analizzato e salvato in archivio');
   $('#analysis-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+const DEADLINE_LEVEL_LABEL = { scaduta: 'Scaduta', urgente: 'Urgente', prossima: 'Prossima', nessuna: 'Nessuna urgenza' };
+function evBtn(ev, label) {
+  if (!ev) return '';
+  return `<button type="button" class="ev-btn" data-ev-start="${ev.start}" data-ev-end="${ev.end}" data-ev-quote="${esc(ev.quote)}">${icon('fileSearch', 'ic-sm')}${esc(label || 'Mostra nel documento')}</button>
+    <div class="ev-quote">«${esc(ev.quote)}»</div>`;
+}
+// distingue azioni estratte dal documento da suggerimenti generici SwissAI
+function originBadge(sourceType, ctx) {
+  if (sourceType === 'extracted') return `<span class="origin-badge ob-ex">${icon('fileSearch', 'ic-sm')}${ctx === 'callout' ? 'Richiesto nel documento' : 'Dal documento'}</span>`;
+  return `<span class="origin-badge ob-sg">${ctx === 'callout' ? 'Suggerito da SwissAI' : 'Suggerimento SwissAI'}</span>`;
+}
+
 function renderResult() {
+  if (currentDoc) normalizeDoc(currentDoc);
   const r = currentDoc;
   if (!r) { $('#analysis-result').innerHTML = ''; return; }
+  const done = r.checklist.filter((c) => c.done).length;
+  const tot = r.checklist.length;
+  const pct = tot ? Math.round((done / tot) * 100) : 0;
+  const lvl = r.scadenzaLivello || 'none';
+  const days = r.giorniAllaScadenza;
+
+  // callout "cosa devi fare adesso"
+  const remaining = days == null ? '' : days < 0 ? `Scaduta da ${Math.abs(days)} giorni` : days === 0 ? 'Scade oggi' : `Mancano ${days} giorni`;
+  const callout = `
+    <div class="ax-callout">
+      <div class="co-ico">${icon('checkCircle')}</div>
+      <div class="co-main">
+        <div class="co-kicker">Cosa devi fare adesso</div>
+        <div class="co-action">${esc(r.azionePrincipale || 'Leggere il documento e valutare le azioni')} ${originBadge(r.azionePrincipaleSource, 'callout')}</div>
+        <div class="co-when">${r.scadenza ? `Entro <b>${formatDate(r.scadenza)}</b>${remaining ? ' · ' + remaining : ''}` : 'Nessuna scadenza individuata con certezza'}</div>
+      </div>
+      <button class="btn btn-primary" id="co-create">${icon('calendar', 'ic-sm')} Crea attività</button>
+    </div>`;
+
+  // card scadenza
+  const deadlineBlock = r.scadenza
+    ? `<div class="card lvl-${lvl}">
+         <div class="deadline-card">
+           <div class="dl-ico">${icon('calendar')}</div>
+           <div class="dl-main">
+             <div class="dl-kicker">Scadenza · ${DEADLINE_LEVEL_LABEL[lvl] || ''}</div>
+             <div class="dl-date">${formatDate(r.scadenza)}</div>
+             <div class="dl-rem">${remaining}</div>
+           </div>
+           <span class="badge badge-${lvl === 'scaduta' || lvl === 'urgente' ? 'alta' : lvl === 'prossima' ? 'media' : 'bassa'}">${DEADLINE_LEVEL_LABEL[lvl] || ''}</span>
+         </div>
+         ${evBtn(r.deadlineEvidence, 'Mostra nel documento')}
+       </div>`
+    : `<div class="card"><div class="deadline-none">${icon('alert')}<div><strong>Scadenza non individuata con sufficiente certezza.</strong><br><span class="muted-sm">Verifica manualmente il documento: il sistema non inventa una data.</span></div></div></div>`;
+
+  // da verificare
+  const verifyBlock = (r.daVerificare && r.daVerificare.length)
+    ? `<div class="card"><div class="card-title">${icon('alert', 'ic-sm')} Da verificare
+         <span class="badge badge-neutral">confidenza ${esc(r.confidenza)}</span></div>
+         <ul class="verify-box">${r.daVerificare.map((v) => `<li>${esc(v)}</li>`).join('')}</ul></div>`
+    : `<div class="card"><div class="verify-ok">${icon('checkCircle', 'ic-sm')} Informazioni principali confermate (confidenza ${esc(r.confidenza)}).</div></div>`;
+
+  // rischio etichettato
+  const rk = r.rischio || { text: 'Non determinabile dal documento.', level: 'unknown' };
+  const riskLabel = rk.level === 'explicit' ? 'Esplicitamente indicato nel documento'
+    : rk.level === 'possible' ? 'Possibile conseguenza — da verificare' : 'Non determinabile dal documento';
+  const riskBlock = `<div class="card"><div class="card-title">Rischio se non agisci</div>
+      <span class="risk-tag risk-${rk.level}">${icon(rk.level === 'explicit' ? 'alert' : 'fileSearch', 'ic-sm')} ${riskLabel}</span>
+      ${rk.level !== 'unknown' ? `<div class="risk-text">${esc(rk.text)}</div>` : ''}
+      ${evBtn(rk.evidence, 'Mostra nel documento')}</div>`;
+
   $('#analysis-result').innerHTML = `
-  <div class="card">
-    <div class="card-title">2 · Risultato dell'analisi
-      <span class="badge badge-${esc(r.urgenza)}">urgenza ${esc(r.urgenza)}</span>
-      <span class="badge badge-neutral">confidenza ${esc(r.confidenza)}</span>
+  <div class="card ax-header">
+    <div class="ax-head-top">
+      <div class="ax-title">${esc(r.title)}</div>
+      <div class="ax-badges">
+        <span class="badge badge-${esc(r.urgenza)}">urgenza ${esc(r.urgenza)}</span>
+        <span class="badge badge-neutral">confidenza ${esc(r.confidenza)}</span>
+      </div>
     </div>
-    ${r.confidenza === 'bassa' ? '<div class="info-box" style="margin-bottom:12px">L\'analisi automatica ha una confidenza bassa: verifica manualmente il documento prima di agire.</div>' : ''}
-    <div class="result-row"><div class="result-label">In breve</div><div>${esc(r.inBreve)}</div></div>
-    <div class="result-row"><div class="result-label">Ente mittente</div>
-      <div>${esc(r.ente)} <span class="badge badge-neutral">${esc(r.enteCategoria)}</span>
-      ${r.enteIncerto ? '<span class="badge badge-media">da verificare</span>' : ''}</div></div>
-    <div class="result-row"><div class="result-label">Lingua</div><div>${esc(r.linguaLabel)}</div></div>
-    <div class="result-row"><div class="result-label">Tipo di documento</div><div>${esc(r.tipoLabel)}</div></div>
-    ${r.importo ? `<div class="result-row"><div class="result-label">Importo</div><div>${esc(r.importo)}</div></div>` : ''}
-    <div class="result-row"><div class="result-label">Scadenza</div><div>
-      ${r.scadenza
-        ? `<strong>${formatDate(r.scadenza)}</strong>${r.giorniAllaScadenza != null && r.giorniAllaScadenza >= 0 ? ` <span style="color:var(--muted)">· tra ${r.giorniAllaScadenza} giorni</span>` : ''}
-           <button class="btn btn-sm" style="margin-left:12px" id="create-deadline">+ Crea scadenza</button>`
-        : 'Nessuna scadenza esplicita individuata — verifica manuale consigliata.'}
-    </div></div>
-    <div class="result-row"><div class="result-label">Cosa devi fare</div><div>
-      ${r.checklist.map((c) => `
-        <label class="checklist-item${c.done ? ' done' : ''}">
-          <input type="checkbox" data-check="${c.id}" ${c.done ? 'checked' : ''} />
-          <span>${esc(c.text)}</span>
-        </label>`).join('')}
-    </div></div>
-    <div class="result-row"><div class="result-label">Documenti richiesti</div><div>
-      ${r.documentiRichiesti.length > 0
-        ? `<ul class="detail-list">${r.documentiRichiesti.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>`
-        : '<span style="color:var(--muted)">Nessun documento specifico individuato nel testo.</span>'}
-    </div></div>
-    <div class="result-row"><div class="result-label">Rischio se non agisci</div><div>
-      ${r.rischio ? esc(r.rischio) : '<span style="color:var(--muted)">Non determinabile con sufficiente certezza — da verificare con l\'ente.</span>'}
-    </div></div>
-    <div class="result-row"><div class="result-label">Bozza di risposta (${esc(r.linguaLabel)})</div><div>
-      <div class="draft-box">${esc(r.bozzaRisposta)}</div>
-      <button class="btn btn-sm" style="margin-top:8px" id="copy-draft">Copia bozza</button>
-      <span style="font-size:12px;color:var(--muted);margin-left:10px">Bozza generata automaticamente: rileggi e adatta prima dell'invio.</span>
-    </div></div>
+    <div class="ax-meta">
+      <span class="ax-chip">${icon('banknote', 'ic-sm')} <b>${esc(r.ente)}</b>${r.enteIncerto ? ' · da verificare' : ''}</span>
+      <span class="ax-chip">${icon('document', 'ic-sm')} ${esc(r.tipoLabel)}</span>
+      <span class="ax-chip">${esc(r.linguaLabel)}</span>
+      ${r.importo ? `<span class="ax-chip">${esc(r.importo)}</span>` : ''}
+    </div>
+    ${r.senderEvidence ? `<div>${evBtn(r.senderEvidence, 'Mittente: mostra nel documento')}</div>` : ''}
+  </div>
+
+  ${callout}
+
+  <div class="ax-grid">
+    <div class="ax-col ax-doc">
+      <div class="card">
+        <div class="card-title">${icon('document', 'ic-sm')} Documento originale</div>
+        <div class="ax-doc-view" id="ax-doc-view">${esc(r.testoOriginale)}</div>
+      </div>
+    </div>
+
+    <div class="ax-col">
+      ${deadlineBlock}
+
+      <div class="card ax-actions-card">
+        <div class="card-title">Cosa devi fare</div>
+        <div class="ax-progress">
+          <span class="pg-label">${done} di ${tot} azioni completate</span>
+          <div class="meter-track" style="flex:1"><div class="meter-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div id="ax-actions">
+          ${r.checklist.map((c) => `
+            <div class="action-item${c.done ? ' done' : ''}" data-ai="${c.id}">
+              <input type="checkbox" data-check="${c.id}" ${c.done ? 'checked' : ''} aria-label="${esc(c.text)}" />
+              <div class="ai-main">
+                <div class="ai-text">${esc(c.text)} ${originBadge(c.sourceType)}</div>
+                <div class="ai-meta">
+                  ${c.sourceType === 'extracted' && c.evidence ? evBtn(c.evidence, 'Mostra nel documento') : ''}
+                  <button type="button" class="mini-btn" data-add-task="${c.id}">${icon('calendar', 'ic-sm')} Aggiungi allo scadenziario</button>
+                </div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      ${verifyBlock}
+      ${riskBlock}
+
+      <div class="card">
+        <div class="card-title">Documenti richiesti</div>
+        ${r.documentiRichiesti.length > 0
+          ? r.documentiRichiesti.map((d) => `
+            <div class="action-item" style="padding:9px 0">
+              <span class="ai-main"><span class="ai-text" style="font-weight:400">${esc(d.label)}</span>
+              ${d.evidence ? `<div class="ai-meta">${evBtn(d.evidence, 'Mostra nel documento')}</div>` : ''}</span>
+            </div>`).join('')
+          : '<span class="muted-sm">Nessun documento specifico individuato nel testo.</span>'}
+      </div>
+
+      <div class="card draft-editor">
+        <div class="card-title">Bozza di risposta</div>
+        <div class="draft-controls">
+          <div class="dc-field"><label for="draft-lang">Lingua</label>
+            <select id="draft-lang" class="select-inline">${Object.entries(LANG_LABEL).map(([k, v]) => `<option value="${k}"${r.bozzaLang === k ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
+          <div class="dc-field"><label for="draft-tone">Tono</label>
+            <select id="draft-tone" class="select-inline">${Object.entries(TONI).map(([k, v]) => `<option value="${k}"${r.bozzaTone === k ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
+          <button class="btn btn-sm" id="draft-reset">${icon('fileSearch', 'ic-sm')} Ripristina bozza</button>
+        </div>
+        <textarea id="draft-text" aria-label="Bozza di risposta modificabile">${esc(r.bozzaRisposta)}</textarea>
+        <div class="draft-actions">
+          <button class="btn btn-sm btn-primary" id="draft-save">Salva modifiche</button>
+          <button class="btn btn-sm" id="draft-copy">Copia</button>
+          <span class="muted-sm">Bozza generata da modello di template — rileggi e adatta prima dell'invio.</span>
+        </div>
+      </div>
+    </div>
   </div>`;
 
-  const createBtn = $('#create-deadline');
-  if (createBtn) createBtn.addEventListener('click', () => {
-    addTask({ titolo: currentDoc.title, ente: currentDoc.ente, scadenza: currentDoc.scadenza, urgenza: currentDoc.urgenza, docId: currentDoc.id });
+  wireResultHandlers();
+}
+
+function persistDoc() {
+  const idx = docs.findIndex((d) => d.id === currentDoc.id);
+  if (idx >= 0) docs[idx] = currentDoc; else docs.push(currentDoc);
+  store.set('docs', docs);
+}
+
+function wireResultHandlers() {
+  const r = currentDoc;
+  // callout "Crea attività"
+  $('#co-create').addEventListener('click', () => {
+    addTask({ titolo: r.azionePrincipale || r.title, ente: r.ente, scadenza: r.scadenza, urgenza: r.urgenza, docId: r.id });
   });
-  $('#copy-draft').addEventListener('click', () => {
-    navigator.clipboard?.writeText(currentDoc.bozzaRisposta);
+  // evidence "Mostra nel documento" (toggle frase + highlight nel viewer)
+  document.querySelectorAll('#analysis-result .ev-btn').forEach((b) => b.addEventListener('click', () => {
+    const q = b.nextElementSibling;
+    if (q && q.classList.contains('ev-quote')) q.classList.toggle('show');
+    highlightEvidence(+b.dataset.evStart, +b.dataset.evEnd);
+  }));
+  // checklist toggle
+  document.querySelectorAll('#analysis-result [data-check]').forEach((cb) => cb.addEventListener('change', () => {
+    const item = r.checklist.find((c) => c.id === +cb.dataset.check);
+    if (item) item.done = cb.checked;
+    persistDoc();
+    cb.closest('.action-item').classList.toggle('done', cb.checked);
+    const done = r.checklist.filter((c) => c.done).length;
+    $('#analysis-result .pg-label').textContent = `${done} di ${r.checklist.length} azioni completate`;
+    $('#analysis-result .ax-progress .meter-fill').style.width = (r.checklist.length ? Math.round(done / r.checklist.length * 100) : 0) + '%';
+  }));
+  // per-azione "Aggiungi allo scadenziario"
+  document.querySelectorAll('#analysis-result [data-add-task]').forEach((b) => b.addEventListener('click', () => {
+    const item = r.checklist.find((c) => c.id === +b.dataset.addTask);
+    addTask({ titolo: item ? item.text : r.title, ente: r.ente, scadenza: r.scadenza, urgenza: r.urgenza, docId: r.id });
+  }));
+  // editor bozza
+  $('#draft-reset').addEventListener('click', () => {
+    r.bozzaLang = $('#draft-lang').value;
+    r.bozzaTone = $('#draft-tone').value;
+    r.bozzaRisposta = buildReply(r.bozzaLang, { tipo: r.tipo }, r.importo, (typeof profile !== 'undefined' && profile ? profile.ragioneSociale : null), r.bozzaTone);
+    $('#draft-text').value = r.bozzaRisposta;
+    persistDoc();
+    showToast('Bozza rigenerata');
+  });
+  $('#draft-save').addEventListener('click', () => {
+    r.bozzaRisposta = $('#draft-text').value;
+    r.bozzaLang = $('#draft-lang').value;
+    r.bozzaTone = $('#draft-tone').value;
+    persistDoc();
+    showToast('Modifiche salvate');
+  });
+  $('#draft-copy').addEventListener('click', () => {
+    navigator.clipboard?.writeText($('#draft-text').value);
     showToast('Bozza copiata negli appunti');
   });
-  document.querySelectorAll('#analysis-result [data-check]').forEach((cb) => {
-    cb.addEventListener('change', () => {
-      const item = currentDoc.checklist.find((c) => c.id === +cb.dataset.check);
-      if (item) item.done = cb.checked;
-      store.set('docs', docs);
-      cb.closest('.checklist-item').classList.toggle('done', cb.checked);
-    });
-  });
+}
+
+// evidenzia la porzione [start,end] del testo originale nel viewer e vi scorre
+function highlightEvidence(start, end) {
+  const view = $('#ax-doc-view');
+  if (!view || !currentDoc) return;
+  const t = currentDoc.testoOriginale || '';
+  if (!(start >= 0) || !(end > start) || end > t.length) return;
+  view.innerHTML = esc(t.slice(0, start)) + '<mark class="ev-hl">' + esc(t.slice(start, end)) + '</mark>' + esc(t.slice(end));
+  const m = view.querySelector('.ev-hl');
+  if (m) {
+    if (window.matchMedia('(max-width: 900px)').matches) view.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    m.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 /* ================================================================
@@ -1691,59 +2307,84 @@ document.addEventListener('change', (e) => {
    ARCHIVIO
    ================================================================ */
 let archiveFilter = 'tutte';
-let openDocId = null;
+let armedDelete = null;
+
+// Apre un documento dall'archivio nella nuova vista dettagliata di Admin AI.
+function openDocInAdmin(id) {
+  const d = docs.find((x) => x.id === id);
+  if (!d) return;
+  normalizeDoc(d);
+  currentDoc = d;
+  // registra la chiave così una nuova analisi dello stesso testo aggiorna questa voce
+  analyzedKeys.set((d.title || '').trim() + '¦' + (d.testoOriginale || '').trim(), d.id);
+  $('#doc-text').value = d.testoOriginale || '';
+  $('#doc-title').value = d.title || '';
+  $('#admin-error').innerHTML = '';
+  clearFileStatus();
+  goto('admin');
+  renderResult();
+  $('#analysis-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 function renderArchive() {
   $('#archive-filters').innerHTML = ['tutte', 'alta', 'media', 'bassa'].map((f) =>
     `<button class="btn btn-sm${archiveFilter === f ? ' btn-primary' : ''}" data-afilter="${f}">${f}</button>`).join('');
   const visible = [...docs].reverse().filter((d) => archiveFilter === 'tutte' || d.urgenza === archiveFilter);
   $('#archive-count').textContent = `Documenti (${visible.length})`;
-  $('#archive-list').innerHTML = visible.length === 0
-    ? '<div class="empty">Nessun documento in archivio. Analizza una comunicazione in Admin AI.</div>'
-    : visible.map((d) => {
+  if (docs.length === 0) {
+    $('#archive-list').innerHTML = `
+      <div class="empty-cta">
+        <div class="ec-ico">${icon('document')}</div>
+        <div class="ec-title">Nessun documento ancora</div>
+        <div class="ec-sub">Carica la tua prima comunicazione amministrativa e lascia che Admin AI la trasformi in azioni concrete.</div>
+        <button class="btn btn-primary" data-page="admin">${icon('document', 'ic-sm')} Analizza un documento</button>
+      </div>`;
+  } else if (visible.length === 0) {
+    $('#archive-list').innerHTML = '<div class="empty">Nessun documento con questo filtro.</div>';
+  } else {
+    $('#archive-list').innerHTML = visible.map((d) => {
       const done = d.checklist.filter((c) => c.done).length;
+      const armed = armedDelete === d.id;
       return `
       <div class="list-row">
         <div class="list-main"><div class="list-title">${esc(d.title)}</div>
           <div class="list-sub">${esc(d.ente)} · ${esc(d.tipoLabel)} · ${esc(d.linguaLabel)}${d.scadenza ? ' · scade il ' + formatDate(d.scadenza) : ''}</div></div>
         <span class="badge badge-neutral">${done}/${d.checklist.length} azioni</span>
         <span class="badge badge-${esc(d.urgenza)}">${esc(d.urgenza)}</span>
-        <button class="btn btn-sm" data-aopen="${esc(d.id)}" aria-expanded="${openDocId === d.id}">${openDocId === d.id ? 'Chiudi' : 'Apri'}</button>
-        <button class="btn btn-sm btn-icon" data-adel="${esc(d.id)}" aria-label="Elimina documento: ${esc(d.title)}">${icon('trash', 'ic-sm')}</button>
+        <button class="btn btn-sm" data-aopen="${esc(d.id)}">Apri</button>
+        ${armed
+          ? `<span class="row-wrap"><button class="btn btn-sm btn-danger" data-adel-yes="${esc(d.id)}">Elimina</button><button class="btn btn-sm" data-adel-no="1">Annulla</button></span>`
+          : `<button class="btn btn-sm btn-icon" data-adel="${esc(d.id)}" aria-label="Elimina documento: ${esc(d.title)}">${icon('trash', 'ic-sm')}</button>`}
       </div>`;
     }).join('');
-
-  const open = docs.find((d) => d.id === openDocId);
-  $('#archive-detail').innerHTML = !open ? '' : `
-  <div class="card">
-    <div class="card-title">${esc(open.title)}</div>
-    <div class="result-row"><div class="result-label">In breve</div><div>${esc(open.inBreve)}</div></div>
-    <div class="result-row"><div class="result-label">Checklist</div><div>
-      ${open.checklist.map((c) => `
-        <div class="checklist-item${c.done ? ' done' : ''}"><input type="checkbox" ${c.done ? 'checked' : ''} disabled /><span>${esc(c.text)}</span></div>`).join('')}
-    </div></div>
-    <div class="result-row"><div class="result-label">Bozza di risposta</div><div class="draft-box">${esc(open.bozzaRisposta)}</div></div>
-    <div class="result-row"><div class="result-label">Testo originale</div><div class="draft-box" style="max-height:220px;overflow:auto">${esc(open.testoOriginale)}</div></div>
-  </div>`;
+  }
 }
 document.addEventListener('click', (e) => {
   const f = e.target.closest('[data-afilter]');
-  if (f) { archiveFilter = f.dataset.afilter; renderArchive(); }
+  if (f) { archiveFilter = f.dataset.afilter; armedDelete = null; renderArchive(); }
   const op = e.target.closest('[data-aopen]');
-  if (op) { openDocId = openDocId === op.dataset.aopen ? null : op.dataset.aopen; renderArchive(); }
+  if (op) { openDocInAdmin(op.dataset.aopen); }
   const del = e.target.closest('[data-adel]');
-  if (del) {
-    docs = docs.filter((d) => d.id !== del.dataset.adel);
-    if (openDocId === del.dataset.adel) openDocId = null;
+  if (del) { armedDelete = del.dataset.adel; renderArchive(); }
+  const yes = e.target.closest('[data-adel-yes]');
+  if (yes) {
+    const id = yes.dataset.adelYes;
+    docs = docs.filter((d) => d.id !== id);
     store.set('docs', docs);
+    if (currentDoc && currentDoc.id === id) { currentDoc = null; $('#analysis-result').innerHTML = ''; }
+    armedDelete = null;
     renderArchive();
+    showToast('Documento eliminato');
   }
+  const no = e.target.closest('[data-adel-no]');
+  if (no) { armedDelete = null; renderArchive(); }
 });
 
 /* ================================================================
    SUBSIDY AI
    ================================================================ */
-let subsidyStep = profile ? 'results' : 'profile';
+let subsidyTab = profile ? 'results' : 'profile';   // profile | results | cases
+let profileStep = 1;                                  // onboarding: 1 trova impresa · 2 dati · 3 progetto
 let profileDraft = profile ? { ...profile } : {
   ragioneSociale: '', idi: '', cantone: 'Ticino', comune: '', formaGiuridica: 'Sagl',
   settore: '', dipendenti: '', fatturato: 'Preferisco non indicare',
@@ -1751,206 +2392,438 @@ let profileDraft = profile ? { ...profile } : {
 };
 let selectedProgramId = null;
 let quizAnswers = {};
+let quizIndex = 0;
 let quizVerdict = null;
 
-$('#tab-profile').addEventListener('click', () => { subsidyStep = 'profile'; renderSubsidy(); });
+const PRATICA_STATI = { da_preparare: 'Da preparare', documenti_raccolta: 'Documenti in raccolta', pronta: 'Pronta', inviata: 'Inviata', chiusa: 'Chiusa' };
+const DATA_STATUS = { verified: { label: 'Verificato', cls: 'ds-ok' }, recheck: { label: 'Da ricontrollare', cls: 'ds-warn' }, demo: { label: 'Dato demo', cls: 'ds-demo' } };
+
+$('#tab-profile').addEventListener('click', () => { subsidyTab = 'profile'; renderSubsidy(); });
 $('#tab-results').addEventListener('click', () => {
-  if (profileDraft.progetti.length > 0 || interpretProjectDescription(profileDraft.descrizione).length > 0) startSearch();
-  else showToast('Completa prima il profilo');
+  if (profile) { subsidyTab = 'results'; selectedProgramId = null; renderSubsidy(); }
+  else if (profileDraft.progetti.length > 0 || interpretProjectDescription(profileDraft.descrizione).length > 0) startSearch();
+  else showToast('Completa prima il profilo aziendale');
 });
+$('#tab-cases').addEventListener('click', () => { subsidyTab = 'cases'; renderSubsidy(); });
 
 function startSearch() {
   const sugg = interpretProjectDescription(profileDraft.descrizione);
   for (const s of sugg) if (!profileDraft.progetti.includes(s)) profileDraft.progetti.push(s);
-  if (profileDraft.progetti.length === 0) { showToast('Indica almeno un tipo di progetto o descrivi il progetto previsto'); return; }
+  if (profileDraft.progetti.length === 0) { showToast('Indica almeno un ambito di progetto o descrivi cosa vuole realizzare l\'azienda'); return; }
   profile = { ...profileDraft };
   store.set('profile', profile);
-  subsidyStep = 'results';
+  subsidyTab = 'results';
   selectedProgramId = null;
-  quizVerdict = null;
   renderSubsidy();
 }
 
 function renderSubsidy() {
-  $('#tab-profile').classList.toggle('active', subsidyStep === 'profile');
-  $('#tab-results').classList.toggle('active', subsidyStep === 'results');
-  if (subsidyStep === 'profile') renderProfileForm();
+  $('#tab-profile').classList.toggle('active', subsidyTab === 'profile');
+  $('#tab-results').classList.toggle('active', subsidyTab === 'results');
+  $('#tab-cases').classList.toggle('active', subsidyTab === 'cases');
+  if (subsidyTab === 'cases') renderCases();
+  else if (subsidyTab === 'profile') renderProfileForm();
   else if (selectedProgramId) renderProgramDetail();
   else renderResults();
 }
 
+/* ---------------- Onboarding a 3 step ---------------- */
 function renderProfileForm() {
   const p = profileDraft;
-  const sugg = interpretProjectDescription(p.descrizione).filter((s) => !p.progetti.includes(s));
+  const stepper = `<div class="stepper">${[1, 2, 3].map((n) => `<div class="step-dot${profileStep === n ? ' active' : ''}${profileStep > n ? ' done' : ''}"><span>${n}</span></div>`).join('<div class="step-line"></div>')}</div>`;
+
+  if (profileStep === 1) {
+    $('#subsidy-body').innerHTML = `
+    <div class="card">
+      ${stepper}
+      <div class="section-title">Trova la tua impresa</div>
+      <p class="muted-sm mb-14">Inserisci il numero IDI/CHE per recuperare i dati dell'impresa dal registro.</p>
+      <div class="field" style="max-width:360px"><label for="p-idi">Numero IDI / CHE</label>
+        <input id="p-idi" value="${esc(p.idi)}" placeholder="CHE-123.456.789" /></div>
+      <div class="info-box mb-14">${icon('alert', 'ic-sm')} Ricerca automatica <strong>in modalità demo</strong>: nessun registro è collegato in questo prototipo. Puoi compilare i dati manualmente.</div>
+      <div class="row-wrap">
+        <button class="btn" id="p-search-demo">${icon('fileSearch', 'ic-sm')} Cerca nel registro (demo)</button>
+        <button class="btn btn-primary" id="p-manual">Compila manualmente ${icon('arrowRight', 'ic-sm')}</button>
+      </div>
+    </div>`;
+    $('#p-idi').addEventListener('input', (e) => { profileDraft.idi = e.target.value; });
+    $('#p-search-demo').addEventListener('click', () => showToast('Ricerca demo: nessun registro collegato. Prosegui compilando i dati manualmente.'));
+    $('#p-manual').addEventListener('click', () => { profileStep = 2; renderProfileForm(); });
+    return;
+  }
+
+  if (profileStep === 2) {
+    $('#subsidy-body').innerHTML = `
+    <div class="card">
+      ${stepper}
+      <div class="section-title">Dati dell'impresa</div>
+      <div class="grid-2">
+        <div class="field"><label for="p-rs">Ragione sociale</label><input id="p-rs" value="${esc(p.ragioneSociale)}" placeholder="Es. Rossi Impianti Sagl" /></div>
+        <div class="field"><label for="p-idi2">Numero IDI / CHE</label><input id="p-idi2" value="${esc(p.idi)}" placeholder="CHE-123.456.789" /></div>
+        <div class="field"><label for="p-cantone">Cantone</label><select id="p-cantone">${CANTONI.map((c) => `<option${p.cantone === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+        <div class="field"><label for="p-comune">Comune</label><input id="p-comune" value="${esc(p.comune)}" placeholder="Es. Lugano" /></div>
+        <div class="field"><label for="p-fg">Forma giuridica</label><select id="p-fg">${FORME_GIURIDICHE.map((f) => `<option${p.formaGiuridica === f ? ' selected' : ''}>${f}</option>`).join('')}</select></div>
+        <div class="field"><label for="p-settore">Settore (NOGA semplificato)</label><select id="p-settore">
+          <option value="">— Seleziona —</option>
+          ${SETTORI.map((s) => `<option value="${s.id}"${p.settore === s.id ? ' selected' : ''}>${s.label}</option>`).join('')}
+        </select></div>
+        <div class="field"><label for="p-dip">Numero di dipendenti</label><input type="number" min="0" id="p-dip" value="${esc(p.dipendenti)}" placeholder="Es. 12" /></div>
+        <div class="field"><label for="p-fatt">Fascia di fatturato</label><select id="p-fatt">${FASCE_FATTURATO.map((f) => `<option${p.fatturato === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><span class="group-label">Situazione</span><div class="checks" role="group" aria-label="Situazione aziendale">
+        <button type="button" class="check-pill${p.immobili ? ' on' : ''}" id="p-immobili" aria-pressed="${p.immobili}">Possiede o utilizza immobili</button>
+        <button type="button" class="check-pill${p.veicoli ? ' on' : ''}" id="p-veicoli" aria-pressed="${p.veicoli}">Ha veicoli aziendali</button>
+      </div></div>
+      <div class="row-wrap">
+        <button class="btn" id="p-back">← Indietro</button>
+        <button class="btn btn-primary" id="p-next2">Continua ${icon('arrowRight', 'ic-sm')}</button>
+      </div>
+    </div>`;
+    const bind = (id, key) => $(id).addEventListener('input', (e) => { profileDraft[key] = e.target.value; });
+    bind('#p-rs', 'ragioneSociale'); bind('#p-idi2', 'idi'); bind('#p-comune', 'comune'); bind('#p-dip', 'dipendenti');
+    $('#p-cantone').addEventListener('change', (e) => { profileDraft.cantone = e.target.value; });
+    $('#p-fg').addEventListener('change', (e) => { profileDraft.formaGiuridica = e.target.value; });
+    $('#p-settore').addEventListener('change', (e) => { profileDraft.settore = e.target.value; });
+    $('#p-fatt').addEventListener('change', (e) => { profileDraft.fatturato = e.target.value; });
+    const togglePill = (elId, key) => $(elId).addEventListener('click', () => {
+      profileDraft[key] = !profileDraft[key];
+      $(elId).classList.toggle('on', profileDraft[key]);
+      $(elId).setAttribute('aria-pressed', String(profileDraft[key]));
+    });
+    togglePill('#p-immobili', 'immobili'); togglePill('#p-veicoli', 'veicoli');
+    $('#p-back').addEventListener('click', () => { profileStep = 1; renderProfileForm(); });
+    $('#p-next2').addEventListener('click', () => { profileStep = 3; renderProfileForm(); });
+    return;
+  }
+
+  // STEP 3 — la domanda più importante
+  const renderCats = () => TIPI_PROGETTO.map((t) => `<button type="button" class="check-pill${p.progetti.includes(t.id) ? ' on' : ''}" data-prog="${t.id}" aria-pressed="${p.progetti.includes(t.id)}">${t.label}</button>`).join('');
   $('#subsidy-body').innerHTML = `
   <div class="card">
-    <div class="card-title">Profilo aziendale</div>
-    <div class="grid-2">
-      <div class="field"><label for="p-rs">Ragione sociale</label><input id="p-rs" value="${esc(p.ragioneSociale)}" placeholder="Es. Rossi Impianti Sagl" /></div>
-      <div class="field"><label for="p-idi">Numero IDI / CHE</label><input id="p-idi" value="${esc(p.idi)}" placeholder="CHE-123.456.789" /></div>
-      <div class="field"><label for="p-cantone">Cantone</label><select id="p-cantone">${CANTONI.map((c) => `<option${p.cantone === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
-      <div class="field"><label for="p-comune">Comune</label><input id="p-comune" value="${esc(p.comune)}" placeholder="Es. Lugano" /></div>
-      <div class="field"><label for="p-fg">Forma giuridica</label><select id="p-fg">${FORME_GIURIDICHE.map((f) => `<option${p.formaGiuridica === f ? ' selected' : ''}>${f}</option>`).join('')}</select></div>
-      <div class="field"><label for="p-settore">Settore (NOGA semplificato)</label><select id="p-settore">
-        <option value="">— Seleziona —</option>
-        ${SETTORI.map((s) => `<option value="${s.id}"${p.settore === s.id ? ' selected' : ''}>${s.label}</option>`).join('')}
-      </select></div>
-      <div class="field"><label for="p-dip">Numero di dipendenti</label><input type="number" min="0" id="p-dip" value="${esc(p.dipendenti)}" placeholder="Es. 12" /></div>
-      <div class="field"><label for="p-fatt">Fascia di fatturato</label><select id="p-fatt">${FASCE_FATTURATO.map((f) => `<option${p.fatturato === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select></div>
+    ${stepper}
+    <div class="section-title">Cosa vuole realizzare la tua azienda?</div>
+    <p class="muted-sm mb-14">Descrivilo con parole tue: il sistema suggerisce automaticamente gli ambiti pertinenti, che potrai approvare o correggere.</p>
+    <div class="field">
+      <textarea id="p-desc" style="min-height:130px" placeholder="Es. Vogliamo installare un impianto fotovoltaico sul tetto del capannone, sostituire due furgoni diesel con veicoli elettrici e digitalizzare la gestione degli ordini.">${esc(p.descrizione)}</textarea>
     </div>
-    <div class="field"><span class="group-label">Situazione</span><div class="checks" role="group" aria-label="Situazione aziendale">
-      <button type="button" class="check-pill${p.immobili ? ' on' : ''}" id="p-immobili" aria-pressed="${p.immobili}">Possiede o utilizza immobili</button>
-      <button type="button" class="check-pill${p.veicoli ? ' on' : ''}" id="p-veicoli" aria-pressed="${p.veicoli}">Ha veicoli aziendali</button>
-    </div></div>
-    <div class="field"><span class="group-label">Progetti e investimenti previsti</span><div class="checks" role="group" aria-label="Progetti e investimenti previsti">
-      ${TIPI_PROGETTO.map((t) => `<button type="button" class="check-pill${p.progetti.includes(t.id) ? ' on' : ''}" data-prog="${t.id}" aria-pressed="${p.progetti.includes(t.id)}">${t.label}</button>`).join('')}
-    </div></div>
-    <div class="field"><label for="p-desc">Descrivi il progetto con parole tue (l'AI lo interpreta)</label>
-      <textarea id="p-desc" placeholder="Es. Vogliamo installare un impianto fotovoltaico sul tetto del capannone e sostituire due furgoni diesel con veicoli elettrici…">${esc(p.descrizione)}</textarea>
-      <div id="p-sugg" class="hint-accent">${sugg.length > 0 ? 'Dalla descrizione il sistema riconosce anche: ' + sugg.map(labelTipo).join(', ') + ' — verranno inclusi nella ricerca.' : ''}</div>
+    <div class="field"><span class="group-label">Ambiti del progetto (approva o correggi)</span>
+      <div class="checks" role="group" aria-label="Ambiti del progetto" id="p-cats">${renderCats()}</div>
+      <div id="p-sugg" class="hint-accent"></div>
     </div>
-    <button class="btn btn-primary btn-block-mobile" id="p-search">Trova incentivi compatibili</button>
+    <div class="row-wrap">
+      <button class="btn" id="p-back3">← Indietro</button>
+      <button class="btn btn-primary btn-block-mobile" id="p-search">${icon('banknote', 'ic-sm')} Trova incentivi rilevanti</button>
+    </div>
   </div>`;
 
-  const bind = (id, key) => $(id).addEventListener('input', (e) => { profileDraft[key] = e.target.value; });
-  bind('#p-rs', 'ragioneSociale'); bind('#p-idi', 'idi'); bind('#p-comune', 'comune'); bind('#p-dip', 'dipendenti');
-  $('#p-cantone').addEventListener('change', (e) => { profileDraft.cantone = e.target.value; });
-  $('#p-fg').addEventListener('change', (e) => { profileDraft.formaGiuridica = e.target.value; });
-  $('#p-settore').addEventListener('change', (e) => { profileDraft.settore = e.target.value; });
-  $('#p-fatt').addEventListener('change', (e) => { profileDraft.fatturato = e.target.value; });
-  const togglePill = (elId, key) => $(elId).addEventListener('click', () => {
-    profileDraft[key] = !profileDraft[key];
-    $(elId).classList.toggle('on', profileDraft[key]);
-    $(elId).setAttribute('aria-pressed', String(profileDraft[key]));
-  });
-  togglePill('#p-immobili', 'immobili');
-  togglePill('#p-veicoli', 'veicoli');
-  document.querySelectorAll('[data-prog]').forEach((pill) => pill.addEventListener('click', () => {
+  const applySuggestions = () => {
+    const s = interpretProjectDescription(profileDraft.descrizione);
+    let added = false;
+    for (const x of s) if (!profileDraft.progetti.includes(x)) { profileDraft.progetti.push(x); added = true; }
+    if (added) $('#p-cats').innerHTML = renderCats(), bindCats();
+    $('#p-sugg').textContent = s.length ? 'Ambiti riconosciuti dalla descrizione: ' + s.map(labelTipo).join(', ') + '. Puoi rimuoverli o aggiungerne altri.' : '';
+  };
+  const bindCats = () => document.querySelectorAll('#p-cats [data-prog]').forEach((pill) => pill.addEventListener('click', () => {
     const id = pill.dataset.prog;
     const on = !profileDraft.progetti.includes(id);
-    if (on) profileDraft.progetti.push(id);
-    else profileDraft.progetti = profileDraft.progetti.filter((x) => x !== id);
+    if (on) profileDraft.progetti.push(id); else profileDraft.progetti = profileDraft.progetti.filter((x) => x !== id);
     pill.classList.toggle('on', on);
     pill.setAttribute('aria-pressed', String(on));
   }));
-  $('#p-desc').addEventListener('input', (e) => {
-    profileDraft.descrizione = e.target.value;
-    const s = interpretProjectDescription(e.target.value).filter((x) => !profileDraft.progetti.includes(x));
-    $('#p-sugg').textContent = s.length > 0 ? 'Dalla descrizione il sistema riconosce anche: ' + s.map(labelTipo).join(', ') + ' — verranno inclusi nella ricerca.' : '';
-  });
+  bindCats();
+  applySuggestions();
+  $('#p-desc').addEventListener('input', (e) => { profileDraft.descrizione = e.target.value; applySuggestions(); });
+  $('#p-back3').addEventListener('click', () => { profileStep = 2; renderProfileForm(); });
   $('#p-search').addEventListener('click', startSearch);
 }
+
+/* ---------------- Risultati: rilevanza ≠ idoneità ---------------- */
+function supportChip(prog) { return `<span class="ax-chip">${icon('banknote', 'ic-sm')} ${SUPPORT_TYPE_LABEL[prog.supportType]}</span>`; }
+function relClass(s) { return s >= 75 ? 'hi' : s >= 55 ? 'mid' : ''; }
 
 function renderResults() {
   const matches = matchPrograms(profile);
   const settoreLabel = profile.settore ? (SETTORI.find((s) => s.id === profile.settore)?.label || profile.settore) : '';
   $('#subsidy-body').innerHTML = `
-  <div class="demo-banner">${matches.length} programmi potenzialmente compatibili per
+  <div class="demo-banner">${matches.length} programmi <strong>rilevanti</strong> per
     <strong>${esc(profile.ragioneSociale || 'la tua impresa')}</strong> (${esc(profile.cantone)}${settoreLabel ? ', ' + esc(settoreLabel) : ''}).
-    Ordinati per compatibilità stimata. <button type="button" class="btn-link" id="edit-profile">Modifica profilo</button></div>
-  ${matches.length === 0 ? '<div class="card"><div class="empty">Nessun programma compatibile trovato con i criteri attuali. Prova ad ampliare i tipi di progetto nel profilo.</div></div>' : ''}
-  ${matches.map((m) => `
-    <div class="card">
-      <div class="match-head">
-        <div class="match-score ${m.score >= 75 ? 'hi' : m.score >= 55 ? 'mid' : ''}">${m.score}%</div>
-        <div class="match-body">
-          <div class="list-title match-name">${esc(m.program.programma)}</div>
-          <div class="list-sub">${esc(m.program.ente)} · ${esc(m.program.contributo)}</div>
+    La <strong>Rilevanza</strong> indica quanto il programma sembra pertinente al progetto, <em>non</em> la probabilità di ottenere il contributo.
+    L'idoneità va verificata programma per programma. <button type="button" class="btn-link" id="edit-profile">Modifica profilo</button></div>
+  ${matches.length === 0 ? '<div class="card"><div class="empty">Nessun programma rilevante con i criteri attuali. Aggiungi ambiti di progetto o rivedi il Cantone nel profilo.</div></div>' : ''}
+  ${matches.map((m) => {
+    const p = m.program;
+    return `
+    <div class="card prog-card">
+      <div class="prog-head">
+        <div class="rel-badge ${relClass(m.relevanceScore)}"><div class="rb-num">${m.relevanceScore}%</div><div class="rb-lbl">Rilevanza</div></div>
+        <div class="prog-main">
+          <div class="prog-name">${esc(p.name)}</div>
+          <div class="list-sub">${esc(p.authority)}</div>
           <div class="badge-row">
-            <span class="badge badge-neutral">confidenza ${esc(m.confidence)}</span>
-            ${m.program.avvisoPrima ? `<span class="badge badge-alta">${icon('alert', 'ic-sm')} domanda prima di agire</span>` : ''}
-            <span class="badge badge-blue">${esc(m.program.scadenza)}</span>
+            ${supportChip(p)}
+            <span class="badge badge-media">Idoneità: da verificare</span>
+            <span class="badge badge-neutral">${icon('calendar', 'ic-sm')} ${esc(p.applicationWindow)}</span>
+            ${p.mustApplyBeforeStart ? `<span class="badge badge-alta">${icon('alert', 'ic-sm')} Domanda prima di iniziare</span>` : ''}
+            <span class="badge badge-neutral">${m.reqToVerify} requisiti da verificare</span>
+            <span class="badge badge-${m.priority.level === 'alta' ? 'alta' : m.priority.level === 'media' ? 'media' : 'bassa'}">Priorità ${m.priority.level}</span>
           </div>
         </div>
-        <button class="btn btn-sm" data-open-prog="${esc(m.program.id)}">Apri scheda ${icon('arrowRight', 'ic-sm')}</button>
+        <button class="btn btn-primary btn-sm" data-open-prog="${esc(p.id)}">Verifica idoneità ${icon('arrowRight', 'ic-sm')}</button>
       </div>
-    </div>`).join('')}`;
-  $('#edit-profile')?.addEventListener('click', (e) => { e.preventDefault(); subsidyStep = 'profile'; renderSubsidy(); });
+    </div>`;
+  }).join('')}`;
+  $('#edit-profile')?.addEventListener('click', (e) => { e.preventDefault(); subsidyTab = 'profile'; profileStep = 2; renderSubsidy(); });
   document.querySelectorAll('[data-open-prog]').forEach((b) => b.addEventListener('click', () => {
     selectedProgramId = b.dataset.openProg;
-    quizAnswers = {};
-    quizVerdict = null;
+    quizAnswers = {}; quizIndex = 0; quizVerdict = null;
     renderSubsidy();
     window.scrollTo(0, 0);
   }));
 }
 
+/* ---------------- Scheda programma + fonte + questionario progressivo ---------------- */
 function renderProgramDetail() {
   const matches = matchPrograms(profile);
   const m = matches.find((x) => x.program.id === selectedProgramId);
   if (!m) { selectedProgramId = null; renderResults(); return; }
   const p = m.program;
+  const ds = DATA_STATUS[p.dataStatus] || DATA_STATUS.demo;
+  const reqItem = (r) => `<li>${esc(r.text)} ${r.hard ? '<span class="req-hard-tag">obbligatorio</span>' : '<span class="req-soft-tag">preferenziale</span>'}</li>`;
+
   $('#subsidy-body').innerHTML = `
-  <button class="btn btn-sm" style="margin-bottom:14px" id="back-results">← Torna ai risultati</button>
+  <button class="btn btn-sm mb-14" id="back-results">← Torna ai risultati</button>
   <div class="card">
-    <div class="card-title" style="font-size:18px">${esc(p.programma)}</div>
-    ${p.avvisoPrima ? `<div class="warn-box mb-14">${icon('alert')}<span>${esc(p.avvisoTesto)}</span></div>` : ''}
-    <div class="result-row"><div class="result-label">Ente</div><div>${esc(p.ente)}</div></div>
-    <div class="result-row"><div class="result-label">Compatibilità</div>
-      <div><strong>${m.score}%</strong> <span class="badge badge-neutral">confidenza ${esc(m.confidence)}</span></div></div>
-    <div class="result-row"><div class="result-label">Contributo</div><div>${esc(p.contributo)}</div></div>
-    <div class="result-row"><div class="result-label">Perché è pertinente</div>
-      <div><ul class="detail-list ok">${m.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div></div>
-    <div class="result-row"><div class="result-label">Requisiti da verificare</div>
-      <div><ul class="detail-list warn">${m.missing.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div></div>
-    <div class="result-row"><div class="result-label">Esclusioni</div>
-      <div>${p.esclusioni.length > 0 ? `<ul class="detail-list bad">${p.esclusioni.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : '<span style="color:var(--muted)">Nessuna esclusione specifica indicata.</span>'}</div></div>
-    <div class="result-row"><div class="result-label">Scadenza</div>
-      <div>${esc(p.scadenza)} <button class="btn btn-sm" style="margin-left:10px" id="prog-deadline">+ Aggiungi allo scadenziario</button></div></div>
-    <div class="result-row"><div class="result-label">Documenti per la candidatura</div>
-      <div><ul class="detail-list">${p.documenti.map((d) => `<li>${esc(d)}</li>`).join('')}</ul></div></div>
-    <div class="result-row"><div class="result-label">Fonte ufficiale</div>
-      <div><a href="${esc(p.fonte)}" target="_blank" rel="noreferrer">${esc(p.fonte)}</a>
-      <span class="badge badge-neutral" style="margin-left:8px">ultima verifica: ${esc(p.dataVerifica)}</span></div></div>
+    <div class="ax-head-top">
+      <div class="ax-title">${esc(p.name)}</div>
+      <div class="ax-badges"><span class="rel-badge sm ${relClass(m.relevanceScore)}"><div class="rb-num">${m.relevanceScore}%</div><div class="rb-lbl">Rilevanza</div></span></div>
+    </div>
+    <div class="ax-meta mt-10">
+      ${supportChip(p)}
+      <span class="ax-chip">${icon('banknote', 'ic-sm')} <b>${esc(p.authority)}</b></span>
+      <span class="ax-chip">${icon('calendar', 'ic-sm')} ${esc(p.applicationWindow)}</span>
+      <span class="badge badge-${m.priority.level === 'alta' ? 'alta' : m.priority.level === 'media' ? 'media' : 'bassa'}">Priorità ${m.priority.level}</span>
+    </div>
+    ${p.mustApplyBeforeStart ? `<div class="warn-box mt-14">${icon('alert')}<span>${esc(p.mustApplyBeforeStartText || 'La domanda va presentata prima di avviare il progetto/acquisto.')}</span></div>` : ''}
+    <div class="result-row"><div class="result-label">Tipo di sostegno</div><div>${SUPPORT_TYPE_LABEL[p.supportType]} · ${esc(p.contributionDescription)}</div></div>
+    <div class="result-row"><div class="result-label">Perché è rilevante</div><div><ul class="detail-list ok">${m.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div></div>
+    ${m.profileGaps.length ? `<div class="result-row"><div class="result-label">Dati profilo da completare</div><div><ul class="detail-list warn">${m.profileGaps.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div></div>` : ''}
+    <div class="result-row"><div class="result-label">Requisiti</div><div><ul class="detail-list">${[...p.hardRequirements, ...p.softRequirements].map(reqItem).join('') || '<li class="text-muted">Nessun requisito nel dato demo.</li>'}</ul></div></div>
+    ${p.evaluableExclusions.length ? `<div class="result-row"><div class="result-label">Esclusioni valutate nel questionario</div>
+      <div><ul class="detail-list bad">${p.evaluableExclusions.map((r) => `<li>${esc(r.text)} <span class="req-hard-tag">blocca l'idoneità</span></li>`).join('')}</ul></div></div>` : ''}
+    ${p.informativeExclusions.length ? `<div class="result-row"><div class="result-label">Esclusioni da verificare manualmente</div>
+      <div><ul class="detail-list warn">${p.informativeExclusions.map((r) => `<li>${esc(r.text)}</li>`).join('')}</ul>
+      <div class="muted-sm">Non valutate automaticamente: verificale sulla fonte ufficiale.</div></div></div>` : ''}
+    <div class="result-row"><div class="result-label">Finestra di candidatura</div>
+      <div>${esc(p.applicationWindow)} <button class="btn btn-sm" style="margin-left:8px" id="prog-reminder">${icon('calendar', 'ic-sm')} Aggiungi promemoria</button>
+      <div class="muted-sm" style="margin-top:4px">Descrizione della finestra, non una data certa: verifica sempre il termine sulla fonte ufficiale.</div></div></div>
+    <div class="result-row"><div class="result-label">Documenti</div><div><ul class="detail-list">${p.documentsRequired.map((d) => `<li>${esc(d)}</li>`).join('')}</ul></div></div>
   </div>
+
+  <div class="card source-card">
+    <div class="card-title">${icon('fileSearch', 'ic-sm')} Fonte</div>
+    <div class="source-grid">
+      <div class="src-k">Ente</div><div class="src-v">${esc(p.authority)}</div>
+      <div class="src-k">Titolo fonte</div><div class="src-v">${esc(p.sourceTitle)}</div>
+      <div class="src-k">URL ufficiale</div><div class="src-v"><a href="${esc(p.officialSourceUrl)}" target="_blank" rel="noreferrer">${esc(p.officialSourceUrl)}</a></div>
+      <div class="src-k">Ultima verifica</div><div class="src-v">${p.lastCheckedAt ? esc(p.lastCheckedAt) + ' <span class="muted-sm">(revisione manuale demo, non un controllo automatico)</span>' : '<span class="muted-sm">non disponibile</span>'}</div>
+      <div class="src-k">Stato dato</div><div class="src-v"><span class="ds-badge ${ds.cls}">${ds.label}</span></div>
+    </div>
+    <div class="info-box mt-12">${icon('alert', 'ic-sm')} <strong>Dati dimostrativi</strong> — verificare sempre condizioni, importi e scadenze sulla fonte ufficiale prima di procedere.</div>
+  </div>
+
   <div class="card">
-    <div class="card-title">Verifica di idoneità guidata</div>
-    <p style="font-size:14px;color:var(--ink-soft);margin-bottom:6px">Rispondi a queste domande per passare da
-      «potrebbe essere interessante» a una valutazione operativa. La conferma finale spetta sempre all'ente.</p>
-    ${p.domande.map((q) => `
-      <div class="quiz-q">
-        <div style="font-weight:600;font-size:14px">${esc(q.testo)}</div>
-        <div class="quiz-opts">
-          ${[['si', 'Sì'], ['no', 'No'], ['ns', 'Non so']].map(([val, label]) =>
-            `<button class="quiz-opt${quizAnswers[q.id] === val ? ' sel-' + val : ''}" data-q="${q.id}" data-val="${val}">${label}</button>`).join('')}
-        </div>
-      </div>`).join('')}
-    <button class="btn btn-primary" style="margin-top:14px" id="calc-eligibility">Calcola idoneità</button>
-    <div id="verdict">${quizVerdict ? verdictHTML(quizVerdict) : ''}</div>
+    <div class="card-title">Verifica di idoneità</div>
+    <p class="muted-sm mb-14">Rispondi alle domande: le hard rule (obbligatorie) determinano l'idoneità. La conferma finale spetta sempre all'ente.</p>
+    <div id="quiz-area"></div>
   </div>`;
 
   $('#back-results').addEventListener('click', () => { selectedProgramId = null; renderSubsidy(); });
-  $('#prog-deadline').addEventListener('click', () => {
-    addTask({ titolo: 'Candidatura: ' + p.programma, ente: p.ente, scadenza: null, nota: p.scadenza, urgenza: p.avvisoPrima ? 'alta' : 'media' });
+  $('#prog-reminder').addEventListener('click', () => {
+    addTask({ titolo: 'Verificare finestra candidatura: ' + p.name, ente: p.authority, scadenza: null, nota: p.applicationWindow, urgenza: p.mustApplyBeforeStart ? 'alta' : 'media' });
   });
-  document.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => {
-    quizAnswers[b.dataset.q] = b.dataset.val;
-    document.querySelectorAll(`[data-q="${b.dataset.q}"]`).forEach((x) => { x.className = 'quiz-opt'; });
-    b.classList.add('sel-' + b.dataset.val);
-  }));
-  $('#calc-eligibility').addEventListener('click', () => {
-    quizVerdict = evaluateEligibility(p, quizAnswers);
-    $('#verdict').innerHTML = verdictHTML(quizVerdict);
-  });
+  renderQuiz(p);
 }
 
-function verdictHTML(v) {
-  const badgeClass = v.idoneita === 'alta' ? 'bassa' : v.idoneita === 'media' ? 'media' : 'alta';
-  return `
-  <div style="margin-top:18px">
-    <div class="card-title">Esito:
-      <span class="badge badge-${badgeClass}">idoneità ${esc(v.idoneita)}</span>
-      <span class="badge badge-neutral">confidenza ${esc(v.confidence)}</span>
+function renderQuiz(prog) {
+  const area = $('#quiz-area');
+  if (!area) return;
+  const qs = subsidyQuestions(prog);
+  const N = qs.length;
+  if (quizVerdict) { area.innerHTML = verdictHTML(prog, quizVerdict); wireVerdict(prog); return; }
+  if (N === 0) { area.innerHTML = '<div class="muted-sm">Nessuna domanda di verifica nel dato demo.</div>'; return; }
+  const i = Math.min(quizIndex, N - 1);
+  const q = qs[i];
+  const tag = q.kind === 'hard' ? ' · <span class="req-hard-tag">requisito obbligatorio</span>'
+    : q.kind === 'excl' ? ' · <span class="req-hard-tag">esclusione — blocca l\'idoneità</span>'
+    : ' · <span class="req-soft-tag">preferenziale</span>';
+  const live = evaluateEligibility(prog, quizAnswers);
+  area.innerHTML = `
+    <div class="quiz-progress">Domanda ${i + 1} di ${N}${tag}</div>
+    <div class="quiz-question">${esc(q.question)}</div>
+    <div class="quiz-opts">
+      ${[['si', 'Sì'], ['no', 'No'], ['ns', 'Non so']].map(([v, l]) => `<button class="quiz-opt${quizAnswers[q.key] === v ? ' sel-' + v : ''}" data-qa="${v}">${l}</button>`).join('')}
     </div>
-    ${v.satisfied.length > 0 ? `<div class="result-row"><div class="result-label">Requisiti soddisfatti</div>
-      <div><ul class="detail-list ok">${v.satisfied.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div></div>` : ''}
-    ${v.failed.length > 0 ? `<div class="result-row"><div class="result-label">Requisiti non soddisfatti</div>
-      <div><ul class="detail-list bad">${v.failed.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div></div>` : ''}
-    ${v.unknown.length > 0 ? `<div class="result-row"><div class="result-label">Ancora da verificare</div>
-      <div><ul class="detail-list warn">${v.unknown.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div></div>` : ''}
-    <div class="result-row"><div class="result-label">Prossimi passi</div>
-      <div><ul class="detail-list">${v.nextSteps.map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div></div>
+    <div class="quiz-foot">
+      ${i > 0 ? '<button class="btn btn-sm" id="quiz-back">← Indietro</button>' : '<span></span>'}
+      <span class="quiz-live">Idoneità attuale: <span class="badge badge-${ELIGIBILITY_BADGE[live.status]}">${ELIGIBILITY_LABEL[live.status]}</span></span>
+    </div>`;
+  area.querySelectorAll('[data-qa]').forEach((b) => b.addEventListener('click', () => {
+    quizAnswers[q.key] = b.dataset.qa;
+    if (i < N - 1) quizIndex = i + 1; else quizVerdict = evaluateEligibility(prog, quizAnswers);
+    renderQuiz(prog);
+  }));
+  $('#quiz-back')?.addEventListener('click', () => { quizIndex = Math.max(0, i - 1); renderQuiz(prog); });
+}
+
+function reqStateOf(v, r) {
+  if (v.satisfied.find((x) => x.id === r.id)) return { cls: 'ok', note: 'soddisfatto' };
+  if (v.failed.find((x) => x.id === r.id)) return { cls: 'bad', note: 'non soddisfatto' };
+  return { cls: 'warn', note: 'da verificare' };
+}
+function stateList(rows) {
+  return rows.length ? `<ul class="state-list">${rows.map((r) => `<li class="st-${r.cls}">${esc(r.text)} <span class="st-note">${esc(r.note)}</span></li>`).join('')}</ul>` : '<div class="muted-sm">—</div>';
+}
+function verdictHTML(prog, v) {
+  const s = v.status;
+  const tone = s === 'likely' ? 'ok' : s === 'unknown' ? 'warn' : 'bad';
+  const hardRows = prog.hardRequirements.map((r) => ({ text: r.text, ...reqStateOf(v, r) }));
+  const softRows = prog.softRequirements.map((r) => ({ text: r.text, ...reqStateOf(v, r) }));
+  const exVerified = [
+    ...v.exclusions.triggered.map((x) => ({ text: x.text, cls: 'bad', note: 'attivata — esclude' })),
+    ...v.exclusions.cleared.map((x) => ({ text: x.text, cls: 'ok', note: 'non applicabile' })),
+  ];
+  const exToVerify = [
+    ...v.exclusions.unknown.map((x) => ({ text: x.text, cls: 'warn', note: 'da rispondere' })),
+    ...v.exclusions.informative.map((x) => ({ text: x.text, cls: 'warn', note: 'verifica manuale' })),
+  ];
+  const cta = s === 'likely'
+    ? `<button class="btn btn-primary btn-sm" id="crea-pratica">${icon('document', 'ic-sm')} Crea pratica</button>`
+    : s === 'unknown'
+      ? `<button class="btn btn-primary btn-sm" id="completa-verifiche">Completa le verifiche</button>
+         <button class="btn btn-sm" id="salva-preliminare">Salva come pratica preliminare</button>`
+      : s === 'unlikely'
+        ? `<button class="btn btn-sm" id="salva-riferimento">Salva per riferimento</button>`
+        : '';
+  return `
+  <div class="verdict">
+    <div class="verdict-head vh-${tone}">
+      <div class="vh-ico">${icon(s === 'likely' ? 'checkCircle' : 'alert')}</div>
+      <div><div class="vh-kicker">Esito della verifica</div><div class="vh-title">${ELIGIBILITY_LABEL[s]}</div></div>
+    </div>
+    ${s === 'ineligible' && v.cause ? `<div class="warn-box mb-14">${icon('alert')}<span>${v.cause.type === 'exclusion' ? 'Esclusione attivata' : 'Requisito obbligatorio non soddisfatto'}: <strong>${esc(v.cause.item.text)}</strong>. Questo prevale su tutto il resto.</span></div>` : ''}
+    <div class="result-row"><div class="result-label">Requisiti obbligatori</div><div>${stateList(hardRows)}</div></div>
+    ${softRows.length ? `<div class="result-row"><div class="result-label">Requisiti preferenziali</div><div>${stateList(softRows)}</div></div>` : ''}
+    ${exVerified.length ? `<div class="result-row"><div class="result-label">Esclusioni verificate</div><div>${stateList(exVerified)}</div></div>` : ''}
+    ${exToVerify.length ? `<div class="result-row"><div class="result-label">Esclusioni da verificare</div><div>${stateList(exToVerify)}</div></div>` : ''}
+    <div class="result-row"><div class="result-label">Prossimi passi</div><div><ul class="detail-list">${v.nextSteps.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div>
+    <div class="draft-actions">${cta}<button class="btn btn-sm" id="quiz-restart">Ricomincia verifica</button></div>
   </div>`;
+}
+
+function wireVerdict(prog) {
+  const savePratica = (kind) => {
+    creaPratica(prog, quizVerdict, kind);
+    const msg = kind === 'candidatura' ? 'Pratica creata — la trovi in «Le mie pratiche»'
+      : kind === 'preliminare' ? 'Pratica preliminare salvata in «Le mie pratiche»' : 'Salvata per riferimento in «Le mie pratiche»';
+    showToast(msg);
+    subsidyTab = 'cases'; selectedProgramId = null; renderSubsidy();
+  };
+  $('#crea-pratica')?.addEventListener('click', () => savePratica('candidatura'));
+  $('#salva-preliminare')?.addEventListener('click', () => savePratica('preliminare'));
+  $('#salva-riferimento')?.addEventListener('click', () => savePratica('riferimento'));
+  $('#completa-verifiche')?.addEventListener('click', () => {
+    // torna al questionario alla prima domanda ancora senza risposta
+    const qs = subsidyQuestions(prog);
+    const firstOpen = qs.findIndex((q) => !quizAnswers[q.key]);
+    quizVerdict = null; quizIndex = firstOpen >= 0 ? firstOpen : 0;
+    renderQuiz(prog);
+  });
+  $('#quiz-restart')?.addEventListener('click', () => { quizAnswers = {}; quizIndex = 0; quizVerdict = null; renderQuiz(prog); });
+}
+
+// Salva anche il contesto della verifica: su quali informazioni si basava la pratica.
+function creaPratica(prog, v, kind) {
+  const pr = {
+    id: 'prat-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5),
+    programId: prog.id, programName: prog.name, authority: prog.authority,
+    documenti: prog.documentsRequired.slice(),
+    checklist: prog.documentsRequired.map((d, i) => ({ id: i, text: 'Preparare: ' + d, done: false })),
+    applicationWindow: prog.applicationWindow, mustApplyBeforeStart: prog.mustApplyBeforeStart,
+    officialSourceUrl: prog.officialSourceUrl,
+    kind: kind || 'candidatura',
+    eligibilityStatus: v ? v.status : 'unknown',
+    satisfiedRequirements: v ? v.satisfied.map((r) => r.text) : [],
+    unknownRequirements: v ? v.unknown.map((r) => r.text) : [],
+    sourceLastCheckedAt: prog.lastCheckedAt,
+    verifiedAt: new Date().toISOString(),
+    stato: 'da_preparare', createdAt: new Date().toISOString(),
+  };
+  pratiche.push(pr);
+  store.set('pratiche', pratiche);
+  return pr;
+}
+
+/* ---------------- Le mie pratiche ---------------- */
+function renderCases() {
+  if (pratiche.length === 0) {
+    $('#subsidy-body').innerHTML = `
+      <div class="card"><div class="empty-cta">
+        <div class="ec-ico">${icon('document')}</div>
+        <div class="ec-title">Nessuna pratica ancora</div>
+        <div class="ec-sub">Verifica l'idoneità di un incentivo e, con esito positivo, crea la relativa pratica per raccogliere documenti e checklist.</div>
+        <button class="btn btn-primary" id="cases-go">${icon('banknote', 'ic-sm')} Vai agli incentivi</button>
+      </div></div>`;
+    $('#cases-go').addEventListener('click', () => { subsidyTab = profile ? 'results' : 'profile'; renderSubsidy(); });
+    return;
+  }
+  $('#subsidy-body').innerHTML = [...pratiche].reverse().map((pr) => {
+    const done = pr.checklist.filter((c) => c.done).length;
+    const pct = pr.checklist.length ? Math.round(done / pr.checklist.length * 100) : 0;
+    return `
+    <div class="card">
+      <div class="pratica-head">
+        <div><div class="list-title">${esc(pr.programName)}</div><div class="list-sub">${esc(pr.authority)}</div></div>
+        <div class="row-wrap">
+          <select class="select-inline" data-pstato="${esc(pr.id)}" aria-label="Stato pratica">
+            ${Object.entries(PRATICA_STATI).map(([k, v]) => `<option value="${k}"${pr.stato === k ? ' selected' : ''}>${v}</option>`).join('')}
+          </select>
+          <button class="btn btn-sm btn-icon" data-pdel="${esc(pr.id)}" aria-label="Elimina pratica">${icon('trash', 'ic-sm')}</button>
+        </div>
+      </div>
+      <div class="badge-row mt-10">
+        ${pr.kind === 'preliminare' ? '<span class="badge badge-media">Pratica preliminare</span>' : pr.kind === 'riferimento' ? '<span class="badge badge-neutral">Salvata per riferimento</span>' : '<span class="badge badge-bassa">Candidatura</span>'}
+        ${pr.eligibilityStatus ? `<span class="badge badge-${ELIGIBILITY_BADGE[pr.eligibilityStatus] || 'neutral'}">Idoneità: ${ELIGIBILITY_LABEL[pr.eligibilityStatus] || pr.eligibilityStatus}</span>` : ''}
+        ${pr.verifiedAt ? `<span class="muted-sm">Verificata il ${formatDate(pr.verifiedAt)}${pr.sourceLastCheckedAt ? ' · fonte del ' + esc(pr.sourceLastCheckedAt) : ''}</span>` : ''}
+      </div>
+      ${pr.mustApplyBeforeStart ? `<div class="warn-box mt-12">${icon('alert')}<span>Domanda da presentare prima di avviare il progetto/acquisto.</span></div>` : ''}
+      <div class="ax-progress mt-12"><span class="pg-label">Documenti ${done}/${pr.checklist.length}</span>
+        <div class="meter-track" style="flex:1"><div class="meter-fill" style="width:${pct}%"></div></div></div>
+      <div id="prat-list-${esc(pr.id)}">
+        ${pr.checklist.map((c) => `
+          <label class="action-item" style="padding:8px 0">
+            <input type="checkbox" data-pcheck="${esc(pr.id)}" data-cid="${c.id}" ${c.done ? 'checked' : ''} />
+            <span class="ai-main"><span class="ai-text${c.done ? '' : ''}" style="font-weight:400${c.done ? ';text-decoration:line-through;color:var(--muted)' : ''}">${esc(c.text)}</span></span>
+          </label>`).join('')}
+      </div>
+      <div class="muted-sm mt-10">Finestra: ${esc(pr.applicationWindow)} · <a href="${esc(pr.officialSourceUrl)}" target="_blank" rel="noreferrer">fonte ufficiale</a></div>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('[data-pstato]').forEach((sel) => sel.addEventListener('change', () => {
+    const pr = pratiche.find((x) => x.id === sel.dataset.pstato);
+    if (pr) { pr.stato = sel.value; store.set('pratiche', pratiche); }
+  }));
+  document.querySelectorAll('[data-pcheck]').forEach((cb) => cb.addEventListener('change', () => {
+    const pr = pratiche.find((x) => x.id === cb.dataset.pcheck);
+    const item = pr && pr.checklist.find((c) => c.id === +cb.dataset.cid);
+    if (item) { item.done = cb.checked; store.set('pratiche', pratiche); renderCases(); }
+  }));
+  document.querySelectorAll('[data-pdel]').forEach((b) => b.addEventListener('click', () => {
+    pratiche = pratiche.filter((x) => x.id !== b.dataset.pdel);
+    store.set('pratiche', pratiche);
+    renderCases();
+    showToast('Pratica eliminata');
+  }));
 }
 
 /* ================================================================
