@@ -22,7 +22,9 @@ piani/prezzi. Grafica allineata ai colori di [ai-swisse.com](https://ai-swisse.c
 |----------|-------|---------------|
 | [`app/`](app/) | **L'applicazione vera.** SaaS multi-tenant su **Supabase** (Auth, PostgreSQL, Storage privato, RLS) in React + TypeScript, con analisi documenti tramite **Claude** lato server. È la versione su cui prosegue lo sviluppo. | `cd app && npm install`, configura `.env` (vedi [app/README.md](app/README.md)) → `npm run dev` |
 | [`html/`](html/) | Prototipo dimostrativo in **un unico file** `index.html` (vanilla JS, `localStorage`, nessuna dipendenza). Resta il riferimento del design. | Apri `html/index.html` nel browser. Pronto per GitHub Pages. |
-| [`react/`](react/) | Primo scaffold React/JS senza backend. **Superato da `app/`**, conservato solo per storico. | `cd react && npm install && npm run dev` |
+
+> Un primo scaffold React senza backend (`react/`) è stato rimosso perché superato da `app/`;
+> resta recuperabile dalla storia git (fino al commit `89588a8`).
 
 ## Architettura di `app/`
 
