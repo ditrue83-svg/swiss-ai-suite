@@ -1,38 +1,22 @@
 // ============================================================================
-// Provider di analisi — l'unico punto che sa DA DOVE arriva un'analisi.
-// La UI e il resto del service layer vedono sempre e solo un EngineAnalysis.
-//
-//   ai            → Edge Function `analyze-document` (Claude, server-side)
-//   deterministic → motore locale (nessun dato lascia Supabase)
-//   auto          → prova l'AI, ricade sul motore locale se non disponibile
+// Percorso AI reale — invocazione della Edge Function `analyze-document`.
+// La funzione ESTRAE (o fa OCR), ANALIZZA e PERSISTE server-side (§49): qui non
+// si mappa né si persiste nulla, l'analisi si rilegge poi dal DB (fonte di verità).
+// Il motore locale ESPLICITO (§60) vive in analysisService, non qui.
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
-import { ANALYSIS_PROVIDER } from '@/lib/env';
 import { AppError } from '@/lib/errors';
-import { analyzeText, type EngineAnalysis } from '@/features/admin-ai/engine';
-import { aiPayloadToEngineAnalysis, type AiAnalysisPayload } from '@/features/admin-ai/aiMapping';
+import type { ClientExtraction } from '@/features/admin-ai/pdf';
 
 export const DETERMINISTIC_ENGINE = 'deterministic-v2';
 
-export interface ProviderResult {
-  engine: string;
-  analysis: EngineAnalysis;
-  /** true se l'AI era richiesta ma non disponibile e si è usato il motore locale. */
-  usedFallback: boolean;
-}
-
-interface AiResponse {
-  analysis?: AiAnalysisPayload;
-  engine?: string;
-  error?: string;
-  code?: string;
-}
+interface AnalyzeResponse { status?: string; analysis?: unknown; error?: string; code?: string }
 
 async function readFunctionError(error: unknown): Promise<string> {
   const ctx = (error as { context?: unknown }).context;
   if (ctx && typeof (ctx as Response).json === 'function') {
     try {
-      const body = (await (ctx as Response).json()) as AiResponse;
+      const body = (await (ctx as Response).json()) as AnalyzeResponse;
       if (body?.error) return body.error;
     } catch { /* corpo non JSON */ }
   }
@@ -40,36 +24,20 @@ async function readFunctionError(error: unknown): Promise<string> {
   return msg ? `Analisi AI non disponibile (${msg}).` : 'Analisi AI non disponibile.';
 }
 
-async function callAi(documentId: string, text: string): Promise<{ engine: string; payload: AiAnalysisPayload }> {
-  const { data, error } = await requireSupabase().functions.invoke<AiResponse>('analyze-document', {
-    body: { documentId, text },
-  });
+/**
+ * Invoca `analyze-document`. `extraction === null` → il server scarica il file e
+ * fa l'OCR (§4). Ritorna lo stato di analisi ('completed' | 'needs_review');
+ * il contenuto va riletto dal DB con analysisService.getForDocument.
+ */
+export async function invokeAnalyze(
+  documentId: string,
+  extraction: ClientExtraction | null,
+): Promise<{ status: string }> {
+  const body = extraction
+    ? { documentId, extraction: { fullText: extraction.fullText, pages: extraction.pages, extractionMethod: extraction.extractionMethod } }
+    : { documentId };
+  const { data, error } = await requireSupabase().functions.invoke<AnalyzeResponse>('analyze-document', { body });
   if (error) throw new AppError(await readFunctionError(error), error);
   if (!data?.analysis) throw new AppError(data?.error ?? 'Risposta del servizio AI non valida.');
-  return { engine: data.engine ?? 'claude', payload: data.analysis };
-}
-
-export async function runAnalysisProvider(input: {
-  documentId: string;
-  text: string;
-  companyName: string | null;
-}): Promise<ProviderResult> {
-  const { documentId, text, companyName } = input;
-
-  const deterministic = (usedFallback: boolean): ProviderResult => ({
-    engine: DETERMINISTIC_ENGINE,
-    analysis: analyzeText(text, { companyName }),
-    usedFallback,
-  });
-
-  if (ANALYSIS_PROVIDER === 'deterministic') return deterministic(false);
-
-  try {
-    const { engine, payload } = await callAi(documentId, text);
-    return { engine, analysis: aiPayloadToEngineAnalysis(payload, text), usedFallback: false };
-  } catch (err) {
-    // In modalità 'ai' l'errore è definitivo: non fingiamo un'analisi AI.
-    if (ANALYSIS_PROVIDER === 'ai') throw err;
-    return deterministic(true);
-  }
+  return { status: data.status ?? 'completed' };
 }

@@ -1,42 +1,66 @@
-// Estrazione testo da PDF lato client (pdf.js). L'OCR (scansioni/foto) è previsto
-// per una fase successiva: qui gestiamo solo PDF con testo.
+// Estrazione testo lato client (pdf.js). Restituisce il testo PER PAGINA (§4), così
+// la pipeline server-side può ancorare le citazioni alla pagina giusta.
+// Scansioni/foto (PDF senza testo, immagini) NON si estraggono qui: si inviano al
+// server per l'OCR (§4), segnalando `needs_ocr`.
 import * as pdfjsLib from 'pdfjs-dist';
 // Worker servito da Vite come URL (bundle self-contained).
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
-export async function extractPdfText(data: ArrayBuffer): Promise<string> {
+export interface ExtractionPage { pageNumber: number; text: string }
+export interface ClientExtraction {
+  fullText: string;
+  pages: ExtractionPage[];
+  extractionMethod: 'native_pdf' | 'text';
+}
+
+/** Esito dell'estrazione da un file: testo estratto, oppure "serve OCR server-side". */
+export type ExtractOutcome =
+  | { kind: 'extraction'; extraction: ClientExtraction }
+  | { kind: 'needs_ocr'; reason: 'pdf_scan' | 'image' };
+
+/** Estrae il testo pagina per pagina da un PDF. */
+async function extractPdfPages(data: ArrayBuffer): Promise<ExtractionPage[]> {
   const pdf = await pdfjsLib.getDocument({ data }).promise;
-  let text = '';
+  const pages: ExtractionPage[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    text += content.items
+    const text = content.items
       .map((it) => {
         const maybe = it as { str?: string };
         return typeof maybe.str === 'string' ? maybe.str : '';
       })
-      .join(' ') + '\n';
+      .join(' ');
+    pages.push({ pageNumber: i, text });
   }
-  return text;
+  return pages;
 }
 
-/** Legge un File dell'utente e ne estrae il testo (PDF o testo semplice). */
-export async function readFileText(file: File): Promise<string> {
+/** Testo semplice (incollato / .txt / .eml) → una sola "pagina". */
+export function fromPlainText(text: string): ClientExtraction {
+  const clean = text ?? '';
+  return { fullText: clean, pages: [{ pageNumber: 1, text: clean }], extractionMethod: 'text' };
+}
+
+/**
+ * Estrae dal file dell'utente:
+ *  - PDF con testo    → { extraction, native_pdf }
+ *  - PDF scansione    → { needs_ocr } (poco/niente testo estraibile)
+ *  - immagine         → { needs_ocr }
+ *  - txt / eml / md   → { extraction, text }
+ */
+export async function extractFromFile(file: File): Promise<ExtractOutcome> {
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   if (isPdf) {
-    const buf = await file.arrayBuffer();
-    const text = await extractPdfText(buf);
-    if (text.trim().length < 40) {
-      throw new Error("Il PDF sembra una scansione senza testo. L'OCR è previsto: per ora incolla il testo manualmente.");
-    }
-    return text;
+    const pages = await extractPdfPages(await file.arrayBuffer());
+    const fullText = pages.map((p) => p.text).join('\n').trim();
+    if (fullText.length < 40) return { kind: 'needs_ocr', reason: 'pdf_scan' };
+    return { kind: 'extraction', extraction: { fullText, pages, extractionMethod: 'native_pdf' } };
   }
-  if (file.type.startsWith('image/')) {
-    throw new Error("Immagine ricevuta: l'OCR è previsto ma non ancora disponibile. Incolla il testo della lettera.");
-  }
-  return await file.text();
+  if (file.type.startsWith('image/')) return { kind: 'needs_ocr', reason: 'image' };
+  return { kind: 'extraction', extraction: fromPlainText(await file.text()) };
 }
 
 /** Ricostruisce il testo originale scaricando il file da Storage (per il viewer). */
@@ -44,7 +68,7 @@ export async function reconstructText(blob: Blob, mimeType: string | null): Prom
   const isPdf = (mimeType ?? '').includes('pdf');
   if (isPdf) {
     try {
-      return await extractPdfText(await blob.arrayBuffer());
+      return (await extractPdfPages(await blob.arrayBuffer())).map((p) => p.text).join('\n');
     } catch {
       return '';
     }

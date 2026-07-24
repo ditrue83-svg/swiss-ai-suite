@@ -1,4 +1,6 @@
-// Admin AI — upload reale + analisi (motore corrente) PERSISTITA su Supabase.
+// Admin AI — upload reale + analisi AI server-side PERSISTITA su Supabase.
+// Flusso: estrai testo (o rileva scansione→OCR server) → hash+dedup §28 →
+// crea documento → invoca la pipeline (persiste server) → rilegge l'analisi dal DB.
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
@@ -7,14 +9,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { documentService } from '@/services/documentService';
 import { analysisService } from '@/services/analysisService';
+import { sha256Hex } from '@/lib/hash';
 import { toUserMessage } from '@/lib/errors';
 import { formatBytes } from '@/lib/format';
-import { readFileText, reconstructText } from './pdf';
+import { extractFromFile, fromPlainText, reconstructText, type ClientExtraction } from './pdf';
 import { SAMPLE_DOCUMENTS } from './engine';
 import { ResultView } from './ResultView';
 import type { DocumentAnalysis, DocumentRecord } from '@/types/models';
 
 interface FileState { name: string; size?: number; state: 'loading' | 'ok' | 'err'; msg?: string }
+interface RunSource { file?: File; text?: string; extraction: ClientExtraction | null }
 
 export function AdminAIPage() {
   const { activeCompany, activeCompanyId } = useCompany();
@@ -31,6 +35,8 @@ export function AdminAIPage() {
   const [fileState, setFileState] = useState<FileState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [retrySrc, setRetrySrc] = useState<{ src: RunSource; title: string } | null>(null);
   const [drag, setDrag] = useState(false);
 
   const [document, setDocument] = useState<DocumentRecord | null>(null);
@@ -51,10 +57,15 @@ export function AdminAIPage() {
         const doc = await documentService.get(docParam);
         if (!doc) throw new Error('Documento non trovato.');
         const an = await analysisService.getForDocument(doc.id);
-        if (an && doc.storagePath) {
+        if (an) {
+          // Testo per il viewer: prima l'estrazione salvata (affidabile anche per OCR),
+          // poi, in mancanza, la ri-estrazione dal file originale.
           try {
-            const blob = await documentService.downloadBlob(doc.storagePath);
-            an.originalText = await reconstructText(blob, doc.mimeType);
+            an.originalText = await documentService.getExtractionText(doc.id);
+            if (!an.originalText && doc.storagePath) {
+              const blob = await documentService.downloadBlob(doc.storagePath);
+              an.originalText = await reconstructText(blob, doc.mimeType);
+            }
           } catch { /* viewer degrada alle citazioni */ }
         }
         if (!active) return;
@@ -73,46 +84,88 @@ export function AdminAIPage() {
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   }
 
-  async function runAnalysis(sourceText: string, docTitle: string, file?: File) {
+  async function runAnalysis(src: RunSource, docTitle: string) {
     if (!user) return;
     setError(null);
+    setRetrySrc(null);
     setAnalyzing(true);
+    setProgress('Preparazione del documento…');
     try {
-      const doc = await documentService.create({
+      // §28/§29 — hash del CONTENUTO (byte del file o testo), per la deduplicazione.
+      const fileHash = src.file
+        ? await sha256Hex(await src.file.arrayBuffer())
+        : await sha256Hex(src.text ?? src.extraction?.fullText ?? '');
+
+      // Dedup: stesso contenuto GIÀ ANALIZZATO con successo → mostralo, non rianalizzare.
+      // Un documento in stato 'failed' NON blocca: si riprova l'analisi (§53).
+      const existing = await documentService.findByHash(companyId, fileHash);
+      if (existing && existing.status !== 'failed') {
+        const an = await analysisService.getForDocument(existing.id);
+        if (an) {
+          an.originalText = src.extraction?.fullText ?? (await documentService.getExtractionText(existing.id));
+          setDocument(existing);
+          setAnalysis(an);
+          setSearchParams({ doc: existing.id }, { replace: true });
+          showToast('Documento già analizzato: mostro l’analisi esistente.');
+          scrollToResult();
+          return;
+        }
+      }
+
+      const doc = existing ?? await documentService.create({
         companyId, userId: user.id,
-        title: docTitle || (file ? file.name.replace(/\.[^.]+$/, '') : 'Documento'),
-        sourceType: file ? 'upload' : 'pasted_text',
-        file, text: file ? undefined : sourceText,
+        title: docTitle || (src.file ? src.file.name.replace(/\.[^.]+$/, '') : 'Documento'),
+        sourceType: src.file ? 'upload' : 'pasted_text',
+        file: src.file,
+        text: src.file ? undefined : (src.text ?? src.extraction?.fullText ?? ''),
+        fileHash,
+        pageCount: src.extraction?.pages.length ?? null,
       });
-      const { analysis: an, usedFallback } = await analysisService.analyzeAndPersist({
-        document: doc, text: sourceText, companyName,
+
+      setProgress(src.extraction
+        ? 'Analisi AI in corso… può richiedere qualche istante.'
+        : 'Riconoscimento del testo (OCR) e analisi AI in corso…');
+      const { analysis: an, status } = await analysisService.analyzeAndPersist({
+        document: doc, extraction: src.extraction, companyName,
       });
-      an.originalText = sourceText;
       setDocument(doc);
       setAnalysis(an);
       setSearchParams({ doc: doc.id }, { replace: true });
-      showToast(usedFallback
-        ? 'Analisi AI non disponibile: usato il motore locale'
+      showToast(status === 'needs_review'
+        ? 'Analizzato — alcune informazioni sono da verificare'
         : 'Documento analizzato e salvato in archivio');
       scrollToResult();
     } catch (e) {
+      setRetrySrc({ src, title: docTitle });   // §53 — consenti di riprovare senza reimpostare tutto
       setError(toUserMessage(e));
     } finally {
       setAnalyzing(false);
+      setProgress(null);
     }
+  }
+
+  function retryAnalysis() {
+    if (retrySrc) void runAnalysis(retrySrc.src, retrySrc.title);
   }
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setError(null);
     setFileState({ name: file.name, size: file.size, state: 'loading' });
+    const derivedTitle = file.name.replace(/\.[^.]+$/, '');
     try {
-      const content = await readFileText(file);
-      const derivedTitle = file.name.replace(/\.[^.]+$/, '');
-      setText(content);
+      const outcome = await extractFromFile(file);
       setTitle(derivedTitle);
-      setFileState({ name: file.name, size: file.size, state: 'ok' });
-      await runAnalysis(content, derivedTitle, file);
+      if (outcome.kind === 'extraction') {
+        setText(outcome.extraction.fullText);
+        setFileState({ name: file.name, size: file.size, state: 'ok' });
+        await runAnalysis({ file, extraction: outcome.extraction }, derivedTitle);
+      } else {
+        // scansione/immagine: niente testo estraibile lato client → OCR server-side (§4).
+        setText('');
+        setFileState({ name: file.name, size: file.size, state: 'ok', msg: outcome.reason === 'image' ? 'immagine · OCR lato server' : 'scansione · OCR lato server' });
+        await runAnalysis({ file, extraction: null }, derivedTitle);
+      }
     } catch (err) {
       setFileState({ name: file.name, size: file.size, state: 'err', msg: (err as Error).message || 'Impossibile leggere il file.' });
     }
@@ -124,7 +177,7 @@ export function AdminAIPage() {
       setError('Inserisci il testo completo della comunicazione (almeno qualche riga).');
       return;
     }
-    void runAnalysis(text, title);
+    void runAnalysis({ text, extraction: fromPlainText(text) }, title);
   }
 
   return (
@@ -147,10 +200,10 @@ export function AdminAIPage() {
         >
           <span className="uz-icon" aria-hidden="true"><Icon name="document" /></span>
           <span className="uz-title">Trascina qui un file o clicca per selezionarlo</span>
-          <span className="uz-formats"><span className="uz-fmt">PDF</span><span className="uz-fmt">EMAIL</span><span className="uz-fmt">TXT</span></span>
-          <span className="uz-ocr"><Icon name="fileSearch" className="ic-sm" /><span>Scansioni e foto — supporto OCR previsto</span></span>
+          <span className="uz-formats"><span className="uz-fmt">PDF</span><span className="uz-fmt">IMG</span><span className="uz-fmt">EMAIL</span><span className="uz-fmt">TXT</span></span>
+          <span className="uz-ocr"><Icon name="fileSearch" className="ic-sm" /><span>Scansioni e foto — riconoscimento del testo (OCR) lato server</span></span>
         </button>
-        <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,.eml,text/plain,application/pdf" hidden onChange={(e) => void handleFile(e.target.files?.[0])} />
+        <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,.eml,text/plain,application/pdf,image/*" hidden onChange={(e) => void handleFile(e.target.files?.[0])} />
 
         {fileState && (
           <div className="file-status">
@@ -158,7 +211,7 @@ export function AdminAIPage() {
               {fileState.state === 'loading' ? <span className="spinner" /> : <span className="fc-ico"><Icon name={fileState.state === 'err' ? 'alert' : 'document'} /></span>}
               <div className="fc-main">
                 <div className="fc-name">{fileState.name}</div>
-                <div className="fc-sub">{fileState.state === 'loading' ? 'Estrazione del testo in corso…' : fileState.state === 'ok' ? `${formatBytes(fileState.size ?? 0)} · testo estratto` : fileState.msg}</div>
+                <div className="fc-sub">{fileState.state === 'loading' ? 'Estrazione del testo in corso…' : fileState.state === 'ok' ? `${formatBytes(fileState.size ?? 0)} · ${fileState.msg ?? 'testo estratto'}` : fileState.msg}</div>
               </div>
               <button className="btn btn-sm btn-icon" onClick={() => { setFileState(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} aria-label="Rimuovi il file"><Icon name="close" className="ic-sm" /></button>
             </div>
@@ -180,17 +233,29 @@ export function AdminAIPage() {
           <span className="muted-sm">Prova con un esempio:</span>
           <span className="row-wrap">
             {SAMPLE_DOCUMENTS.map((s) => (
-              <button key={s.id} className="btn btn-sm" disabled={analyzing} onClick={() => { setText(s.text); setTitle(s.title); void runAnalysis(s.text, s.title); }}>{s.label}</button>
+              <button key={s.id} className="btn btn-sm" disabled={analyzing} onClick={() => { setText(s.text); setTitle(s.title); void runAnalysis({ text: s.text, extraction: fromPlainText(s.text) }, s.title); }}>{s.label}</button>
             ))}
           </span>
         </div>
-        {error && <div className="info-box mt-12" role="alert">{error}</div>}
+        {error && (
+          <div className="info-box mt-12" role="alert">
+            <div>{error}</div>
+            {retrySrc && !analyzing && (
+              <div style={{ marginTop: 10 }}>
+                <button className="btn btn-sm" onClick={retryAnalysis}><Icon name="fileSearch" className="ic-sm" /> Riprova</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div ref={resultRef}>
+        {analyzing && progress && (
+          <div className="card mt-16" role="status" aria-live="polite"><span className="spinner" /> {progress}</div>
+        )}
         {loadingDoc && <div className="card mt-16"><span className="spinner" /> Caricamento analisi…</div>}
-        {!loadingDoc && analysis && document && <div className="mt-16"><ResultView analysis={analysis} document={document} /></div>}
-        {!loadingDoc && docParam && !analysis && !error && (
+        {!analyzing && !loadingDoc && analysis && document && <div className="mt-16"><ResultView analysis={analysis} document={document} /></div>}
+        {!analyzing && !loadingDoc && docParam && !analysis && !error && (
           <div className="card mt-16"><div className="muted-sm">Questo documento non ha ancora un’analisi.</div></div>
         )}
       </div>

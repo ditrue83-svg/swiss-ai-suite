@@ -4,13 +4,21 @@
 // sostituirà questo file mantenendo la stessa forma (Database → public → Tables…).
 // I campi jsonb sono tipati come `Json`; le forme applicative precise stanno in models.ts
 // e la mappatura avviene nel service layer.
+//
+// Allineato alla migrazione 0006 (pipeline Admin AI reale): estrazioni per pagina,
+// schema ricco su document_analyses, bozze, correzioni umane, log tecnico.
 // ============================================================================
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type MemberRole = 'owner' | 'admin' | 'member';
 export type DocumentSourceType = 'upload' | 'pasted_text' | 'email';
-export type DocumentStatus = 'uploaded' | 'processing' | 'analyzed' | 'failed';
+// §25 — nuovi stati della pipeline. I legacy 'processing'/'analyzed' restano validi.
+export type DocumentStatus =
+  | 'uploaded' | 'extracting' | 'analyzing' | 'completed' | 'needs_review' | 'failed'
+  | 'processing' | 'analyzed';
+export type AnalysisStatus = 'pending' | 'completed' | 'needs_review' | 'failed';
+export type ExtractionMethod = 'native_pdf' | 'ocr' | 'text';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'open' | 'completed';
 export type TaskSource = 'admin_ai' | 'subsidy_ai' | 'manual';
@@ -45,30 +53,107 @@ export interface Database {
         Relationships: [];
       };
       documents: {
-        Row: { id: string; company_id: string; uploaded_by: string | null; title: string; original_filename: string | null; mime_type: string | null; file_size: number | null; storage_path: string | null; source_type: DocumentSourceType; status: DocumentStatus; created_at: string; updated_at: string };
-        Insert: { id?: string; company_id: string; uploaded_by?: string | null; title: string; original_filename?: string | null; mime_type?: string | null; file_size?: number | null; storage_path?: string | null; source_type?: DocumentSourceType; status?: DocumentStatus };
-        Update: { title?: string; original_filename?: string | null; mime_type?: string | null; file_size?: number | null; storage_path?: string | null; source_type?: DocumentSourceType; status?: DocumentStatus };
+        Row: { id: string; company_id: string; uploaded_by: string | null; title: string; original_filename: string | null; mime_type: string | null; file_size: number | null; storage_path: string | null; source_type: DocumentSourceType; status: DocumentStatus; file_hash: string | null; page_count: number | null; created_at: string; updated_at: string };
+        Insert: { id?: string; company_id: string; uploaded_by?: string | null; title: string; original_filename?: string | null; mime_type?: string | null; file_size?: number | null; storage_path?: string | null; source_type?: DocumentSourceType; status?: DocumentStatus; file_hash?: string | null; page_count?: number | null };
+        Update: { title?: string; original_filename?: string | null; mime_type?: string | null; file_size?: number | null; storage_path?: string | null; source_type?: DocumentSourceType; status?: DocumentStatus; file_hash?: string | null; page_count?: number | null };
+        Relationships: [];
+      };
+      document_extractions: {
+        Row: {
+          id: string; document_id: string; company_id: string; extraction_method: ExtractionMethod;
+          full_text: string | null; pages: Json; page_count: number | null; char_count: number | null;
+          ocr_confidence: number | null; duration_ms: number | null; created_at: string;
+        };
+        Insert: {
+          id?: string; document_id: string; company_id: string; extraction_method: ExtractionMethod;
+          full_text?: string | null; pages?: Json; page_count?: number | null; char_count?: number | null;
+          ocr_confidence?: number | null; duration_ms?: number | null;
+        };
+        Update: {
+          extraction_method?: ExtractionMethod; full_text?: string | null; pages?: Json; page_count?: number | null;
+          char_count?: number | null; ocr_confidence?: number | null; duration_ms?: number | null;
+        };
         Relationships: [];
       };
       document_analyses: {
         Row: {
-          id: string; document_id: string; company_id: string; analysis_version: number; engine: string;
+          id: string; document_id: string; company_id: string; extraction_id: string | null;
+          analysis_version: number; analysis_status: AnalysisStatus; engine: string;
+          provider: string | null; model: string | null; prompt_version: string | null; schema_version: number;
+          processing_started_at: string | null; processing_completed_at: string | null;
+          error_code: string | null; error_message_safe: string | null; input_tokens: number | null; output_tokens: number | null;
+          // legacy (consumate dalla UI attuale)
           language: string | null; sender: string | null; sender_evidence: Json | null; document_type: string | null;
           deadline: string | null; deadline_evidence: Json | null; amount: number | null; amount_currency: string | null; amount_evidence: Json | null;
           summary: string | null; actions: Json; requested_documents: Json; risks: Json | null; uncertainties: Json;
           confidence: string | null; reply_draft: string | null; reply_language: string | null; reply_tone: string | null;
+          // ricche (§6–18/§23)
+          overall_confidence: number | null; document_type_confidence: number | null;
+          sender_authority_type: string | null; sender_confidence: number | null;
+          recipient: string | null; subject: string | null; document_date: string | null; reply_needed: boolean | null;
+          deadline_type: string | null; deadline_source_text: string | null; deadline_confidence: number | null; deadline_requires_verification: boolean;
+          amounts: Json; reference_numbers: Json; legal_references: Json; sender_evidence_list: Json;
           created_at: string; updated_at: string;
         };
         Insert: {
-          id?: string; document_id: string; company_id: string; analysis_version?: number; engine?: string;
+          id?: string; document_id: string; company_id: string; extraction_id?: string | null;
+          analysis_version?: number; analysis_status?: AnalysisStatus; engine?: string;
+          provider?: string | null; model?: string | null; prompt_version?: string | null; schema_version?: number;
+          processing_started_at?: string | null; processing_completed_at?: string | null;
+          error_code?: string | null; error_message_safe?: string | null; input_tokens?: number | null; output_tokens?: number | null;
           language?: string | null; sender?: string | null; sender_evidence?: Json | null; document_type?: string | null;
           deadline?: string | null; deadline_evidence?: Json | null; amount?: number | null; amount_currency?: string | null; amount_evidence?: Json | null;
           summary?: string | null; actions?: Json; requested_documents?: Json; risks?: Json | null; uncertainties?: Json;
           confidence?: string | null; reply_draft?: string | null; reply_language?: string | null; reply_tone?: string | null;
+          overall_confidence?: number | null; document_type_confidence?: number | null;
+          sender_authority_type?: string | null; sender_confidence?: number | null;
+          recipient?: string | null; subject?: string | null; document_date?: string | null; reply_needed?: boolean | null;
+          deadline_type?: string | null; deadline_source_text?: string | null; deadline_confidence?: number | null; deadline_requires_verification?: boolean;
+          amounts?: Json; reference_numbers?: Json; legal_references?: Json; sender_evidence_list?: Json;
         };
         Update: {
-          actions?: Json; reply_draft?: string | null; reply_language?: string | null; reply_tone?: string | null; status?: never;
+          actions?: Json; reply_draft?: string | null; reply_language?: string | null; reply_tone?: string | null;
         };
+        Relationships: [];
+      };
+      document_replies: {
+        Row: {
+          id: string; document_id: string; company_id: string; analysis_id: string | null; created_by: string | null;
+          language: string; tone: string; content: string; provider: string | null; model: string | null;
+          prompt_version: string | null; is_edited: boolean; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; document_id: string; company_id: string; analysis_id?: string | null; created_by?: string | null;
+          language: string; tone: string; content: string; provider?: string | null; model?: string | null;
+          prompt_version?: string | null; is_edited?: boolean;
+        };
+        Update: { content?: string; language?: string; tone?: string; is_edited?: boolean };
+        Relationships: [];
+      };
+      analysis_corrections: {
+        Row: {
+          id: string; analysis_id: string; document_id: string; company_id: string; field: string;
+          original_ai_value: Json | null; corrected_value: Json | null; corrected_by: string | null; corrected_at: string;
+        };
+        Insert: {
+          id?: string; analysis_id: string; document_id: string; company_id: string; field: string;
+          original_ai_value?: Json | null; corrected_value?: Json | null; corrected_by?: string | null;
+        };
+        Update: { corrected_value?: Json | null };
+        Relationships: [];
+      };
+      ai_request_log: {
+        Row: {
+          id: string; company_id: string; user_id: string | null; document_id: string | null; kind: string;
+          provider: string | null; model: string | null; status: string; error_code: string | null;
+          duration_ms: number | null; input_tokens: number | null; output_tokens: number | null; created_at: string;
+        };
+        Insert: {
+          id?: string; company_id: string; user_id?: string | null; document_id?: string | null; kind: string;
+          provider?: string | null; model?: string | null; status: string; error_code?: string | null;
+          duration_ms?: number | null; input_tokens?: number | null; output_tokens?: number | null;
+        };
+        Update: { status?: string };
         Relationships: [];
       };
       tasks: {
@@ -113,6 +198,8 @@ export interface Database {
       member_role: MemberRole;
       document_source_type: DocumentSourceType;
       document_status: DocumentStatus;
+      analysis_status: AnalysisStatus;
+      extraction_method: ExtractionMethod;
       task_priority: TaskPriority;
       task_status: TaskStatus;
       task_source: TaskSource;

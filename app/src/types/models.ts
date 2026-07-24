@@ -149,6 +149,22 @@ export interface DocumentWithAnalysis {
   analysis: DocumentAnalysis | null;
 }
 
+/** Bozza di risposta generata su richiesta (§35), salvata in document_replies. */
+export interface DocumentReply {
+  id: string;
+  documentId: string;
+  companyId: string;
+  analysisId: string | null;
+  language: string;
+  tone: string;
+  content: string;
+  provider: string | null;
+  model: string | null;
+  isEdited: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Tasks ------------------------------------------------------------------
 export interface Task {
   id: string;

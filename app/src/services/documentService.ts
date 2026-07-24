@@ -42,6 +42,10 @@ export interface CreateDocumentInput {
   file?: File;
   text?: string;
   filename?: string;
+  /** hash del contenuto per la deduplicazione (§28), calcolato dal chiamante. */
+  fileHash?: string | null;
+  /** numero di pagine noto dall'estrazione client (§25). */
+  pageCount?: number | null;
 }
 
 export const documentService = {
@@ -59,6 +63,31 @@ export const documentService = {
     const { data, error } = await requireSupabase().from('documents').select('*').eq('id', id).maybeSingle();
     if (error) throw new AppError(toUserMessage(error), error);
     return data ? toDocument(data) : null;
+  },
+
+  /** Deduplicazione (§28/§29): documento già presente NELL'AZIENDA con lo stesso contenuto. */
+  async findByHash(companyId: string, fileHash: string): Promise<DocumentRecord | null> {
+    const { data, error } = await requireSupabase()
+      .from('documents')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('file_hash', fileHash)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new AppError(toUserMessage(error), error);
+    return data ? toDocument(data) : null;
+  },
+
+  /** Testo estratto salvato dalla pipeline (per il viewer, incluso il caso OCR). */
+  async getExtractionText(documentId: string): Promise<string | null> {
+    const { data, error } = await requireSupabase()
+      .from('document_extractions')
+      .select('full_text')
+      .eq('document_id', documentId)
+      .maybeSingle();
+    if (error) throw new AppError(toUserMessage(error), error);
+    return (data?.full_text as string | null) ?? null;
   },
 
   /**
@@ -81,6 +110,8 @@ export const documentService = {
       mime_type: mimeType,
       source_type: input.sourceType,
       status: 'uploaded',
+      file_hash: input.fileHash ?? null,
+      page_count: input.pageCount ?? null,
     };
     const { data: inserted, error: insErr } = await sb.from('documents').insert(insertPayload).select('*').single();
     if (insErr || !inserted) throw new AppError(toUserMessage(insErr), insErr);

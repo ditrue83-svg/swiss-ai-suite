@@ -11,11 +11,12 @@ export const isSupabaseConfigured = Boolean(
   url && anonKey && !url.includes('YOUR-PROJECT') && !anonKey.startsWith('your-'),
 );
 
-// Fase 2 — quale motore d'analisi usare:
-//   'auto'          (default) prova l'AI, ricade sul motore deterministico se non disponibile
-//   'ai'            solo AI: se l'Edge Function non risponde, l'analisi fallisce con errore
-//   'deterministic' solo motore locale (nessun dato lascia Supabase)
-export type AnalysisProviderMode = 'auto' | 'ai' | 'deterministic';
-const rawMode = (import.meta.env.VITE_ANALYSIS_PROVIDER ?? 'auto').trim() as AnalysisProviderMode;
-export const ANALYSIS_PROVIDER: AnalysisProviderMode =
-  rawMode === 'ai' || rawMode === 'deterministic' ? rawMode : 'auto';
+// Fase 2 — quale motore d'analisi usare. NB (§60): nessun fallback nascosto.
+// Se l'AI non è disponibile in modalità 'ai', l'analisi FALLISCE in modo esplicito;
+// non produciamo mai un risultato deterministico spacciandolo per AI.
+//   'ai'            (default) solo AI reale, server-side. Fallimento → stato di errore.
+//   'deterministic' scelta ESPLICITA: motore locale, nessun dato lascia Supabase.
+//                   Chiaramente etichettato "Motore locale", non è un fallback.
+export type AnalysisProviderMode = 'ai' | 'deterministic';
+const rawMode = (import.meta.env.VITE_ANALYSIS_PROVIDER ?? 'ai').trim();
+export const ANALYSIS_PROVIDER: AnalysisProviderMode = rawMode === 'deterministic' ? 'deterministic' : 'ai';

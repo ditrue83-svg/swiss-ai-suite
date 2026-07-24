@@ -7,11 +7,14 @@
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { formatCurrency } from '@/lib/format';
+import { ANALYSIS_PROVIDER } from '@/lib/env';
 import {
-  buildReply, deadlineLevel, daysUntil, urgencyFromType,
+  analyzeText, buildReply, deadlineLevel, daysUntil, urgencyFromType,
   LANG_LABEL, DOC_TYPE_LABEL, type EngineAnalysis,
 } from '@/features/admin-ai/engine';
-import { runAnalysisProvider } from './analysisProviders';
+import { invokeAnalyze, DETERMINISTIC_ENGINE } from './analysisProviders';
+import { documentService } from './documentService';
+import type { ClientExtraction } from '@/features/admin-ai/pdf';
 import type {
   ChecklistAction, Confidence, DocumentAnalysis, DocumentRecord, Evidence,
   RequestedDocument, Risk, Urgency,
@@ -103,44 +106,52 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
 
 export interface AnalyzeInput {
   document: DocumentRecord;
-  text: string;
+  /** testo estratto lato client; null → il server fa l'OCR (solo modalità AI). */
+  extraction: ClientExtraction | null;
   companyName: string | null;
 }
 
 export interface AnalyzeOutcome {
   analysis: DocumentAnalysis;
-  /** true se era richiesta l'AI ma si è dovuto ricadere sul motore locale. */
-  usedFallback: boolean;
+  /** stato risultante dell'analisi: 'completed' | 'needs_review' (§25). */
+  status: string;
 }
 
 export const analysisService = {
   /**
-   * Esegue l'analisi con il provider configurato (AI o motore locale) e la PERSISTE.
-   * La UI non sa quale dei due ha prodotto il risultato: la forma è identica.
+   * Analizza e PERSISTE. In modalità 'ai' l'estrazione/analisi/persistenza avvengono
+   * server-side (Edge Function) e qui si RILEGGE dal DB (fonte di verità). In modalità
+   * 'deterministic' (§60, motore locale esplicito) si esegue e persiste qui. La forma
+   * del risultato è identica: la UI non deve distinguere i due percorsi.
    */
-  async analyzeAndPersist({ document, text, companyName }: AnalyzeInput): Promise<AnalyzeOutcome> {
+  async analyzeAndPersist({ document, extraction, companyName }: AnalyzeInput): Promise<AnalyzeOutcome> {
     const sb = requireSupabase();
-    const { engine, analysis: engineResult, usedFallback } = await runAnalysisProvider({
-      documentId: document.id,
-      text,
-      companyName,
-    });
 
-    // Rimpiazza eventuale analisi precedente per lo stesso documento.
-    await sb.from('document_analyses').delete().eq('document_id', document.id);
+    if (ANALYSIS_PROVIDER === 'deterministic') {
+      if (!extraction) {
+        throw new AppError('Il motore locale non legge immagini o scansioni: incolla il testo oppure usa la modalità AI.');
+      }
+      const engineResult = analyzeText(extraction.fullText, { companyName });
+      await sb.from('document_analyses').delete().eq('document_id', document.id);
+      const { data, error } = await sb
+        .from('document_analyses')
+        .insert(engineToInsert(engineResult, document.id, document.companyId, DETERMINISTIC_ENGINE))
+        .select('*')
+        .single();
+      if (error || !data) throw new AppError(toUserMessage(error), error);
+      await sb.from('documents').update({ status: 'analyzed' }).eq('id', document.id);
+      const domain = rowToDomain(data);
+      domain.originalText = extraction.fullText;
+      return { analysis: domain, status: 'completed' };
+    }
 
-    const { data, error } = await sb
-      .from('document_analyses')
-      .insert(engineToInsert(engineResult, document.id, document.companyId, engine))
-      .select('*')
-      .single();
-    if (error || !data) throw new AppError(toUserMessage(error), error);
-
-    await sb.from('documents').update({ status: 'analyzed' }).eq('id', document.id);
-
-    const domain = rowToDomain(data);
-    domain.originalText = text; // disponibile in sessione per il viewer + highlight
-    return { analysis: domain, usedFallback };
+    // Percorso AI: la Edge Function estrae (o fa OCR), analizza e persiste.
+    const { status } = await invokeAnalyze(document.id, extraction);
+    const analysis = await analysisService.getForDocument(document.id);
+    if (!analysis) throw new AppError("Analisi non disponibile dopo l'elaborazione.");
+    // Testo per il viewer: l'estrazione client se presente, altrimenti quella salvata (OCR).
+    analysis.originalText = extraction?.fullText ?? (await documentService.getExtractionText(document.id));
+    return { analysis, status };
   },
 
   /** Tutte le analisi dell'azienda (per Dashboard/Panoramica). */

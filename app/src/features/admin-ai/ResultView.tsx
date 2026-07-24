@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { analysisService } from '@/services/analysisService';
+import { replyService } from '@/services/replyService';
 import { taskService } from '@/services/taskService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,7 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { LANG_LABEL, TONI } from '@/features/admin-ai/engine';
-import type { ActionSource, ChecklistAction, DocumentAnalysis, DocumentRecord, Evidence, TaskPriority } from '@/types/models';
+import type { ActionSource, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence, TaskPriority } from '@/types/models';
 
 const DEADLINE_LEVEL_LABEL: Record<string, string> = { scaduta: 'Scaduta', urgente: 'Urgente', prossima: 'Prossima', nessuna: 'Nessuna urgenza' };
 const URGENCY_TO_PRIORITY: Record<string, TaskPriority> = { alta: 'high', media: 'medium', bassa: 'low' };
@@ -66,20 +67,31 @@ export function ResultView({ analysis, document }: { analysis: DocumentAnalysis;
   const { showToast } = useToast();
   const companyName = activeCompany?.legalName ?? null;
 
+  const isAI = analysis.engine.startsWith('claude');
   const [actions, setActions] = useState<ChecklistAction[]>(analysis.actions);
   const [highlight, setHighlight] = useState<Evidence | null>(null);
-  const [draft, setDraft] = useState(analysis.replyDraft);
+  const [reply, setReply] = useState<DocumentReply | null>(null);
+  const [draft, setDraft] = useState(isAI ? '' : analysis.replyDraft);
   const [lang, setLang] = useState(String(analysis.replyLanguage));
   const [tone, setTone] = useState(analysis.replyTone);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
-  // Se cambia il documento analizzato, reinizializza lo stato locale.
+  // Se cambia il documento analizzato, reinizializza lo stato locale e (per l'AI)
+  // carica l'ultima bozza salvata, senza rigenerarla (§35: la generazione è on-demand).
   useEffect(() => {
     setActions(analysis.actions);
-    setDraft(analysis.replyDraft);
     setLang(String(analysis.replyLanguage));
     setTone(analysis.replyTone);
     setHighlight(null);
+    if (!isAI) { setReply(null); setDraft(analysis.replyDraft); return; }
+    setReply(null); setDraft('');
+    let active = true;
+    replyService.getLatest(analysis.documentId).then((r) => {
+      if (!active || !r) return;
+      setReply(r); setDraft(r.content); setLang(r.language); setTone(r.tone);
+    }).catch(() => { /* nessuna bozza: si mostrerà il pulsante Genera */ });
+    return () => { active = false; };
   }, [analysis.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const done = actions.filter((c) => c.done).length;
@@ -108,12 +120,31 @@ export function ResultView({ analysis, document }: { analysis: DocumentAnalysis;
     } catch (e) { showToast(toUserMessage(e)); }
   }
 
+  // AI (§35): genera la bozza su richiesta con la Edge Function; la persiste server-side.
+  async function generateDraft() {
+    setGenerating(true);
+    try {
+      const gen = await replyService.generate({ documentId: analysis.documentId, language: lang, tone });
+      setReply(gen);
+      setDraft(gen.content);
+      showToast(reply ? 'Bozza rigenerata' : 'Bozza generata');
+    } catch (e) { showToast(toUserMessage(e)); }
+    finally { setGenerating(false); }
+  }
   async function saveDraft() {
     setSavingDraft(true);
-    try { await analysisService.updateReplyDraft(r.id, { draft, language: lang, tone }); showToast('Modifiche salvate'); }
-    catch (e) { showToast(toUserMessage(e)); }
+    try {
+      if (isAI) {
+        if (!reply) { showToast('Genera prima una bozza.'); return; }
+        await replyService.saveEdit(reply.id, draft);   // §34: modifica umana tracciata (is_edited)
+      } else {
+        await analysisService.updateReplyDraft(r.id, { draft, language: lang, tone });
+      }
+      showToast('Modifiche salvate');
+    } catch (e) { showToast(toUserMessage(e)); }
     finally { setSavingDraft(false); }
   }
+  // Solo motore locale: rigenera dal template deterministico.
   function resetDraft() {
     const next = analysisService.regenerateReply(r, lang, tone, companyName);
     setDraft(next);
@@ -242,13 +273,23 @@ export function ResultView({ analysis, document }: { analysis: DocumentAnalysis;
                 <select id="draft-tone" className="select-inline" value={tone} onChange={(e) => setTone(e.target.value)}>
                   {Object.entries(TONI).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select></div>
-              <button className="btn btn-sm" onClick={resetDraft}><Icon name="fileSearch" className="ic-sm" /> Ripristina bozza</button>
+              {isAI ? (
+                <button className="btn btn-sm" onClick={generateDraft} disabled={generating} aria-busy={generating || undefined}>
+                  {generating ? <span className="spinner" aria-hidden="true" /> : <Icon name="star" className="ic-sm" />} {reply ? 'Rigenera con l’AI' : 'Genera bozza con l’AI'}
+                </button>
+              ) : (
+                <button className="btn btn-sm" onClick={resetDraft}><Icon name="fileSearch" className="ic-sm" /> Ripristina bozza</button>
+              )}
             </div>
-            <textarea aria-label="Bozza di risposta modificabile" value={draft} onChange={(e) => setDraft(e.target.value)} />
+            {isAI && !reply && !generating ? (
+              <div className="draft-empty muted-sm">Nessuna bozza ancora. Scegli lingua e tono, poi premi «Genera bozza con l’AI»: potrai rileggerla e modificarla prima dell’invio.</div>
+            ) : (
+              <textarea aria-label="Bozza di risposta modificabile" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={generating ? 'Generazione della bozza in corso…' : ''} disabled={generating} />
+            )}
             <div className="draft-actions">
-              <button className="btn btn-sm btn-primary" onClick={saveDraft} disabled={savingDraft} aria-busy={savingDraft || undefined}>{savingDraft ? <span className="spinner" aria-hidden="true" /> : null} Salva modifiche</button>
-              <button className="btn btn-sm" onClick={copyDraft}>Copia</button>
-              <span className="muted-sm">Bozza generata da modello di template — rileggi e adatta prima dell’invio.</span>
+              <button className="btn btn-sm btn-primary" onClick={saveDraft} disabled={savingDraft || generating || (isAI && !reply)} aria-busy={savingDraft || undefined}>{savingDraft ? <span className="spinner" aria-hidden="true" /> : null} Salva modifiche</button>
+              <button className="btn btn-sm" onClick={copyDraft} disabled={!draft}>Copia</button>
+              <span className="muted-sm">{isAI ? 'Bozza generata dall’AI — rileggi e adatta prima dell’invio; non viene inviata automaticamente.' : 'Bozza generata da modello di template — rileggi e adatta prima dell’invio.'}</span>
             </div>
           </div>
         </div>
