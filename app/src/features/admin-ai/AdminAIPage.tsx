@@ -58,10 +58,12 @@ export function AdminAIPage() {
         if (!doc) throw new Error('Documento non trovato.');
         const an = await analysisService.getForDocument(doc.id);
         if (an) {
-          // Testo per il viewer: prima l'estrazione salvata (affidabile anche per OCR),
-          // poi, in mancanza, la ri-estrazione dal file originale.
+          // Testo + pagine per il viewer (§31): prima l'estrazione salvata (affidabile anche
+          // per OCR), poi, in mancanza, la ri-estrazione dal file originale.
           try {
-            an.originalText = await documentService.getExtractionText(doc.id);
+            const ext = await documentService.getExtraction(doc.id);
+            an.originalText = ext?.fullText ?? null;
+            an.pages = ext?.pages ?? null;
             if (!an.originalText && doc.storagePath) {
               const blob = await documentService.downloadBlob(doc.storagePath);
               an.originalText = await reconstructText(blob, doc.mimeType);
@@ -102,7 +104,8 @@ export function AdminAIPage() {
       if (existing && existing.status !== 'failed') {
         const an = await analysisService.getForDocument(existing.id);
         if (an) {
-          an.originalText = src.extraction?.fullText ?? (await documentService.getExtractionText(existing.id));
+          if (src.extraction) { an.originalText = src.extraction.fullText; an.pages = src.extraction.pages; }
+          else { const ext = await documentService.getExtraction(existing.id); an.originalText = ext?.fullText ?? null; an.pages = ext?.pages ?? null; }
           setDocument(existing);
           setAnalysis(an);
           setSearchParams({ doc: existing.id }, { replace: true });

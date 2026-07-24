@@ -16,8 +16,8 @@ import { invokeAnalyze, DETERMINISTIC_ENGINE } from './analysisProviders';
 import { documentService } from './documentService';
 import type { ClientExtraction } from '@/features/admin-ai/pdf';
 import type {
-  ChecklistAction, Confidence, DocumentAnalysis, DocumentRecord, Evidence,
-  RequestedDocument, Risk, Urgency,
+  AnalysisAmount, ChecklistAction, Confidence, DocumentAnalysis, DocumentRecord, Evidence,
+  LegalReference, ReferenceNumber, RequestedDocument, Risk, Urgency,
 } from '@/types/models';
 import type { Database, Json } from '@/types/database';
 
@@ -66,6 +66,35 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
   const confidence = (row.confidence as Confidence) ?? 'bassa';
   const urgency: Urgency = urgencyFromType(docType, days);
 
+  // §20/§31 — usa una citazione ricca solo se VERIFICATA (offset validi); altrimenti niente evidenza.
+  const richEvidence = (e: unknown): Evidence | null => {
+    const ev = e as { quote?: unknown; verified?: unknown; start?: unknown; end?: unknown; pageNumber?: unknown } | null;
+    if (!ev || typeof ev.quote !== 'string' || ev.verified === false) return null;
+    if (typeof ev.start !== 'number' || typeof ev.end !== 'number') return null;
+    return { quote: ev.quote, start: ev.start, end: ev.end, pageNumber: typeof ev.pageNumber === 'number' ? ev.pageNumber : null };
+  };
+  const amounts: AnalysisAmount[] = (Array.isArray(row.amounts) ? row.amounts : [])
+    .map((a) => a as { amount?: unknown; currency?: unknown; type?: unknown; description?: unknown; evidence?: unknown })
+    .filter((a) => typeof a.amount === 'number' && Number.isFinite(a.amount))
+    .map((a) => {
+      const cur = typeof a.currency === 'string' ? a.currency : 'CHF';
+      return {
+        amount: a.amount as number, currency: cur,
+        type: typeof a.type === 'string' ? a.type : 'other',
+        description: typeof a.description === 'string' ? a.description : '',
+        display: formatCurrency(a.amount as number, cur) ?? '',
+        evidence: richEvidence(a.evidence),
+      };
+    });
+  const referenceNumbers: ReferenceNumber[] = (Array.isArray(row.reference_numbers) ? row.reference_numbers : [])
+    .map((r) => r as { label?: unknown; value?: unknown; evidence?: unknown })
+    .filter((r) => typeof r.value === 'string' && r.value)
+    .map((r) => ({ label: typeof r.label === 'string' ? r.label : '', value: r.value as string, evidence: richEvidence(r.evidence) }));
+  const legalReferences: LegalReference[] = (Array.isArray(row.legal_references) ? row.legal_references : [])
+    .map((l) => l as { text?: unknown; evidence?: unknown })
+    .filter((l) => typeof l.text === 'string' && l.text)
+    .map((l) => ({ text: l.text as string, evidence: richEvidence(l.evidence) }));
+
   return {
     id: row.id,
     documentId: row.document_id,
@@ -99,6 +128,17 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     replyDraft: row.reply_draft ?? '',
     replyLanguage: row.reply_language ?? (row.language ?? 'it'),
     replyTone: row.reply_tone ?? 'formale',
+    recipient: row.recipient ?? null,
+    subject: row.subject ?? null,
+    documentDate: row.document_date ?? null,
+    senderAuthorityType: row.sender_authority_type ?? null,
+    amounts,
+    referenceNumbers,
+    legalReferences,
+    deadlineType: row.deadline_type ?? null,
+    deadlineRequiresVerification: row.deadline_requires_verification ?? false,
+    deadlineSourceText: row.deadline_source_text ?? null,
+    overallConfidence: row.overall_confidence ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -149,8 +189,15 @@ export const analysisService = {
     const { status } = await invokeAnalyze(document.id, extraction);
     const analysis = await analysisService.getForDocument(document.id);
     if (!analysis) throw new AppError("Analisi non disponibile dopo l'elaborazione.");
-    // Testo per il viewer: l'estrazione client se presente, altrimenti quella salvata (OCR).
-    analysis.originalText = extraction?.fullText ?? (await documentService.getExtractionText(document.id));
+    // Testo + pagine per il viewer (§31): l'estrazione client se presente, altrimenti quella salvata (OCR).
+    if (extraction) {
+      analysis.originalText = extraction.fullText;
+      analysis.pages = extraction.pages;
+    } else {
+      const ext = await documentService.getExtraction(document.id);
+      analysis.originalText = ext?.fullText ?? null;
+      analysis.pages = ext?.pages ?? null;
+    }
     return { analysis, status };
   },
 

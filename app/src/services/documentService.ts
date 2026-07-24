@@ -79,15 +79,20 @@ export const documentService = {
     return data ? toDocument(data) : null;
   },
 
-  /** Testo estratto salvato dalla pipeline (per il viewer, incluso il caso OCR). */
-  async getExtractionText(documentId: string): Promise<string | null> {
+  /** Estrazione salvata dalla pipeline: testo + pagine (§31), per il viewer (incluso OCR). */
+  async getExtraction(documentId: string): Promise<{ fullText: string | null; pages: { pageNumber: number; text: string }[] } | null> {
     const { data, error } = await requireSupabase()
       .from('document_extractions')
-      .select('full_text')
+      .select('full_text, pages')
       .eq('document_id', documentId)
       .maybeSingle();
     if (error) throw new AppError(toUserMessage(error), error);
-    return (data?.full_text as string | null) ?? null;
+    if (!data) return null;
+    const rawPages = Array.isArray(data.pages) ? data.pages : [];
+    const pages = rawPages
+      .map((p) => p as { pageNumber?: unknown; text?: unknown })
+      .map((p, i) => ({ pageNumber: typeof p.pageNumber === 'number' ? p.pageNumber : i + 1, text: typeof p.text === 'string' ? p.text : '' }));
+    return { fullText: (data.full_text as string | null) ?? null, pages };
   },
 
   /**

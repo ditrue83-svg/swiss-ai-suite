@@ -58,6 +58,8 @@ export interface Evidence {
   quote: string;
   start: number;
   end: number;
+  /** Pagina di provenienza (§31), quando nota. */
+  pageNumber?: number | null;
 }
 
 export type ActionSource = 'extracted' | 'suggested';
@@ -103,6 +105,27 @@ export interface DocumentRecord {
   updatedAt: string;
 }
 
+/** Importo rilevato (§12): la pipeline può estrarne più di uno, con tipo e citazione. */
+export interface AnalysisAmount {
+  amount: number;
+  currency: string;
+  type: string;            // due | fine | fee | contribution | other
+  description: string;
+  display: string;         // già formattato per la UI
+  evidence: Evidence | null;
+}
+
+export interface ReferenceNumber {
+  label: string;
+  value: string;
+  evidence: Evidence | null;
+}
+
+export interface LegalReference {
+  text: string;
+  evidence: Evidence | null;
+}
+
 /** Risultato d'analisi arricchito usato dalla UI (etichette e livelli derivati). */
 export interface DocumentAnalysis {
   id: string;
@@ -137,16 +160,43 @@ export interface DocumentAnalysis {
   replyDraft: string;
   replyLanguage: DocLanguage | string;
   replyTone: string;
+  // ---- Campi ricchi (§30-34) ----
+  recipient: string | null;
+  subject: string | null;
+  documentDate: string | null;
+  senderAuthorityType: string | null;
+  amounts: AnalysisAmount[];
+  referenceNumbers: ReferenceNumber[];
+  legalReferences: LegalReference[];
+  deadlineType: string | null;
+  deadlineRequiresVerification: boolean;
+  deadlineSourceText: string | null;
+  overallConfidence: number | null;
   createdAt: string;
   updatedAt: string;
   /** Testo originale ricostruito da Storage on-demand (NON persistito nel DB). */
   originalText?: string | null;
+  /** Pagine del testo estratto (§31), caricate on-demand per il viewer. */
+  pages?: { pageNumber: number; text: string }[] | null;
 }
 
 /** Documento + eventuale analisi (per Archivio / vista Admin). */
 export interface DocumentWithAnalysis {
   document: DocumentRecord;
   analysis: DocumentAnalysis | null;
+}
+
+/** Correzione umana di un campo estratto (§34). L'analisi AI resta immutabile. */
+export interface AnalysisCorrection {
+  id: string;
+  analysisId: string;
+  documentId: string;
+  companyId: string;
+  field: string;            // sender | deadline | amount | document_type
+  originalAiValue: unknown;
+  correctedValue: unknown;
+  correctedBy: string | null;
+  correctedAt: string;
 }
 
 /** Bozza di risposta generata su richiesta (§35), salvata in document_replies. */
