@@ -1,6 +1,6 @@
 // Logica condivisa Panoramica/Dashboard: profilo di matching + "Priorità di oggi".
 import type { Company, CompanyProfile, DocumentAnalysis, DocumentRecord, SubsidyCase, Task } from '@/types/models';
-import { matchPrograms, type MatchProfile, type MatchResult } from '@/features/subsidy-ai/engine';
+import type { MatchProfile, MatchResult } from '@/features/subsidy-ai/engine';
 import type { IconName } from '@/components/ui/Icon';
 import { daysUntil } from '@/lib/format';
 

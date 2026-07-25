@@ -2,7 +2,8 @@ import { Icon } from '@/components/ui/Icon';
 import { EmptyCta } from '@/components/ui/states';
 import { SUPPORT_TYPE_LABEL, labelSettore, type ProgramModel } from './programs';
 import type { MatchResult } from './engine';
-import type { Company } from '@/types/models';
+import { InterpretationPanel } from './Interpretation';
+import type { Company, ProjectInterpretation } from '@/types/models';
 
 function relClass(s: number) { return s >= 75 ? 'hi' : s >= 55 ? 'mid' : ''; }
 function SupportChip({ prog }: { prog: ProgramModel }) {
@@ -10,31 +11,44 @@ function SupportChip({ prog }: { prog: ProgramModel }) {
 }
 
 export function ResultsList({
-  matches, company, sector, onOpen, onEditProfile,
+  matches, company, sector, interpretation, onOpen, onEditProfile,
 }: {
   matches: MatchResult[];
   company: Company | null;
   sector: string | null;
+  interpretation: ProjectInterpretation | null;
   onOpen: (programId: string) => void;
   onEditProfile: () => void;
 }) {
   const settoreLabel = labelSettore(sector);
 
+  // Spiegazione AI (se disponibile): riepilogo + pertinenza + avviso tempistica
+  // quando il progetto risulta già avviato e c'è un programma con domanda-prima.
+  const panel = interpretation
+    ? <InterpretationPanel
+        interpretation={interpretation}
+        showTimingWarning={interpretation.timing.alreadyStarted === true && matches.some((m) => m.program.mustApplyBeforeStart)} />
+    : null;
+
   if (matches.length === 0) {
     return (
-      <div className="card">
-        <EmptyCta
-          icon="banknote"
-          title="Nessun programma rilevante con i criteri attuali"
-          subtitle="Aggiungi ambiti di progetto o rivedi il settore nel profilo incentivi."
-          action={<button className="btn btn-primary" onClick={onEditProfile}>Modifica profilo incentivi</button>}
-        />
-      </div>
+      <>
+        {panel}
+        <div className="card">
+          <EmptyCta
+            icon="banknote"
+            title="Nessun programma rilevante con i criteri attuali"
+            subtitle="Aggiungi ambiti di progetto o rivedi il settore nel profilo incentivi."
+            action={<button className="btn btn-primary" onClick={onEditProfile}>Modifica profilo incentivi</button>}
+          />
+        </div>
+      </>
     );
   }
 
   return (
     <>
+      {panel}
       <div className="demo-banner">
         {matches.length} programmi <strong>rilevanti</strong> per <strong>{company?.legalName ?? 'la tua impresa'}</strong>
         {` (${company?.canton ?? '—'}${settoreLabel ? ', ' + settoreLabel : ''}). `}

@@ -272,3 +272,35 @@ export interface SubsidyCaseItem {
   completed: boolean;
   sortOrder: number;
 }
+
+// ---- Subsidy AI · interpretazione progetto (§S2) ----------------------------
+// Mirror lato client di NormalizedInterpretation (supabase/functions/_shared/
+// subsidyInterpret.ts). L'AI interpreta e SPIEGA la pertinenza, ma NON dichiara
+// idoneità (che resta deterministica e verificabile a valle). Ogni citazione è
+// verificata contro il testo (§20): `verified=false` = non trovata alla lettera.
+export interface InterpretationEvidence { quote: string; verified: boolean }
+
+export interface InterpretedProjectType {
+  type: string;              // uno degli 8 id di TIPI_PROGETTO
+  confidence: number;
+  evidence: InterpretationEvidence | null;
+}
+
+export interface InterpretedRelevantArea {
+  area: string;
+  reason: string;
+  evidence: InterpretationEvidence | null;
+}
+
+export interface ProjectInterpretation {
+  language: 'it' | 'de' | 'fr';
+  summary: string;
+  projectTypes: InterpretedProjectType[];
+  sector: { value: string | null; confidence: number };
+  investment: { amount: number | null; currency: string; evidence: InterpretationEvidence | null };
+  timing: { alreadyStarted: boolean | null; evidence: InterpretationEvidence | null };
+  relevantAreas: InterpretedRelevantArea[];
+  uncertainties: { field: string; description: string; severity: 'low' | 'medium' | 'high' }[];
+  overallConfidence: number;
+  meta: { droppedEvidence: number; warnings: string[] };
+}

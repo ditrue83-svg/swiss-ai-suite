@@ -1,14 +1,20 @@
 // Profilo incentivi: descrive "cosa vuole realizzare l'azienda" e salva gli ambiti
-// di progetto nel company_profile (i dati anagrafici stanno già nell'onboarding).
-import { useMemo, useState } from 'react';
+// di progetto nel company_profile. La descrizione libera è interpretata dall'AI reale
+// (Edge Function interpret-project); i tipi riconosciuti alimentano il matching
+// deterministico a valle. L'idoneità NON è mai dichiarata qui.
+import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { companyService } from '@/services/companyService';
+import { interpretService } from '@/services/interpretService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
-import { SETTORI, TIPI_PROGETTO, interpretProjectDescription, labelTipo } from './programs';
+import type { ProjectInterpretation } from '@/types/models';
+import { SETTORI, TIPI_PROGETTO, labelTipo } from './programs';
 
-export function ProfileForm({ onSaved }: { onSaved: () => void }) {
+const MIN_DESC = 15; // allineato al minimo della Edge Function interpret-project
+
+export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInterpretation | null) => void }) {
   const { activeCompanyId, activeCompany, companyProfile, refreshProfile } = useCompany();
   const { showToast } = useToast();
 
@@ -17,28 +23,51 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
   const [description, setDescription] = useState('');
   const [ownsProperty, setOwnsProperty] = useState(companyProfile?.ownsProperty ?? false);
   const [hasVehicles, setHasVehicles] = useState((companyProfile?.vehicleCount ?? 0) > 0);
+  const [interpreting, setInterpreting] = useState(false);
+  const [interpretation, setInterpretation] = useState<ProjectInterpretation | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const suggestions = useMemo(() => interpretProjectDescription(description), [description]);
 
   function toggleProject(id: string) {
     setProjects((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
-  function applySuggestions() {
-    setProjects((prev) => {
-      const merged = [...prev];
-      for (const s of suggestions) if (!merged.includes(s)) merged.push(s);
-      return merged;
-    });
+
+  function onDescriptionChange(value: string) {
+    setDescription(value);
+    // L'interpretazione non corrisponde più al testo modificato: azzerala.
+    if (interpretation) setInterpretation(null);
+  }
+
+  async function interpret() {
+    if (interpreting) return;
+    if (description.trim().length < MIN_DESC) {
+      showToast('Descrivi il progetto con qualche frase in più prima di interpretarlo.');
+      return;
+    }
+    setInterpreting(true);
+    try {
+      const result = await interpretService.interpret(activeCompanyId as string, description.trim());
+      setInterpretation(result);
+      // Merge dei tipi riconosciuti nelle chip (l'utente può correggerli).
+      const recognized = result.projectTypes.map((p) => p.type);
+      setProjects((prev) => {
+        const merged = [...prev];
+        for (const t of recognized) if (!merged.includes(t)) merged.push(t);
+        return merged;
+      });
+      // Prefill del settore se non indicato e l'AI è ragionevolmente sicura.
+      const sv = result.sector.value;
+      if (!sector && sv && result.sector.confidence >= 0.5 && SETTORI.some((s) => s.id === sv)) setSector(sv);
+    } catch (e) {
+      showToast(toUserMessage(e));
+    } finally {
+      setInterpreting(false);
+    }
   }
 
   async function save() {
     if (saving) return;
-    // integra i suggerimenti non ancora aggiunti
-    const finalProjects = [...projects];
-    for (const s of suggestions) if (!finalProjects.includes(s)) finalProjects.push(s);
-    if (finalProjects.length === 0) {
-      showToast('Indica almeno un ambito di progetto o descrivi cosa vuole realizzare l’azienda');
+    if (projects.length === 0) {
+      showToast('Indica almeno un ambito di progetto (interpreta la descrizione o selezionalo qui sotto).');
       return;
     }
     setSaving(true);
@@ -49,11 +78,11 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
         revenueBand: companyProfile?.revenueBand ?? null,
         ownsProperty,
         vehicleCount: hasVehicles ? Math.max(1, companyProfile?.vehicleCount ?? 1) : 0,
-        currentProjects: finalProjects,
+        currentProjects: projects,
       });
       await refreshProfile();
       showToast('Profilo incentivi salvato');
-      onSaved();
+      onSaved(interpretation);
     } catch (e) {
       showToast(toUserMessage(e));
     } finally {
@@ -61,12 +90,15 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
     }
   }
 
+  const recognized = interpretation ? interpretation.projectTypes.map((p) => p.type) : [];
+  const canInterpret = description.trim().length >= MIN_DESC && !interpreting;
+
   return (
     <div className="card">
       <div className="section-title">Cosa vuole realizzare la tua azienda?</div>
       <p className="muted-sm mb-14">
         Impresa: <strong>{activeCompany?.legalName}</strong>{activeCompany?.canton ? ` · ${activeCompany.canton}` : ''}.
-        Descrivi il progetto: il sistema suggerisce gli ambiti pertinenti, che potrai approvare o correggere.
+        Descrivi il progetto: l’AI lo interpreta e propone gli ambiti pertinenti, che potrai approvare o correggere.
       </p>
 
       <div className="grid-2">
@@ -81,12 +113,24 @@ export function ProfileForm({ onSaved }: { onSaved: () => void }) {
 
       <div className="field">
         <label htmlFor="sf-desc">Descrizione del progetto</label>
-        <textarea id="sf-desc" style={{ minHeight: 120 }} value={description} onChange={(e) => setDescription(e.target.value)}
+        <textarea id="sf-desc" style={{ minHeight: 120 }} value={description} onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder="Es. Vogliamo installare un impianto fotovoltaico sul tetto del capannone, sostituire due furgoni diesel con veicoli elettrici e digitalizzare la gestione degli ordini." />
-        {suggestions.length > 0 && (
-          <div className="hint-accent">
-            Ambiti riconosciuti: {suggestions.map(labelTipo).join(', ')}.{' '}
-            <button type="button" className="btn-link" onClick={applySuggestions}>Aggiungili tutti</button>
+        <div className="row-wrap" style={{ marginTop: 8 }}>
+          <button type="button" className="btn btn-sm" onClick={interpret} disabled={!canInterpret} aria-busy={interpreting || undefined}>
+            {interpreting ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} Interpreta il progetto con l’AI
+          </button>
+          <span className="muted-sm">L’AI riconosce gli ambiti e spiega la pertinenza; l’idoneità resta da verificare.</span>
+        </div>
+
+        {interpretation && (
+          <div className="hint-accent" role="status" style={{ marginTop: 10 }}>
+            {interpretation.summary && <div style={{ marginBottom: 6 }}>{interpretation.summary}</div>}
+            {recognized.length > 0
+              ? <>Ambiti riconosciuti e aggiunti sotto (correggibili): <strong>{recognized.map(labelTipo).join(', ')}</strong>.</>
+              : <>L’AI non ha riconosciuto ambiti specifici: selezionali manualmente qui sotto.</>}
+            {interpretation.timing.alreadyStarted === true && (
+              <div style={{ marginTop: 6 }}><Icon name="alert" className="ic-sm" /> Il progetto sembra già avviato: attenzione ai programmi con «domanda prima di iniziare».</div>
+            )}
           </div>
         )}
       </div>

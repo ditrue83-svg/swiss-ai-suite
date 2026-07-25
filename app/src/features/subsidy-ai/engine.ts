@@ -3,9 +3,7 @@
 // IDONEITÀ (hard/soft rules + esclusioni valutabili). Porting fedele.
 // ============================================================================
 import type { EligibilityStatus } from '@/types/models';
-import {
-  PROGRAMS_MODEL, labelTipo, type ProgramModel, type Requirement, type Exclusion,
-} from './programs';
+import { labelTipo, type ProgramModel, type Requirement, type Exclusion } from './programs';
 
 /** Profilo minimo per il matching (derivato da Company + CompanyProfile). */
 export interface MatchProfile {
@@ -60,9 +58,10 @@ export interface MatchResult {
 }
 
 // matching: ordina per RILEVANZA. L'idoneità NON entra nel punteggio.
-export function matchPrograms(profile: MatchProfile): MatchResult[] {
+// `programs` arriva dal catalogo reale (programService.listActive), non più hardcoded.
+export function matchPrograms(profile: MatchProfile, programs: ProgramModel[]): MatchResult[] {
   const out: MatchResult[] = [];
-  for (const prog of PROGRAMS_MODEL) {
+  for (const prog of programs) {
     const rel = computeRelevance(profile, prog);
     if (!rel || rel.score < 40) continue;
     out.push({

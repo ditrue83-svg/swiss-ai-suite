@@ -12,6 +12,7 @@
     "test:phase1": "node --env-file=.env.test scripts/test-phase1.mjs",
     "test:phase2": "node --env-file=.env.test scripts/test-phase2.mjs",
     "eval:admin": "node --env-file=.env.test --import tsx scripts/eval-admin-ai.ts",
+    "eval:subsidy": "node --env-file=.env.test --import tsx scripts/eval-subsidy.ts",
     "test:pipeline": "node --env-file=.env.test --import tsx scripts/test-pipeline.ts"
   },
   "dependencies": {

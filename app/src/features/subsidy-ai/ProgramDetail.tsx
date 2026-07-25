@@ -12,6 +12,8 @@ import {
   subsidyQuestions, evaluateEligibility, ELIGIBILITY_LABEL, ELIGIBILITY_BADGE,
   type EligibilityResult, type MatchResult,
 } from './engine';
+import { InterpretationPanel } from './Interpretation';
+import type { ProjectInterpretation } from '@/types/models';
 
 function relClass(s: number) { return s >= 75 ? 'hi' : s >= 55 ? 'mid' : ''; }
 
@@ -70,9 +72,10 @@ function Quiz({ prog, answers, setAnswers, onVerdict }: {
   );
 }
 
-export function ProgramDetail({ match, companyId, onBack, onCreatedCase }: {
+export function ProgramDetail({ match, companyId, interpretation, onBack, onCreatedCase }: {
   match: MatchResult;
   companyId: string;
+  interpretation: ProjectInterpretation | null;
   onBack: () => void;
   onCreatedCase: () => void;
 }) {
@@ -162,6 +165,12 @@ export function ProgramDetail({ match, companyId, onBack, onCreatedCase }: {
         </div>
         <div className="result-row"><div className="result-label">Documenti</div><div><ul className="detail-list">{p.documentsRequired.map((d, i) => <li key={i}>{d}</li>)}</ul></div></div>
       </div>
+
+      {interpretation && (
+        <InterpretationPanel
+          interpretation={interpretation}
+          showTimingWarning={interpretation.timing.alreadyStarted === true && p.mustApplyBeforeStart} />
+      )}
 
       <div className="card source-card">
         <div className="card-title"><Icon name="fileSearch" className="ic-sm" /> Fonte</div>

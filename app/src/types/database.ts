@@ -180,6 +180,36 @@ export interface Database {
         Update: { title?: string; completed?: boolean; sort_order?: number };
         Relationships: [];
       };
+      subsidy_programs: {
+        Row: {
+          id: string; name: string; authority: string; support_type: string;
+          geography: string[]; target_sectors: string[]; company_size_min: number; company_size_max: number;
+          project_types: string[]; requirements: Json; exclusions: Json;
+          contribution_description: string | null; application_window: string | null;
+          must_apply_before_start: boolean; must_apply_before_start_text: string | null; documents_required: string[];
+          official_source_url: string; source_title: string | null; last_checked_at: string | null;
+          data_status: string; active: boolean; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id: string; name: string; authority: string; support_type?: string;
+          geography?: string[]; target_sectors?: string[]; company_size_min?: number; company_size_max?: number;
+          project_types?: string[]; requirements?: Json; exclusions?: Json;
+          contribution_description?: string | null; application_window?: string | null;
+          must_apply_before_start?: boolean; must_apply_before_start_text?: string | null; documents_required?: string[];
+          official_source_url: string; source_title?: string | null; last_checked_at?: string | null;
+          data_status?: string; active?: boolean;
+        };
+        Update: {
+          name?: string; authority?: string; support_type?: string;
+          geography?: string[]; target_sectors?: string[]; company_size_min?: number; company_size_max?: number;
+          project_types?: string[]; requirements?: Json; exclusions?: Json;
+          contribution_description?: string | null; application_window?: string | null;
+          must_apply_before_start?: boolean; must_apply_before_start_text?: string | null; documents_required?: string[];
+          official_source_url?: string; source_title?: string | null; last_checked_at?: string | null;
+          data_status?: string; active?: boolean;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
