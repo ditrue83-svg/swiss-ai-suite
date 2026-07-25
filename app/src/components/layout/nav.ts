@@ -1,22 +1,25 @@
 import type { IconName } from '@/components/ui/Icon';
+import type { TKey } from '@/i18n';
 
-export interface NavItem { id: string; label: string; icon: IconName; path: string }
-export interface NavSection { section: string }
+// Le voci portano una CHIAVE di traduzione, non un'etichetta già scritta:
+// l'etichetta si risolve al render, così il menu cambia lingua all'istante.
+export interface NavItem { id: string; labelKey: TKey; icon: IconName; path: string }
+export interface NavSection { sectionKey: TKey }
 export type NavEntry = NavItem | NavSection;
 
 export const NAV: NavEntry[] = [
-  { section: 'Piattaforma' },
-  { id: 'home', label: 'Panoramica', icon: 'home', path: '/' },
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/dashboard' },
-  { id: 'deadlines', label: 'Scadenziario', icon: 'calendar', path: '/scadenziario' },
-  { section: 'Moduli' },
-  { id: 'admin', label: 'Admin AI — Documenti', icon: 'document', path: '/admin' },
-  { id: 'subsidy', label: 'Subsidy AI — Incentivi', icon: 'banknote', path: '/subsidy' },
-  { id: 'archive', label: 'Archivio documenti', icon: 'archive', path: '/archivio' },
-  { section: 'Account' },
-  { id: 'pricing', label: 'Piani e prezzi', icon: 'tag', path: '/prezzi' },
+  { sectionKey: 'nav.sectionPlatform' },
+  { id: 'home', labelKey: 'nav.home', icon: 'home', path: '/' },
+  { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'dashboard', path: '/dashboard' },
+  { id: 'deadlines', labelKey: 'nav.tasks', icon: 'calendar', path: '/scadenziario' },
+  { sectionKey: 'nav.sectionModules' },
+  { id: 'admin', labelKey: 'nav.adminAi', icon: 'document', path: '/admin' },
+  { id: 'subsidy', labelKey: 'nav.subsidyAi', icon: 'banknote', path: '/subsidy' },
+  { id: 'archive', labelKey: 'nav.archive', icon: 'archive', path: '/archivio' },
+  { sectionKey: 'nav.sectionAccount' },
+  { id: 'pricing', labelKey: 'nav.pricing', icon: 'tag', path: '/prezzi' },
 ];
 
 export function isSection(e: NavEntry): e is NavSection {
-  return (e as NavSection).section !== undefined;
+  return (e as NavSection).sectionKey !== undefined;
 }

@@ -1,0 +1,190 @@
+// ============================================================================
+// Dizionario TEDESCO (Schweizer Hochdeutsch).
+//
+// Tipizzato come `Dictionary`: se manca una chiave la compilazione FALLISCE.
+//
+// Convenzioni svizzere rispettate:
+//  · «ss» al posto di «ß» (uso svizzero);
+//  · terminologia amministrativa federale: UID (non «IDI»), Kanton, Gemeinde,
+//    Rechtsform, AHV/MWST dove ricorrono;
+//  · forma di cortesia «Sie».
+// NB: prima del lancio è consigliata una rilettura da parte di un madrelingua,
+// soprattutto per il disclaimer legale.
+// ============================================================================
+import type { Dictionary } from './it';
+
+export const de: Dictionary = {
+  common: {
+    save: 'Speichern',
+    cancel: 'Abbrechen',
+    delete: 'Löschen',
+    edit: 'Bearbeiten',
+    close: 'Schliessen',
+    open: 'Öffnen',
+    back: 'Zurück',
+    next: 'Weiter',
+    retry: 'Erneut versuchen',
+    copy: 'Kopieren',
+    loading: 'Wird geladen…',
+    search: 'Suchen',
+    confirm: 'Bestätigen',
+    yes: 'Ja',
+    no: 'Nein',
+    dontKnow: 'Weiss ich nicht',
+    required: 'obligatorisch',
+    optional: 'freiwillig',
+    verify: 'zu prüfen',
+    error: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
+  },
+
+  brand: {
+    name: 'SwissAI Suite',
+    tagline: 'für Schweizer KMU',
+  },
+  nav: {
+    sectionPlatform: 'Plattform',
+    sectionModules: 'Module',
+    sectionAccount: 'Konto',
+    home: 'Übersicht',
+    dashboard: 'Dashboard',
+    tasks: 'Fristen',
+    adminAi: 'Admin AI — Dokumente',
+    subsidyAi: 'Subsidy AI — Fördermittel',
+    archive: 'Dokumentenarchiv',
+    pricing: 'Abos und Preise',
+    activeCompany: 'Aktives Unternehmen',
+    switchCompany: 'Unternehmen wechseln',
+    signOut: 'Abmelden',
+    signOutAria: 'Vom Konto abmelden',
+    menu: 'Menü',
+    language: 'Sprache',
+    mainNav: 'Hauptnavigation',
+    openMenu: 'Navigationsmenü öffnen',
+    closeMenu: 'Menü schliessen',
+  },
+  roles: {
+    owner: 'Inhaber:in',
+    admin: 'Administrator:in',
+    member: 'Mitarbeiter:in',
+  },
+
+  auth: {
+    emailLabel: 'E-Mail',
+    passwordLabel: 'Passwort',
+    login: {
+      title: 'Anmelden',
+      subtitle: 'Zugang zu Ihrem administrativen Arbeitsbereich.',
+      submit: 'Anmelden',
+      forgot: 'Passwort vergessen?',
+      noAccount: 'Noch kein Konto?',
+      createAccount: 'Konto erstellen',
+    },
+    register: {
+      title: 'Konto erstellen',
+      subtitle: 'Nur wenige Angaben: Das Unternehmen richten Sie gleich danach ein.',
+      firstName: 'Vorname',
+      lastName: 'Nachname',
+      submit: 'Konto erstellen',
+      haveAccount: 'Sie haben bereits ein Konto?',
+      goToLogin: 'Anmelden',
+      checkEmail: 'Wir haben Ihnen eine Bestätigungs-E-Mail geschickt: Öffnen Sie diese, um das Konto zu aktivieren.',
+      passwordHint: 'Mindestens 8 Zeichen.',
+    },
+    forgot: {
+      title: 'Passwort vergessen',
+      subtitle: 'Wir senden Ihnen einen Link, um ein neues zu setzen.',
+      submit: 'Link senden',
+      sent: 'Falls die Adresse registriert ist, erhalten Sie eine E-Mail mit dem Link zum Zurücksetzen des Passworts.',
+      backToLogin: 'Zurück zur Anmeldung',
+    },
+    reset: {
+      title: 'Neues Passwort',
+      subtitle: 'Wählen Sie ein Passwort, das Sie nirgends sonst verwenden.',
+      newPassword: 'Neues Passwort',
+      submit: 'Passwort aktualisieren',
+      done: 'Passwort aktualisiert: Sie können sich jetzt anmelden.',
+    },
+    errors: {
+      emailRequired: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
+      passwordRequired: 'Bitte geben Sie das Passwort ein.',
+      nameRequired: 'Bitte geben Sie Vor- und Nachnamen ein.',
+      passwordShort: 'Das Passwort muss mindestens 8 Zeichen haben.',
+    },
+  },
+
+  onboarding: {
+    title: 'Richten Sie Ihr Unternehmen ein',
+    subtitle: 'Diese Angaben sind die Grundlage für die Dokumentenanalyse und das Fördermittel-Matching. Sie können sie später ändern.',
+    registrySearch: 'Im UID-Register (Zefix) suchen',
+    registryPlaceholder: 'Firmenname oder UID (z. B. CHE-123.456.789)',
+    registryHint: 'Füllt die Felder unten automatisch aus; Sie können jederzeit von Hand korrigieren.',
+    registryUnavailable: 'Die automatische Suche im UID-Register ist zurzeit nicht aktiv. Bitte erfassen Sie die Daten unten manuell.',
+    registryNoResults: 'Kein Unternehmen gefunden. Bitte erfassen Sie die Daten unten manuell.',
+    registryImported: 'Daten übernommen. Bitte prüfen und Rechtsform, Branche und Mitarbeiterzahl ergänzen.',
+    registryResultsAria: 'Ergebnisse aus dem UID-Register',
+    legalName: 'Firmenname',
+    legalNamePlaceholder: 'z. B. Rossi Impianti GmbH',
+    uid: 'UID-Nummer (CHE)',
+    uidInvalid: 'Diese UID besteht die Prüfziffernkontrolle nicht: Bitte prüfen Sie die Eingabe. Sie können trotzdem fortfahren.',
+    canton: 'Kanton',
+    municipality: 'Gemeinde',
+    municipalityPlaceholder: 'z. B. Lugano',
+    legalForm: 'Rechtsform',
+    sector: 'Branche',
+    sectorPlaceholder: '— Auswählen —',
+    employees: 'Anzahl Mitarbeitende',
+    employeesPlaceholder: 'z. B. 12',
+    revenue: 'Umsatzklasse (freiwillig)',
+    submit: 'Unternehmen erstellen und fortfahren',
+    errorName: 'Bitte geben Sie den Firmennamen ein.',
+  },
+
+  tasks: {
+    title: 'Fristen',
+    subtitle: 'Alle Fristen und Aufgaben, mit Priorität und Status.',
+    empty: 'Keine Fristen erfasst',
+    emptySub: 'Aufgaben aus analysierten Dokumenten und Fördermitteln erscheinen hier.',
+    markDone: 'Erledigen',
+    reopen: 'Wieder öffnen',
+    completed: 'Erledigt',
+    noDueDate: 'Ohne Datum',
+    dueOn: 'Fällig am {date}',
+    overdueBy: 'Seit {days} Tagen überfällig',
+    dueToday: 'Heute fällig',
+    dueIn: 'In {days} Tagen',
+    priority: { high: 'hoch', medium: 'mittel', low: 'niedrig' },
+  },
+
+  archive: {
+    title: 'Dokumentenarchiv',
+    subtitle: 'Alle hochgeladenen Dokumente, filterbar nach Dringlichkeit und Checklisten-Status.',
+    count: 'Dokumente ({n})',
+    empty: 'Noch keine Dokumente',
+    emptySub: 'Laden Sie Ihr erstes behördliches Schreiben hoch und lassen Sie es von Admin AI in konkrete Schritte übersetzen.',
+    emptyCta: 'Dokument analysieren',
+    noneWithFilter: 'Keine Dokumente mit diesem Filter.',
+    filterAll: 'alle',
+    actionsProgress: '{done}/{total} Aufgaben',
+    processing: 'In Bearbeitung',
+    analysisFailed: 'Analyse fehlgeschlagen',
+    analysisFailedSub: 'Analyse fehlgeschlagen — das Dokument bleibt gespeichert',
+    needsReview: 'Zu prüfen',
+    confirmDelete: 'Dieses Dokument löschen?',
+    deleted: 'Dokument gelöscht',
+    openFileAria: 'Datei öffnen: {title}',
+  },
+
+  states: {
+    loading: 'Wird geladen…',
+    errorTitle: 'Etwas hat nicht funktioniert',
+    retry: 'Erneut versuchen',
+    verifyingSession: 'Sitzung wird geprüft…',
+    loadingCompany: 'Unternehmen wird geladen…',
+    configRequired: 'Konfiguration erforderlich',
+    configHint: 'Setzen Sie VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY in der Datei .env.',
+  },
+
+  legal: {
+    disclaimer: 'SwissAI Suite ist ein Hilfsmittel für administrative Aufgaben. Die Analysen werden automatisch erstellt und ersetzen keine rechtliche, steuerliche oder treuhänderische Beratung. Wenn das System unsicher ist, weist es darauf hin und empfiehlt eine manuelle Prüfung.',
+  },
+};
