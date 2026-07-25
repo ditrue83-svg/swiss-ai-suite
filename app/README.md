@@ -176,6 +176,23 @@ comunque strutturato e tipizzato, ma la garanzia viene dal validatore, non dal d
 Non esiste alcun fallback silenzioso. Il chip nella scheda risultato dichiara sempre quale motore ha
 prodotto l'analisi e la colonna `document_analyses.engine` lo registra nel database.
 
+## Multilingua (it · de · fr)
+
+L'interfaccia esiste nelle tre lingue in cui una PMI svizzera riceve la posta amministrativa.
+La lingua si rileva dal browser, si può cambiare in ogni momento (anche prima di accedere) e resta
+salvata; date e importi seguono il locale svizzero corrispondente (`it-CH` / `de-CH` / `fr-CH`).
+
+**Nessuna dipendenza esterna**: dizionari, interpolazione e cambio lingua sono ~80 righe in
+`src/i18n/`. La completezza non è controllata a runtime ma **dal compilatore**: `de.ts` e `fr.ts`
+sono tipizzati come `Dictionary`, quindi una chiave mancante rompe `npm run typecheck`. Non esiste
+un fallback silenzioso che mostri l'italiano dentro un'interfaccia tedesca.
+
+**Anche i testi generati dall'AI seguono la lingua scelta** (§42) — riassunto, azioni, rischi e
+incertezze. Le **citazioni** restano invece nella lingua originale del documento: tradurle le
+renderebbe impossibili da ritrovare nel testo e la verifica automatica le scarterebbe.
+
+`npm run i18n:coverage` misura quante stringhe restano scritte a mano nel codice.
+
 ## Database
 
 Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estratto**
@@ -216,6 +233,7 @@ npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare)
 npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
+npm run i18n:coverage   # stringhe non ancora tradotte, per area (--list per i dettagli)
 ```
 
 Gli script che toccano il DB o l'AI richiedono `.env.test` (copia da `.env.test.example`).
@@ -278,6 +296,10 @@ Creano dati reali e li rimuovono alla fine.
   (`zefix@bj.admin.ch`); senza `ZEFIX_AUTH` l'onboarding resta manuale e lo dichiara.
 - **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali; 3 cantonali marcati `recheck`
   perché variano per decreto. Copertura Confederazione + Ticino, non 26 Cantoni.
+- **Traduzioni non riviste da madrelingua**: l'interfaccia è completa in italiano, tedesco e francese
+  (`npm run i18n:coverage` → 0 stringhe mancanti) e i dizionari sono garantiti dal compilatore, ma i
+  testi sono stati redatti internamente. Prima del lancio è consigliata una rilettura professionale,
+  soprattutto del disclaimer legale.
 - **Non implementati**: invio email, calendar sync, notifiche push, Stripe/pagamenti,
   interfaccia fiduciaria completa, fine-tuning.
 
