@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { companyService } from '@/services/companyService';
+import { companyLookupService, LookupError, type CompanyCandidate } from '@/services/companyLookupService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
@@ -36,6 +37,40 @@ export function OnboardingPage() {
   const [revenueBand, setRevenueBand] = useState('Preferisco non indicare');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Ricerca nel Registro IDI (Zefix) per pre-compilare i dati.
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [candidates, setCandidates] = useState<CompanyCandidate[]>([]);
+  const [lookupMsg, setLookupMsg] = useState<string | null>(null);
+
+  async function searchRegistry() {
+    const q = lookupQuery.trim();
+    if (q.length < 2 || searching) return;
+    setSearching(true); setLookupMsg(null); setCandidates([]);
+    try {
+      const list = await companyLookupService.search(q);
+      setCandidates(list);
+      if (list.length === 0) setLookupMsg('Nessuna azienda trovata. Inserisci i dati manualmente qui sotto.');
+    } catch (e) {
+      setLookupMsg(
+        e instanceof LookupError && e.code === 'LOOKUP_NOT_CONFIGURED'
+          ? 'La ricerca automatica nel Registro IDI non è ancora attiva. Inserisci i dati manualmente qui sotto.'
+          : toUserMessage(e),
+      );
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function applyCandidate(c: CompanyCandidate) {
+    if (c.name) setLegalName(c.name);
+    if (c.uid) setUidChe(c.uid);
+    if (c.canton) setCanton(CANTONI.includes(c.canton) ? c.canton : 'Altro');
+    if (c.municipality) setMunicipality(c.municipality);
+    setCandidates([]);
+    setLookupMsg(`Dati importati${c.name ? ` da «${c.name}»` : ''}. Verifica e completa forma giuridica, settore e numero di dipendenti.`);
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -78,8 +113,36 @@ export function OnboardingPage() {
         <div className="auth-title">Configura la tua impresa</div>
         <div className="auth-sub">Questi dati alimentano l’analisi documenti e il matching incentivi. Potrai modificarli in seguito.</div>
 
-        <div className="info-box mb-18">
-          <Icon name="alert" className="ic-sm" /> Ricerca automatica nel Registro IDI prevista in una fase successiva. Per ora inserisci il numero CHE manualmente.
+        <div className="field">
+          <label htmlFor="ob-lookup">Cerca nel Registro IDI (Zefix)</label>
+          <div className="row-wrap">
+            <input id="ob-lookup" value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void searchRegistry(); } }}
+              placeholder="Ragione sociale o numero IDI (es. CHE-123.456.789)" style={{ flex: 1, minWidth: 220 }} />
+            <button type="button" className="btn btn-sm" onClick={() => void searchRegistry()} disabled={searching || lookupQuery.trim().length < 2} aria-busy={searching || undefined}>
+              {searching ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} Cerca
+            </button>
+          </div>
+          <div className="muted-sm" style={{ marginTop: 4 }}>Compila automaticamente i campi qui sotto; puoi sempre correggere a mano.</div>
+
+          {lookupMsg && <div className="hint-accent" role="status" style={{ marginTop: 8 }}>{lookupMsg}</div>}
+
+          {candidates.length > 0 && (
+            <ul role="listbox" aria-label="Risultati del Registro IDI" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
+              {candidates.map((c, i) => (
+                <li key={c.uid ?? i}>
+                  <button type="button" className="btn btn-sm" onClick={() => applyCandidate(c)}
+                    style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', marginBottom: 6 }}>
+                    <span>
+                      <strong>{c.name}</strong>
+                      {c.municipality ? ` · ${c.municipality}` : ''}{c.canton ? ` (${c.canton})` : ''}
+                      {c.uid ? ` · ${c.uid}` : ''}{c.status && c.status !== 'ACTIVE' ? ` · ${c.status}` : ''}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {error && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{error}</span></div>}
