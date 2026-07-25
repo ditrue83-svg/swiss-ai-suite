@@ -7,7 +7,9 @@ import { subsidyService } from '@/services/subsidyService';
 import { EmptyCta, ErrorState, SkeletonCard } from '@/components/ui/states';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
-import { ELIGIBILITY_LABEL, ELIGIBILITY_BADGE } from './engine';
+import { ELIGIBILITY_BADGE } from './engine';
+import { useT } from '@/i18n';
+import { useLabels } from '@/i18n/labels';
 import type { SubsidyCase, SubsidyCaseStatus, EligibilityStatus } from '@/types/models';
 
 const CASE_STATUS: Record<SubsidyCaseStatus, string> = {
@@ -28,6 +30,8 @@ function snapshotWindow(c: SubsidyCase): string | null {
 }
 
 export function CasesList({ onGoResults }: { onGoResults: () => void }) {
+  const t = useT();
+  const L = useLabels();
   const { activeCompanyId } = useCompany();
   const { showToast } = useToast();
   const companyId = activeCompanyId as string;
@@ -58,7 +62,7 @@ export function CasesList({ onGoResults }: { onGoResults: () => void }) {
         <EmptyCta
           icon="document"
           title="Nessuna pratica ancora"
-          subtitle="Verifica l'idoneità di un incentivo e, con esito positivo, crea la relativa pratica per raccogliere documenti e checklist."
+          subtitle={t('subsidy.cases.casesEmptySub')}
           action={<button className="btn btn-primary" onClick={onGoResults}><Icon name="banknote" className="ic-sm" /> Vai agli incentivi</button>}
         />
       </div>
@@ -83,14 +87,14 @@ export function CasesList({ onGoResults }: { onGoResults: () => void }) {
                 <select className="select-inline" value={c.status} onChange={(e) => changeStatus(c.id, e.target.value as SubsidyCaseStatus)} aria-label="Stato pratica">
                   {(Object.keys(CASE_STATUS) as SubsidyCaseStatus[]).map((k) => <option key={k} value={k}>{CASE_STATUS[k]}</option>)}
                 </select>
-                <button className="btn btn-sm btn-icon" onClick={() => remove(c.id)} aria-label="Elimina pratica"><Icon name="trash" className="ic-sm" /></button>
+                <button className="btn btn-sm btn-icon" onClick={() => remove(c.id)} aria-label={t('subsidy.cases.deleteCase')}><Icon name="trash" className="ic-sm" /></button>
               </div>
             </div>
             <div className="badge-row mt-10">
               {kind === 'preliminare' ? <span className="badge badge-media">Pratica preliminare</span>
-                : kind === 'riferimento' ? <span className="badge badge-neutral">Salvata per riferimento</span>
+                : kind === 'riferimento' ? <span className="badge badge-neutral">{t('subsidy.cases.savedForReference')}</span>
                 : <span className="badge badge-bassa">Candidatura</span>}
-              {elig && <span className={`badge badge-${ELIGIBILITY_BADGE[elig] ?? 'neutral'}`}>Idoneità: {ELIGIBILITY_LABEL[elig] ?? elig}</span>}
+              {elig && <span className={`badge badge-${ELIGIBILITY_BADGE[elig] ?? 'neutral'}`}>{t('subsidy.cases.eligibility')} {L.eligibility(elig)}</span>}
               <span className="muted-sm">Creata il {formatDate(c.createdAt)}{c.sourceLastCheckedAt ? ' · fonte del ' + c.sourceLastCheckedAt : ''}</span>
             </div>
             <div className="ax-progress mt-12"><span className="pg-label">Documenti {done}/{items.length}</span>

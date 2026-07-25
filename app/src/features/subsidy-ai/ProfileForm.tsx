@@ -9,9 +9,10 @@ import { interpretService } from '@/services/interpretService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
-import { useI18n } from '@/i18n';
+import { useI18n, useT } from '@/i18n';
+import { useLabels } from '@/i18n/labels';
 import type { ProjectInterpretation } from '@/types/models';
-import { SETTORI, TIPI_PROGETTO, labelTipo } from './programs';
+import { SETTORI, TIPI_PROGETTO } from './programs';
 
 const MIN_DESC = 15; // allineato al minimo della Edge Function interpret-project
 /** Sotto questa sicurezza l'ambito NON viene selezionato d'ufficio: lo propone soltanto. */
@@ -21,6 +22,8 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
   const { activeCompanyId, activeCompany, companyProfile, refreshProfile } = useCompany();
   const { showToast } = useToast();
   const { locale } = useI18n();   // §42
+  const t = useT();
+  const L = useLabels();
 
   const [sector, setSector] = useState(companyProfile?.sector ?? '');
   const [projects, setProjects] = useState<string[]>(companyProfile?.currentProjects ?? []);
@@ -44,7 +47,7 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
   async function interpret() {
     if (interpreting) return;
     if (description.trim().length < MIN_DESC) {
-      showToast('Descrivi il progetto con qualche frase in più prima di interpretarlo.');
+      showToast(t('subsidy.profile.tooShort'));
       return;
     }
     setInterpreting(true);
@@ -74,7 +77,7 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
   async function save() {
     if (saving) return;
     if (projects.length === 0) {
-      showToast('Indica almeno un ambito di progetto (interpreta la descrizione o selezionalo qui sotto).');
+      showToast(t('subsidy.profile.noScope'));
       return;
     }
     setSaving(true);
@@ -88,7 +91,7 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
         currentProjects: projects,
       });
       await refreshProfile();
-      showToast('Profilo incentivi salvato');
+      showToast(t('subsidy.profile.saved'));
       onSaved(interpretation);
     } catch (e) {
       showToast(toUserMessage(e));
@@ -108,63 +111,63 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
 
   return (
     <div className="card">
-      <div className="section-title">Cosa vuole realizzare la tua azienda?</div>
+      <div className="section-title">{t('subsidy.profile.title')}</div>
       <p className="muted-sm mb-14">
-        Impresa: <strong>{activeCompany?.legalName}</strong>{activeCompany?.canton ? ` · ${activeCompany.canton}` : ''}.
-        Descrivi il progetto: l’AI lo interpreta e propone gli ambiti pertinenti, che potrai approvare o correggere.
+        {t('subsidy.profile.company')} <strong>{activeCompany?.legalName}</strong>{activeCompany?.canton ? ` · ${activeCompany.canton}` : ''}.{' '}
+        {t('subsidy.profile.intro')}
       </p>
 
       <div className="grid-2">
         <div className="field">
-          <label htmlFor="sf-sector">Settore</label>
+          <label htmlFor="sf-sector">{t('onboarding.sector')}</label>
           <select id="sf-sector" value={sector} onChange={(e) => setSector(e.target.value)}>
-            <option value="">— Seleziona —</option>
-            {SETTORI.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            <option value="">{t('onboarding.sectorPlaceholder')}</option>
+            {SETTORI.map((s) => <option key={s.id} value={s.id}>{L.sector(s.id)}</option>)}
           </select>
         </div>
       </div>
 
       <div className="field">
-        <label htmlFor="sf-desc">Descrizione del progetto</label>
+        <label htmlFor="sf-desc">{t('subsidy.profile.description')}</label>
         <textarea id="sf-desc" style={{ minHeight: 120 }} value={description} onChange={(e) => onDescriptionChange(e.target.value)}
-          placeholder="Es. Vogliamo installare un impianto fotovoltaico sul tetto del capannone, sostituire due furgoni diesel con veicoli elettrici e digitalizzare la gestione degli ordini." />
+          placeholder={t('subsidy.profile.descriptionPlaceholder')} />
         <div className="row-wrap" style={{ marginTop: 8 }}>
           <button type="button" className="btn btn-sm" onClick={interpret} disabled={!canInterpret} aria-busy={interpreting || undefined}>
-            {interpreting ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} Interpreta il progetto con l’AI
+            {interpreting ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} {t('subsidy.profile.interpret')}
           </button>
-          <span className="muted-sm">L’AI riconosce gli ambiti e spiega la pertinenza; l’idoneità resta da verificare.</span>
+          <span className="muted-sm">{t('subsidy.profile.interpretHint')}</span>
         </div>
 
         {interpretation && (
           <div className="hint-accent" role="status" style={{ marginTop: 10 }}>
             {interpretation.summary && <div style={{ marginBottom: 6 }}>{interpretation.summary}</div>}
             {recognized.length > 0
-              ? <>Ambiti riconosciuti e aggiunti sotto (correggibili): <strong>{recognized.map(labelTipo).join(', ')}</strong>.</>
-              : <>L’AI non ha riconosciuto ambiti specifici: selezionali manualmente qui sotto.</>}
+              ? <>{t('subsidy.profile.recognized')} <strong>{recognized.map(L.projectType).join(', ')}</strong></>
+              : <>{t('subsidy.profile.noneRecognized')}</>}
             {interpretation.timing.alreadyStarted === true && (
-              <div style={{ marginTop: 6 }}><Icon name="alert" className="ic-sm" /> Il progetto sembra già avviato: attenzione ai programmi con «domanda prima di iniziare».</div>
+              <div style={{ marginTop: 6 }}><Icon name="alert" className="ic-sm" /> {t('subsidy.profile.alreadyStarted')}</div>
             )}
 
             {/* Ambiti riconosciuti con poca sicurezza: decide l'utente, non l'AI. */}
             {uncertainTypes.length > 0 && (
               <div style={{ marginTop: 8 }}>
-                Ambiti <strong>incerti</strong>, non aggiunti automaticamente:{' '}
+                {t('subsidy.profile.uncertainScopes')}{' '}
                 {uncertainTypes.map((p, i) => (
                   <span key={p.type}>
                     {i > 0 ? ', ' : ''}
                     <button type="button" className="btn-link" onClick={() => toggleProject(p.type)}>
-                      {labelTipo(p.type)}
+                      {L.projectType(p.type)}
                     </button>
                   </span>
                 ))}
-                . Aggiungili solo se pertinenti.
+                 {t('subsidy.profile.uncertainScopesHint')}
               </div>
             )}
 
             {/* §17 — ciò che l'AI non ha potuto stabilire va detto, non nascosto. */}
             {interpretation.uncertainties.length > 0 && (
               <div style={{ marginTop: 8 }}>
-                <strong>Da verificare:</strong>
+                <strong>{t('subsidy.profile.toVerify')}</strong>
                 <ul className="detail-list warn" style={{ marginTop: 4 }}>
                   {interpretation.uncertainties.map((u, i) => <li key={i}>{u.description}</li>)}
                 </ul>
@@ -172,7 +175,7 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
             )}
             {interpretation.meta.droppedEvidence > 0 && (
               <div className="muted-sm" style={{ marginTop: 4 }}>
-                {interpretation.meta.droppedEvidence} citazione/i non ritrovate nel testo sono state scartate.
+                {t('subsidy.profile.droppedEvidence', { n: interpretation.meta.droppedEvidence })}
               </div>
             )}
           </div>
@@ -180,25 +183,25 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
       </div>
 
       <div className="field">
-        <span className="group-label">Ambiti del progetto (approva o correggi)</span>
-        <div className="checks" role="group" aria-label="Ambiti del progetto">
-          {TIPI_PROGETTO.map((t) => (
-            <button key={t.id} type="button" className={`check-pill${projects.includes(t.id) ? ' on' : ''}`} aria-pressed={projects.includes(t.id)} onClick={() => toggleProject(t.id)}>{t.label}</button>
+        <span className="group-label">{t('subsidy.profile.scopes')}</span>
+        <div className="checks" role="group" aria-label={t('subsidy.profile.scopesAria')}>
+          {TIPI_PROGETTO.map((tp) => (
+            <button key={tp.id} type="button" className={`check-pill${projects.includes(tp.id) ? ' on' : ''}`} aria-pressed={projects.includes(tp.id)} onClick={() => toggleProject(tp.id)}>{L.projectType(tp.id)}</button>
           ))}
         </div>
       </div>
 
       <div className="field">
-        <span className="group-label">Situazione</span>
-        <div className="checks" role="group" aria-label="Situazione aziendale">
-          <button type="button" className={`check-pill${ownsProperty ? ' on' : ''}`} aria-pressed={ownsProperty} onClick={() => setOwnsProperty((v) => !v)}>Possiede o utilizza immobili</button>
-          <button type="button" className={`check-pill${hasVehicles ? ' on' : ''}`} aria-pressed={hasVehicles} onClick={() => setHasVehicles((v) => !v)}>Ha veicoli aziendali</button>
+        <span className="group-label">{t('subsidy.profile.situation')}</span>
+        <div className="checks" role="group" aria-label={t('subsidy.profile.situation')}>
+          <button type="button" className={`check-pill${ownsProperty ? ' on' : ''}`} aria-pressed={ownsProperty} onClick={() => setOwnsProperty((v) => !v)}>{t('subsidy.profile.ownsProperty')}</button>
+          <button type="button" className={`check-pill${hasVehicles ? ' on' : ''}`} aria-pressed={hasVehicles} onClick={() => setHasVehicles((v) => !v)}>{t('subsidy.profile.hasVehicles')}</button>
         </div>
       </div>
 
       <div className="row-wrap">
         <button className="btn btn-primary btn-block-mobile" onClick={save} disabled={saving} aria-busy={saving || undefined}>
-          {saving ? <span className="spinner" aria-hidden="true" /> : <Icon name="banknote" className="ic-sm" />} Trova incentivi rilevanti
+          {saving ? <span className="spinner" aria-hidden="true" /> : <Icon name="banknote" className="ic-sm" />} {t('subsidy.profile.submit')}
         </button>
       </div>
     </div>

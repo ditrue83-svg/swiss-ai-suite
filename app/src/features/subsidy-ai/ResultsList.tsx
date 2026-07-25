@@ -1,13 +1,16 @@
 import { Icon } from '@/components/ui/Icon';
 import { EmptyCta } from '@/components/ui/states';
-import { SUPPORT_TYPE_LABEL, labelSettore, type ProgramModel } from './programs';
+import type { ProgramModel } from './programs';
+import { useT } from '@/i18n';
+import { useLabels } from '@/i18n/labels';
 import type { MatchResult } from './engine';
 import { InterpretationPanel } from './Interpretation';
 import type { Company, ProjectInterpretation } from '@/types/models';
 
 function relClass(s: number) { return s >= 75 ? 'hi' : s >= 55 ? 'mid' : ''; }
 function SupportChip({ prog }: { prog: ProgramModel }) {
-  return <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> {SUPPORT_TYPE_LABEL[prog.supportType]}</span>;
+  const L = useLabels();
+  return <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> {L.supportType(prog.supportType)}</span>;
 }
 
 export function ResultsList({
@@ -20,7 +23,9 @@ export function ResultsList({
   onOpen: (programId: string) => void;
   onEditProfile: () => void;
 }) {
-  const settoreLabel = labelSettore(sector);
+  const t = useT();
+  const L = useLabels();
+  const settoreLabel = sector ? L.sector(sector) : '';
 
   // Spiegazione AI (se disponibile): riepilogo + pertinenza + avviso tempistica
   // quando il progetto risulta già avviato e c'è un programma con domanda-prima.
@@ -37,9 +42,9 @@ export function ResultsList({
         <div className="card">
           <EmptyCta
             icon="banknote"
-            title="Nessun programma rilevante con i criteri attuali"
-            subtitle="Aggiungi ambiti di progetto o rivedi il settore nel profilo incentivi."
-            action={<button className="btn btn-primary" onClick={onEditProfile}>Modifica profilo incentivi</button>}
+            title={t('subsidy.results.emptyTitle')}
+            subtitle={t('subsidy.results.emptySub')}
+            action={<button className="btn btn-primary" onClick={onEditProfile}>{t('subsidy.results.editProfileFull')}</button>}
           />
         </div>
       </>
@@ -53,7 +58,7 @@ export function ResultsList({
         {matches.length} programmi <strong>rilevanti</strong> per <strong>{company?.legalName ?? 'la tua impresa'}</strong>
         {` (${company?.canton ?? '—'}${settoreLabel ? ', ' + settoreLabel : ''}). `}
         La <strong>Rilevanza</strong> indica quanto il programma sembra pertinente al progetto, <em>non</em> la probabilità di ottenere il contributo.
-        L’idoneità va verificata programma per programma. <button type="button" className="btn-link" onClick={onEditProfile}>Modifica profilo</button>
+        L’idoneità va verificata programma per programma. <button type="button" className="btn-link" onClick={onEditProfile}>{t('subsidy.results.editProfile')}</button>
       </div>
 
       {matches.map((m) => {
@@ -62,21 +67,21 @@ export function ResultsList({
           <div className="card prog-card" key={p.id}>
             <div className="prog-head">
               <div className={`rel-badge ${relClass(m.relevanceScore)}`}>
-                <div className="rb-num">{m.relevanceScore}%</div><div className="rb-lbl">Rilevanza</div>
+                <div className="rb-num">{m.relevanceScore}%</div><div className="rb-lbl">{t('subsidy.results.relevance')}</div>
               </div>
               <div className="prog-main">
                 <div className="prog-name">{p.name}</div>
                 <div className="list-sub">{p.authority}</div>
                 <div className="badge-row">
                   <SupportChip prog={p} />
-                  <span className="badge badge-media">Idoneità: da verificare</span>
+                  <span className="badge badge-media">{t('subsidy.results.eligibilityToVerify')}</span>
                   <span className="badge badge-neutral"><Icon name="calendar" className="ic-sm" /> {p.applicationWindow}</span>
-                  {p.mustApplyBeforeStart && <span className="badge badge-alta"><Icon name="alert" className="ic-sm" /> Domanda prima di iniziare</span>}
-                  <span className="badge badge-neutral">{m.reqToVerify} requisiti da verificare</span>
-                  <span className={`badge badge-${m.priority.level}`}>Priorità {m.priority.level}</span>
+                  {p.mustApplyBeforeStart && <span className="badge badge-alta"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.applyBeforeStart')}</span>}
+                  <span className="badge badge-neutral">{t('subsidy.results.requirementsToVerify', { n: m.reqToVerify })}</span>
+                  <span className={`badge badge-${m.priority.level}`}>{t('subsidy.results.priority', { level: m.priority.level })}</span>
                 </div>
               </div>
-              <button className="btn btn-primary btn-sm" onClick={() => onOpen(p.id)}>Verifica idoneità <Icon name="arrowRight" className="ic-sm" /></button>
+              <button className="btn btn-primary btn-sm" onClick={() => onOpen(p.id)}>{t('subsidy.results.checkEligibility')} <Icon name="arrowRight" className="ic-sm" /></button>
             </div>
           </div>
         );

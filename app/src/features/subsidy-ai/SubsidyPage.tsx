@@ -1,6 +1,7 @@
 // Subsidy AI — orchestratore a 3 tab: Profilo incentivi · Incentivi rilevanti · Le mie pratiche.
 import { useMemo, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { useT } from '@/i18n';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAsync } from '@/hooks/useAsync';
 import { programService } from '@/services/programService';
@@ -15,6 +16,7 @@ import type { ProjectInterpretation } from '@/types/models';
 type Tab = 'profile' | 'results' | 'cases';
 
 export function SubsidyPage() {
+  const t = useT();
   const { activeCompany, activeCompanyId, companyProfile } = useCompany();
   const companyId = activeCompanyId as string;
 
@@ -40,37 +42,33 @@ export function SubsidyPage() {
   return (
     <>
       <div className="page-head">
-        <div className="page-title">Swiss Subsidy AI</div>
-        <div className="page-desc">
-          Profilo aziendale → programmi <strong>rilevanti</strong> → verifica di <strong>idoneità</strong> con hard rule → pratica.
-          Rilevanza e idoneità sono due cose distinte. Copertura: Confederazione + Cantone Ticino.
-        </div>
+        <div className="page-title">{t('subsidy.title')}</div>
+        <div className="page-desc">{t('subsidy.intro')}</div>
       </div>
 
       <div className="tabs">
-        <button className={`tab${tab === 'profile' ? ' active' : ''}`} onClick={() => { setTab('profile'); setSelectedProgramId(null); }}>1 · Profilo impresa</button>
-        <button className={`tab${tab === 'results' ? ' active' : ''}`} onClick={() => { setTab('results'); setSelectedProgramId(null); }}>2 · Incentivi rilevanti</button>
-        <button className={`tab${tab === 'cases' ? ' active' : ''}`} onClick={() => { setTab('cases'); setSelectedProgramId(null); }}>3 · Le mie pratiche</button>
+        <button className={`tab${tab === 'profile' ? ' active' : ''}`} onClick={() => { setTab('profile'); setSelectedProgramId(null); }}>{t('subsidy.tabProfile')}</button>
+        <button className={`tab${tab === 'results' ? ' active' : ''}`} onClick={() => { setTab('results'); setSelectedProgramId(null); }}>{t('subsidy.tabResults')}</button>
+        <button className={`tab${tab === 'cases' ? ' active' : ''}`} onClick={() => { setTab('cases'); setSelectedProgramId(null); }}>{t('subsidy.tabCases')}</button>
       </div>
 
       {tab === 'profile' && <ProfileForm onSaved={(interp) => { setInterpretation(interp); setTab('results'); setSelectedProgramId(null); }} />}
 
       {tab === 'results' && (
         programsLoading && !programs ? (
-          <div className="card mt-16"><span className="spinner" /> Caricamento dei programmi…</div>
+          <div className="card mt-16"><span className="spinner" /> {t('subsidy.loadingPrograms')}</div>
         ) : programsError ? (
           <div className="card mt-16">
             <div className="warn-box">
               <Icon name="alert" />
               <span>
-                <strong>Catalogo incentivi non disponibile.</strong> {programsError}<br />
-                Non viene mostrato alcun risultato: significa che i programmi non sono stati caricati,
-                <em> non</em> che non ce ne siano di rilevanti per la tua impresa.
+                <strong>{t('subsidy.catalogUnavailable')}</strong> {programsError}<br />
+                {t('subsidy.catalogUnavailableSub')}
               </span>
             </div>
             <div className="row-wrap mt-12">
               <button className="btn btn-primary btn-sm" onClick={() => window.location.reload()}>
-                <Icon name="refresh" className="ic-sm" /> Riprova
+                <Icon name="refresh" className="ic-sm" /> {t('common.retry')}
               </button>
             </div>
           </div>
@@ -79,8 +77,7 @@ export function SubsidyPage() {
             <div className="warn-box">
               <Icon name="alert" />
               <span>
-                <strong>Il catalogo dei programmi è vuoto.</strong> Nessun incentivo è stato caricato nel sistema,
-                quindi non è possibile dire se la tua impresa sia idonea a qualcosa. Contatta il supporto.
+                <strong>{t('subsidy.catalogEmpty')}</strong> {t('subsidy.catalogEmptySub')}
               </span>
             </div>
           </div>
@@ -106,11 +103,7 @@ export function SubsidyPage() {
 
       {tab === 'cases' && <CasesList onGoResults={() => setTab(hasProjects ? 'results' : 'profile')} />}
 
-      <div className="footnote">
-        <strong>Programmi verificati sulle fonti ufficiali</strong> (con data di revisione). Alcuni dati cantonali sono marcati «da riverificare»
-        perché variano per decreto. La «Rilevanza» misura la pertinenza al progetto, non la probabilità di ottenere il contributo; l’«Idoneità»
-        è una stima basata sulle tue risposte e non sostituisce la valutazione dell’ente. Importi, requisiti e scadenze vanno sempre confermati sulla fonte ufficiale.
-      </div>
+      <div className="footnote">{t('subsidy.footnote')}</div>
     </>
   );
 }

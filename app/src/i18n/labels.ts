@@ -14,25 +14,42 @@ import { useI18n, type TKey } from './index';
 export function useLabels() {
   const { t } = useI18n();
 
-  /** Risolve `gruppo.valore`; se la chiave non esiste torna il valore grezzo. */
-  const pick = (group: string, value: string | null | undefined): string => {
+  /**
+   * Risolve `percorso.valore`. Il percorso è completo (es. `labels.docTypes`
+   * oppure `subsidy.labels.supportTypes`): non si antepone nulla, altrimenti le
+   * etichette del Subsidy finirebbero sotto una chiave inesistente.
+   * Se la chiave non esiste si torna il valore GREZZO, non un'etichetta finta.
+   */
+  const pick = (path: string, value: string | null | undefined): string => {
     if (!value) return '—';
-    const key = `labels.${group}.${value}` as TKey;
+    const key = `${path}.${value}` as TKey;
     const out = t(key);
     return out === key ? value : out;   // t() ritorna la chiave quando manca
   };
 
   return {
     /** Tipo di documento (tassonomia AI §8 e chiavi storiche del motore locale). */
-    docType: (v: string | null | undefined) => pick('docTypes', v),
+    docType: (v: string | null | undefined) => pick('labels.docTypes', v),
     /** Tipo di autorità mittente (§47). */
-    authorityType: (v: string | null | undefined) => pick('authorityTypes', v),
+    authorityType: (v: string | null | undefined) => pick('labels.authorityTypes', v),
     /** Natura dell'importo (§12): dovuto, multa, tassa… */
-    amountType: (v: string | null | undefined) => pick('amountTypes', v),
+    amountType: (v: string | null | undefined) => pick('labels.amountTypes', v),
     /** Lingua del documento. */
-    language: (v: string | null | undefined) => pick('languages', v),
-    urgency: (v: string | null | undefined) => pick('urgency', v),
-    confidence: (v: string | null | undefined) => pick('confidence', v),
-    deadlineLevel: (v: string | null | undefined) => pick('deadlineLevels', v),
+    language: (v: string | null | undefined) => pick('labels.languages', v),
+    urgency: (v: string | null | undefined) => pick('labels.urgency', v),
+    confidence: (v: string | null | undefined) => pick('labels.confidence', v),
+    deadlineLevel: (v: string | null | undefined) => pick('labels.deadlineLevels', v),
+
+    // ---- Subsidy AI ----------------------------------------------------
+    /** Tipo di sostegno: contributo a fondo perso, prestito, fideiussione… */
+    supportType: (v: string | null | undefined) => pick('subsidy.labels.supportTypes', v),
+    /** Esito della verifica di idoneità (mai una promessa: è una stima). */
+    eligibility: (v: string | null | undefined) => pick('subsidy.labels.eligibility', v),
+    /** Affidabilità del dato di catalogo: verificato / da ricontrollare / demo. */
+    dataStatus: (v: string | null | undefined) => pick('subsidy.labels.dataStatus', v),
+    /** Settore economico dell'impresa. */
+    sector: (v: string | null | undefined) => pick('subsidy.labels.sectors', v),
+    /** Ambito del progetto (energia, digitalizzazione…). */
+    projectType: (v: string | null | undefined) => pick('subsidy.labels.projectTypes', v),
   };
 }

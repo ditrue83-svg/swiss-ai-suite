@@ -7,9 +7,11 @@ import { useToast } from '@/components/ui/Toast';
 import { subsidyService, type CaseKind } from '@/services/subsidyService';
 import { taskService } from '@/services/taskService';
 import { toUserMessage } from '@/lib/errors';
-import { SUPPORT_TYPE_LABEL, DATA_STATUS_LABEL, type ProgramModel, type Requirement } from './programs';
+import type { ProgramModel, Requirement } from './programs';
+import { useT } from '@/i18n';
+import { useLabels } from '@/i18n/labels';
 import {
-  subsidyQuestions, evaluateEligibility, ELIGIBILITY_LABEL, ELIGIBILITY_BADGE,
+  subsidyQuestions, evaluateEligibility, ELIGIBILITY_BADGE,
   type EligibilityResult, type MatchResult,
 } from './engine';
 import { InterpretationPanel } from './Interpretation';
@@ -18,10 +20,10 @@ import type { ProjectInterpretation } from '@/types/models';
 function relClass(s: number) { return s >= 75 ? 'hi' : s >= 55 ? 'mid' : ''; }
 
 interface StateRow { text: string; cls: string; note: string }
-function reqStateOf(v: EligibilityResult, r: Requirement): { cls: string; note: string } {
-  if (v.satisfied.find((x) => x.id === r.id)) return { cls: 'ok', note: 'soddisfatto' };
-  if (v.failed.find((x) => x.id === r.id)) return { cls: 'bad', note: 'non soddisfatto' };
-  return { cls: 'warn', note: 'da verificare' };
+function reqStateOf(v: EligibilityResult, r: Requirement, t: (k: never) => string): { cls: string; note: string } {
+  if (v.satisfied.find((x) => x.id === r.id)) return { cls: 'ok', note: t('subsidy.detail.stateSatisfied' as never) };
+  if (v.failed.find((x) => x.id === r.id)) return { cls: 'bad', note: t('subsidy.detail.stateFailed' as never) };
+  return { cls: 'warn', note: t('subsidy.detail.stateToVerify' as never) };
 }
 function StateList({ rows }: { rows: StateRow[] }) {
   if (!rows.length) return <div className="muted-sm">—</div>;
@@ -38,14 +40,16 @@ function Quiz({ prog, answers, setAnswers, onVerdict }: {
   setAnswers: (a: Record<string, string>) => void;
   onVerdict: (v: EligibilityResult) => void;
 }) {
+  const t = useT();
+  const L = useLabels();
   const qs = subsidyQuestions(prog);
   const N = qs.length;
   const [index, setIndex] = useState(0);
 
-  if (N === 0) return <div className="muted-sm">Nessuna domanda di verifica nel dato demo.</div>;
+  if (N === 0) return <div className="muted-sm">{t('subsidy.detail.noQuestions')}</div>;
   const i = Math.min(index, N - 1);
   const q = qs[i];
-  const tag = q.kind === 'hard' ? 'requisito obbligatorio' : q.kind === 'excl' ? 'esclusione — blocca l’idoneità' : 'preferenziale';
+  const tag = t(q.kind === 'hard' ? 'subsidy.detail.tagHard' : q.kind === 'excl' ? 'subsidy.detail.tagExclusion' : 'subsidy.detail.tagSoft');
   const live = evaluateEligibility(prog, answers);
 
   function answer(val: string) {
@@ -57,16 +61,16 @@ function Quiz({ prog, answers, setAnswers, onVerdict }: {
 
   return (
     <div>
-      <div className="quiz-progress">Domanda {i + 1} di {N} · <span className={q.kind === 'soft' ? 'req-soft-tag' : 'req-hard-tag'}>{tag}</span></div>
+      <div className="quiz-progress">{t('subsidy.detail.questionOf', { i: i + 1, n: N })} · <span className={q.kind === 'soft' ? 'req-soft-tag' : 'req-hard-tag'}>{tag}</span></div>
       <div className="quiz-question">{q.question}</div>
       <div className="quiz-opts">
-        {([['si', 'Sì'], ['no', 'No'], ['ns', 'Non so']] as const).map(([v, l]) => (
+        {([['si', t('common.yes')], ['no', t('common.no')], ['ns', t('common.dontKnow')]] as const).map(([v, l]) => (
           <button key={v} className={`quiz-opt${answers[q.key] === v ? ' sel-' + v : ''}`} onClick={() => answer(v)}>{l}</button>
         ))}
       </div>
       <div className="quiz-foot">
-        {i > 0 ? <button className="btn btn-sm" onClick={() => setIndex(Math.max(0, i - 1))}>← Indietro</button> : <span />}
-        <span className="quiz-live">Idoneità attuale: <span className={`badge badge-${ELIGIBILITY_BADGE[live.status]}`}>{ELIGIBILITY_LABEL[live.status]}</span></span>
+        {i > 0 ? <button className="btn btn-sm" onClick={() => setIndex(Math.max(0, i - 1))}>← {t('common.back')}</button> : <span />}
+        <span className="quiz-live">{t('subsidy.detail.currentEligibility')} <span className={`badge badge-${ELIGIBILITY_BADGE[live.status]}`}>{L.eligibility(live.status)}</span></span>
       </div>
     </div>
   );
@@ -80,9 +84,11 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
   onCreatedCase: () => void;
 }) {
   const p = match.program;
+  const t = useT();
+  const L = useLabels();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const ds = DATA_STATUS_LABEL[p.dataStatus];
+
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [verdict, setVerdict] = useState<EligibilityResult | null>(null);
@@ -104,11 +110,11 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
     try {
       await taskService.create({
         companyId, userId: user!.id,
-        title: 'Verificare finestra candidatura: ' + p.name, authority: p.authority,
+        title: t('subsidy.detail.reminderTitle', { name: p.name }), authority: p.authority,
         description: p.applicationWindow, dueDate: null, source: 'subsidy_ai',
         priority: p.mustApplyBeforeStart ? 'high' : 'medium',
       });
-      showToast('Promemoria aggiunto allo scadenziario');
+      showToast(t('subsidy.detail.reminderAdded'));
     } catch (e) { showToast(toUserMessage(e)); }
   }
 
@@ -117,8 +123,8 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
     setSavingCase(true);
     try {
       await subsidyService.createCase({ companyId, userId: user!.id, program: p, verdict, relevanceScore: match.relevanceScore, kind });
-      const msg = kind === 'candidatura' ? 'Pratica creata — la trovi in «Le mie pratiche»'
-        : kind === 'preliminare' ? 'Pratica preliminare salvata in «Le mie pratiche»' : 'Salvata per riferimento in «Le mie pratiche»';
+      const msg = t(kind === 'candidatura' ? 'subsidy.detail.caseCreated'
+        : kind === 'preliminare' ? 'subsidy.detail.casePreliminary' : 'subsidy.detail.caseReference');
       showToast(msg);
       onCreatedCase();
     } catch (e) { showToast(toUserMessage(e)); }
@@ -126,44 +132,44 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
   }
 
   const reqItem = (r: Requirement) => (
-    <li key={r.id}>{r.text} {r.hard ? <span className="req-hard-tag">obbligatorio</span> : <span className="req-soft-tag">preferenziale</span>}</li>
+    <li key={r.id}>{r.text} {r.hard ? <span className="req-hard-tag">{t('common.required')}</span> : <span className="req-soft-tag">{t('subsidy.detail.tagSoft')}</span>}</li>
   );
 
   return (
     <>
-      <button className="btn btn-sm mb-14" onClick={onBack}>← Torna ai risultati</button>
+      <button className="btn btn-sm mb-14" onClick={onBack}>← {t('subsidy.detail.back')}</button>
 
       <div className="card">
         <div className="ax-head-top">
           <div className="ax-title">{p.name}</div>
-          <div className="ax-badges"><span className={`rel-badge sm ${relClass(match.relevanceScore)}`}><div className="rb-num">{match.relevanceScore}%</div><div className="rb-lbl">Rilevanza</div></span></div>
+          <div className="ax-badges"><span className={`rel-badge sm ${relClass(match.relevanceScore)}`}><div className="rb-num">{match.relevanceScore}%</div><div className="rb-lbl">{t('subsidy.results.relevance')}</div></span></div>
         </div>
         <div className="ax-meta mt-10">
-          <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> {SUPPORT_TYPE_LABEL[p.supportType]}</span>
+          <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> {L.supportType(p.supportType)}</span>
           <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{p.authority}</b></span>
           <span className="ax-chip"><Icon name="calendar" className="ic-sm" /> {p.applicationWindow}</span>
-          <span className={`badge badge-${match.priority.level}`}>Priorità {match.priority.level}</span>
+          <span className={`badge badge-${match.priority.level}`}>{t('subsidy.results.priority', { level: match.priority.level })}</span>
         </div>
         {p.mustApplyBeforeStart && (
-          <div className="warn-box mt-14"><Icon name="alert" /><span>{p.mustApplyBeforeStartText ?? 'La domanda va presentata prima di avviare il progetto/acquisto.'}</span></div>
+          <div className="warn-box mt-14"><Icon name="alert" /><span>{p.mustApplyBeforeStartText ?? t('subsidy.detail.mustApplyBeforeStart')}</span></div>
         )}
-        <div className="result-row"><div className="result-label">Tipo di sostegno</div><div>{SUPPORT_TYPE_LABEL[p.supportType]} · {p.contributionDescription}</div></div>
-        <div className="result-row"><div className="result-label">Perché è rilevante</div><div><ul className="detail-list ok">{match.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul></div></div>
+        <div className="result-row"><div className="result-label">{t('subsidy.detail.supportType')}</div><div>{L.supportType(p.supportType)} · {p.contributionDescription}</div></div>
+        <div className="result-row"><div className="result-label">{t('subsidy.detail.whyRelevant')}</div><div><ul className="detail-list ok">{match.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul></div></div>
         {match.profileGaps.length > 0 && (
-          <div className="result-row"><div className="result-label">Dati profilo da completare</div><div><ul className="detail-list warn">{match.profileGaps.map((r, i) => <li key={i}>{r}</li>)}</ul></div></div>
+          <div className="result-row"><div className="result-label">{t('subsidy.detail.profileGaps')}</div><div><ul className="detail-list warn">{match.profileGaps.map((r, i) => <li key={i}>{r}</li>)}</ul></div></div>
         )}
-        <div className="result-row"><div className="result-label">Requisiti</div><div><ul className="detail-list">{[...p.hardRequirements, ...p.softRequirements].map(reqItem)}{p.requirements.length === 0 && <li className="text-muted">Nessun requisito nel dato demo.</li>}</ul></div></div>
+        <div className="result-row"><div className="result-label">{t('subsidy.detail.requirements')}</div><div><ul className="detail-list">{[...p.hardRequirements, ...p.softRequirements].map(reqItem)}{p.requirements.length === 0 && <li className="text-muted">{t('subsidy.detail.noRequirements')}</li>}</ul></div></div>
         {p.evaluableExclusions.length > 0 && (
-          <div className="result-row"><div className="result-label">Esclusioni valutate nel questionario</div><div><ul className="detail-list bad">{p.evaluableExclusions.map((r) => <li key={r.id}>{r.text} <span className="req-hard-tag">blocca l’idoneità</span></li>)}</ul></div></div>
+          <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsEvaluated')}</div><div><ul className="detail-list bad">{p.evaluableExclusions.map((r) => <li key={r.id}>{r.text} <span className="req-hard-tag">{t('subsidy.detail.blocksEligibility')}</span></li>)}</ul></div></div>
         )}
         {p.informativeExclusions.length > 0 && (
-          <div className="result-row"><div className="result-label">Esclusioni da verificare manualmente</div><div><ul className="detail-list warn">{p.informativeExclusions.map((r) => <li key={r.id}>{r.text}</li>)}</ul><div className="muted-sm">Non valutate automaticamente: verificale sulla fonte ufficiale.</div></div></div>
+          <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsManual')}</div><div><ul className="detail-list warn">{p.informativeExclusions.map((r) => <li key={r.id}>{r.text}</li>)}</ul><div className="muted-sm">{t('subsidy.detail.exclusionsManualHint')}</div></div></div>
         )}
-        <div className="result-row"><div className="result-label">Finestra di candidatura</div>
-          <div>{p.applicationWindow} <button className="btn btn-sm" style={{ marginLeft: 8 }} onClick={addReminder}><Icon name="calendar" className="ic-sm" /> Aggiungi promemoria</button>
-            <div className="muted-sm" style={{ marginTop: 4 }}>Descrizione della finestra, non una data certa: verifica sempre il termine sulla fonte ufficiale.</div></div>
+        <div className="result-row"><div className="result-label">{t('subsidy.detail.applicationWindow')}</div>
+          <div>{p.applicationWindow} <button className="btn btn-sm" style={{ marginLeft: 8 }} onClick={addReminder}><Icon name="calendar" className="ic-sm" /> {t('subsidy.detail.addReminder')}</button>
+            <div className="muted-sm" style={{ marginTop: 4 }}>{t('subsidy.detail.windowHint')}</div></div>
         </div>
-        <div className="result-row"><div className="result-label">Documenti</div><div><ul className="detail-list">{p.documentsRequired.map((d, i) => <li key={i}>{d}</li>)}</ul></div></div>
+        <div className="result-row"><div className="result-label">{t('subsidy.detail.documents')}</div><div><ul className="detail-list">{p.documentsRequired.map((d, i) => <li key={i}>{d}</li>)}</ul></div></div>
       </div>
 
       {interpretation && (
@@ -173,20 +179,20 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
       )}
 
       <div className="card source-card">
-        <div className="card-title"><Icon name="fileSearch" className="ic-sm" /> Fonte</div>
+        <div className="card-title"><Icon name="fileSearch" className="ic-sm" /> {t('subsidy.detail.source')}</div>
         <div className="source-grid">
-          <div className="src-k">Ente</div><div className="src-v">{p.authority}</div>
-          <div className="src-k">Titolo fonte</div><div className="src-v">{p.sourceTitle}</div>
-          <div className="src-k">URL ufficiale</div><div className="src-v"><a href={p.officialSourceUrl} target="_blank" rel="noreferrer">{p.officialSourceUrl}</a></div>
-          <div className="src-k">Ultima verifica</div><div className="src-v">{p.lastCheckedAt ? <>{p.lastCheckedAt} <span className="muted-sm">(revisione manuale demo, non un controllo automatico)</span></> : <span className="muted-sm">non disponibile</span>}</div>
-          <div className="src-k">Stato dato</div><div className="src-v"><span className={`ds-badge ${ds.cls}`}>{ds.label}</span></div>
+          <div className="src-k">{t('subsidy.detail.authority')}</div><div className="src-v">{p.authority}</div>
+          <div className="src-k">{t('subsidy.detail.sourceTitle')}</div><div className="src-v">{p.sourceTitle}</div>
+          <div className="src-k">{t('subsidy.detail.sourceUrl')}</div><div className="src-v"><a href={p.officialSourceUrl} target="_blank" rel="noreferrer">{p.officialSourceUrl}</a></div>
+          <div className="src-k">{t('subsidy.detail.lastChecked')}</div><div className="src-v">{p.lastCheckedAt ? <>{p.lastCheckedAt} <span className="muted-sm">({t('subsidy.detail.lastCheckedHint')})</span></> : <span className="muted-sm">{t('subsidy.detail.notAvailable')}</span>}</div>
+          <div className="src-k">{t('subsidy.detail.dataStatus')}</div><div className="src-v"><span className={`ds-badge ds-${p.dataStatus === 'verified' ? 'ok' : p.dataStatus === 'recheck' ? 'warn' : 'demo'}`}>{L.dataStatus(p.dataStatus)}</span></div>
         </div>
         <div className="info-box mt-12"><Icon name="alert" className="ic-sm" /> <strong>Dati dimostrativi</strong> — verificare sempre condizioni, importi e scadenze sulla fonte ufficiale prima di procedere.</div>
       </div>
 
       <div className="card">
-        <div className="card-title">Verifica di idoneità</div>
-        <p className="muted-sm mb-14">Rispondi alle domande: le hard rule (obbligatorie) determinano l’idoneità. La conferma finale spetta sempre all’ente.</p>
+        <div className="card-title">{t('subsidy.detail.eligibility')}</div>
+        <p className="muted-sm mb-14">{t('subsidy.detail.eligibilityHint')}</p>
         {verdict
           ? <Verdict prog={p} v={verdict} savingCase={savingCase}
               onCreate={() => saveCase('candidatura')} onPreliminare={() => saveCase('preliminare')} onRiferimento={() => saveCase('riferimento')}
@@ -201,41 +207,43 @@ function Verdict({ prog, v, savingCase, onCreate, onPreliminare, onRiferimento, 
   prog: ProgramModel; v: EligibilityResult; savingCase: boolean;
   onCreate: () => void; onPreliminare: () => void; onRiferimento: () => void; onComplete: () => void; onRestart: () => void;
 }) {
+  const t = useT();
+  const L = useLabels();
   const s = v.status;
   const tone = s === 'likely' ? 'ok' : s === 'unknown' ? 'warn' : 'bad';
-  const hardRows: StateRow[] = prog.hardRequirements.map((r) => ({ text: r.text, ...reqStateOf(v, r) }));
-  const softRows: StateRow[] = prog.softRequirements.map((r) => ({ text: r.text, ...reqStateOf(v, r) }));
+  const hardRows: StateRow[] = prog.hardRequirements.map((r) => ({ text: r.text, ...reqStateOf(v, r, t) }));
+  const softRows: StateRow[] = prog.softRequirements.map((r) => ({ text: r.text, ...reqStateOf(v, r, t) }));
   const exVerified: StateRow[] = [
-    ...v.exclusions.triggered.map((x) => ({ text: x.text, cls: 'bad', note: 'attivata — esclude' })),
-    ...v.exclusions.cleared.map((x) => ({ text: x.text, cls: 'ok', note: 'non applicabile' })),
+    ...v.exclusions.triggered.map((x) => ({ text: x.text, cls: 'bad', note: t('subsidy.detail.exclTriggered') })),
+    ...v.exclusions.cleared.map((x) => ({ text: x.text, cls: 'ok', note: t('subsidy.detail.exclCleared') })),
   ];
   const exToVerify: StateRow[] = [
-    ...v.exclusions.unknown.map((x) => ({ text: x.text, cls: 'warn', note: 'da rispondere' })),
-    ...v.exclusions.informative.map((x) => ({ text: x.text, cls: 'warn', note: 'verifica manuale' })),
+    ...v.exclusions.unknown.map((x) => ({ text: x.text, cls: 'warn', note: t('subsidy.detail.exclToAnswer') })),
+    ...v.exclusions.informative.map((x) => ({ text: x.text, cls: 'warn', note: t('subsidy.detail.exclManual') })),
   ];
 
   return (
     <div className="verdict">
       <div className={`verdict-head vh-${tone}`}>
         <div className="vh-ico"><Icon name={s === 'likely' ? 'checkCircle' : 'alert'} /></div>
-        <div><div className="vh-kicker">Esito della verifica</div><div className="vh-title">{ELIGIBILITY_LABEL[s]}</div></div>
+        <div><div className="vh-kicker">{t('subsidy.detail.verdict')}</div><div className="vh-title">{L.eligibility(s)}</div></div>
       </div>
       {s === 'ineligible' && v.cause && (
-        <div className="warn-box mb-14"><Icon name="alert" /><span>{v.cause.type === 'exclusion' ? 'Esclusione attivata' : 'Requisito obbligatorio non soddisfatto'}: <strong>{v.cause.item.text}</strong>. Questo prevale su tutto il resto.</span></div>
+        <div className="warn-box mb-14"><Icon name="alert" /><span>{t(v.cause.type === 'exclusion' ? 'subsidy.detail.exclusionTriggered' : 'subsidy.detail.requirementFailed')}: <strong>{v.cause.item.text}</strong>. {t('subsidy.detail.prevails')}</span></div>
       )}
-      <div className="result-row"><div className="result-label">Requisiti obbligatori</div><div><StateList rows={hardRows} /></div></div>
-      {softRows.length > 0 && <div className="result-row"><div className="result-label">Requisiti preferenziali</div><div><StateList rows={softRows} /></div></div>}
-      {exVerified.length > 0 && <div className="result-row"><div className="result-label">Esclusioni verificate</div><div><StateList rows={exVerified} /></div></div>}
-      {exToVerify.length > 0 && <div className="result-row"><div className="result-label">Esclusioni da verificare</div><div><StateList rows={exToVerify} /></div></div>}
-      <div className="result-row"><div className="result-label">Prossimi passi</div><div><ul className="detail-list">{v.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul></div></div>
+      <div className="result-row"><div className="result-label">{t('subsidy.detail.hardRequirements')}</div><div><StateList rows={hardRows} /></div></div>
+      {softRows.length > 0 && <div className="result-row"><div className="result-label">{t('subsidy.detail.softRequirements')}</div><div><StateList rows={softRows} /></div></div>}
+      {exVerified.length > 0 && <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsChecked')}</div><div><StateList rows={exVerified} /></div></div>}
+      {exToVerify.length > 0 && <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsToCheck')}</div><div><StateList rows={exToVerify} /></div></div>}
+      <div className="result-row"><div className="result-label">{t('subsidy.detail.nextSteps')}</div><div><ul className="detail-list">{v.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul></div></div>
       <div className="draft-actions">
-        {s === 'likely' && <button className="btn btn-primary btn-sm" onClick={onCreate} disabled={savingCase} aria-busy={savingCase || undefined}>{savingCase ? <span className="spinner" /> : <Icon name="document" className="ic-sm" />} Crea pratica</button>}
+        {s === 'likely' && <button className="btn btn-primary btn-sm" onClick={onCreate} disabled={savingCase} aria-busy={savingCase || undefined}>{savingCase ? <span className="spinner" /> : <Icon name="document" className="ic-sm" />} {t('subsidy.detail.createCase')}</button>}
         {s === 'unknown' && <>
-          <button className="btn btn-primary btn-sm" onClick={onComplete}>Completa le verifiche</button>
-          <button className="btn btn-sm" onClick={onPreliminare} disabled={savingCase}>Salva come pratica preliminare</button>
+          <button className="btn btn-primary btn-sm" onClick={onComplete}>{t('subsidy.detail.completeChecks')}</button>
+          <button className="btn btn-sm" onClick={onPreliminare} disabled={savingCase}>{t('subsidy.detail.savePreliminary')}</button>
         </>}
-        {s === 'unlikely' && <button className="btn btn-sm" onClick={onRiferimento} disabled={savingCase}>Salva per riferimento</button>}
-        <button className="btn btn-sm" onClick={onRestart}>Ricomincia verifica</button>
+        {s === 'unlikely' && <button className="btn btn-sm" onClick={onRiferimento} disabled={savingCase}>{t('subsidy.detail.saveReference')}</button>}
+        <button className="btn btn-sm" onClick={onRestart}>{t('subsidy.detail.restart')}</button>
       </div>
     </div>
   );
