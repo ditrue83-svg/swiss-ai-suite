@@ -5,6 +5,8 @@ import { ErrorState, SkeletonKpiGrid, SkeletonCard } from '@/components/ui/state
 import { useOverview, type OverviewData } from './useOverview';
 import { collectPriorities, activeCasesCount } from './overview';
 import { daysUntil } from '@/lib/format';
+import { useT } from '@/i18n';
+import { useLabels } from '@/i18n/labels';
 
 const SHORT_TIPO: Record<string, string> = {
   sollecito: 'Sollecito', richiesta_documenti: 'Richiesta doc.', pagamento: 'Fattura',
@@ -28,6 +30,8 @@ function Bars({ rows }: { rows: BarRow[] }) {
 }
 
 function DashboardBody({ data }: { data: OverviewData }) {
+  const t = useT();
+  const L = useLabels();
   const { tasks, analyses, matches, cases } = data;
   const openTasks = tasks.filter((t) => t.status !== 'completed');
   const withDate = openTasks.filter((t) => t.dueDate);
@@ -95,7 +99,7 @@ function DashboardBody({ data }: { data: OverviewData }) {
 
       <div className="card mt-16">
         <div className="card-title">Prossime azioni</div>
-        <div className="muted-sm" style={{ marginTop: '-6px', marginBottom: '8px' }}>Ordinate per priorità e scadenza.</div>
+        <div className="muted-sm" style={{ marginTop: '-6px', marginBottom: '8px' }}>{t('dashboard.sortedByPriority')}</div>
         {priorities.length === 0 ? (
           <div className="priority-empty"><Icon name="checkCircle" /><div>Nessuna azione prioritaria: sei in pari.</div></div>
         ) : priorities.map((it, i) => (
@@ -110,12 +114,12 @@ function DashboardBody({ data }: { data: OverviewData }) {
 
       <div className="grid-2 mt-16">
         <div className="card"><div className="card-title">Scadenze in arrivo</div>
-          {withDate.length === 0 ? <div className="chart-empty">Nessuna scadenza con data.</div> : (
+          {withDate.length === 0 ? <div className="chart-empty">{t('dashboard.noDatedDeadlines')}</div> : (
             <Bars rows={Object.entries(horizon).map(([cat, val]) => ({ cat, val, cls: cat === 'Scadute' && val > 0 ? 's-alta' : '' }))} />
           )}
         </div>
         <div className="card"><div className="card-title">Completamento azioni</div>
-          {totChecks === 0 ? <div className="chart-empty">Nessuna checklist ancora. Analizza un documento.</div> : (
+          {totChecks === 0 ? <div className="chart-empty">{t('dashboard.noChecklist')}</div> : (
             <>
               <div className="meter"><div className="meter-num">{compPct}%</div>
                 <div className="meter-track"><div className="meter-fill" style={{ width: `${compPct}%` }} /></div></div>
@@ -140,14 +144,14 @@ function DashboardBody({ data }: { data: OverviewData }) {
               <span className="badge badge-media">Idoneità da verificare</span>
             </div>
           ))}
-          <Link className="btn btn-sm mt-10" to="/subsidy">Vedi tutti gli incentivi <Icon name="arrowRight" className="ic-sm" /></Link>
+          <Link className="btn btn-sm mt-10" to="/subsidy">{t('dashboard.allSubsidies')} <Icon name="arrowRight" className="ic-sm" /></Link>
         </div>
       )}
 
       <div className="section-title mt-28">Statistiche documenti</div>
       <div className="grid-2">
-        <div className="card"><div className="card-title">Documenti per urgenza</div>
-          {analyses.length === 0 ? <div className="chart-empty">Nessun documento analizzato.</div> : (
+        <div className="card"><div className="card-title">{t('dashboard.docsByUrgency')}</div>
+          {analyses.length === 0 ? <div className="chart-empty">{t('dashboard.noDocsAnalyzed')}</div> : (
             <Bars rows={[
               { cat: 'Alta', val: urg.alta, cls: 's-alta', dotCls: 'dot-alta' },
               { cat: 'Media', val: urg.media, cls: 's-media', dotCls: 'dot-media' },
@@ -155,12 +159,12 @@ function DashboardBody({ data }: { data: OverviewData }) {
             ]} />
           )}
         </div>
-        <div className="card"><div className="card-title">Documenti per tipo</div>
-          {tipoRows.length === 0 ? <div className="chart-empty">Nessun documento analizzato.</div> : <Bars rows={tipoRows} />}
+        <div className="card"><div className="card-title">{t('dashboard.docsByType')}</div>
+          {tipoRows.length === 0 ? <div className="chart-empty">{t('dashboard.noDocsAnalyzed')}</div> : <Bars rows={tipoRows} />}
         </div>
       </div>
       {analyses.length > 0 && (
-        <div className="card mt-16 lang-card"><span className="lang-title">Lingue dei documenti</span>
+        <div className="card mt-16 lang-card"><span className="lang-title">{t('dashboard.docLanguages')}</span>
           {Object.entries(langCount).sort((a, b) => b[1] - a[1]).map(([cat, val]) => (
             <span className="lang-chip" key={cat}>{cat} <b>{val}</b></span>
           ))}
@@ -171,12 +175,14 @@ function DashboardBody({ data }: { data: OverviewData }) {
 }
 
 export function DashboardPage() {
+  const t = useT();
+  const L = useLabels();
   const { loading, error, data, reload } = useOverview();
   return (
     <>
       <div className="page-head">
         <div className="page-title">Dashboard</div>
-        <div className="page-desc">Il quadro operativo della tua impresa: documenti, scadenze e incentivi in sintesi.</div>
+        <div className="page-desc">{t('dashboard.subtitle')}</div>
       </div>
       {loading && <><SkeletonKpiGrid /><div className="mt-16"><SkeletonCard /></div></>}
       {error && <ErrorState message={error} onRetry={reload} />}

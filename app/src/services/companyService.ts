@@ -6,6 +6,7 @@ import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import type { Company, CompanyMembership, CompanyProfile, MemberRole } from '@/types/models';
 import type { Database } from '@/types/database';
+import { translate as tr } from '@/i18n';
 
 type CompanyRow = Database['public']['Tables']['companies']['Row'];
 type CompanyProfileRow = Database['public']['Tables']['company_profiles']['Row'];
@@ -80,7 +81,7 @@ export const companyService = {
       p_revenue_band: input.revenueBand ?? null,
     });
     if (error) throw new AppError(toUserMessage(error), error);
-    if (!data) throw new AppError('Creazione azienda non riuscita.');
+    if (!data) throw new AppError(tr('errors.companyCreateFailed'));
     return data as string;
   },
 

@@ -8,6 +8,7 @@ import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { formatCurrency } from '@/lib/format';
 import { ANALYSIS_PROVIDER } from '@/lib/env';
+import { translate as tr, type TKey } from '@/i18n';
 import {
   analyzeText, buildReply, deadlineLevel, daysUntil, urgencyFromType,
   LANG_LABEL, DOC_TYPE_LABEL, type EngineAnalysis,
@@ -77,7 +78,7 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
   const uncertainties = uncertaintyItems.map((u) => u.description);
 
   // §16 — `risks` può essere un oggetto singolo (dati storici) o un array (attuale).
-  const NO_RISK: Risk = { text: 'Non determinabile dal documento.', level: 'unknown', evidence: null };
+  const NO_RISK: Risk = { text: tr('errors.notDeterminable'), level: 'unknown', evidence: null };
   const rawRisks = row.risks as unknown;
   const risks: Risk[] = Array.isArray(rawRisks)
     ? (rawRisks as unknown as Risk[]).filter((r) => r && typeof r.text === 'string' && r.text)
@@ -127,7 +128,13 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     senderUncertain: !row.sender,
     senderEvidence: (row.sender_evidence as unknown as Evidence) ?? null,
     documentType: row.document_type,
-    documentTypeLabel: DOC_TYPE_LABEL[docType] ?? docType,
+    // §42 — l'etichetta segue la lingua scelta; se il tipo non è previsto si
+    // mostra il valore grezzo invece di inventarne uno.
+    documentTypeLabel: (() => {
+      const k = `labels.docTypes.${docType}` as TKey;
+      const out = tr(k);
+      return out === k ? (DOC_TYPE_LABEL[docType] ?? docType) : out;
+    })(),
     urgency,
     deadline: row.deadline,
     deadlineLevel: deadlineLevel(days),
@@ -185,10 +192,10 @@ export interface AnalyzeInput {
 
 /** §25 — etichette degli stati del documento durante l'elaborazione. */
 const STATUS_STEP: Record<string, string> = {
-  uploaded: 'Documento caricato…',
-  extracting: 'Estrazione del testo…',
-  processing: 'Estrazione del testo…',
-  analyzing: 'Analisi amministrativa…',
+  uploaded: tr('adminAi.progressPreparing'),
+  extracting: tr('adminAi.extracting'),
+  processing: tr('adminAi.extracting'),
+  analyzing: tr('adminAi.progressAnalyzing'),
 };
 
 /** §26 — attende il completamento dell'elaborazione server-side osservando il DB. */
@@ -206,7 +213,7 @@ async function waitForCompletion(documentId: string, onProgress?: (s: string) =>
     if (status === 'failed') {
       const { data: an } = await sb.from('document_analyses')
         .select('error_message_safe').eq('document_id', documentId).maybeSingle();
-      throw new AppError(an?.error_message_safe ?? 'Analisi non riuscita. Riprova.');
+      throw new AppError(an?.error_message_safe ?? tr('errors.analysisFailed'));
     }
     if (status === 'completed' || status === 'needs_review' || status === 'analyzed') {
       return status === 'needs_review' ? 'needs_review' : 'completed';
@@ -216,7 +223,7 @@ async function waitForCompletion(documentId: string, onProgress?: (s: string) =>
     if (step !== lastStep) { lastStep = step; onProgress?.(step); }
 
     if (Date.now() - started > POLL_TIMEOUT_MS) {
-      throw new AppError("L'analisi sta impiegando più del previsto. Riapri il documento dall'archivio tra poco.");
+      throw new AppError(tr('errors.analysisTooLong'));
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
@@ -240,7 +247,7 @@ export const analysisService = {
 
     if (ANALYSIS_PROVIDER === 'deterministic') {
       if (!extraction) {
-        throw new AppError('Il motore locale non legge immagini o scansioni: incolla il testo oppure usa la modalità AI.');
+        throw new AppError(tr('errors.deterministicNoImages'));
       }
       const engineResult = analyzeText(extraction.fullText, { companyName });
       await sb.from('document_analyses').delete().eq('document_id', document.id);
@@ -266,7 +273,7 @@ export const analysisService = {
       : invoked.status;
 
     const analysis = await analysisService.getForDocument(document.id);
-    if (!analysis) throw new AppError("Analisi non disponibile dopo l'elaborazione.");
+    if (!analysis) throw new AppError(tr('errors.analysisUnavailable'));
     // Testo + pagine per il viewer (§31): l'estrazione client se presente, altrimenti quella salvata (OCR).
     if (extraction) {
       analysis.originalText = extraction.fullText;

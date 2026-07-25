@@ -66,8 +66,8 @@ export function ScadenziarioPage() {
   return (
     <>
       <div className="page-head">
-        <div className="page-title">Scadenziario</div>
-        <div className="page-desc">Tutte le scadenze create dalle analisi dei documenti e dagli incentivi, con promemoria di urgenza.</div>
+        <div className="page-title">{t('tasks.title')}</div>
+        <div className="page-desc">{t('tasks.subtitle')}</div>
       </div>
 
       <div className="card">

@@ -50,6 +50,9 @@ for (const file of files) {
     ].map((m) => m[1].trim());
     for (const c of candidates) {
       if (!IT_HINTS.test(c)) continue;
+      // Valori SENTINELLA salvati nel database: sono dati, non testo d'interfaccia.
+      // Tradurli corromperebbe i record esistenti; si traduce solo l'etichetta.
+      if (line.includes('NO_REVENUE') || line.includes('sentinella')) continue;
       if (/^[A-Z_]+$/.test(c)) continue;                       // costanti
       if (c.includes('t(') || c.startsWith('@/')) continue;     // già tradotto / import
       hits.push({ line: i + 1, text: c.slice(0, 90) });

@@ -12,6 +12,9 @@ import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { CANTONI, FORME_GIURIDICHE, SETTORI, FASCE_FATTURATO } from '@/features/subsidy-ai/programs';
 
+/** Valore sentinella salvato nel DB: resta invariato, si traduce solo l'etichetta. */
+const NO_REVENUE = 'Preferisco non indicare';
+
 export function OnboardingPage() {
   const navigate = useNavigate();
   const t = useT();
@@ -38,7 +41,7 @@ export function OnboardingPage() {
   const [legalForm, setLegalForm] = useState('Sagl');
   const [sector, setSector] = useState('');
   const [employeeCount, setEmployeeCount] = useState('');
-  const [revenueBand, setRevenueBand] = useState('Preferisco non indicare');
+  const [revenueBand, setRevenueBand] = useState(NO_REVENUE);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -95,7 +98,7 @@ export function OnboardingPage() {
         legalForm,
         sector: sector || null,
         employeeCount: empParsed != null && Number.isFinite(empParsed) ? empParsed : null,
-        revenueBand: revenueBand === 'Preferisco non indicare' ? null : revenueBand,
+        revenueBand: revenueBand === NO_REVENUE ? null : revenueBand,
       });
       await refresh();
       setActiveCompany(companyId);
@@ -211,7 +214,7 @@ export function OnboardingPage() {
             <div className="field">
               <label htmlFor="ob-rev">{t('onboarding.revenue')}</label>
               <select id="ob-rev" value={revenueBand} onChange={(e) => setRevenueBand(e.target.value)}>
-                {FASCE_FATTURATO.map((f) => <option key={f} value={f}>{f === 'Preferisco non indicare' ? t('onboarding.noPreference') : f}</option>)}
+                {FASCE_FATTURATO.map((f) => <option key={f} value={f}>{f === NO_REVENUE ? t('onboarding.noPreference') : f}</option>)}
               </select>
             </div>
           </div>

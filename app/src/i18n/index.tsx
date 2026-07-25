@@ -80,7 +80,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   // Si allinea anche il tag usato dalle utility di formattazione fuori da React.
   useEffect(() => {
     document.documentElement.lang = locale;
-    setCurrentLocaleTag(LOCALE_TAG[locale]);
+    setCurrentLocale(locale);
   }, [locale]);
 
   const setLocale = useCallback((l: Locale) => {
@@ -116,9 +116,25 @@ export function useT(): TFunction {
 }
 
 /**
- * Locale corrente FUORI da React (utility di formattazione, servizi).
- * Tenuto allineato dal provider; il default resta it-CH.
+ * Lingua corrente FUORI da React. Serve a codice che non è un componente e non
+ * può usare hook: le utility di formattazione e, soprattutto, `toUserMessage()`
+ * — i messaggi d'errore vanno letti nella lingua dell'utente proprio nei momenti
+ * in cui qualcosa è andato storto.
+ * Il provider la tiene allineata; il default resta l'italiano.
  */
+let currentLocale: Locale = 'it';
 let currentTag = LOCALE_TAG.it;
+
+export function setCurrentLocale(l: Locale) {
+  currentLocale = l;
+  currentTag = LOCALE_TAG[l];
+}
 export function setCurrentLocaleTag(tag: string) { currentTag = tag; }
 export function getCurrentLocaleTag(): string { return currentTag; }
+
+/** Traduzione fuori da React. Stessa regola di t(): chiave mancante → la chiave. */
+export function translate(key: TKey, vars?: Record<string, string | number>): string {
+  const raw = lookup(DICTS[currentLocale], key) ?? key;
+  if (!vars) return raw;
+  return raw.replace(/\{(\w+)\}/g, (m, name) => (name in vars ? String(vars[name]) : m));
+}

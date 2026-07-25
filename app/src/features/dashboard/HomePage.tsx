@@ -1,15 +1,16 @@
-// Panoramica (home operativa): saluto + Priorità di oggi.
+// Panoramica (home operativa): saluto + {t('home.priorities')}.
 import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useOverview } from './useOverview';
 import { collectPriorities, type PriorityItem } from './overview';
+import { useT } from '@/i18n';
 
-function greetingText(): string {
+function greetingKey(): 'home.greetingMorning' | 'home.greetingAfternoon' | 'home.greetingEvening' {
   const h = new Date().getHours();
-  if (h < 12) return 'Buongiorno';
-  if (h < 18) return 'Buon pomeriggio';
-  return 'Buonasera';
+  if (h < 12) return 'home.greetingMorning';
+  if (h < 18) return 'home.greetingAfternoon';
+  return 'home.greetingEvening';
 }
 
 function PriorityRow({ it }: { it: PriorityItem }) {
@@ -29,6 +30,7 @@ function PriorityRow({ it }: { it: PriorityItem }) {
 }
 
 export function HomePage() {
+  const t = useT();
   const { loading, error, data, reload } = useOverview();
 
   const priorities = data ? collectPriorities(data).slice(0, 7) : [];
@@ -37,14 +39,14 @@ export function HomePage() {
   return (
     <div id="home-body">
       <div className="page-head">
-        <div className="greeting">{greetingText()}</div>
-        <div className="greeting-sub">Ecco cosa richiede attenzione nella tua azienda.</div>
+        <div className="greeting">{t(greetingKey())}</div>
+        <div className="greeting-sub">{t('home.subtitle')}</div>
       </div>
 
       <div className="row-wrap">
-        <Link className="btn btn-primary btn-block-mobile" to="/admin"><Icon name="document" className="ic-sm" /> Analizza un documento</Link>
-        <Link className="btn" to="/subsidy"><Icon name="banknote" className="ic-sm" /> Trova incentivi</Link>
-        <Link className="btn btn-ghost" to="/scadenziario"><Icon name="calendar" className="ic-sm" /> Scadenziario</Link>
+        <Link className="btn btn-primary btn-block-mobile" to="/admin"><Icon name="document" className="ic-sm" /> {t('home.analyzeDoc')}</Link>
+        <Link className="btn" to="/subsidy"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
+        <Link className="btn btn-ghost" to="/scadenziario"><Icon name="calendar" className="ic-sm" /> {t('nav.tasks')}</Link>
       </div>
 
       <div className="mt-16">
@@ -54,11 +56,11 @@ export function HomePage() {
           priorities.length === 0 ? (
             <div className="priority-empty">
               <Icon name="checkCircle" />
-              <div>Nessuna priorità urgente al momento: sei in pari con scadenze e documenti.</div>
+              <div>{t('home.noPriorities')}</div>
             </div>
           ) : (
             <div className="card">
-              <div className="card-title">Priorità di oggi</div>
+              <div className="card-title">{t('home.priorities')}</div>
               {priorities.map((it, i) => <PriorityRow key={i} it={it} />)}
             </div>
           )
@@ -70,19 +72,19 @@ export function HomePage() {
           <div className="card module-card">
             <div className="module-kicker">Modulo 1</div>
             <div className="card-title mt-10">Swiss Admin AI</div>
-            <p className="muted-sm">Carica una lettera, un PDF o un’email: il sistema identifica ente, lingua e scadenze, spiega il contenuto e prepara checklist e bozza di risposta nella lingua corretta.</p>
-            <Link className="btn btn-sm mt-12" to="/admin">Apri Admin AI <Icon name="arrowRight" className="ic-sm" /></Link>
+            <p className="muted-sm">{t('home.adminAiDesc')}</p>
+            <Link className="btn btn-sm mt-12" to="/admin">{t('home.openAdminAi')} <Icon name="arrowRight" className="ic-sm" /></Link>
           </div>
           <div className="card module-card">
             <div className="module-kicker">Modulo 2</div>
             <div className="card-title mt-10">Swiss Subsidy AI</div>
-            <p className="muted-sm">Descrivi il progetto: il motore lo confronta con i programmi federali e cantonali e mostra solo gli incentivi compatibili, con verifica di idoneità.</p>
-            <Link className="btn btn-sm mt-12" to="/subsidy">Apri Subsidy AI <Icon name="arrowRight" className="ic-sm" /></Link>
+            <p className="muted-sm">{t('home.subsidyAiDesc')}</p>
+            <Link className="btn btn-sm mt-12" to="/subsidy">{t('home.openSubsidyAi')} <Icon name="arrowRight" className="ic-sm" /></Link>
           </div>
         </div>
       )}
 
-      <div className="footnote">SwissAI Suite è uno strumento di supporto amministrativo. Le analisi sono generate automaticamente e non sostituiscono la consulenza legale, fiscale o fiduciaria. Quando il sistema non è sicuro, lo segnala e invita a una verifica manuale.</div>
+      <div className="footnote">{t('legal.disclaimer')}</div>
     </div>
   );
 }

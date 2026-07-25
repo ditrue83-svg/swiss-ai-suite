@@ -9,6 +9,7 @@
 import { requireSupabase } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
 import type { ProjectInterpretation } from '@/types/models';
+import { translate as tr } from '@/i18n';
 
 interface InterpretResponse { interpretation?: ProjectInterpretation; error?: string; code?: string }
 
@@ -21,7 +22,7 @@ async function readFunctionError(error: unknown): Promise<string> {
     } catch { /* corpo non JSON */ }
   }
   const msg = (error as { message?: string })?.message;
-  return msg ? `Interpretazione non disponibile (${msg}).` : 'Interpretazione non disponibile.';
+  return msg ? `${tr('errors.interpretUnavailable')} (${msg})` : tr('errors.interpretUnavailable');
 }
 
 export const interpretService = {
@@ -33,7 +34,7 @@ export const interpretService = {
     const { data, error } = await requireSupabase()
       .functions.invoke<InterpretResponse>('interpret-project', { body: { companyId, description, outputLanguage } });
     if (error) throw new AppError(await readFunctionError(error), error);
-    if (!data?.interpretation) throw new AppError(data?.error ?? 'Interpretazione non disponibile.');
+    if (!data?.interpretation) throw new AppError(data?.error ?? tr('errors.interpretUnavailable'));
     return data.interpretation;
   },
 };

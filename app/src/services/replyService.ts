@@ -8,6 +8,7 @@ import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import type { Database } from '@/types/database';
 import type { DocumentReply } from '@/types/models';
+import { translate as tr } from '@/i18n';
 
 type ReplyRow = Database['public']['Tables']['document_replies']['Row'];
 
@@ -67,8 +68,8 @@ export const replyService = {
     const { data, error } = await requireSupabase().functions.invoke<GenReplyResponse>('generate-reply', {
       body: { documentId: input.documentId, language: input.language, tone: input.tone, userNotes: input.userNotes ?? null },
     });
-    if (error) throw new AppError(await readFunctionError(error, 'Generazione della bozza non riuscita. Riprova.'), error);
-    if (!data?.reply) throw new AppError(data?.error ?? 'Bozza non generata.');
+    if (error) throw new AppError(await readFunctionError(error, tr('errors.replyFailed')), error);
+    if (!data?.reply) throw new AppError(data?.error ?? tr('errors.replyNotGenerated'));
     return toReply(data.reply);
   },
 

@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, isSupabaseConfigured } from './env';
 import { AppError } from './errors';
+import { translate as tr } from '@/i18n';
 
 export type DbClient = SupabaseClient<Database>;
 
@@ -20,9 +21,7 @@ export const supabase: DbClient | null = isSupabaseConfigured
 /** Ritorna il client o lancia un AppError leggibile se le env mancano. */
 export function requireSupabase(): DbClient {
   if (!supabase) {
-    throw new AppError(
-      'Configurazione mancante: imposta VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nel file .env.',
-    );
+    throw new AppError(tr('errors.configMissing'));
   }
   return supabase;
 }

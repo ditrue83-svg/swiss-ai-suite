@@ -7,6 +7,7 @@ import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { publicUrl } from '@/lib/env';
 import type { UserProfile } from '@/types/models';
+import { translate as tr } from '@/i18n';
 
 export interface SignUpInput {
   firstName: string;
@@ -61,7 +62,7 @@ export const authService = {
       password: input.password,
     });
     if (error) throw new AppError(toUserMessage(error), error);
-    if (!data.session) throw new AppError('Accesso non riuscito. Riprova.');
+    if (!data.session) throw new AppError(tr('errors.signInFailed'));
     return data.session;
   },
 

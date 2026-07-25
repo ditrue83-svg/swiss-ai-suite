@@ -50,7 +50,7 @@ export function LoginPage() {
         <form onSubmit={onSubmit} noValidate>
           <div className="field">
             <label htmlFor="login-email">{t('auth.emailLabel')}</label>
-            <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@azienda.ch" />
+            <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
           </div>
           <div className="field">
             <label htmlFor="login-password">{t('auth.passwordLabel')}</label>

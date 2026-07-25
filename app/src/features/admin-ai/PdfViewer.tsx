@@ -8,6 +8,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Icon } from '@/components/ui/Icon';
 import { documentService } from '@/services/documentService';
+import { useT } from '@/i18n';
 import type { Evidence } from '@/types/models';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -19,6 +20,7 @@ export function PdfViewer({ storagePath, highlight }: {
   storagePath: string;
   highlight: Evidence | null;
 }) {
+  const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const [pageCount, setPageCount] = useState(0);
   const [rendered, setRendered] = useState(0);
@@ -69,7 +71,7 @@ export function PdfViewer({ storagePath, highlight }: {
           label.className = 'muted-sm';
           label.style.fontWeight = '600';
           label.style.marginBottom = '4px';
-          label.textContent = `— Pagina ${n} —`;
+          label.textContent = `— ${t('adminAi.result.page', { n })} —`;
 
           const canvas = document.createElement('canvas');
           canvas.width = Math.floor(viewport.width * dpr);
@@ -79,7 +81,7 @@ export function PdfViewer({ storagePath, highlight }: {
           canvas.style.border = '1px solid var(--line, #e5e7eb)';
           canvas.style.borderRadius = '6px';
           canvas.setAttribute('role', 'img');
-          canvas.setAttribute('aria-label', `Pagina ${n} del documento`);
+          canvas.setAttribute('aria-label', t('adminAi.result.page', { n }));
 
           const ctx = canvas.getContext('2d');
           if (!ctx) throw new Error('canvas non disponibile');
@@ -94,7 +96,7 @@ export function PdfViewer({ storagePath, highlight }: {
           setRendered(n);
         }
       } catch {
-        if (!cancelled) setError('Anteprima PDF non disponibile: usa la vista testo.');
+        if (!cancelled) setError(t('errors.pdfPreviewUnavailable'));
       }
     })();
 
@@ -133,7 +135,7 @@ export function PdfViewer({ storagePath, highlight }: {
         </div>
       )}
       {!error && pageCount === 0 && (
-        <div className="muted-sm" style={{ marginBottom: 8 }}><span className="spinner" aria-hidden="true" /> Caricamento del documento…</div>
+        <div className="muted-sm" style={{ marginBottom: 8 }}><span className="spinner" aria-hidden="true" /> {t('adminAi.result.loadingDocument')}</div>
       )}
 
       <div className="ax-doc-view" ref={containerRef} />

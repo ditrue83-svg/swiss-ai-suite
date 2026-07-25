@@ -3,6 +3,7 @@ import type { Company, CompanyProfile, DocumentAnalysis, DocumentRecord, Subsidy
 import type { MatchProfile, MatchResult } from '@/features/subsidy-ai/engine';
 import type { IconName } from '@/components/ui/Icon';
 import { daysUntil } from '@/lib/format';
+import { translate as tr } from '@/i18n';
 
 export function buildMatchProfile(company: Company | null, profile: CompanyProfile | null): MatchProfile {
   return {
@@ -43,8 +44,8 @@ export function collectPriorities({ tasks, analyses, matches }: OverviewInput): 
       items.push({
         priority: dd <= 3 ? 'alta' : 'media', icon: 'calendar', order: dd,
         title: t.title,
-        sub: (t.authority ?? 'Attività') + (dd < 0 ? ` · scaduta da ${Math.abs(dd)} gg` : dd === 0 ? ' · scade oggi' : ` · tra ${dd} gg`),
-        to: '/scadenziario', cta: 'Vai allo scadenziario',
+        sub: (t.authority ?? tr('home.prioActivity')) + ' · ' + (dd < 0 ? tr('home.prioOverdue', { n: Math.abs(dd) }) : dd === 0 ? tr('home.prioToday') : tr('home.prioInDays', { n: dd })),
+        to: '/scadenziario', cta: tr('home.ctaTasks'),
       });
     }
   });
@@ -54,9 +55,9 @@ export function collectPriorities({ tasks, analyses, matches }: OverviewInput): 
     const undone = a.actions.filter((c) => !c.done).length;
     items.push({
       priority: 'alta', icon: 'document', order: -100,
-      title: a.summary ? (a.documentTypeLabel) : a.documentTypeLabel,
-      sub: (a.sender ?? 'Documento') + ' · urgenza alta' + (undone ? ` · ${undone} azioni da completare` : ' · azioni completate'),
-      to: '/archivio', cta: 'Apri archivio',
+      title: a.documentTypeLabel,
+      sub: (a.sender ?? tr('home.prioDocument')) + ' · ' + tr('home.prioHighUrgency') + ' · ' + (undone ? tr('home.prioActionsLeft', { n: undone }) : tr('home.prioActionsDone')),
+      to: '/archivio', cta: tr('home.ctaArchive'),
     });
   });
 
@@ -66,8 +67,8 @@ export function collectPriorities({ tasks, analyses, matches }: OverviewInput): 
     items.push({
       priority: 'media', icon: 'checkCircle', order: 20,
       title: a.documentTypeLabel,
-      sub: `${undone} azioni da completare · ${a.sender ?? 'Documento'}`,
-      to: '/archivio', cta: 'Apri archivio',
+      sub: `${tr('home.prioActionsLeft', { n: undone })} · ${a.sender ?? tr('home.prioDocument')}`,
+      to: '/archivio', cta: tr('home.ctaArchive'),
     });
   });
 
@@ -76,8 +77,8 @@ export function collectPriorities({ tasks, analyses, matches }: OverviewInput): 
     items.push({
       priority: 'media', icon: 'banknote', order: 40,
       title: m.program.name,
-      sub: 'Domanda da presentare PRIMA di avviare il progetto · ' + m.program.authority,
-      to: '/subsidy', cta: 'Vai agli incentivi',
+      sub: tr('home.prioApplyBefore') + ' · ' + m.program.authority,
+      to: '/subsidy', cta: tr('home.ctaSubsidies'),
     });
   });
 

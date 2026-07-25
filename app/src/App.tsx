@@ -16,17 +16,19 @@ import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
 import { SubsidyPage } from '@/features/subsidy-ai/SubsidyPage';
 import { ArchivePage } from '@/features/archive/ArchivePage';
 import { PricingPage } from '@/features/pricing/PricingPage';
+import { useT } from '@/i18n';
 
 function ConfigNeeded() {
+  const t = useT();
   return (
     <div className="centered-screen">
       <div className="auth-card">
         <div className="auth-brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div><div className="brand-name">SwissAI Suite</div><div className="brand-sub">per le PMI svizzere</div></div>
+          <div><div className="brand-name">SwissAI Suite</div><div className="brand-sub">{t('brand.tagline')}</div></div>
         </div>
-        <div className="auth-title">Configurazione richiesta</div>
-        <div className="auth-sub">L’app non è ancora collegata a Supabase.</div>
+        <div className="auth-title">{t('states.configRequired')}</div>
+        <div className="auth-sub">{t('errors.notConnected')}</div>
         <p className="muted-sm">
           Copia <code>.env.example</code> in <code>.env</code> e imposta <code>VITE_SUPABASE_URL</code> e
           <code> VITE_SUPABASE_ANON_KEY</code> con i valori del tuo progetto Supabase, poi riavvia il server di sviluppo.

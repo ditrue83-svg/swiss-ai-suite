@@ -7,6 +7,7 @@
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
+import { translate as tr } from '@/i18n';
 
 export interface CompanyCandidate {
   uid: string | null;
@@ -37,7 +38,7 @@ async function readError(error: unknown): Promise<{ message: string; code: strin
       if (body?.error) return { message: body.error, code: body.code ?? null };
     } catch { /* corpo non JSON */ }
   }
-  return { message: 'Ricerca nel Registro IDI non disponibile.', code: null };
+  return { message: tr('errors.lookupUnavailable'), code: null };
 }
 
 export const companyLookupService = {

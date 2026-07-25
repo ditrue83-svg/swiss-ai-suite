@@ -7,6 +7,7 @@
 import { requireSupabase } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
 import type { ClientExtraction } from '@/features/admin-ai/pdf';
+import { translate as tr } from '@/i18n';
 
 export const DETERMINISTIC_ENGINE = 'deterministic-v2';
 
@@ -21,7 +22,7 @@ async function readFunctionError(error: unknown): Promise<string> {
     } catch { /* corpo non JSON */ }
   }
   const msg = (error as { message?: string })?.message;
-  return msg ? `Analisi AI non disponibile (${msg}).` : 'Analisi AI non disponibile.';
+  return msg ? `${tr('errors.aiUnavailable')} (${msg})` : tr('errors.aiUnavailable');
 }
 
 /**
@@ -48,6 +49,6 @@ export async function invokeAnalyze(
   const { data, error } = await requireSupabase().functions.invoke<AnalyzeResponse>('analyze-document', { body });
   if (error) throw new AppError(await readFunctionError(error), error);
   if (data?.status === 'processing') return { status: 'processing' };
-  if (!data?.analysis) throw new AppError(data?.error ?? 'Risposta del servizio AI non valida.');
+  if (!data?.analysis) throw new AppError(data?.error ?? tr('errors.aiInvalidResponse'));
   return { status: data.status ?? 'completed' };
 }
