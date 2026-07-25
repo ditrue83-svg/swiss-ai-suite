@@ -87,6 +87,13 @@ Deno.serve(async (req: Request) => {
 
   const zHeaders = { Authorization: basic, 'Content-Type': 'application/json', Accept: 'application/json' };
 
+  // Errore upstream: porta lo status HTTP di Zefix (mai le credenziali).
+  class UpstreamError extends Error {
+    status: number;
+    detail: string;
+    constructor(status: number, detail: string) { super(`zefix ${status}`); this.status = status; this.detail = detail; }
+  }
+
   try {
     const uid = compactUid(query);
     let companies: Candidate[] = [];
@@ -95,7 +102,7 @@ Deno.serve(async (req: Request) => {
       // Ricerca per IDI/UID esatto.
       const r = await fetch(`${ZEFIX_BASE}/firm/${uid}`, { headers: zHeaders });
       if (r.status === 404) companies = [];
-      else if (!r.ok) throw new Error(`zefix uid ${r.status}`);
+      else if (!r.ok) throw new UpstreamError(r.status, (await r.text().catch(() => '')).slice(0, 200));
       else {
         const data = await r.json();
         const arr = Array.isArray(data) ? data : [data];
@@ -107,14 +114,27 @@ Deno.serve(async (req: Request) => {
         method: 'POST', headers: zHeaders,
         body: JSON.stringify({ name: query, activeOnly: true, languageKey: 'it', maxEntries: MAX_RESULTS, offset: 0 }),
       });
-      if (!r.ok) throw new Error(`zefix search ${r.status}`);
+      if (!r.ok) throw new UpstreamError(r.status, (await r.text().catch(() => '')).slice(0, 200));
       const data = await r.json();
       companies = (Array.isArray(data) ? data : []).slice(0, MAX_RESULTS).map(normalize);
     }
 
     return json({ companies });
   } catch (e) {
-    console.error('lookup-company error:', (e as Error)?.message);
-    return json({ error: 'Ricerca nel Registro IDI non riuscita. Riprova o inserisci i dati manualmente.', code: 'PROVIDER_ERROR' }, 502);
+    const up = e instanceof UpstreamError ? e : null;
+    console.error('lookup-company error:', up ? `zefix ${up.status}: ${up.detail}` : (e as Error)?.message);
+
+    // Credenziali rifiutate da Zefix: è un problema di CONFIGURAZIONE, non
+    // dell'utente — va distinto, altrimenti sembra un guasto temporaneo.
+    if (up && (up.status === 401 || up.status === 403)) {
+      return json({
+        error: 'Le credenziali del Registro IDI non sono valide o non abilitate. Inserisci i dati manualmente.',
+        code: 'LOOKUP_AUTH_FAILED', upstreamStatus: up.status,
+      }, 503);
+    }
+    return json({
+      error: 'Ricerca nel Registro IDI non riuscita. Riprova o inserisci i dati manualmente.',
+      code: 'PROVIDER_ERROR', upstreamStatus: up?.status ?? null,
+    }, 502);
   }
 });

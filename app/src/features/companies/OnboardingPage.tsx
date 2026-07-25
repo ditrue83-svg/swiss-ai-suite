@@ -53,9 +53,12 @@ export function OnboardingPage() {
       setCandidates(list);
       if (list.length === 0) setLookupMsg('Nessuna azienda trovata. Inserisci i dati manualmente qui sotto.');
     } catch (e) {
+      // "Non configurata" e "credenziali non valide" sono problemi di setup del
+      // servizio, non dell'utente: si dice solo che l'inserimento è manuale.
+      const setupIssue = e instanceof LookupError && (e.code === 'LOOKUP_NOT_CONFIGURED' || e.code === 'LOOKUP_AUTH_FAILED');
       setLookupMsg(
-        e instanceof LookupError && e.code === 'LOOKUP_NOT_CONFIGURED'
-          ? 'La ricerca automatica nel Registro IDI non è ancora attiva. Inserisci i dati manualmente qui sotto.'
+        setupIssue
+          ? 'La ricerca automatica nel Registro IDI non è al momento attiva. Inserisci i dati manualmente qui sotto.'
           : toUserMessage(e),
       );
     } finally {
