@@ -140,7 +140,8 @@ export function PdfViewer({ storagePath, highlight }: {
 
       {truncated && (
         <div className="muted-sm" style={{ marginTop: 6 }}>
-          Anteprima limitata alle prime {MAX_RENDERED_PAGES} pagine di {pageCount}. Il testo estratto le copre tutte.
+          Anteprima limitata alle prime {MAX_RENDERED_PAGES} pagine di {pageCount}. Questo riguarda solo la
+          visualizzazione; se anche l’<em>analisi</em> non copre tutto il documento, viene dichiarato fra le incertezze.
         </div>
       )}
     </>

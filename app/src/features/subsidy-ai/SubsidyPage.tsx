@@ -1,5 +1,6 @@
 // Subsidy AI — orchestratore a 3 tab: Profilo incentivi · Incentivi rilevanti · Le mie pratiche.
 import { useMemo, useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAsync } from '@/hooks/useAsync';
 import { programService } from '@/services/programService';
@@ -18,7 +19,9 @@ export function SubsidyPage() {
   const companyId = activeCompanyId as string;
 
   // Catalogo reale dei programmi (dal DB), non più hardcoded.
-  const { data: programs, loading: programsLoading } = useAsync(() => programService.listActive(), [companyId]);
+  // L'errore NON va ignorato: un guasto di caricamento non è «nessun programma
+  // rilevante» — sarebbe un fallback silenzioso, vietato dalla governance.
+  const { data: programs, loading: programsLoading, error: programsError } = useAsync(() => programService.listActive(), [companyId]);
 
   const hasProjects = (companyProfile?.currentProjects.length ?? 0) > 0;
   const [tab, setTab] = useState<Tab>(hasProjects ? 'results' : 'profile');
@@ -55,6 +58,32 @@ export function SubsidyPage() {
       {tab === 'results' && (
         programsLoading && !programs ? (
           <div className="card mt-16"><span className="spinner" /> Caricamento dei programmi…</div>
+        ) : programsError ? (
+          <div className="card mt-16">
+            <div className="warn-box">
+              <Icon name="alert" />
+              <span>
+                <strong>Catalogo incentivi non disponibile.</strong> {programsError}<br />
+                Non viene mostrato alcun risultato: significa che i programmi non sono stati caricati,
+                <em> non</em> che non ce ne siano di rilevanti per la tua impresa.
+              </span>
+            </div>
+            <div className="row-wrap mt-12">
+              <button className="btn btn-primary btn-sm" onClick={() => window.location.reload()}>
+                <Icon name="refresh" className="ic-sm" /> Riprova
+              </button>
+            </div>
+          </div>
+        ) : (programs && programs.length === 0) ? (
+          <div className="card mt-16">
+            <div className="warn-box">
+              <Icon name="alert" />
+              <span>
+                <strong>Il catalogo dei programmi è vuoto.</strong> Nessun incentivo è stato caricato nel sistema,
+                quindi non è possibile dire se la tua impresa sia idonea a qualcosa. Contatta il supporto.
+              </span>
+            </div>
+          </div>
         ) : selectedMatch ? (
           <ProgramDetail
             match={selectedMatch}

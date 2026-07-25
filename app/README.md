@@ -21,6 +21,7 @@ verificata** del documento; ciò che non è certo viene dichiarato come incertez
 supabase/
   migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks
                 0005_storage · 0006_admin_ai_pipeline · 0007_subsidy_programs
+                0008_analysis_truth
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
@@ -34,8 +35,8 @@ src/
                   correction · program · interpret · companyLookup
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
   features/       auth · companies · admin-ai · subsidy-ai · tasks · dashboard · archive · pricing
-scripts/          test-phase1 · test-phase2 · test-pipeline · eval-admin-ai · eval-subsidy
-                  test-uid · seed-subsidy-programs · subsidy-catalog-health
+scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · eval-admin-ai
+                  eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
 ```
 
 ## Setup
@@ -45,7 +46,7 @@ Su [supabase.com](https://supabase.com) crea un progetto. Da **Project Settings 
 `Project URL`, chiave `anon`/`publishable`, chiave `service_role` (quest'ultima **solo** per i test locali).
 
 ### 2) Migrazioni
-**Opzione A — SQL Editor:** esegui **in ordine** il contenuto di `supabase/migrations/0001…0007`.
+**Opzione A — SQL Editor:** esegui **in ordine** il contenuto di `supabase/migrations/0001…0008`.
 
 **Opzione B — CLI:**
 ```bash
@@ -160,6 +161,8 @@ Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estr
 | `ai_request_log` | osservabilità e rate limit — **senza contenuto del documento** |
 
 Stati documento: `uploaded → extracting → analyzing → completed | needs_review | failed`.
+Lo stato arriva **fino alla UI**: un'analisi `failed` non viene mai resa come un risultato (niente mittente o
+tipo "di default"), e un tentativo fallito non cancella un'analisi valida ottenuta in precedenza.
 
 ## Comandi
 
@@ -173,6 +176,7 @@ npm run test:async      # processing asincrono reale, non simulato (17 test)
 npm run test:pipeline   # end-to-end analisi → persistenza → task → bozza (18 test)
 npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:subsidy    # eval interpretazione progetto (14 test)
+npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
@@ -192,6 +196,10 @@ Creano dati reali e li rimuovono alla fine.
   nessuna scadenza → `null`; scadenza relativa → nessuna data inventata; due importi → array corretto;
   ente ambiguo → `null` + incertezza; rischio esplicito vs assente; **prompt injection ignorata**; documento quasi vuoto.
 - **`eval:subsidy` (14)** — interpretazione progetto, evidence verbatim, governance (mai dichiarare idoneità).
+- **`test:validate` (28)** — le regole di governance provate **senza rete e senza crediti**, con output di modello
+  costruiti ad arte: scadenza con citazione falsa → marcata da verificare; azione senza citazione → declassata a
+  suggerimento; rischi espliciti prima degli inferiti; importo dovuto scelto correttamente e tipizzato; ente ambiguo →
+  null + incertezza; valori fuori range normalizzati; output vuoto che non produce dati dal nulla.
 
 ## Sicurezza
 

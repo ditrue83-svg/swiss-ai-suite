@@ -87,17 +87,33 @@ Deno.serve(async (req: Request) => {
   const inExtraction = body?.extraction;
   const hasClientExtraction = inExtraction && typeof inExtraction.fullText === 'string' && Array.isArray(inExtraction.pages);
   let clientExtraction: ExtractionResult | null = null;
+  let truncated = false;   // §28 — il testo inviato al modello è stato tagliato?
 
   if (hasClientExtraction) {
-    const fullText: string = inExtraction.fullText.slice(0, MAX_CHARS);
+    const original: string = inExtraction.fullText;
+    const fullText: string = original.slice(0, MAX_CHARS);
     if (fullText.trim().length < 40) return fail('EMPTY_DOCUMENT', 422);
+    // §28 — oltre il limite il modello vede solo l'inizio del documento: il
+    // troncamento va DICHIARATO, altrimenti un'analisi parziale sembra completa
+    // (una scadenza nell'ultima pagina sparirebbe senza lasciare traccia).
+    truncated = original.length > MAX_CHARS;
     clientExtraction = {
       fullText,
       extractionMethod: inExtraction.extractionMethod === 'native_pdf' ? 'native_pdf' : 'text',
-      pages: inExtraction.pages.map((p: { pageNumber?: number; text?: string }, i: number) => ({
-        pageNumber: typeof p.pageNumber === 'number' ? p.pageNumber : i + 1,
-        text: String(p.text ?? '').slice(0, MAX_CHARS),
-      })),
+      // Le pagine seguono il testo troncato: si tengono finché rientrano nel
+      // limite complessivo, così viewer e citazioni restano coerenti fra loro.
+      pages: (() => {
+        const out: { pageNumber: number; text: string }[] = [];
+        let budget = MAX_CHARS;
+        inExtraction.pages.forEach((p: { pageNumber?: number; text?: string }, i: number) => {
+          if (budget <= 0) return;
+          const t = String(p.text ?? '').slice(0, budget);
+          budget -= t.length;
+          out.push({ pageNumber: typeof p.pageNumber === 'number' ? p.pageNumber : i + 1, text: t });
+        });
+        if (out.length < inExtraction.pages.length) truncated = true;
+        return out;
+      })(),
     };
   } else {
     // Percorso OCR: quel che è verificabile senza lavoro AI lo si verifica ora.
@@ -125,7 +141,7 @@ Deno.serve(async (req: Request) => {
     try {
       return await runAnalysisPipeline(sb, createMessage, {
         documentId, companyId, userId,
-        extraction, extractionDurationMs: Date.now() - extractStart,
+        extraction, extractionDurationMs: Date.now() - extractStart, truncated,
         companyContext, todayIso: new Date().toISOString().slice(0, 10), provider: 'anthropic',
       });
     } catch (e) {
@@ -136,10 +152,15 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  /** §27/§53 — documento e file restano; il fallimento è tracciabile e ri-tentabile. */
+  /**
+   * §27/§53 — documento e file restano; il fallimento è tracciabile e ri-tentabile.
+   * IMPORTANTE: un tentativo fallito NON deve distruggere un'analisi valida
+   * precedente. Si rimuovono solo gli esiti falliti già registrati (per non
+   * accumularli) e si aggiunge il nuovo fallimento.
+   */
   async function markFailed(code: ErrorCode) {
     await sb.from('documents').update({ status: 'failed' }).eq('id', documentId);
-    await sb.from('document_analyses').delete().eq('document_id', documentId);
+    await sb.from('document_analyses').delete().eq('document_id', documentId).eq('analysis_status', 'failed');
     await sb.from('document_analyses').insert({
       document_id: documentId, company_id: companyId, analysis_status: 'failed',
       provider: 'anthropic', error_code: code, error_message_safe: ERROR_MESSAGES[code],

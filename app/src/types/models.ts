@@ -126,6 +126,16 @@ export interface LegalReference {
   evidence: Evidence | null;
 }
 
+/** Incertezza dichiarata dall'analisi (§17), con la sua gravità. */
+export interface AnalysisUncertainty {
+  field: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
+/** Esito tecnico dell'analisi (§25). 'failed' = NON è un risultato, è un errore. */
+export type AnalysisStatus = 'pending' | 'completed' | 'needs_review' | 'failed';
+
 /** Risultato d'analisi arricchito usato dalla UI (etichette e livelli derivati). */
 export interface DocumentAnalysis {
   id: string;
@@ -148,14 +158,21 @@ export interface DocumentAnalysis {
   amount: number | null;
   amountCurrency: string | null;
   amountDisplay: string | null;
+  /** Tipo dell'importo principale (§12): due | fine | fee | contribution | other. */
+  amountType: string | null;
   amountEvidence: Evidence | null;
   summary: string | null;
   actions: ChecklistAction[];
   primaryAction: string | null;
   primaryActionSource: ActionSource;
   requestedDocuments: RequestedDocument[];
+  /** Rischio principale (espliciti prima degli inferiti). Compat con la UI storica. */
   risk: Risk;
+  /** TUTTI i rischi rilevati (§16), non solo il primo. */
+  risks: Risk[];
   uncertainties: string[];
+  /** Incertezze con gravità (§17); `uncertainties` resta la versione testuale. */
+  uncertaintyItems: AnalysisUncertainty[];
   confidence: Confidence;
   replyDraft: string;
   replyLanguage: DocLanguage | string;
@@ -172,6 +189,13 @@ export interface DocumentAnalysis {
   deadlineRequiresVerification: boolean;
   deadlineSourceText: string | null;
   overallConfidence: number | null;
+  // ---- Esito tecnico (§25/§46): un fallimento NON va mai reso come risultato ----
+  analysisStatus: AnalysisStatus;
+  errorCode: string | null;
+  errorMessageSafe: string | null;
+  /** true quando l'ULTIMO tentativo è fallito ma resta disponibile un'analisi valida precedente. */
+  lastAttemptFailed?: boolean;
+  lastAttemptError?: string | null;
   createdAt: string;
   updatedAt: string;
   /** Testo originale ricostruito da Storage on-demand (NON persistito nel DB). */

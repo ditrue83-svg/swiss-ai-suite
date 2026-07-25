@@ -48,9 +48,31 @@ const DOC_TYPES: DocTypeDef[] = [
   { tipo: 'decisione', label: 'Decisione / notifica ufficiale', keys: ['verfügung', 'decisione', 'décision', 'notifica', 'entscheid', 'reclamo', 'einsprache', 'opposizione', 'ricorso'] },
 ];
 
+// Tassonomia NORMALIZZATA della pipeline AI (§8). È quella che viene persistita
+// in `document_analyses.document_type`; le chiavi italiane qui sotto restano per
+// il motore locale e per i dati storici. Senza queste etichette la UI mostrerebbe
+// l'identificatore grezzo ("request_for_documents") come tipo di documento.
+export const AI_DOC_TYPE_LABEL: Record<string, string> = {
+  information: 'Comunicazione informativa',
+  request_for_documents: 'Richiesta di documenti',
+  payment_request: 'Richiesta di pagamento',
+  reminder: 'Sollecito',
+  invoice: 'Fattura',
+  declaration_request: 'Dichiarazione / conteggio da presentare',
+  official_decision: 'Decisione ufficiale',
+  inspection_notice: 'Avviso di controllo',
+  tax_document: 'Documento fiscale',
+  social_insurance: 'Assicurazioni sociali',
+  employment: 'Lavoro / personale',
+  permit: 'Permesso / autorizzazione',
+  contract_related: 'Documento contrattuale',
+  other: 'Altro documento amministrativo',
+};
+
 export const DOC_TYPE_LABEL: Record<string, string> = {
   ...Object.fromEntries(DOC_TYPES.map((d) => [d.tipo, d.label])),
   informativa: 'Comunicazione informativa',
+  ...AI_DOC_TYPE_LABEL,
 };
 
 const DEADLINE_KEYWORDS = ['entro', 'scadenza', 'termine', 'al più tardi', 'bis zum', 'bis am', 'bis spätestens', 'spätestens', 'frist', 'innert', 'innerhalb', 'délai', 'au plus tard', 'avant le', "jusqu'au", 'dans les'];
@@ -262,11 +284,20 @@ function detectRequestedDocs(text: string, docType: DocTypeDef): RequestedDocume
   return list;
 }
 
+// Tipi che alzano l'urgenza anche senza una scadenza estratta. Include ENTRAMBE
+// le tassonomie: quella dell'AI (§8) e quella storica del motore locale.
+const URGENT_TYPES = new Set(['sollecito', 'reminder']);
+const MEDIUM_TYPES = new Set([
+  'decisione', 'controllo',
+  'official_decision', 'inspection_notice', 'payment_request', 'invoice',
+  'declaration_request', 'request_for_documents',
+]);
+
 export function urgencyFromType(tipo: string, days: number | null): Urgency {
-  if (tipo === 'sollecito') return 'alta';
+  if (URGENT_TYPES.has(tipo)) return 'alta';
   if (days !== null && days <= 10) return 'alta';
   if (days !== null && days <= 30) return 'media';
-  if (tipo === 'decisione' || tipo === 'controllo') return 'media';
+  if (MEDIUM_TYPES.has(tipo)) return 'media';
   return 'bassa';
 }
 

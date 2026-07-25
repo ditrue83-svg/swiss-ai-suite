@@ -143,7 +143,12 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
   );
 }
 
-export function ResultView({ analysis, document }: { analysis: DocumentAnalysis; document: DocumentRecord }) {
+export function ResultView({ analysis, document, onRetry }: {
+  analysis: DocumentAnalysis;
+  document: DocumentRecord;
+  /** §27 — rilancia l'analisi dello stesso documento (senza ricaricare il file). */
+  onRetry?: () => void;
+}) {
   const { activeCompany } = useCompany();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -269,12 +274,56 @@ export function ResultView({ analysis, document }: { analysis: DocumentAnalysis;
     showToast('Bozza copiata negli appunti');
   }
 
+  // §25/§53 — un'analisi FALLITA non è un risultato: non se ne mostrano mittente,
+  // tipo o scadenza (sarebbero i default, non dati estratti). Si dice che è
+  // fallita, perché, e si offre di riprovare. Il documento resta in archivio.
+  if (r.analysisStatus === 'failed') {
+    return (
+      <div>
+        <div className="card ax-header">
+          <div className="ax-head-top">
+            <div className="ax-title">{document.title}</div>
+            <div className="ax-badges"><span className="badge badge-alta">Analisi non riuscita</span></div>
+          </div>
+          <div className="warn-box mt-14">
+            <Icon name="alert" />
+            <span>
+              {r.errorMessageSafe ?? 'L’analisi di questo documento non è riuscita.'}
+              {r.errorCode ? <span className="muted-sm"> (codice: {r.errorCode})</span> : null}
+            </span>
+          </div>
+          <p className="muted-sm mt-12">
+            Il documento e il file originale <strong>sono stati conservati</strong>: nessun dato è andato perso.
+            Non viene mostrata alcuna informazione estratta perché <strong>non ne è stata prodotta nessuna</strong>.
+          </p>
+          <div className="row-wrap mt-12">
+            <button className="btn btn-primary btn-sm" onClick={() => onRetry?.()} disabled={!onRetry}>
+              <Icon name="refresh" className="ic-sm" /> Riprova analisi
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
+      {/* Il tentativo più recente è fallito, ma resta valida un'analisi precedente. */}
+      {r.lastAttemptFailed && (
+        <div className="warn-box mb-14">
+          <Icon name="alert" />
+          <span>
+            L’ultimo tentativo di rianalisi non è riuscito{r.lastAttemptError ? `: ${r.lastAttemptError}` : '.'} Qui sotto
+            trovi l’<strong>analisi precedente</strong>, che resta valida.
+          </span>
+        </div>
+      )}
+
       <div className="card ax-header">
         <div className="ax-head-top">
           <div className="ax-title">{document.title}</div>
           <div className="ax-badges">
+            {r.analysisStatus === 'needs_review' && <span className="badge badge-media">Da verificare</span>}
             <span className={`badge badge-${r.urgency}`}>urgenza {r.urgency}</span>
             <span className="badge badge-neutral">confidenza {r.confidence}</span>
           </div>
@@ -286,7 +335,14 @@ export function ResultView({ analysis, document }: { analysis: DocumentAnalysis;
           <span className="ax-chip">{r.languageLabel}</span>
           {r.recipient && <span className="ax-chip" title="Destinatario individuato">A: {r.recipient}</span>}
           {r.documentDate && <span className="ax-chip" title="Data del documento"><Icon name="calendar" className="ic-sm" /> {formatDate(r.documentDate)}</span>}
-          {r.amountDisplay && <span className="ax-chip">{r.amountDisplay}</span>}
+          {/* §12 — l'importo di testa dichiara SEMPRE il suo tipo: una multa non
+              è una richiesta di pagamento. */}
+          {r.amountDisplay && (
+            <span className="ax-chip" title={AMOUNT_TYPE_LABEL[r.amountType ?? 'other'] ?? 'Importo'}>
+              {r.amountDisplay}
+              <span className="muted-sm"> · {AMOUNT_TYPE_LABEL[r.amountType ?? 'other'] ?? 'Importo'}</span>
+            </span>
+          )}
           <span className="ax-chip" title={`Motore di analisi: ${r.engine}`}>
             <Icon name={r.engine.startsWith('claude') ? 'star' : 'fileSearch'} className="ic-sm" />
             {r.engine.startsWith('claude') ? 'Analisi AI' : 'Motore locale'}

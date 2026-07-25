@@ -161,9 +161,25 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
   } else {
     dDate = null; // relative/inferred/none: mai una data assoluta (§11)
   }
-  const deadlineRequiresVerification = dType === 'relative' || dType === 'inferred' || (dType === 'explicit' && dDate == null);
+  // §20 — la scadenza è il dato più critico: una data "esplicita" vale solo se
+  // la citazione che la sostiene esiste davvero nel testo. Senza citazione
+  // verificata resta la data (è l'unica informazione che abbiamo) ma va
+  // dichiarata DA VERIFICARE, esattamente come si declassano azioni e rischi.
+  const deadlineEvidence = ver(ai.deadline?.evidence ?? null);
+  const deadlineUnverified = dType === 'explicit' && dDate != null && !deadlineEvidence?.verified;
+  const deadlineRequiresVerification =
+    dType === 'relative' || dType === 'inferred' || (dType === 'explicit' && dDate == null) || deadlineUnverified;
+
   if (dType === 'relative') {
     uncertainties.push({ field: 'deadline', description: 'Scadenza relativa: data esatta da verificare in base alla data di ricezione', severity: 'medium' });
+  }
+  if (deadlineUnverified) {
+    warnings.push('scadenza explicit senza citazione verificata: marcata da verificare');
+    uncertainties.push({
+      field: 'deadline',
+      description: 'La data di scadenza non è confermata da una citazione verificabile nel documento: controllarla sull’originale',
+      severity: 'high',
+    });
   }
 
   // §13/§14 — azioni: extracted resta tale solo con evidence verificata.
@@ -252,7 +268,7 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
       type: dType,
       sourceText: cleanStr(ai.deadline?.sourceText),
       confidence: clamp01(ai.deadline?.confidence),
-      evidence: ver(ai.deadline?.evidence ?? null),
+      evidence: deadlineEvidence,   // già verificata sopra: non ri-verificare (falserebbe il conteggio)
       requiresVerification: deadlineRequiresVerification,
     },
     amounts,

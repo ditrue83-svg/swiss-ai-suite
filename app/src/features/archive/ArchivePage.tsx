@@ -95,20 +95,27 @@ export function ArchivePage() {
         {!loading && !error && visible.map(({ doc, analysis }) => {
           const done = analysis ? analysis.actions.filter((c) => c.done).length : 0;
           const total = analysis ? analysis.actions.length : 0;
-          const urgency = analysis?.urgency;
-          const subParts = [
-            analysis?.sender ?? undefined,
-            analysis?.documentTypeLabel,
-            analysis?.languageLabel,
-            analysis?.deadline ? 'scade il ' + formatDate(analysis.deadline) : undefined,
-          ].filter(Boolean);
+          // §25 — un'analisi fallita non va descritta come un documento analizzato:
+          // niente mittente/tipo/scadenza (sarebbero valori di default, non estratti).
+          const failed = analysis?.analysisStatus === 'failed';
+          const urgency = failed ? undefined : analysis?.urgency;
+          const subParts = failed
+            ? [analysis?.errorMessageSafe ?? 'Analisi non riuscita — il documento è conservato']
+            : [
+                analysis?.sender ?? undefined,
+                analysis?.documentTypeLabel,
+                analysis?.languageLabel,
+                analysis?.deadline ? 'scade il ' + formatDate(analysis.deadline) : undefined,
+              ].filter(Boolean);
           return (
             <div className="list-row" key={doc.id}>
               <div className="list-main">
                 <div className="list-title">{doc.title}</div>
                 <div className="list-sub">{subParts.join(' · ') || 'In elaborazione'}</div>
               </div>
-              {analysis && <span className="badge badge-neutral">{done}/{total} azioni</span>}
+              {failed && <span className="badge badge-alta">Analisi non riuscita</span>}
+              {!failed && analysis?.analysisStatus === 'needs_review' && <span className="badge badge-media">Da verificare</span>}
+              {analysis && !failed && <span className="badge badge-neutral">{done}/{total} azioni</span>}
               {urgency && <span className={`badge badge-${urgency}`}>{urgency}</span>}
               <button className="btn btn-sm" onClick={() => navigate(`/admin?doc=${doc.id}`)}>Apri</button>
               {doc.storagePath && (

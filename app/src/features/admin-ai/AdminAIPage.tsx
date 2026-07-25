@@ -152,6 +152,37 @@ export function AdminAIPage() {
     if (retrySrc) void runAnalysis(retrySrc.src, retrySrc.title);
   }
 
+  /**
+   * §27 — rilancia l'analisi di un documento GIÀ salvato (tipicamente riaperto
+   * dall'archivio dopo un fallimento). Riusa il testo già estratto: nessun nuovo
+   * upload, nessuna nuova estrazione. Se l'estrazione non c'è (scansione mai
+   * riuscita) si passa null e il server rifà l'OCR.
+   */
+  async function retryStored() {
+    if (!document || analyzing) return;
+    setAnalyzing(true);
+    setError(null);
+    setProgress('Ripresa dell’analisi…');
+    try {
+      const ext = await documentService.getExtraction(document.id);
+      const extraction: ClientExtraction | null = ext?.fullText
+        ? { fullText: ext.fullText, pages: ext.pages, extractionMethod: 'text' }
+        : null;
+      const { analysis: an, status } = await analysisService.analyzeAndPersist({
+        document, extraction, companyName, onProgress: setProgress,
+      });
+      setAnalysis(an);
+      showToast(status === 'needs_review'
+        ? 'Analizzato — alcune informazioni sono da verificare'
+        : 'Analisi completata');
+    } catch (e) {
+      setError(toUserMessage(e));
+    } finally {
+      setAnalyzing(false);
+      setProgress(null);
+    }
+  }
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setError(null);
@@ -258,7 +289,9 @@ export function AdminAIPage() {
           <div className="card mt-16" role="status" aria-live="polite"><span className="spinner" /> {progress}</div>
         )}
         {loadingDoc && <div className="card mt-16"><span className="spinner" /> Caricamento analisi…</div>}
-        {!analyzing && !loadingDoc && analysis && document && <div className="mt-16"><ResultView analysis={analysis} document={document} /></div>}
+        {!analyzing && !loadingDoc && analysis && document && (
+          <div className="mt-16"><ResultView analysis={analysis} document={document} onRetry={retryStored} /></div>
+        )}
         {!analyzing && !loadingDoc && docParam && !analysis && !error && (
           <div className="card mt-16"><div className="muted-sm">Questo documento non ha ancora un’analisi.</div></div>
         )}

@@ -26,6 +26,8 @@ export interface PipelineInput {
   userId: string | null;
   extraction: ExtractionResult;
   extractionDurationMs: number | null;
+  /** §28 — il testo inviato al modello è stato tagliato al limite. */
+  truncated?: boolean;
   companyContext: CompanyContext;
   todayIso: string;
   provider: string;
@@ -48,7 +50,7 @@ export async function runAnalysisPipeline(
   // 1. Salva l'estrazione (separata dall'originale, §5) e passa in "analyzing".
   const extractionId = await saveExtraction(sb, {
     documentId: input.documentId, companyId: input.companyId,
-    extraction: input.extraction, durationMs: input.extractionDurationMs,
+    extraction: input.extraction, durationMs: input.extractionDurationMs, truncated: input.truncated,
   });
   await sb.from('documents').update({ status: 'analyzing' }).eq('id', input.documentId);
 
@@ -80,6 +82,17 @@ export async function runAnalysisPipeline(
     const err = new Error('output non parsabile') as Error & { code?: string };
     err.code = 'AI_INVALID_OUTPUT';
     throw err;
+  }
+
+  // §28 — se il testo è stato tagliato, il modello non ha visto la parte finale
+  // del documento: va detto all'utente, non nascosto. Severità alta perché una
+  // scadenza o un importo nell'ultima pagina sarebbero semplicemente spariti.
+  if (input.truncated) {
+    normalized.uncertainties.push({
+      field: 'documento',
+      description: 'Il documento supera la lunghezza massima analizzabile: l’analisi copre solo la prima parte del testo. Verifica manualmente le pagine finali.',
+      severity: 'high',
+    });
   }
 
   // 4. Persistenza (colonne legacy + ricche).

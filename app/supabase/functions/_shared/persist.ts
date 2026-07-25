@@ -21,6 +21,9 @@ function confidenceLabel(n: number): 'alta' | 'media' | 'bassa' {
   return n >= 0.75 ? 'alta' : n >= 0.5 ? 'media' : 'bassa';
 }
 
+// §12 — l'importo "principale" è quello DOVUTO. Se il documento non ne contiene
+// uno, si ripiega sul più rilevante ma se ne conserva il TIPO, perché una multa
+// o una tassa non vanno mai presentate come "da versare" (la UI lo etichetta).
 function pickDueAmount(a: NormalizedAnalysis) {
   if (!a.amounts.length) return null;
   const due = a.amounts.filter((m) => m.type === 'due').sort((x, y) => y.confidence - x.confidence);
@@ -63,9 +66,20 @@ export interface SaveContext {
 /** Costruisce la riga document_analyses (colonne ricche + legacy). */
 export function buildAnalysisRow(a: NormalizedAnalysis, ctx: SaveContext) {
   const due = pickDueAmount(a);
-  const legacyRisk = a.risks[0]
-    ? { text: a.risks[0].text, level: a.risks[0].sourceType === 'explicit' ? 'explicit' : 'possible', evidence: legacyEvidence(a.risks[0].evidence) }
-    : { text: 'Non determinabile dal documento.', level: 'unknown', evidence: null };
+
+  // §16 — TUTTI i rischi vengono salvati, non solo il primo, con gli espliciti
+  // (dichiarati dal documento) davanti agli inferiti: la UI legge il primo come
+  // principale e non deve mai mostrare una supposizione al posto di un fatto.
+  const risksOrdered = [...a.risks].sort((x, y) =>
+    (x.sourceType === 'explicit' ? 0 : 1) - (y.sourceType === 'explicit' ? 0 : 1));
+  const legacyRisks = risksOrdered.length
+    ? risksOrdered.map((r) => ({
+        text: r.text,
+        level: r.sourceType === 'explicit' ? 'explicit' : 'possible',
+        evidence: legacyEvidence(r.evidence),
+      }))
+    : [{ text: 'Non determinabile dal documento.', level: 'unknown', evidence: null }];
+
   const legacyActions = orderedLegacyActions(a);
 
   return {
@@ -93,12 +107,15 @@ export function buildAnalysisRow(a: NormalizedAnalysis, ctx: SaveContext) {
     deadline_evidence: legacyEvidence(a.deadline.evidence),
     amount: due ? due.amount : null,
     amount_currency: due ? due.currency : null,
+    amount_type: due ? due.type : null,   // §12 — due | fine | fee | contribution | other
     amount_evidence: due ? legacyEvidence(due.evidence) : null,
     summary: a.summary,
     actions: legacyActions,
     requested_documents: a.requestedDocuments.map((d) => ({ label: d.name, evidence: legacyEvidence(d.evidence) })),
-    risks: legacyRisk,
-    uncertainties: a.uncertainties.map((u) => u.description),
+    risks: legacyRisks,
+    // §17 — l'incertezza conserva campo e gravità: una "high" che ha causato
+    // needs_review non deve essere indistinguibile da una "low".
+    uncertainties: a.uncertainties.map((u) => ({ field: u.field, description: u.description, severity: u.severity })),
     confidence: confidenceLabel(a.overallConfidence),
     reply_draft: null,
     reply_language: a.language,
@@ -138,7 +155,7 @@ export async function saveAnalysis(sb: SupabaseLike, a: NormalizedAnalysis, ctx:
 /** Salva (upsert) l'estrazione testo. Ritorna l'id. */
 export async function saveExtraction(
   sb: SupabaseLike,
-  input: { documentId: string; companyId: string; extraction: ExtractionResult; durationMs: number | null },
+  input: { documentId: string; companyId: string; extraction: ExtractionResult; durationMs: number | null; truncated?: boolean },
 ): Promise<string> {
   const { extraction } = input;
   const row = {
@@ -150,6 +167,7 @@ export async function saveExtraction(
     page_count: extraction.pages.length,
     char_count: extraction.fullText.length,
     ocr_confidence: null,
+    truncated: !!input.truncated,   // §28 — testo tagliato al limite
     duration_ms: input.durationMs,
   };
   const { data, error } = await sb.from('document_extractions')

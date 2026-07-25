@@ -62,16 +62,16 @@ export interface Database {
         Row: {
           id: string; document_id: string; company_id: string; extraction_method: ExtractionMethod;
           full_text: string | null; pages: Json; page_count: number | null; char_count: number | null;
-          ocr_confidence: number | null; duration_ms: number | null; created_at: string;
+          ocr_confidence: number | null; truncated: boolean; duration_ms: number | null; created_at: string;
         };
         Insert: {
           id?: string; document_id: string; company_id: string; extraction_method: ExtractionMethod;
           full_text?: string | null; pages?: Json; page_count?: number | null; char_count?: number | null;
-          ocr_confidence?: number | null; duration_ms?: number | null;
+          ocr_confidence?: number | null; truncated?: boolean; duration_ms?: number | null;
         };
         Update: {
           extraction_method?: ExtractionMethod; full_text?: string | null; pages?: Json; page_count?: number | null;
-          char_count?: number | null; ocr_confidence?: number | null; duration_ms?: number | null;
+          char_count?: number | null; ocr_confidence?: number | null; truncated?: boolean; duration_ms?: number | null;
         };
         Relationships: [];
       };
@@ -84,7 +84,7 @@ export interface Database {
           error_code: string | null; error_message_safe: string | null; input_tokens: number | null; output_tokens: number | null;
           // legacy (consumate dalla UI attuale)
           language: string | null; sender: string | null; sender_evidence: Json | null; document_type: string | null;
-          deadline: string | null; deadline_evidence: Json | null; amount: number | null; amount_currency: string | null; amount_evidence: Json | null;
+          deadline: string | null; deadline_evidence: Json | null; amount: number | null; amount_currency: string | null; amount_type: string | null; amount_evidence: Json | null;
           summary: string | null; actions: Json; requested_documents: Json; risks: Json | null; uncertainties: Json;
           confidence: string | null; reply_draft: string | null; reply_language: string | null; reply_tone: string | null;
           // ricche (§6–18/§23)
@@ -102,7 +102,7 @@ export interface Database {
           processing_started_at?: string | null; processing_completed_at?: string | null;
           error_code?: string | null; error_message_safe?: string | null; input_tokens?: number | null; output_tokens?: number | null;
           language?: string | null; sender?: string | null; sender_evidence?: Json | null; document_type?: string | null;
-          deadline?: string | null; deadline_evidence?: Json | null; amount?: number | null; amount_currency?: string | null; amount_evidence?: Json | null;
+          deadline?: string | null; deadline_evidence?: Json | null; amount?: number | null; amount_currency?: string | null; amount_type?: string | null; amount_evidence?: Json | null;
           summary?: string | null; actions?: Json; requested_documents?: Json; risks?: Json | null; uncertainties?: Json;
           confidence?: string | null; reply_draft?: string | null; reply_language?: string | null; reply_tone?: string | null;
           overall_confidence?: number | null; document_type_confidence?: number | null;

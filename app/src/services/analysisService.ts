@@ -16,8 +16,8 @@ import { invokeAnalyze, DETERMINISTIC_ENGINE } from './analysisProviders';
 import { documentService } from './documentService';
 import type { ClientExtraction } from '@/features/admin-ai/pdf';
 import type {
-  AnalysisAmount, ChecklistAction, Confidence, DocumentAnalysis, DocumentRecord, Evidence,
-  LegalReference, ReferenceNumber, RequestedDocument, Risk, Urgency,
+  AnalysisAmount, AnalysisStatus, AnalysisUncertainty, ChecklistAction, Confidence, DocumentAnalysis,
+  DocumentRecord, Evidence, LegalReference, ReferenceNumber, RequestedDocument, Risk, Urgency,
 } from '@/types/models';
 import type { Database, Json } from '@/types/database';
 
@@ -61,8 +61,28 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
   const docType = row.document_type ?? 'informativa';
   const actions = (Array.isArray(row.actions) ? row.actions : []) as unknown as ChecklistAction[];
   const requested = (Array.isArray(row.requested_documents) ? row.requested_documents : []) as unknown as RequestedDocument[];
-  const uncertainties = (Array.isArray(row.uncertainties) ? row.uncertainties : []) as unknown as string[];
-  const risk = (row.risks as unknown as Risk) ?? { text: 'Non determinabile dal documento.', level: 'unknown', evidence: null };
+  // §17 — le incertezze possono essere righe testuali (dati storici) oppure
+  // oggetti con gravità (formato attuale): si accettano entrambi.
+  const rawUnc = (Array.isArray(row.uncertainties) ? row.uncertainties : []) as unknown[];
+  const uncertaintyItems: AnalysisUncertainty[] = rawUnc.map((u) => {
+    if (typeof u === 'string') return { field: 'generale', description: u, severity: 'medium' as const };
+    const o = u as { field?: unknown; description?: unknown; severity?: unknown };
+    const sev = o?.severity === 'high' || o?.severity === 'low' ? o.severity : 'medium';
+    return {
+      field: typeof o?.field === 'string' ? o.field : 'generale',
+      description: typeof o?.description === 'string' ? o.description : '',
+      severity: sev as AnalysisUncertainty['severity'],
+    };
+  }).filter((u) => u.description);
+  const uncertainties = uncertaintyItems.map((u) => u.description);
+
+  // §16 — `risks` può essere un oggetto singolo (dati storici) o un array (attuale).
+  const NO_RISK: Risk = { text: 'Non determinabile dal documento.', level: 'unknown', evidence: null };
+  const rawRisks = row.risks as unknown;
+  const risks: Risk[] = Array.isArray(rawRisks)
+    ? (rawRisks as unknown as Risk[]).filter((r) => r && typeof r.text === 'string' && r.text)
+    : (rawRisks ? [rawRisks as unknown as Risk] : []);
+  const risk = risks[0] ?? NO_RISK;
   const confidence = (row.confidence as Confidence) ?? 'bassa';
   const urgency: Urgency = urgencyFromType(docType, days);
 
@@ -116,6 +136,7 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     amount: row.amount,
     amountCurrency: row.amount_currency,
     amountDisplay: formatCurrency(row.amount, row.amount_currency),
+    amountType: row.amount_type ?? null,
     amountEvidence: (row.amount_evidence as unknown as Evidence) ?? null,
     summary: row.summary,
     actions,
@@ -123,7 +144,9 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     primaryActionSource: actions[0]?.sourceType ?? 'suggested',
     requestedDocuments: requested,
     risk,
+    risks,
     uncertainties,
+    uncertaintyItems,
     confidence,
     replyDraft: row.reply_draft ?? '',
     replyLanguage: row.reply_language ?? (row.language ?? 'it'),
@@ -139,6 +162,11 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     deadlineRequiresVerification: row.deadline_requires_verification ?? false,
     deadlineSourceText: row.deadline_source_text ?? null,
     overallConfidence: row.overall_confidence ?? null,
+    // §25/§46 — l'esito tecnico arriva fino alla UI: un'analisi fallita non
+    // deve mai essere resa come un risultato valido.
+    analysisStatus: (row.analysis_status as AnalysisStatus | null) ?? 'completed',
+    errorCode: row.error_code ?? null,
+    errorMessageSafe: row.error_message_safe ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -260,16 +288,33 @@ export const analysisService = {
     return (data ?? []).map(rowToDomain);
   },
 
+  /**
+   * Analisi del documento. Se l'ULTIMO tentativo è fallito ma esiste un'analisi
+   * valida precedente, restituisce quella valida marcando `lastAttemptFailed`:
+   * un fallimento non deve né essere spacciato per risultato né far sparire
+   * un'analisi buona già ottenuta (§27/§53).
+   */
   async getForDocument(documentId: string): Promise<DocumentAnalysis | null> {
     const { data, error } = await requireSupabase()
       .from('document_analyses')
       .select('*')
       .eq('document_id', documentId)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(5);
     if (error) throw new AppError(toUserMessage(error), error);
-    return data ? rowToDomain(data) : null;
+    const rows = data ?? [];
+    if (!rows.length) return null;
+
+    const latest = rowToDomain(rows[0]);
+    if (latest.analysisStatus !== 'failed') return latest;
+
+    const goodRow = rows.find((r) => r.analysis_status !== 'failed');
+    if (!goodRow) return latest;                    // nessun risultato valido: si mostra il fallimento
+
+    const good = rowToDomain(goodRow);
+    good.lastAttemptFailed = true;
+    good.lastAttemptError = latest.errorMessageSafe;
+    return good;
   },
 
   /** Persiste lo stato della checklist (done) modificato dall'utente. */
