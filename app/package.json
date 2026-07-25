@@ -15,6 +15,7 @@
     "eval:subsidy": "node --env-file=.env.test --import tsx scripts/eval-subsidy.ts",
     "subsidy:seed": "node --env-file=.env.test scripts/seed-subsidy-programs.mjs",
     "subsidy:health": "node --env-file=.env.test scripts/subsidy-catalog-health.mjs",
+    "test:uid": "node --import tsx scripts/test-uid.ts",
     "test:pipeline": "node --env-file=.env.test --import tsx scripts/test-pipeline.ts"
   },
   "dependencies": {

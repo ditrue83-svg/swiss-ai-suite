@@ -7,6 +7,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { toUserMessage } from '@/lib/errors';
+import { formatUid, isValidUid } from '@/lib/uid';
 import { CANTONI, FORME_GIURIDICHE, SETTORI, FASCE_FATTURATO } from '@/features/subsidy-ai/programs';
 
 export function OnboardingPage() {
@@ -68,7 +69,7 @@ export function OnboardingPage() {
 
   function applyCandidate(c: CompanyCandidate) {
     if (c.name) setLegalName(c.name);
-    if (c.uid) setUidChe(c.uid);
+    if (c.uid) setUidChe(formatUid(c.uid) ?? c.uid);
     if (c.canton) setCanton(CANTONI.includes(c.canton) ? c.canton : 'Altro');
     if (c.municipality) setMunicipality(c.municipality);
     setCandidates([]);
@@ -101,6 +102,10 @@ export function OnboardingPage() {
       setSubmitting(false);
     }
   }
+
+  // Avviso IDI: solo quando ci sono abbastanza cifre (non a ogni tasto) e la
+  // cifra di controllo non torna. Non blocca l'invio: segnala, non decide.
+  const uidInvalid = uidChe.replace(/\D/g, '').length >= 9 && !isValidUid(uidChe);
 
   // L'onboarding non va mai mostrato a chi ha già un'azienda: torna all'app
   // (es. dopo che il recupero qui sopra ha ricaricato le membership).
@@ -158,7 +163,17 @@ export function OnboardingPage() {
             </div>
             <div className="field">
               <label htmlFor="ob-che">Numero IDI / CHE</label>
-              <input id="ob-che" value={uidChe} onChange={(e) => setUidChe(e.target.value)} placeholder="CHE-123.456.789" />
+              <input id="ob-che" value={uidChe} onChange={(e) => setUidChe(e.target.value)}
+                onBlur={() => { const f = formatUid(uidChe); if (f) setUidChe(f); }}
+                aria-invalid={uidInvalid || undefined}
+                aria-describedby={uidInvalid ? 'ob-che-hint' : undefined}
+                placeholder="CHE-123.456.789" />
+              {uidInvalid && (
+                <div id="ob-che-hint" className="hint-accent" style={{ marginTop: 4 }}>
+                  <Icon name="alert" className="ic-sm" /> Questo numero IDI non supera la verifica della cifra di controllo:
+                  controlla di averlo digitato correttamente. Puoi comunque proseguire.
+                </div>
+              )}
             </div>
             <div className="field">
               <label htmlFor="ob-canton">Cantone</label>
