@@ -46,7 +46,9 @@ Su [supabase.com](https://supabase.com) crea un progetto. Da **Project Settings 
 `Project URL`, chiave `anon`/`publishable`, chiave `service_role` (quest'ultima **solo** per i test locali).
 
 ### 2) Migrazioni
-**Opzione A — SQL Editor:** esegui **in ordine** il contenuto di `supabase/migrations/0001…0008`.
+**Opzione A — SQL Editor:** incolla ed esegui `supabase/full-setup.sql` (contiene tutte le migrazioni in
+ordine; è un file **generato** — si rigenera con `npm run db:bundle`), oppure esegui in ordine i singoli
+file di `supabase/migrations/`.
 
 **Opzione B — CLI:**
 ```bash
@@ -173,6 +175,7 @@ npm run typecheck       # solo type-check
 npm run test:phase1     # integrazione Fase 1 su DB reale (26 test)
 npm run test:phase2     # sicurezza + analisi reale via Edge Function (23 test)
 npm run test:async      # processing asincrono reale, non simulato (17 test)
+npm run test:functions  # sicurezza di generate-reply e interpret-project (12 test)
 npm run test:pipeline   # end-to-end analisi → persistenza → task → bozza (18 test)
 npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:subsidy    # eval interpretazione progetto (14 test)
@@ -180,6 +183,7 @@ npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
+npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare)
 ```
 
 Gli script che toccano il DB o l'AI richiedono `.env.test` (copia da `.env.test.example`).
@@ -196,6 +200,9 @@ Creano dati reali e li rimuovono alla fine.
   nessuna scadenza → `null`; scadenza relativa → nessuna data inventata; due importi → array corretto;
   ente ambiguo → `null` + incertezza; rischio esplicito vs assente; **prompt injection ignorata**; documento quasi vuoto.
 - **`eval:subsidy` (14)** — interpretazione progetto, evidence verbatim, governance (mai dichiarare idoneità).
+- **`test:functions` (12)** — le due Edge Function che non avevano test: metodo, autenticazione, input,
+  **cross-tenant 403** e **rate limit 429** su `generate-reply` e `interpret-project`. Non consuma crediti:
+  tutti i casi vengono rifiutati prima della chiamata al modello.
 - **`test:validate` (28)** — le regole di governance provate **senza rete e senza crediti**, con output di modello
   costruiti ad arte: scadenza con citazione falsa → marcata da verificare; azione senza citazione → declassata a
   suggerimento; rischi espliciti prima degli inferiti; importo dovuto scelto correttamente e tipizzato; ente ambiguo →

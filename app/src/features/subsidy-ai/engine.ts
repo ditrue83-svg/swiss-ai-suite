@@ -15,6 +15,9 @@ export interface MatchProfile {
 
 export interface Relevance { score: number; reasons: string[]; gaps: string[] }
 
+/** Pavimento di rilevanza sotto cui un programma non viene proposto (vedi matchPrograms). */
+export const MIN_RELEVANCE_SCORE = 40;
+
 // RILEVANZA: quanto il programma sembra pertinente al progetto. NON è la
 // probabilità di ottenere il contributo.
 export function computeRelevance(profile: MatchProfile, prog: ProgramModel): Relevance | null {
@@ -63,7 +66,13 @@ export function matchPrograms(profile: MatchProfile, programs: ProgramModel[]): 
   const out: MatchResult[] = [];
   for (const prog of programs) {
     const rel = computeRelevance(profile, prog);
-    if (!rel || rel.score < 40) continue;
+    // NB: con il punteggio attuale il minimo aritmetico per un programma che
+    // supera i due filtri duri (geografia e almeno un tipo di progetto in comune)
+    // è 48 — 16 geo + 28 tipi + 4 settore + 0 dipendenti — quindi questa soglia
+    // NON scatta mai oggi. È un pavimento di sicurezza per eventuali modifiche
+    // ai pesi; alzarla cambierebbe quali incentivi vengono mostrati, che è una
+    // scelta di prodotto, non un dettaglio tecnico.
+    if (!rel || rel.score < MIN_RELEVANCE_SCORE) continue;
     out.push({
       program: prog, relevanceScore: rel.score, reasons: rel.reasons, profileGaps: rel.gaps,
       reqToVerify: prog.requirements.length + prog.evaluableExclusions.length,

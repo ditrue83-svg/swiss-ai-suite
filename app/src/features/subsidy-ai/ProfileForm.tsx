@@ -13,6 +13,8 @@ import type { ProjectInterpretation } from '@/types/models';
 import { SETTORI, TIPI_PROGETTO, labelTipo } from './programs';
 
 const MIN_DESC = 15; // allineato al minimo della Edge Function interpret-project
+/** Sotto questa sicurezza l'ambito NON viene selezionato d'ufficio: lo propone soltanto. */
+const MIN_TYPE_CONFIDENCE = 0.5;
 
 export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInterpretation | null) => void }) {
   const { activeCompanyId, activeCompany, companyProfile, refreshProfile } = useCompany();
@@ -47,11 +49,14 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
     try {
       const result = await interpretService.interpret(activeCompanyId as string, description.trim());
       setInterpretation(result);
-      // Merge dei tipi riconosciuti nelle chip (l'utente può correggerli).
-      const recognized = result.projectTypes.map((p) => p.type);
+      // Sono le chip a decidere quali programmi verranno proposti: un ambito
+      // riconosciuto con poca sicurezza non deve entrarci di nascosto. Si
+      // aggiungono solo quelli sopra soglia (la stessa usata per il settore);
+      // gli altri restano come proposta da confermare a mano.
+      const confident = result.projectTypes.filter((p) => p.confidence >= MIN_TYPE_CONFIDENCE).map((p) => p.type);
       setProjects((prev) => {
         const merged = [...prev];
-        for (const t of recognized) if (!merged.includes(t)) merged.push(t);
+        for (const t of confident) if (!merged.includes(t)) merged.push(t);
         return merged;
       });
       // Prefill del settore se non indicato e l'AI è ragionevolmente sicura.
@@ -90,7 +95,13 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
     }
   }
 
-  const recognized = interpretation ? interpretation.projectTypes.map((p) => p.type) : [];
+  const recognized = interpretation
+    ? interpretation.projectTypes.filter((p) => p.confidence >= MIN_TYPE_CONFIDENCE).map((p) => p.type)
+    : [];
+  // Ambiti riconosciuti con poca sicurezza: proposti, non applicati.
+  const uncertainTypes = interpretation
+    ? interpretation.projectTypes.filter((p) => p.confidence < MIN_TYPE_CONFIDENCE && !projects.includes(p.type))
+    : [];
   const canInterpret = description.trim().length >= MIN_DESC && !interpreting;
 
   return (
@@ -130,6 +141,37 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
               : <>L’AI non ha riconosciuto ambiti specifici: selezionali manualmente qui sotto.</>}
             {interpretation.timing.alreadyStarted === true && (
               <div style={{ marginTop: 6 }}><Icon name="alert" className="ic-sm" /> Il progetto sembra già avviato: attenzione ai programmi con «domanda prima di iniziare».</div>
+            )}
+
+            {/* Ambiti riconosciuti con poca sicurezza: decide l'utente, non l'AI. */}
+            {uncertainTypes.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                Ambiti <strong>incerti</strong>, non aggiunti automaticamente:{' '}
+                {uncertainTypes.map((p, i) => (
+                  <span key={p.type}>
+                    {i > 0 ? ', ' : ''}
+                    <button type="button" className="btn-link" onClick={() => toggleProject(p.type)}>
+                      {labelTipo(p.type)}
+                    </button>
+                  </span>
+                ))}
+                . Aggiungili solo se pertinenti.
+              </div>
+            )}
+
+            {/* §17 — ciò che l'AI non ha potuto stabilire va detto, non nascosto. */}
+            {interpretation.uncertainties.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <strong>Da verificare:</strong>
+                <ul className="detail-list warn" style={{ marginTop: 4 }}>
+                  {interpretation.uncertainties.map((u, i) => <li key={i}>{u.description}</li>)}
+                </ul>
+              </div>
+            )}
+            {interpretation.meta.droppedEvidence > 0 && (
+              <div className="muted-sm" style={{ marginTop: 4 }}>
+                {interpretation.meta.droppedEvidence} citazione/i non ritrovate nel testo sono state scartate.
+              </div>
             )}
           </div>
         )}

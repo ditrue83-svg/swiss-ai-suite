@@ -12,10 +12,12 @@
     "test:phase1": "node --env-file=.env.test scripts/test-phase1.mjs",
     "test:phase2": "node --env-file=.env.test scripts/test-phase2.mjs",
     "test:async": "node --env-file=.env.test scripts/test-async.mjs",
+    "test:functions": "node --env-file=.env.test scripts/test-functions.mjs",
     "eval:admin": "node --env-file=.env.test --import tsx scripts/eval-admin-ai.ts",
     "eval:subsidy": "node --env-file=.env.test --import tsx scripts/eval-subsidy.ts",
     "subsidy:seed": "node --env-file=.env.test scripts/seed-subsidy-programs.mjs",
     "subsidy:health": "node --env-file=.env.test scripts/subsidy-catalog-health.mjs",
+    "db:bundle": "node scripts/bundle-migrations.mjs",
     "test:uid": "node --import tsx scripts/test-uid.ts",
     "test:validate": "node --import tsx scripts/test-validate.ts",
     "test:pipeline": "node --env-file=.env.test --import tsx scripts/test-pipeline.ts"
