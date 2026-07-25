@@ -11,7 +11,7 @@ import { documentService } from '@/services/documentService';
 import { analysisService } from '@/services/analysisService';
 import { sha256Hex } from '@/lib/hash';
 import { toUserMessage } from '@/lib/errors';
-import { useI18n } from '@/i18n';
+import { useI18n, useT } from '@/i18n';
 import { formatBytes } from '@/lib/format';
 import { extractFromFile, fromPlainText, reconstructText, type ClientExtraction } from './pdf';
 import { SAMPLE_DOCUMENTS } from './engine';
@@ -26,6 +26,7 @@ export function AdminAIPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { locale } = useI18n();   // §42 — i testi generati seguono la lingua dell'app
+  const t = useT();
   const companyId = activeCompanyId as string;
   const companyName = activeCompany?.legalName ?? null;
 
@@ -57,7 +58,7 @@ export function AdminAIPage() {
     (async () => {
       try {
         const doc = await documentService.get(docParam);
-        if (!doc) throw new Error('Documento non trovato.');
+        if (!doc) throw new Error(t('adminAi.docNotFound'));
         const an = await analysisService.getForDocument(doc.id);
         if (an) {
           // Testo + pagine per il viewer (§31): prima l'estrazione salvata (affidabile anche
@@ -93,7 +94,7 @@ export function AdminAIPage() {
     setError(null);
     setRetrySrc(null);
     setAnalyzing(true);
-    setProgress('Preparazione del documento…');
+    setProgress(t('adminAi.progressPreparing'));
     try {
       // §28/§29 — hash del CONTENUTO (byte del file o testo), per la deduplicazione.
       const fileHash = src.file
@@ -111,7 +112,7 @@ export function AdminAIPage() {
           setDocument(existing);
           setAnalysis(an);
           setSearchParams({ doc: existing.id }, { replace: true });
-          showToast('Documento già analizzato: mostro l’analisi esistente.');
+          showToast(t('adminAi.alreadyAnalyzed'));
           scrollToResult();
           return;
         }
@@ -128,8 +129,8 @@ export function AdminAIPage() {
       });
 
       setProgress(src.extraction
-        ? 'Analisi AI in corso… può richiedere qualche istante.'
-        : 'Riconoscimento del testo (OCR) e analisi AI in corso…');
+        ? t('adminAi.progressAnalyzing')
+        : t('adminAi.progressOcr'));
       const { analysis: an, status } = await analysisService.analyzeAndPersist({
         document: doc, extraction: src.extraction, companyName, outputLanguage: locale,
         onProgress: setProgress,   // §25/§26 — stati reali dal server, nessuna percentuale finta
@@ -137,9 +138,7 @@ export function AdminAIPage() {
       setDocument(doc);
       setAnalysis(an);
       setSearchParams({ doc: doc.id }, { replace: true });
-      showToast(status === 'needs_review'
-        ? 'Analizzato — alcune informazioni sono da verificare'
-        : 'Documento analizzato e salvato in archivio');
+      showToast(status === 'needs_review' ? t('adminAi.savedNeedsReview') : t('adminAi.savedOk'));
       scrollToResult();
     } catch (e) {
       setRetrySrc({ src, title: docTitle });   // §53 — consenti di riprovare senza reimpostare tutto
@@ -164,7 +163,7 @@ export function AdminAIPage() {
     if (!document || analyzing) return;
     setAnalyzing(true);
     setError(null);
-    setProgress('Ripresa dell’analisi…');
+    setProgress(t('adminAi.progressResuming'));
     try {
       const ext = await documentService.getExtraction(document.id);
       const extraction: ClientExtraction | null = ext?.fullText
@@ -174,9 +173,7 @@ export function AdminAIPage() {
         document, extraction, companyName, outputLanguage: locale, onProgress: setProgress,
       });
       setAnalysis(an);
-      showToast(status === 'needs_review'
-        ? 'Analizzato — alcune informazioni sono da verificare'
-        : 'Analisi completata');
+      showToast(status === 'needs_review' ? t('adminAi.savedNeedsReview') : t('adminAi.analysisDone'));
     } catch (e) {
       setError(toUserMessage(e));
     } finally {
@@ -204,14 +201,14 @@ export function AdminAIPage() {
         await runAnalysis({ file, extraction: null }, derivedTitle);
       }
     } catch (err) {
-      setFileState({ name: file.name, size: file.size, state: 'err', msg: (err as Error).message || 'Impossibile leggere il file.' });
+      setFileState({ name: file.name, size: file.size, state: 'err', msg: (err as Error).message || t('adminAi.fileUnreadable') });
     }
   }
 
   function analyzePasted() {
     setError(null);
     if (text.trim().length < 40) {
-      setError('Inserisci il testo completo della comunicazione (almeno qualche riga).');
+      setError(t('adminAi.pasteTooShort'));
       return;
     }
     void runAnalysis({ text, extraction: fromPlainText(text) }, title);
@@ -221,11 +218,11 @@ export function AdminAIPage() {
     <>
       <div className="page-head">
         <div className="page-title">Swiss Admin AI</div>
-        <div className="page-desc">Carica un PDF, incolla un’email o una lettera: il sistema identifica ente, lingua, scadenze e genera checklist e bozza di risposta.</div>
+        <div className="page-desc">{t('adminAi.intro')}</div>
       </div>
 
       <div className="card">
-        <div className="card-title">1 · Documento da analizzare</div>
+        <div className="card-title">{t('adminAi.stepDoc')}</div>
         <button
           type="button"
           className={`upload-zone${drag ? ' drag' : ''}`}
@@ -233,12 +230,12 @@ export function AdminAIPage() {
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); void handleFile(e.dataTransfer.files[0]); }}
-          aria-label="Carica un PDF, un'email o un file di testo da analizzare"
+          aria-label={t('adminAi.dropzoneAria')}
         >
           <span className="uz-icon" aria-hidden="true"><Icon name="document" /></span>
-          <span className="uz-title">Trascina qui un file o clicca per selezionarlo</span>
+          <span className="uz-title">{t('adminAi.dropzone')}</span>
           <span className="uz-formats"><span className="uz-fmt">PDF</span><span className="uz-fmt">IMG</span><span className="uz-fmt">EMAIL</span><span className="uz-fmt">TXT</span></span>
-          <span className="uz-ocr"><Icon name="fileSearch" className="ic-sm" /><span>Scansioni e foto — riconoscimento del testo (OCR) lato server</span></span>
+          <span className="uz-ocr"><Icon name="fileSearch" className="ic-sm" /><span>{t('adminAi.ocrNote')}</span></span>
         </button>
         <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,.eml,text/plain,application/pdf,image/*" hidden onChange={(e) => void handleFile(e.target.files?.[0])} />
 
@@ -248,26 +245,26 @@ export function AdminAIPage() {
               {fileState.state === 'loading' ? <span className="spinner" /> : <span className="fc-ico"><Icon name={fileState.state === 'err' ? 'alert' : 'document'} /></span>}
               <div className="fc-main">
                 <div className="fc-name">{fileState.name}</div>
-                <div className="fc-sub">{fileState.state === 'loading' ? 'Estrazione del testo in corso…' : fileState.state === 'ok' ? `${formatBytes(fileState.size ?? 0)} · ${fileState.msg ?? 'testo estratto'}` : fileState.msg}</div>
+                <div className="fc-sub">{fileState.state === 'loading' ? t('adminAi.extracting') : fileState.state === 'ok' ? `${formatBytes(fileState.size ?? 0)}${fileState.msg ? ` · ${fileState.msg}` : ''}` : fileState.msg}</div>
               </div>
-              <button className="btn btn-sm btn-icon" onClick={() => { setFileState(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} aria-label="Rimuovi il file"><Icon name="close" className="ic-sm" /></button>
+              <button className="btn btn-sm btn-icon" onClick={() => { setFileState(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} aria-label={t('adminAi.removeFile')}><Icon name="close" className="ic-sm" /></button>
             </div>
           </div>
         )}
 
         <div className="field mt-16">
-          <label htmlFor="doc-text">Oppure incolla il testo della comunicazione</label>
-          <textarea id="doc-text" value={text} onChange={(e) => setText(e.target.value)} placeholder="Incolla qui il contenuto della lettera o dell'email…" />
+          <label htmlFor="doc-text">{t('adminAi.orPaste')}</label>
+          <textarea id="doc-text" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('adminAi.pastePlaceholder')} />
         </div>
         <div className="field">
-          <label htmlFor="doc-title">Titolo (facoltativo)</label>
-          <input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Es. Lettera cassa AVS agosto" />
+          <label htmlFor="doc-title">{t('adminAi.titleField')}</label>
+          <input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('adminAi.titlePlaceholder')} />
         </div>
         <div className="row-wrap">
           <button className="btn btn-primary btn-block-mobile" onClick={analyzePasted} disabled={analyzing} aria-busy={analyzing || undefined}>
-            {analyzing ? <span className="spinner" aria-hidden="true" /> : null} Analizza documento
+            {analyzing ? <span className="spinner" aria-hidden="true" /> : null} {t('adminAi.analyze')}
           </button>
-          <span className="muted-sm">Prova con un esempio:</span>
+          <span className="muted-sm">{t('adminAi.trySample')}</span>
           <span className="row-wrap">
             {SAMPLE_DOCUMENTS.map((s) => (
               <button key={s.id} className="btn btn-sm" disabled={analyzing} onClick={() => { setText(s.text); setTitle(s.title); void runAnalysis({ text: s.text, extraction: fromPlainText(s.text) }, s.title); }}>{s.label}</button>
@@ -290,12 +287,12 @@ export function AdminAIPage() {
         {analyzing && progress && (
           <div className="card mt-16" role="status" aria-live="polite"><span className="spinner" /> {progress}</div>
         )}
-        {loadingDoc && <div className="card mt-16"><span className="spinner" /> Caricamento analisi…</div>}
+        {loadingDoc && <div className="card mt-16"><span className="spinner" /> {t('adminAi.loadingAnalysis')}</div>}
         {!analyzing && !loadingDoc && analysis && document && (
           <div className="mt-16"><ResultView analysis={analysis} document={document} onRetry={retryStored} /></div>
         )}
         {!analyzing && !loadingDoc && docParam && !analysis && !error && (
-          <div className="card mt-16"><div className="muted-sm">Questo documento non ha ancora un’analisi.</div></div>
+          <div className="card mt-16"><div className="muted-sm">{t('adminAi.noAnalysisYet')}</div></div>
         )}
       </div>
     </>

@@ -11,34 +11,30 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
-import { LANG_LABEL, TONI } from '@/features/admin-ai/engine';
+import { TONI } from '@/features/admin-ai/engine';
+import { useT } from '@/i18n';
+import { useLabels } from '@/i18n/labels';
 import { PdfViewer } from '@/features/admin-ai/PdfViewer';
 import type { ActionSource, AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence, TaskPriority } from '@/types/models';
 
-const DEADLINE_LEVEL_LABEL: Record<string, string> = { scaduta: 'Scaduta', urgente: 'Urgente', prossima: 'Prossima', nessuna: 'Nessuna urgenza' };
 const URGENCY_TO_PRIORITY: Record<string, TaskPriority> = { alta: 'high', media: 'medium', bassa: 'low' };
-const AUTHORITY_LABEL: Record<string, string> = {
-  federal: 'Autorità federale', cantonal: 'Autorità cantonale', municipal: 'Autorità comunale',
-  social_insurance: 'Assicurazione sociale', insurance: 'Assicurazione', pension: 'Cassa pensione', private: 'Privato',
-};
-const AMOUNT_TYPE_LABEL: Record<string, string> = {
-  due: 'Da versare', fine: 'Multa', fee: 'Tassa / emolumento', contribution: 'Contributo', other: 'Importo',
-};
 
 function OriginBadge({ source, ctx }: { source: ActionSource; ctx?: 'callout' }) {
+  const t = useT();
   if (source === 'extracted') {
-    return <span className="origin-badge ob-ex"><Icon name="fileSearch" className="ic-sm" />{ctx === 'callout' ? 'Richiesto nel documento' : 'Dal documento'}</span>;
+    return <span className="origin-badge ob-ex"><Icon name="fileSearch" className="ic-sm" />{t(ctx === 'callout' ? 'adminAi.result.originBadgeExtractedCallout' : 'adminAi.result.originBadgeExtracted')}</span>;
   }
-  return <span className="origin-badge ob-sg">{ctx === 'callout' ? 'Suggerito da SwissAI' : 'Suggerimento SwissAI'}</span>;
+  return <span className="origin-badge ob-sg">{t(ctx === 'callout' ? 'adminAi.result.originBadgeSuggestedCallout' : 'adminAi.result.originBadgeSuggested')}</span>;
 }
 
 function EvidenceButton({ evidence, label, onShow }: { evidence: Evidence | null; label?: string; onShow: (ev: Evidence) => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   if (!evidence) return null;
   return (
     <>
       <button type="button" className="ev-btn" onClick={() => { setOpen((o) => !o); onShow(evidence); }}>
-        <Icon name="fileSearch" className="ic-sm" />{label ?? 'Mostra nel documento'}
+        <Icon name="fileSearch" className="ic-sm" />{label ?? t('adminAi.result.showInDocument')}
       </button>
       <div className={`ev-quote${open ? ' show' : ''}`}>«{evidence.quote}»</div>
     </>
@@ -55,6 +51,7 @@ function renderHighlighted(text: string, quote: string | null): React.ReactNode 
 }
 
 function DocViewer({ text, pages, highlight }: { text: string | null | undefined; pages?: { pageNumber: number; text: string }[] | null; highlight: Evidence | null }) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (highlight && ref.current) {
@@ -84,7 +81,7 @@ function DocViewer({ text, pages, highlight }: { text: string | null | undefined
   }
 
   if (!text) {
-    return <div className="ax-doc-view"><span className="muted-sm">Testo originale non disponibile per l’evidenziazione. Le citazioni «…» restano visibili qui accanto.</span></div>;
+    return <div className="ax-doc-view"><span className="muted-sm">{t('adminAi.result.noOriginalText')}</span></div>;
   }
   let content: React.ReactNode = text;
   if (highlight && highlight.start >= 0 && highlight.end > highlight.start && highlight.end <= text.length) {
@@ -105,6 +102,7 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
   correction: AnalysisCorrection | undefined; inputType?: string;
   onSave: (field: string, aiValue: unknown, correctedValue: string) => Promise<void>;
 }) {
+  const tt = useT();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
@@ -127,7 +125,7 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
         </div>
         {!editing && (
           <button className="mini-btn" onClick={() => { setValue(current ?? (typeof aiValue === 'string' ? aiValue : aiDisplay)); setEditing(true); }}>
-            <Icon name="fileSearch" className="ic-sm" /> {current != null ? 'Modifica' : 'Correggi'}
+            <Icon name="fileSearch" className="ic-sm" /> {current != null ? tt('common.edit') : tt('adminAi.result.correct')}
           </button>
         )}
       </div>
@@ -149,6 +147,8 @@ export function ResultView({ analysis, document, onRetry }: {
   /** §27 — rilancia l'analisi dello stesso documento (senza ricaricare il file). */
   onRetry?: () => void;
 }) {
+  const t = useT();
+  const L = useLabels();
   const { activeCompany } = useCompany();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -234,7 +234,7 @@ export function ResultView({ analysis, document, onRetry }: {
         authority: r.sender, dueDate: r.deadline, priority: URGENCY_TO_PRIORITY[r.urgency] ?? 'medium',
         source: 'admin_ai', documentId: document.id,
       });
-      showToast('Scadenza aggiunta allo scadenziario');
+      showToast(t('adminAi.result.taskAdded'));
     } catch (e) { showToast(toUserMessage(e)); }
   }
 
@@ -253,7 +253,7 @@ export function ResultView({ analysis, document, onRetry }: {
     setSavingDraft(true);
     try {
       if (isAI) {
-        if (!reply) { showToast('Genera prima una bozza.'); return; }
+        if (!reply) { showToast(t('adminAi.result.generateFirst')); return; }
         await replyService.saveEdit(reply.id, draft);   // §34: modifica umana tracciata (is_edited)
       } else {
         await analysisService.updateReplyDraft(r.id, { draft, language: lang, tone });
@@ -283,22 +283,21 @@ export function ResultView({ analysis, document, onRetry }: {
         <div className="card ax-header">
           <div className="ax-head-top">
             <div className="ax-title">{document.title}</div>
-            <div className="ax-badges"><span className="badge badge-alta">Analisi non riuscita</span></div>
+            <div className="ax-badges"><span className="badge badge-alta">{t('adminAi.result.failedTitle')}</span></div>
           </div>
           <div className="warn-box mt-14">
             <Icon name="alert" />
             <span>
-              {r.errorMessageSafe ?? 'L’analisi di questo documento non è riuscita.'}
+              {r.errorMessageSafe ?? t('adminAi.result.failedGeneric')}
               {r.errorCode ? <span className="muted-sm"> (codice: {r.errorCode})</span> : null}
             </span>
           </div>
           <p className="muted-sm mt-12">
-            Il documento e il file originale <strong>sono stati conservati</strong>: nessun dato è andato perso.
-            Non viene mostrata alcuna informazione estratta perché <strong>non ne è stata prodotta nessuna</strong>.
+{t('adminAi.result.failedKept')}
           </p>
           <div className="row-wrap mt-12">
             <button className="btn btn-primary btn-sm" onClick={() => onRetry?.()} disabled={!onRetry}>
-              <Icon name="refresh" className="ic-sm" /> Riprova analisi
+              <Icon name="refresh" className="ic-sm" /> {t('adminAi.result.retryAnalysis')}
             </button>
           </div>
         </div>
@@ -329,18 +328,18 @@ export function ResultView({ analysis, document, onRetry }: {
           </div>
         </div>
         <div className="ax-meta">
-          <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{r.sender ?? 'Ente non identificato'}</b>{r.senderUncertain ? ' · da verificare' : ''}</span>
-          {r.senderAuthorityType && AUTHORITY_LABEL[r.senderAuthorityType] && <span className="ax-chip">{AUTHORITY_LABEL[r.senderAuthorityType]}</span>}
+          <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{r.sender ?? L.authorityType('unknown')}</b>{r.senderUncertain ? ' · da verificare' : ''}</span>
+          {r.senderAuthorityType && <span className="ax-chip">{L.authorityType(r.senderAuthorityType)}</span>}
           <span className="ax-chip"><Icon name="document" className="ic-sm" /> {r.documentTypeLabel}</span>
           <span className="ax-chip">{r.languageLabel}</span>
           {r.recipient && <span className="ax-chip" title="Destinatario individuato">A: {r.recipient}</span>}
-          {r.documentDate && <span className="ax-chip" title="Data del documento"><Icon name="calendar" className="ic-sm" /> {formatDate(r.documentDate)}</span>}
+          {r.documentDate && <span className="ax-chip" title={t('adminAi.result.documentDate')}><Icon name="calendar" className="ic-sm" /> {formatDate(r.documentDate)}</span>}
           {/* §12 — l'importo di testa dichiara SEMPRE il suo tipo: una multa non
               è una richiesta di pagamento. */}
           {r.amountDisplay && (
-            <span className="ax-chip" title={AMOUNT_TYPE_LABEL[r.amountType ?? 'other'] ?? 'Importo'}>
+            <span className="ax-chip" title={L.amountType(r.amountType ?? 'other')}>
               {r.amountDisplay}
-              <span className="muted-sm"> · {AMOUNT_TYPE_LABEL[r.amountType ?? 'other'] ?? 'Importo'}</span>
+              <span className="muted-sm"> · {L.amountType(r.amountType ?? 'other')}</span>
             </span>
           )}
           <span className="ax-chip" title={`Motore di analisi: ${r.engine}`}>
@@ -349,25 +348,25 @@ export function ResultView({ analysis, document, onRetry }: {
           </span>
         </div>
         {r.subject && <div className="ax-subject muted-sm" style={{ marginTop: 6 }}><b>Oggetto:</b> {r.subject}</div>}
-        {r.senderEvidence && <div><EvidenceButton evidence={r.senderEvidence} label="Mittente: mostra nel documento" onShow={setHighlight} /></div>}
+        {r.senderEvidence && <div><EvidenceButton evidence={r.senderEvidence} label={t('adminAi.result.senderShowInDocument')} onShow={setHighlight} /></div>}
       </div>
 
       {/* Callout: cosa devi fare adesso */}
       <div className="ax-callout">
         <div className="co-ico"><Icon name="checkCircle" /></div>
         <div className="co-main">
-          <div className="co-kicker">Cosa devi fare adesso</div>
-          <div className="co-action">{r.primaryAction ?? 'Leggere il documento e valutare le azioni'} <OriginBadge source={r.primaryActionSource} ctx="callout" /></div>
-          <div className="co-when">{r.deadline ? <>Entro <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</> : 'Nessuna scadenza individuata con certezza'}</div>
+          <div className="co-kicker">{t('adminAi.result.whatToDoNow')}</div>
+          <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <OriginBadge source={r.primaryActionSource} ctx="callout" /></div>
+          <div className="co-when">{r.deadline ? <>Entro <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</> : t('adminAi.result.noDeadlineFound')}</div>
         </div>
-        <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || document.title)}><Icon name="calendar" className="ic-sm" /> Crea attività</button>
+        <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || document.title)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}</button>
       </div>
 
       <div className="ax-grid">
         <div className="ax-col ax-doc">
           <div className="card">
             <div className="card-title">
-              <Icon name="document" className="ic-sm" /> Documento originale
+              <Icon name="document" className="ic-sm" /> {t('adminAi.result.originalDocument')}
               {isPdf && (
                 <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
                   <button type="button" className={`btn btn-sm${docMode === 'pdf' ? ' btn-primary' : ''}`}
@@ -389,27 +388,27 @@ export function ResultView({ analysis, document, onRetry }: {
               <div className="deadline-card">
                 <div className="dl-ico"><Icon name="calendar" /></div>
                 <div className="dl-main">
-                  <div className="dl-kicker">Scadenza · {DEADLINE_LEVEL_LABEL[lvl] ?? ''}</div>
+                  <div className="dl-kicker">Scadenza · {L.deadlineLevel(lvl)}</div>
                   <div className="dl-date">{formatDate(r.deadline)}</div>
                   <div className="dl-rem">{remaining}</div>
                 </div>
-                <span className={`badge badge-${lvl === 'scaduta' || lvl === 'urgente' ? 'alta' : lvl === 'prossima' ? 'media' : 'bassa'}`}>{DEADLINE_LEVEL_LABEL[lvl] ?? ''}</span>
+                <span className={`badge badge-${lvl === 'scaduta' || lvl === 'urgente' ? 'alta' : lvl === 'prossima' ? 'media' : 'bassa'}`}>{L.deadlineLevel(lvl)}</span>
               </div>
-              <EvidenceButton evidence={r.deadlineEvidence} label="Mostra nel documento" onShow={setHighlight} />
+              <EvidenceButton evidence={r.deadlineEvidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />
               {r.deadlineRequiresVerification && (
                 <div className="muted-sm" style={{ marginTop: 8 }}>
                   <Icon name="alert" className="ic-sm" /> {r.deadlineType === 'relative'
-                    ? 'Scadenza relativa: verifica la data esatta in base alla data di ricezione.'
-                    : 'Data indicativa: conferma la scadenza nel documento.'}
+                    ? t('adminAi.result.deadlineRelative')
+                    : t('adminAi.result.deadlineIndicative')}
                 </div>
               )}
             </div>
           ) : (
-            <div className="card"><div className="deadline-none"><Icon name="alert" /><div><strong>Scadenza non individuata con sufficiente certezza.</strong><br /><span className="muted-sm">Verifica manualmente il documento: il sistema non inventa una data.</span></div></div></div>
+            <div className="card"><div className="deadline-none"><Icon name="alert" /><div><strong>{t('adminAi.result.deadlineNoneTitle')}</strong><br /><span className="muted-sm">{t('adminAi.result.deadlineNoneSub')}</span></div></div></div>
           )}
 
           <div className="card ax-actions-card">
-            <div className="card-title">Cosa devi fare</div>
+            <div className="card-title">{t('adminAi.result.checklist')}</div>
             <div className="ax-progress">
               <span className="pg-label">{done} di {tot} azioni completate</span>
               <div className="meter-track" style={{ flex: 1 }}><div className="meter-fill" style={{ width: `${pct}%` }} /></div>
@@ -421,8 +420,8 @@ export function ResultView({ analysis, document, onRetry }: {
                   <div className="ai-main">
                     <div className="ai-text">{c.text} <OriginBadge source={c.sourceType} /></div>
                     <div className="ai-meta">
-                      {c.sourceType === 'extracted' && c.evidence && <EvidenceButton evidence={c.evidence} label="Mostra nel documento" onShow={setHighlight} />}
-                      <button type="button" className="mini-btn" onClick={() => createTask(c.text)}><Icon name="calendar" className="ic-sm" /> Aggiungi allo scadenziario</button>
+                      {c.sourceType === 'extracted' && c.evidence && <EvidenceButton evidence={c.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />}
+                      <button type="button" className="mini-btn" onClick={() => createTask(c.text)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.addToTasks')}</button>
                     </div>
                   </div>
                 </div>
@@ -438,20 +437,20 @@ export function ResultView({ analysis, document, onRetry }: {
             <div className="card"><div className="verify-ok"><Icon name="checkCircle" className="ic-sm" /> Informazioni principali confermate (confidenza {r.confidence}).</div></div>
           )}
 
-          <div className="card"><div className="card-title">Rischio se non agisci</div>
-            <span className={`risk-tag risk-${r.risk.level}`}><Icon name={r.risk.level === 'explicit' ? 'alert' : 'fileSearch'} className="ic-sm" /> {r.risk.level === 'explicit' ? 'Esplicitamente indicato nel documento' : r.risk.level === 'possible' ? 'Possibile conseguenza — da verificare' : 'Non determinabile dal documento'}</span>
+          <div className="card"><div className="card-title">{t('adminAi.result.risk')}</div>
+            <span className={`risk-tag risk-${r.risk.level}`}><Icon name={r.risk.level === 'explicit' ? 'alert' : 'fileSearch'} className="ic-sm" /> {r.risk.level === 'explicit' ? t('adminAi.result.riskExplicit') : r.risk.level === 'possible' ? t('adminAi.result.riskInferred') : t('adminAi.result.riskUnknown')}</span>
             {r.risk.level !== 'unknown' && <div className="risk-text">{r.risk.text}</div>}
-            <EvidenceButton evidence={r.risk.evidence} label="Mostra nel documento" onShow={setHighlight} />
+            <EvidenceButton evidence={r.risk.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />
           </div>
 
           <div className="card"><div className="card-title">Documenti richiesti</div>
             {r.requestedDocuments.length > 0 ? r.requestedDocuments.map((d, i) => (
               <div className="action-item" style={{ padding: '9px 0' }} key={i}>
                 <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{d.label}</span>
-                  {d.evidence && <div className="ai-meta"><EvidenceButton evidence={d.evidence} label="Mostra nel documento" onShow={setHighlight} /></div>}
+                  {d.evidence && <div className="ai-meta"><EvidenceButton evidence={d.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                 </span>
               </div>
-            )) : <span className="muted-sm">Nessun documento specifico individuato nel testo.</span>}
+            )) : <span className="muted-sm">{t('adminAi.result.noRequestedDocuments')}</span>}
           </div>
 
           {r.amounts.length > 0 && (
@@ -459,8 +458,8 @@ export function ResultView({ analysis, document, onRetry }: {
               {r.amounts.map((m, i) => (
                 <div className="action-item" style={{ padding: '9px 0' }} key={`amt-${i}`}>
                   <span className="ai-main">
-                    <span className="ai-text"><b>{m.display}</b>{m.description ? ` — ${m.description}` : ''} <span className="badge badge-neutral">{AMOUNT_TYPE_LABEL[m.type] ?? m.type}</span></span>
-                    {m.evidence && <div className="ai-meta"><EvidenceButton evidence={m.evidence} label="Mostra nel documento" onShow={setHighlight} /></div>}
+                    <span className="ai-text"><b>{m.display}</b>{m.description ? ` — ${m.description}` : ''} <span className="badge badge-neutral">{L.amountType(m.type)}</span></span>
+                    {m.evidence && <div className="ai-meta"><EvidenceButton evidence={m.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                   </span>
                 </div>
               ))}
@@ -472,14 +471,14 @@ export function ResultView({ analysis, document, onRetry }: {
               {r.referenceNumbers.map((ref, i) => (
                 <div className="action-item" style={{ padding: '7px 0' }} key={`ref-${i}`}>
                   <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{ref.label ? `${ref.label}: ` : ''}<b>{ref.value}</b></span>
-                    {ref.evidence && <div className="ai-meta"><EvidenceButton evidence={ref.evidence} label="Mostra nel documento" onShow={setHighlight} /></div>}
+                    {ref.evidence && <div className="ai-meta"><EvidenceButton evidence={ref.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                   </span>
                 </div>
               ))}
               {r.legalReferences.map((leg, i) => (
                 <div className="action-item" style={{ padding: '7px 0' }} key={`leg-${i}`}>
                   <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{leg.text}</span>
-                    {leg.evidence && <div className="ai-meta"><EvidenceButton evidence={leg.evidence} label="Mostra nel documento" onShow={setHighlight} /></div>}
+                    {leg.evidence && <div className="ai-meta"><EvidenceButton evidence={leg.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                   </span>
                 </div>
               ))}
@@ -488,11 +487,11 @@ export function ResultView({ analysis, document, onRetry }: {
 
           <div className="card">
             <div className="card-title"><Icon name="fileSearch" className="ic-sm" /> Revisione manuale</div>
-            <div className="muted-sm">Se un dato è errato, correggilo: la correzione viene registrata e NON altera l’analisi AI originale (§34).</div>
-            <CorrectionRow label="Mittente" field="sender" aiDisplay={r.sender ?? ''} aiValue={r.sender} correction={corrections.sender} onSave={saveCorrection} />
-            <CorrectionRow label="Tipo di documento" field="document_type" aiDisplay={r.documentTypeLabel} aiValue={r.documentType} correction={corrections.document_type} onSave={saveCorrection} />
-            <CorrectionRow label="Scadenza" field="deadline" aiDisplay={r.deadline ? formatDate(r.deadline) : ''} aiValue={r.deadline} correction={corrections.deadline} inputType="date" onSave={saveCorrection} />
-            <CorrectionRow label="Importo" field="amount" aiDisplay={r.amountDisplay ?? ''} aiValue={r.amount} correction={corrections.amount} onSave={saveCorrection} />
+            <div className="muted-sm">{t('adminAi.result.correctionsHint')}</div>
+            <CorrectionRow label={t('adminAi.result.sender')} field="sender" aiDisplay={r.sender ?? ''} aiValue={r.sender} correction={corrections.sender} onSave={saveCorrection} />
+            <CorrectionRow label={t('adminAi.result.documentType')} field="document_type" aiDisplay={r.documentTypeLabel} aiValue={r.documentType} correction={corrections.document_type} onSave={saveCorrection} />
+            <CorrectionRow label={t('adminAi.result.deadline')} field="deadline" aiDisplay={r.deadline ? formatDate(r.deadline) : ''} aiValue={r.deadline} correction={corrections.deadline} inputType="date" onSave={saveCorrection} />
+            <CorrectionRow label={t('adminAi.result.amount')} field="amount" aiDisplay={r.amountDisplay ?? ''} aiValue={r.amount} correction={corrections.amount} onSave={saveCorrection} />
           </div>
 
           <div className="card draft-editor">
@@ -500,7 +499,7 @@ export function ResultView({ analysis, document, onRetry }: {
             <div className="draft-controls">
               <div className="dc-field"><label htmlFor="draft-lang">Lingua</label>
                 <select id="draft-lang" className="select-inline" value={lang} onChange={(e) => setLang(e.target.value)}>
-                  {Object.entries(LANG_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {(['it', 'de', 'fr'] as const).map((k) => <option key={k} value={k}>{L.language(k)}</option>)}
                 </select></div>
               <div className="dc-field"><label htmlFor="draft-tone">Tono</label>
                 <select id="draft-tone" className="select-inline" value={tone} onChange={(e) => setTone(e.target.value)}>
@@ -508,21 +507,21 @@ export function ResultView({ analysis, document, onRetry }: {
                 </select></div>
               {isAI ? (
                 <button className="btn btn-sm" onClick={generateDraft} disabled={generating} aria-busy={generating || undefined}>
-                  {generating ? <span className="spinner" aria-hidden="true" /> : <Icon name="star" className="ic-sm" />} {reply ? 'Rigenera con l’AI' : 'Genera bozza con l’AI'}
+                  {generating ? <span className="spinner" aria-hidden="true" /> : <Icon name="star" className="ic-sm" />} {reply ? t('adminAi.result.regenerateReply') : t('adminAi.result.generateReply')}
                 </button>
               ) : (
                 <button className="btn btn-sm" onClick={resetDraft}><Icon name="fileSearch" className="ic-sm" /> Ripristina bozza</button>
               )}
             </div>
             {isAI && !reply && !generating ? (
-              <div className="draft-empty muted-sm">Nessuna bozza ancora. Scegli lingua e tono, poi premi «Genera bozza con l’AI»: potrai rileggerla e modificarla prima dell’invio.</div>
+              <div className="draft-empty muted-sm">{t('adminAi.result.noReplyYet')}</div>
             ) : (
-              <textarea aria-label="Bozza di risposta modificabile" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={generating ? 'Generazione della bozza in corso…' : ''} disabled={generating} />
+              <textarea aria-label={t('adminAi.result.reply')} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={generating ? t('adminAi.result.generatingReply') : ''} disabled={generating} />
             )}
             <div className="draft-actions">
-              <button className="btn btn-sm btn-primary" onClick={saveDraft} disabled={savingDraft || generating || (isAI && !reply)} aria-busy={savingDraft || undefined}>{savingDraft ? <span className="spinner" aria-hidden="true" /> : null} Salva modifiche</button>
-              <button className="btn btn-sm" onClick={copyDraft} disabled={!draft}>Copia</button>
-              <span className="muted-sm">{isAI ? 'Bozza generata dall’AI — rileggi e adatta prima dell’invio; non viene inviata automaticamente.' : 'Bozza generata da modello di template — rileggi e adatta prima dell’invio.'}</span>
+              <button className="btn btn-sm btn-primary" onClick={saveDraft} disabled={savingDraft || generating || (isAI && !reply)} aria-busy={savingDraft || undefined}>{savingDraft ? <span className="spinner" aria-hidden="true" /> : null} {t('common.save')}</button>
+              <button className="btn btn-sm" onClick={copyDraft} disabled={!draft}>{t('common.copy')}</button>
+              <span className="muted-sm">{isAI ? t('adminAi.result.replyDisclaimer') : t('adminAi.result.replyDisclaimer')}</span>
             </div>
           </div>
         </div>
