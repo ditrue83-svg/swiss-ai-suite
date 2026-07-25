@@ -10,7 +10,8 @@
 
 export const INTERPRET_MODEL = 'claude-opus-4-8';
 export const INTERPRET_EFFORT = 'medium';
-export const INTERPRET_PROMPT_VERSION = 'subsidy-interpret-2026-07-25';
+// 2026-07-25b: i testi generati seguono la lingua dell'interfaccia (it/de/fr).
+export const INTERPRET_PROMPT_VERSION = 'subsidy-interpret-2026-07-25-multilang';
 
 export const PROJECT_TYPES = ['innovazione', 'energia', 'digitalizzazione', 'formazione', 'mobilita', 'assunzioni', 'export', 'edilizia'] as const;
 export type ProjectType = (typeof PROJECT_TYPES)[number];
@@ -40,7 +41,7 @@ export interface SubsidyContext { canton: string | null; sector: string | null; 
 
 const SCHEMA_SKELETON = `{
   "language": "it" | "de" | "fr",
-  "summary": "2-3 frasi in italiano: cosa vuole fare concretamente l'azienda",
+  "summary": "2-3 frasi nella LINGUA DI RISPOSTA richiesta: cosa vuole fare concretamente l'azienda",
   "projectTypes": [ { "type": "innovazione|energia|digitalizzazione|formazione|mobilita|assunzioni|export|edilizia", "confidence": 0..1, "evidence": { "quote": "" } } ],
   "sector": { "value": "industria|costruzioni|commercio|servizi|ict|turismo|sanita|trasporti" | null, "confidence": 0..1, "evidence": { "quote": "" } },
   "investment": { "amount": number|null, "currency": "CHF", "evidence": { "quote": "" } },
@@ -51,7 +52,13 @@ const SCHEMA_SKELETON = `{
 }
 Regole per evidence: "quote" è una sottostringa letterale della descrizione, oppure "" se non hai una citazione.`;
 
-const SYSTEM_PROMPT = `Sei il motore di interpretazione progetti di SwissAI Suite, uno strumento per PMI svizzere.
+/** Lingua in cui l'utente legge l'applicazione. */
+export type OutputLanguage = 'it' | 'de' | 'fr';
+const OUTPUT_LANGUAGE_NAME: Record<OutputLanguage, string> = {
+  it: 'ITALIANO', de: 'TEDESCO (Schweizer Hochdeutsch, «ss» invece di «ß»)', fr: 'FRANCESE (français de Suisse)',
+};
+
+const buildSystemPrompt = (outputLang: OutputLanguage) => `Sei il motore di interpretazione progetti di SwissAI Suite, uno strumento per PMI svizzere.
 Leggi la descrizione libera di un progetto/investimento aziendale e la strutturi per aiutare il
 sistema a trovare programmi di incentivo PERTINENTI (Confederazione e Cantoni).
 
@@ -81,7 +88,10 @@ hai una citazione letterale, usa quote "".
 
 ## Campi
 - language: lingua della DESCRIZIONE.
-- summary: 2-3 frasi IN ITALIANO su cosa vuole fare l'azienda. Solo ciò che è nella descrizione.
+- summary: 2-3 frasi IN ${OUTPUT_LANGUAGE_NAME[outputLang]} su cosa vuole fare l'azienda. Solo ciò che è
+  nella descrizione. Lo stesso vale per "reason" in relevantAreas e per le "uncertainties".
+  Le CITAZIONI in "evidence.quote" restano SEMPRE nella lingua originale della descrizione, copiate
+  alla lettera: tradurle le renderebbe impossibili da verificare.
 - projectTypes: le aree pertinenti tra le 8 ammesse (innovazione=R&S/nuovi prodotti; energia=efficienza/
   rinnovabili; digitalizzazione=software/ERP/e-commerce/automazione; formazione=corsi/qualifiche;
   mobilita=veicoli/flotte/ricarica; assunzioni=nuovo personale/occupazione; export=internazionalizzazione/
@@ -111,13 +121,13 @@ function contextLine(ctx: SubsidyContext): string {
 }
 
 /** Parametri per client.messages.create(), identici in Edge e test. */
-export function buildInterpretRequest(description: string, ctx: SubsidyContext) {
+export function buildInterpretRequest(description: string, ctx: SubsidyContext, outputLang: OutputLanguage = 'it') {
   return {
     model: INTERPRET_MODEL,
     max_tokens: 4000,
     thinking: { type: 'adaptive' as const },
     output_config: { effort: INTERPRET_EFFORT },
-    system: SYSTEM_PROMPT,
+    system: buildSystemPrompt(outputLang),
     messages: [{
       role: 'user' as const,
       content:

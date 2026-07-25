@@ -53,6 +53,10 @@ Deno.serve(async (req: Request) => {
 
   const body = await req.json().catch(() => null);
   const documentId = body?.documentId;
+  // §42 — lingua in cui l'utente legge l'app: i testi GENERATI la seguono
+  // (le citazioni restano sempre nella lingua originale del documento).
+  const outputLanguage: 'it' | 'de' | 'fr' =
+    body?.outputLanguage === 'de' ? 'de' : body?.outputLanguage === 'fr' ? 'fr' : 'it';
   if (typeof documentId !== 'string') return json({ error: 'Richiesta non valida.', code: 'UNKNOWN_ERROR' }, 400);
 
   // §49 — autorizzazione via RLS: se non membro, la select non torna nulla → 403.
@@ -145,7 +149,7 @@ Deno.serve(async (req: Request) => {
     try {
       return await runAnalysisPipeline(sb, createMessage, {
         documentId, companyId, userId,
-        extraction, extractionDurationMs: Date.now() - extractStart, truncated, logId: slot.logId,
+        extraction, extractionDurationMs: Date.now() - extractStart, truncated, logId: slot.logId, outputLanguage,
         companyContext, todayIso: new Date().toISOString().slice(0, 10), provider: 'anthropic',
       });
     } catch (e) {

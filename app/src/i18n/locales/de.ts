@@ -104,6 +104,11 @@ export const de: Dictionary = {
       submit: 'Passwort aktualisieren',
       done: 'Passwort aktualisiert: Sie können sich jetzt anmelden.',
     },
+    confirmPassword: 'Passwort bestätigen',
+    passwordsDiffer: 'Die beiden Passwörter stimmen nicht überein.',
+    redirecting: 'Passwort aktualisiert. Sie werden weitergeleitet…',
+    openFromLink: 'Öffnen Sie diese Seite über den Link aus der E-Mail, um das Passwort zurückzusetzen.',
+    emailPlaceholder: 'name@firma.ch',
     errors: {
       emailRequired: 'Bitte geben Sie Ihre E-Mail-Adresse ein.',
       passwordRequired: 'Bitte geben Sie das Passwort ein.',

@@ -17,7 +17,7 @@ const SCHEMA_SKELETON = `{
   "subject": string|null,
   "documentDate": "YYYY-MM-DD"|null,
   "referenceNumbers": [ { "label": "", "value": "", "evidence": { "quote": "", "pageNumber": 0 } } ],
-  "summaryShort": "2-3 frasi in italiano",
+  "summaryShort": "2-3 frasi nella LINGUA DI RISPOSTA richiesta",
   "deadline": { "date": "YYYY-MM-DD"|null, "type": "explicit|relative|inferred|none", "sourceText": string|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } },
   "amounts": [ { "amount": number, "currency": "CHF", "type": "due|fine|fee|contribution|other", "description": "", "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } } ],
   "requestedActions": [ { "title": "", "description": "", "sourceType": "extracted|suggested", "required": true|false|null, "deadlineReference": string|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } } ],
@@ -43,7 +43,13 @@ export interface CompanyContext {
 // §21 — il documento è DATO NON FIDATO. Le regole di sicurezza e di metodo
 // stanno nel system prompt (canale fidato); il documento arriva come dato,
 // racchiuso in un delimitatore, con l'istruzione esplicita di non obbedirgli.
-const SYSTEM_PROMPT = `Sei il motore di analisi documentale di SwissAI Suite, uno strumento per PMI svizzere.
+/** Lingua in cui l'utente legge l'applicazione: it · de · fr. */
+export type OutputLanguage = 'it' | 'de' | 'fr';
+const OUTPUT_LANGUAGE_NAME: Record<OutputLanguage, string> = {
+  it: 'ITALIANO', de: 'TEDESCO (Schweizer Hochdeutsch, «ss» invece di «ß»)', fr: 'FRANCESE (français de Suisse)',
+};
+
+const buildSystemPrompt = (outputLang: OutputLanguage) => `Sei il motore di analisi documentale di SwissAI Suite, uno strumento per PMI svizzere.
 Analizzi comunicazioni amministrative (lettere, moduli, email, decisioni, solleciti, fatture) di
 enti svizzeri — Confederazione, Cantoni, Comuni, AVS/AI/IPG, AFC/IVA, SUVA, casse pensioni (LPP),
 assicurazioni, registro di commercio, uffici del lavoro e migrazione — in italiano, tedesco o francese.
@@ -87,9 +93,13 @@ richieste, documenti richiesti, rischi espliciti, data del documento, numeri di 
 - recipient, subject: se presenti nel documento, altrimenti null.
 - documentDate: data del documento (non la scadenza), formato YYYY-MM-DD, o null.
 - referenceNumbers: numeri di riferimento/pratica/decisione citati.
-- summaryShort: 2–3 frasi IN ITALIANO SEMPLICE, anche se il documento è in DE o FR. Spiega: cos'è il
-  documento, perché l'azienda lo ha ricevuto, cosa sembra essere richiesto. Nessuna informazione non
-  presente nel documento.
+- summaryShort: 2–3 frasi IN ${OUTPUT_LANGUAGE_NAME[outputLang]}, SEMPLICI, qualunque sia la lingua del
+  documento. Spiega: cos'è il documento, perché l'azienda lo ha ricevuto, cosa sembra essere richiesto.
+  Nessuna informazione non presente nel documento.
+  ATTENZIONE — questo vale SOLO per i testi che scrivi tu (summaryShort, i titoli e le descrizioni
+  delle azioni, i testi dei rischi e delle incertezze). Le CITAZIONI in "evidence.quote" restano
+  SEMPRE nella lingua originale del documento, copiate alla lettera: tradurle le renderebbe
+  impossibili da ritrovare nel testo e la verifica automatica le scarterebbe.
 - deadline: la scadenza principale.
   type "explicit": data assoluta scritta nel documento → compila "date" (YYYY-MM-DD).
   type "relative": termine relativo (es. "entro 30 giorni dalla ricezione") → "date" NULL, metti il
@@ -136,13 +146,14 @@ export function buildAnalysisRequest(
   documentText: string,
   ctx: CompanyContext,
   todayIso: string,
+  outputLang: OutputLanguage = 'it',
 ) {
   return {
     model: ANALYSIS_MODEL,
     max_tokens: 12000,
     thinking: { type: 'adaptive' as const },
     output_config: { effort: ANALYSIS_EFFORT },
-    system: SYSTEM_PROMPT,
+    system: buildSystemPrompt(outputLang),
     messages: [{
       role: 'user' as const,
       content:

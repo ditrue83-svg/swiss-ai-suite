@@ -6,7 +6,7 @@
 //   ESTRAZIONE (già pronta) → salva extraction → chiama modello → parse →
 //   validate+evidence → salva analisi (legacy+ricche) → log
 // ============================================================================
-import { ANALYSIS_MODEL, buildAnalysisRequest, type CompanyContext } from './prompt.ts';
+import { ANALYSIS_MODEL, buildAnalysisRequest, type CompanyContext, type OutputLanguage } from './prompt.ts';
 import { PROMPT_VERSION } from './schema.ts';
 import { parseModelJson } from './parse.ts';
 import { validateAndNormalize, type ExtractionResult, type NormalizedAnalysis } from './validate.ts';
@@ -30,6 +30,8 @@ export interface PipelineInput {
   truncated?: boolean;
   /** §50 — riga di log già PRENOTATA dalla quota: si completa invece di inserirne una nuova. */
   logId?: string | null;
+  /** §42 — lingua in cui l'utente legge l'app: i testi generati la seguono. */
+  outputLanguage?: OutputLanguage;
   companyContext: CompanyContext;
   todayIso: string;
   provider: string;
@@ -57,7 +59,7 @@ export async function runAnalysisPipeline(
   await sb.from('documents').update({ status: 'analyzing' }).eq('id', input.documentId);
 
   // 2. Chiama il modello (thinking + structured-by-prompt).
-  const req = buildAnalysisRequest(input.extraction.fullText, input.companyContext, input.todayIso);
+  const req = buildAnalysisRequest(input.extraction.fullText, input.companyContext, input.todayIso, input.outputLanguage ?? 'it');
   const msg = await createMessage(req);
 
   if (msg.stop_reason === 'refusal') {

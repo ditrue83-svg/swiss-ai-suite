@@ -13,7 +13,8 @@
 // ============================================================================
 
 export const SCHEMA_VERSION = 2;
-export const PROMPT_VERSION = 'admin-ai-2026-07-24';
+// 2026-07-25: la lingua dei testi generati segue quella dell'interfaccia (it/de/fr).
+export const PROMPT_VERSION = 'admin-ai-2026-07-25-multilang';
 
 // ---- Enum normalizzati ------------------------------------------------------
 export const LANGUAGES = ['it', 'de', 'fr'] as const;

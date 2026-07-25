@@ -11,6 +11,7 @@ import { documentService } from '@/services/documentService';
 import { analysisService } from '@/services/analysisService';
 import { sha256Hex } from '@/lib/hash';
 import { toUserMessage } from '@/lib/errors';
+import { useI18n } from '@/i18n';
 import { formatBytes } from '@/lib/format';
 import { extractFromFile, fromPlainText, reconstructText, type ClientExtraction } from './pdf';
 import { SAMPLE_DOCUMENTS } from './engine';
@@ -24,6 +25,7 @@ export function AdminAIPage() {
   const { activeCompany, activeCompanyId } = useCompany();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { locale } = useI18n();   // §42 — i testi generati seguono la lingua dell'app
   const companyId = activeCompanyId as string;
   const companyName = activeCompany?.legalName ?? null;
 
@@ -129,7 +131,7 @@ export function AdminAIPage() {
         ? 'Analisi AI in corso… può richiedere qualche istante.'
         : 'Riconoscimento del testo (OCR) e analisi AI in corso…');
       const { analysis: an, status } = await analysisService.analyzeAndPersist({
-        document: doc, extraction: src.extraction, companyName,
+        document: doc, extraction: src.extraction, companyName, outputLanguage: locale,
         onProgress: setProgress,   // §25/§26 — stati reali dal server, nessuna percentuale finta
       });
       setDocument(doc);
@@ -169,7 +171,7 @@ export function AdminAIPage() {
         ? { fullText: ext.fullText, pages: ext.pages, extractionMethod: 'text' }
         : null;
       const { analysis: an, status } = await analysisService.analyzeAndPersist({
-        document, extraction, companyName, onProgress: setProgress,
+        document, extraction, companyName, outputLanguage: locale, onProgress: setProgress,
       });
       setAnalysis(an);
       showToast(status === 'needs_review'

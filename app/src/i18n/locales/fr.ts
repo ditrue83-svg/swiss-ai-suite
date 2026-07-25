@@ -103,6 +103,11 @@ export const fr: Dictionary = {
       submit: 'Mettre à jour le mot de passe',
       done: 'Mot de passe mis à jour : vous pouvez maintenant vous connecter.',
     },
+    confirmPassword: 'Confirmer le mot de passe',
+    passwordsDiffer: 'Les deux mots de passe ne correspondent pas.',
+    redirecting: 'Mot de passe mis à jour. Redirection en cours…',
+    openFromLink: 'Ouvrez cette page depuis le lien reçu par e-mail pour réinitialiser le mot de passe.',
+    emailPlaceholder: 'nom@entreprise.ch',
     errors: {
       emailRequired: 'Veuillez saisir votre adresse e-mail.',
       passwordRequired: 'Veuillez saisir le mot de passe.',

@@ -50,6 +50,9 @@ Deno.serve(async (req: Request) => {
   const body = await req.json().catch(() => null);
   const companyId = body?.companyId;
   const description = typeof body?.description === 'string' ? body.description.trim().slice(0, MAX_CHARS) : '';
+  // §42 — i testi generati seguono la lingua dell'interfaccia.
+  const outputLanguage: 'it' | 'de' | 'fr' =
+    body?.outputLanguage === 'de' ? 'de' : body?.outputLanguage === 'fr' ? 'fr' : 'it';
   if (typeof companyId !== 'string') return json({ error: 'Richiesta non valida.', code: 'UNKNOWN_ERROR' }, 400);
   if (description.length < MIN_CHARS) return json({ error: 'Descrivi il progetto con qualche frase in più.', code: 'EMPTY_DOCUMENT' }, 422);
 
@@ -76,7 +79,7 @@ Deno.serve(async (req: Request) => {
   const started = Date.now();
   try {
     const anthropic = new Anthropic({ apiKey });
-    const msg = await anthropic.messages.create(buildInterpretRequest(description, ctx) as never) as { content: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number }; stop_reason?: string };
+    const msg = await anthropic.messages.create(buildInterpretRequest(description, ctx, outputLanguage) as never) as { content: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number }; stop_reason?: string };
     if (msg.stop_reason === 'refusal') return json({ error: 'Interpretazione rifiutata dal modello.', code: 'PROVIDER_ERROR' }, 422);
     const text = msg.content.find((b) => b.type === 'text' && b.text)?.text ?? '';
     const raw = parseModelJson(text) as AiInterpretation;

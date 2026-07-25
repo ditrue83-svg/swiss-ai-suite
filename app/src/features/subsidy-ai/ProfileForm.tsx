@@ -9,6 +9,7 @@ import { interpretService } from '@/services/interpretService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
+import { useI18n } from '@/i18n';
 import type { ProjectInterpretation } from '@/types/models';
 import { SETTORI, TIPI_PROGETTO, labelTipo } from './programs';
 
@@ -19,6 +20,7 @@ const MIN_TYPE_CONFIDENCE = 0.5;
 export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInterpretation | null) => void }) {
   const { activeCompanyId, activeCompany, companyProfile, refreshProfile } = useCompany();
   const { showToast } = useToast();
+  const { locale } = useI18n();   // §42
 
   const [sector, setSector] = useState(companyProfile?.sector ?? '');
   const [projects, setProjects] = useState<string[]>(companyProfile?.currentProjects ?? []);
@@ -47,7 +49,7 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
     }
     setInterpreting(true);
     try {
-      const result = await interpretService.interpret(activeCompanyId as string, description.trim());
+      const result = await interpretService.interpret(activeCompanyId as string, description.trim(), locale);
       setInterpretation(result);
       // Sono le chip a decidere quali programmi verranno proposti: un ambito
       // riconosciuto con poca sicurezza non deve entrarci di nascosto. Si

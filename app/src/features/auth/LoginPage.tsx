@@ -3,8 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { toUserMessage } from '@/lib/errors';
+import { useT } from '@/i18n';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 export function LoginPage() {
+  const t = useT();
   const { signIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,35 +39,40 @@ export function LoginPage() {
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
           <div>
             <div className="brand-name">SwissAI Suite</div>
-            <div className="brand-sub">per le PMI svizzere</div>
+            <div className="brand-sub">{t('brand.tagline')}</div>
           </div>
         </div>
-        <div className="auth-title">Accedi</div>
-        <div className="auth-sub">Entra nel tuo spazio di lavoro amministrativo.</div>
+        <div className="auth-title">{t('auth.login.title')}</div>
+        <div className="auth-sub">{t('auth.login.subtitle')}</div>
 
         {error && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{error}</span></div>}
 
         <form onSubmit={onSubmit} noValidate>
           <div className="field">
-            <label htmlFor="login-email">Email</label>
+            <label htmlFor="login-email">{t('auth.emailLabel')}</label>
             <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@azienda.ch" />
           </div>
           <div className="field">
-            <label htmlFor="login-password">Password</label>
+            <label htmlFor="login-password">{t('auth.passwordLabel')}</label>
             <input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           </div>
           <div className="auth-actions">
             <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
-              {submitting ? <span className="spinner" aria-hidden="true" /> : null} Accedi
+              {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.login.submit')}
             </button>
           </div>
         </form>
 
         <div className="auth-alt">
-          <Link className="btn-link" to="/forgot-password">Password dimenticata?</Link>
+          <Link className="btn-link" to="/forgot-password">{t('auth.login.forgot')}</Link>
         </div>
         <div className="auth-alt">
-          Non hai un account? <Link className="btn-link" to="/register">Crea account</Link>
+          {t('auth.login.noAccount')} <Link className="btn-link" to="/register">{t('auth.login.createAccount')}</Link>
+        </div>
+        {/* La lingua si sceglie PRIMA di accedere: chi non legge l'italiano
+            deve poter capire la schermata di accesso. */}
+        <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center' }}>
+          <LanguageSwitcher compact />
         </div>
       </div>
     </div>

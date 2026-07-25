@@ -29,9 +29,9 @@ export const interpretService = {
    * Interpreta la descrizione libera del progetto per l'azienda indicata.
    * Ritorna l'interpretazione normalizzata (§20: evidence verificata lato server).
    */
-  async interpret(companyId: string, description: string): Promise<ProjectInterpretation> {
+  async interpret(companyId: string, description: string, outputLanguage?: string): Promise<ProjectInterpretation> {
     const { data, error } = await requireSupabase()
-      .functions.invoke<InterpretResponse>('interpret-project', { body: { companyId, description } });
+      .functions.invoke<InterpretResponse>('interpret-project', { body: { companyId, description, outputLanguage } });
     if (error) throw new AppError(await readFunctionError(error), error);
     if (!data?.interpretation) throw new AppError(data?.error ?? 'Interpretazione non disponibile.');
     return data.interpretation;

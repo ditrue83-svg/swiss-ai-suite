@@ -103,6 +103,11 @@ export const it = {
       submit: 'Aggiorna password',
       done: 'Password aggiornata: ora puoi accedere.',
     },
+    confirmPassword: 'Conferma password',
+    passwordsDiffer: 'Le due password non coincidono.',
+    redirecting: 'Password aggiornata. Ti stiamo reindirizzando…',
+    openFromLink: 'Apri questa pagina dal link ricevuto via email per reimpostare la password.',
+    emailPlaceholder: 'nome@azienda.ch',
     errors: {
       emailRequired: 'Inserisci il tuo indirizzo email.',
       passwordRequired: 'Inserisci la password.',

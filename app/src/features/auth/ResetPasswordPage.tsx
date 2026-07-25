@@ -5,8 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { toUserMessage } from '@/lib/errors';
+import { useT } from '@/i18n';
 
 export function ResetPasswordPage() {
+  const t = useT();
   const { updatePassword, session } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
@@ -19,8 +21,8 @@ export function ResetPasswordPage() {
     e.preventDefault();
     if (submitting) return;
     setError(null);
-    if (password.length < 8) { setError('La password deve avere almeno 8 caratteri.'); return; }
-    if (password !== confirm) { setError('Le due password non coincidono.'); return; }
+    if (password.length < 8) { setError(t('auth.errors.passwordShort')); return; }
+    if (password !== confirm) { setError(t('auth.passwordsDiffer')); return; }
     setSubmitting(true);
     try {
       await updatePassword(password);
@@ -38,23 +40,23 @@ export function ResetPasswordPage() {
       <div className="auth-card">
         <div className="auth-brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div><div className="brand-name">SwissAI Suite</div><div className="brand-sub">per le PMI svizzere</div></div>
+          <div><div className="brand-name">SwissAI Suite</div><div className="brand-sub">{t('brand.tagline')}</div></div>
         </div>
-        <div className="auth-title">Nuova password</div>
-        <div className="auth-sub">Scegli una nuova password per il tuo account.</div>
+        <div className="auth-title">{t('auth.reset.title')}</div>
+        <div className="auth-sub">{t('auth.reset.subtitle')}</div>
 
-        {!session && <div className="info-box mb-14">Apri questa pagina dal link ricevuto via email per reimpostare la password.</div>}
+        {!session && <div className="info-box mb-14">{t('auth.openFromLink')}</div>}
         {error && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{error}</span></div>}
         {done ? (
-          <div className="form-success">Password aggiornata. Ti stiamo reindirizzando…</div>
+          <div className="form-success">{t('auth.redirecting')}</div>
         ) : (
           <form onSubmit={onSubmit} noValidate>
             <div className="field">
-              <label htmlFor="rp-pass">Nuova password</label>
+              <label htmlFor="rp-pass">{t('auth.reset.newPassword')}</label>
               <input id="rp-pass" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Almeno 8 caratteri" />
             </div>
             <div className="field">
-              <label htmlFor="rp-conf">Conferma password</label>
+              <label htmlFor="rp-conf">{t('auth.confirmPassword')}</label>
               <input id="rp-conf" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             </div>
             <div className="auth-actions">

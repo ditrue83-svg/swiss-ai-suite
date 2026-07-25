@@ -174,6 +174,8 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
 
 export interface AnalyzeInput {
   document: DocumentRecord;
+  /** §42 — lingua dell'interfaccia: i testi generati dall'AI la seguono. */
+  outputLanguage?: string;
   /** testo estratto lato client; null → il server fa l'OCR (solo modalità AI). */
   extraction: ClientExtraction | null;
   companyName: string | null;
@@ -233,7 +235,7 @@ export const analysisService = {
    * 'deterministic' (§60, motore locale esplicito) si esegue e persiste qui. La forma
    * del risultato è identica: la UI non deve distinguere i due percorsi.
    */
-  async analyzeAndPersist({ document, extraction, companyName, onProgress }: AnalyzeInput): Promise<AnalyzeOutcome> {
+  async analyzeAndPersist({ document, extraction, companyName, onProgress, outputLanguage }: AnalyzeInput): Promise<AnalyzeOutcome> {
     const sb = requireSupabase();
 
     if (ANALYSIS_PROVIDER === 'deterministic') {
@@ -258,7 +260,7 @@ export const analysisService = {
     // §26 — richiesta asincrona: auth/autorizzazione/validazione restano sincrone
     // (401/403/422/429 arrivano subito), poi si osserva lo stato reale sul DB.
     // Se il runtime non supporta il background, il server risponde già completo.
-    const invoked = await invokeAnalyze(document.id, extraction, { async: true });
+    const invoked = await invokeAnalyze(document.id, extraction, { async: true, outputLanguage });
     const status = invoked.status === 'processing'
       ? await waitForCompletion(document.id, onProgress)
       : invoked.status;

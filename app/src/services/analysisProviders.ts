@@ -36,12 +36,14 @@ async function readFunctionError(error: unknown): Promise<string> {
 export async function invokeAnalyze(
   documentId: string,
   extraction: ClientExtraction | null,
-  options: { async?: boolean } = {},
+  options: { async?: boolean; outputLanguage?: string } = {},
 ): Promise<{ status: string }> {
   const body: Record<string, unknown> = extraction
     ? { documentId, extraction: { fullText: extraction.fullText, pages: extraction.pages, extractionMethod: extraction.extractionMethod } }
     : { documentId };
   if (options.async) body.async = true;
+  // §42 — i testi generati seguono la lingua dell'interfaccia.
+  if (options.outputLanguage) body.outputLanguage = options.outputLanguage;
 
   const { data, error } = await requireSupabase().functions.invoke<AnalyzeResponse>('analyze-document', { body });
   if (error) throw new AppError(await readFunctionError(error), error);
