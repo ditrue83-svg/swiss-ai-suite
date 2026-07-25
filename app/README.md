@@ -21,7 +21,7 @@ verificata** del documento; ciò che non è certo viene dichiarato come incertez
 supabase/
   migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks
                 0005_storage · 0006_admin_ai_pipeline · 0007_subsidy_programs
-                0008_analysis_truth
+                0008_analysis_truth · 0009_quota_and_upload_limits
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
@@ -214,7 +214,11 @@ Creano dati reali e li rimuovono alla fine.
   Policy basate su funzioni `SECURITY DEFINER` (`is_company_member`, `is_company_admin`, `is_case_member`) per evitare ricorsione.
 - Le Edge Function **non si fidano della RLS client-side**: leggono con un client autenticato *come l'utente*,
   quindi un non-membro riceve 403. Nessuna logica di permessi duplicata.
-- **Rate limit** per azienda sugli endpoint AI, con log in `ai_request_log`.
+- **Rate limit** per azienda sugli endpoint AI: la quota è verificata e consumata in modo **atomico**
+  (funzione SQL con lock per azienda), quindi richieste concorrenti non possono superarla tutte insieme.
+  Se la migrazione 0009 non è applicata si ricade sul conteggio semplice, senza garanzia di atomicità.
+- **Limiti di upload** imposti dal bucket (dimensione e tipi MIME): il client non può aggirarli dichiarando
+  una dimensione falsa. Per l'OCR il limite è ricontrollato sulla dimensione **reale** del file scaricato.
 - **Prompt injection**: il documento è trattato come *dato non fidato*, racchiuso fra marcatori; istruzioni
   contenute nel file non modificano comportamento, schema o policy.
 - **Data minimization**: al provider AI va solo il contesto aziendale utile (nome, cantone, comune, forma, settore).

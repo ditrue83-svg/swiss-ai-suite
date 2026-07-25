@@ -10,7 +10,7 @@ import { ANALYSIS_MODEL, buildAnalysisRequest, type CompanyContext } from './pro
 import { PROMPT_VERSION } from './schema.ts';
 import { parseModelJson } from './parse.ts';
 import { validateAndNormalize, type ExtractionResult, type NormalizedAnalysis } from './validate.ts';
-import { logAiRequest, saveAnalysis, saveExtraction, type SupabaseLike } from './persist.ts';
+import { logAiRequest, finalizeAiRequest, saveAnalysis, saveExtraction, type SupabaseLike } from './persist.ts';
 
 // Forma minima della risposta del modello (comune a SDK Deno e Node).
 export interface ModelMessage {
@@ -28,6 +28,8 @@ export interface PipelineInput {
   extractionDurationMs: number | null;
   /** §28 — il testo inviato al modello è stato tagliato al limite. */
   truncated?: boolean;
+  /** §50 — riga di log già PRENOTATA dalla quota: si completa invece di inserirne una nuova. */
+  logId?: string | null;
   companyContext: CompanyContext;
   todayIso: string;
   provider: string;
@@ -102,11 +104,16 @@ export async function runAnalysisPipeline(
     processingStartedAt: startedAt, inputTokens, outputTokens,
   });
 
-  // 5. Log tecnico (senza contenuto).
-  await logAiRequest(sb, {
+  // 5. Log tecnico (senza contenuto). Se la quota aveva già prenotato una riga
+  // la si COMPLETA: inserirne un'altra falserebbe il conteggio del rate limit.
+  const durationMs = Date.now() - new Date(startedAt).getTime();
+  const finalized = await finalizeAiRequest(sb, input.logId ?? null, {
+    status: 'ok', durationMs, inputTokens, outputTokens, model: ANALYSIS_MODEL,
+  });
+  if (!finalized) await logAiRequest(sb, {
     companyId: input.companyId, userId: input.userId, documentId: input.documentId,
     kind: 'analysis', provider: input.provider, model: ANALYSIS_MODEL, status: 'ok',
-    durationMs: Date.now() - new Date(startedAt).getTime(), inputTokens, outputTokens,
+    durationMs, inputTokens, outputTokens,
   });
 
   return { analysis: normalized, status, inputTokens, outputTokens };

@@ -178,6 +178,65 @@ export async function saveExtraction(
 }
 
 /** Log tecnico (§45): mai contenuto del documento. */
+/**
+ * §50 — Prenota uno slot di quota AI in modo ATOMICO (migrazione 0009).
+ *
+ * Il vecchio schema "conta poi lavora" lasciava passare tutte le richieste
+ * concorrenti, perché leggevano lo stesso conteggio prima che qualcuna scrivesse.
+ * `try_consume_ai_quota` serializza per azienda e prenota la riga di log.
+ *
+ * Ritorna:
+ *   { allowed: true,  logId }  → procedere (logId da completare a fine lavoro)
+ *   { allowed: false }         → rispondere 429
+ *
+ * Se la funzione SQL non esiste ancora (0009 non applicata) si ricade sul
+ * conteggio classico: il limite resta attivo, senza la garanzia di atomicità.
+ */
+export async function reserveAiSlot(
+  sb: SupabaseLike & { rpc?: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  entry: { companyId: string; kind: string; limitPerMinute: number; documentId?: string | null; provider?: string | null; model?: string | null },
+): Promise<{ allowed: boolean; logId: string | null; atomic: boolean }> {
+  if (typeof sb.rpc === 'function') {
+    const { data, error } = await sb.rpc('try_consume_ai_quota', {
+      p_company_id: entry.companyId,
+      p_kind: entry.kind,
+      p_limit: entry.limitPerMinute,
+      p_document_id: entry.documentId ?? null,
+      p_provider: entry.provider ?? null,
+      p_model: entry.model ?? null,
+    });
+    if (!error) {
+      return { allowed: data != null, logId: (data as string | null) ?? null, atomic: true };
+    }
+    // Funzione assente (0009 non ancora applicata) → fallback qui sotto.
+  }
+
+  const since = new Date(Date.now() - 60_000).toISOString();
+  const { count } = await sb.from('ai_request_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', entry.companyId).gte('created_at', since);
+  return { allowed: (count ?? 0) < entry.limitPerMinute, logId: null, atomic: false };
+}
+
+/** Completa la riga prenotata da reserveAiSlot con l'esito reale. */
+export async function finalizeAiRequest(
+  sb: SupabaseLike & { rpc?: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  logId: string | null,
+  outcome: { status: 'ok' | 'error'; durationMs?: number | null; inputTokens?: number | null; outputTokens?: number | null; errorCode?: string | null; model?: string | null },
+): Promise<boolean> {
+  if (!logId || typeof sb.rpc !== 'function') return false;
+  const { error } = await sb.rpc('finalize_ai_request', {
+    p_id: logId,
+    p_status: outcome.status,
+    p_duration_ms: outcome.durationMs ?? null,
+    p_input_tokens: outcome.inputTokens ?? null,
+    p_output_tokens: outcome.outputTokens ?? null,
+    p_error_code: outcome.errorCode ?? null,
+    p_model: outcome.model ?? null,
+  });
+  return !error;
+}
+
 export async function logAiRequest(
   sb: SupabaseLike,
   entry: {

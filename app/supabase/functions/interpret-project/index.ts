@@ -15,7 +15,7 @@ import {
   type AiInterpretation, type SubsidyContext,
 } from '../_shared/subsidyInterpret.ts';
 import { parseModelJson } from '../_shared/parse.ts';
-import { logAiRequest } from '../_shared/persist.ts';
+import { logAiRequest, reserveAiSlot, finalizeAiRequest } from '../_shared/persist.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -58,10 +58,13 @@ Deno.serve(async (req: Request) => {
   if (cErr) return json({ error: 'Errore di lettura.', code: 'UNKNOWN_ERROR' }, 500);
   if (!company) return json({ error: 'Azienda non trovata o accesso negato.', code: 'PROVIDER_ERROR' }, 403);
 
-  // §50 — rate limit per azienda.
-  const since = new Date(Date.now() - 60_000).toISOString();
-  const { count } = await sb.from('ai_request_log').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('created_at', since);
-  if ((count ?? 0) >= RATE_LIMIT_PER_MINUTE) return json({ error: 'Troppe richieste. Attendi un istante.', code: 'RATE_LIMITED' }, 429);
+  // §50 — quota per azienda, verificata e consumata ATOMICAMENTE (0009):
+  // richieste concorrenti non possono più passare tutte insieme.
+  const slot = await reserveAiSlot(sb, {
+    companyId, kind: 'interpret', limitPerMinute: RATE_LIMIT_PER_MINUTE,
+    provider: 'anthropic', model: INTERPRET_MODEL,
+  });
+  if (!slot.allowed) return json({ error: 'Troppe richieste. Attendi un istante.', code: 'RATE_LIMITED' }, 429);
 
   const { data: cprofile } = await sb.from('company_profiles').select('sector, employee_count').eq('company_id', companyId).maybeSingle();
   const ctx: SubsidyContext = {
@@ -79,13 +82,18 @@ Deno.serve(async (req: Request) => {
     const raw = parseModelJson(text) as AiInterpretation;
     const interpretation = validateInterpretation(raw, description);
 
-    await logAiRequest(sb, {
+    const done = await finalizeAiRequest(sb, slot.logId, {
+      status: 'ok', durationMs: Date.now() - started,
+      inputTokens: msg.usage?.input_tokens ?? null, outputTokens: msg.usage?.output_tokens ?? null,
+    });
+    if (!done) await logAiRequest(sb, {
       companyId, userId, documentId: null, kind: 'interpret', provider: 'anthropic', model: INTERPRET_MODEL,
       status: 'ok', durationMs: Date.now() - started, inputTokens: msg.usage?.input_tokens ?? null, outputTokens: msg.usage?.output_tokens ?? null,
     });
     return json({ interpretation });
   } catch (e) {
-    await logAiRequest(sb, { companyId, userId, documentId: null, kind: 'interpret', provider: 'anthropic', model: INTERPRET_MODEL, status: 'error', errorCode: 'PROVIDER_ERROR' });
+    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'PROVIDER_ERROR' });
+    if (!done) await logAiRequest(sb, { companyId, userId, documentId: null, kind: 'interpret', provider: 'anthropic', model: INTERPRET_MODEL, status: 'error', errorCode: 'PROVIDER_ERROR' });
     console.error('interpret error:', (e as Error)?.name);
     return json({ error: 'Interpretazione non riuscita. Riprova.', code: 'PROVIDER_ERROR' }, 502);
   }

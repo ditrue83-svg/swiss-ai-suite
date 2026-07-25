@@ -10,7 +10,7 @@ import {
   buildReplyRequest, REPLY_LANGUAGES, REPLY_TONES, REPLY_PROMPT_VERSION,
   type ReplyLanguage, type ReplyTone,
 } from '../_shared/replyPrompt.ts';
-import { logAiRequest } from '../_shared/persist.ts';
+import { logAiRequest, reserveAiSlot, finalizeAiRequest } from '../_shared/persist.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -50,10 +50,12 @@ Deno.serve(async (req: Request) => {
   if (!doc) return json({ error: 'Documento non trovato o accesso negato.' }, 403);
   const companyId = doc.company_id as string;
 
-  // Rate limit condiviso col percorso di analisi.
-  const since = new Date(Date.now() - 60_000).toISOString();
-  const { count } = await sb.from('ai_request_log').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('created_at', since);
-  if ((count ?? 0) >= RATE_LIMIT_PER_MINUTE) return json({ error: 'Troppe richieste. Attendi un istante.', code: 'RATE_LIMITED' }, 429);
+  // Quota condivisa col percorso di analisi, consumata ATOMICAMENTE (0009).
+  const slot = await reserveAiSlot(sb, {
+    companyId, kind: 'reply', limitPerMinute: RATE_LIMIT_PER_MINUTE,
+    documentId, provider: 'anthropic', model: 'claude-opus-4-8',
+  });
+  if (!slot.allowed) return json({ error: 'Troppe richieste. Attendi un istante.', code: 'RATE_LIMITED' }, 429);
 
   // Materiale: testo estratto + sintesi dell'analisi. Nessun dato inventato lato prompt.
   const { data: ext } = await sb.from('document_extractions').select('full_text').eq('document_id', documentId).maybeSingle();
@@ -86,13 +88,18 @@ Deno.serve(async (req: Request) => {
     }).select('*').single();
     if (repErr) throw new Error(repErr.message);
 
-    await logAiRequest(sb, {
+    const done = await finalizeAiRequest(sb, slot.logId, {
+      status: 'ok', durationMs: Date.now() - started,
+      inputTokens: msg.usage?.input_tokens ?? null, outputTokens: msg.usage?.output_tokens ?? null,
+    });
+    if (!done) await logAiRequest(sb, {
       companyId, userId, documentId, kind: 'reply', provider: 'anthropic', model: 'claude-opus-4-8',
       status: 'ok', durationMs: Date.now() - started, inputTokens: msg.usage?.input_tokens ?? null, outputTokens: msg.usage?.output_tokens ?? null,
     });
     return json({ reply });
   } catch (e) {
-    await logAiRequest(sb, { companyId, userId, documentId, kind: 'reply', provider: 'anthropic', model: 'claude-opus-4-8', status: 'error', errorCode: 'PROVIDER_ERROR' });
+    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'PROVIDER_ERROR' });
+    if (!done) await logAiRequest(sb, { companyId, userId, documentId, kind: 'reply', provider: 'anthropic', model: 'claude-opus-4-8', status: 'error', errorCode: 'PROVIDER_ERROR' });
     console.error('reply error:', (e as Error)?.name);
     return json({ error: 'Generazione della bozza non riuscita. Riprova.', code: 'PROVIDER_ERROR' }, 502);
   }

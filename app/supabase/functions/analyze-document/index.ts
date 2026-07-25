@@ -15,7 +15,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { runAnalysisPipeline, type CreateMessage, type ModelMessage } from '../_shared/pipeline.ts';
 import { ERROR_MESSAGES, type ErrorCode, type ExtractionResult } from '../_shared/validate.ts';
-import { logAiRequest } from '../_shared/persist.ts';
+import { logAiRequest, reserveAiSlot, finalizeAiRequest } from '../_shared/persist.ts';
 import type { CompanyContext } from '../_shared/prompt.ts';
 
 const CORS = {
@@ -62,11 +62,14 @@ Deno.serve(async (req: Request) => {
   if (!doc) return json({ error: 'Documento non trovato o accesso negato.', code: 'PROVIDER_ERROR' }, 403);
   const companyId = doc.company_id as string;
 
-  // §50 — rate limit per azienda.
-  const since = new Date(Date.now() - 60_000).toISOString();
-  const { count } = await sb.from('ai_request_log')
-    .select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('created_at', since);
-  if ((count ?? 0) >= RATE_LIMIT_PER_MINUTE) return fail('RATE_LIMITED', 429);
+  // §50 — quota per azienda, verificata e consumata ATOMICAMENTE (0009): due
+  // richieste concorrenti non possono più leggere lo stesso conteggio e passare
+  // entrambe. La riga prenotata viene completata a fine lavoro.
+  const slot = await reserveAiSlot(sb, {
+    companyId, kind: 'analysis', limitPerMinute: RATE_LIMIT_PER_MINUTE,
+    documentId, provider: 'anthropic', model: 'claude-opus-4-8',
+  });
+  if (!slot.allowed) return fail('RATE_LIMITED', 429);
 
   // §22 — contesto aziendale minimo.
   const { data: company } = await sb.from('companies')
@@ -134,14 +137,15 @@ Deno.serve(async (req: Request) => {
       if (!extraction || extraction.fullText.trim().length < 20) throw phased('OCR_FAILED', 'extraction');
     } catch (e) {
       const code = ((e as { code?: ErrorCode }).code) ?? 'EXTRACTION_FAILED';
-      await logAiRequest(sb, { companyId, userId, documentId, kind: 'extraction', provider: 'anthropic', model: null, status: 'error', errorCode: code });
+      const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code });
+      if (!done) await logAiRequest(sb, { companyId, userId, documentId, kind: 'extraction', provider: 'anthropic', model: null, status: 'error', errorCode: code });
       console.error('extraction error:', (e as Error)?.name);
       throw phased(code, 'extraction');
     }
     try {
       return await runAnalysisPipeline(sb, createMessage, {
         documentId, companyId, userId,
-        extraction, extractionDurationMs: Date.now() - extractStart, truncated,
+        extraction, extractionDurationMs: Date.now() - extractStart, truncated, logId: slot.logId,
         companyContext, todayIso: new Date().toISOString().slice(0, 10), provider: 'anthropic',
       });
     } catch (e) {
@@ -166,7 +170,8 @@ Deno.serve(async (req: Request) => {
       provider: 'anthropic', error_code: code, error_message_safe: ERROR_MESSAGES[code],
       processing_completed_at: new Date().toISOString(), engine: 'claude-opus-4-8',
     }).select('id').maybeSingle();
-    await logAiRequest(sb, { companyId, userId, documentId, kind: 'analysis', provider: 'anthropic', model: 'claude-opus-4-8', status: 'error', errorCode: code });
+    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code });
+    if (!done) await logAiRequest(sb, { companyId, userId, documentId, kind: 'analysis', provider: 'anthropic', model: 'claude-opus-4-8', status: 'error', errorCode: code });
   }
 
   const httpStatusFor = (code: ErrorCode) =>
@@ -212,9 +217,23 @@ async function ocrExtract(
 ): Promise<ExtractionResult> {
   const { data: blob, error } = await sb.storage.from('company-documents').download(storagePath);
   if (error || !blob) throw new Error('download fallito');
+
+  // §28 — il limite si applica alla dimensione REALE dell'oggetto scaricato:
+  // `documents.file_size` è scritto dal browser e non è una fonte attendibile.
+  if (blob.size > MAX_FILE_BYTES) {
+    const err = new Error('file troppo grande') as Error & { code?: string };
+    err.code = 'FILE_TOO_LARGE';
+    throw err;
+  }
+
   const bytes = new Uint8Array(await blob.arrayBuffer());
+  // Conversione a blocchi: concatenare carattere per carattere su file da MB
+  // saturava la memoria dell'isolate.
   let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
   const b64 = btoa(bin);
   const mt = mimeType ?? 'application/octet-stream';
 
