@@ -1,0 +1,14 @@
+# Rewrite SPA — OBBLIGATORIO con react-router.
+#
+# Senza questa riga, un accesso diretto o un refresh su una rotta interna
+# (es. /documenti, /reset-password, i link nelle email di Supabase) chiede a
+# Cloudflare un file che non esiste sul disco e riceve 404: l'utente vede una
+# pagina di errore invece dell'app.
+#
+# Cloudflare Pages serve PRIMA i file realmente presenti in dist/ (assets, css,
+# worker pdf.js): questa regola vale solo per ciò che non esiste come file, che
+# è esattamente l'insieme delle rotte gestite dal router lato client.
+#
+# Lo status 200 (rewrite) e non 301/302: l'URL nella barra resta quello chiesto
+# dall'utente, il router lo legge e mostra la schermata giusta.
+/*    /index.html   200

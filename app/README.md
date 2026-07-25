@@ -101,6 +101,67 @@ che però il progetto hosted **non legge**: è documentazione + configurazione p
 per la produzione configura un SMTP proprio (Authentication → Emails → SMTP Settings), altrimenti
 le email di conferma e reset possono non arrivare.
 
+### 6) Deploy del frontend (Cloudflare Pages)
+
+L'app è una **SPA statica**: la build produce solo file: nessun server applicativo, nessuna
+funzione lato host. Tutto il backend è Supabase. Di conseguenza l'hosting **non decide dove
+stanno i dati**: i documenti restano su Supabase e i testi da analizzare passano dall'API
+Anthropic. La domanda «dove sono i dati dei clienti» si risponde guardando la regione del
+progetto Supabase (Project Settings → General → Region), non l'host del frontend.
+
+Cloudflare Pages è gratuito **anche per uso commerciale** (il piano gratuito di Vercel non lo è),
+distribuisce da PoP svizzeri, e include TLS e dominio personalizzato.
+
+**Nel repository ci sono già i tre file che servono** — non vanno ricreati a mano:
+
+| File | Serve a |
+|---|---|
+| `public/_redirects` | Rewrite SPA. **Senza, ogni refresh su una rotta interna dà 404**, compresi i link di conferma email |
+| `public/_headers` | Header di sicurezza + politica di cache. Contiene una CSP in *Report-Only*, da promuovere dopo verifica (istruzioni nel file) |
+| `.node-version` | Fissa Node 20 sulla build remota, la stessa versione su cui gira la build locale |
+
+Vite copia `public/` in `dist/`, quindi i file finiscono nella cartella pubblicata.
+
+**Configurazione del progetto** su Cloudflare → Workers & Pages → Create → Pages → Connect to Git,
+scegliendo il repository `swiss-ai-suite`:
+
+| Campo | Valore | Perché |
+|---|---|---|
+| Root directory | `app` | L'app sta in quella sottocartella del repo |
+| Build command | `npm run build` | Fa anche `tsc --noEmit`: un errore di tipo ferma il deploy |
+| Build output directory | `dist` | Relativo alla root directory |
+
+**Variabili d'ambiente** (Settings → Environment variables, ambiente *Production*). Servono perché
+`.env` non è nel repository: senza queste due la build riesce ma l'app parte **non configurata** e
+lo dichiara invece di fingere di funzionare.
+
+| Variabile | Valore |
+|---|---|
+| `VITE_SUPABASE_URL` | l'URL del progetto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | la chiave `anon`/`publishable` — è pubblica per definizione, finisce nel bundle JS; la sicurezza è la RLS |
+| `VITE_ANALYSIS_PROVIDER` | `ai` |
+| `VITE_PUBLIC_SITE_URL` | l'URL pubblico dell'app (vedi ordine sotto) |
+
+**Ordine da rispettare.** `VITE_PUBLIC_SITE_URL` è letto *durante la build*, ma l'URL definitivo si
+conosce solo dopo il primo deploy: va quindi fatto un secondo deploy, oppure il valore va previsto
+in anticipo (il nome che dai al progetto Cloudflare determina `https://<nome>.pages.dev`, a meno che
+sia già occupato e Cloudflare aggiunga un suffisso).
+
+1. primo deploy → prendi nota dell'URL assegnato;
+2. Supabase → Authentication → URL Configuration: **Site URL** = quell'URL, **Redirect URLs** =
+   `<URL>/**` più `http://localhost:5174/**` per lo sviluppo;
+3. imposta `VITE_PUBLIC_SITE_URL` su Cloudflare e **ridistribuisci** (le variabili valgono dal
+   deploy successivo, non retroattivamente);
+4. verifica, senza fidarti dell'aspetto della pagina:
+   ```bash
+   npm run check:auth -- https://<URL-pubblico>
+   ```
+
+**Quando arriverà il dominio definitivo** cambiano tre valori e nient'altro: Site URL e Redirect URLs
+su Supabase, `VITE_PUBLIC_SITE_URL` su Cloudflare — poi si ridistribuisce e si rilancia `check:auth`
+sul nuovo dominio. Conviene lasciare l'URL `pages.dev` nei Redirect URLs finché la migrazione non è
+confermata.
+
 ## Variabili d'ambiente
 
 | Variabile | Dove | Scopo |

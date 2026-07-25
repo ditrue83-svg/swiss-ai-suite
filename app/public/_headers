@@ -1,0 +1,59 @@
+# Header di sicurezza applicati da Cloudflare Pages a ogni risposta.
+# Sintassi: un percorso, poi le intestazioni indentate di due spazi.
+
+/*
+  # Impedisce al browser di "indovinare" un tipo diverso da quello dichiarato
+  # (un .txt caricato dall'utente non può essere eseguito come script).
+  X-Content-Type-Options: nosniff
+
+  # Verso siti esterni si invia solo l'origine, mai il percorso completo: gli
+  # URL dell'app contengono identificativi di documento che non devono uscire.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # L'app non va mai incorniciata da terzi (difesa da clickjacking sui pulsanti
+  # di conferma). X-Frame-Options per i browser vecchi, frame-ancestors nella CSP.
+  X-Frame-Options: DENY
+
+  # Nessuna delle API sensibili del browser serve all'app: le neghiamo tutte.
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+
+  # Solo HTTPS per un anno. Sicuro su pages.dev e sul dominio definitivo, che
+  # nascono già in HTTPS: non esiste traffico http legittimo da rompere.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+  # Isola la finestra da eventuali pagine che la aprono.
+  Cross-Origin-Opener-Policy: same-origin
+
+  # ---------------------------------------------------------------------------
+  # CSP — deliberatamente in *Report-Only*: segnala in console del browser cosa
+  # bloccherebbe, senza bloccare nulla.
+  #
+  # Perché non è già attiva: pdf.js (visualizzatore documenti e estrazione testo)
+  # usa WebAssembly e worker, e in alcuni percorsi di rendering dei font ricorre a
+  # valutazione dinamica di codice. Una CSP restrittiva potrebbe quindi rompere
+  # proprio il visualizzatore PDF, cioè il cuore di Admin AI. Attivarla senza
+  # prova sarebbe una modifica non verificata.
+  #
+  # Come promuoverla a CSP attiva, con prova:
+  #   1. vai online, apri l'app, carica e APRI un PDF (non basta la home);
+  #   2. console del browser: cerca "Content-Security-Policy" — le violazioni
+  #      compaiono come report, l'app continua a funzionare;
+  #   3. se non ce ne sono, rinomina l'intestazione qui sotto in
+  #      `Content-Security-Policy` e ridistribuisci;
+  #   4. se ce ne sono, si allarga la sola direttiva segnalata, non tutta la CSP.
+  #
+  # connect-src elenca il progetto Supabase (host pubblico, già presente nel
+  # bundle JS: non è un segreto). wss:// serve alle sottoscrizioni realtime.
+  # Se cambi progetto Supabase, questo valore va aggiornato.
+  Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://tcjmagaqktmzijbfntvy.supabase.co wss://tcjmagaqktmzijbfntvy.supabase.co
+
+# Gli asset hanno un hash nel nome (index-CqmSXMHZ.js): a parità di nome il
+# contenuto non cambia mai, quindi si possono tenere in cache per sempre.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# index.html invece NON va messo in cache: è il file che indica quale bundle
+# caricare. Se resta in cache, dopo un deploy l'utente continua a vedere la
+# versione vecchia finché non svuota la cache.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
