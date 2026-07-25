@@ -64,15 +64,12 @@ export interface Database {
           full_text: string | null; pages: Json; page_count: number | null; char_count: number | null;
           ocr_confidence: number | null; truncated: boolean; duration_ms: number | null; created_at: string;
         };
-        Insert: {
-          id?: string; document_id: string; company_id: string; extraction_method: ExtractionMethod;
-          full_text?: string | null; pages?: Json; page_count?: number | null; char_count?: number | null;
-          ocr_confidence?: number | null; truncated?: boolean; duration_ms?: number | null;
-        };
-        Update: {
-          extraction_method?: ExtractionMethod; full_text?: string | null; pages?: Json; page_count?: number | null;
-          char_count?: number | null; ocr_confidence?: number | null; truncated?: boolean; duration_ms?: number | null;
-        };
+        // 0010 — la scrive solo la pipeline con service role (_shared/persist.ts).
+        // Dal client è in sola lettura: è il testo su cui si verificano le
+        // citazioni (§20), riscriverlo permetterebbe di far "verificare" una
+        // citazione assente dal documento.
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
         Relationships: [];
       };
       document_analyses: {
@@ -104,16 +101,34 @@ export interface Database {
           language?: string | null; sender?: string | null; sender_evidence?: Json | null; document_type?: string | null;
           deadline?: string | null; deadline_evidence?: Json | null; amount?: number | null; amount_currency?: string | null; amount_type?: string | null; amount_evidence?: Json | null;
           summary?: string | null; actions?: Json; requested_documents?: Json; risks?: Json | null; uncertainties?: Json;
-          confidence?: string | null; reply_draft?: string | null; reply_language?: string | null; reply_tone?: string | null;
+          // 0010 — reply_draft/reply_language/reply_tone non sono più inseribili:
+          // deprecate, la bozza vive in document_replies.
+          confidence?: string | null;
           overall_confidence?: number | null; document_type_confidence?: number | null;
           sender_authority_type?: string | null; sender_confidence?: number | null;
           recipient?: string | null; subject?: string | null; document_date?: string | null; reply_needed?: boolean | null;
           deadline_type?: string | null; deadline_source_text?: string | null; deadline_confidence?: number | null; deadline_requires_verification?: boolean;
           amounts?: Json; reference_numbers?: Json; legal_references?: Json; sender_evidence_list?: Json;
         };
-        Update: {
-          actions?: Json; reply_draft?: string | null; reply_language?: string | null; reply_tone?: string | null;
+        // 0010 — lo snapshot è immutabile: il client non ha più il permesso di
+        // update sulla tabella. Il tipo vuoto rende l'errore visibile in fase di
+        // typecheck invece che a runtime come errore RLS.
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      action_progress: {
+        Row: {
+          id: string; analysis_id: string; company_id: string; action_index: number;
+          action_text: string | null; done: boolean; done_by: string | null; done_at: string | null;
+          created_at: string; updated_at: string;
         };
+        // done_by/done_at li imposta il trigger set_action_progress_actor: non
+        // vanno inviati dal client.
+        Insert: {
+          id?: string; analysis_id: string; company_id: string; action_index: number;
+          action_text?: string | null; done?: boolean;
+        };
+        Update: { done?: boolean; action_text?: string | null };
         Relationships: [];
       };
       document_replies: {

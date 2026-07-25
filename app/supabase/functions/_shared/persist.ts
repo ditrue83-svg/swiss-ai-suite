@@ -117,9 +117,8 @@ export function buildAnalysisRow(a: NormalizedAnalysis, ctx: SaveContext) {
     // needs_review non deve essere indistinguibile da una "low".
     uncertainties: a.uncertainties.map((u) => ({ field: u.field, description: u.description, severity: u.severity })),
     confidence: confidenceLabel(a.overallConfidence),
-    reply_draft: null,
-    reply_language: a.language,
-    reply_tone: 'formale',
+    // 0010 — reply_draft/reply_language/reply_tone sono deprecate: la bozza sta
+    // in document_replies, la scrive `generate-reply` su richiesta (§35).
 
     // ---- colonne ricche (§23) ----
     overall_confidence: a.overallConfidence,

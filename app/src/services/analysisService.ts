@@ -51,9 +51,8 @@ function engineToInsert(
     risks: e.risk as unknown as Json,
     uncertainties: e.uncertainties as unknown as Json,
     confidence: e.confidence,
-    reply_draft: e.replyDraft,
-    reply_language: e.replyLanguage,
-    reply_tone: e.replyTone,
+    // 0010 — reply_draft/reply_language/reply_tone sono deprecate e non si
+    // scrivono più: la bozza vive in document_replies (vedi replyService).
   };
 }
 
@@ -155,9 +154,6 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     uncertainties,
     uncertaintyItems,
     confidence,
-    replyDraft: row.reply_draft ?? '',
-    replyLanguage: row.reply_language ?? (row.language ?? 'it'),
-    replyTone: row.reply_tone ?? 'formale',
     recipient: row.recipient ?? null,
     subject: row.subject ?? null,
     documentDate: row.document_date ?? null,
@@ -250,7 +246,9 @@ export const analysisService = {
         throw new AppError(tr('errors.deterministicNoImages'));
       }
       const engineResult = analyzeText(extraction.fullText, { companyName });
-      await sb.from('document_analyses').delete().eq('document_id', document.id);
+      // 0010 — niente delete: il client non può più cancellare un'analisi.
+      // Le rianalisi si accumulano e vince la più recente (getForDocument ordina
+      // per created_at, listForCompany tiene solo l'ultima per documento).
       const { data, error } = await sb
         .from('document_analyses')
         .insert(engineToInsert(engineResult, document.id, document.companyId, DETERMINISTIC_ENGINE))
@@ -286,7 +284,12 @@ export const analysisService = {
     return { analysis, status };
   },
 
-  /** Tutte le analisi dell'azienda (per Dashboard/Panoramica). */
+  /**
+   * Analisi dell'azienda (per Dashboard/Panoramica): UNA per documento, la più
+   * recente. Dalla 0010 il client non può più cancellare le analisi precedenti,
+   * quindi un documento rianalizzato ha più righe: senza questo filtro lo stesso
+   * documento comparirebbe più volte nella panoramica e nei conteggi.
+   */
   async listForCompany(companyId: string): Promise<DocumentAnalysis[]> {
     const { data, error } = await requireSupabase()
       .from('document_analyses')
@@ -294,7 +297,11 @@ export const analysisService = {
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     if (error) throw new AppError(toUserMessage(error), error);
-    return (data ?? []).map(rowToDomain);
+    const latestPerDocument = new Map<string, AnalysisRow>();
+    for (const row of data ?? []) {                       // già ordinate dalla più recente
+      if (!latestPerDocument.has(row.document_id)) latestPerDocument.set(row.document_id, row);
+    }
+    return [...latestPerDocument.values()].map(rowToDomain);
   },
 
   /**
@@ -326,25 +333,12 @@ export const analysisService = {
     return good;
   },
 
-  /** Persiste lo stato della checklist (done) modificato dall'utente. */
-  async updateActions(analysisId: string, actions: ChecklistAction[]): Promise<void> {
-    const { error } = await requireSupabase()
-      .from('document_analyses')
-      .update({ actions: actions as unknown as Json })
-      .eq('id', analysisId);
-    if (error) throw new AppError(toUserMessage(error), error);
-  },
-
-  async updateReplyDraft(
-    analysisId: string,
-    patch: { draft: string; language: string; tone: string },
-  ): Promise<void> {
-    const { error } = await requireSupabase()
-      .from('document_analyses')
-      .update({ reply_draft: patch.draft, reply_language: patch.language, reply_tone: patch.tone })
-      .eq('id', analysisId);
-    if (error) throw new AppError(toUserMessage(error), error);
-  },
+  // 0010 — updateActions() e updateReplyDraft() sono state RIMOSSE, non
+  // sostituite altrove con lo stesso effetto: scrivevano su document_analyses e
+  // per esistere richiedevano il permesso di update sull'intera riga, cioè anche
+  // su scadenza, mittente e importi. Ora:
+  //   · spunte della checklist → actionProgressService.setDone()
+  //   · bozza di risposta       → replyService.saveLocalDraft() / saveEdit()
 
   /** Rigenera la bozza dal template (per il pulsante "Ripristina bozza"). */
   regenerateReply(analysis: DocumentAnalysis, language: string, tone: string, companyName: string | null): string {

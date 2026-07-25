@@ -264,9 +264,10 @@ Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estr
 | `companies`, `company_members`, `company_profiles` | multi-tenant, ruoli, profilo operativo |
 | `documents` | metadati, `file_hash` (dedup), `page_count`, stato |
 | `document_extractions` | testo per pagina, `extraction_method`, confidence OCR |
-| `document_analyses` | analisi: campi query-critical + JSONB (actions, amounts, risks, evidence, uncertainties) + provenienza (`provider`, `model`, `prompt_version`, `schema_version`, timestamp, `error_code`) |
-| `document_replies` | bozze di risposta, modificabili e persistenti |
-| `analysis_corrections` | correzioni umane **append-only**: l'analisi AI resta immutabile |
+| `document_analyses` | analisi: campi query-critical + JSONB (actions, amounts, risks, evidence, uncertainties) + provenienza (`provider`, `model`, `prompt_version`, `schema_version`, timestamp, `error_code`). **Immutabile**: dalla 0010 il client ha solo `select` e un `insert` vincolato al motore locale — niente `update`, niente `delete` |
+| `action_progress` | spunte della checklist: una riga per azione spuntata, con autore e momento assegnati dal database. Sta qui, e non dentro l'analisi, perché è uno stato dell'utente |
+| `document_replies` | bozze di risposta, modificabili e persistenti — **unica sede** della bozza corrente, sia AI sia motore locale |
+| `analysis_corrections` | correzioni umane **append-only**: l'analisi AI non viene mai riscritta |
 | `tasks` | scadenziario (creato solo su conferma dell'utente) |
 | `subsidy_programs`, `subsidy_matches`, `subsidy_cases` | catalogo incentivi + attività utente |
 | `ai_request_log` | osservabilità e rate limit — **senza contenuto del documento** |
@@ -282,7 +283,7 @@ npm run dev             # server di sviluppo (5174)
 npm run build           # typecheck + build di produzione
 npm run typecheck       # solo type-check
 npm run test:phase1     # integrazione Fase 1 su DB reale (26 test)
-npm run test:phase2     # sicurezza + analisi reale via Edge Function (23 test)
+npm run test:phase2     # immutabilità snapshot + sicurezza + analisi reale (36 test)
 npm run test:async      # processing asincrono reale, non simulato (17 test)
 npm run test:functions  # sicurezza di generate-reply e interpret-project (12 test)
 npm run test:pipeline   # end-to-end analisi → persistenza → task → bozza (18 test)
@@ -323,8 +324,11 @@ Creano dati reali e li rimuovono alla fine.
 
 - **RLS** attiva su tutte le tabelle aziendali: si accede a una risorsa solo se si è membri della sua company.
   Policy basate su funzioni `SECURITY DEFINER` (`is_company_member`, `is_company_admin`, `is_case_member`) per evitare ricorsione.
-- Le Edge Function **non si fidano della RLS client-side**: leggono con un client autenticato *come l'utente*,
-  quindi un non-membro riceve 403. Nessuna logica di permessi duplicata.
+- Le Edge Function **non si fidano della RLS client-side**: ogni lettura di autorizzazione avviene con un
+  client autenticato *come l'utente*, quindi un non-membro riceve 403. Nessuna logica di permessi duplicata.
+  Le sole **scritture** su `document_analyses` e `document_extractions` usano un secondo client con
+  `service_role` (0010), perché il client autenticato non ha più quei permessi: il bypass della RLS è
+  circoscritto alla persistenza e agisce su identificativi già validati dalla lettura precedente.
 - **Rate limit** per azienda sugli endpoint AI: la quota è verificata e consumata in modo **atomico**
   (funzione SQL con lock per azienda), quindi richieste concorrenti non possono superarla tutte insieme.
   Se la migrazione 0009 non è applicata si ricade sul conteggio semplice, senza garanzia di atomicità.
@@ -335,6 +339,52 @@ Creano dati reali e li rimuovono alla fine.
 - **Data minimization**: al provider AI va solo il contesto aziendale utile (nome, cantone, comune, forma, settore).
 - Storage: bucket **privato**, accesso via signed URL, policy per membership sul primo segmento del path.
 - La `service_role` non è mai nel frontend.
+
+### Immutabilità dell'analisi (0010)
+
+`document_analyses` è uno **snapshot**: una volta scritto non si modifica. Il vincolo è nel database,
+non nella documentazione — il client non ha il permesso di `update` né di `delete` sulla tabella,
+quindi non è aggirabile chiamando l'API Supabase direttamente con la chiave anon, che è pubblica
+per costruzione.
+
+Fino alla 0009 non era così. Per permettere all'utente di spuntare la checklist e di salvare la
+bozza di risposta, la 0002 concedeva `update` e `delete` sull'intera tabella a ogni membro: un
+membro poteva quindi riscrivere scadenza, mittente e importi di un'analisi, cioè proprio i campi su
+cui poggia la promessa di verificabilità. Lo stato dell'utente è stato separato:
+
+| Cosa | Dove sta ora |
+|---|---|
+| spunte della checklist | `action_progress` — `done_by` e `done_at` li scrive un trigger, non il client, quindi una spunta non è attribuibile a un collega né databile a piacere |
+| bozza di risposta | `document_replies` |
+| correzioni ai campi estratti | `analysis_corrections`, append-only (già dalla 0006) |
+
+`document_extractions` — il testo su cui si verificano le citazioni (§20) — è in **sola lettura** per
+il client: poterlo riscrivere avrebbe permesso di far «verificare» una citazione che il documento non
+contiene.
+
+Verificato da `npm run test:phase2`, che tenta davvero l'`update`, il `delete` e la scrittura del
+testo estratto come membro autenticato, e controlla che lo snapshot resti intatto.
+
+### Modalità `deterministic`: lo snapshot non è probatorio
+
+In modalità `ai` — il default, e ciò che gira in produzione — l'analisi è prodotta e persistita
+**server-side**: il client non la scrive mai.
+
+In modalità `deterministic` (§60) l'analisi è invece prodotta nel browser dal motore locale e
+inserita dal client. Questo `insert` resta consentito ma **vincolato**: `engine` deve dichiarare il
+motore locale e i campi di provenienza AI (`provider`, `model`, `prompt_version`) devono restare
+vuoti. Un membro non può quindi fabbricare una riga che, riletta, sembrerebbe prodotta dal modello —
+ma **può** creare un'analisi locale con contenuto arbitrario.
+
+Va detto esplicitamente: **in modalità `deterministic` lo snapshot non ha valore probatorio.**
+Attesta ciò che il browser ha calcolato, non ciò che un servizio indipendente ha osservato.
+
+Non spostarla dietro una Edge Function è una scelta, non una dimenticanza: quella modalità esiste
+perché il contenuto del documento **non venga trasmesso** — l'estrazione e l'analisi avvengono nel
+browser e il testo pieno non viene nemmeno salvato in `document_extractions`. Metterla sul server
+significherebbe inviare comunque il documento in rete, cancellando la ragione per cui esiste, in
+cambio di una garanzia che il default (`ai`) offre già. Chi ha bisogno di uno snapshot probatorio
+usa la modalità AI; chi sceglie il motore locale sta scegliendo riservatezza, e ora sa cosa scambia.
 
 ## Privacy
 
@@ -353,6 +403,9 @@ Creano dati reali e li rimuovono alla fine.
 - **Viewer PDF senza highlighting a coordinate**: il PDF originale viene renderizzato e «Mostra nel
   documento» porta alla **pagina** della citazione, mostrando il passaggio accanto. L'evidenziazione
   esatta della riga esiste solo nella vista testo, dove la citazione è verificata carattere per carattere.
+- **Nessuna politica di conservazione delle analisi**: dalla 0010 il client non può più cancellarle,
+  quindi rianalizzare un documento accumula righe e vince la più recente (la panoramica ne mostra una
+  sola per documento). È voluto, ma lo storico cresce e prima o poi va deciso per quanto conservarlo.
 - **Registro IDI (Zefix)**: implementato, ma richiede credenziali API rilasciate su richiesta
   (`zefix@bj.admin.ch`); senza `ZEFIX_AUTH` l'onboarding resta manuale e lo dichiara.
 - **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali; 3 cantonali marcati `recheck`

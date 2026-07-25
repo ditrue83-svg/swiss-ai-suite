@@ -72,7 +72,12 @@ async function main() {
   const extraction: ExtractionResult = { fullText: AFC, extractionMethod: 'text', pages: [{ pageNumber: 1, text: AFC }] };
 
   console.log(`${B}Analisi (pipeline reale)${X}`);
-  const result = await runAnalysisPipeline(A.client as any, createMessage, {
+  // 0010 — la pipeline scrive con il SERVICE ROLE, come fa la Edge Function: dal
+  // client autenticato quelle scritture sono ora vietate (snapshot immutabile,
+  // testo estratto in sola lettura). L'autorizzazione dell'utente resta
+  // verificata a monte dalla funzione, e più sotto si rilegge con `A2`, cioè
+  // come membro, per provare che la RLS in lettura continua a funzionare.
+  const result = await runAnalysisPipeline(admin as any, createMessage, {
     documentId: doc.id, companyId: companyId as string, userId: A.id,
     extraction, extractionDurationMs: 5, companyContext: CTX, todayIso: '2026-07-24', provider: 'anthropic',
   });

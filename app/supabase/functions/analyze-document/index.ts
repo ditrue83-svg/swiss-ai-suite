@@ -38,10 +38,28 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return fail('PROVIDER_ERROR', 401);
 
+  // Due client, con due ruoli distinti e non intercambiabili.
+  //
+  // `sb` porta il JWT dell'utente: TUTTE le letture di autorizzazione passano da
+  // qui, così è la RLS a decidere se il documento è accessibile (§49). Non va
+  // sostituito col service role, o il controllo cross-tenant sparirebbe.
   const sb = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+  );
+
+  // `sbAdmin` scrive lo SNAPSHOT (document_analyses) e il TESTO ESTRATTO
+  // (document_extractions). Dalla 0010 il client autenticato non ha più questi
+  // permessi: se li avesse, l'analisi non sarebbe immutabile e il testo su cui si
+  // verificano le citazioni (§20) sarebbe riscrivibile da chiunque sia membro.
+  // Qui il bypass della RLS è legittimo perché l'autorizzazione è GIÀ avvenuta
+  // sopra, con `sb`: companyId e documentId che seguono vengono da una riga che
+  // l'utente ha potuto leggere, non dalla richiesta.
+  const sbAdmin = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
   const { data: userData, error: userErr } = await sb.auth.getUser();
@@ -147,7 +165,9 @@ Deno.serve(async (req: Request) => {
       throw phased(code, 'extraction');
     }
     try {
-      return await runAnalysisPipeline(sb, createMessage, {
+      // sbAdmin: la pipeline scrive estrazione e analisi, che il client non può
+      // più scrivere da sé (0010). L'accesso al documento è già stato verificato.
+      return await runAnalysisPipeline(sbAdmin, createMessage, {
         documentId, companyId, userId,
         extraction, extractionDurationMs: Date.now() - extractStart, truncated, logId: slot.logId, outputLanguage,
         companyContext, todayIso: new Date().toISOString().slice(0, 10), provider: 'anthropic',
@@ -168,8 +188,10 @@ Deno.serve(async (req: Request) => {
    */
   async function markFailed(code: ErrorCode) {
     await sb.from('documents').update({ status: 'failed' }).eq('id', documentId);
-    await sb.from('document_analyses').delete().eq('document_id', documentId).eq('analysis_status', 'failed');
-    await sb.from('document_analyses').insert({
+    // sbAdmin (0010): anche la registrazione di un FALLIMENTO è una scrittura
+    // sullo snapshot, e il client non deve poterla fabbricare né cancellare.
+    await sbAdmin.from('document_analyses').delete().eq('document_id', documentId).eq('analysis_status', 'failed');
+    await sbAdmin.from('document_analyses').insert({
       document_id: documentId, company_id: companyId, analysis_status: 'failed',
       provider: 'anthropic', error_code: code, error_message_safe: ERROR_MESSAGES[code],
       processing_completed_at: new Date().toISOString(), engine: 'claude-opus-4-8',

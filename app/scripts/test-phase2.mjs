@@ -7,7 +7,12 @@
 // deployata, secret ANTHROPIC_API_KEY impostato sul progetto Supabase, e
 // .env.test valorizzato (SUPABASE_* + service_role).
 //
-// Due blocchi:
+// Tre blocchi:
+//  0) IMMUTABILITÀ DELLO SNAPSHOT (0010) — non tocca la Edge Function e non
+//     spende AI: un membro non può fare update/delete su document_analyses né
+//     fabbricare un'analisi con provenienza AI, ma può spuntare le azioni in
+//     action_progress. Verifica i permessi VERI del database, perché prima della
+//     0010 l'immutabilità era solo un'affermazione del README.
 //  1) SICUREZZA / AUTORIZZAZIONE (§49/§50) — economici, non spendono AI:
 //     no-auth → 401, documentId mancante → 400, cross-tenant → 403,
 //     testo vuoto → 422, rate limit per azienda → 429.
@@ -113,8 +118,105 @@ async function main() {
     source_type: 'pasted_text', status: 'uploaded', mime_type: 'text/plain', file_hash: `phase2-${Date.now()}`,
   }).select('*').single();
 
+  // ---- 0bis. Immutabilità dello snapshot (0010) ---------------------------
+  // Non passa dalla Edge Function e non spende AI: verifica i permessi reali sul
+  // database, cioè che l'analisi sia immutabile PER DAVVERO e non solo nel README.
+  console.log(`${B}Immutabilità dell'analisi (0010)${X}`);
+
+  // Analisi scritta con service_role, come fa la pipeline.
+  const { data: snap, error: snapErr } = await admin.from('document_analyses').insert({
+    document_id: docA.id, company_id: companyA,
+    engine: 'claude-test', provider: 'anthropic', model: 'test-model', prompt_version: 'v-test',
+    language: 'fr', sender: 'Administration fédérale des contributions',
+    deadline: '2026-08-05', amount: 8450, amount_currency: 'CHF',
+    actions: [{ id: 0, text: 'Trasmettere il rendiconto IVA', done: false, sourceType: 'suggested', evidence: null }],
+  }).select('*').single();
+
+  if (snapErr) {
+    skip('blocco immutabilità (0010)', `impossibile creare l'analisi di prova: ${snapErr.message}`);
+  } else {
+    // 1) Un membro NON può riscrivere lo snapshot.
+    const { error: updErr } = await A.client.from('document_analyses')
+      .update({ deadline: '2030-01-01', sender: 'Mittente riscritto', amount: 1 })
+      .eq('id', snap.id);
+    check('un membro NON può fare update su document_analyses', !!updErr,
+      updErr ? '' : 'update accettato: lo snapshot è ancora modificabile dal client');
+
+    // Il criterio vero non è l'errore ma l'effetto: la riga deve essere intatta.
+    const { data: after } = await admin.from('document_analyses')
+      .select('deadline, sender, amount').eq('id', snap.id).single();
+    check('la scadenza dello snapshot è rimasta invariata', after?.deadline === '2026-08-05', String(after?.deadline));
+    check('mittente e importo dello snapshot sono rimasti invariati',
+      after?.sender === 'Administration fédérale des contributions' && Math.round(Number(after?.amount)) === 8450,
+      `sender ${after?.sender} · amount ${after?.amount}`);
+
+    // 2) Nemmeno cancellarlo.
+    const { error: delErr } = await A.client.from('document_analyses').delete().eq('id', snap.id);
+    const { count: stillThere } = await admin.from('document_analyses')
+      .select('id', { count: 'exact', head: true }).eq('id', snap.id);
+    check('un membro NON può fare delete su document_analyses', !!delErr && stillThere === 1,
+      `error ${delErr ? 'sì' : 'no'} · righe rimaste ${stillThere}`);
+
+    // 3) Non può fabbricare un'analisi che si spaccia per AI.
+    const { error: fakeErr } = await A.client.from('document_analyses').insert({
+      document_id: docA.id, company_id: companyA,
+      engine: 'claude-opus-4-8', provider: 'anthropic', model: 'claude-opus-4-8',
+      sender: 'Mittente inventato', deadline: '2030-12-31',
+    });
+    check('un membro NON può inserire un\'analisi con provenienza AI', !!fakeErr,
+      fakeErr ? '' : 'insert accettato: si possono creare analisi false attribuite al modello');
+
+    // 4) Ma il motore locale (§60) deve continuare a poter scrivere la sua.
+    const { error: localErr } = await A.client.from('document_analyses').insert({
+      document_id: docA.id, company_id: companyA, engine: 'deterministic-v2',
+      language: 'fr', sender: 'AFC', actions: [],
+    });
+    check('il motore locale può ancora inserire la propria analisi', !localErr, localErr?.message ?? '');
+
+    // 5) Lo stesso membro DEVE poter spuntare un'azione.
+    const { error: progErr } = await A.client.from('action_progress').upsert({
+      analysis_id: snap.id, company_id: companyA, action_index: 0,
+      action_text: 'Trasmettere il rendiconto IVA', done: true,
+    }, { onConflict: 'analysis_id,action_index' });
+    check('lo stesso membro PUÒ spuntare un\'azione (action_progress)', !progErr, progErr?.message ?? '');
+
+    const { data: prog } = await A.client.from('action_progress')
+      .select('done, done_by, done_at').eq('analysis_id', snap.id).eq('action_index', 0).maybeSingle();
+    check('la spunta è persistita e rileggibile', prog?.done === true, JSON.stringify(prog));
+    check('autore e momento li assegna il database, non il client',
+      prog?.done_by === A.id && !!prog?.done_at, `done_by ${prog?.done_by} · done_at ${prog?.done_at}`);
+
+    // Despuntare azzera l'attribuzione: non resta una firma su un fatto ritirato.
+    await A.client.from('action_progress').update({ done: false })
+      .eq('analysis_id', snap.id).eq('action_index', 0);
+    const { data: undone } = await A.client.from('action_progress')
+      .select('done, done_by, done_at').eq('analysis_id', snap.id).eq('action_index', 0).maybeSingle();
+    check('togliendo la spunta si azzerano done_by e done_at',
+      undone?.done === false && undone?.done_by === null && undone?.done_at === null, JSON.stringify(undone));
+
+    // 6) Un membro di un'ALTRA azienda non vede né tocca il progresso (§49).
+    const Bx = await makeUser('Bx');
+    const { data: companyBx } = await Bx.client.rpc('create_company_with_owner', { p_legal_name: 'Azienda Bx Sagl', p_canton: 'Vaud' });
+    created.companies.push(companyBx);
+    const { data: crossRead } = await Bx.client.from('action_progress').select('id').eq('analysis_id', snap.id);
+    check('§49 · un\'altra azienda non legge il progresso altrui', (crossRead ?? []).length === 0,
+      `righe viste: ${(crossRead ?? []).length}`);
+    const { error: crossWriteErr } = await Bx.client.from('action_progress').insert({
+      analysis_id: snap.id, company_id: companyBx, action_index: 1, done: true,
+    });
+    check('§49 · non si può agganciare progresso a un\'analisi di un\'altra azienda', !!crossWriteErr,
+      crossWriteErr ? '' : 'insert accettato con analysis_id altrui');
+
+    // 7) Il testo estratto, base della verifica delle citazioni, è in sola lettura.
+    const { error: extErr } = await A.client.from('document_extractions').insert({
+      document_id: docA.id, company_id: companyA, extraction_method: 'text', full_text: 'testo iniettato',
+    });
+    check('un membro NON può scrivere document_extractions', !!extErr,
+      extErr ? '' : 'insert accettato: il testo su cui si verificano le citazioni è alterabile');
+  }
+
   // ---- 0. Raggiungibilità (economico: documentId mancante → 400) ----------
-  console.log(`${B}Raggiungibilità${X}`);
+  console.log(`\n${B}Raggiungibilità${X}`);
   const reach = await invoke(A.client, {});
   if (reach.status === 404 || /not found/i.test(reach.error?.message ?? '')) {
     console.log(`\n${R}La Edge Function 'analyze-document' non è deployata (404).${X}`);

@@ -6,6 +6,7 @@
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
+import { DETERMINISTIC_ENGINE } from './analysisProviders';
 import type { Database } from '@/types/database';
 import type { DocumentReply } from '@/types/models';
 import { translate as tr } from '@/i18n';
@@ -80,5 +81,59 @@ export const replyService = {
       .update({ content, is_edited: true })
       .eq('id', replyId);
     if (error) throw new AppError(toUserMessage(error), error);
+  },
+
+  /**
+   * Bozza del MOTORE LOCALE (§60), prodotta da un template deterministico nel
+   * browser e non dall'AI.
+   *
+   * Prima della 0010 finiva in document_analyses.reply_draft, e per scriverla
+   * serviva il permesso di update sull'intera analisi. Ora vive qui come tutte
+   * le altre bozze: `provider` dichiara che l'ha generata il motore locale, così
+   * una bozza template non viene mai scambiata per una prodotta dal modello.
+   */
+  async saveLocalDraft(input: {
+    /** id della bozza già esistente per questo documento; assente = prima bozza */
+    replyId?: string | null;
+    documentId: string;
+    companyId: string;
+    analysisId: string;
+    userId: string;
+    language: string;
+    tone: string;
+    content: string;
+    /** true = testo ritoccato a mano, false = template rigenerato tale e quale */
+    isEdited: boolean;
+  }): Promise<DocumentReply> {
+    const sb = requireSupabase();
+
+    if (input.replyId) {
+      const { data, error } = await sb
+        .from('document_replies')
+        .update({ content: input.content, language: input.language, tone: input.tone, is_edited: input.isEdited })
+        .eq('id', input.replyId)
+        .select('*')
+        .single();
+      if (error || !data) throw new AppError(toUserMessage(error), error);
+      return toReply(data);
+    }
+
+    const { data, error } = await sb
+      .from('document_replies')
+      .insert({
+        document_id: input.documentId,
+        company_id: input.companyId,
+        analysis_id: input.analysisId,
+        created_by: input.userId,          // richiesto dalla policy replies_insert_member
+        language: input.language,
+        tone: input.tone,
+        content: input.content,
+        provider: DETERMINISTIC_ENGINE,
+        is_edited: input.isEdited,
+      })
+      .select('*')
+      .single();
+    if (error || !data) throw new AppError(toUserMessage(error), error);
+    return toReply(data);
   },
 };

@@ -174,9 +174,9 @@ export interface DocumentAnalysis {
   /** Incertezze con gravità (§17); `uncertainties` resta la versione testuale. */
   uncertaintyItems: AnalysisUncertainty[];
   confidence: Confidence;
-  replyDraft: string;
-  replyLanguage: DocLanguage | string;
-  replyTone: string;
+  // 0010 — la bozza NON è più un campo dell'analisi: vive in document_replies
+  // (tipo DocumentReply). Lo snapshot descrive il documento, non ciò che
+  // l'utente ci scrive sopra.
   // ---- Campi ricchi (§30-34) ----
   recipient: string | null;
   subject: string | null;

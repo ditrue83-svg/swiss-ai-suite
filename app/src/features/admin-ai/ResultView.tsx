@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { analysisService } from '@/services/analysisService';
+import { actionProgressService } from '@/services/actionProgressService';
 import { replyService } from '@/services/replyService';
 import { correctionService } from '@/services/correctionService';
 import { taskService } from '@/services/taskService';
@@ -18,6 +19,9 @@ import { PdfViewer } from '@/features/admin-ai/PdfViewer';
 import type { ActionSource, AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence, TaskPriority } from '@/types/models';
 
 const URGENCY_TO_PRIORITY: Record<string, TaskPriority> = { alta: 'high', media: 'medium', bassa: 'low' };
+
+/** Tono predefinito della bozza, come prima della 0010 (era il default di reply_tone). */
+const DEFAULT_TONE = 'formale';
 
 function OriginBadge({ source, ctx }: { source: ActionSource; ctx?: 'callout' }) {
   const t = useT();
@@ -158,9 +162,12 @@ export function ResultView({ analysis, document, onRetry }: {
   const [actions, setActions] = useState<ChecklistAction[]>(analysis.actions);
   const [highlight, setHighlight] = useState<Evidence | null>(null);
   const [reply, setReply] = useState<DocumentReply | null>(null);
-  const [draft, setDraft] = useState(isAI ? '' : analysis.replyDraft);
-  const [lang, setLang] = useState(String(analysis.replyLanguage));
-  const [tone, setTone] = useState(analysis.replyTone);
+  // 0010 — lingua e tono non stanno più sull'analisi: si parte dalla lingua del
+  // documento e dal tono predefinito, poi vince la bozza salvata se esiste.
+  const defaultLang = String(analysis.language ?? 'it');
+  const [draft, setDraft] = useState('');
+  const [lang, setLang] = useState(defaultLang);
+  const [tone, setTone] = useState(DEFAULT_TONE);
   const [savingDraft, setSavingDraft] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [corrections, setCorrections] = useState<Record<string, AnalysisCorrection>>({});
@@ -171,20 +178,37 @@ export function ResultView({ analysis, document, onRetry }: {
   const [docMode, setDocMode] = useState<'pdf' | 'text'>(isPdf ? 'pdf' : 'text');
   useEffect(() => { setDocMode(isPdf ? 'pdf' : 'text'); }, [document.id, isPdf]);
 
-  // Se cambia il documento analizzato, reinizializza lo stato locale e (per l'AI)
-  // carica l'ultima bozza salvata, senza rigenerarla (§35: la generazione è on-demand).
+  // Se cambia il documento analizzato, reinizializza lo stato locale e carica
+  // l'ultima bozza salvata, senza rigenerarla (§35: la generazione è on-demand).
+  // Dalla 0010 le bozze stanno in document_replies anche per il motore locale,
+  // quindi la rilettura vale per entrambi i percorsi.
   useEffect(() => {
     setActions(analysis.actions);
-    setLang(String(analysis.replyLanguage));
-    setTone(analysis.replyTone);
+    setLang(defaultLang);
+    setTone(DEFAULT_TONE);
     setHighlight(null);
-    if (!isAI) { setReply(null); setDraft(analysis.replyDraft); return; }
-    setReply(null); setDraft('');
+    setReply(null);
+    // Motore locale: il template è deterministico, si mostra subito. Non viene
+    // salvato finché l'utente non lo salva o lo rigenera esplicitamente.
+    setDraft(isAI ? '' : analysisService.regenerateReply(analysis, defaultLang, DEFAULT_TONE, companyName));
     let active = true;
     replyService.getLatest(analysis.documentId).then((r) => {
       if (!active || !r) return;
       setReply(r); setDraft(r.content); setLang(r.language); setTone(r.tone);
-    }).catch(() => { /* nessuna bozza: si mostrerà il pulsante Genera */ });
+    }).catch(() => { /* nessuna bozza: resta il template (locale) o il pulsante Genera (AI) */ });
+    return () => { active = false; };
+  }, [analysis.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 0010 — lo stato della checklist non è più dentro l'analisi: si legge da
+  // action_progress e si fonde con le azioni dello snapshot (che portano testo
+  // ed evidenza). Un errore qui NON viene ingoiato: senza il progresso la
+  // checklist apparirebbe tutta da fare, cioè un dato falso presentato come vero.
+  useEffect(() => {
+    let active = true;
+    actionProgressService.forAnalysis(analysis.id).then((progress) => {
+      if (!active || progress.size === 0) return;
+      setActions((prev) => actionProgressService.merge(prev, progress));
+    }).catch((e) => { if (active) showToast(toUserMessage(e)); });
     return () => { active = false; };
   }, [analysis.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -221,10 +245,20 @@ export function ResultView({ analysis, document, onRetry }: {
   const remaining = days == null ? '' : days < 0 ? `Scaduta da ${Math.abs(days)} giorni` : days === 0 ? 'Scade oggi' : `Mancano ${days} giorni`;
 
   async function toggleAction(id: number, checked: boolean) {
-    const next = actions.map((c) => (c.id === id ? { ...c, done: checked } : c));
-    setActions(next);
-    try { await analysisService.updateActions(r.id, next); }
-    catch (e) { showToast(toUserMessage(e)); }
+    const target = actions.find((c) => c.id === id);
+    if (!target) return;
+    const previous = actions;
+    setActions(actions.map((c) => (c.id === id ? { ...c, done: checked } : c)));
+    try {
+      await actionProgressService.setDone({
+        analysisId: r.id, companyId: r.companyId, action: target, done: checked,
+      });
+    } catch (e) {
+      // Il database non ha accettato la spunta: la si toglie anche dalla UI,
+      // altrimenti l'utente vedrebbe un'azione "fatta" che non è stata salvata.
+      setActions(previous);
+      showToast(toUserMessage(e));
+    }
   }
 
   async function createTask(title: string) {
@@ -249,25 +283,43 @@ export function ResultView({ analysis, document, onRetry }: {
     } catch (e) { showToast(toUserMessage(e)); }
     finally { setGenerating(false); }
   }
+  /** Salva la bozza corrente. 0010 — sempre in document_replies, mai sull'analisi. */
+  async function persistDraft(content: string, isEdited: boolean) {
+    if (isAI) {
+      if (!reply) { showToast(t('adminAi.result.generateFirst')); return; }
+      await replyService.saveEdit(reply.id, content);   // §34: modifica umana tracciata (is_edited)
+      setReply({ ...reply, content, isEdited: true });
+      return;
+    }
+    if (!user) return;
+    const saved = await replyService.saveLocalDraft({
+      replyId: reply?.id ?? null,
+      documentId: r.documentId, companyId: r.companyId, analysisId: r.id, userId: user.id,
+      language: lang, tone, content, isEdited,
+    });
+    setReply(saved);
+  }
+
   async function saveDraft() {
     setSavingDraft(true);
     try {
-      if (isAI) {
-        if (!reply) { showToast(t('adminAi.result.generateFirst')); return; }
-        await replyService.saveEdit(reply.id, draft);   // §34: modifica umana tracciata (is_edited)
-      } else {
-        await analysisService.updateReplyDraft(r.id, { draft, language: lang, tone });
-      }
+      await persistDraft(draft, true);
       showToast('Modifiche salvate');
     } catch (e) { showToast(toUserMessage(e)); }
     finally { setSavingDraft(false); }
   }
-  // Solo motore locale: rigenera dal template deterministico.
-  function resetDraft() {
+
+  // Solo motore locale: rigenera dal template deterministico e la persiste.
+  // `isEdited: false` — è il template tale e quale, non un testo scritto a mano.
+  async function resetDraft() {
     const next = analysisService.regenerateReply(r, lang, tone, companyName);
     setDraft(next);
-    void analysisService.updateReplyDraft(r.id, { draft: next, language: lang, tone }).catch(() => {});
-    showToast('Bozza rigenerata');
+    setSavingDraft(true);
+    try {
+      await persistDraft(next, false);
+      showToast('Bozza rigenerata');
+    } catch (e) { showToast(toUserMessage(e)); }
+    finally { setSavingDraft(false); }
   }
   function copyDraft() {
     navigator.clipboard?.writeText(draft);
