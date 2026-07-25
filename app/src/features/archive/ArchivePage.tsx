@@ -11,12 +11,14 @@ import { analysisService } from '@/services/analysisService';
 import { ErrorState, EmptyCta, SkeletonLine } from '@/components/ui/states';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
+import { useT } from '@/i18n';
 import type { DocumentAnalysis, DocumentRecord } from '@/types/models';
 
 type Filter = 'tutte' | 'alta' | 'media' | 'bassa';
 interface Row { doc: DocumentRecord; analysis: DocumentAnalysis | null }
 
 export function ArchivePage() {
+  const t = useT();
   const { activeCompanyId } = useCompany();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ export function ArchivePage() {
   );
 
   async function openFile(doc: DocumentRecord) {
-    if (!doc.storagePath) { showToast('File non disponibile.'); return; }
+    if (!doc.storagePath) { showToast(t('archive.fileUnavailable')); return; }
     setBusyId(doc.id);
     try {
       const url = await documentService.getSignedUrl(doc.storagePath, 120);
@@ -57,7 +59,7 @@ export function ArchivePage() {
       await documentService.remove(doc);
       setArmed(null);
       reload();
-      showToast('Documento eliminato');
+      showToast(t('archive.deleted'));
     } catch (e) { showToast(toUserMessage(e)); }
     finally { setBusyId(null); }
   }
@@ -65,13 +67,13 @@ export function ArchivePage() {
   return (
     <>
       <div className="page-head">
-        <div className="page-title">Archivio documenti</div>
-        <div className="page-desc">Tutti i documenti caricati, con filtri per urgenza e stato della checklist.</div>
+        <div className="page-title">{t('archive.title')}</div>
+        <div className="page-desc">{t('archive.subtitle')}</div>
       </div>
 
       <div className="card">
         <div className="card-title">
-          <span>Documenti ({visible.length})</span>
+          <span>{t('archive.count', { n: visible.length })}</span>
           <span className="filter-group">
             {(['tutte', 'alta', 'media', 'bassa'] as Filter[]).map((f) => (
               <button key={f} className={`btn btn-sm${filter === f ? ' btn-primary' : ''}`} onClick={() => { setFilter(f); setArmed(null); }}>{f}</button>
@@ -85,12 +87,12 @@ export function ArchivePage() {
         {!loading && !error && rows.length === 0 && (
           <EmptyCta
             icon="document"
-            title="Nessun documento ancora"
-            subtitle="Carica la tua prima comunicazione amministrativa e lascia che Admin AI la trasformi in azioni concrete."
-            action={<button className="btn btn-primary" onClick={() => navigate('/admin')}><Icon name="document" className="ic-sm" /> Analizza un documento</button>}
+            title={t('archive.empty')}
+            subtitle={t('archive.emptySub')}
+            action={<button className="btn btn-primary" onClick={() => navigate('/admin')}><Icon name="document" className="ic-sm" /> {t('archive.emptyCta')}</button>}
           />
         )}
-        {!loading && !error && rows.length > 0 && visible.length === 0 && <div className="empty">Nessun documento con questo filtro.</div>}
+        {!loading && !error && rows.length > 0 && visible.length === 0 && <div className="empty">{t('archive.noneWithFilter')}</div>}
 
         {!loading && !error && visible.map(({ doc, analysis }) => {
           const done = analysis ? analysis.actions.filter((c) => c.done).length : 0;
@@ -100,31 +102,31 @@ export function ArchivePage() {
           const failed = analysis?.analysisStatus === 'failed';
           const urgency = failed ? undefined : analysis?.urgency;
           const subParts = failed
-            ? [analysis?.errorMessageSafe ?? 'Analisi non riuscita — il documento è conservato']
+            ? [analysis?.errorMessageSafe ?? t('archive.analysisFailedSub')]
             : [
                 analysis?.sender ?? undefined,
                 analysis?.documentTypeLabel,
                 analysis?.languageLabel,
-                analysis?.deadline ? 'scade il ' + formatDate(analysis.deadline) : undefined,
+                analysis?.deadline ? t('tasks.dueOn', { date: formatDate(analysis.deadline) }) : undefined,
               ].filter(Boolean);
           return (
             <div className="list-row" key={doc.id}>
               <div className="list-main">
                 <div className="list-title">{doc.title}</div>
-                <div className="list-sub">{subParts.join(' · ') || 'In elaborazione'}</div>
+                <div className="list-sub">{subParts.join(' · ') || t('archive.processing')}</div>
               </div>
-              {failed && <span className="badge badge-alta">Analisi non riuscita</span>}
-              {!failed && analysis?.analysisStatus === 'needs_review' && <span className="badge badge-media">Da verificare</span>}
-              {analysis && !failed && <span className="badge badge-neutral">{done}/{total} azioni</span>}
+              {failed && <span className="badge badge-alta">{t('archive.analysisFailed')}</span>}
+              {!failed && analysis?.analysisStatus === 'needs_review' && <span className="badge badge-media">{t('archive.needsReview')}</span>}
+              {analysis && !failed && <span className="badge badge-neutral">{t('archive.actionsProgress', { done, total })}</span>}
               {urgency && <span className={`badge badge-${urgency}`}>{urgency}</span>}
-              <button className="btn btn-sm" onClick={() => navigate(`/admin?doc=${doc.id}`)}>Apri</button>
+              <button className="btn btn-sm" onClick={() => navigate(`/admin?doc=${doc.id}`)}>{t('common.open')}</button>
               {doc.storagePath && (
-                <button className="btn btn-sm btn-icon" onClick={() => openFile(doc)} disabled={busyId === doc.id} aria-label={`Apri il file: ${doc.title}`}><Icon name="download" className="ic-sm" /></button>
+                <button className="btn btn-sm btn-icon" onClick={() => openFile(doc)} disabled={busyId === doc.id} aria-label={t('archive.openFileAria', { title: doc.title })}><Icon name="download" className="ic-sm" /></button>
               )}
               {armed === doc.id ? (
                 <span className="row-wrap">
-                  <button className="btn btn-sm btn-danger" onClick={() => remove(doc)} disabled={busyId === doc.id}>{busyId === doc.id ? <span className="spinner" /> : null} Elimina</button>
-                  <button className="btn btn-sm" onClick={() => setArmed(null)}>Annulla</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => remove(doc)} disabled={busyId === doc.id}>{busyId === doc.id ? <span className="spinner" /> : null} {t('common.delete')}</button>
+                  <button className="btn btn-sm" onClick={() => setArmed(null)}>{t('common.cancel')}</button>
                 </span>
               ) : (
                 <button className="btn btn-sm btn-icon" onClick={() => setArmed(doc.id)} aria-label={`Elimina documento: ${doc.title}`}><Icon name="trash" className="ic-sm" /></button>

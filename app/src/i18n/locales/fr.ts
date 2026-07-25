@@ -140,6 +140,9 @@ export const fr: Dictionary = {
     employeesPlaceholder: 'p. ex. 12',
     revenue: 'Tranche de chiffre d’affaires (facultatif)',
     submit: 'Créer l’entreprise et continuer',
+    noPreference: 'Je préfère ne pas indiquer',
+    uidPlaceholder: 'CHE-123.456.789',
+    registryImportedFrom: 'Données importées de « {name} ». Vérifiez et complétez la forme juridique, le secteur et le nombre d’employés.',
     errorName: 'Veuillez saisir la raison sociale.',
   },
 
@@ -156,6 +159,11 @@ export const fr: Dictionary = {
     overdueBy: 'En retard de {days} jours',
     dueToday: 'Échéance aujourd’hui',
     dueIn: 'Dans {days} jours',
+    added: 'Échéance ajoutée',
+    deleted: 'Échéance supprimée',
+    addManual: 'Ajouter une échéance manuelle',
+    dueDate: 'Date d’échéance',
+    noneInView: 'Aucune échéance dans cette vue.',
     priority: { high: 'haute', medium: 'moyenne', low: 'basse' },
   },
 
@@ -175,6 +183,7 @@ export const fr: Dictionary = {
     needsReview: 'À vérifier',
     confirmDelete: 'Supprimer ce document ?',
     deleted: 'Document supprimé',
+    fileUnavailable: 'Fichier non disponible.',
     openFileAria: 'Ouvrir le fichier : {title}',
   },
 

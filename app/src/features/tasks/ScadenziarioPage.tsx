@@ -10,11 +10,13 @@ import { ErrorState, SkeletonLine } from '@/components/ui/states';
 import { formatDate, daysUntil } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import type { Task, TaskStatus } from '@/types/models';
+import { useT } from '@/i18n';
 
 type Filter = 'aperte' | 'fatte' | 'tutte';
 const PRIORITY_BADGE: Record<Task['priority'], string> = { high: 'alta', medium: 'media', low: 'bassa' };
 
 export function ScadenziarioPage() {
+  const t = useT();
   const { activeCompanyId } = useCompany();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -44,7 +46,7 @@ export function ScadenziarioPage() {
       });
       setTitle(''); setAuthority(''); setDueDate('');
       reload();
-      showToast('Scadenza aggiunta allo scadenziario');
+      showToast(t('tasks.added'));
     } catch (e) {
       showToast(toUserMessage(e));
     } finally {
@@ -57,7 +59,7 @@ export function ScadenziarioPage() {
     catch (e) { showToast(toUserMessage(e)); }
   }
   async function remove(id: string) {
-    try { await taskService.remove(id); reload(); showToast('Scadenza eliminata'); }
+    try { await taskService.remove(id); reload(); showToast(t('tasks.deleted')); }
     catch (e) { showToast(toUserMessage(e)); }
   }
 
@@ -69,11 +71,11 @@ export function ScadenziarioPage() {
       </div>
 
       <div className="card">
-        <div className="card-title">Aggiungi scadenza manuale</div>
+        <div className="card-title">{t('tasks.addManual')}</div>
         <div className="grid-3">
           <div className="field"><label htmlFor="t-title">Titolo</label><input id="t-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Es. Inviare conteggio AVS" /></div>
           <div className="field"><label htmlFor="t-auth">Ente / riferimento</label><input id="t-auth" value={authority} onChange={(e) => setAuthority(e.target.value)} placeholder="Es. Cassa di compensazione" /></div>
-          <div className="field"><label htmlFor="t-date">Data di scadenza</label><input id="t-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
+          <div className="field"><label htmlFor="t-date">{t('tasks.dueDate')}</label><input id="t-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
         </div>
         <button className="btn btn-primary btn-sm btn-block-mobile" onClick={addTask} disabled={saving || !title.trim()} aria-busy={saving || undefined}>
           {saving ? <span className="spinner" aria-hidden="true" /> : null} Aggiungi
@@ -91,7 +93,7 @@ export function ScadenziarioPage() {
 
         {loading && <><SkeletonLine width="60%" /><SkeletonLine width="80%" /><SkeletonLine width="70%" /></>}
         {error && <ErrorState message={error} onRetry={reload} />}
-        {!loading && !error && visible.length === 0 && <div className="empty">Nessuna scadenza in questa vista.</div>}
+        {!loading && !error && visible.length === 0 && <div className="empty">{t('tasks.noneInView')}</div>}
 
         {!loading && !error && visible.map((t) => {
           const d = daysUntil(t.dueDate);

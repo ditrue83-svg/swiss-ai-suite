@@ -141,6 +141,9 @@ export const it = {
     employeesPlaceholder: 'Es. 12',
     revenue: 'Fascia di fatturato (facoltativa)',
     submit: 'Crea impresa e continua',
+    noPreference: 'Preferisco non indicare',
+    uidPlaceholder: 'CHE-123.456.789',
+    registryImportedFrom: 'Dati importati da «{name}». Verifica e completa forma giuridica, settore e numero di dipendenti.',
     errorName: 'Inserisci la ragione sociale.',
   },
 
@@ -158,6 +161,11 @@ export const it = {
     overdueBy: 'Scaduta da {days} giorni',
     dueToday: 'Scade oggi',
     dueIn: 'Tra {days} giorni',
+    added: 'Scadenza aggiunta allo scadenziario',
+    deleted: 'Scadenza eliminata',
+    addManual: 'Aggiungi scadenza manuale',
+    dueDate: 'Data di scadenza',
+    noneInView: 'Nessuna scadenza in questa vista.',
     priority: { high: 'alta', medium: 'media', low: 'bassa' },
   },
 
@@ -178,6 +186,7 @@ export const it = {
     needsReview: 'Da verificare',
     confirmDelete: 'Eliminare questo documento?',
     deleted: 'Documento eliminato',
+    fileUnavailable: 'File non disponibile.',
     openFileAria: 'Apri il file: {title}',
   },
 

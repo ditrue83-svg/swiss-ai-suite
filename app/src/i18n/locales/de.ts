@@ -141,6 +141,9 @@ export const de: Dictionary = {
     employeesPlaceholder: 'z. B. 12',
     revenue: 'Umsatzklasse (freiwillig)',
     submit: 'Unternehmen erstellen und fortfahren',
+    noPreference: 'Keine Angabe',
+    uidPlaceholder: 'CHE-123.456.789',
+    registryImportedFrom: 'Daten aus «{name}» übernommen. Bitte prüfen und Rechtsform, Branche und Mitarbeiterzahl ergänzen.',
     errorName: 'Bitte geben Sie den Firmennamen ein.',
   },
 
@@ -157,6 +160,11 @@ export const de: Dictionary = {
     overdueBy: 'Seit {days} Tagen überfällig',
     dueToday: 'Heute fällig',
     dueIn: 'In {days} Tagen',
+    added: 'Frist zum Fristenkalender hinzugefügt',
+    deleted: 'Frist gelöscht',
+    addManual: 'Frist manuell hinzufügen',
+    dueDate: 'Fälligkeitsdatum',
+    noneInView: 'Keine Fristen in dieser Ansicht.',
     priority: { high: 'hoch', medium: 'mittel', low: 'niedrig' },
   },
 
@@ -176,6 +184,7 @@ export const de: Dictionary = {
     needsReview: 'Zu prüfen',
     confirmDelete: 'Dieses Dokument löschen?',
     deleted: 'Dokument gelöscht',
+    fileUnavailable: 'Datei nicht verfügbar.',
     openFileAria: 'Datei öffnen: {title}',
   },
 
