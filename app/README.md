@@ -71,12 +71,43 @@ npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-... --project-ref <PROJECT_REF
 ```
 La chiave Anthropic vive **solo** come secret della Edge Function: mai nel `.env` del frontend.
 
+### 5) Autenticazione (obbligatorio prima di andare online)
+
+Registrazione e reimpostazione password funzionano via **link inviati per email**. Supabase accetta
+quel link solo se l'URL è nell'allowlist del progetto: se non lo è, il link punta al *Site URL* e
+l'utente **non completa mai il flusso**, senza vedere alcun errore.
+
+Nel dashboard → **Authentication → URL Configuration**:
+
+| Campo | Valore |
+|---|---|
+| **Site URL** | l'URL pubblico dell'app (es. `https://app.esempio.ch`) |
+| **Redirect URLs** | `https://app.esempio.ch/**` e, per lo sviluppo, `http://localhost:5174/**` |
+
+Poi imposta `VITE_PUBLIC_SITE_URL` nel `.env` di produzione con lo stesso dominio, così i link
+generati sono deterministici anche se l'utente apre l'app da un'origine diversa (www, preview…).
+
+**Verifica** che tutto combaci — non a mano, con lo script:
+
+```bash
+npm run check:auth -- https://app.esempio.ch
+```
+
+Controlla che i redirect di conferma e reset vengano rispettati e che un URL estraneo venga
+respinto (difesa open redirect). La configurazione attesa è versionata in `supabase/config.toml`,
+che però il progetto hosted **non legge**: è documentazione + configurazione per l'ambiente locale.
+
+**SMTP.** Il servizio email predefinito di Supabase ha limiti stretti ed è pensato per lo sviluppo:
+per la produzione configura un SMTP proprio (Authentication → Emails → SMTP Settings), altrimenti
+le email di conferma e reset possono non arrivare.
+
 ## Variabili d'ambiente
 
 | Variabile | Dove | Scopo |
 |---|---|---|
 | `VITE_SUPABASE_URL` | `.env` (frontend) | URL del progetto |
 | `VITE_SUPABASE_ANON_KEY` | `.env` (frontend) | Chiave pubblica; la sicurezza vera è la RLS |
+| `VITE_PUBLIC_SITE_URL` | `.env` (frontend) | URL canonico per i link nelle email; vuoto in sviluppo |
 | `VITE_ANALYSIS_PROVIDER` | `.env` (frontend) | `ai` (default) o `deterministic` — vedi sotto |
 | `ANTHROPIC_API_KEY` | **secret Edge Function** | Chiamate AI server-side |
 | `ZEFIX_AUTH` | **secret Edge Function** | `utente:password` per il Registro IDI (opzionale) |
@@ -184,6 +215,7 @@ npm run test:uid        # validazione numero IDI, funzione pura (26 test)
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare)
+npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
 ```
 
 Gli script che toccano il DB o l'AI richiedono `.env.test` (copia da `.env.test.example`).

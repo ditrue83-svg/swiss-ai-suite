@@ -5,6 +5,7 @@
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
+import { publicUrl } from '@/lib/env';
 import type { UserProfile } from '@/types/models';
 
 export interface SignUpInput {
@@ -40,7 +41,9 @@ export const authService = {
       password: input.password,
       options: {
         data: { first_name: input.firstName.trim(), last_name: input.lastName.trim() },
-        emailRedirectTo: `${window.location.origin}/login`,
+        // URL canonico se configurato (VITE_PUBLIC_SITE_URL), altrimenti l'origine
+        // corrente: dev'essere fra i Redirect URLs del progetto, o il link non funziona.
+        emailRedirectTo: publicUrl('/login'),
       },
     });
     if (error) throw new AppError(toUserMessage(error), error);
@@ -69,7 +72,7 @@ export const authService = {
 
   async requestPasswordReset(email: string): Promise<void> {
     const { error } = await requireSupabase().auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: publicUrl('/reset-password'),
     });
     if (error) throw new AppError(toUserMessage(error), error);
   },

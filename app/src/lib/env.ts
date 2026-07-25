@@ -20,3 +20,23 @@ export const isSupabaseConfigured = Boolean(
 export type AnalysisProviderMode = 'ai' | 'deterministic';
 const rawMode = (import.meta.env.VITE_ANALYSIS_PROVIDER ?? 'ai').trim();
 export const ANALYSIS_PROVIDER: AnalysisProviderMode = rawMode === 'deterministic' ? 'deterministic' : 'ai';
+
+// ---------------------------------------------------------------------------
+// URL pubblico CANONICO dell'applicazione, usato per costruire i link inviati
+// per email (conferma registrazione, reimposta password).
+//
+// Perché non basta `window.location.origin`: l'origine da cui l'utente apre
+// l'app può non essere quella canonica (www vs senza www, un dominio di preview,
+// un IP in rete locale). Supabase accetta il redirect solo se l'origine è
+// nell'allowlist del progetto: se non lo è, il link nell'email punta al Site URL
+// e l'utente finisce altrove. Fissando l'URL canonico i link sono deterministici.
+//
+// In sviluppo si lascia vuoto: si usa l'origine corrente (localhost:5174).
+const rawSite = (import.meta.env.VITE_PUBLIC_SITE_URL ?? '').trim().replace(/\/+$/, '');
+export const PUBLIC_SITE_URL = rawSite && !rawSite.includes('YOUR-') ? rawSite : null;
+
+/** Base per i link nelle email: URL canonico se configurato, altrimenti origine corrente. */
+export function publicUrl(path: string): string {
+  const base = PUBLIC_SITE_URL ?? (typeof window !== 'undefined' ? window.location.origin : '');
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}

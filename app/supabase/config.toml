@@ -1,0 +1,79 @@
+# ============================================================================
+# Configurazione Supabase VERSIONATA.
+#
+# ATTENZIONE — cosa legge cosa:
+#   · Il progetto HOSTED (tcjmagaqktmzijbfntvy) NON legge questo file: le sue
+#     impostazioni vivono nel dashboard. Questo file serve a (a) documentare la
+#     configurazione attesa, in modo riproducibile e sotto controllo di versione,
+#     e (b) far girare `supabase start` in locale con le stesse regole.
+#   · Verifica che il progetto hosted sia allineato con:  npm run check:auth
+#
+# Le impostazioni Auth qui sotto sono quelle che, se sbagliate in produzione,
+# rompono registrazione e reimpostazione password SENZA alcun errore visibile:
+# il link nell'email punta altrove e l'utente non completa mai il flusso.
+# ============================================================================
+
+project_id = "swiss-ai-suite"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[storage]
+enabled = true
+# Deve restare allineato al bucket `company-documents` (vedi migrazione 0009).
+file_size_limit = "15MiB"
+
+[auth]
+# ---------------------------------------------------------------------------
+# site_url — dove Supabase rimanda quando un redirect NON è nell'allowlist.
+# In produzione va impostato al dominio reale dell'applicazione. Sul progetto
+# hosted questo valore si cambia in: Authentication → URL Configuration.
+# ---------------------------------------------------------------------------
+site_url = "http://localhost:5174"
+
+# ---------------------------------------------------------------------------
+# additional_redirect_urls — allowlist dei redirect ammessi nei link via email
+# (conferma registrazione, reimposta password). Un URL non elencato viene
+# ignorato e sostituito con site_url: è anche la difesa contro gli open redirect.
+# Aggiungere qui il dominio di produzione PRIMA di andare online.
+# ---------------------------------------------------------------------------
+additional_redirect_urls = [
+  "http://localhost:5174/**",
+  # "https://IL-TUO-DOMINIO.ch/**",
+]
+
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+# Registrazione aperta: l'onboarding crea azienda + membership owner.
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Conferma dell'indirizzo email prima dell'accesso. In produzione va tenuta
+# ATTIVA: senza, chiunque può registrarsi con l'email di un altro.
+enable_confirmations = true
+double_confirm_changes = true
+# NB: il servizio email predefinito di Supabase ha limiti stretti ed è pensato
+# solo per lo sviluppo. Per la produzione va configurato un SMTP proprio
+# (dashboard → Authentication → Emails → SMTP Settings), altrimenti le email di
+# conferma e reset possono semplicemente non arrivare.
+
+[auth.email.template.confirmation]
+subject = "Conferma il tuo indirizzo email — SwissAI Suite"
+
+[auth.email.template.recovery]
+subject = "Reimposta la password — SwissAI Suite"

@@ -18,6 +18,7 @@
     "subsidy:seed": "node --env-file=.env.test scripts/seed-subsidy-programs.mjs",
     "subsidy:health": "node --env-file=.env.test scripts/subsidy-catalog-health.mjs",
     "db:bundle": "node scripts/bundle-migrations.mjs",
+    "check:auth": "node --env-file=.env.test scripts/check-auth-config.mjs",
     "test:uid": "node --import tsx scripts/test-uid.ts",
     "test:validate": "node --import tsx scripts/test-validate.ts",
     "test:pipeline": "node --env-file=.env.test --import tsx scripts/test-pipeline.ts"
