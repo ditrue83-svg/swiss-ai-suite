@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { subsidyService, type CaseKind } from '@/services/subsidyService';
 import { taskService } from '@/services/taskService';
 import { toUserMessage } from '@/lib/errors';
+import { formatDate } from '@/lib/format';
 import type { ProgramModel, Requirement } from './programs';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
@@ -150,6 +151,31 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
           <span className="ax-chip"><Icon name="calendar" className="ic-sm" /> {p.applicationWindow}</span>
           <span className={`badge badge-${match.priority.level}`}>{t('subsidy.results.priority', { level: match.priority.level })}</span>
         </div>
+        {/* 0011 — la sospensione viene PRIMA di ogni altra informazione: il
+            resto della scheda descrive un contributo che oggi non si ottiene, e
+            l'utente deve saperlo prima di leggere requisiti e documenti.
+            Il motivo e la fonte vengono dal catalogo: senza fonte, «sospeso»
+            sarebbe un'affermazione dell'app invece di un fatto controllabile. */}
+        {p.availability === 'suspended' && (
+          <div className="warn-box mt-14">
+            <Icon name="alert" />
+            <span>
+              <strong>{t('subsidy.detail.suspendedTitle')}</strong>{' '}
+              {p.availabilityNote ?? t('subsidy.detail.suspendedGeneric')}
+              {p.availabilitySourceUrl && (
+                <>
+                  {' '}
+                  <a href={p.availabilitySourceUrl} target="_blank" rel="noopener noreferrer">
+                    {t('subsidy.detail.suspendedSource')}
+                  </a>
+                </>
+              )}
+              {p.availabilityCheckedAt && (
+                <span className="muted-sm"> ({t('subsidy.detail.suspendedChecked')} {formatDate(p.availabilityCheckedAt)})</span>
+              )}
+            </span>
+          </div>
+        )}
         {p.mustApplyBeforeStart && (
           <div className="warn-box mt-14"><Icon name="alert" /><span>{p.mustApplyBeforeStartText ?? t('subsidy.detail.mustApplyBeforeStart')}</span></div>
         )}

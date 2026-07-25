@@ -74,7 +74,13 @@ export function ResultsList({
                 <div className="list-sub">{p.authority}</div>
                 <div className="badge-row">
                   <SupportChip prog={p} />
-                  <span className="badge badge-media">{t('subsidy.results.eligibilityToVerify')}</span>
+                  {/* 0011 — se il programma oggi non è concedibile lo si dice
+                      subito, prima dei badge sull'idoneità: sarebbe fuorviante
+                      invitare a "verificare l'idoneità" per qualcosa che
+                      comunque non viene concesso. */}
+                  {p.availability === 'suspended'
+                    ? <span className="badge badge-alta"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.suspended')}</span>
+                    : <span className="badge badge-media">{t('subsidy.results.eligibilityToVerify')}</span>}
                   <span className="badge badge-neutral"><Icon name="calendar" className="ic-sm" /> {p.applicationWindow}</span>
                   {p.mustApplyBeforeStart && <span className="badge badge-alta"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.applyBeforeStart')}</span>}
                   <span className="badge badge-neutral">{t('subsidy.results.requirementsToVerify', { n: m.reqToVerify })}</span>

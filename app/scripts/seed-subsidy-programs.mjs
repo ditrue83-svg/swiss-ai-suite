@@ -116,20 +116,27 @@ const PROGRAMS = [
     project_types: ['innovazione', 'digitalizzazione', 'export'],
     requirements: [
       req('sede', 'Sede o attività economica in Ticino', 'L’azienda ha sede o attività economica in Ticino?', true),
-      req('fte', 'Almeno 5 FTE (procedura ordinaria) o 3 FTE (procedura semplificata: mandati ricerca, progetti Innosuisse, internazionalizzazione, fiere, coaching start-up)', 'L’azienda ha almeno 3-5 dipendenti a tempo pieno (FTE) secondo la procedura?', true),
-      req('salary', 'Almeno il 60% dei dipendenti (esclusi apprendisti) con salario base ≥ CHF 32/ora e parità salariale', 'Almeno il 60% dei dipendenti percepisce un salario base ≥ CHF 32/ora, con parità salariale?', true),
+      req('fte', 'Almeno 5 ETP (procedura ordinaria) o 3 ETP (procedura agevolata: mandati ricerca, progetti Innosuisse, internazionalizzazione, fiere, coaching start-up). Soglie in vigore dal 1° gennaio 2024', 'L’azienda ha almeno 3-5 dipendenti a tempo pieno (ETP) secondo la procedura?', true),
+      req('salary', 'Almeno il 60% dei dipendenti in ETP (esclusi apprendisti) con salario orario di base ≥ CHF 32.00. Soglia ridotta a CHF 24.00 per le aziende del settore primario e per quelle industriali assoggettate alla legge federale sul lavoro; per le aziende agricole vale il minimo della legge cantonale sul salario minimo', 'Almeno il 60% dei dipendenti percepisce il salario orario di base minimo previsto per il proprio settore (CHF 32.00, oppure CHF 24.00 per primario e industria)?', true),
+      // Decreto esecutivo distinto da quello salariale: è un requisito di
+      // accesso a sé stante, non un dettaglio del criterio salariale.
+      req('residenti', 'Almeno il 60% del personale in ETP (apprendisti inclusi) residente in Svizzera. I dipendenti assoggettati all’imposta alla fonte non residenti al 31 dicembre contano come non residenti per tutto l’anno', 'Almeno il 60% del personale (apprendisti inclusi) è residente in Svizzera?', true),
+      req('parita', 'Parità salariale verificata con lo strumento LOGIB della Confederazione (modulo 1 da 50 dipendenti, modulo 2 sotto i 50)', 'L’azienda rispetta la parità salariale secondo metodi conformi al diritto (LOGIB)?', true),
       req('innov', 'Progetto di innovazione di prodotto/processo, o internazionalizzazione', 'Il progetto introduce un’innovazione di prodotto/processo o un’internazionalizzazione?', true),
       req('before', 'Domanda prima dell’esecuzione/deliberazione degli investimenti', 'Il progetto/investimento NON è ancora stato avviato o deliberato?', true),
+      // Non è una condizione per ottenere il sussidio ma per non doverlo
+      // restituire: va detto prima, non dopo.
+      req('impegno', 'Impegno pluriennale: i criteri salariali e di occupazione residente vanno rispettati per 5 anni dalla decisione (2 anni per la procedura agevolata), con autocertificazione annuale all’UAC. L’inosservanza comporta la revoca e la restituzione integrale dei sussidi', 'L’azienda può garantire il rispetto dei criteri per i 5 anni successivi (2 per la procedura agevolata)?', false),
     ],
     exclusions: [exc('pure-commercial', 'Attività puramente commerciali senza componente innovativa', 'Si tratta di un’attività puramente commerciale, senza componente innovativa?', 'si')],
-    contribution_description: 'Contributo a fondo perso sull’investimento ammissibile; entità e aliquote definite dal decreto esecutivo del Consiglio di Stato in vigore (da confermare).',
+    contribution_description: 'Contributo a fondo perso sull’investimento ammissibile; entità e aliquote definite dai decreti esecutivi del Consiglio di Stato in vigore. Ambiti sostenuti: coaching start-up, mandati a centri di ricerca, progetti Innosuisse, programmi di ricerca internazionali, investimenti immateriali (R&S, consulenza per l’innovazione), investimenti materiali (macchinari innovativi, digitalizzazione), sgravi fiscali, internazionalizzazione e fiere.',
     application_window: 'Domanda in ogni momento, prima dell’avvio del progetto/investimento.',
     must_apply_before_start: true,
     must_apply_before_start_text: 'La richiesta va presentata PRIMA di ordini, contratti, inizio lavori o altri atti che creano obblighi.',
-    documents_required: ['Business plan / descrizione progetto', 'Ultimi due bilanci', 'Preventivi', 'Estratto del registro di commercio'],
+    documents_required: ['Business plan / descrizione progetto', 'Ultimi due bilanci', 'Preventivi', 'Estratto del registro di commercio', 'Analisi LOGIB sulla parità salariale', 'Calcolo ETP per i criteri di salario e residenza'],
     official_source_url: 'https://www4.ti.ch/dfe/de/use/misure-di-sostegno/legge-per-linnovazione-economica/legge-per-linnovazione-economica',
-    source_title: 'Ticino — Legge per l’innovazione economica (USE, DFE)',
-    last_checked_at: CHECKED, data_status: 'recheck',
+    source_title: 'Ticino — LInn (RL 900.100), decreti esecutivi su criteri salariali e occupazione residente (ultima modifica 6 febbraio 2026, BU 25/2026)',
+    last_checked_at: CHECKED, data_status: 'verified',
   },
   {
     id: 'ti-fer',
@@ -137,20 +144,27 @@ const PROGRAMS = [
     authority: 'Cantone Ticino',
     support_type: 'grant',
     geography: ['Ticino'], target_sectors: ['ALL'], company_size_min: 0, company_size_max: 100000,
-    project_types: ['energia', 'edilizia', 'mobilita'],
+    // NB: il FER finanzia la PRODUZIONE DI ENERGIA ELETTRICA da fonti
+    // rinnovabili. Il calore (pompe di calore, isolamento) NON rientra qui ma
+    // nel Programma Edifici, già a catalogo: 'edilizia' e 'mobilita' sono stati
+    // rimossi perché portavano l'utente sul programma sbagliato.
+    project_types: ['energia'],
     requirements: [
-      req('territory', 'Intervento realizzato in Ticino, da ditta/impresa con sede in Svizzera', 'L’intervento è realizzato in Ticino da un’impresa con sede in Svizzera?', true),
-      req('eligible', 'Tipologia sostenuta dal FER (fotovoltaico, pompe di calore, ecc.) secondo i decreti in vigore', 'L’intervento rientra nelle tipologie sostenute dal FER in vigore?', true),
+      req('territory', 'Impianto realizzato in Ticino', 'L’impianto è realizzato in Ticino?', true),
+      req('eligible', 'Produzione di energia elettrica da fonte rinnovabile: fotovoltaico (principale), idroelettrico, eolico, geotermia, biomassa. Il FER sostiene inoltre studi, consulenze e progetti di ricerca sull’efficienza energetica', 'L’intervento produce energia elettrica da fonte rinnovabile (o è uno studio/consulenza in ambito energetico)?', true),
+      // La regola cambia per tecnologia: dirlo come requisito, non nasconderlo
+      // in una nota, perché sbagliarlo fa perdere il contributo.
+      req('notifica', 'Per le tecnologie diverse dal fotovoltaico (idroelettrico, eolico, geotermia, biomassa) la notifica preliminare PRIMA dell’inizio dei lavori resta obbligatoria. Per il fotovoltaico entrato in esercizio dal 1° gennaio 2024 la notifica preliminare è stata abolita', 'Se l’impianto NON è fotovoltaico: la notifica preliminare è stata inoltrata prima dell’inizio dei lavori?', false),
     ],
-    exclusions: [],
-    contribution_description: 'Contributi cantonali secondo il Regolamento FER e i decreti in vigore (importi per kW / impianto). NB: dal 01.01.2024 la notifica preliminare per il fotovoltaico è stata abolita; per le pompe di calore ≥200 kW il formulario va inoltrato entro 2 mesi dalla fattura. Condizioni variabili: da confermare sul decreto attuale.',
-    application_window: 'Secondo i decreti in vigore; per alcuni interventi la domanda può avvenire anche dopo (verificare la tipologia specifica).',
+    exclusions: [exc('calore', 'Interventi sul calore (pompe di calore, isolamento termico, sostituzione del riscaldamento): rientrano nel Programma Edifici, non nel FER', 'L’intervento riguarda il riscaldamento o l’isolamento dell’edificio anziché la produzione di energia elettrica?', 'si')],
+    contribution_description: 'Contributo unico all’investimento (CU-FER) secondo il Regolamento FER (RL 741.260) e i decreti in vigore. Dal 1° gennaio 2026 il RFER prevede inoltre una rimunerazione minima per l’energia immessa in rete dagli impianti fotovoltaici incentivati (4.0 ct./kWh sotto i 30 kW; 5.0 ct./kWh fra 30 e 150 kW senza autoconsumo; fra 30 e 150 kW con autoconsumo il valore segue il prezzo medio di mercato trimestrale) e la possibilità di aderire a una Comunità locale di energia (CLE). Gli importi del contributo variano per potenza e tecnologia: verificare il decreto in vigore.',
+    application_window: 'Fotovoltaico dal 1° gennaio 2024: nessuna notifica preliminare, domanda dopo la messa in esercizio. Altre tecnologie: notifica preliminare obbligatoria prima dell’inizio dei lavori.',
     must_apply_before_start: false,
-    must_apply_before_start_text: 'Le regole variano per tipologia: per diversi interventi (incl. FV dal 2024) non è più richiesta la domanda preventiva; verificare il decreto per il proprio caso.',
-    documents_required: ['Formulario cantonale', 'Preventivi / fattura', 'Documentazione tecnica dell’impianto'],
-    official_source_url: 'https://www4.ti.ch/dfe/dr/ue/politica-energetica/incentivi',
-    source_title: 'Ticino — Incentivi energetici / Fondo energie rinnovabili (FER)',
-    last_checked_at: CHECKED, data_status: 'recheck',
+    must_apply_before_start_text: 'Dipende dalla tecnologia: per il fotovoltaico dal 2024 non serve più la notifica preliminare; per idroelettrico, eolico, geotermia e biomassa resta obbligatoria prima dell’inizio dei lavori.',
+    documents_required: ['Formulario FER (sportello online)', 'Fattura finale e documentazione tecnica dell’impianto', 'Notifica preliminare, per le tecnologie che la richiedono'],
+    official_source_url: 'https://www4.ti.ch/generale/fer/fondo-energie-rinnovabili-fer',
+    source_title: 'Ticino — Fondo per le energie rinnovabili (FER), Regolamento RFER RL 741.260, modifiche in vigore dal 1° gennaio 2026',
+    last_checked_at: CHECKED, data_status: 'verified',
   },
   {
     id: 'ti-lrilocc',
@@ -161,18 +175,29 @@ const PROGRAMS = [
     project_types: ['assunzioni'],
     requirements: [
       req('urc', 'Assunzione di una persona disoccupata iscritta al servizio pubblico di collocamento (URC)', 'La persona da assumere è iscritta a un URC (servizio pubblico di collocamento)?', true),
-      req('rate', 'Tasso di disoccupazione dell’anno precedente ≥ tasso di riferimento fissato dal Consiglio di Stato', 'Il contesto rientra nei criteri (tasso di disoccupazione di riferimento) fissati dal Cantone?', false),
+      // La condizione sul tasso NON è più un requisito da porre all'utente:
+      // non riguarda la sua azienda e non può conoscerla. È una condizione di
+      // sistema, e vive in `availability` (0011).
       req('nolayoff', 'Nessun licenziamento/soppressione di posti per motivi economici nei 12 mesi precedenti; rispetto dei CCL', 'L’azienda non ha operato licenziamenti economici negli ultimi 12 mesi e rispetta i CCL/CNL?', true),
+      req('durata', 'Il rapporto di lavoro deve durare almeno il doppio del periodo sussidiato: l’aiuto viene erogato solo a quel punto', 'Il rapporto di lavoro è previsto per una durata pari ad almeno il doppio del periodo sussidiato?', false),
     ],
-    exclusions: [exc('replace', 'Sostituzione di personale licenziato per creare il posto sussidiato', 'Il posto sostituisce personale licenziato di recente?', 'si')],
-    contribution_description: 'Aiuto finanziario pari al 100% degli oneri sociali a carico del datore (AVS/AI/IPG/AD/LPP obbligatoria), per la durata effettiva del rapporto, al massimo 12 mesi. Erogato dopo che il rapporto è durato almeno il doppio del periodo sussidiato.',
+    exclusions: [
+      exc('replace', 'Sostituzione di personale licenziato per creare il posto sussidiato', 'Il posto sostituisce personale licenziato di recente?', 'si'),
+      exc('lavoro-ridotto', 'Aziende in periodo di lavoro ridotto', 'L’azienda è attualmente in regime di lavoro ridotto?', 'si'),
+    ],
+    contribution_description: 'Aiuto finanziario pari al 100% degli oneri sociali a carico del datore (AVS/AI/IPG/AD/LPP obbligatoria), calcolato al massimo sul guadagno assicurato massimo LADI, per la durata effettiva del rapporto e al massimo 12 mesi. Erogato dopo che il rapporto è durato almeno il doppio del periodo sussidiato.',
     application_window: 'Prima dell’inizio del rapporto di lavoro.',
     must_apply_before_start: true,
     must_apply_before_start_text: 'La richiesta va inoltrata PRIMA dell’assunzione: contratti già iniziati non sono incentivabili.',
     documents_required: ['Formulario di richiesta', 'Bozza del contratto di lavoro', 'Profilo del candidato / iscrizione URC'],
-    official_source_url: 'https://www4.ti.ch/dfe/de/sdl/servizio-aziende-urc/',
-    source_title: 'Ticino — Servizio aziende URC / L-Rilocc (857.100)',
-    last_checked_at: CHECKED, data_status: 'recheck',
+    official_source_url: 'https://m3.ti.ch/CAN/RLeggi/public/index.php/raccolta-leggi/legge/num/576',
+    source_title: 'Ticino — Legge sul rilancio dell’occupazione e sul sostegno ai disoccupati (L-rilocc, RL 857.100), art. 3',
+    last_checked_at: CHECKED, data_status: 'verified',
+    // 0011 — esiste ed è documentato, ma oggi non è concedibile.
+    availability: 'suspended',
+    availability_note: 'L’art. 3 L-rilocc subordina la misura a un tasso di disoccupazione medio dell’anno civile precedente pari almeno al tasso di riferimento fissato dal Consiglio di Stato, con massimale del 4%. Il tasso ticinese è sotto tale soglia, quindi l’incentivo non viene concesso. Tornerà disponibile se la disoccupazione risalirà: vale la pena riverificarlo a inizio anno.',
+    availability_source_url: 'https://www4.ti.ch/dfe/de/sdl/personein-cerca-dimpiego/panoramica-delle-misure-di-sostegno',
+    availability_checked_at: CHECKED,
   },
 ];
 
@@ -182,8 +207,18 @@ const WRITE = process.argv.includes('--write');
 
 console.log(`\nCatalogo programmi (${PROGRAMS.length}) — ${WRITE ? 'SCRITTURA' : 'ANTEPRIMA (dry-run)'}\n`);
 for (const p of PROGRAMS) {
-  console.log(`  [${p.data_status.toUpperCase().padEnd(8)}] ${p.id.padEnd(18)} ${p.name}`);
+  const susp = p.availability === 'suspended' ? '  ⚠ SOSPESO' : '';
+  console.log(`  [${p.data_status.toUpperCase().padEnd(8)}] ${p.id.padEnd(18)} ${p.name}${susp}`);
   console.log(`             ${p.requirements.length} requisiti · ${p.exclusions.length} esclusioni · ${p.official_source_url}`);
+  if (susp) console.log(`             ${p.availability_note.slice(0, 100)}…`);
+}
+
+// Un programma dichiarato sospeso senza motivo non è verificabile: meglio
+// fermarsi che scrivere uno stato che l'utente non può controllare.
+const badSuspended = PROGRAMS.filter((p) => p.availability === 'suspended' && !(p.availability_note && p.availability_source_url));
+if (badSuspended.length) {
+  console.error(`\nSospensione senza motivo o senza fonte: ${badSuspended.map((p) => p.id).join(', ')}\n`);
+  process.exit(2);
 }
 
 if (!WRITE) { console.log('\n(dry-run — rilancia con --write per scrivere sul DB)\n'); process.exit(0); }
@@ -199,6 +234,13 @@ for (const p of PROGRAMS) {
     must_apply_before_start: p.must_apply_before_start, must_apply_before_start_text: p.must_apply_before_start_text,
     documents_required: p.documents_required, official_source_url: p.official_source_url,
     source_title: p.source_title, last_checked_at: p.last_checked_at, data_status: p.data_status, active: true,
+    // 0011 — disponibilità: i programmi senza dichiarazione esplicita sono
+    // 'available', e i campi di sospensione vengono azzerati, così un programma
+    // che torna disponibile non conserva la vecchia motivazione.
+    availability: p.availability ?? 'available',
+    availability_note: p.availability_note ?? null,
+    availability_source_url: p.availability_source_url ?? null,
+    availability_checked_at: p.availability_checked_at ?? null,
   };
   const { error } = await admin.from('subsidy_programs').upsert(row, { onConflict: 'id' });
   if (error) { fail++; console.log(`  ✗ ${p.id}: ${error.message}`); } else { ok++; }

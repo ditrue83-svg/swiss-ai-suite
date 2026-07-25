@@ -65,6 +65,13 @@ function toProgram(row: Row): ProgramModel {
     sourceTitle: row.source_title ?? '',
     lastCheckedAt: row.last_checked_at,
     dataStatus: (row.data_status as ProgramModel['dataStatus']) || 'verified',
+    // 0011 — solo il valore esplicito 'suspended' sospende. Un valore
+    // sconosciuto (schema più recente del codice) non deve far sparire un
+    // programma né dichiararlo indisponibile senza saperlo.
+    availability: row.availability === 'suspended' ? 'suspended' : 'available',
+    availabilityNote: row.availability_note ?? null,
+    availabilitySourceUrl: row.availability_source_url ?? null,
+    availabilityCheckedAt: row.availability_checked_at ?? null,
   };
 }
 

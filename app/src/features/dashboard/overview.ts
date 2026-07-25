@@ -73,7 +73,10 @@ export function collectPriorities({ tasks, analyses, matches }: OverviewInput): 
   });
 
   // 4) incentivi con domanda da presentare prima di iniziare
-  matches.filter((m) => m.program.mustApplyBeforeStart).slice(0, 3).forEach((m) => {
+  // 0011 — esclusi i sospesi: «Priorità di oggi» invita ad agire subito, e un
+  // programma che oggi non viene concesso non è un'azione da fare. Resta
+  // visibile in Subsidy AI, dove il motivo della sospensione è dichiarato.
+  matches.filter((m) => m.program.mustApplyBeforeStart && m.program.availability !== 'suspended').slice(0, 3).forEach((m) => {
     items.push({
       priority: 'media', icon: 'banknote', order: 40,
       title: m.program.name,

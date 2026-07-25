@@ -46,6 +46,11 @@ export function computeRelevance(profile: MatchProfile, prog: ProgramModel): Rel
 
 export interface Priority { level: 'alta' | 'media' | 'bassa'; reason: string }
 export function priorityOf(rel: number, prog: ProgramModel): Priority {
+  // 0011 — un programma sospeso non è urgente per definizione: oggi non viene
+  // concesso, quindi non ha senso spingere l'imprenditore ad agire subito.
+  // La rilevanza resta quella calcolata: il programma è comunque pertinente e
+  // può tornare disponibile.
+  if (prog.availability === 'suspended') return { level: 'bassa', reason: 'Attualmente sospeso: non viene concesso' };
   if (prog.mustApplyBeforeStart && rel >= 65) return { level: 'alta', reason: 'Rilevante e con domanda da presentare prima di iniziare' };
   if (rel >= 60) return { level: 'media', reason: 'Programma rilevante da approfondire' };
   return { level: 'bassa', reason: 'Rilevanza moderata' };
@@ -79,7 +84,14 @@ export function matchPrograms(profile: MatchProfile, programs: ProgramModel[]): 
       priority: priorityOf(rel.score, prog),
     });
   }
-  return out.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  // Ordine: prima i programmi concedibili, poi per rilevanza. I sospesi restano
+  // in lista — esistono e potrebbero tornare — ma in fondo: mostrarne uno in
+  // cima con il punteggio più alto suggerirebbe di partire da lì.
+  return out.sort((a, b) => {
+    const aSusp = a.program.availability === 'suspended' ? 1 : 0;
+    const bSusp = b.program.availability === 'suspended' ? 1 : 0;
+    return aSusp - bSusp || b.relevanceScore - a.relevanceScore;
+  });
 }
 
 // ---- Idoneità ---------------------------------------------------------------

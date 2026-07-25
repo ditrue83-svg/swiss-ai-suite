@@ -17,7 +17,13 @@ const PROJECT_TYPES = ['innovazione', 'energia', 'digitalizzazione', 'formazione
 const SECTORS = ['industria', 'costruzioni', 'commercio', 'servizi', 'ict', 'turismo', 'sanita', 'trasporti'];
 const SUPPORT_TYPES = ['grant', 'tax_relief', 'guarantee', 'loan', 'reimbursement', 'advisory', 'other'];
 const DATA_STATUS = ['verified', 'recheck', 'demo'];
+const AVAILABILITY = ['available', 'suspended'];
 const ANSWERS = ['si', 'no'];
+
+// La sospensione dipende da condizioni che cambiano su base ANNUALE (per
+// L-Rilocc, il tasso di disoccupazione dell'anno precedente): va ricontrollata
+// molto più spesso del contenuto del programma, che può restare valido a lungo.
+const AVAILABILITY_STALE_DAYS = 120;
 
 const staleArg = process.argv.find((a) => a.startsWith('--stale-days='));
 const STALE_DAYS = staleArg ? Math.max(1, parseInt(staleArg.split('=')[1], 10) || 180) : 180;
@@ -57,6 +63,16 @@ function lint(p) {
 
   need(typeof p.must_apply_before_start === 'boolean', 'must_apply_before_start non booleano');
 
+  // 0011 — disponibilità. Una sospensione senza motivo o senza fonte non è
+  // verificabile dall'utente: vale come errore di integrità, non come nota.
+  need(AVAILABILITY.includes(p.availability), `availability non valida: ${p.availability}`);
+  if (p.availability === 'suspended') {
+    need(isStr(p.availability_note), 'programma sospeso senza availability_note: il motivo va dichiarato');
+    need(isStr(p.availability_source_url) && /^https?:\/\//.test(p.availability_source_url),
+      'programma sospeso senza fonte verificabile (availability_source_url)');
+    need(isStr(p.availability_checked_at), 'programma sospeso senza availability_checked_at');
+  }
+
   const reqIds = new Set();
   need(isArr(p.requirements), 'requirements non è un array');
   if (isArr(p.requirements)) for (const [i, r] of p.requirements.entries()) {
@@ -88,6 +104,7 @@ const run = async () => {
   const warnings = [];
   const byStatus = { verified: 0, recheck: 0, demo: 0, other: 0 };
   let activeCount = 0;
+  let suspendedCount = 0;
 
   for (const p of rows) {
     byStatus[DATA_STATUS.includes(p.data_status) ? p.data_status : 'other']++;
@@ -105,8 +122,19 @@ const run = async () => {
       warnings.push(`${p.id}: must_apply_before_start=true ma manca must_apply_before_start_text`);
     if (p.active === false) warnings.push(`${p.id}: NON attivo (nascosto agli utenti)`);
 
+    // 0011 — un programma sospeso non è un errore: è un fatto da tenere sotto
+    // controllo, perché dipende da una condizione che cambia ogni anno.
+    if (p.availability === 'suspended') {
+      suspendedCount++;
+      const availAge = isStr(p.availability_checked_at) ? daysBetween(p.availability_checked_at, today) : null;
+      warnings.push(`${p.id}: SOSPESO — non concedibile (stato verificato ${availAge == null ? 'mai' : `${availAge}g fa`})`);
+      if (availAge == null || availAge > AVAILABILITY_STALE_DAYS)
+        toRecheck.push(`${p.id} (stato di sospensione da riverificare: ${availAge == null ? 'mai controllato' : `${availAge}g > ${AVAILABILITY_STALE_DAYS}g`})`);
+    }
+
+    const suspTag = p.availability === 'suspended' ? ' ⚠ SOSPESO' : '';
     const flag = errs.length ? '✗ ERRORI' : stale ? '· da ricontrollare' : '✓ ok';
-    console.log(`  [${String(p.data_status).padEnd(8)}] ${String(p.id).padEnd(18)} chk ${String(p.last_checked_at ?? '—').padEnd(10)} (${ageTxt.padStart(4)})  ${flag}`);
+    console.log(`  [${String(p.data_status).padEnd(8)}] ${String(p.id).padEnd(18)} chk ${String(p.last_checked_at ?? '—').padEnd(10)} (${ageTxt.padStart(4)})  ${flag}${suspTag}`);
     for (const e of errs) { console.log(`             ✗ ${e}`); integrityIssues.push(`${p.id}: ${e}`); }
     if (stale && !errs.length) toRecheck.push(`${p.id} (${reason})`);
   }
@@ -114,6 +142,7 @@ const run = async () => {
   console.log('\n— Riepilogo —');
   console.log(`  Programmi: ${rows.length}  (verified ${byStatus.verified} · recheck ${byStatus.recheck} · demo ${byStatus.demo}${byStatus.other ? ` · altro ${byStatus.other}` : ''})`);
   console.log(`  Attivi: ${activeCount}/${rows.length}`);
+  console.log(`  Concedibili: ${rows.length - suspendedCount}/${rows.length}${suspendedCount ? `  (${suspendedCount} sospesi)` : ''}`);
   console.log(`  Errori di integrità: ${integrityIssues.length}`);
   console.log(`  Da ricontrollare (freschezza): ${toRecheck.length}`);
 

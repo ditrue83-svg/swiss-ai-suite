@@ -79,6 +79,16 @@ export interface ProgramModel {
   sourceTitle: string;
   lastCheckedAt: string | null;
   dataStatus: 'verified' | 'recheck' | 'demo';
+  // 0011 — un programma può essere documentato e corretto e comunque non
+  // essere ottenibile oggi, perché la legge lo subordina a una condizione che
+  // non ricorre. Tre informazioni diverse: `active` (lo mostriamo?),
+  // `dataStatus` (quanto è affidabile il dato?), `availability` (è concedibile?).
+  availability: 'available' | 'suspended';
+  /** Perché non è concedibile. Presente quando availability = 'suspended'. */
+  availabilityNote: string | null;
+  /** Fonte che attesta lo stato: senza, «sospeso» non sarebbe verificabile. */
+  availabilitySourceUrl: string | null;
+  availabilityCheckedAt: string | null;
 }
 
 export const DATA_STATUS_LABEL: Record<ProgramModel['dataStatus'], { label: string; cls: string }> = {

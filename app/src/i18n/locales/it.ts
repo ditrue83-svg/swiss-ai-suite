@@ -386,7 +386,7 @@ export const it = {
   subsidy: {
     title: 'Swiss Subsidy AI',
     intro: 'Profilo aziendale → programmi rilevanti → verifica di idoneità → pratica. Rilevanza e idoneità sono due cose distinte. Copertura: Confederazione + Cantone Ticino.',
-    footnote: '**Programmi verificati sulle fonti ufficiali** (con data di revisione). Alcuni dati cantonali sono marcati «da riverificare» perché variano per decreto. La «Rilevanza» misura la pertinenza al progetto, non la probabilità di ottenere il contributo; l’«Idoneità» è una stima basata sulle tue risposte e non sostituisce la valutazione dell’ente. Importi, requisiti e scadenze vanno sempre confermati sulla fonte ufficiale.',
+    footnote: '**Programmi verificati sulle fonti ufficiali** (con data di revisione). Un programma può risultare «attualmente sospeso»: esiste, ma per legge oggi non viene concesso. La «Rilevanza» misura la pertinenza al progetto, non la probabilità di ottenere il contributo; l’«Idoneità» è una stima basata sulle tue risposte e non sostituisce la valutazione dell’ente. Importi, requisiti e scadenze vanno sempre confermati sulla fonte ufficiale.',
     tabProfile: '1 · Profilo impresa',
     tabResults: '2 · Incentivi rilevanti',
     tabCases: '3 · Le mie pratiche',
@@ -423,6 +423,7 @@ export const it = {
     results: {
       relevance: 'Rilevanza',
       eligibilityToVerify: 'Idoneità: da verificare',
+      suspended: 'Attualmente sospeso',
       applyBeforeStart: 'Domanda prima di iniziare',
       requirementsToVerify: '{n} requisiti da verificare',
       priority: 'Priorità {level}',
@@ -478,6 +479,10 @@ export const it = {
       saveReference: 'Salva per riferimento',
       restart: 'Ricomincia verifica',
       mustApplyBeforeStart: 'La domanda va presentata prima di avviare il progetto/acquisto.',
+      suspendedTitle: 'Incentivo attualmente sospeso.',
+      suspendedGeneric: 'Il programma esiste ma al momento non viene concesso.',
+      suspendedSource: 'Verifica sulla fonte ufficiale',
+      suspendedChecked: 'stato verificato il',
       stateSatisfied: 'soddisfatto',
       stateFailed: 'non soddisfatto',
       stateToVerify: 'da verificare',

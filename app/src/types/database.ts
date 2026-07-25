@@ -204,25 +204,15 @@ export interface Database {
           must_apply_before_start: boolean; must_apply_before_start_text: string | null; documents_required: string[];
           official_source_url: string; source_title: string | null; last_checked_at: string | null;
           data_status: string; active: boolean; created_at: string; updated_at: string;
+          // 0011 — disponibilità: distinta da `active` (che nasconde il programma)
+          // e da `data_status` (che riguarda l'affidabilità del dato).
+          availability: string; availability_note: string | null;
+          availability_source_url: string | null; availability_checked_at: string | null;
         };
-        Insert: {
-          id: string; name: string; authority: string; support_type?: string;
-          geography?: string[]; target_sectors?: string[]; company_size_min?: number; company_size_max?: number;
-          project_types?: string[]; requirements?: Json; exclusions?: Json;
-          contribution_description?: string | null; application_window?: string | null;
-          must_apply_before_start?: boolean; must_apply_before_start_text?: string | null; documents_required?: string[];
-          official_source_url: string; source_title?: string | null; last_checked_at?: string | null;
-          data_status?: string; active?: boolean;
-        };
-        Update: {
-          name?: string; authority?: string; support_type?: string;
-          geography?: string[]; target_sectors?: string[]; company_size_min?: number; company_size_max?: number;
-          project_types?: string[]; requirements?: Json; exclusions?: Json;
-          contribution_description?: string | null; application_window?: string | null;
-          must_apply_before_start?: boolean; must_apply_before_start_text?: string | null; documents_required?: string[];
-          official_source_url?: string; source_title?: string | null; last_checked_at?: string | null;
-          data_status?: string; active?: boolean;
-        };
+        // Catalogo condiviso: la 0007 concede al client la sola `select`. Lo
+        // scrive il seed con service_role (scripts/seed-subsidy-programs.mjs).
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
         Relationships: [];
       };
     };

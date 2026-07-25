@@ -378,7 +378,7 @@ export const fr: Dictionary = {
   subsidy: {
     title: 'Swiss Subsidy AI',
     intro: 'Profil de l’entreprise → programmes pertinents → vérification de l’éligibilité → dossier. Pertinence et éligibilité sont deux choses distinctes. Couverture : Confédération + canton du Tessin.',
-    footnote: 'Programmes vérifiés aux sources officielles (avec date de révision). Certaines données cantonales sont marquées « à revérifier » car elles varient par décret. La « Pertinence » mesure l’adéquation au projet, non la probabilité d’obtenir la contribution ; l’« Éligibilité » est une estimation fondée sur vos réponses et ne remplace pas l’appréciation de l’organisme. Montants, conditions et délais doivent toujours être confirmés à la source officielle.',
+    footnote: 'Programmes vérifiés aux sources officielles (avec date de révision). Un programme peut être « actuellement suspendu » : il existe, mais la loi ne permet pas de l’octroyer aujourd’hui. La « Pertinence » mesure l’adéquation au projet, non la probabilité d’obtenir la contribution ; l’« Éligibilité » est une estimation fondée sur vos réponses et ne remplace pas l’appréciation de l’organisme. Montants, conditions et délais doivent toujours être confirmés à la source officielle.',
     tabProfile: '1 · Profil de l’entreprise',
     tabResults: '2 · Subventions pertinentes',
     tabCases: '3 · Mes dossiers',
@@ -415,6 +415,7 @@ export const fr: Dictionary = {
     results: {
       relevance: 'Pertinence',
       eligibilityToVerify: 'Éligibilité : à vérifier',
+      suspended: 'Actuellement suspendu',
       applyBeforeStart: 'Demande avant le début',
       requirementsToVerify: '{n} conditions à vérifier',
       priority: 'Priorité {level}',
@@ -470,6 +471,10 @@ export const fr: Dictionary = {
       saveReference: 'Enregistrer pour référence',
       restart: 'Recommencer la vérification',
       mustApplyBeforeStart: 'La demande doit être déposée avant de commencer le projet ou l’achat.',
+      suspendedTitle: 'Incitation actuellement suspendue.',
+      suspendedGeneric: 'Le programme existe mais n’est pas octroyé actuellement.',
+      suspendedSource: 'Vérifier sur la source officielle',
+      suspendedChecked: 'statut vérifié le',
       stateSatisfied: 'remplie',
       stateFailed: 'non remplie',
       stateToVerify: 'à vérifier',

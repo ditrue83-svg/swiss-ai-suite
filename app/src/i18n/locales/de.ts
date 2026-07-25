@@ -379,7 +379,7 @@ export const de: Dictionary = {
   subsidy: {
     title: 'Swiss Subsidy AI',
     intro: 'Unternehmensprofil → relevante Programme → Prüfung der Anspruchsberechtigung → Dossier. Relevanz und Anspruchsberechtigung sind zwei verschiedene Dinge. Abdeckung: Bund + Kanton Tessin.',
-    footnote: 'Programme an den offiziellen Quellen geprüft (mit Datum der Überprüfung). Einzelne kantonale Angaben sind als «erneut zu prüfen» markiert, weil sie durch Dekret ändern. Die «Relevanz» misst die Passung zum Vorhaben, nicht die Wahrscheinlichkeit, den Beitrag zu erhalten; die «Anspruchsberechtigung» ist eine Einschätzung auf Basis Ihrer Antworten und ersetzt die Beurteilung der Stelle nicht. Beträge, Anforderungen und Fristen sind stets an der offiziellen Quelle zu bestätigen.',
+    footnote: 'Programme an den offiziellen Quellen geprüft (mit Datum der Überprüfung). Ein Programm kann als «zurzeit ausgesetzt» erscheinen: Es besteht, wird aber gesetzlich zurzeit nicht gewährt. Die «Relevanz» misst die Passung zum Vorhaben, nicht die Wahrscheinlichkeit, den Beitrag zu erhalten; die «Anspruchsberechtigung» ist eine Einschätzung auf Basis Ihrer Antworten und ersetzt die Beurteilung der Stelle nicht. Beträge, Anforderungen und Fristen sind stets an der offiziellen Quelle zu bestätigen.',
     tabProfile: '1 · Unternehmensprofil',
     tabResults: '2 · Relevante Fördermittel',
     tabCases: '3 · Meine Dossiers',
@@ -416,6 +416,7 @@ export const de: Dictionary = {
     results: {
       relevance: 'Relevanz',
       eligibilityToVerify: 'Anspruch: zu prüfen',
+      suspended: 'Zurzeit ausgesetzt',
       applyBeforeStart: 'Gesuch vor Beginn',
       requirementsToVerify: '{n} zu prüfende Anforderungen',
       priority: 'Priorität {level}',
@@ -471,6 +472,10 @@ export const de: Dictionary = {
       saveReference: 'Als Referenz speichern',
       restart: 'Prüfung neu starten',
       mustApplyBeforeStart: 'Das Gesuch muss vor Beginn des Vorhabens bzw. vor dem Kauf eingereicht werden.',
+      suspendedTitle: 'Förderung zurzeit ausgesetzt.',
+      suspendedGeneric: 'Das Programm besteht, wird aber derzeit nicht gewährt.',
+      suspendedSource: 'Auf der offiziellen Quelle prüfen',
+      suspendedChecked: 'Status geprüft am',
       stateSatisfied: 'erfüllt',
       stateFailed: 'nicht erfüllt',
       stateToVerify: 'zu prüfen',

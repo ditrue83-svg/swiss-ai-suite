@@ -365,6 +365,31 @@ contiene.
 Verificato da `npm run test:phase2`, che tenta davvero l'`update`, il `delete` e la scrittura del
 testo estratto come membro autenticato, e controlla che lo snapshot resti intatto.
 
+### Programmi sospesi: esistono ma non sono ottenibili (0011)
+
+Un incentivo può essere documentato, corretto in ogni dettaglio e ciononostante **non concedibile**,
+perché la legge lo subordina a una condizione che oggi non ricorre. È il caso dell'incentivo
+ticinese all'assunzione di disoccupati (L-rilocc, RL 857.100): l'art. 3 lo attiva solo se il tasso
+di disoccupazione medio dell'anno precedente raggiunge il riferimento fissato dal Consiglio di
+Stato, con massimale del 4%. Il tasso ticinese è sotto quella soglia.
+
+Il catalogo aveva solo `active` (mostrarlo o no) e `data_status` (quanto è affidabile il dato):
+nessuno dei due esprime «esiste ma non si ottiene». Spegnere `active` lo fa sparire — e l'utente non
+sa che esiste né che può tornare; lasciarlo attivo lo presenta come disponibile, che è falso. Da qui
+una terza informazione:
+
+| Campo | Domanda a cui risponde |
+|---|---|
+| `active` | lo mostriamo? |
+| `data_status` | quanto è affidabile il dato? |
+| `availability` | è concedibile **oggi**? |
+
+Un programma sospeso resta visibile con il motivo e la fonte che lo attesta, ma non compare fra le
+«Priorità di oggi», non è conteggiato fra le idoneità da verificare, ha priorità bassa e viene
+ordinato in fondo ai risultati. `npm run subsidy:health` tratta una sospensione **senza motivo o
+senza fonte** come errore di integrità, e ne richiede la riverifica ogni 120 giorni, perché dipende
+da una statistica annuale.
+
 ### Modalità `deterministic`: lo snapshot non è probatorio
 
 In modalità `ai` — il default, e ciò che gira in produzione — l'analisi è prodotta e persistita
@@ -408,8 +433,12 @@ usa la modalità AI; chi sceglie il motore locale sta scegliendo riservatezza, e
   sola per documento). È voluto, ma lo storico cresce e prima o poi va deciso per quanto conservarlo.
 - **Registro IDI (Zefix)**: implementato, ma richiede credenziali API rilasciate su richiesta
   (`zefix@bj.admin.ch`); senza `ZEFIX_AUTH` l'onboarding resta manuale e lo dichiara.
-- **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali; 3 cantonali marcati `recheck`
-  perché variano per decreto. Copertura Confederazione + Ticino, non 26 Cantoni.
+- **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali (0 in stato `recheck`), di cui
+  **1 sospeso** — vedi sotto. Copertura Confederazione + Ticino, non 26 Cantoni.
+- **Contenuti del catalogo solo in italiano**: l'interfaccia è tradotta, ma i testi dei programmi
+  (requisiti, descrizione del contributo, finestra di domanda) sono mostrati in italiano anche in
+  tedesco e francese, perché vivono nel database e non nei dizionari. Si nota subito con un utente
+  germanofono o romando.
 - **Traduzioni non riviste da madrelingua**: l'interfaccia è completa in italiano, tedesco e francese
   (`npm run i18n:coverage` → 0 stringhe mancanti) e i dizionari sono garantiti dal compilatore, ma i
   testi sono stati redatti internamente. Prima del lancio è consigliata una rilettura professionale,

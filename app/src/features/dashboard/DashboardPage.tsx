@@ -43,6 +43,9 @@ function DashboardBody({ data }: { data: OverviewData }) {
   const overdue7 = next7.filter((t) => (daysUntil(t.dueDate) ?? 0) < 0).length;
   const toVerify = analyses.filter((a) => a.confidence !== 'alta' || a.senderUncertain);
   const relevantCount = matches.length;
+  // 0011 — «idoneità da verificare» conta solo ciò che si può davvero ottenere:
+  // per un programma sospeso non c'è nessuna idoneità da verificare.
+  const verifiableCount = matches.filter((m) => m.program.availability !== 'suspended').length;
   const activeCases = activeCasesCount(cases);
 
   let totChecks = 0, doneChecks = 0;
@@ -133,17 +136,25 @@ function DashboardBody({ data }: { data: OverviewData }) {
         <div className="card mt-16"><div className="card-title">Incentivi &amp; pratiche</div>
           <div className="dash-inc-stats">
             <span className="lang-chip">{relevantCount} <b>rilevanti</b></span>
-            <span className="lang-chip">{relevantCount} <b>idoneità da verificare</b></span>
+            <span className="lang-chip">{verifiableCount} <b>idoneità da verificare</b></span>
             <span className="lang-chip">{activeCases} <b>pratiche attive</b></span>
           </div>
-          {matches.slice(0, 3).map((m) => (
-            <div className="list-row" key={m.program.id}>
-              <div className="list-main"><div className="list-title">{m.program.name}</div><div className="list-sub">{m.program.authority}</div></div>
-              {m.program.mustApplyBeforeStart && <span className="badge badge-alta">prima di agire</span>}
-              <span className="badge badge-neutral">Rilevanza {m.relevanceScore}%</span>
-              <span className="badge badge-media">Idoneità da verificare</span>
-            </div>
-          ))}
+          {matches.slice(0, 3).map((m) => {
+            // 0011 — su un programma sospeso non si mostra né «prima di agire»
+            // né «idoneità da verificare»: sarebbero due inviti ad agire su
+            // qualcosa che oggi non viene concesso.
+            const suspended = m.program.availability === 'suspended';
+            return (
+              <div className="list-row" key={m.program.id}>
+                <div className="list-main"><div className="list-title">{m.program.name}</div><div className="list-sub">{m.program.authority}</div></div>
+                {!suspended && m.program.mustApplyBeforeStart && <span className="badge badge-alta">prima di agire</span>}
+                <span className="badge badge-neutral">Rilevanza {m.relevanceScore}%</span>
+                {suspended
+                  ? <span className="badge badge-alta">{t('subsidy.results.suspended')}</span>
+                  : <span className="badge badge-media">Idoneità da verificare</span>}
+              </div>
+            );
+          })}
           <Link className="btn btn-sm mt-10" to="/subsidy">{t('dashboard.allSubsidies')} <Icon name="arrowRight" className="ic-sm" /></Link>
         </div>
       )}
