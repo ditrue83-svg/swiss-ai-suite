@@ -39,7 +39,7 @@ export function InterpretationPanel({ interpretation, showTimingWarning }: {
           <Icon name="alert" />
           <span>
             Dalla descrizione il progetto sembra <strong>già avviato</strong>
-            {timing.evidence?.verified ? <> («{timing.evidence.quote}»)</> : null}: alcuni programmi qui sotto
+            {timing.evidence?.verified ? <> («{timing.evidence.quote}»)</> : null}: diversi programmi di incentivo
             richiedono la <strong>domanda prima di iniziare</strong>. Verifica sulla fonte ufficiale se sei ancora in tempo.
           </span>
         </div>

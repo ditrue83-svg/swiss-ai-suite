@@ -1,6 +1,6 @@
 // Onboarding primo accesso: crea azienda + membership owner + profilo azienda.
-import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { companyService } from '@/services/companyService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,8 +10,21 @@ import { CANTONI, FORME_GIURIDICHE, SETTORI, FASCE_FATTURATO } from '@/features/
 
 export function OnboardingPage() {
   const navigate = useNavigate();
-  const { refresh, setActiveCompany } = useCompany();
-  const { signOut } = useAuth();
+  const { hasCompany, loading, refresh, setActiveCompany } = useCompany();
+  const { session, signOut } = useAuth();
+  const recoveryTried = useRef(false);
+
+  // Recupero: se c'è una sessione ma nessuna azienda risulta caricata, ritenta
+  // UNA volta il fetch delle membership. Difende dal caso in cui il primo
+  // caricamento sia tornato a vuoto (es. transiente): un utente che ha già
+  // un'azienda non deve restare bloccato sull'onboarding. Un utente realmente
+  // nuovo ottiene comunque lista vuota e resta qui (nessun effetto collaterale).
+  useEffect(() => {
+    if (session && !hasCompany && !loading && !recoveryTried.current) {
+      recoveryTried.current = true;
+      void refresh();
+    }
+  }, [session, hasCompany, loading, refresh]);
 
   const [legalName, setLegalName] = useState('');
   const [uidChe, setUidChe] = useState('');
@@ -50,6 +63,10 @@ export function OnboardingPage() {
       setSubmitting(false);
     }
   }
+
+  // L'onboarding non va mai mostrato a chi ha già un'azienda: torna all'app
+  // (es. dopo che il recupero qui sopra ha ricaricato le membership).
+  if (hasCompany) return <Navigate to="/" replace />;
 
   return (
     <div className="centered-screen">
