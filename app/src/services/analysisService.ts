@@ -149,6 +149,47 @@ export interface AnalyzeInput {
   /** testo estratto lato client; null → il server fa l'OCR (solo modalità AI). */
   extraction: ClientExtraction | null;
   companyName: string | null;
+  /** §25 — avanzamento leggibile per la UI (stati reali, nessuna percentuale finta). */
+  onProgress?: (step: string) => void;
+}
+
+/** §25 — etichette degli stati del documento durante l'elaborazione. */
+const STATUS_STEP: Record<string, string> = {
+  uploaded: 'Documento caricato…',
+  extracting: 'Estrazione del testo…',
+  processing: 'Estrazione del testo…',
+  analyzing: 'Analisi amministrativa…',
+};
+
+/** §26 — attende il completamento dell'elaborazione server-side osservando il DB. */
+const POLL_INTERVAL_MS = 2000;
+const POLL_TIMEOUT_MS = 4 * 60 * 1000;
+
+async function waitForCompletion(documentId: string, onProgress?: (s: string) => void): Promise<string> {
+  const sb = requireSupabase();
+  const started = Date.now();
+  let lastStep = '';
+  for (;;) {
+    const { data } = await sb.from('documents').select('status').eq('id', documentId).maybeSingle();
+    const status = data?.status ?? null;
+
+    if (status === 'failed') {
+      const { data: an } = await sb.from('document_analyses')
+        .select('error_message_safe').eq('document_id', documentId).maybeSingle();
+      throw new AppError(an?.error_message_safe ?? 'Analisi non riuscita. Riprova.');
+    }
+    if (status === 'completed' || status === 'needs_review' || status === 'analyzed') {
+      return status === 'needs_review' ? 'needs_review' : 'completed';
+    }
+
+    const step = STATUS_STEP[status ?? ''] ?? 'Elaborazione in corso…';
+    if (step !== lastStep) { lastStep = step; onProgress?.(step); }
+
+    if (Date.now() - started > POLL_TIMEOUT_MS) {
+      throw new AppError("L'analisi sta impiegando più del previsto. Riapri il documento dall'archivio tra poco.");
+    }
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+  }
 }
 
 export interface AnalyzeOutcome {
@@ -164,7 +205,7 @@ export const analysisService = {
    * 'deterministic' (§60, motore locale esplicito) si esegue e persiste qui. La forma
    * del risultato è identica: la UI non deve distinguere i due percorsi.
    */
-  async analyzeAndPersist({ document, extraction, companyName }: AnalyzeInput): Promise<AnalyzeOutcome> {
+  async analyzeAndPersist({ document, extraction, companyName, onProgress }: AnalyzeInput): Promise<AnalyzeOutcome> {
     const sb = requireSupabase();
 
     if (ANALYSIS_PROVIDER === 'deterministic') {
@@ -186,7 +227,14 @@ export const analysisService = {
     }
 
     // Percorso AI: la Edge Function estrae (o fa OCR), analizza e persiste.
-    const { status } = await invokeAnalyze(document.id, extraction);
+    // §26 — richiesta asincrona: auth/autorizzazione/validazione restano sincrone
+    // (401/403/422/429 arrivano subito), poi si osserva lo stato reale sul DB.
+    // Se il runtime non supporta il background, il server risponde già completo.
+    const invoked = await invokeAnalyze(document.id, extraction, { async: true });
+    const status = invoked.status === 'processing'
+      ? await waitForCompletion(document.id, onProgress)
+      : invoked.status;
+
     const analysis = await analysisService.getForDocument(document.id);
     if (!analysis) throw new AppError("Analisi non disponibile dopo l'elaborazione.");
     // Testo + pagine per il viewer (§31): l'estrazione client se presente, altrimenti quella salvata (OCR).

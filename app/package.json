@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test:phase1": "node --env-file=.env.test scripts/test-phase1.mjs",
     "test:phase2": "node --env-file=.env.test scripts/test-phase2.mjs",
+    "test:async": "node --env-file=.env.test scripts/test-async.mjs",
     "eval:admin": "node --env-file=.env.test --import tsx scripts/eval-admin-ai.ts",
     "eval:subsidy": "node --env-file=.env.test --import tsx scripts/eval-subsidy.ts",
     "subsidy:seed": "node --env-file=.env.test scripts/seed-subsidy-programs.mjs",

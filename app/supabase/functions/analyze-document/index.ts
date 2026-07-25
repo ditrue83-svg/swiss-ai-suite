@@ -81,47 +81,63 @@ Deno.serve(async (req: Request) => {
   const anthropic = new Anthropic({ apiKey });
   const createMessage: CreateMessage = (r) => anthropic.messages.create(r as never) as Promise<ModelMessage>;
 
-  // ---- Estrazione: dal client (testo/PDF nativo) oppure OCR server-side ----
-  const extractStart = Date.now();
-  let extraction: ExtractionResult | null = null;
-  try {
-    const inExtraction = body?.extraction;
-    if (inExtraction && typeof inExtraction.fullText === 'string' && Array.isArray(inExtraction.pages)) {
-      const fullText: string = inExtraction.fullText.slice(0, MAX_CHARS);
-      if (fullText.trim().length < 40) return fail('EMPTY_DOCUMENT', 422);
-      extraction = {
-        fullText,
-        extractionMethod: inExtraction.extractionMethod === 'native_pdf' ? 'native_pdf' : 'text',
-        pages: inExtraction.pages.map((p: { pageNumber?: number; text?: string }, i: number) => ({
-          pageNumber: typeof p.pageNumber === 'number' ? p.pageNumber : i + 1,
-          text: String(p.text ?? '').slice(0, MAX_CHARS),
-        })),
-      };
-    } else {
-      // OCR: scarica il file (autorizzato come l'utente) e usa Claude vision.
-      if (!doc.storage_path) return fail('EXTRACTION_FAILED', 422);
-      if ((doc.file_size ?? 0) > MAX_FILE_BYTES) return fail('FILE_TOO_LARGE', 413);
-      extraction = await ocrExtract(sb, anthropic, doc.storage_path as string, doc.mime_type as string | null);
-      if (!extraction || extraction.fullText.trim().length < 20) return fail('OCR_FAILED', 422);
-    }
-  } catch (e) {
-    await logAiRequest(sb, { companyId, userId, documentId, kind: 'extraction', provider: 'anthropic', model: null, status: 'error', errorCode: 'EXTRACTION_FAILED' });
-    console.error('extraction error:', (e as Error)?.name);
-    return fail('EXTRACTION_FAILED', 422);
+  // ---- Validazione dell'input di estrazione (SEMPRE sincrona) --------------
+  // Ciò che si può respingere subito viene respinto subito, anche in modalità
+  // asincrona: il client non deve scoprire un 422 tramite polling.
+  const inExtraction = body?.extraction;
+  const hasClientExtraction = inExtraction && typeof inExtraction.fullText === 'string' && Array.isArray(inExtraction.pages);
+  let clientExtraction: ExtractionResult | null = null;
+
+  if (hasClientExtraction) {
+    const fullText: string = inExtraction.fullText.slice(0, MAX_CHARS);
+    if (fullText.trim().length < 40) return fail('EMPTY_DOCUMENT', 422);
+    clientExtraction = {
+      fullText,
+      extractionMethod: inExtraction.extractionMethod === 'native_pdf' ? 'native_pdf' : 'text',
+      pages: inExtraction.pages.map((p: { pageNumber?: number; text?: string }, i: number) => ({
+        pageNumber: typeof p.pageNumber === 'number' ? p.pageNumber : i + 1,
+        text: String(p.text ?? '').slice(0, MAX_CHARS),
+      })),
+    };
+  } else {
+    // Percorso OCR: quel che è verificabile senza lavoro AI lo si verifica ora.
+    if (!doc.storage_path) return fail('EXTRACTION_FAILED', 422);
+    if ((doc.file_size ?? 0) > MAX_FILE_BYTES) return fail('FILE_TOO_LARGE', 413);
   }
 
-  // ---- Analisi + persistenza (pipeline condivisa) ----
-  try {
-    const result = await runAnalysisPipeline(sb, createMessage, {
-      documentId, companyId, userId,
-      extraction, extractionDurationMs: Date.now() - extractStart,
-      companyContext, todayIso: new Date().toISOString().slice(0, 10), provider: 'anthropic',
-    });
-    return json({ status: result.status, analysis: result.analysis });
-  } catch (e) {
-    const err = e as Error & { code?: string; status?: number };
-    const code: ErrorCode = (err.code as ErrorCode) ?? (err.status === 429 ? 'RATE_LIMITED' : err.name === 'AbortError' ? 'AI_TIMEOUT' : 'PROVIDER_ERROR');
-    // §27/§53 — documento e file restano; segna il fallimento in modo tracciabile.
+  /** Errore con fase e codice, per distinguere estrazione da analisi. */
+  const phased = (code: ErrorCode, phase: 'extraction' | 'analysis') =>
+    Object.assign(new Error(code), { code, phase });
+
+  /** Il lavoro vero: estrazione (o OCR) + analisi + persistenza. */
+  async function performWork() {
+    const extractStart = Date.now();
+    let extraction: ExtractionResult;
+    try {
+      extraction = clientExtraction ?? await ocrExtract(sb, anthropic, doc!.storage_path as string, doc!.mime_type as string | null);
+      if (!extraction || extraction.fullText.trim().length < 20) throw phased('OCR_FAILED', 'extraction');
+    } catch (e) {
+      const code = ((e as { code?: ErrorCode }).code) ?? 'EXTRACTION_FAILED';
+      await logAiRequest(sb, { companyId, userId, documentId, kind: 'extraction', provider: 'anthropic', model: null, status: 'error', errorCode: code });
+      console.error('extraction error:', (e as Error)?.name);
+      throw phased(code, 'extraction');
+    }
+    try {
+      return await runAnalysisPipeline(sb, createMessage, {
+        documentId, companyId, userId,
+        extraction, extractionDurationMs: Date.now() - extractStart,
+        companyContext, todayIso: new Date().toISOString().slice(0, 10), provider: 'anthropic',
+      });
+    } catch (e) {
+      const err = e as Error & { code?: string; status?: number };
+      const code: ErrorCode = (err.code as ErrorCode) ?? (err.status === 429 ? 'RATE_LIMITED' : err.name === 'AbortError' ? 'AI_TIMEOUT' : 'PROVIDER_ERROR');
+      console.error('analysis error:', err.name, err.message?.slice(0, 120));
+      throw phased(code, 'analysis');
+    }
+  }
+
+  /** §27/§53 — documento e file restano; il fallimento è tracciabile e ri-tentabile. */
+  async function markFailed(code: ErrorCode) {
     await sb.from('documents').update({ status: 'failed' }).eq('id', documentId);
     await sb.from('document_analyses').delete().eq('document_id', documentId);
     await sb.from('document_analyses').insert({
@@ -130,8 +146,39 @@ Deno.serve(async (req: Request) => {
       processing_completed_at: new Date().toISOString(), engine: 'claude-opus-4-8',
     }).select('id').maybeSingle();
     await logAiRequest(sb, { companyId, userId, documentId, kind: 'analysis', provider: 'anthropic', model: 'claude-opus-4-8', status: 'error', errorCode: code });
-    console.error('analysis error:', err.name, err.message?.slice(0, 120));
-    return fail(code, code === 'RATE_LIMITED' ? 429 : code === 'AI_NOT_CONFIGURED' ? 503 : 502);
+  }
+
+  const httpStatusFor = (code: ErrorCode) =>
+    code === 'RATE_LIMITED' ? 429 : code === 'AI_NOT_CONFIGURED' ? 503
+      : code === 'FILE_TOO_LARGE' ? 413
+        : code === 'EXTRACTION_FAILED' || code === 'OCR_FAILED' || code === 'EMPTY_DOCUMENT' ? 422 : 502;
+
+  // ---- §26 · modalità ASINCRONA (opt-in) -----------------------------------
+  // La risposta torna subito; il lavoro prosegue in background sul server e lo
+  // stato viaggia nel DB (documents.status + document_analyses.analysis_status),
+  // che il client osserva. Nessun finto background: se il runtime non offre
+  // waitUntil si resta sul percorso sincrono.
+  const waitUntil = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } })
+    .EdgeRuntime?.waitUntil;
+
+  if (body?.async === true && typeof waitUntil === 'function') {
+    await sb.from('documents').update({ status: clientExtraction ? 'analyzing' : 'extracting' }).eq('id', documentId);
+    waitUntil((async () => {
+      try { await performWork(); }
+      catch (e) { await markFailed(((e as { code?: ErrorCode }).code) ?? 'UNKNOWN_ERROR'); }
+    })());
+    return json({ status: 'processing', documentId }, 202);
+  }
+
+  // ---- Modalità SINCRONA (comportamento storico, invariato) ----------------
+  try {
+    const result = await performWork();
+    return json({ status: result.status, analysis: result.analysis });
+  } catch (e) {
+    const code = ((e as { code?: ErrorCode }).code) ?? 'UNKNOWN_ERROR';
+    const phase = (e as { phase?: string }).phase;
+    if (phase === 'analysis') await markFailed(code);
+    return fail(code, httpStatusFor(code));
   }
 });
 

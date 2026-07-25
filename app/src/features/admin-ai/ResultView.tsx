@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { LANG_LABEL, TONI } from '@/features/admin-ai/engine';
+import { PdfViewer } from '@/features/admin-ai/PdfViewer';
 import type { ActionSource, AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence, TaskPriority } from '@/types/models';
 
 const DEADLINE_LEVEL_LABEL: Record<string, string> = { scaduta: 'Scaduta', urgente: 'Urgente', prossima: 'Prossima', nessuna: 'Nessuna urgenza' };
@@ -159,6 +160,12 @@ export function ResultView({ analysis, document }: { analysis: DocumentAnalysis;
   const [generating, setGenerating] = useState(false);
   const [corrections, setCorrections] = useState<Record<string, AnalysisCorrection>>({});
 
+  // §31 — se il documento originale è un PDF ancora in Storage, si può mostrare
+  // il PDF renderizzato; altrimenti resta la vista testo (unica per txt/immagini).
+  const isPdf = !!document.storagePath && (document.mimeType ?? '').includes('pdf');
+  const [docMode, setDocMode] = useState<'pdf' | 'text'>(isPdf ? 'pdf' : 'text');
+  useEffect(() => { setDocMode(isPdf ? 'pdf' : 'text'); }, [document.id, isPdf]);
+
   // Se cambia il documento analizzato, reinizializza lo stato locale e (per l'AI)
   // carica l'ultima bozza salvata, senza rigenerarla (§35: la generazione è on-demand).
   useEffect(() => {
@@ -303,8 +310,20 @@ export function ResultView({ analysis, document }: { analysis: DocumentAnalysis;
       <div className="ax-grid">
         <div className="ax-col ax-doc">
           <div className="card">
-            <div className="card-title"><Icon name="document" className="ic-sm" /> Documento originale</div>
-            <DocViewer text={r.originalText} pages={r.pages} highlight={highlight} />
+            <div className="card-title">
+              <Icon name="document" className="ic-sm" /> Documento originale
+              {isPdf && (
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+                  <button type="button" className={`btn btn-sm${docMode === 'pdf' ? ' btn-primary' : ''}`}
+                    aria-pressed={docMode === 'pdf'} onClick={() => setDocMode('pdf')}>PDF</button>
+                  <button type="button" className={`btn btn-sm${docMode === 'text' ? ' btn-primary' : ''}`}
+                    aria-pressed={docMode === 'text'} onClick={() => setDocMode('text')}>Testo</button>
+                </span>
+              )}
+            </div>
+            {docMode === 'pdf' && document.storagePath
+              ? <PdfViewer storagePath={document.storagePath} highlight={highlight} />
+              : <DocViewer text={r.originalText} pages={r.pages} highlight={highlight} />}
           </div>
         </div>
 

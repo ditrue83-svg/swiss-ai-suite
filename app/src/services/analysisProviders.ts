@@ -10,7 +10,7 @@ import type { ClientExtraction } from '@/features/admin-ai/pdf';
 
 export const DETERMINISTIC_ENGINE = 'deterministic-v2';
 
-interface AnalyzeResponse { status?: string; analysis?: unknown; error?: string; code?: string }
+interface AnalyzeResponse { status?: string; analysis?: unknown; documentId?: string; error?: string; code?: string }
 
 async function readFunctionError(error: unknown): Promise<string> {
   const ctx = (error as { context?: unknown }).context;
@@ -26,18 +26,26 @@ async function readFunctionError(error: unknown): Promise<string> {
 
 /**
  * Invoca `analyze-document`. `extraction === null` → il server scarica il file e
- * fa l'OCR (§4). Ritorna lo stato di analisi ('completed' | 'needs_review');
- * il contenuto va riletto dal DB con analysisService.getForDocument.
+ * fa l'OCR (§4). Il contenuto va sempre riletto dal DB (fonte di verità) con
+ * analysisService.getForDocument.
+ *
+ * Con `async: true` (§26) il server valida e autorizza in modo sincrono — quindi
+ * 401/403/422/429 arrivano subito — poi prosegue in background e risponde
+ * `status: 'processing'`: lo stato reale va osservato sul DB.
  */
 export async function invokeAnalyze(
   documentId: string,
   extraction: ClientExtraction | null,
+  options: { async?: boolean } = {},
 ): Promise<{ status: string }> {
-  const body = extraction
+  const body: Record<string, unknown> = extraction
     ? { documentId, extraction: { fullText: extraction.fullText, pages: extraction.pages, extractionMethod: extraction.extractionMethod } }
     : { documentId };
+  if (options.async) body.async = true;
+
   const { data, error } = await requireSupabase().functions.invoke<AnalyzeResponse>('analyze-document', { body });
   if (error) throw new AppError(await readFunctionError(error), error);
+  if (data?.status === 'processing') return { status: 'processing' };
   if (!data?.analysis) throw new AppError(data?.error ?? 'Risposta del servizio AI non valida.');
   return { status: data.status ?? 'completed' };
 }

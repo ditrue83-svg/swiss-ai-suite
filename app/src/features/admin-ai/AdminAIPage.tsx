@@ -130,6 +130,7 @@ export function AdminAIPage() {
         : 'Riconoscimento del testo (OCR) e analisi AI in corso…');
       const { analysis: an, status } = await analysisService.analyzeAndPersist({
         document: doc, extraction: src.extraction, companyName,
+        onProgress: setProgress,   // §25/§26 — stati reali dal server, nessuna percentuale finta
       });
       setDocument(doc);
       setAnalysis(an);
