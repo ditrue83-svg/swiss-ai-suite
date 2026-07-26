@@ -22,7 +22,7 @@ export const ATTENTION_VALUES = [
 export type EmailAttentionValue = (typeof ATTENTION_VALUES)[number];
 
 export const PROCESSING_VALUES = [
-  'pending', 'classifying', 'importing', 'analyzing', 'done', 'failed',
+  'pending', 'classifying', 'importing', 'awaiting_analysis', 'analyzing', 'done', 'failed',
 ] as const;
 export type EmailProcessingValue = (typeof PROCESSING_VALUES)[number];
 
@@ -85,6 +85,15 @@ export const SYNC_LEASE_SECONDS = 300;
 
 /** Intervallo minimo fra due sincronizzazioni manuali della stessa casella (§126). */
 export const MANUAL_SYNC_MIN_INTERVAL_SECONDS = 60;
+
+/**
+ * Quante analisi documentali smaltire per esecuzione dalla coda.
+ *
+ * Deliberatamente basso e inferiore al limite di quota: la coda esiste proprio
+ * per distribuire nel tempo un lavoro che tutto insieme non passerebbe. Meglio
+ * dieci esecuzioni da cinque che una da cinquanta che fallisce a metà.
+ */
+export const ANALYSIS_DRAIN_BATCH = 5;
 
 // ---- Rinnovo delle sottoscrizioni push --------------------------------------
 

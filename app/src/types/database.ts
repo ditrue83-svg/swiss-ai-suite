@@ -35,7 +35,8 @@ export type EmailProvider = 'google' | 'microsoft';
 export type EmailConnectionStatus = 'active' | 'reauth_required' | 'error' | 'disconnected';
 export type EmailSyncType = 'initial' | 'incremental' | 'manual' | 'reconciliation';
 export type EmailSyncStatus = 'running' | 'ok' | 'partial' | 'failed';
-export type EmailProcessingStatus = 'pending' | 'classifying' | 'importing' | 'analyzing' | 'done' | 'failed';
+export type EmailProcessingStatus =
+  | 'pending' | 'classifying' | 'importing' | 'awaiting_analysis' | 'analyzing' | 'done' | 'failed';
 export type EmailAttentionStatus = 'needs_attention' | 'to_verify' | 'informational' | 'ignored' | 'handled';
 export type EmailRelevance = 'likely_actionable' | 'possibly_actionable' | 'informational' | 'clearly_irrelevant';
 export type EmailDocumentRelation = 'body' | 'attachment';

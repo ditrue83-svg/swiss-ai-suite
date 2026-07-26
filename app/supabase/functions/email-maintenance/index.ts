@@ -26,8 +26,8 @@ import {
   adapterForConnection, adminClient, aiCreateMessage, CORS, env, failure,
   getEncryptionKey, json, logEvent, outputLanguage, webhookUrl,
 } from '../_shared/email/runtime.ts';
-import { getConnection, readSecrets, writeSecrets, type ServerClient } from '../_shared/email/store.ts';
-import { getValidAccessToken, runSync, type SyncDeps } from '../_shared/email/sync.ts';
+import { getConnection, newCounters, readSecrets, writeSecrets, type ServerClient } from '../_shared/email/store.ts';
+import { drainPendingAnalyses, getValidAccessToken, runSync, type SyncDeps } from '../_shared/email/sync.ts';
 import { EmailProviderError } from '../_shared/email/types.ts';
 
 /** Se una casella non si sincronizza da così tanto, qualcosa non ha funzionato. */
@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
   const language = outputLanguage((body as { outputLanguage?: unknown })?.outputLanguage);
 
   const sb = adminClient();
-  const report = { renewed: 0, renewFailed: 0, reconciled: 0, reconcileFailed: 0, cleanedStates: 0, cleanedEvents: 0 };
+  const report = { renewed: 0, renewFailed: 0, reconciled: 0, reconcileFailed: 0, analysed: 0, cleanedStates: 0, cleanedEvents: 0 };
 
   try {
     const deps: SyncDeps = {
@@ -64,6 +64,7 @@ Deno.serve(async (req: Request) => {
 
     await renewWatches(deps, report);
     await reconcile(deps, report);
+    report.analysed = await drainAnalyses(deps);
     report.cleanedStates = await cleanupOauthStates(sb);
     report.cleanedEvents = await cleanupWebhookEvents(sb);
   } catch (error) {
@@ -160,7 +161,43 @@ async function reconcile(deps: SyncDeps, report: { reconciled: number; reconcile
   }
 }
 
-// ---- 3. Pulizia --------------------------------------------------------------
+// ---- 3. Coda delle analisi ---------------------------------------------------
+
+/**
+ * Smaltisce la coda delle analisi documentali rimaste in sospeso.
+ *
+ * Esiste perché l'import iniziale di una casella promuove decine di messaggi
+ * insieme e la quota AI, giustamente, non li lascia passare tutti. Rinviare e
+ * smaltire a lotti è ciò che rende il primo collegamento sopportabile senza
+ * alzare un limite che protegge davvero.
+ */
+async function drainAnalyses(deps: SyncDeps): Promise<number> {
+  const { data } = await deps.sb.from('email_connections')
+    .select('id')
+    .eq('status', 'active').eq('sync_enabled', true)
+    .limit(MAX_PER_RUN);
+
+  let totale = 0;
+  for (const row of (data ?? []) as { id: string }[]) {
+    const connection = await getConnection(deps.sb, row.id);
+    if (!connection) continue;
+    try {
+      const adapter = adapterForConnection(connection);
+      const accessToken = await getValidAccessToken(deps, connection, adapter);
+      totale += await drainPendingAnalyses(deps, connection, adapter, accessToken, newCounters());
+    } catch (error) {
+      // Una casella che non si autentica non blocca le altre: il suo stato è
+      // già stato registrato da `getValidAccessToken`.
+      logEvent('email-maintenance', {
+        step: 'drain',
+        code: error instanceof EmailProviderError ? error.code : 'UNKNOWN',
+      });
+    }
+  }
+  return totale;
+}
+
+// ---- 4. Pulizia --------------------------------------------------------------
 
 async function cleanupOauthStates(sb: ServerClient): Promise<number> {
   const { data } = await sb.from('email_oauth_states')

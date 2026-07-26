@@ -26,7 +26,7 @@ import { ocrExtract, textExtraction } from '../extract.ts';
 import type { CompanyContext } from '../prompt.ts';
 import type { ExtractionResult } from '../validate.ts';
 import {
-  INCREMENTAL_MAX_MESSAGES, INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES,
+  ANALYSIS_DRAIN_BATCH, INCREMENTAL_MAX_MESSAGES, INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES,
   RECONCILE_MAX_MESSAGES, RECONCILE_WINDOW_HOURS, SYNC_LEASE_SECONDS, attentionForRelevance,
 } from './contract.ts';
 import { buildClassifierInput, prescreen, CLASSIFIER_VERSION } from './classify.ts';
@@ -44,6 +44,13 @@ import {
 
 /** Limiti di spesa AI per azienda al minuto, distinti per tipo di lavoro (§58). */
 const CLASSIFY_LIMIT_PER_MINUTE = 30;
+/**
+ * Il limite di analisi è lo stesso di `analyze-document`, e resta tale di
+ * proposito: è il tetto di spesa dell'azienda, non un dettaglio della Inbox.
+ * A cambiare è il MODO di consumarlo — a lotti dalla coda, non tutto insieme —
+ * perché alzare il limite avrebbe spostato il problema al primo cliente con una
+ * casella più attiva, invece di risolverlo.
+ */
 const ANALYSIS_LIMIT_PER_MINUTE = 12;
 
 export type SyncType = 'initial' | 'incremental' | 'manual' | 'reconciliation';
@@ -189,7 +196,10 @@ export async function runSync(
 
     for (const messageId of listing.messageIds) {
       try {
-        await processMessage(deps, { connection, adapter, accessToken, providerMessageId: messageId, counters });
+        await processMessage(deps, {
+          connection, adapter, accessToken, providerMessageId: messageId, counters,
+          deferAnalysis: input.syncType === 'initial',
+        });
       } catch (error) {
         // Il fallimento di UN messaggio non interrompe la sincronizzazione: gli
         // altri messaggi sono indipendenti, e fermarsi al primo intoppo
@@ -207,6 +217,13 @@ export async function runSync(
     if (input.syncType === 'initial' && !cursorAfter) {
       cursorAfter = await adapter.getCurrentCursor(accessToken);
     }
+
+    // Smaltisce un lotto della coda di analisi. Vale anche per l'import
+    // iniziale: le prime analisi partono subito, il resto segue.
+    // Il contatore lo incrementa già `analyzeDocument`: sommare anche il
+    // risultato dello smaltimento conterebbe due volte le stesse analisi, e un
+    // registro che gonfia i numeri è peggio di un registro assente.
+    await drainPendingAnalyses(deps, connection, adapter, accessToken, counters);
 
     const patch: Record<string, unknown> = {
       sync_cursor: cursorAfter,
@@ -263,6 +280,8 @@ async function processMessage(
   input: {
     connection: ConnectionRow; adapter: EmailProviderAdapter; accessToken: string;
     providerMessageId: string; counters: SyncCounters;
+    /** true durante l'import iniziale: si classifica e si mette in coda. */
+    deferAnalysis: boolean;
   },
 ): Promise<void> {
   const { connection, adapter, accessToken, counters } = input;
@@ -341,15 +360,55 @@ async function processMessage(
     return;
   }
 
+  // L'import iniziale promuove decine di messaggi in pochi secondi: analizzarli
+  // tutti sul momento esaurisce la quota e riempie «Da gestire» di analisi
+  // fallite — misurato al primo collegamento reale. Si METTE IN CODA, che è uno
+  // stato dichiarato e non un fallimento, e la manutenzione periodica smaltisce
+  // a lotti. Nelle sincronizzazioni successive, che portano pochi messaggi per
+  // volta, l'analisi resta immediata.
+  if (input.deferAnalysis) {
+    await setMessageProcessing(deps.sb, upserted.id, 'awaiting_analysis');
+    return;
+  }
+
+  await analyzeOne(deps, { connection, adapter, accessToken, messageId: upserted.id, message, counters });
+}
+
+/**
+ * Analizza UN messaggio già classificato, gestendo l'esaurimento della quota
+ * per quello che è.
+ *
+ * `PROVIDER_RATE_LIMITED` non è un fallimento dell'analisi: è «non adesso». Il
+ * messaggio torna in coda e verrà ripreso, invece di essere marcato `failed` e
+ * mostrato all'utente come un guasto. La distinzione conta: un guasto chiede
+ * un intervento, una coda no.
+ *
+ * Ritorna false se la quota è esaurita, così il chiamante può fermare il lotto
+ * invece di sbatterci contro per ogni messaggio rimasto.
+ */
+async function analyzeOne(
+  deps: SyncDeps,
+  input: {
+    connection: ConnectionRow; adapter: EmailProviderAdapter; accessToken: string;
+    messageId: string; message: NormalizedEmailMessage; counters: SyncCounters;
+  },
+): Promise<boolean> {
   try {
-    await setMessageProcessing(deps.sb, upserted.id, 'importing');
+    await setMessageProcessing(deps.sb, input.messageId, 'importing');
     const started = await importAndAnalyze(deps, {
-      connection, adapter, accessToken, messageId: upserted.id, message, counters,
+      connection: input.connection, adapter: input.adapter, accessToken: input.accessToken,
+      messageId: input.messageId, message: input.message, counters: input.counters,
     });
-    await setMessageProcessing(deps.sb, upserted.id, 'done', started ? {} : { error_code: 'ANALYSIS_SKIPPED' });
+    await setMessageProcessing(deps.sb, input.messageId, 'done', started ? { error_code: null } : { error_code: 'ANALYSIS_SKIPPED' });
+    return true;
   } catch (error) {
     const code = error instanceof EmailProviderError ? error.code : 'ANALYSIS_FAILED';
-    await setMessageProcessing(deps.sb, upserted.id, 'failed', { error_code: code });
+    if (code === 'PROVIDER_RATE_LIMITED') {
+      await setMessageProcessing(deps.sb, input.messageId, 'awaiting_analysis', { error_code: null });
+      return false;
+    }
+    await setMessageProcessing(deps.sb, input.messageId, 'failed', { error_code: code });
+    return true;
   }
 }
 
@@ -590,6 +649,60 @@ async function analyzeDocument(
 
   input.counters.analysesStarted++;
   return true;
+}
+
+/**
+ * Smaltisce un LOTTO di analisi rimaste in coda.
+ *
+ * Prende i messaggi in `awaiting_analysis` e quelli che una volta erano falliti
+ * per esaurimento quota — che sono ritentabili per costruzione, a differenza di
+ * un fallimento di analisi vero, che resta dov'è.
+ *
+ * Si ferma al primo esaurimento di quota invece di provare tutti gli altri: la
+ * quota è per azienda, quindi se non c'è per uno non c'è per nessuno, e
+ * insistere produrrebbe solo una fila di errori identici.
+ *
+ * Ritorna quante analisi sono state completate.
+ */
+export async function drainPendingAnalyses(
+  deps: SyncDeps,
+  connection: ConnectionRow,
+  adapter: EmailProviderAdapter,
+  accessToken: string,
+  counters: SyncCounters,
+  max = ANALYSIS_DRAIN_BATCH,
+): Promise<number> {
+  if (!deps.createMessage) return 0;
+
+  const { data } = await deps.sb.from('email_messages')
+    .select('id, provider_message_id, processing_status, error_code')
+    .eq('connection_id', connection.id)
+    .eq('relevance', 'likely_actionable')
+    .or('processing_status.eq.awaiting_analysis,and(processing_status.eq.failed,error_code.eq.PROVIDER_RATE_LIMITED)')
+    .order('received_at', { ascending: false })
+    .limit(max);
+
+  const pending = (data ?? []) as { id: string; provider_message_id: string }[];
+  let done = 0;
+
+  for (const row of pending) {
+    let message: NormalizedEmailMessage;
+    try {
+      message = await adapter.getMessage({ accessToken, messageId: row.provider_message_id });
+    } catch (error) {
+      const code = error instanceof EmailProviderError ? error.code : 'UNKNOWN';
+      // Il messaggio non è più leggibile presso il provider (cancellato,
+      // spostato): non è un'analisi fallita, è una fonte che non c'è più.
+      await setMessageProcessing(deps.sb, row.id, 'failed', { error_code: code });
+      continue;
+    }
+    const ok = await analyzeOne(deps, {
+      connection, adapter, accessToken, messageId: row.id, message, counters,
+    });
+    if (!ok) break;                       // quota esaurita: il resto attende
+    done++;
+  }
+  return done;
 }
 
 async function loadCompanyContext(sb: ServerClient, companyId: string): Promise<CompanyContext> {

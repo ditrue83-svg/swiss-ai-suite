@@ -700,6 +700,7 @@ export const de: Dictionary = {
       pending: 'Wartend',
       classifying: 'Prüfung läuft',
       importing: 'Import läuft',
+      awaiting_analysis: 'Analyse in Warteschlange',
       analyzing: 'Analyse läuft',
       done: '',
       failed: 'Prüfung fehlgeschlagen',

@@ -699,6 +699,7 @@ export const fr: Dictionary = {
       pending: 'En attente',
       classifying: 'Examen en cours',
       importing: 'Importation en cours',
+      awaiting_analysis: 'Analyse en file d’attente',
       analyzing: 'Analyse en cours',
       done: '',
       failed: 'Examen échoué',

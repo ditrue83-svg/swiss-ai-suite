@@ -38,6 +38,66 @@ const body = files.map((f, i) =>
 
 const bundled = header + body;
 
+// ---------------------------------------------------------------------------
+// Controllo: un valore aggiunto a un enum non può essere USATO nello stesso file
+//
+// Postgres consente `alter type … add value` dentro una transazione, ma
+// l'etichetta non è utilizzabile finché la transazione non è chiusa (55P04
+// «unsafe use of new value»). Il SQL editor di Supabase esegue tutto in
+// un'unica transazione, e questo file concatena TUTTE le migrazioni: basta una
+// riga che nomini l'etichetta appena aggiunta per far fallire ogni
+// installazione da zero.
+//
+// È successo il 2026-07-27 con la 0015, che creava un indice parziale sul
+// valore appena aggiunto. Il guasto si sarebbe visto solo al primo cliente
+// nuovo — chi ha già il database applica le migrazioni una alla volta e non se
+// ne accorge mai.
+//
+// I valori dichiarati con `create type … as enum (…)` sono esclusi: quelli sono
+// utilizzabili subito, ed è il caso della 0006, dove `analysis_status` nasce con
+// 'completed' mentre `document_status` lo riceve per aggiunta. Stessa etichetta,
+// due tipi diversi.
+// ---------------------------------------------------------------------------
+const senzaCommenti = (sql) =>
+  sql.split('\n').filter((l) => !l.trimStart().startsWith('--')).join('\n');
+
+const problemi = [];
+for (let i = 0; i < files.length; i++) {
+  const sql = readFileSync(join(MIG_DIR, files[i]), 'utf8');
+  const codice = senzaCommenti(sql);
+
+  const aggiunti = [...codice.matchAll(/alter\s+type\s+[\w.]+\s+add\s+value\s+(?:if\s+not\s+exists\s+)?'([^']+)'/gi)]
+    .map((m) => m[1]);
+  if (!aggiunti.length) continue;
+
+  // Etichette che nello stesso file nascono anche da un CREATE TYPE: legittime.
+  const creati = new Set(
+    [...codice.matchAll(/create\s+type\s+[\w.]+\s+as\s+enum\s*\(([^)]*)\)/gi)]
+      .flatMap((m) => [...m[1].matchAll(/'([^']+)'/g)].map((v) => v[1])),
+  );
+
+  for (const valore of aggiunti) {
+    if (creati.has(valore)) continue;
+    const usi = [...codice.matchAll(new RegExp(`'${valore.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`, 'g'))]
+      .filter((m) => {
+        const prima = codice.slice(Math.max(0, m.index - 140), m.index);
+        if (/add\s+value\s*(?:if\s+not\s+exists\s*)?$/i.test(prima)) return false;
+        const rigaCorrente = prima.split('\n').pop() ?? '';
+        return !/comment\s+on/i.test(rigaCorrente);
+      });
+    if (usi.length) problemi.push(`${names[i]}: il valore '${valore}' viene aggiunto E usato nello stesso file`);
+  }
+}
+
+if (problemi.length) {
+  console.error('\n✗ Uso non sicuro di un valore enum appena aggiunto:');
+  for (const p of problemi) console.error(`    ${p}`);
+  console.error('  Postgres lo rifiuta con 55P04 quando lo script gira in una sola transazione,');
+  console.error('  cioè sempre nel SQL editor e sempre per full-setup.sql.');
+  console.error('  L\'etichetta nuova non deve comparire in nessun\'altra istruzione dello stesso file.\n');
+  process.exit(1);
+}
+
 if (process.argv.includes('--check')) {
   let current = '';
   try { current = readFileSync(OUT, 'utf8'); } catch { /* assente */ }

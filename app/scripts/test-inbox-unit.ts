@@ -33,6 +33,7 @@ import { createMicrosoftAdapter } from '../supabase/functions/_shared/email/micr
 import { seal, open as openSealed, importKey, generateKeyBase64, timingSafeEqual, sha256Hex } from '../supabase/functions/_shared/email/crypto.ts';
 import {
   INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES, attentionForRelevance, MAX_ATTACHMENT_BYTES,
+  PROCESSING_VALUES, ANALYSIS_DRAIN_BATCH,
 } from '../supabase/functions/_shared/email/contract.ts';
 import { INITIAL_SYNC_DAYS as UI_DAYS, INITIAL_SYNC_MAX_MESSAGES as UI_MAX } from '../src/features/inbox/constants';
 import type { NormalizedEmailMessage } from '../supabase/functions/_shared/email/types.ts';
@@ -41,7 +42,7 @@ import type { NormalizedEmailMessage } from '../supabase/functions/_shared/email
 // non li guarderebbe mai — e un errore di tipo nell'orchestrazione della
 // sincronizzazione si scoprirebbe solo in produzione.
 import { newCounters } from '../supabase/functions/_shared/email/store.ts';
-import { runSync, importAndAnalyze, getValidAccessToken } from '../supabase/functions/_shared/email/sync.ts';
+import { runSync, importAndAnalyze, getValidAccessToken, drainPendingAnalyses } from '../supabase/functions/_shared/email/sync.ts';
 
 let pass = 0, fail = 0;
 const G = '\x1b[32m', R = '\x1b[31m', B = '\x1b[1m', DIM = '\x1b[2m', X = '\x1b[0m';
@@ -592,10 +593,15 @@ section('8 · Coerenza fra server e interfaccia');
 ok(UI_DAYS === INITIAL_SYNC_DAYS, `giorni di import iniziale allineati (UI ${UI_DAYS} / server ${INITIAL_SYNC_DAYS})`);
 ok(UI_MAX === INITIAL_SYNC_MAX_MESSAGES, `numero massimo di messaggi allineato (UI ${UI_MAX} / server ${INITIAL_SYNC_MAX_MESSAGES})`);
 ok(CLASSIFIER_VERSION.length > 0, 'la versione del classificatore è registrata (§118)');
+ok(PROCESSING_VALUES.includes('awaiting_analysis'),
+  'lo stato «analisi in coda» esiste: rinviare non è né fallire né aver concluso');
+ok(ANALYSIS_DRAIN_BATCH > 0 && ANALYSIS_DRAIN_BATCH < 12,
+  `il lotto di smaltimento (${ANALYSIS_DRAIN_BATCH}) sta sotto il limite di quota: la coda serve a distribuire, non a sbatterci contro`);
 
 {
   const counters = newCounters();
   ok(Object.values(counters).every((v) => v === 0), 'i contatori di sincronizzazione partono da zero');
+  ok(typeof drainPendingAnalyses === 'function', 'lo smaltimento della coda di analisi è esportato e compilabile');
   ok(typeof runSync === 'function' && typeof importAndAnalyze === 'function' && typeof getValidAccessToken === 'function',
     'l’orchestrazione della sincronizzazione è compilabile e importabile fuori da Deno');
 }

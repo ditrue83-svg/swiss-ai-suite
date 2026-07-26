@@ -139,6 +139,7 @@ export function InboxPage() {
   useEffect(() => { void loadConnections(); }, [loadConnections]);
   useEffect(() => { void loadPage(true, null); }, [loadPage]);
 
+
   // Esito del ritorno dal consenso OAuth. Il codice arriva nell'URL, mai un token.
   useEffect(() => {
     const connect = params.get('connect');
@@ -174,6 +175,28 @@ export function InboxPage() {
     () => activeConnections.filter((c) => c.status === 'reauth_required'),
     [activeConnections],
   );
+  // §66 — durante un import lungo l'intestazione diceva «Non ancora
+  // sincronizzata» mentre decine di messaggi comparivano nella lista sotto.
+  // Tecnicamente vero (`lastSuccessfulSyncAt` si valorizza a fine corsa), ma
+  // per chi guarda è una contraddizione. Il lease è il fatto che dice se la
+  // sincronizzazione sta lavorando ADESSO.
+  const syncInProgress = useMemo(
+    () => activeConnections.some((c) => c.syncLeaseUntil && new Date(c.syncLeaseUntil).getTime() > Date.now()),
+    [activeConnections],
+  );
+  // Mentre una sincronizzazione lavora, la lista si aggiorna da sola: senza,
+  // l'utente resterebbe davanti a un elenco fermo proprio nel momento in cui
+  // sta cambiando. Polling e non realtime (§77): dura quanto la sincronizzazione
+  // e si spegne da solo, che è la cosa più semplice che funziona.
+  useEffect(() => {
+    if (!syncInProgress) return;
+    const timer = setInterval(() => {
+      void loadConnections();
+      void loadPage(true, null);
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [syncInProgress, loadConnections, loadPage]);
+
   const lastSync = useMemo(() => {
     const times = activeConnections
       .map((c) => c.lastSuccessfulSyncAt)
@@ -246,7 +269,9 @@ export function InboxPage() {
         {hasConnection && (
           <div className="inbox-status">
             <span className="text-muted">
-              {lastSync
+              {syncInProgress ? (
+                <><span className="spinner" aria-hidden="true" /> {t('inbox.syncing')}</>
+              ) : lastSync
                 ? t('inbox.lastSync', { when: `${formatDate(lastSync)} ${new Date(lastSync).toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' })}` })
                 : t('inbox.lastSyncNever')}
             </span>

@@ -706,6 +706,7 @@ export const it = {
       pending: 'In attesa',
       classifying: 'Esame in corso',
       importing: 'Importazione in corso',
+      awaiting_analysis: 'Analisi in coda',
       analyzing: 'Analisi in corso',
       done: '',
       failed: 'Esame non riuscito',
