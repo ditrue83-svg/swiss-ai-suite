@@ -38,14 +38,14 @@
 .auth-alt .btn-link { font-size: var(--fs-body); }
 .auth-actions { margin-top: 6px; }
 .auth-actions .btn { width: 100%; }
-.form-error { background: var(--red-soft); border: 1px solid hsl(0,84%,86%); color: var(--red-dark); border-radius: var(--radius-sm); padding: 10px 12px; font-size: var(--fs-body); margin-bottom: 14px; display: flex; gap: 8px; align-items: flex-start; }
-.form-success { background: var(--green-soft); border: 1px solid #c6e6d2; color: var(--green); border-radius: var(--radius-sm); padding: 10px 12px; font-size: var(--fs-body); margin-bottom: 14px; }
+.form-error { background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: 10px 12px; font-size: var(--fs-body); margin-bottom: 14px; display: flex; gap: 8px; align-items: flex-start; }
+.form-success { background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green); border-radius: var(--radius-sm); padding: 10px 12px; font-size: var(--fs-body); margin-bottom: 14px; }
 .field-hint { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
 
 /* ---- Stati globali (loading/error/empty) ---- */
 .app-loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); }
 .spinner-lg { width: 30px; height: 30px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
-.state-error { display: flex; gap: 10px; align-items: flex-start; background: var(--red-soft); border: 1px solid hsl(0,84%,86%); color: var(--red-dark); border-radius: var(--radius-sm); padding: 12px 14px; font-size: var(--fs-body); }
+.state-error { display: flex; gap: 10px; align-items: flex-start; background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: 12px 14px; font-size: var(--fs-body); }
 .state-error .ic { flex-shrink: 0; margin-top: 1px; }
 
 /* ---- Skeleton (loading discreto) ---- */
