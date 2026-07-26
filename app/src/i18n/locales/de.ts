@@ -195,6 +195,10 @@ export const de: Dictionary = {
     verifyingSession: 'Sitzung wird geprüft…',
     loadingCompany: 'Unternehmen wird geladen…',
     configRequired: 'Konfiguration erforderlich',
+    configRequiredHint: 'Kopieren Sie .env.example nach .env, tragen Sie VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY Ihres Supabase-Projekts ein und starten Sie den Entwicklungsserver neu.',
+    configRejected: 'Anwendung nicht korrekt konfiguriert',
+    configRejectedHint: 'Es liegt nicht an Ihrem Konto: Der auf dieser Installation hinterlegte Zugriffsschlüssel ist für das verbundene Projekt ungültig. Die Betreiberin oder der Betreiber muss VITE_SUPABASE_ANON_KEY in den Umgebungsvariablen korrigieren und neu veröffentlichen. Achten Sie darauf, den Wert des Schlüssels einzufügen — nicht den Befehl, der ihn ausgibt.',
+    configNoData: 'Solange die Verbindung nicht konfiguriert ist, werden keine Daten gespeichert.',
     configHint: 'Setzen Sie VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY in der Datei .env.',
   },
 
@@ -313,6 +317,7 @@ export const de: Dictionary = {
     replyFailed: 'Erstellung des Entwurfs fehlgeschlagen. Bitte erneut versuchen.',
     replyNotGenerated: 'Es wurde kein Entwurf erstellt.',
     notConnected: 'Die App ist noch nicht mit Supabase verbunden.',
+    configRejected: 'Der Server hat die Zugangsdaten der Anwendung abgelehnt: Die Anmeldung kann nicht funktionieren.',
     signInFailed: 'Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
     pdfPreviewUnavailable: 'PDF-Vorschau nicht verfügbar: bitte die Textansicht verwenden.',
     applyBeforeStartSub: 'Gesuch VOR Beginn des Vorhabens einzureichen',

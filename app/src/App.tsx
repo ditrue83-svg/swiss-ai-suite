@@ -18,7 +18,18 @@ import { ArchivePage } from '@/features/archive/ArchivePage';
 import { PricingPage } from '@/features/pricing/PricingPage';
 import { useT } from '@/i18n';
 
-function ConfigNeeded() {
+/**
+ * Schermata mostrata quando l'app NON può funzionare per un problema di
+ * configurazione. Due casi distinti, perché richiedono azioni diverse:
+ *
+ *   'missing'  — le variabili non ci sono. Tipico dello sviluppo locale.
+ *   'rejected' — le variabili ci sono ma il server RIFIUTA la chiave. È il caso
+ *                che nel deploy del 2026-07-26 è passato inosservato: l'app
+ *                mostrava un accesso normale e falliva solo al primo tentativo,
+ *                come se l'utente avesse sbagliato password. Qui si dice invece
+ *                che il problema è dell'applicazione, non di chi la usa.
+ */
+function ConfigNeeded({ reason }: { reason: 'missing' | 'rejected' }) {
   const t = useT();
   return (
     <div className="centered-screen">
@@ -27,14 +38,17 @@ function ConfigNeeded() {
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
           <div><div className="brand-name">SwissAI Suite</div><div className="brand-sub">{t('brand.tagline')}</div></div>
         </div>
-        <div className="auth-title">{t('states.configRequired')}</div>
-        <div className="auth-sub">{t('errors.notConnected')}</div>
+        <div className="auth-title">
+          {reason === 'rejected' ? t('states.configRejected') : t('states.configRequired')}
+        </div>
+        <div className="auth-sub">
+          {reason === 'rejected' ? t('errors.configRejected') : t('errors.notConnected')}
+        </div>
         <p className="muted-sm">
-          Copia <code>.env.example</code> in <code>.env</code> e imposta <code>VITE_SUPABASE_URL</code> e
-          <code> VITE_SUPABASE_ANON_KEY</code> con i valori del tuo progetto Supabase, poi riavvia il server di sviluppo.
+          {reason === 'rejected' ? t('states.configRejectedHint') : t('states.configRequiredHint')}
         </p>
         <div className="info-box mt-14">
-          <Icon name="alert" className="ic-sm" /> Nessun dato viene salvato finché la connessione non è configurata.
+          <Icon name="alert" className="ic-sm" /> {t('states.configNoData')}
         </div>
       </div>
     </div>
@@ -42,8 +56,12 @@ function ConfigNeeded() {
 }
 
 export default function App() {
-  const { configured } = useAuth();
-  if (!configured) return <ConfigNeeded />;
+  const { configStatus } = useAuth();
+  // 'checking' e 'unreachable' NON bloccano: nel primo caso la verifica è ancora
+  // in corso, nel secondo non sappiamo se la configurazione sia sbagliata — e un
+  // allarme non fondato sarebbe esso stesso un dato inventato.
+  if (configStatus === 'missing') return <ConfigNeeded reason="missing" />;
+  if (configStatus === 'rejected') return <ConfigNeeded reason="rejected" />;
 
   return (
     <Routes>

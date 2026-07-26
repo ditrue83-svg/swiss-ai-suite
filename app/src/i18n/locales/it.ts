@@ -198,6 +198,10 @@ export const it = {
     verifyingSession: 'Verifica sessione…',
     loadingCompany: 'Caricamento azienda…',
     configRequired: 'Configurazione richiesta',
+    configRequiredHint: 'Copia .env.example in .env e imposta VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY con i valori del tuo progetto Supabase, poi riavvia il server di sviluppo.',
+    configRejected: 'Applicazione non configurata correttamente',
+    configRejectedHint: 'Non è un problema del tuo account: la chiave di accesso impostata su questa installazione non è valida per il progetto collegato. Chi gestisce l’applicazione deve correggere VITE_SUPABASE_ANON_KEY nelle variabili d’ambiente e ripubblicare. Attenzione a incollare il valore della chiave, non il comando che la stampa.',
+    configNoData: 'Nessun dato viene salvato finché la connessione non è configurata.',
     configHint: 'Imposta VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nel file .env.',
   },
 
@@ -320,6 +324,7 @@ export const it = {
     replyFailed: 'Generazione della bozza non riuscita. Riprova.',
     replyNotGenerated: 'Bozza non generata.',
     notConnected: 'L’app non è ancora collegata a Supabase.',
+    configRejected: 'Il server ha rifiutato le credenziali dell’applicazione: l’accesso non può funzionare.',
     signInFailed: 'Accesso non riuscito. Riprova.',
     pdfPreviewUnavailable: 'Anteprima PDF non disponibile: usa la vista testo.',
     applyBeforeStartSub: 'Domanda da presentare PRIMA di avviare il progetto',

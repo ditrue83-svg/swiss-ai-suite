@@ -194,6 +194,10 @@ export const fr: Dictionary = {
     verifyingSession: 'Vérification de la session…',
     loadingCompany: 'Chargement de l’entreprise…',
     configRequired: 'Configuration requise',
+    configRequiredHint: 'Copiez .env.example vers .env, renseignez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY de votre projet Supabase, puis redémarrez le serveur de développement.',
+    configRejected: 'Application mal configurée',
+    configRejectedHint: 'Le problème ne vient pas de votre compte : la clé d’accès configurée sur cette installation n’est pas valable pour le projet lié. La personne qui gère l’application doit corriger VITE_SUPABASE_ANON_KEY dans les variables d’environnement, puis republier. Veillez à coller la valeur de la clé, et non la commande qui l’affiche.',
+    configNoData: 'Aucune donnée n’est enregistrée tant que la connexion n’est pas configurée.',
     configHint: 'Définissez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans le fichier .env.',
   },
 
@@ -312,6 +316,7 @@ export const fr: Dictionary = {
     replyFailed: 'La génération du projet a échoué. Veuillez réessayer.',
     replyNotGenerated: 'Aucun projet généré.',
     notConnected: 'L’application n’est pas encore connectée à Supabase.',
+    configRejected: 'Le serveur a refusé les identifiants de l’application : la connexion ne peut pas fonctionner.',
     signInFailed: 'Échec de la connexion. Veuillez réessayer.',
     pdfPreviewUnavailable: 'Aperçu PDF non disponible : utilisez la vue texte.',
     applyBeforeStartSub: 'Demande à déposer AVANT de commencer le projet',

@@ -6,10 +6,14 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type { Session, User } from '@supabase/supabase-js';
 import { authService, type SignInInput, type SignUpInput, type SignUpResult } from '@/services/authService';
 import { isSupabaseConfigured } from '@/lib/env';
+import { verifySupabaseConfig, type ConfigStatus } from '@/lib/configCheck';
 import type { UserProfile } from '@/types/models';
 
 interface AuthContextValue {
+  /** true se le variabili ci sono. NON garantisce che siano valide: vedi configStatus. */
   configured: boolean;
+  /** esito della verifica presso il server: distingue «assente» da «presente ma rifiutata». */
+  configStatus: ConfigStatus;
   loading: boolean;
   session: Session | null;
   user: User | null;
@@ -26,6 +30,9 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
+  const [configStatus, setConfigStatus] = useState<ConfigStatus>(
+    isSupabaseConfigured ? 'checking' : 'missing',
+  );
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const loadedFor = useRef<string | null>(null);
@@ -41,6 +48,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
     }
   }
+
+  // Verifica che la chiave sia ACCETTATA, non solo presente. Gira in parallelo
+  // al ripristino della sessione e non ritarda l'avvio: finché è 'checking'
+  // l'app si comporta normalmente, e cambia schermata solo se il server rifiuta.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+    verifySupabaseConfig()
+      .then((s) => { if (active) setConfigStatus(s); })
+      .catch(() => { if (active) setConfigStatus('unreachable'); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -85,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       configured: isSupabaseConfigured,
+      configStatus,
       loading,
       session,
       user,
@@ -102,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (user) await loadProfile(user.id);
       },
     }),
-    [loading, session, user, profile],
+    [loading, session, user, profile, configStatus],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
