@@ -40,7 +40,7 @@ export const SITE_URL = 'https://ai-swisse.com';
 export const CONTACT_EMAIL = 'info@ai-swisse.com';
 
 /** Impressum, privacy e condizioni: complete e pubblicabili? Vedi in alto. */
-export const LEGAL_COMPLETE = false;
+export const LEGAL_COMPLETE = true;
 
 /** Fornitore del modello: dichiarato nell'informativa, verificato nel codice
  *  (`supabase/functions/_shared/prompt.ts`, `@anthropic-ai/sdk`). */
@@ -193,8 +193,8 @@ export const CONTENT = {
     aboutLead:
       'Un prodotto che legge la posta della vostra impresa deve dire chi lo fa. Non è un marchio dietro cui non c’è nessuno.',
     aboutName: 'Andrea Cavalieri',
-    aboutRole: '',
-    aboutPlace: '',
+    aboutRole: 'Titolare',
+    aboutPlace: 'Savosa, Canton Ticino',
     aboutWhy:
       'AI-Swisse nasce da un problema concreto: in una PMI svizzera la posta amministrativa arriva in tre lingue, ogni lettera nasconde una scadenza, e chi la apre di solito ha altro da fare. Gli strumenti che promettono di «riassumere» un documento non bastano: se sbagliano una data e non lo dicono, il danno è peggiore del lavoro risparmiato. Per questo qui ogni informazione è accompagnata dalla frase da cui viene, e ciò che il sistema non sa lo dichiara.',
     aboutContactLine: 'Per parlare direttamente:',
@@ -208,7 +208,7 @@ export const CONTENT = {
     contactDemoText: 'Mezz’ora, in videochiamata o di persona. Portate una lettera vostra: la analizziamo insieme.',
     contactPhoneLabel: 'Telefono',
     contactAddressLabel: 'Sede',
-    contactAddress: '',
+    contactAddress: 'Via Rovello 32, 6942 Savosa',
     contactPhone: '',
     contactHoursLabel: 'Risposta',
     contactHours: 'Scriviamo di solito entro un giorno lavorativo.',
@@ -224,7 +224,7 @@ export const CONTENT = {
         title: 'Impressum',
         intro: 'Indicazioni sul gestore di questo sito e del servizio AI-Swisse.',
         sections: [
-          { h: 'Titolare del servizio', p: ['AI-Swisse è gestito da Andrea Cavalieri.', 'Il servizio si rivolge a imprese e professionisti in Svizzera.'] },
+          { h: 'Titolare del servizio', p: ['AI-Swisse, ditta individuale', 'Titolare: Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Svizzera'] },
           { h: 'Contatto', p: [`Email: ${CONTACT_EMAIL}`, 'Scriviamo di solito entro un giorno lavorativo.'] },
           { h: 'Responsabile dei contenuti', p: ['Andrea Cavalieri'] },
           { h: 'Esclusione di responsabilità', p: ['I contenuti di questo sito sono redatti con cura ma senza garanzia di completezza o attualità. AI-Swisse è uno strumento di supporto amministrativo e non sostituisce la consulenza legale, fiscale o fiduciaria.', 'I collegamenti a siti di terzi rimandano a contenuti di cui non rispondiamo.'] },
@@ -235,7 +235,7 @@ export const CONTENT = {
         title: 'Informativa sulla privacy',
         intro: 'Che cosa succede ai dati vostri e dei vostri documenti. È scritta in modo che si capisca senza un avvocato; dove la legge richiede formule precise, ci sono e sono segnalate.',
         sections: [
-          { h: 'Chi tratta i dati', p: ['I dati sono trattati da Andrea Cavalieri, che gestisce AI-Swisse.', `Per qualunque questione sui vostri dati: ${CONTACT_EMAIL}`] },
+          { h: 'Chi tratta i dati', p: ['AI-Swisse, ditta individuale di Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Svizzera', `Per qualunque questione sui vostri dati: ${CONTACT_EMAIL}`] },
           { h: 'Questo sito', p: ['La vetrina che state leggendo non usa cookie, non ha strumenti di analisi statistica e non carica risorse da altri siti: nessun carattere tipografico remoto, nessun tracciamento. Il server registra le richieste secondo la prassi ordinaria del fornitore di hosting.', 'Il sito è ospitato su GitHub Pages, servizio di GitHub, Inc. (Stati Uniti), che registra gli indirizzi IP delle richieste per il funzionamento e la sicurezza del servizio. Su questo sito non c’è nulla da accedere e nessun dato da inserire: per usare l’applicazione si passa da app.ai-swisse.com.'] },
           { h: 'Quali dati raccoglie l’applicazione', p: ['Dati di account: nome, cognome, indirizzo email.', 'Dati dell’impresa: ragione sociale, cantone, settore, dimensione e le informazioni che inserite nel profilo per la ricerca di incentivi.', 'Documenti: i file che caricate, il testo estratto e l’analisi prodotta.', 'Dati tecnici necessari al funzionamento: registro degli accessi e delle richieste all’AI, con data, esito e consumo.'] },
           { h: 'Dove stanno i dati', p: ['Account, documenti e analisi sono ospitati su Supabase, in un progetto situato a Francoforte, in Germania (Unione Europea). Non in Svizzera: è una differenza che per alcune imprese conta, quindi è scritta anche in home page.', 'I file caricati stanno in uno spazio privato: sono raggiungibili solo dagli utenti della vostra impresa, tramite collegamenti temporanei.'] },
@@ -256,7 +256,7 @@ export const CONTENT = {
           { h: 'Disponibilità', p: ['Ci impegniamo a mantenere il servizio disponibile, senza garantire un funzionamento ininterrotto. Interventi di manutenzione e guasti dei fornitori possono causare interruzioni. Non è previsto un livello di servizio garantito contrattualmente.'] },
           { h: 'Prezzi e pagamento', p: ['Nella fase attuale le condizioni economiche sono concordate individualmente con ciascuna impresa pilota, e sono riportate nell’accordo che ricevete prima dell’attivazione.'] },
           { h: 'Responsabilità', p: ['Si applicano le disposizioni del diritto svizzero.', 'Le analisi sono prodotte automaticamente e possono contenere errori: ogni informazione va verificata sul documento originale, che resta sempre consultabile a fianco dell’analisi, prima di prendere una decisione.'] },
-          { h: 'Diritto applicabile', p: ['Si applica il diritto svizzero.'] },
+          { h: 'Diritto applicabile e foro', p: ['Si applica il diritto svizzero.', 'Il foro competente è quello della sede del titolare, a Savosa (Canton Ticino).'] },
         ],
       },
     },
@@ -394,8 +394,8 @@ export const CONTENT = {
     aboutLead:
       'Ein Produkt, das die Post Ihres Unternehmens liest, muss sagen, wer es macht. Keine Marke, hinter der niemand steht.',
     aboutName: 'Andrea Cavalieri',
-    aboutRole: '',
-    aboutPlace: '',
+    aboutRole: 'Inhaber',
+    aboutPlace: 'Savosa, Kanton Tessin',
     aboutWhy:
       'AI-Swisse ist aus einem konkreten Problem entstanden: In einem Schweizer KMU kommt die Behördenpost in drei Sprachen, hinter jedem Brief steckt eine Frist, und wer ihn öffnet, hat meist anderes zu tun. Werkzeuge, die ein Dokument «zusammenfassen», genügen dafür nicht: Wenn sie ein Datum falsch wiedergeben und es nicht sagen, ist der Schaden grösser als die gesparte Arbeit. Deshalb steht hier zu jeder Angabe der Satz, aus dem sie stammt — und was das System nicht weiss, sagt es.',
     aboutContactLine: 'Für ein direktes Gespräch:',
@@ -409,7 +409,7 @@ export const CONTENT = {
     contactDemoText: 'Eine halbe Stunde, per Videoanruf oder vor Ort. Bringen Sie einen eigenen Brief mit: wir analysieren ihn gemeinsam.',
     contactPhoneLabel: 'Telefon',
     contactAddressLabel: 'Standort',
-    contactAddress: '',
+    contactAddress: 'Via Rovello 32, 6942 Savosa',
     contactPhone: '',
     contactHoursLabel: 'Antwort',
     contactHours: 'In der Regel antworten wir innerhalb eines Arbeitstages.',
@@ -425,7 +425,7 @@ export const CONTENT = {
         title: 'Impressum',
         intro: 'Angaben zum Betreiber dieser Website und des Dienstes AI-Swisse.',
         sections: [
-          { h: 'Anbieter des Dienstes', p: ['AI-Swisse wird von Andrea Cavalieri betrieben.', 'Der Dienst richtet sich an Unternehmen und Fachpersonen in der Schweiz.'] },
+          { h: 'Anbieter des Dienstes', p: ['AI-Swisse, Einzelfirma', 'Inhaber: Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Schweiz'] },
           { h: 'Kontakt', p: [`E-Mail: ${CONTACT_EMAIL}`, 'In der Regel antworten wir innerhalb eines Arbeitstages.'] },
           { h: 'Verantwortlich für den Inhalt', p: ['Andrea Cavalieri'] },
           { h: 'Haftungsausschluss', p: ['Die Inhalte dieser Website werden sorgfältig erstellt, jedoch ohne Gewähr für Vollständigkeit und Aktualität. AI-Swisse ist ein Hilfsmittel für administrative Aufgaben und ersetzt keine rechtliche, steuerliche oder treuhänderische Beratung.', 'Links auf Websites Dritter führen zu Inhalten, für die wir nicht verantwortlich sind.'] },
@@ -436,7 +436,7 @@ export const CONTENT = {
         title: 'Datenschutzerklärung',
         intro: 'Was mit Ihren Daten und denen Ihrer Dokumente geschieht. Verständlich geschrieben; wo das Gesetz genaue Formulierungen verlangt, stehen sie da und sind als solche erkennbar.',
         sections: [
-          { h: 'Wer die Daten bearbeitet', p: ['Die Daten werden von Andrea Cavalieri bearbeitet, der AI-Swisse betreibt.', `Für alle Fragen zu Ihren Daten: ${CONTACT_EMAIL}`] },
+          { h: 'Wer die Daten bearbeitet', p: ['AI-Swisse, Einzelfirma von Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Schweiz', `Für alle Fragen zu Ihren Daten: ${CONTACT_EMAIL}`] },
           { h: 'Diese Website', p: ['Die Website, die Sie gerade lesen, verwendet keine Cookies, keine Analysewerkzeuge und lädt keine Ressourcen von anderen Servern: keine externen Schriften, kein Tracking. Der Server protokolliert die Zugriffe im üblichen Rahmen des Hosting-Anbieters.', 'Die Website wird über GitHub Pages betrieben, einen Dienst von GitHub, Inc. (Vereinigte Staaten), der die IP-Adressen der Zugriffe für Betrieb und Sicherheit protokolliert. Auf dieser Website gibt es keine Anmeldung und keine Eingabefelder: die Anwendung selbst läuft unter app.ai-swisse.com.'] },
           { h: 'Welche Daten die Anwendung erhebt', p: ['Kontodaten: Vorname, Name, E-Mail-Adresse.', 'Unternehmensdaten: Firmenbezeichnung, Kanton, Branche, Grösse und die Angaben, die Sie im Profil für die Fördermittelsuche erfassen.', 'Dokumente: die hochgeladenen Dateien, der extrahierte Text und die erstellte Analyse.', 'Technische Daten für den Betrieb: Protokoll der Zugriffe und der KI-Anfragen mit Datum, Ergebnis und Verbrauch.'] },
           { h: 'Wo die Daten liegen', p: ['Konten, Dokumente und Analysen liegen bei Supabase, in einem Projekt in Frankfurt am Main, Deutschland (Europäische Union). Nicht in der Schweiz: für manche Unternehmen ist das ein Unterschied, deshalb steht es auch auf der Startseite.', 'Die hochgeladenen Dateien liegen in einem privaten Speicher: erreichbar nur für die Benutzer Ihres Unternehmens, über zeitlich begrenzte Links.'] },
@@ -457,7 +457,7 @@ export const CONTENT = {
           { h: 'Verfügbarkeit', p: ['Wir bemühen uns um einen verfügbaren Dienst, ohne unterbruchsfreien Betrieb zu garantieren. Wartungsarbeiten und Ausfälle von Anbietern können zu Unterbrüchen führen. Ein vertraglich zugesichertes Service-Level besteht nicht.'] },
           { h: 'Preise und Zahlung', p: ['In der jetzigen Phase werden die wirtschaftlichen Bedingungen individuell mit jedem Pilotunternehmen vereinbart und in der Vereinbarung festgehalten, die Sie vor der Aufschaltung erhalten.'] },
           { h: 'Haftung', p: ['Es gelten die Bestimmungen des schweizerischen Rechts.', 'Die Analysen werden automatisch erstellt und können Fehler enthalten: Jede Angabe ist vor einer Entscheidung am Originaldokument zu prüfen, das stets neben der Analyse einsehbar bleibt.'] },
-          { h: 'Anwendbares Recht', p: ['Es gilt schweizerisches Recht.'] },
+          { h: 'Anwendbares Recht und Gerichtsstand', p: ['Es gilt schweizerisches Recht.', 'Gerichtsstand ist der Sitz des Inhabers in Savosa (Kanton Tessin).'] },
         ],
       },
     },
@@ -595,8 +595,8 @@ export const CONTENT = {
     aboutLead:
       'Un produit qui lit le courrier de votre entreprise doit dire qui le fait. Pas une marque derrière laquelle il n’y a personne.',
     aboutName: 'Andrea Cavalieri',
-    aboutRole: '',
-    aboutPlace: '',
+    aboutRole: 'Titulaire',
+    aboutPlace: 'Savosa, canton du Tessin',
     aboutWhy:
       'AI-Swisse est né d’un problème concret : dans une PME suisse, le courrier administratif arrive en trois langues, chaque lettre cache un délai, et celui qui l’ouvre a généralement autre chose à faire. Les outils qui promettent de « résumer » un document n’y suffisent pas : s’ils se trompent de date sans le dire, le dommage dépasse le travail épargné. C’est pourquoi ici chaque information est accompagnée de la phrase dont elle provient — et ce que le système ne sait pas, il le déclare.',
     aboutContactLine: 'Pour en parler directement :',
@@ -610,7 +610,7 @@ export const CONTENT = {
     contactDemoText: 'Une demi-heure, en visioconférence ou sur place. Apportez un de vos courriers : nous l’analysons ensemble.',
     contactPhoneLabel: 'Téléphone',
     contactAddressLabel: 'Adresse',
-    contactAddress: '',
+    contactAddress: 'Via Rovello 32, 6942 Savosa',
     contactPhone: '',
     contactHoursLabel: 'Réponse',
     contactHours: 'Nous répondons en général dans le jour ouvrable.',
@@ -626,7 +626,7 @@ export const CONTENT = {
         title: 'Impressum',
         intro: 'Informations sur l’exploitant de ce site et du service AI-Swisse.',
         sections: [
-          { h: 'Fournisseur du service', p: ['AI-Swisse est exploité par Andrea Cavalieri.', 'Le service s’adresse aux entreprises et aux professionnels en Suisse.'] },
+          { h: 'Fournisseur du service', p: ['AI-Swisse, raison individuelle', 'Titulaire : Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Suisse'] },
           { h: 'Contact', p: [`E-mail : ${CONTACT_EMAIL}`, 'Nous répondons en général dans le jour ouvrable.'] },
           { h: 'Responsable du contenu', p: ['Andrea Cavalieri'] },
           { h: 'Exclusion de responsabilité', p: ['Les contenus de ce site sont rédigés avec soin, sans garantie d’exhaustivité ni d’actualité. AI-Swisse est un outil de soutien administratif et ne remplace pas le conseil juridique, fiscal ou fiduciaire.', 'Les liens vers des sites tiers mènent à des contenus dont nous ne répondons pas.'] },
@@ -637,7 +637,7 @@ export const CONTENT = {
         title: 'Politique de confidentialité',
         intro: 'Ce qu’il advient de vos données et de celles de vos documents. Rédigée pour être comprise sans avocat ; là où la loi exige des formules précises, elles y sont et sont signalées.',
         sections: [
-          { h: 'Qui traite les données', p: ['Les données sont traitées par Andrea Cavalieri, qui exploite AI-Swisse.', `Pour toute question sur vos données : ${CONTACT_EMAIL}`] },
+          { h: 'Qui traite les données', p: ['AI-Swisse, raison individuelle d’Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Suisse', `Pour toute question sur vos données : ${CONTACT_EMAIL}`] },
           { h: 'Ce site', p: ['Le site vitrine que vous lisez n’utilise pas de cookies, n’a pas d’outil de mesure d’audience et ne charge aucune ressource depuis un autre serveur : pas de police distante, pas de traçage. Le serveur journalise les requêtes selon la pratique ordinaire de l’hébergeur.', 'Le site est hébergé sur GitHub Pages, service de GitHub, Inc. (États-Unis), qui journalise les adresses IP des requêtes pour le fonctionnement et la sécurité du service. Ce site ne comporte ni connexion ni champ de saisie : l’application elle-même se trouve sur app.ai-swisse.com.'] },
           { h: 'Quelles données l’application collecte', p: ['Données de compte : prénom, nom, adresse e-mail.', 'Données d’entreprise : raison sociale, canton, secteur, taille et les informations saisies dans le profil pour la recherche de subventions.', 'Documents : les fichiers chargés, le texte extrait et l’analyse produite.', 'Données techniques nécessaires au fonctionnement : journal des accès et des requêtes à l’IA, avec date, résultat et consommation.'] },
           { h: 'Où se trouvent les données', p: ['Comptes, documents et analyses sont hébergés chez Supabase, dans un projet situé à Francfort, en Allemagne (Union européenne). Pas en Suisse : pour certaines entreprises la différence compte, elle figure donc aussi en page d’accueil.', 'Les fichiers chargés résident dans un espace privé : accessibles uniquement aux utilisateurs de votre entreprise, par des liens à durée limitée.'] },
@@ -658,7 +658,7 @@ export const CONTENT = {
           { h: 'Disponibilité', p: ['Nous nous efforçons de maintenir le service disponible, sans garantir un fonctionnement ininterrompu. Maintenances et pannes de fournisseurs peuvent provoquer des interruptions. Aucun niveau de service n’est garanti contractuellement.'] },
           { h: 'Tarifs et paiement', p: ['Dans la phase actuelle, les conditions économiques sont convenues individuellement avec chaque entreprise pilote et figurent dans l’accord que vous recevez avant l’activation.'] },
           { h: 'Responsabilité', p: ['Les dispositions du droit suisse s’appliquent.', 'Les analyses sont produites automatiquement et peuvent contenir des erreurs : chaque information doit être vérifiée sur le document original, qui reste consultable à côté de l’analyse, avant toute décision.'] },
-          { h: 'Droit applicable', p: ['Le droit suisse s’applique.'] },
+          { h: 'Droit applicable et for', p: ['Le droit suisse s’applique.', 'Le for compétent est celui du siège du titulaire, à Savosa (canton du Tessin).'] },
         ],
       },
     },
