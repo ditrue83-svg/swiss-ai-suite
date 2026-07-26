@@ -31,6 +31,7 @@
   --surface-2: hsl(210, 20%, 94%);     /* superficie tenue: pastiglie neutre */
   --track: hsl(210, 20%, 92%);         /* fondo delle barre di avanzamento  */
   --highlight: hsl(48, 100%, 78%);     /* evidenziazione della citazione     */
+  --on-highlight: hsl(45, 60%, 12%);   /* testo sopra l'evidenziazione       */
 
   /* --- Colori di stato -----------------------------------------------------
      NON sono decorazione: dicono quanto manca a una scadenza e se un'azione è
@@ -150,7 +151,11 @@
     --amber-fill: hsl(38, 80%, 58%);
     --green-fill: hsl(151, 48%, 50%);
 
+    /* In scuro l'evidenziazione diventa un ocra di luminanza media: il testo
+       sopra deve restare SCURO, non seguire --ink che qui è quasi bianco.
+       Con --ink il contrasto era 2.54:1, sotto la soglia AA di 4.5. */
     --highlight: hsl(48, 85%, 38%);
+    --on-highlight: hsl(45, 80%, 8%);
 
     /* Su fondo scuro un'ombra chiara non esiste: la profondità la dà il bordo,
        quindi le ombre restano appena accennate e più profonde. */
@@ -409,7 +414,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ax-doc { position: sticky; top: 16px; }
 @media (max-width: 900px) { .ax-doc { position: static; } }
 .ax-doc-view { white-space: pre-wrap; word-break: break-word; font-size: var(--fs-body); line-height: 1.6; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px; max-height: 62vh; overflow: auto; }
-.ax-doc-view mark.ev-hl { background: var(--highlight); color: var(--ink); border-radius: 3px; padding: 0 1px; box-shadow: 0 0 0 3px var(--highlight); }
+.ax-doc-view mark.ev-hl { background: var(--highlight); color: var(--on-highlight); border-radius: 3px; padding: 0 1px; box-shadow: 0 0 0 3px var(--highlight); }
 .ax-col > .card + .card { margin-top: 16px; }
 
 /* evidence "Mostra nel documento" */

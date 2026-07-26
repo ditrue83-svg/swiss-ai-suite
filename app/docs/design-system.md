@@ -56,6 +56,7 @@ Multipli di 4: `4px` · `—` · `—` · `—` · `24px` · `—` · `—`
 | `--red` / `--amber` / `--green` | `hsl(0, 84%, 60%)` / `hsl(35, 78%, 34%)` / `hsl(151, 48%, 32%)` | urgenza, attenzione, assolto |
 | `--amber-fill` / `--green-fill` | `hsl(35, 92%, 50%)` / `hsl(151, 52%, 40%)` | riempimenti: barre, pallini |
 | `--accent-line` | `hsl(207, 58%, 82%)` | bordo di ciò che sta su `--accent-soft` |
+| `--on-highlight` | `hsl(45, 60%, 12%)` | testo sopra l'evidenziazione della citazione |
 | `--focus` | `hsl(207, 88%, 42%)` | anello del focus da tastiera |
 
 L'accento è più fondo dell'azzurro precedente (`hsl(199,100%,50%)`), che era
@@ -106,6 +107,17 @@ testo, schiarisce invece di scurire.
 ⚠️ La soglia WCAG di 3:1 vale per i **controlli** (campi, select, aree di
 caricamento), non per i bordi decorativi delle schede: quelle si staccano per
 differenza di superficie. I controlli usano `--line-strong`.
+
+⚠️ **Anche l'evidenziazione ha il suo colore di testo.** `mark.ev-hl` usava
+`--ink`: in tema chiaro va bene (scuro su giallo chiaro, 12:1), ma in tema
+scuro `--ink` è quasi bianco e l'evidenziazione diventa un ocra di luminanza
+media — il contrasto scendeva a **2.54:1**, sotto la soglia AA, proprio sulla
+frase che dimostra da dove viene un'informazione. Ora esiste `--on-highlight`,
+scuro in entrambi i temi: 12:1 in chiaro, 5.6:1 in scuro.
+
+La regola generale: **ogni fondo pieno ha bisogno del proprio colore di testo**
+(`--on-accent`, `--on-ink`, `--on-highlight`). Ereditare `--ink` funziona solo
+finché il fondo resta chiaro in tutti e due i temi.
 
 ## Focus da tastiera
 
