@@ -37,6 +37,8 @@ export function useLabels() {
     /** Lingua del documento. */
     language: (v: string | null | undefined) => pick('labels.languages', v),
     urgency: (v: string | null | undefined) => pick('labels.urgency', v),
+    /** Tono della bozza di risposta: formale, conciso, cordiale. */
+    tone: (v: string | null | undefined) => pick('labels.tones', v),
     confidence: (v: string | null | undefined) => pick('labels.confidence', v),
     deadlineLevel: (v: string | null | undefined) => pick('labels.deadlineLevels', v),
 

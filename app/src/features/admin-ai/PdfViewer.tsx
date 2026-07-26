@@ -119,10 +119,10 @@ export function PdfViewer({ storagePath, highlight }: {
       {highlight && (
         <div className="hint-accent" style={{ marginBottom: 8 }}>
           <Icon name="fileSearch" className="ic-sm" />{' '}
-          {highlight.pageNumber ? <>Passaggio a <strong>pagina {highlight.pageNumber}</strong>: </> : 'Passaggio citato: '}
+          {highlight.pageNumber ? <><strong>{t('adminAi.result.quoteOnPage', { n: highlight.pageNumber })}</strong>{' '}</> : <>{t('adminAi.result.quoteCited')}{' '}</>}
           «{highlight.quote}»
           <div className="muted-sm" style={{ marginTop: 4 }}>
-            La citazione è verificata sul testo estratto; sul PDF viene indicata la pagina, non evidenziata la riga.
+            {t('adminAi.result.pdfPageNote')}
           </div>
         </div>
       )}

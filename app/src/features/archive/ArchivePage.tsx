@@ -12,6 +12,7 @@ import { ErrorState, EmptyCta, SkeletonLine } from '@/components/ui/states';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
+import { useLabels } from '@/i18n/labels';
 import type { DocumentAnalysis, DocumentRecord } from '@/types/models';
 
 type Filter = 'tutte' | 'alta' | 'media' | 'bassa';
@@ -19,6 +20,7 @@ interface Row { doc: DocumentRecord; analysis: DocumentAnalysis | null }
 
 export function ArchivePage() {
   const t = useT();
+  const L = useLabels();
   const { activeCompanyId } = useCompany();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -75,8 +77,13 @@ export function ArchivePage() {
         <div className="card-title">
           <span>{t('archive.count', { n: visible.length })}</span>
           <span className="filter-group">
+            {/* I filtri mostravano il valore grezzo della colonna — «tutte»,
+                «alta» — che è italiano anche in tedesco. Il valore resta la
+                chiave, l'etichetta passa dalle traduzioni. */}
             {(['tutte', 'alta', 'media', 'bassa'] as Filter[]).map((f) => (
-              <button key={f} className={`btn btn-sm${filter === f ? ' btn-primary' : ''}`} onClick={() => { setFilter(f); setArmed(null); }}>{f}</button>
+              <button key={f} className={`btn btn-sm${filter === f ? ' btn-primary' : ''}`} onClick={() => { setFilter(f); setArmed(null); }} aria-pressed={filter === f}>
+                {f === 'tutte' ? t('archive.filterAll') : L.urgency(f)}
+              </button>
             ))}
           </span>
         </div>
@@ -118,7 +125,7 @@ export function ArchivePage() {
               {failed && <span className="badge badge-alta">{t('archive.analysisFailed')}</span>}
               {!failed && analysis?.analysisStatus === 'needs_review' && <span className="badge badge-media">{t('archive.needsReview')}</span>}
               {analysis && !failed && <span className="badge badge-neutral">{t('archive.actionsProgress', { done, total })}</span>}
-              {urgency && <span className={`badge badge-${urgency}`}>{urgency}</span>}
+              {urgency && <span className={`badge badge-${urgency}`}>{L.urgency(urgency)}</span>}
               <button className="btn btn-sm" onClick={() => navigate(`/admin?doc=${doc.id}`)}>{t('common.open')}</button>
               {doc.storagePath && (
                 <button className="btn btn-sm btn-icon" onClick={() => openFile(doc)} disabled={busyId === doc.id} aria-label={t('archive.openFileAria', { title: doc.title })}><Icon name="download" className="ic-sm" /></button>
@@ -129,7 +136,7 @@ export function ArchivePage() {
                   <button className="btn btn-sm" onClick={() => setArmed(null)}>{t('common.cancel')}</button>
                 </span>
               ) : (
-                <button className="btn btn-sm btn-icon" onClick={() => setArmed(doc.id)} aria-label={`Elimina documento: ${doc.title}`}><Icon name="trash" className="ic-sm" /></button>
+                <button className="btn btn-sm btn-icon" onClick={() => setArmed(doc.id)} aria-label={t('archive.deleteAria', { title: doc.title })}><Icon name="trash" className="ic-sm" /></button>
               )}
             </div>
           );

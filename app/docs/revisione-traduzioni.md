@@ -28,6 +28,22 @@ Le chiavi fra apici servono a ritrovare il testo nel codice (`src/i18n/locales/`
 
 **486 testi in totale.** Con poco tempo, i livelli 1 e 2 (55 testi) sono quelli che contano.
 
+> ⚠️ **Questo documento non è più completo (2026-07-26).** Circa cento etichette erano rimaste
+> scritte a mano nei componenti — la dashboard, lo scadenziario, buona parte della schermata di
+> analisi e le pratiche di Subsidy erano in italiano anche in tedesco e in francese — e sono state
+> portate nei dizionari in quella data. **Le loro traduzioni DE e FR non sono ancora elencate qui
+> sotto** e non sono passate da nessun controllo, nemmeno da quelli oggettivi della sezione
+> precedente. Vanno aggiunte prima di consegnare il documento a un revisore, altrimenti la revisione
+> coprirà l'interfaccia di ieri.
+>
+> Le chiavi interessate stanno in `dashboard.*` (da `kpiOpenActions` a `horizonBeyond`),
+> `tasks.*` (da `titleField` a `deleteAria`), `adminAi.result.*` (da `correctionSaved` a
+> `correctAria`, più `quoteOnPage`, `quoteCited`, `pdfPageNote`), `adminAi.introReading`,
+> `adminAi.backToArchive`, `adminAi.fileImageOcr`, `adminAi.fileScanOcr`, `adminAi.progressGeneric`,
+> `subsidy.cases.*` (da `caseDeleted` a `statuses.*`), `subsidy.detail.demoData*`,
+> `archive.deleteAria`, `auth.passwordPlaceholder`, `auth.register.firstNamePlaceholder`,
+> `auth.register.lastNamePlaceholder`, `labels.tones.*`.
+
 
 ---
 

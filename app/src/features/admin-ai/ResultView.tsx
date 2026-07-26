@@ -75,7 +75,7 @@ function DocViewer({ text, pages, highlight }: { text: string | null | undefined
           const onThisPage = !!q && (target == null || target === p.pageNumber) && p.text.toLowerCase().includes(q.trim().toLowerCase());
           return (
             <div key={p.pageNumber}>
-              {pages.length > 1 && <div className="muted-sm" style={{ fontWeight: 600, marginTop: p.pageNumber > first ? 14 : 0, marginBottom: 4 }}>— Pagina {p.pageNumber} —</div>}
+              {pages.length > 1 && <div className="muted-sm" style={{ fontWeight: 600, marginTop: p.pageNumber > first ? 14 : 0, marginBottom: 4 }}>— {t('adminAi.result.page', { n: p.pageNumber })} —</div>}
               <div>{onThisPage ? renderHighlighted(p.text, q) : p.text}</div>
             </div>
           );
@@ -124,7 +124,7 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <div><b>{label}:</b>{' '}
           {current != null
-            ? <span>{current} <span className="badge badge-neutral">corretto a mano</span></span>
+            ? <span>{current} <span className="badge badge-neutral">{tt('adminAi.result.correctedByHand')}</span></span>
             : <span>{aiDisplay || '—'}</span>}
         </div>
         {!editing && (
@@ -133,12 +133,12 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
           </button>
         )}
       </div>
-      {current != null && <div className="muted-sm">Valore rilevato dall’AI: {aiDisplay || '—'}</div>}
+      {current != null && <div className="muted-sm">{tt('adminAi.result.aiDetectedValue', { value: aiDisplay || '—' })}</div>}
       {editing && (
         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-          <input type={inputType ?? 'text'} className="select-inline" value={value} onChange={(e) => setValue(e.target.value)} style={{ flex: 1, minWidth: 150 }} aria-label={`Correggi ${label}`} />
-          <button className="btn btn-sm btn-primary" onClick={save} disabled={saving} aria-busy={saving || undefined}>{saving ? <span className="spinner" aria-hidden="true" /> : null} Salva</button>
-          <button className="btn btn-sm" onClick={() => setEditing(false)}>Annulla</button>
+          <input type={inputType ?? 'text'} className="select-inline" value={value} onChange={(e) => setValue(e.target.value)} style={{ flex: 1, minWidth: 150 }} aria-label={tt('adminAi.result.correctAria', { label })} />
+          <button className="btn btn-sm btn-primary" onClick={save} disabled={saving} aria-busy={saving || undefined}>{saving ? <span className="spinner" aria-hidden="true" /> : null} {tt('common.save')}</button>
+          <button className="btn btn-sm" onClick={() => setEditing(false)}>{tt('common.cancel')}</button>
         </div>
       )}
     </div>
@@ -232,7 +232,7 @@ export function ResultView({ analysis, document, onRetry }: {
         field, originalValue: aiValue, correctedValue,
       });
       setCorrections((prev) => ({ ...prev, [field]: saved }));
-      showToast('Correzione salvata');
+      showToast(t('adminAi.result.correctionSaved'));
     } catch (e) { showToast(toUserMessage(e)); }
   }
 
@@ -242,7 +242,10 @@ export function ResultView({ analysis, document, onRetry }: {
   const r = analysis;
   const lvl = r.deadlineLevel || 'none';
   const days = r.daysToDeadline;
-  const remaining = days == null ? '' : days < 0 ? `Scaduta da ${Math.abs(days)} giorni` : days === 0 ? 'Scade oggi' : `Mancano ${days} giorni`;
+  const remaining = days == null ? ''
+    : days < 0 ? t('tasks.overdueBy', { days: Math.abs(days) })
+    : days === 0 ? t('tasks.dueToday')
+    : t('tasks.dueIn', { days });
 
   async function toggleAction(id: number, checked: boolean) {
     const target = actions.find((c) => c.id === id);
@@ -279,7 +282,7 @@ export function ResultView({ analysis, document, onRetry }: {
       const gen = await replyService.generate({ documentId: analysis.documentId, language: lang, tone });
       setReply(gen);
       setDraft(gen.content);
-      showToast(reply ? 'Bozza rigenerata' : 'Bozza generata');
+      showToast(t(reply ? 'adminAi.result.draftRegenerated' : 'adminAi.result.draftGenerated'));
     } catch (e) { showToast(toUserMessage(e)); }
     finally { setGenerating(false); }
   }
@@ -304,7 +307,7 @@ export function ResultView({ analysis, document, onRetry }: {
     setSavingDraft(true);
     try {
       await persistDraft(draft, true);
-      showToast('Modifiche salvate');
+      showToast(t('adminAi.result.changesSaved'));
     } catch (e) { showToast(toUserMessage(e)); }
     finally { setSavingDraft(false); }
   }
@@ -317,13 +320,13 @@ export function ResultView({ analysis, document, onRetry }: {
     setSavingDraft(true);
     try {
       await persistDraft(next, false);
-      showToast('Bozza rigenerata');
+      showToast(t('adminAi.result.draftRegenerated'));
     } catch (e) { showToast(toUserMessage(e)); }
     finally { setSavingDraft(false); }
   }
   function copyDraft() {
     navigator.clipboard?.writeText(draft);
-    showToast('Bozza copiata negli appunti');
+    showToast(t('adminAi.result.draftCopied'));
   }
 
   // §25/§53 — un'analisi FALLITA non è un risultato: non se ne mostrano mittente,
@@ -341,7 +344,7 @@ export function ResultView({ analysis, document, onRetry }: {
             <Icon name="alert" />
             <span>
               {r.errorMessageSafe ?? t('adminAi.result.failedGeneric')}
-              {r.errorCode ? <span className="muted-sm"> (codice: {r.errorCode})</span> : null}
+              {r.errorCode ? <span className="muted-sm"> {t('adminAi.result.errorCodeNote', { code: r.errorCode })}</span> : null}
             </span>
           </div>
           <p className="muted-sm mt-12">
@@ -363,10 +366,7 @@ export function ResultView({ analysis, document, onRetry }: {
       {r.lastAttemptFailed && (
         <div className="warn-box mb-14">
           <Icon name="alert" />
-          <span>
-            L’ultimo tentativo di rianalisi non è riuscito{r.lastAttemptError ? `: ${r.lastAttemptError}` : '.'} Qui sotto
-            trovi l’<strong>analisi precedente</strong>, che resta valida.
-          </span>
+          <span>{t('adminAi.result.lastAttemptFailed', { reason: r.lastAttemptError ? `: ${r.lastAttemptError}` : '.' })}</span>
         </div>
       )}
 
@@ -374,17 +374,17 @@ export function ResultView({ analysis, document, onRetry }: {
         <div className="ax-head-top">
           <div className="ax-title">{document.title}</div>
           <div className="ax-badges">
-            {r.analysisStatus === 'needs_review' && <span className="badge badge-media">Da verificare</span>}
-            <span className={`badge badge-${r.urgency}`}>urgenza {r.urgency}</span>
-            <span className="badge badge-neutral">confidenza {r.confidence}</span>
+            {r.analysisStatus === 'needs_review' && <span className="badge badge-media">{t('adminAi.result.needsReview')}</span>}
+            <span className={`badge badge-${r.urgency}`}>{t('adminAi.result.urgencyChip', { level: L.urgency(r.urgency) })}</span>
+            <span className="badge badge-neutral">{t('adminAi.result.confidenceChip', { level: L.confidence(r.confidence) })}</span>
           </div>
         </div>
         <div className="ax-meta">
-          <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{r.sender ?? L.authorityType('unknown')}</b>{r.senderUncertain ? ' · da verificare' : ''}</span>
+          <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{r.sender ?? L.authorityType('unknown')}</b>{r.senderUncertain ? ` · ${t('common.verify')}` : ''}</span>
           {r.senderAuthorityType && <span className="ax-chip">{L.authorityType(r.senderAuthorityType)}</span>}
           <span className="ax-chip"><Icon name="document" className="ic-sm" /> {r.documentTypeLabel}</span>
           <span className="ax-chip">{r.languageLabel}</span>
-          {r.recipient && <span className="ax-chip" title="Destinatario individuato">A: {r.recipient}</span>}
+          {r.recipient && <span className="ax-chip" title={t('adminAi.result.recipientTitle')}>{t('adminAi.result.recipientPrefix', { name: r.recipient })}</span>}
           {r.documentDate && <span className="ax-chip" title={t('adminAi.result.documentDate')}><Icon name="calendar" className="ic-sm" /> {formatDate(r.documentDate)}</span>}
           {/* §12 — l'importo di testa dichiara SEMPRE il suo tipo: una multa non
               è una richiesta di pagamento. */}
@@ -394,12 +394,12 @@ export function ResultView({ analysis, document, onRetry }: {
               <span className="muted-sm"> · {L.amountType(r.amountType ?? 'other')}</span>
             </span>
           )}
-          <span className="ax-chip" title={`Motore di analisi: ${r.engine}`}>
+          <span className="ax-chip" title={t('adminAi.result.engineTitle', { engine: r.engine })}>
             <Icon name={r.engine.startsWith('claude') ? 'star' : 'fileSearch'} className="ic-sm" />
-            {r.engine.startsWith('claude') ? 'Analisi AI' : 'Motore locale'}
+            {t(r.engine.startsWith('claude') ? 'adminAi.result.engineAi' : 'adminAi.result.engineLocal')}
           </span>
         </div>
-        {r.subject && <div className="ax-subject muted-sm" style={{ marginTop: 6 }}><b>Oggetto:</b> {r.subject}</div>}
+        {r.subject && <div className="ax-subject muted-sm" style={{ marginTop: 6 }}><b>{t('adminAi.result.subjectLabel')}:</b> {r.subject}</div>}
         {r.senderEvidence && <div><EvidenceButton evidence={r.senderEvidence} label={t('adminAi.result.senderShowInDocument')} onShow={setHighlight} /></div>}
       </div>
 
@@ -409,7 +409,7 @@ export function ResultView({ analysis, document, onRetry }: {
         <div className="co-main">
           <div className="co-kicker">{t('adminAi.result.whatToDoNow')}</div>
           <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <OriginBadge source={r.primaryActionSource} ctx="callout" /></div>
-          <div className="co-when">{r.deadline ? <>Entro <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</> : t('adminAi.result.noDeadlineFound')}</div>
+          <div className="co-when">{r.deadline ? <>{t('adminAi.result.by')} <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</> : t('adminAi.result.noDeadlineFound')}</div>
         </div>
         <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || document.title)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}</button>
       </div>
@@ -424,7 +424,7 @@ export function ResultView({ analysis, document, onRetry }: {
                   <button type="button" className={`btn btn-sm${docMode === 'pdf' ? ' btn-primary' : ''}`}
                     aria-pressed={docMode === 'pdf'} onClick={() => setDocMode('pdf')}>PDF</button>
                   <button type="button" className={`btn btn-sm${docMode === 'text' ? ' btn-primary' : ''}`}
-                    aria-pressed={docMode === 'text'} onClick={() => setDocMode('text')}>Testo</button>
+                    aria-pressed={docMode === 'text'} onClick={() => setDocMode('text')}>{t('adminAi.result.docModeText')}</button>
                 </span>
               )}
             </div>
@@ -440,7 +440,7 @@ export function ResultView({ analysis, document, onRetry }: {
               <div className="deadline-card">
                 <div className="dl-ico"><Icon name="calendar" /></div>
                 <div className="dl-main">
-                  <div className="dl-kicker">Scadenza · {L.deadlineLevel(lvl)}</div>
+                  <div className="dl-kicker">{t('adminAi.result.deadlineKicker')} · {L.deadlineLevel(lvl)}</div>
                   <div className="dl-date">{formatDate(r.deadline)}</div>
                   <div className="dl-rem">{remaining}</div>
                 </div>
@@ -462,15 +462,17 @@ export function ResultView({ analysis, document, onRetry }: {
           <div className="card ax-actions-card">
             <div className="card-title">{t('adminAi.result.checklist')}</div>
             <div className="ax-progress">
-              <span className="pg-label">{done} di {tot} azioni completate</span>
+              <span className="pg-label">{t('adminAi.result.checklistProgress', { done, total: tot })}</span>
               <div className="meter-track" style={{ flex: 1 }}><div className="meter-fill" style={{ width: `${pct}%` }} /></div>
             </div>
             <div>
               {actions.map((c) => (
+                // La casella e il testo sono legati da id/htmlFor: si spunta
+                // cliccando la frase, non solo il quadratino di 18 pixel.
                 <div className={`action-item${c.done ? ' done' : ''}`} key={c.id}>
-                  <input type="checkbox" checked={c.done} onChange={(e) => toggleAction(c.id, e.target.checked)} aria-label={c.text} />
+                  <input type="checkbox" id={`act-${r.id}-${c.id}`} checked={c.done} onChange={(e) => toggleAction(c.id, e.target.checked)} />
                   <div className="ai-main">
-                    <div className="ai-text">{c.text} <OriginBadge source={c.sourceType} /></div>
+                    <div className="ai-text"><label htmlFor={`act-${r.id}-${c.id}`}>{c.text}</label> <OriginBadge source={c.sourceType} /></div>
                     <div className="ai-meta">
                       {c.sourceType === 'extracted' && c.evidence && <EvidenceButton evidence={c.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />}
                       <button type="button" className="mini-btn" onClick={() => createTask(c.text)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.addToTasks')}</button>
@@ -482,20 +484,24 @@ export function ResultView({ analysis, document, onRetry }: {
           </div>
 
           {r.uncertainties.length ? (
-            <div className="card"><div className="card-title"><Icon name="alert" className="ic-sm" /> Da verificare <span className="badge badge-neutral">confidenza {r.confidence}</span></div>
+            <div className="card"><div className="card-title"><Icon name="alert" className="ic-sm" /> {t('adminAi.result.needsReview')} <span className="badge badge-neutral">{t('adminAi.result.confidenceChip', { level: L.confidence(r.confidence) })}</span></div>
               <ul className="verify-box">{r.uncertainties.map((v, i) => <li key={i}>{v}</li>)}</ul>
             </div>
           ) : (
-            <div className="card"><div className="verify-ok"><Icon name="checkCircle" className="ic-sm" /> Informazioni principali confermate (confidenza {r.confidence}).</div></div>
+            <div className="card"><div className="verify-ok"><Icon name="checkCircle" className="ic-sm" /> {t('adminAi.result.mainInfoConfirmed', { level: L.confidence(r.confidence) })}</div></div>
           )}
 
-          <div className="card"><div className="card-title">{t('adminAi.result.risk')}</div>
+          {/* Il tag sta nella riga del titolo: quando il rischio non è
+              determinabile la scheda diceva «non determinabile» su una riga
+              tutta sua, occupando lo spazio di un'informazione che non c'è. */}
+          <div className="card"><div className="card-title">{t('adminAi.result.risk')}
             <span className={`risk-tag risk-${r.risk.level}`}><Icon name={r.risk.level === 'explicit' ? 'alert' : 'fileSearch'} className="ic-sm" /> {r.risk.level === 'explicit' ? t('adminAi.result.riskExplicit') : r.risk.level === 'possible' ? t('adminAi.result.riskInferred') : t('adminAi.result.riskUnknown')}</span>
+          </div>
             {r.risk.level !== 'unknown' && <div className="risk-text">{r.risk.text}</div>}
             <EvidenceButton evidence={r.risk.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />
           </div>
 
-          <div className="card"><div className="card-title">Documenti richiesti</div>
+          <div className="card"><div className="card-title">{t('adminAi.result.requestedDocumentsTitle')}</div>
             {r.requestedDocuments.length > 0 ? r.requestedDocuments.map((d, i) => (
               <div className="action-item" style={{ padding: '9px 0' }} key={i}>
                 <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{d.label}</span>
@@ -506,7 +512,7 @@ export function ResultView({ analysis, document, onRetry }: {
           </div>
 
           {r.amounts.length > 0 && (
-            <div className="card"><div className="card-title"><Icon name="banknote" className="ic-sm" /> Importi rilevati</div>
+            <div className="card"><div className="card-title"><Icon name="banknote" className="ic-sm" /> {t('adminAi.result.amountsFound')}</div>
               {r.amounts.map((m, i) => (
                 <div className="action-item" style={{ padding: '9px 0' }} key={`amt-${i}`}>
                   <span className="ai-main">
@@ -519,7 +525,7 @@ export function ResultView({ analysis, document, onRetry }: {
           )}
 
           {(r.referenceNumbers.length > 0 || r.legalReferences.length > 0) && (
-            <div className="card"><div className="card-title">Riferimenti e basi legali</div>
+            <div className="card"><div className="card-title">{t('adminAi.result.referencesAndLegal')}</div>
               {r.referenceNumbers.map((ref, i) => (
                 <div className="action-item" style={{ padding: '7px 0' }} key={`ref-${i}`}>
                   <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{ref.label ? `${ref.label}: ` : ''}<b>{ref.value}</b></span>
@@ -538,7 +544,7 @@ export function ResultView({ analysis, document, onRetry }: {
           )}
 
           <div className="card">
-            <div className="card-title"><Icon name="fileSearch" className="ic-sm" /> Revisione manuale</div>
+            <div className="card-title"><Icon name="fileSearch" className="ic-sm" /> {t('adminAi.result.manualReview')}</div>
             <div className="muted-sm">{t('adminAi.result.correctionsHint')}</div>
             <CorrectionRow label={t('adminAi.result.sender')} field="sender" aiDisplay={r.sender ?? ''} aiValue={r.sender} correction={corrections.sender} onSave={saveCorrection} />
             <CorrectionRow label={t('adminAi.result.documentType')} field="document_type" aiDisplay={r.documentTypeLabel} aiValue={r.documentType} correction={corrections.document_type} onSave={saveCorrection} />
@@ -547,22 +553,22 @@ export function ResultView({ analysis, document, onRetry }: {
           </div>
 
           <div className="card draft-editor">
-            <div className="card-title">Bozza di risposta</div>
+            <div className="card-title">{t('adminAi.result.replyDraftTitle')}</div>
             <div className="draft-controls">
-              <div className="dc-field"><label htmlFor="draft-lang">Lingua</label>
+              <div className="dc-field"><label htmlFor="draft-lang">{t('adminAi.result.replyLanguage')}</label>
                 <select id="draft-lang" className="select-inline" value={lang} onChange={(e) => setLang(e.target.value)}>
                   {(['it', 'de', 'fr'] as const).map((k) => <option key={k} value={k}>{L.language(k)}</option>)}
                 </select></div>
-              <div className="dc-field"><label htmlFor="draft-tone">Tono</label>
+              <div className="dc-field"><label htmlFor="draft-tone">{t('adminAi.result.replyTone')}</label>
                 <select id="draft-tone" className="select-inline" value={tone} onChange={(e) => setTone(e.target.value)}>
-                  {Object.entries(TONI).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {Object.keys(TONI).map((k) => <option key={k} value={k}>{L.tone(k)}</option>)}
                 </select></div>
               {isAI ? (
                 <button className="btn btn-sm" onClick={generateDraft} disabled={generating} aria-busy={generating || undefined}>
                   {generating ? <span className="spinner" aria-hidden="true" /> : <Icon name="star" className="ic-sm" />} {reply ? t('adminAi.result.regenerateReply') : t('adminAi.result.generateReply')}
                 </button>
               ) : (
-                <button className="btn btn-sm" onClick={resetDraft}><Icon name="fileSearch" className="ic-sm" /> Ripristina bozza</button>
+                <button className="btn btn-sm" onClick={resetDraft}><Icon name="fileSearch" className="ic-sm" /> {t('adminAi.result.restoreDraft')}</button>
               )}
             </div>
             {isAI && !reply && !generating ? (

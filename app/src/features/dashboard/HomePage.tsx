@@ -16,8 +16,10 @@ function greetingKey(): 'home.greetingMorning' | 'home.greetingAfternoon' | 'hom
 
 function PriorityRow({ it }: { it: PriorityItem }) {
   const L = useLabels();
+  // Il collegamento è la riga, non la freccia: su un portatile con trackpad
+  // centrare un bersaglio di 16 pixel è una prova di mira.
   return (
-    <div className="action-row">
+    <Link className="action-row is-link" to={it.to} aria-label={`${it.title} — ${it.cta}`}>
       <div className={`action-ico p-${it.priority}`}><Icon name={it.icon} className="ic-sm" /></div>
       <div className="action-main">
         <div className="action-title">{it.title}</div>
@@ -25,9 +27,9 @@ function PriorityRow({ it }: { it: PriorityItem }) {
       </div>
       <div className="action-meta">
         <span className={`badge badge-${it.priority}`}>{L.urgency(it.priority)}</span>
-        <Link className="action-link" to={it.to} aria-label={it.cta}><Icon name="arrowRight" className="ic-sm" /></Link>
+        <span className="action-link" aria-hidden="true"><Icon name="arrowRight" className="ic-sm" /></span>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -72,13 +74,13 @@ export function HomePage() {
       {!loading && !error && !hasData && (
         <div className="grid-2 mt-16">
           <div className="card module-card">
-            <div className="module-kicker">Modulo 1</div>
+            <div className="module-kicker">{t('home.module', { n: 1 })}</div>
             <div className="card-title mt-10">{t('adminAi.title')}</div>
             <p className="muted-sm">{t('home.adminAiDesc')}</p>
             <Link className="btn btn-sm mt-12" to="/admin">{t('home.openAdminAi')} <Icon name="arrowRight" className="ic-sm" /></Link>
           </div>
           <div className="card module-card">
-            <div className="module-kicker">Modulo 2</div>
+            <div className="module-kicker">{t('home.module', { n: 2 })}</div>
             <div className="card-title mt-10">{t('subsidy.title')}</div>
             <p className="muted-sm">{t('home.subsidyAiDesc')}</p>
             <Link className="btn btn-sm mt-12" to="/subsidy">{t('home.openSubsidyAi')} <Icon name="arrowRight" className="ic-sm" /></Link>

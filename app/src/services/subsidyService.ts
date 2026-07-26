@@ -4,6 +4,7 @@
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
+import { translate as tr } from '@/i18n';
 import type { EligibilityStatus, SubsidyCase, SubsidyCaseItem, SubsidyCaseStatus, SubsidyMatch } from '@/types/models';
 import type { Database, Json } from '@/types/database';
 import type { ProgramModel } from '@/features/subsidy-ai/programs';
@@ -172,7 +173,7 @@ export const subsidyService = {
     const itemsPayload: Database['public']['Tables']['subsidy_case_items']['Insert'][] =
       program.documentsRequired.map((d, i) => ({
         subsidy_case_id: created.id,
-        title: 'Preparare: ' + d,
+        title: tr('subsidy.cases.prepareItem', { doc: d }),
         completed: false,
         sort_order: i,
       }));

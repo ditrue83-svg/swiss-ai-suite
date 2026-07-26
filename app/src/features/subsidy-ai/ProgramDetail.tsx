@@ -220,7 +220,7 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
           <div className="src-k">{t('subsidy.detail.lastChecked')}</div><div className="src-v">{p.lastCheckedAt ? <>{p.lastCheckedAt} <span className="muted-sm">({t('subsidy.detail.lastCheckedHint')})</span></> : <span className="muted-sm">{t('subsidy.detail.notAvailable')}</span>}</div>
           <div className="src-k">{t('subsidy.detail.dataStatus')}</div><div className="src-v"><span className={`ds-badge ds-${p.dataStatus === 'verified' ? 'ok' : p.dataStatus === 'recheck' ? 'warn' : 'demo'}`}>{L.dataStatus(p.dataStatus)}</span></div>
         </div>
-        <div className="info-box mt-12"><Icon name="alert" className="ic-sm" /> <strong>Dati dimostrativi</strong> — verificare sempre condizioni, importi e scadenze sulla fonte ufficiale prima di procedere.</div>
+        <div className="info-box mt-12"><Icon name="alert" className="ic-sm" /> <strong>{t('subsidy.detail.demoData')}</strong> — {t('subsidy.detail.demoDataNote')}</div>
       </div>
 
       <div className="card">

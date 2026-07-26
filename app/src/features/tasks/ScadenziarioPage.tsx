@@ -41,7 +41,11 @@ export function ScadenziarioPage() {
     try {
       await taskService.create({
         companyId, userId: user!.id, title,
-        authority: authority.trim() || 'Inserimento manuale',
+        // Se l'ente non è indicato resta vuoto. Prima si salvava «Inserimento
+        // manuale» nel campo dell'ENTE: un dato inventato, scritto nel
+        // database e in italiano anche per un'utente tedescofona. Che la
+        // scadenza sia stata creata a mano lo dice già `source: 'manual'`.
+        authority: authority.trim() || null,
         dueDate: dueDate || null, source: 'manual',
       });
       setTitle(''); setAuthority(''); setDueDate('');
@@ -70,23 +74,13 @@ export function ScadenziarioPage() {
         <div className="page-desc">{t('tasks.subtitle')}</div>
       </div>
 
+      {/* Le scadenze prima del modulo per aggiungerne una: chi apre questa
+          pagina di solito vuole vedere cosa scade, non inserire dati. */}
       <div className="card">
-        <div className="card-title">{t('tasks.addManual')}</div>
-        <div className="grid-3">
-          <div className="field"><label htmlFor="t-title">Titolo</label><input id="t-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Es. Inviare conteggio AVS" /></div>
-          <div className="field"><label htmlFor="t-auth">Ente / riferimento</label><input id="t-auth" value={authority} onChange={(e) => setAuthority(e.target.value)} placeholder="Es. Cassa di compensazione" /></div>
-          <div className="field"><label htmlFor="t-date">{t('tasks.dueDate')}</label><input id="t-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
-        </div>
-        <button className="btn btn-primary btn-sm btn-block-mobile" onClick={addTask} disabled={saving || !title.trim()} aria-busy={saving || undefined}>
-          {saving ? <span className="spinner" aria-hidden="true" /> : null} Aggiungi
-        </button>
-      </div>
-
-      <div className="card">
-        <div className="card-title">Scadenze
+        <div className="card-title">{t('tasks.listTitle')}
           <span className="filter-group">
-            {(['aperte', 'fatte', 'tutte'] as Filter[]).map((f) => (
-              <button key={f} className={`btn btn-sm${filter === f ? ' btn-primary' : ''}`} onClick={() => setFilter(f)}>{f}</button>
+            {([['aperte', 'tasks.filterOpen'], ['fatte', 'tasks.filterDone'], ['tutte', 'tasks.filterAll']] as const).map(([f, key]) => (
+              <button key={f} className={`btn btn-sm${filter === f ? ' btn-primary' : ''}`} onClick={() => setFilter(f)} aria-pressed={filter === f}>{t(key)}</button>
             ))}
           </span>
         </div>
@@ -95,25 +89,39 @@ export function ScadenziarioPage() {
         {error && <ErrorState message={error} onRetry={reload} />}
         {!loading && !error && visible.length === 0 && <div className="empty">{t('tasks.noneInView')}</div>}
 
-        {!loading && !error && visible.map((t) => {
-          const d = daysUntil(t.dueDate);
+        {/* `task` e non `t`: qui `t` è la funzione di traduzione, e chiamare
+            la scadenza allo stesso modo la copriva. */}
+        {!loading && !error && visible.map((task) => {
+          const d = daysUntil(task.dueDate);
           return (
-            <div className="list-row" key={t.id}>
+            <div className="list-row" key={task.id}>
               <div className="list-main">
-                <div className="list-title">{t.title}</div>
-                <div className="list-sub">{t.authority ?? '—'}{t.description ? ' · ' + t.description : ''}</div>
+                <div className="list-title">{task.title}</div>
+                <div className="list-sub">{task.authority ?? '—'}{task.description ? ' · ' + task.description : ''}</div>
               </div>
-              {t.dueDate
-                ? <span className={`badge badge-${PRIORITY_BADGE[t.priority]}`}>{formatDate(t.dueDate)}{d != null && d >= 0 ? ` · ${d} gg` : d != null ? ' · scaduta' : ''}</span>
-                : <span className="badge badge-neutral">senza data</span>}
-              <select className="select-inline" value={t.status} onChange={(e) => changeStatus(t.id, e.target.value as TaskStatus)} aria-label={`Stato di: ${t.title}`}>
-                <option value="open">Da fare</option>
-                <option value="completed">Fatto</option>
+              {task.dueDate
+                ? <span className={`badge badge-${PRIORITY_BADGE[task.priority]}`}>{formatDate(task.dueDate)}{d != null && d >= 0 ? ` · ${t('tasks.daysLeft', { n: d })}` : d != null ? ` · ${t('tasks.overdueShort')}` : ''}</span>
+                : <span className="badge badge-neutral">{t('tasks.noDueDate')}</span>}
+              <select className="select-inline" value={task.status} onChange={(e) => changeStatus(task.id, e.target.value as TaskStatus)} aria-label={t('tasks.statusAria', { title: task.title })}>
+                <option value="open">{t('tasks.statusOpen')}</option>
+                <option value="completed">{t('tasks.statusDone')}</option>
               </select>
-              <button className="btn btn-sm btn-icon" onClick={() => remove(t.id)} aria-label={`Elimina scadenza: ${t.title}`}><Icon name="trash" className="ic-sm" /></button>
+              <button className="btn btn-sm btn-icon" onClick={() => remove(task.id)} aria-label={t('tasks.deleteAria', { title: task.title })}><Icon name="trash" className="ic-sm" /></button>
             </div>
           );
         })}
+      </div>
+
+      <div className="card">
+        <div className="card-title">{t('tasks.addManual')}</div>
+        <div className="grid-3">
+          <div className="field"><label htmlFor="t-title">{t('tasks.titleField')}</label><input id="t-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('tasks.titlePlaceholder')} /></div>
+          <div className="field"><label htmlFor="t-auth">{t('tasks.authorityField')}</label><input id="t-auth" value={authority} onChange={(e) => setAuthority(e.target.value)} placeholder={t('tasks.authorityPlaceholder')} /></div>
+          <div className="field"><label htmlFor="t-date">{t('tasks.dueDate')}</label><input id="t-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
+        </div>
+        <button className="btn btn-primary btn-sm btn-block-mobile" onClick={addTask} disabled={saving || !title.trim()} aria-busy={saving || undefined}>
+          {saving ? <span className="spinner" aria-hidden="true" /> : null} {t('tasks.add')}
+        </button>
       </div>
     </>
   );

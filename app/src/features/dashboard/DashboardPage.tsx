@@ -8,20 +8,27 @@ import { daysUntil } from '@/lib/format';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 
-const SHORT_TIPO: Record<string, string> = {
-  sollecito: 'Sollecito', richiesta_documenti: 'Richiesta doc.', pagamento: 'Fattura',
-  dichiarazione: 'Dichiarazione', controllo: 'Controllo', decisione: 'Decisione', informativa: 'Informativa',
-};
-
 interface BarRow { cat: string; val: number; cls?: string; dotCls?: string }
+
+/**
+ * Barre orizzontali. La lunghezza è la QUOTA SUL TOTALE della serie, non sul
+ * valore più alto: normalizzando sul massimo, un solo documento riempiva la
+ * barra fino in fondo e sembrava «tanto». Con il totale al denominatore la
+ * lunghezza dice qualcosa di vero — quanta parte dell'insieme sta in questa
+ * riga — e il numero accanto resta il dato esatto.
+ */
 function Bars({ rows }: { rows: BarRow[] }) {
-  const max = Math.max(1, ...rows.map((r) => r.val));
+  const total = rows.reduce((n, r) => n + r.val, 0);
   return (
     <>
       {rows.map((r) => (
         <div className="bar-row" key={r.cat}>
           <div className="bar-cat">{r.dotCls && <span className={`bar-dot ${r.dotCls}`} />}{r.cat}</div>
-          <div className="bar-track"><div className={`bar-fill ${r.cls ?? ''}`} style={{ width: `${Math.round((r.val / max) * 100)}%` }} /></div>
+          <div className="bar-track">
+            {/* A zero non si disegna nulla: una barra minima mostrerebbe una
+                quantità che non c'è. */}
+            {r.val > 0 && <div className={`bar-fill ${r.cls ?? ''}`} style={{ width: `${Math.round((r.val / total) * 100)}%` }} />}
+          </div>
           <div className="bar-val">{r.val}</div>
         </div>
       ))}
@@ -58,15 +65,20 @@ function DashboardBody({ data }: { data: OverviewData }) {
   analyses.forEach((a) => {
     urg[a.urgency]++;
     langCount[a.languageLabel] = (langCount[a.languageLabel] || 0) + 1;
-    const k = (a.documentType && SHORT_TIPO[a.documentType]) || a.documentTypeLabel;
+    // L'etichetta del tipo passa dalle etichette tradotte: la mappa di
+    // abbreviazioni italiane che stava qui restava italiana in de e fr.
+    const k = a.documentType ? L.docType(a.documentType) : a.documentTypeLabel;
     tipoCount[k] = (tipoCount[k] || 0) + 1;
   });
   const tipoRows = Object.entries(tipoCount).sort((a, b) => b[1] - a[1]).map(([cat, val]) => ({ cat, val }));
 
-  const horizon: Record<string, number> = { 'Scadute': 0, 'Entro 30 gg': 0, '31–90 gg': 0, 'Oltre 90 gg': 0 };
+  // Le fasce restano chiavi tecniche e diventano etichette solo al render:
+  // prima erano stringhe italiane usate sia come chiave sia come testo, e in
+  // tedesco il grafico mostrava «Entro 30 gg».
+  const horizon = { overdue: 0, d30: 0, d90: 0, beyond: 0 };
   withDate.forEach((t) => {
     const d = daysUntil(t.dueDate) ?? 0;
-    if (d < 0) horizon['Scadute']++; else if (d <= 30) horizon['Entro 30 gg']++; else if (d <= 90) horizon['31–90 gg']++; else horizon['Oltre 90 gg']++;
+    if (d < 0) horizon.overdue++; else if (d <= 30) horizon.d30++; else if (d <= 90) horizon.d90++; else horizon.beyond++;
   });
 
   const priorities = collectPriorities(data).slice(0, 8);
@@ -76,68 +88,79 @@ function DashboardBody({ data }: { data: OverviewData }) {
       <div className="kpi-grid">
         <div className="kpi">
           <div className="kpi-ico ok"><Icon name="checkCircle" className="ic-sm" /></div>
-          <div className="kpi-label">Azioni da completare</div>
+          <div className="kpi-label">{t('dashboard.kpiOpenActions')}</div>
           <div className="kpi-value">{openActions}</div>
-          <div className="kpi-sub">{docsWithOpen} documenti coinvolti</div>
+          <div className="kpi-sub">{t(docsWithOpen === 1 ? 'dashboard.kpiOpenActionsDocsOne' : 'dashboard.kpiOpenActionsDocsMany', { n: docsWithOpen })}</div>
         </div>
         <div className="kpi">
           <div className={`kpi-ico ${next7.length ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
-          <div className="kpi-label">Scadenze prossimi 7 gg</div>
+          <div className="kpi-label">{t('dashboard.kpiNext7')}</div>
           <div className={`kpi-value ${overdue7 ? 'hot' : ''}`}>{next7.length}</div>
-          <div className="kpi-sub">{overdue7 ? overdue7 + ' già scadute' : 'nessuna scaduta'}</div>
+          <div className="kpi-sub">
+            {overdue7
+              ? t(overdue7 === 1 ? 'dashboard.kpiOverdueOne' : 'dashboard.kpiOverdueMany', { n: overdue7 })
+              : t('dashboard.kpiNoneOverdue')}
+          </div>
         </div>
         <div className="kpi">
           <div className={`kpi-ico ${toVerify.length ? 'amb' : ''}`}><Icon name="fileSearch" className="ic-sm" /></div>
-          <div className="kpi-label">Documenti da verificare</div>
+          <div className="kpi-label">{t('dashboard.kpiToVerify')}</div>
           <div className="kpi-value">{toVerify.length}</div>
-          <div className="kpi-sub">confidenza bassa o ente incerto</div>
+          <div className="kpi-sub">{t('dashboard.kpiToVerifySub')}</div>
         </div>
         <div className="kpi">
           <div className="kpi-ico"><Icon name="star" className="ic-sm" /></div>
-          <div className="kpi-label">Incentivi rilevanti</div>
+          <div className="kpi-label">{t('dashboard.kpiSubsidies')}</div>
           <div className="kpi-value">{relevantCount}</div>
-          <div className="kpi-sub">{relevantCount ? 'idoneità da verificare' : 'completa il profilo incentivi'}</div>
+          <div className="kpi-sub">{relevantCount ? t('dashboard.kpiSubsidiesSub') : t('dashboard.kpiSubsidiesNone')}</div>
         </div>
       </div>
 
       <div className="card mt-16">
-        <div className="card-title">Prossime azioni</div>
+        <div className="card-title">{t('dashboard.nextActions')}</div>
         <div className="muted-sm" style={{ marginTop: '-6px', marginBottom: '8px' }}>{t('dashboard.sortedByPriority')}</div>
         {priorities.length === 0 ? (
-          <div className="priority-empty"><Icon name="checkCircle" /><div>Nessuna azione prioritaria: sei in pari.</div></div>
+          <div className="priority-empty"><Icon name="checkCircle" /><div>{t('dashboard.allDone')}</div></div>
         ) : priorities.map((it, i) => (
-          <div className="action-row" key={i}>
+          // La riga intera è il collegamento: il bersaglio non è la freccia di
+          // 16 pixel in fondo. La freccia resta come indizio di dove si va.
+          <Link className="action-row is-link" to={it.to} key={i} aria-label={`${it.title} — ${it.cta}`}>
             <div className={`action-ico p-${it.priority}`}><Icon name={it.icon} className="ic-sm" /></div>
             <div className="action-main"><div className="action-title">{it.title}</div><div className="action-sub">{it.sub}</div></div>
             <div className="action-meta"><span className={`badge badge-${it.priority}`}>{L.urgency(it.priority)}</span>
-              <Link className="action-link" to={it.to} aria-label={it.cta}><Icon name="arrowRight" className="ic-sm" /></Link></div>
-          </div>
+              <span className="action-link" aria-hidden="true"><Icon name="arrowRight" className="ic-sm" /></span></div>
+          </Link>
         ))}
       </div>
 
       <div className="grid-2 mt-16">
-        <div className="card"><div className="card-title">Scadenze in arrivo</div>
+        <div className="card"><div className="card-title">{t('dashboard.upcomingDeadlines')}</div>
           {withDate.length === 0 ? <div className="chart-empty">{t('dashboard.noDatedDeadlines')}</div> : (
-            <Bars rows={Object.entries(horizon).map(([cat, val]) => ({ cat, val, cls: cat === 'Scadute' && val > 0 ? 's-alta' : '' }))} />
+            <Bars rows={[
+              { cat: t('dashboard.horizonOverdue'), val: horizon.overdue, cls: horizon.overdue > 0 ? 's-alta' : '' },
+              { cat: t('dashboard.horizon30'), val: horizon.d30 },
+              { cat: t('dashboard.horizon90'), val: horizon.d90 },
+              { cat: t('dashboard.horizonBeyond'), val: horizon.beyond },
+            ]} />
           )}
         </div>
-        <div className="card"><div className="card-title">Completamento azioni</div>
+        <div className="card"><div className="card-title">{t('dashboard.completion')}</div>
           {totChecks === 0 ? <div className="chart-empty">{t('dashboard.noChecklist')}</div> : (
             <>
               <div className="meter"><div className="meter-num">{compPct}%</div>
                 <div className="meter-track"><div className="meter-fill" style={{ width: `${compPct}%` }} /></div></div>
-              <div className="kpi-sub mt-10">{doneChecks} di {totChecks} azioni completate su tutti i documenti</div>
+              <div className="kpi-sub mt-10">{t('dashboard.completionSub', { done: doneChecks, total: totChecks })}</div>
             </>
           )}
         </div>
       </div>
 
       {relevantCount > 0 && (
-        <div className="card mt-16"><div className="card-title">Incentivi &amp; pratiche</div>
+        <div className="card mt-16"><div className="card-title">{t('dashboard.subsidiesAndCases')}</div>
           <div className="dash-inc-stats">
-            <span className="lang-chip">{relevantCount} <b>rilevanti</b></span>
-            <span className="lang-chip">{verifiableCount} <b>idoneità da verificare</b></span>
-            <span className="lang-chip">{activeCases} <b>pratiche attive</b></span>
+            <span className="lang-chip">{relevantCount} <b>{t('dashboard.statRelevant')}</b></span>
+            <span className="lang-chip">{verifiableCount} <b>{t('dashboard.statEligibility')}</b></span>
+            <span className="lang-chip">{activeCases} <b>{t('dashboard.statActiveCases')}</b></span>
           </div>
           {matches.slice(0, 3).map((m) => {
             // 0011 — su un programma sospeso non si mostra né «prima di agire»
@@ -145,13 +168,18 @@ function DashboardBody({ data }: { data: OverviewData }) {
             // qualcosa che oggi non viene concesso.
             const suspended = m.program.availability === 'suspended';
             return (
+              // Due pastiglie al massimo, e un solo colore forte per riga: la
+              // rilevanza è un numero informativo, non uno stato, e stava a
+              // fianco di due avvisi con lo stesso peso visivo.
               <div className="list-row" key={m.program.id}>
-                <div className="list-main"><div className="list-title">{m.program.name}</div><div className="list-sub">{m.program.authority}</div></div>
-                {!suspended && m.program.mustApplyBeforeStart && <span className="badge badge-alta">prima di agire</span>}
-                <span className="badge badge-neutral">Rilevanza {m.relevanceScore}%</span>
+                <div className="list-main">
+                  <div className="list-title">{m.program.name}</div>
+                  <div className="list-sub">{m.program.authority} · {t('dashboard.relevance', { n: m.relevanceScore })}</div>
+                </div>
+                {!suspended && m.program.mustApplyBeforeStart && <span className="badge badge-media">{t('dashboard.applyBefore')}</span>}
                 {suspended
                   ? <span className="badge badge-alta">{t('subsidy.results.suspended')}</span>
-                  : <span className="badge badge-media">Idoneità da verificare</span>}
+                  : <span className="badge badge-neutral">{t('dashboard.eligibilityToVerify')}</span>}
               </div>
             );
           })}
@@ -159,14 +187,14 @@ function DashboardBody({ data }: { data: OverviewData }) {
         </div>
       )}
 
-      <div className="section-title mt-28">Statistiche documenti</div>
+      <div className="section-title mt-28">{t('dashboard.docStats')}</div>
       <div className="grid-2">
         <div className="card"><div className="card-title">{t('dashboard.docsByUrgency')}</div>
           {analyses.length === 0 ? <div className="chart-empty">{t('dashboard.noDocsAnalyzed')}</div> : (
             <Bars rows={[
-              { cat: 'Alta', val: urg.alta, cls: 's-alta', dotCls: 'dot-alta' },
-              { cat: 'Media', val: urg.media, cls: 's-media', dotCls: 'dot-media' },
-              { cat: 'Bassa', val: urg.bassa, cls: 's-bassa', dotCls: 'dot-bassa' },
+              { cat: L.urgency('alta'), val: urg.alta, cls: 's-alta', dotCls: 'dot-alta' },
+              { cat: L.urgency('media'), val: urg.media, cls: 's-media', dotCls: 'dot-media' },
+              { cat: L.urgency('bassa'), val: urg.bassa, cls: 's-bassa', dotCls: 'dot-bassa' },
             ]} />
           )}
         </div>
@@ -187,12 +215,11 @@ function DashboardBody({ data }: { data: OverviewData }) {
 
 export function DashboardPage() {
   const t = useT();
-  const L = useLabels();
   const { loading, error, data, reload } = useOverview();
   return (
     <>
       <div className="page-head">
-        <div className="page-title">Dashboard</div>
+        <div className="page-title">{t('nav.dashboard')}</div>
         <div className="page-desc">{t('dashboard.subtitle')}</div>
       </div>
       {loading && <><SkeletonKpiGrid /><div className="mt-16"><SkeletonCard /></div></>}

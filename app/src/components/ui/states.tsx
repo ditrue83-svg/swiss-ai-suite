@@ -1,16 +1,19 @@
 // Stati riutilizzabili: loading / error / empty + skeleton + Button con loading.
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
+// Fuori da un componente serve translate(): questo default viene valutato al render.
+import { translate as tr } from '@/i18n';
 
 export function Spinner({ large }: { large?: boolean }) {
   return <span className={large ? 'spinner-lg' : 'spinner'} aria-hidden="true" />;
 }
 
-export function FullScreenLoader({ label = 'Caricamento…' }: { label?: string }) {
+export function FullScreenLoader({ label }: { label?: string }) {
+  const text = label ?? tr('states.loading');
   return (
     <div className="app-loading">
       <span className="spinner-lg" aria-hidden="true" />
-      <div>{label}</div>
+      <div>{text}</div>
     </div>
   );
 }

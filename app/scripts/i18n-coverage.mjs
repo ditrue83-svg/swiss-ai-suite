@@ -1,35 +1,108 @@
 // ============================================================================
-// Copertura i18n: quanto dell'interfaccia è ancora scritto in italiano nel codice.
+// Copertura i18n: nessun testo d'interfaccia scritto a mano nel codice.
 //   npm run i18n:coverage
-//   npm run i18n:coverage -- --list src/features/admin-ai   (mostra le stringhe)
+//   npm run i18n:coverage -- src/features/admin-ai   (limita a un percorso)
 //
-// Perché serve: un'app tradotta a metà non si vede dal typecheck. I dizionari
-// sono completi per costruzione (de/fr sono tipizzati come `Dictionary`, una
-// chiave mancante rompe la build), ma nulla impedisce che una stringa resti
-// scritta a mano dentro un componente. Questo script le trova e le conta.
+// PERCHÉ È STATO RISCRITTO (2026-07-26)
+// La versione precedente cercava PAROLE ITALIANE nel codice, con una lista di
+// articoli e verbi al singolare («documento», «scadenza», «per», «che»).
+// Dichiarava «nessuna stringa da tradurre» mentre l'interfaccia aveva un
+// centinaio di etichette italiane: quasi tutte al plurale o senza articoli —
+// «Azioni da completare», «Documenti da verificare», «Statistiche documenti» —
+// e quindi invisibili a quella lista. La dashboard in tedesco era metà in
+// italiano con il controllo verde.
 //
-// Euristica: testo leggibile dentro JSX o fra virgolette, che contenga lettere
-// accentate o parole italiane frequenti. Non è un parser: serve a misurare il
-// lavoro rimasto e a evitare regressioni, non a certificare la perfezione.
+// Un controllo che dice verde quando non lo è vale meno di nessun controllo:
+// dà la falsa certezza che il lavoro sia finito.
+//
+// COSA CONTROLLA ADESSO
+// Non si chiede più «questa stringa è italiana?» — domanda a cui serve un
+// vocabolario, e ogni vocabolario ha dei buchi — ma «questo testo passa dai
+// dizionari?». Segnala QUALUNQUE testo letterale che finisce sullo schermo:
+//   1. testo dentro il JSX:            <div>Azioni da completare</div>
+//   2. attributi che l'utente legge:   placeholder, aria-label, title, alt, label
+//   3. testo passato a showToast(…)
+// Non serve conoscere la lingua: un letterale in quei posti è comunque un
+// testo che non seguirà la lingua scelta.
+//
+// La regola è deterministica, quindi non ha falsi verdi. Ha invece bisogno di
+// due eccezioni dichiarate, qui sotto: i simboli (che sono uguali in tutte le
+// lingue) e i file che contengono dati di dominio o disegni, non interfaccia.
 // ============================================================================
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, basename } from 'node:path';
 
 const ROOT = 'src';
-const SKIP_DIRS = new Set(['i18n']);                 // i dizionari SONO italiano, per definizione
-const SKIP_FILES = new Set(['engine.ts', 'programs.ts']); // dati di dominio, non UI
+const SKIP_DIRS = new Set(['i18n']);          // i dizionari SONO testo, per definizione
+const SKIP_FILES = new Set([
+  'Icon.tsx',      // tracciati SVG, non testo
+  'engine.ts',     // motore locale: nomi di enti e chiavi di riconoscimento (dati di dominio)
+  'programs.ts',   // dataset dei programmi di incentivo
+]);
 
-// Parole italiane frequenti nelle stringhe d'interfaccia.
-const IT_HINTS = /\b(il|lo|la|gli|le|un|una|del|della|dei|delle|che|non|per|con|sul|sulla|nel|nella|questo|questa|sono|è|già|puoi|devi|verifica|documento|azienda|scadenza|analisi|incentiv|riprova|salva|elimina|modifica|carica|inserisci|seleziona)\b/i;
+// Testi uguali in italiano, tedesco e francese: sigle, unità, simboli, segni.
+// Tutto ciò che non è in questa lista deve passare dai dizionari.
+const SAME_IN_EVERY_LANGUAGE = new Set([
+  'PDF', 'IMG', 'EMAIL', 'TXT', 'CHF', 'AI', 'OCR', 'IDI', 'UID', 'CHE', 'IVA', 'AVS', 'AI-Swisse',
+  'Admin AI', 'Subsidy AI', 'Zefix', 'Email', 'E-Mail', 'Password',
+  '—', '·', '×', '→', '←', '%', ':', '/', '(', ')', '«', '»', '&nbsp;', '&amp;', '&middot;',
+  '?', '!', '.', ',', '-', '+', '{', '}', '…',
+]);
 
 const files = [];
 (function walk(dir) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) { if (!SKIP_DIRS.has(name)) walk(p); }
-    else if (/\.(tsx|ts)$/.test(name) && !SKIP_FILES.has(name)) files.push(p);
+    else if (/\.(tsx|ts)$/.test(name) && !SKIP_FILES.has(basename(name))) files.push(p);
   }
 })(ROOT);
+
+/** Sostituisce commenti e blocchi {…} con spazi, conservando righe e colonne. */
+function blank(src) {
+  const out = src.split('');
+  let i = 0, depth = 0;
+  const wipe = (from, to) => { for (let k = from; k < to; k++) if (out[k] !== '\n') out[k] = ' '; };
+  while (i < src.length) {
+    const two = src.slice(i, i + 2);
+    if (two === '//') { const end = src.indexOf('\n', i); const to = end < 0 ? src.length : end; wipe(i, to); i = to; continue; }
+    if (two === '/*') { const end = src.indexOf('*/', i + 2); const to = end < 0 ? src.length : end + 2; wipe(i, to); i = to; continue; }
+    const c = src[i];
+    if (c === '"' || c === "'" || c === '`') {
+      const quote = c; let k = i + 1;
+      while (k < src.length && src[k] !== quote) { if (src[k] === '\\') k++; k++; }
+      i = k + 1; continue;               // le stringhe restano: servono al controllo 2 e 3
+    }
+    // Espressioni JSX {…}: dentro c'è codice, non testo.
+    if (c === '{') { depth++; out[i] = ' '; i++; continue; }
+    if (c === '}') { depth = Math.max(0, depth - 1); out[i] = ' '; i++; continue; }
+    if (depth > 0 && c !== '\n') out[i] = ' ';
+    i++;
+  }
+  return out.join('');
+}
+
+const lineOf = (src, index) => src.slice(0, index).split('\n').length;
+
+/** Testo che l'utente leggerebbe: almeno una lettera, e non solo simboli. */
+function isUserText(s) {
+  const t = s.trim();
+  if (!t || !/\p{L}/u.test(t)) return false;
+  if (SAME_IN_EVERY_LANGUAGE.has(t)) return false;
+  // Sequenze di soli simboli e sigle ammesse (es. «PDF · TXT»).
+  const words = t.split(/\s+/);
+  if (words.every((w) => SAME_IN_EVERY_LANGUAGE.has(w))) return false;
+  return true;
+}
+
+/**
+ * Distingue il testo JSX dai generici di TypeScript: `Promise<string>` e
+ * `useState<Foo>(…)` hanno anche loro un `>` seguito da testo e da un `<`.
+ * Il testo che l'utente legge non contiene punteggiatura di codice.
+ */
+function looksLikeCode(s) {
+  return /[;=(){}[\]|<>"'`]|=>|\/\/|::/.test(s) || /\w\/\w/.test(s);
+}
 
 const listMode = process.argv.includes('--list');
 const filterPath = process.argv.find((a) => a.startsWith('src/'));
@@ -38,54 +111,48 @@ const results = [];
 for (const file of files) {
   if (filterPath && !file.startsWith(filterPath)) continue;
   const src = readFileSync(file, 'utf8');
+  const masked = blank(src);
   const hits = [];
-  for (const [i, line] of src.split('\n').entries()) {
-    const code = line.trim();
-    if (code.startsWith('//') || code.startsWith('*') || code.startsWith('/*')) continue;  // commenti
-    // Testo fra tag JSX, oppure stringhe quotate lunghe.
-    const candidates = [
-      ...line.matchAll(/>\s*([A-ZÀ-Ù][^<>{}\n]{8,})\s*</g),
-      ...line.matchAll(/(?:placeholder|title|label|aria-label)\s*=\s*["']([^"'\n]{8,})["']/g),
-      ...line.matchAll(/["']([A-ZÀ-Ù][^"'\n]{12,})["']/g),
-    ].map((m) => m[1].trim());
-    for (const c of candidates) {
-      if (!IT_HINTS.test(c)) continue;
-      // Valori SENTINELLA salvati nel database: sono dati, non testo d'interfaccia.
-      // Tradurli corromperebbe i record esistenti; si traduce solo l'etichetta.
-      if (line.includes('NO_REVENUE') || line.includes('sentinella')) continue;
-      if (/^[A-Z_]+$/.test(c)) continue;                       // costanti
-      if (c.includes('t(') || c.startsWith('@/')) continue;     // già tradotto / import
-      hits.push({ line: i + 1, text: c.slice(0, 90) });
+
+  // 1. Testo fra tag JSX, con le espressioni {…} già rimosse. Solo nei .tsx:
+  // in un .ts un `>` seguito da testo è sempre un generico.
+  if (file.endsWith('.tsx')) {
+    for (const m of masked.matchAll(/>([^<>]+)</g)) {
+      const text = m[1];
+      if (!isUserText(text) || looksLikeCode(text)) continue;
+      hits.push({ line: lineOf(masked, m.index), kind: 'jsx', text: text.trim().slice(0, 90) });
     }
   }
-  if (hits.length) results.push({ file: relative('.', file), hits });
+
+  // 2. Attributi che l'utente legge, con valore letterale.
+  for (const m of src.matchAll(/\b(placeholder|aria-label|title|alt|label)\s*=\s*(["'])([^"'\n]*)\2/g)) {
+    if (!isUserText(m[3])) continue;
+    hits.push({ line: lineOf(src, m.index), kind: m[1], text: m[3].slice(0, 90) });
+  }
+
+  // 3. Messaggi passati a showToast() come letterale.
+  for (const m of src.matchAll(/showToast\(\s*(["'])([^"'\n]*)\1/g)) {
+    if (!isUserText(m[2])) continue;
+    hits.push({ line: lineOf(src, m.index), kind: 'toast', text: m[2].slice(0, 90) });
+  }
+
+  if (hits.length) results.push({ file: relative('.', file), hits: hits.sort((a, b) => a.line - b.line) });
 }
 
-results.sort((a, b) => b.hits.length - a.hits.length);
 const total = results.reduce((n, r) => n + r.hits.length, 0);
+console.log('\nCopertura i18n — testo d\'interfaccia scritto a mano nel codice\n');
 
-console.log(`\nCopertura i18n — stringhe italiane ancora scritte nel codice\n`);
-if (!results.length) {
-  console.log('  Nessuna stringa da tradurre trovata.\n');
+if (!total) {
+  console.log('  Nessuno: tutto il testo passa dai dizionari.\n');
   process.exit(0);
 }
 
-// Raggruppa per area, che è come si pianifica il lavoro.
-const byArea = new Map();
-for (const r of results) {
-  const area = r.file.split('/').slice(0, 3).join('/');
-  byArea.set(area, (byArea.get(area) ?? 0) + r.hits.length);
-}
-for (const [area, n] of [...byArea].sort((a, b) => b[1] - a[1])) {
-  console.log(`  ${String(n).padStart(4)}  ${area}`);
-}
-console.log(`\n  ${total} stringhe in ${results.length} file`);
-
-if (listMode) {
-  console.log('');
-  for (const r of results) {
-    console.log(`\n  ${r.file}`);
-    for (const h of r.hits) console.log(`    ${String(h.line).padStart(4)}: ${h.text}`);
+for (const r of results.sort((a, b) => b.hits.length - a.hits.length)) {
+  console.log(`  ${r.file}  (${r.hits.length})`);
+  if (listMode || total <= 60) {
+    for (const h of r.hits) console.log(`    ${String(h.line).padStart(4)}  [${h.kind}] ${h.text}`);
   }
 }
-console.log('');
+console.log(`\n  ${total} da tradurre in ${results.length} file`);
+console.log('  Ogni voce va spostata nei tre dizionari e richiamata con t() o translate().\n');
+process.exit(1);

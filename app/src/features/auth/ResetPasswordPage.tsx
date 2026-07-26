@@ -53,7 +53,7 @@ export function ResetPasswordPage() {
           <form onSubmit={onSubmit} noValidate>
             <div className="field">
               <label htmlFor="rp-pass">{t('auth.reset.newPassword')}</label>
-              <input id="rp-pass" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Almeno 8 caratteri" />
+              <input id="rp-pass" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.passwordPlaceholder')} />
             </div>
             <div className="field">
               <label htmlFor="rp-conf">{t('auth.confirmPassword')}</label>

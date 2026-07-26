@@ -40,9 +40,8 @@ export function InterpretationPanel({ interpretation, showTimingWarning }: {
         <div className="warn-box mt-14">
           <Icon name="alert" />
           <span>
-            Dalla descrizione il progetto sembra <strong>già avviato</strong>
-            {timing.evidence?.verified ? <> («{timing.evidence.quote}»)</> : null}: diversi programmi di incentivo
-            richiedono la <strong>domanda prima di iniziare</strong>. Verifica sulla fonte ufficiale se sei ancora in tempo.
+            {t('subsidy.interpretation.alreadyStartedWarning')}
+            {timing.evidence?.verified ? <> («{timing.evidence.quote}»)</> : null}
           </span>
         </div>
       )}

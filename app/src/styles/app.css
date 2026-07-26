@@ -15,6 +15,7 @@
   --accent-dark: hsl(207, 90%, 31%);   /* stato premuto / hover                 */
   --accent-text: hsl(207, 90%, 30%);   /* testo e link: contrasto AA su bianco  */
   --accent-soft: hsl(207, 65%, 95%);   /* fondi tenui, chip informativi         */
+  --accent-line: hsl(207, 58%, 82%);   /* bordo di ciò che sta su --accent-soft */
 
   /* --- Neutri --------------------------------------------------------------
      Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti. */
@@ -52,6 +53,14 @@
   --amber: hsl(35, 78%, 34%);       /* 4.61:1 su --amber-soft */
   --amber-soft: #fdf3e0;
   --amber-line: #ecd9ae;
+  /* Riempimenti: barre, pallini, superfici piene. Sono l'altra metà della
+     coppia che il rosso ha già (--red riempie, --red-dark scrive). Ambra e
+     verde erano stati scuriti per il CONTRASTO DEL TESTO e poi riusati come
+     riempimento: da lì il marrone della barra «Media», che nessuno aveva
+     scelto. Un colore che deve essere leggibile e un colore che deve essere
+     riconoscibile non sono lo stesso colore. */
+  --amber-fill: hsl(35, 92%, 50%);
+  --green-fill: hsl(151, 52%, 40%);
 
   /* --- Scala tipografica ---------------------------------------------------
      Sei gradini, uno per compito. Se un testo non rientra in nessuno, il
@@ -83,7 +92,7 @@
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
 
-  --focus-ring: 0 0 0 3px hsla(207, 88%, 45%, 0.35);
+  --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
   --topbar-h: 56px;
   font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
@@ -137,6 +146,10 @@
     --amber-soft: hsl(38, 35%, 15%);
     --amber-line: hsl(38, 30%, 28%);
 
+    --accent-line: hsl(207, 40%, 34%);
+    --amber-fill: hsl(38, 80%, 58%);
+    --green-fill: hsl(151, 48%, 50%);
+
     --highlight: hsl(48, 85%, 38%);
 
     /* Su fondo scuro un'ombra chiara non esiste: la profondità la dà il bordo,
@@ -145,7 +158,7 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
 
-    --focus-ring: 0 0 0 3px hsla(207, 80%, 62%, 0.45);
+    --focus: hsl(207, 80%, 66%);
   }
 
   /* La barra laterale e il drawer usavano il bianco della card come superficie
@@ -174,8 +187,12 @@ a:hover { text-decoration: underline; }
 p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-sub a, .legal-note a {
   text-decoration: underline;
 }
-/* focus accessibile e coerente su tutti gli elementi interattivi */
-:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px; }
+/* Focus da tastiera: una regola sola per tutta l'app.
+   È un `outline` e non un `box-shadow` perché l'outline segue da sé la forma
+   dell'elemento — prima una regola globale imponeva `border-radius: 6px` a
+   qualunque cosa ricevesse il fuoco, e su una pastiglia (99px) o su un cerchio
+   (50%) l'anello aveva la forma sbagliata. */
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ic { width: 20px; height: 20px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .ic-sm { width: 16px; height: 16px; }
 
@@ -234,7 +251,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .page-head { margin-bottom: 24px; }
 .page-title { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.4px; }
 .page-desc { color: var(--muted); margin-top: 5px; max-width: 640px; font-size: var(--fs-body); }
-.demo-banner { background: var(--accent-soft); color: var(--accent-text); border: 1px solid hsl(199, 100%, 86%); padding: 9px 14px; border-radius: var(--radius-sm); font-size: var(--fs-body); margin-bottom: 20px; }
+.demo-banner { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-line); padding: 9px 14px; border-radius: var(--radius-sm); font-size: var(--fs-body); margin-bottom: 20px; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow-xs); }
 .card + .card { margin-top: 16px; }
@@ -257,6 +274,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .btn-danger:hover { background: var(--red-hover); border-color: var(--red); }
 .btn-sm { padding: 6px 12px; font-size: var(--fs-body); }
 .btn-icon { padding: 7px; width: 34px; height: 34px; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px var(--sp-2); border-radius: 99px; font-size: var(--fs-label); font-weight: 600; }
@@ -266,14 +284,16 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .badge-neutral { background: var(--surface-2); color: var(--ink-soft); }
 .badge-blue { background: var(--accent-soft); color: var(--accent-text); }
 .badge .ic { width: 13px; height: 13px; stroke-width: 2; }
-.btn-link { background: none; border: none; color: var(--accent-text); font-weight: 600; font-size: inherit; padding: 2px 4px; border-radius: 6px; text-decoration: underline; cursor: pointer; }
+.btn-link { background: none; border: none; color: var(--accent-text); font-weight: 600; font-size: inherit; padding: 4px 6px; border-radius: 6px; text-decoration: underline; cursor: pointer; }
 .btn-link:hover { color: var(--accent-dark); }
 
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
 .field label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); }
 .group-label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; display: block; }
 .field input, .field select, .field textarea { border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; background: var(--card); }
-.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid hsla(199, 100%, 50%, 0.3); border-color: var(--accent); }
+/* L'anello lo disegna la regola :focus-visible globale: qui resta solo il
+   bordo, che dice quale campo è attivo anche dopo un clic del mouse. */
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
 .field textarea { resize: vertical; min-height: 120px; }
 .checks { display: flex; flex-wrap: wrap; gap: 8px; }
 .check-pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-body); font-weight: 500; color: var(--ink-soft); background: var(--card); cursor: pointer; user-select: none; transition: background .12s, border-color .12s, color .12s; }
@@ -376,7 +396,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ax-chip .ic { width: 14px; height: 14px; color: var(--muted); }
 .ax-chip b { color: var(--ink); font-weight: 600; }
 
-.ax-callout { border: 1px solid hsl(199,100%,86%); background: linear-gradient(0deg, var(--accent-soft), var(--accent-soft)); border-radius: var(--radius); padding: 18px 20px; margin-top: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ax-callout { border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: var(--radius); padding: 18px 20px; margin-top: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .ax-callout .co-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex-shrink: 0; }
 .ax-callout .co-main { flex: 1; min-width: 200px; }
 .ax-callout .co-kicker { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text); }
@@ -393,7 +413,9 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ax-col > .card + .card { margin-top: 16px; }
 
 /* evidence "Mostra nel documento" */
-.ev-btn { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-meta); font-weight: 600; color: var(--accent-text); background: none; border: none; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
+/* Superficie comoda su portatile con trackpad: WCAG 2.2 chiede 24×24 CSS px
+   per un bersaglio isolato, e questi pulsanti stavano a 22 e a 20. */
+.ev-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; font-size: var(--fs-meta); font-weight: 600; color: var(--accent-text); background: none; border: none; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
 .ev-btn:hover { text-decoration: underline; }
 .ev-btn .ic { width: 13px; height: 13px; }
 .ev-quote { margin-top: 6px; font-size: var(--fs-meta); color: var(--ink-soft); background: var(--bg); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: 7px 10px; font-style: italic; display: none; }
@@ -429,9 +451,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .action-item input[type=checkbox] { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
 .action-item .ai-main { flex: 1; min-width: 0; }
 .action-item .ai-text { font-size: var(--fs-body); font-weight: 500; }
+/* Il testo dell'azione è un <label>: si spunta cliccando la frase, non solo il
+   quadratino di 18 pixel. */
+.action-item .ai-text label { cursor: pointer; }
 .action-item.done .ai-text { text-decoration: line-through; color: var(--muted); }
 .action-item .ai-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-.mini-btn { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+.mini-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; cursor: pointer; }
 .mini-btn:hover { border-color: var(--accent); color: var(--accent-text); }
 .mini-btn .ic { width: 13px; height: 13px; }
 
@@ -451,7 +476,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 
 /* editor bozza */
 .draft-editor textarea { width: 100%; min-height: 190px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; font-size: var(--fs-body); line-height: 1.6; resize: vertical; background: var(--card); font-family: inherit; }
-.draft-editor textarea:focus { outline: 2px solid hsla(199,100%,50%,0.3); border-color: var(--accent); }
+.draft-editor textarea:focus { border-color: var(--accent); }
 .draft-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
 .draft-controls .dc-field { display: flex; flex-direction: column; gap: 4px; }
 .draft-controls label { font-size: var(--fs-label); font-weight: 600; color: var(--muted); }
@@ -468,7 +493,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; }
-.kpi-label { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 6px; }
+/* Due righe di spazio riservate all'etichetta: le traduzioni non hanno la
+   stessa lunghezza — «Scadenze prossimi 7 giorni» diventa «Fristen in den
+   nächsten 7 Tagen» — e quando una sola etichetta andava a capo il suo numero
+   scendeva di una riga, disallineando tutta la fila. */
+.kpi-label { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: flex-start; gap: 6px; min-height: 2.7em; line-height: 1.3; }
+.kpi-sub { margin-top: auto; }
 .kpi-value { font-size: var(--fs-h1); font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
 .kpi-value small { font-size: var(--fs-body); font-weight: 600; color: var(--muted); }
 .kpi-sub { font-size: var(--fs-meta); color: var(--muted); }
@@ -477,16 +507,21 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .kpi .kpi-value.hot { color: var(--red-dark); }
 
 /* barre orizzontali (magnitudine) */
-.bar-row { display: grid; grid-template-columns: 120px 1fr 42px; align-items: center; gap: 10px; padding: 6px 0; }
-.bar-cat { font-size: var(--fs-meta); color: var(--ink-soft); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+/* 148px e non 120: le etichette sono tradotte, e «Kontrollankündigung» a 120
+   finiva sotto la barra. */
+.bar-row { display: grid; grid-template-columns: 148px 1fr 42px; align-items: center; gap: 10px; padding: 6px 0; }
+.bar-cat { font-size: var(--fs-meta); color: var(--ink-soft); font-weight: 600; display: flex; align-items: center; gap: 7px; overflow-wrap: anywhere; }
 .bar-track { background: var(--surface-2); border-radius: 6px; height: 22px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 6px; background: var(--accent); min-width: 3px; transition: width .4s ease; }
+/* Niente `min-width`: una barra larga tre pixel su un valore zero disegna una
+   quantità che non esiste. A zero la barra non c'è, e il numero accanto lo
+   dice. */
+.bar-fill { height: 100%; border-radius: 6px; background: var(--accent); transition: width .4s ease; }
 .bar-fill.s-alta { background: var(--red); }
-.bar-fill.s-media { background: var(--amber); }
-.bar-fill.s-bassa { background: var(--green); }
+.bar-fill.s-media { background: var(--amber-fill); }
+.bar-fill.s-bassa { background: var(--green-fill); }
 .bar-val { font-size: var(--fs-meta); font-weight: 700; color: var(--ink); text-align: right; }
 .bar-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
-.dot-alta { background: var(--red); } .dot-media { background: var(--amber); } .dot-bassa { background: var(--green); }
+.dot-alta { background: var(--red); } .dot-media { background: var(--amber-fill); } .dot-bassa { background: var(--green-fill); }
 
 /* meter completamento */
 .meter { display: flex; align-items: center; gap: 16px; }
@@ -522,8 +557,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .action-title { font-weight: 600; font-size: var(--fs-body); }
 .action-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: 1px; }
 .action-meta { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
-.action-link { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-body); font-weight: 600; color: var(--accent-text); background: none; border: none; padding: 4px; border-radius: 6px; }
+.action-link { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 30px; min-height: 30px; font-size: var(--fs-body); font-weight: 600; color: var(--accent-text); background: none; border: none; padding: 4px; border-radius: 6px; }
 .action-link:hover { text-decoration: underline; }
+/* La riga intera porta dove porta la freccia: il bersaglio è la riga, non
+   l'icona di 16 pixel in fondo. La freccia resta, come indizio di dove si va. */
+.action-row.is-link { cursor: pointer; color: var(--ink); border-radius: var(--radius-sm); transition: background .12s; }
+.action-row.is-link:hover { background: var(--bg); text-decoration: none; }
+.action-row.is-link:hover .action-link { text-decoration: underline; }
 .priority-empty { display: flex; align-items: center; gap: 12px; padding: 20px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); font-size: var(--fs-body); background: var(--card); }
 .priority-empty .ic { color: var(--green); }
 
@@ -543,7 +583,9 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .dash-inc-stats { display: flex; gap: 8px; flex-wrap: wrap; margin: -2px 0 12px; }
 .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; }
 .step-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); color: var(--muted); display: grid; place-items: center; font-size: var(--fs-body); font-weight: 700; flex-shrink: 0; background: var(--card); }
-.step-dot.active { border-color: var(--accent); color: var(--accent-text); box-shadow: var(--focus-ring); }
+/* Alone dell'accento, non l'anello del focus: quello deve restare il segnale
+   di «sei qui con la tastiera», e riusarlo come decorazione glielo toglieva. */
+.step-dot.active { border-color: var(--accent); color: var(--accent-text); box-shadow: 0 0 0 3px var(--accent-soft); }
 .step-dot.done { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
 .step-line { height: 2px; flex: 1; background: var(--line); max-width: 60px; }
 
@@ -561,6 +603,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .rel-badge .rb-lbl { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
 .rel-badge.sm { width: auto; display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 10px; border-radius: 8px; }
 .rel-badge.sm .rb-num { font-size: var(--fs-body); } .rel-badge.sm .rb-lbl { font-size: var(--fs-label); }
+
+/* Righe di dettaglio della scheda programma: testo, non pastiglie. Il tipo di
+   sostegno resta un chip perché è una categoria; requisiti e priorità sono
+   numeri e giudizi, e come pastiglie colorate competevano con gli avvisi. */
+.prog-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: var(--fs-meta); color: var(--muted); }
+.prog-window { display: flex; align-items: flex-start; gap: 7px; margin-top: 6px; font-size: var(--fs-meta); color: var(--ink-soft); }
+.prog-window .ic { color: var(--muted); flex-shrink: 0; margin-top: 2px; }
 
 .source-card { background: var(--bg); }
 .source-grid { display: grid; grid-template-columns: 130px 1fr; gap: 8px 14px; align-items: baseline; }
@@ -603,6 +652,27 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 
 .toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: var(--on-ink); padding: 11px 18px; border-radius: var(--radius-sm); font-size: var(--fs-body); box-shadow: var(--shadow-md); z-index: 80; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; max-width: min(90vw, 360px); }
 .toast.show { opacity: 1; transform: none; }
+
+/* ============================================================================
+   Movimento ridotto. Chi lo chiede al sistema di solito ha un motivo — nausea
+   da movimento, vertigini, disturbi vestibolari — e l'app rispondeva lo stesso
+   con la pagina che scivola a ogni cambio, lo scheletro che pulsa durante il
+   caricamento e la barra che cresce.
+   Non si toglie il feedback, si toglie lo spostamento: le transizioni di
+   colore restano, gli spostamenti spariscono. Lo spinner continua a girare,
+   perché è l'unico segnale che qualcosa sta ancora lavorando, ma più lento.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .page.active { animation: none; }
+  .meter-fill, .bar-fill { transition: none; }
+  .drawer { transition: none; }
+  .drawer-overlay { transition: none; }
+  .toast { transition: opacity .2s; transform: none; }
+  .toast.show { transform: none; }
+  .skeleton { animation: none; }
+  .btn:active:not(:disabled) { transform: none; }
+  .spinner, .spinner-lg { animation-duration: 1.6s; }
+}
 
 /* ---------- responsive fine (<600px) ---------- */
 @media (max-width: 600px) {

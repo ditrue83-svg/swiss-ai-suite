@@ -63,11 +63,11 @@ export function RegisterPage() {
           <div className="grid-2">
             <div className="field">
               <label htmlFor="reg-first">{t('auth.register.firstName')}</label>
-              <input id="reg-first" autoComplete="given-name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Mario" />
+              <input id="reg-first" autoComplete="given-name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder={t('auth.register.firstNamePlaceholder')} />
             </div>
             <div className="field">
               <label htmlFor="reg-last">{t('auth.register.lastName')}</label>
-              <input id="reg-last" autoComplete="family-name" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Rossi" />
+              <input id="reg-last" autoComplete="family-name" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder={t('auth.register.lastNamePlaceholder')} />
             </div>
           </div>
           <div className="field">
@@ -76,7 +76,7 @@ export function RegisterPage() {
           </div>
           <div className="field">
             <label htmlFor="reg-password">{t('auth.passwordLabel')}</label>
-            <input id="reg-password" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Almeno 8 caratteri" />
+            <input id="reg-password" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.passwordPlaceholder')} />
             <span className="field-hint">{t('auth.register.passwordHint')}</span>
           </div>
           <div className="auth-actions">

@@ -54,6 +54,9 @@ Multipli di 4: `4px` · `—` · `—` · `—` · `24px` · `—` · `—`
 | `--ink-soft` | `hsl(213, 22%, 30%)` | testo secondario |
 | `--muted` | `hsl(213, 12%, 42%)` | metadati |
 | `--red` / `--amber` / `--green` | `hsl(0, 84%, 60%)` / `hsl(35, 78%, 34%)` / `hsl(151, 48%, 32%)` | urgenza, attenzione, assolto |
+| `--amber-fill` / `--green-fill` | `hsl(35, 92%, 50%)` / `hsl(151, 52%, 40%)` | riempimenti: barre, pallini |
+| `--accent-line` | `hsl(207, 58%, 82%)` | bordo di ciò che sta su `--accent-soft` |
+| `--focus` | `hsl(207, 88%, 42%)` | anello del focus da tastiera |
 
 L'accento è più fondo dell'azzurro precedente (`hsl(199,100%,50%)`), che era
 saturo quasi al massimo: qui accompagna solleciti dell'AFC e termini di
@@ -65,6 +68,14 @@ così un pulsante non compete mai con un avviso.
 
 ⚠️ `--red` serve a barre, bordi e riempimenti. Per il **testo** si usa
 `--red-dark`: il primo non raggiunge il contrasto minimo su fondo chiaro.
+
+⚠️ **Ambra e verde hanno la stessa doppia natura, e per un po' non l'avevano.**
+`--amber` e `--green` erano stati scuriti per raggiungere il contrasto AA come
+*testo* sulle pastiglie, poi riusati come *riempimento* delle barre: da lì il
+marrone della barra «Media» nella dashboard, che nessuno aveva scelto. Ora
+esistono `--amber-fill` e `--green-fill`, esattamente come il rosso aveva già
+`--red` (riempie) e `--red-dark` (scrive). **Un colore che deve essere leggibile
+e un colore che deve essere riconoscibile non sono lo stesso colore.**
 
 ## Contrasti
 
@@ -96,6 +107,53 @@ testo, schiarisce invece di scurire.
 caricamento), non per i bordi decorativi delle schede: quelle si staccano per
 differenza di superficie. I controlli usano `--line-strong`.
 
+## Focus da tastiera
+
+Una regola sola, `:focus-visible`, con un **`outline`** e non un `box-shadow`:
+l'outline segue da sé la forma dell'elemento. Prima la regola globale imponeva
+`border-radius: 6px` a qualunque cosa ricevesse il fuoco, e su una pastiglia
+(99px) o su un cerchio (50%) l'anello aveva la forma sbagliata.
+
+⚠️ L'anello del focus **non è decorazione**: `.step-dot.active` lo usava per
+segnare il passo corrente dello stepper, e così il segnale «sei qui con la
+tastiera» perdeva significato. Ora quel passo ha un alone dell'accento suo.
+
+## Movimento ridotto
+
+`prefers-reduced-motion: reduce` disattiva gli **spostamenti**, non il feedback:
+la pagina non scivola più a ogni cambio, lo scheletro di caricamento non pulsa,
+la barra non cresce, il pulsante non si abbassa. Le transizioni di colore
+restano, e lo spinner continua a girare — è l'unico segnale che qualcosa sta
+ancora lavorando — solo più lento.
+
+## Dati: la forma non deve dire più di quello che si sa
+
+Le barre orizzontali della dashboard sbagliavano due volte:
+
+- **`min-width: 3px`** disegnava un segmento colorato anche a valore **zero**:
+  una quantità che non esiste. Ora a zero non si disegna nulla, e il numero
+  accanto resta il dato esatto.
+- la lunghezza era normalizzata sul **valore massimo**, quindi un solo documento
+  riempiva la barra fino in fondo e sembrava «tanto». Ora il denominatore è il
+  **totale della serie**: la lunghezza dice quanta parte dell'insieme sta in
+  quella riga.
+
+È la stessa regola della governance del prodotto, applicata alla grafica: se non
+si sa, non si mostra; se si mostra, deve essere vero.
+
+## Aree cliccabili
+
+WCAG 2.2 (2.5.8) chiede **24×24 px** per un bersaglio isolato. `.mini-btn` stava
+a 22, `.ev-btn` a 20: ora hanno `min-height: 26px`.
+
+Dove esiste una riga, **il bersaglio è la riga**: le priorità di Panoramica e
+Dashboard sono un `<a>` che avvolge tutto (`.action-row.is-link`), non una
+freccia di 16 px in fondo. Nella checklist dell'analisi il testo dell'azione è
+un `<label>` legato alla casella: si spunta cliccando la frase.
+
+⚠️ Quando una riga diventa un `<a>`, il colore va riportato a `var(--ink)`:
+altrimenti la regola globale dei collegamenti tinge di blu tutto il contenuto.
+
 ## Regole che valgono per chi lavora qui dopo
 
 1. **Nessun valore scritto a mano**: misure e colori vengono dai token.
@@ -110,3 +168,14 @@ differenza di superficie. I controlli usano `--line-strong`.
    (la percentuale, 19px). Liste esplicite, e provare sempre a vuoto prima.
 6. **Nessuna larghezza fissa dove c'è testo tradotto**: l'etichetta della
    rilevanza è RILEVANZA, RELEVANZ, PERTINENCE — a 66px usciva dal riquadro.
+   Vale anche in **altezza**: alle etichette dei KPI servono due righe riservate
+   (`min-height: 2.7em`), perché «Scadenze prossimi 7 giorni» in tedesco diventa
+   «Fristen in den nächsten 7 Tagen» e, andando a capo, faceva scendere il suo
+   numero di una riga disallineando tutta la fila.
+7. **Una pastiglia etichetta uno stato, non contiene un periodo.** Nelle schede
+   degli incentivi ce n'erano sei con quattro colori, e una conteneva una frase
+   di due righe (la finestra di candidatura). Restano pastiglia le due cose che
+   cambiano quello che fai — se il programma è concedibile, se la domanda va
+   presentata prima di iniziare; il resto è testo.
+8. **Un solo colore forte per riga.** Due avvisi rossi affiancati non dicono
+   «due volte urgente», dicono «non guardare».

@@ -122,7 +122,15 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     analysisVersion: row.analysis_version,
     engine: row.engine,
     language: row.language,
-    languageLabel: row.language ? (LANG_LABEL[row.language] ?? row.language) : '—',
+    // §42 — come per il tipo di documento, l'etichetta della lingua segue la
+    // lingua scelta: LANG_LABEL è italiano fisso («Tedesco», «Italiano») e
+    // finiva così nell'archivio e nella dashboard anche in de e fr.
+    languageLabel: (() => {
+      if (!row.language) return '—';
+      const k = `labels.languages.${row.language}` as TKey;
+      const out = tr(k);
+      return out === k ? (LANG_LABEL[row.language] ?? row.language) : out;
+    })(),
     sender: row.sender,
     senderUncertain: !row.sender,
     senderEvidence: (row.sender_evidence as unknown as Evidence) ?? null,
@@ -186,13 +194,24 @@ export interface AnalyzeInput {
   onProgress?: (step: string) => void;
 }
 
-/** §25 — etichette degli stati del documento durante l'elaborazione. */
-const STATUS_STEP: Record<string, string> = {
-  uploaded: tr('adminAi.progressPreparing'),
-  extracting: tr('adminAi.extracting'),
-  processing: tr('adminAi.extracting'),
-  analyzing: tr('adminAi.progressAnalyzing'),
+/**
+ * §25 — etichette degli stati del documento durante l'elaborazione.
+ *
+ * È una FUNZIONE e non una mappa di costanti: come mappa, `tr()` veniva
+ * eseguito all'import del modulo, cioè prima che il provider avesse impostato
+ * la lingua, e i passaggi restavano nella lingua iniziale per tutta la sessione
+ * anche dopo il cambio. Qui la traduzione avviene quando serve.
+ */
+const STATUS_KEY: Record<string, TKey> = {
+  uploaded: 'adminAi.progressPreparing',
+  extracting: 'adminAi.extracting',
+  processing: 'adminAi.extracting',
+  analyzing: 'adminAi.progressAnalyzing',
 };
+function stepLabel(status: string | null): string {
+  const key = STATUS_KEY[status ?? ''];
+  return key ? tr(key) : tr('adminAi.progressGeneric');
+}
 
 /** §26 — attende il completamento dell'elaborazione server-side osservando il DB. */
 const POLL_INTERVAL_MS = 2000;
@@ -215,7 +234,7 @@ async function waitForCompletion(documentId: string, onProgress?: (s: string) =>
       return status === 'needs_review' ? 'needs_review' : 'completed';
     }
 
-    const step = STATUS_STEP[status ?? ''] ?? 'Elaborazione in corso…';
+    const step = stepLabel(status);
     if (step !== lastStep) { lastStep = step; onProgress?.(step); }
 
     if (Date.now() - started > POLL_TIMEOUT_MS) {

@@ -75,20 +75,30 @@ export function ResultsList({
               <div className="prog-main">
                 <div className="prog-name">{p.name}</div>
                 <div className="list-sub">{p.authority}</div>
+                {/* Due pastiglie, non sei. Prima ce n'erano sei con quattro
+                    colori diversi, e una conteneva una frase intera di due
+                    righe: una pastiglia serve a etichettare uno stato, non a
+                    contenere un periodo. Restano pastiglia le due cose che
+                    cambiano cosa fai — se il programma è concedibile e se la
+                    domanda va presentata prima di iniziare — mentre tipo di
+                    sostegno, requisiti, priorità e finestra di candidatura
+                    diventano testo. */}
                 <div className="badge-row">
-                  <SupportChip prog={p} />
                   {/* 0011 — se il programma oggi non è concedibile lo si dice
-                      subito, prima dei badge sull'idoneità: sarebbe fuorviante
-                      invitare a "verificare l'idoneità" per qualcosa che
-                      comunque non viene concesso. */}
+                      subito: sarebbe fuorviante invitare a «verificare
+                      l'idoneità» per qualcosa che comunque non viene concesso. */}
                   {p.availability === 'suspended'
                     ? <span className="badge badge-alta"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.suspended')}</span>
                     : <span className="badge badge-media">{t('subsidy.results.eligibilityToVerify')}</span>}
-                  <span className="badge badge-neutral"><Icon name="calendar" className="ic-sm" /> {p.applicationWindow}</span>
-                  {p.mustApplyBeforeStart && <span className="badge badge-alta"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.applyBeforeStart')}</span>}
-                  <span className="badge badge-neutral">{t('subsidy.results.requirementsToVerify', { n: m.reqToVerify })}</span>
-                  <span className={`badge badge-${m.priority.level}`}>{t('subsidy.results.priority', { level: L.urgency(m.priority.level) })}</span>
+                  {p.mustApplyBeforeStart && <span className="badge badge-media"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.applyBeforeStart')}</span>}
                 </div>
+                <div className="prog-meta">
+                  <SupportChip prog={p} />
+                  <span>{t('subsidy.results.requirementsToVerify', { n: m.reqToVerify })}</span>
+                  <span>·</span>
+                  <span>{t('subsidy.results.priority', { level: L.urgency(m.priority.level) })}</span>
+                </div>
+                <div className="prog-window"><Icon name="calendar" className="ic-sm" /><span>{p.applicationWindow}</span></div>
               </div>
               <button className="btn btn-primary btn-sm" onClick={() => onOpen(p.id)}>{t('subsidy.results.checkEligibility')} <Icon name="arrowRight" className="ic-sm" /></button>
             </div>

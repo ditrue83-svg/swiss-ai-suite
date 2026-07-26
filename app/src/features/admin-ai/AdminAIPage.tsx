@@ -2,7 +2,7 @@
 // Flusso: estrai testo (o rileva scansione→OCR server) → hash+dedup §28 →
 // crea documento → invoca la pipeline (persiste server) → rilegge l'analisi dal DB.
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -200,7 +200,7 @@ export function AdminAIPage() {
       } else {
         // scansione/immagine: niente testo estraibile lato client → OCR server-side (§4).
         setText('');
-        setFileState({ name: file.name, size: file.size, state: 'ok', msg: outcome.reason === 'image' ? 'immagine · OCR lato server' : 'scansione · OCR lato server' });
+        setFileState({ name: file.name, size: file.size, state: 'ok', msg: outcome.reason === 'image' ? t('adminAi.fileImageOcr') : t('adminAi.fileScanOcr') });
         await runAnalysis({ file, extraction: null }, derivedTitle);
       }
     } catch (err) {
@@ -273,7 +273,7 @@ export function AdminAIPage() {
             <div>{error}</div>
             {retrySrc && !analyzing && (
               <div style={{ marginTop: 10 }}>
-                <button className="btn btn-sm" onClick={retryAnalysis}><Icon name="fileSearch" className="ic-sm" /> Riprova</button>
+                <button className="btn btn-sm" onClick={retryAnalysis}><Icon name="fileSearch" className="ic-sm" /> {t('common.retry')}</button>
               </div>
             )}
           </div>
@@ -304,9 +304,12 @@ export function AdminAIPage() {
   if (readingStored) {
     return (
       <>
+        {/* In lettura l'intestazione descriveva ancora come CARICARE un
+            documento, mentre il documento è già lì e lo si sta leggendo. */}
         <div className="page-head">
+          <Link className="btn btn-sm btn-ghost mb-8" to="/archivio"><Icon name="arrowLeft" className="ic-sm" /> {t('adminAi.backToArchive')}</Link>
           <div className="page-title">{t('adminAi.title')}</div>
-          <div className="page-desc">{t('adminAi.intro')}</div>
+          <div className="page-desc">{t('adminAi.introReading')}</div>
         </div>
         {result}
         <div className="mt-16">

@@ -244,7 +244,7 @@ comunque strutturato e tipizzato, ma la garanzia viene dal validatore, non dal d
   aggiunta un'incertezza tecnica. «Mostra nel documento» appare solo per citazioni verificate.
 - **Scadenze**: `explicit` (data certa nel testo) · `relative` («entro 30 giorni») → nessuna data
   assoluta inventata, si mostra «data da verificare» · `none` → «scadenza non individuata».
-- **Azioni**: `extracted` (richiesta dal documento) vs `suggested` (consiglio operativo di SwissAI),
+- **Azioni**: `extracted` (richiesta dal documento) vs `suggested` (consiglio operativo di AI-Swisse),
   mai confuse; la `primaryAction` non antepone mai un suggerimento a un obbligo esplicito.
 - **Rischi**: `explicit` (dichiarato dal documento) vs `inferred` (conseguenza plausibile, mostrata
   come «da verificare»).
@@ -287,7 +287,16 @@ un fallback silenzioso che mostri l'italiano dentro un'interfaccia tedesca.
 incertezze. Le **citazioni** restano invece nella lingua originale del documento: tradurle le
 renderebbe impossibili da ritrovare nel testo e la verifica automatica le scarterebbe.
 
-`npm run i18n:coverage` misura quante stringhe restano scritte a mano nel codice.
+`npm run i18n:coverage` verifica che **nessun testo d'interfaccia** resti scritto a mano nel
+codice: testo dentro il JSX, attributi che l'utente legge (`placeholder`, `aria-label`, `title`,
+`alt`, `label`) e messaggi passati a `showToast()`.
+
+⚠️ Fino al 2026-07-26 lo script cercava invece *parole italiane*, con una lista di articoli e verbi
+al singolare. Dichiarava «nessuna stringa da tradurre» mentre un centinaio di etichette era ancora
+in italiano: erano quasi tutte al plurale — «Azioni da completare», «Documenti da verificare» — e
+quindi invisibili a quella lista. La dashboard in tedesco era metà in italiano con il controllo
+verde. Un controllo che dice verde quando non lo è vale meno di nessun controllo: ora la regola è
+«questo testo passa dai dizionari?», che non richiede di conoscere la lingua e non ha falsi verdi.
 
 ## Database
 
@@ -330,7 +339,7 @@ npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare)
 npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
-npm run i18n:coverage   # stringhe non ancora tradotte, per area (--list per i dettagli)
+npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
 ```
 
 Gli script che toccano il DB o l'AI richiedono `.env.test` (copia da `.env.test.example`).
@@ -475,8 +484,9 @@ usa la modalità AI; chi sceglie il motore locale sta scegliendo riservatezza, e
   tedesco e francese, perché vivono nel database e non nei dizionari. Si nota subito con un utente
   germanofono o romando.
 - **Traduzioni non riviste da madrelingua**: l'interfaccia è completa in italiano, tedesco e francese
-  (`npm run i18n:coverage` → 0 stringhe mancanti) e i dizionari sono garantiti dal compilatore, ma i
-  testi sono stati redatti internamente. Prima del lancio è consigliata una rilettura professionale,
+  (`npm run i18n:coverage` → nessun testo scritto a mano) e i dizionari sono garantiti dal
+  compilatore, ma i testi sono stati redatti internamente. Le ~100 stringhe portate nei dizionari il
+  2026-07-26 non sono ancora nel materiale per il revisore. Prima del lancio è consigliata una rilettura professionale,
   soprattutto del disclaimer legale.
 - **Non implementati**: invio email, calendar sync, notifiche push, Stripe/pagamenti,
   interfaccia fiduciaria completa, fine-tuning.

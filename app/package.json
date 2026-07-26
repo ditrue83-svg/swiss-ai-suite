@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "SwissAI Suite — SaaS per PMI svizzere (Admin AI + Subsidy AI) su Supabase",
+  "description": "AI-Swisse — SaaS per PMI svizzere (Admin AI + Subsidy AI) su Supabase",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

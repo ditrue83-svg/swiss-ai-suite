@@ -80,7 +80,7 @@ double_confirm_changes = true
 # conferma e reset possono semplicemente non arrivare.
 
 [auth.email.template.confirmation]
-subject = "Conferma il tuo indirizzo email — SwissAI Suite"
+subject = "Conferma il tuo indirizzo email — AI-Swisse"
 
 [auth.email.template.recovery]
-subject = "Reimposta la password — SwissAI Suite"
+subject = "Reimposta la password — AI-Swisse"
