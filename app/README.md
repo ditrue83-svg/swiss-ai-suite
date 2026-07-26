@@ -257,6 +257,17 @@ comunque strutturato e tipizzato, ma la garanzia viene dal validatore, non dal d
 Non esiste alcun fallback silenzioso. Il chip nella scheda risultato dichiara sempre quale motore ha
 prodotto l'analisi e la colonna `document_analyses.engine` lo registra nel database.
 
+## Interfaccia e design
+
+Il sistema di design — scale tipografiche, spaziature, colore, contrasti, tema
+scuro — è documentato in [`docs/design-system.md`](docs/design-system.md), con le
+regole da rispettare per le modifiche future. Il codice sta in `src/styles/app.css`.
+
+Le traduzioni dell'interfaccia hanno superato i controlli oggettivi (uso svizzero,
+terminologia federale, tipografia francese) ma **non sono state riviste da un
+madrelingua**: il materiale pronto per quella revisione, ordinato per rischio, è
+in [`docs/revisione-traduzioni.md`](docs/revisione-traduzioni.md).
+
 ## Multilingua (it · de · fr)
 
 L'interfaccia esiste nelle tre lingue in cui una PMI svizzera riceve la posta amministrativa.
