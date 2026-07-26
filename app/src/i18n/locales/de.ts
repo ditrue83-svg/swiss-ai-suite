@@ -292,6 +292,7 @@ export const de: Dictionary = {
 
   errors: {
     generic: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
+    emailNotSent: 'Die E-Mail konnte nicht versendet werden. Es liegt nicht an Ihnen: Der Mailversand der Anwendung wurde abgelehnt. Versuchen Sie es später erneut und melden Sie es andernfalls der Betreiberin oder dem Betreiber.',
     badCredentials: 'E-Mail oder Passwort sind nicht korrekt.',
     emailNotConfirmed: 'Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden. Prüfen Sie Ihren Posteingang.',
     userExists: 'Mit dieser E-Mail-Adresse besteht bereits ein Konto. Versuchen Sie sich anzumelden.',

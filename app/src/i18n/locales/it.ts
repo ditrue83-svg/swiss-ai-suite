@@ -299,6 +299,7 @@ export const it = {
 
   errors: {
     generic: 'Si è verificato un errore. Riprova.',
+    emailNotSent: 'Non è stato possibile inviare l’email. Non dipende da te: il servizio di posta dell’applicazione non ha accettato l’invio. Riprova più tardi e, se il problema resta, segnalalo a chi gestisce l’applicazione.',
     badCredentials: 'Email o password non corretti.',
     emailNotConfirmed: 'Devi confermare la tua email prima di accedere. Controlla la posta.',
     userExists: 'Esiste già un account con questa email. Prova ad accedere.',

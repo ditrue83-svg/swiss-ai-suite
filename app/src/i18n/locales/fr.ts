@@ -291,6 +291,7 @@ export const fr: Dictionary = {
 
   errors: {
     generic: 'Une erreur est survenue. Veuillez réessayer.',
+    emailNotSent: 'L’e-mail n’a pas pu être envoyé. Cela ne vient pas de vous : le service de messagerie de l’application a refusé l’envoi. Réessayez plus tard et, si le problème persiste, signalez-le à la personne qui gère l’application.',
     badCredentials: 'E-mail ou mot de passe incorrect.',
     emailNotConfirmed: 'Vous devez confirmer votre e-mail avant de vous connecter. Vérifiez votre boîte de réception.',
     userExists: 'Un compte existe déjà avec cette adresse e-mail. Essayez de vous connecter.',

@@ -56,5 +56,27 @@ export function toUserMessage(err: unknown, fallback = tr('errors.generic')): st
   if (msg.includes('exceeded the maximum allowed size') || code === '413')
     return tr('errors.fileTooLarge');
 
-  return rawMessage || fallback;
+  // Invio email fallito lato server (SMTP non raggiungibile, credenziali del
+  // mittente rifiutate, casella bloccata…). Va distinto dagli altri errori:
+  // l'utente non ha sbagliato nulla e riprovare subito non serve a niente.
+  if (msg.includes('error sending') || msg.includes('smtp') || code === 'unexpected_failure')
+    return tr('errors.emailNotSent');
+
+  // Un errore DEVE restare leggibile. Certi errori arrivano con un `message`
+  // che è la serializzazione di un oggetto vuoto ("{}", "[object Object]"):
+  // mostrarlo tale e quale, come è successo il 2026-07-26 nella schermata di
+  // reimpostazione password, equivale a non dire nulla — e lascia l'utente
+  // davanti a un guasto senza sapere se ha sbagliato lui.
+  return isReadable(rawMessage) ? rawMessage : fallback;
+}
+
+/** Un messaggio è utile solo se dice qualcosa: scarta i residui di serializzazione. */
+function isReadable(message: string): boolean {
+  const m = message.trim();
+  if (!m) return false;
+  if (m === '{}' || m === '[]' || m === 'null' || m === 'undefined') return false;
+  if (m === '[object Object]') return false;
+  // Un oggetto JSON serializzato non è un messaggio per una persona.
+  if ((m.startsWith('{') && m.endsWith('}')) || (m.startsWith('[') && m.endsWith(']'))) return false;
+  return true;
 }
