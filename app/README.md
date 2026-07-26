@@ -1,7 +1,7 @@
-# SwissAI Suite — App SaaS
+# AI-Swisse — App SaaS
 
-SaaS per PMI svizzere con due moduli: **Swiss Admin AI** (analisi di documenti
-amministrativi IT/DE/FR) e **Swiss Subsidy AI** (matching incentivi Confederazione +
+SaaS per PMI svizzere con due moduli: **Admin AI** (analisi di documenti
+amministrativi IT/DE/FR) e **Subsidy AI** (matching incentivi Confederazione +
 Cantone Ticino). Costruito su **Supabase** (Auth + PostgreSQL + Storage privato + RLS).
 
 Principio guida: **correttezza, trasparenza e verificabilità prima della completezza.**
@@ -22,6 +22,8 @@ supabase/
   migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks
                 0005_storage · 0006_admin_ai_pipeline · 0007_subsidy_programs
                 0008_analysis_truth · 0009_quota_and_upload_limits
+                0010_analysis_immutability · 0011_program_availability
+                0012_program_translations
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
@@ -37,6 +39,8 @@ src/
   features/       auth · companies · admin-ai · subsidy-ai · tasks · dashboard · archive · pricing
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
+                  subsidy-translations (contenuti de/fr) · check-auth-config · bundle-migrations
+docs/             design-system.md · revisione-traduzioni.md
 ```
 
 ## Setup
@@ -479,6 +483,6 @@ usa la modalità AI; chi sceglie il motore locale sta scegliendo riservatezza, e
 
 ## Disclaimer
 
-SwissAI Suite è uno **strumento di supporto amministrativo**. Le analisi sono generate automaticamente
+AI-Swisse è uno **strumento di supporto amministrativo**. Le analisi sono generate automaticamente
 e **non sostituiscono la consulenza legale, fiscale o fiduciaria**. Quando il sistema non è sicuro lo
 segnala e invita a una verifica manuale; importi, requisiti e scadenze vanno confermati sulla fonte ufficiale.
