@@ -28,7 +28,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CONTENT, LOCALES, LOCALE_LABEL, LOCALE_PATH, HTML_LANG,
-  LEGAL_PAGES, LEGAL_SLUG, APP_URL, SITE_URL, CONTACT_EMAIL,
+  LEGAL_PAGES, LEGAL_SLUG, APP_URL, SITE_URL, CONTACT_EMAIL, LEGAL_COMPLETE,
 } from './content.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -36,10 +36,44 @@ const OUT = join(ROOT, 'dist');
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** Evidenzia i segnaposto [DA COMPLETARE: …] invece di lasciarli passare per testo. */
-const marcaSegnaposto = (s) => esc(s).replace(/\[DA COMPLETARE[^\]]*\]/g, (m) => `<span class="todo">${m}</span>`);
+/**
+ * Data di riferimento della costruzione. Serve alla data delle pagine legali e
+ * all'esempio in home page, che altrimenti invecchiano dentro il file.
+ */
+const OGGI = process.env.BUILD_DATE ? new Date(process.env.BUILD_DATE) : new Date();
+const dataCH = (d) => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+/**
+ * L'esempio in home page mostra una scadenza e i giorni che mancano. Erano
+ * scritti nel testo — «31.08.2026 · Mancano 12 giorni» — e già al momento della
+ * pubblicazione erano falsi: mancavano 36 giorni, e dal 31 agosto la scadenza
+ * sarebbe risultata passata. Una vetrina che dimostra come si leggono le
+ * scadenze non può sbagliare la propria.
+ *
+ * Ora la data è sempre a distanza fissa da oggi, calcolata qui, e uno script di
+ * poche righe la ricalcola al caricamento: così resta vera anche fra sei mesi,
+ * senza ricostruire il sito. Senza JavaScript si vede comunque la data della
+ * costruzione, che è corretta al momento della pubblicazione.
+ */
+const GIORNI_ESEMPIO = 40;
+const dataEsempio = new Date(OGGI.getTime() + GIORNI_ESEMPIO * 86400000);
+
+/** Data per esteso dentro il testo della lettera, secondo la lingua. */
+const MESI = {
+  it: ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'],
+  de: ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
+  fr: ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'],
+};
+function dataEstesa(d, locale) {
+  const g = d.getDate(), m = MESI[locale][d.getMonth()], a = d.getFullYear();
+  if (locale === 'de') return `${g}. ${m} ${a}`;
+  if (locale === 'fr') return `${g === 1 ? '1er' : g} ${m} ${a}`;
+  return `${g} ${m} ${a}`;
+}
 
 const assetPrefix = (locale) => (locale === 'it' ? '' : '../');
+
+/** Un campo che aspetta un dato reale: se è vuoto, il blocco non si scrive. */
+const valorizzato = (v) => typeof v === 'string' && v.trim() !== '';
 
 // ---------------------------------------------------------------------------
 // Icone: le stesse dell'applicazione, non ridisegnate. Le quattro schede della
@@ -53,6 +87,7 @@ const ICONS = {
   arrowLeft: '<path d="M19 12H6M11.5 6.5 5 12l6.5 5.5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3c-2.5 2.5-2.5 15 0 18M12 3c2.5 2.5 2.5 15 0 18"/>',
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
+  phone: '<path d="M7 3.5H5.2a1.7 1.7 0 0 0-1.7 1.9c.5 4.6 2.4 8.2 5.4 11.2s6.6 4.9 11.2 5.4a1.7 1.7 0 0 0 1.9-1.7V18.5a1.5 1.5 0 0 0-1.2-1.5l-3-.6a1.5 1.5 0 0 0-1.5.6l-1 1.3a14 14 0 0 1-6-6l1.3-1a1.5 1.5 0 0 0 .6-1.5l-.6-3A1.5 1.5 0 0 0 7 3.5Z"/>',
   // documento con lente: «mostra nel documento», la citazione verificata
   quote: '<path d="M6.5 3h6l5 5v3.2"/><path d="M12.5 3v5h5"/><path d="M6.5 3A.5.5 0 0 0 6 3.5V21a.5.5 0 0 0 .5.5H12"/><circle cx="16.5" cy="16.5" r="2.7"/><path d="m18.6 18.6 1.9 1.9"/>',
   // punto interrogativo in cerchio: ciò che il sistema non sa
@@ -148,17 +183,19 @@ function footer(locale, c, legalKey) {
   // Percorsi RELATIVI senza prefisso: le pagine legali di ogni lingua stanno
   // nella cartella della lingua. Con `../` un lettore tedesco finiva su
   // `dist/datenschutz.html`, che non esiste.
-  const legal = LEGAL_PAGES.map(
-    (k) => `<a href="${LEGAL_SLUG[locale][k]}.html">${esc(c.footerLegal[k])}</a>`,
-  ).join('<span class="foot-sep" aria-hidden="true">·</span>');
+  const legal = LEGAL_COMPLETE
+    ? LEGAL_PAGES.map(
+        (k) => `<a href="${LEGAL_SLUG[locale][k]}.html">${esc(c.footerLegal[k])}</a>`,
+      ).join('<span class="foot-sep" aria-hidden="true">·</span>')
+    : '';
   return `    <footer class="foot">
       <p>${esc(c.footerNote)}</p>
       <p class="foot-links">
         <a href="${APP_URL}">${esc(c.footerApp)}</a>
         <span class="foot-sep" aria-hidden="true">·</span>
-        <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>
+        <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>${legal ? `
         <span class="foot-sep" aria-hidden="true">·</span>
-        ${legal}
+        ${legal}` : ''}
       </p>
       <p class="foot-links langs">${languageNav(locale, legalKey)}</p>
     </footer>`;
@@ -226,7 +263,12 @@ function page(locale) {
 
   const limits = c.limits.map((x) => `<li>${esc(x)}</li>`).join('\n          ');
 
-  const e = c.example;
+  // Le date dell'esempio non stanno nel testo: si calcolano.
+  const e = { ...c.example };
+  const dEsteso = dataEstesa(dataEsempio, locale);
+  e.when = e.when.replace('{data}', dataCH(dataEsempio)).replace('{giorni}', String(GIORNI_ESEMPIO));
+  e.letterHighlight = e.letterHighlight.replace('{dataLettera}', dEsteso);
+  e.quote = e.quote.replace('{dataLettera}', dEsteso);
 
   return `<!doctype html>
 <html lang="${HTML_LANG[locale]}">
@@ -271,7 +313,7 @@ ${topbar(locale, c, { onLanding: true })}
             <div class="letter">
               <div class="letter-from">${esc(e.letterFrom)}</div>
               <div class="letter-subject">${esc(e.letterSubject)}</div>
-              <div class="letter-body">${esc(e.letterBefore)}<mark>${esc(e.letterHighlight)}</mark>${esc(e.letterAfter)}</div>
+              <div class="letter-body">${esc(e.letterBefore)}<mark data-testo="${esc(c.example.letterHighlight)}">${esc(e.letterHighlight)}</mark>${esc(e.letterAfter)}</div>
             </div>
           </div>
           <div>
@@ -286,12 +328,12 @@ ${topbar(locale, c, { onLanding: true })}
                 <div>
                   <div class="mock-kicker">${esc(e.kicker)}</div>
                   <div class="mock-action">${esc(e.action)} <span class="chip chip-origin">${icon('quote')}${esc(e.origin)}</span></div>
-                  <div class="mock-when">${esc(e.when)}</div>
+                  <div class="mock-when" data-scadenza="${GIORNI_ESEMPIO}" data-formato="${esc(c.example.when)}">${esc(e.when)}</div>
                 </div>
               </div>
               <div class="mock-quote">
                 <div class="mock-quote-label">${icon('quote')}<span>${esc(e.quoteLabel)}</span></div>
-                <blockquote>«${esc(e.quote)}»</blockquote>
+                <blockquote data-testo="${esc(c.example.quote)}">«${esc(e.quote)}»</blockquote>
               </div>
               <div class="mock-verify">
                 <div class="mock-verify-title">${esc(e.verifyTitle)}</div>
@@ -346,10 +388,10 @@ ${topbar(locale, c, { onLanding: true })}
           <div class="about-photo" aria-hidden="true">AC</div>
           <div class="about-main">
             <div class="about-name">${esc(c.aboutName)}</div>
-            <div class="about-meta">
-              <span>${marcaSegnaposto(c.aboutRole)}</span>
-              <span>${marcaSegnaposto(c.aboutPlace)}</span>
+${[c.aboutRole, c.aboutPlace].some(valorizzato) ? `            <div class="about-meta">
+${[c.aboutRole, c.aboutPlace].filter(valorizzato).map((x) => `              <span>${esc(x)}</span>`).join('\n')}
             </div>
+` : ''}
             <p class="about-why">${esc(c.aboutWhy)}</p>
             <p class="about-contact">${esc(c.aboutContactLine)} <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
           </div>
@@ -376,21 +418,21 @@ ${topbar(locale, c, { onLanding: true })}
               <div class="contact-sub">${esc(c.contactDemoText)}</div>
             </div>
           </div>
-          <div class="contact-item">
+${valorizzato(c.contactPhone) ? `          <div class="contact-item">
+            <span class="contact-ico" aria-hidden="true">${icon('phone')}</span>
+            <div>
+              <div class="contact-label">${esc(c.contactPhoneLabel)}</div>
+              <div class="contact-value"><a href="tel:${c.contactPhone.replace(/[^+0-9]/g, '')}">${esc(c.contactPhone)}</a></div>
+            </div>
+          </div>
+` : ''}${valorizzato(c.contactAddress) ? `          <div class="contact-item">
             <span class="contact-ico" aria-hidden="true">${icon('doc')}</span>
             <div>
               <div class="contact-label">${esc(c.contactAddressLabel)}</div>
-              <div class="contact-value">${marcaSegnaposto(c.contactAddress)}</div>
+              <div class="contact-value">${esc(c.contactAddress)}</div>
             </div>
           </div>
-          <div class="contact-item">
-            <span class="contact-ico" aria-hidden="true">${icon('globe')}</span>
-            <div>
-              <div class="contact-label">${esc(c.nav.about)}</div>
-              <div class="contact-value">${esc(c.aboutName)}</div>
-              <div class="contact-sub">${marcaSegnaposto(c.aboutPlace)}</div>
-            </div>
-          </div>
+` : ''}
         </div>
       </section>
 
@@ -404,9 +446,39 @@ ${topbar(locale, c, { onLanding: true })}
     </main>
 
 ${footer(locale, c)}
+${scriptDate(locale)}
   </body>
 </html>
 `;
+}
+
+/**
+ * Tiene vere le date dell'esempio. Undici righe, senza dipendenze, eseguite in
+ * locale: non chiama nessun server, non usa cookie, non osserva nulla — quello
+ * che l'informativa dichiara resta vero.
+ *
+ * Senza JavaScript la pagina mostra comunque le date calcolate alla
+ * costruzione: corrette quando è stata pubblicata, e ricostruite a ogni push.
+ */
+function scriptDate(locale) {
+  const mesi = JSON.stringify(MESI[locale]);
+  return `    <script>
+      (function () {
+        var el = document.querySelector('.mock-when'); if (!el) return;
+        var g = +el.dataset.scadenza, d = new Date(Date.now() + g * 86400000);
+        var due = function (n) { return String(n).padStart(2, '0'); };
+        var breve = due(d.getDate()) + '.' + due(d.getMonth() + 1) + '.' + d.getFullYear();
+        var mesi = ${mesi}, gg = d.getDate();
+        var esteso = ${locale === 'de' ? "gg + '. ' + mesi[d.getMonth()] + ' ' + d.getFullYear()"
+          : locale === 'fr' ? "(gg === 1 ? '1er' : gg) + ' ' + mesi[d.getMonth()] + ' ' + d.getFullYear()"
+          : "gg + ' ' + mesi[d.getMonth()] + ' ' + d.getFullYear()"};
+        el.textContent = el.dataset.formato.replace('{data}', breve).replace('{giorni}', g);
+        document.querySelectorAll('[data-testo]').forEach(function (n) {
+          var t = n.dataset.testo.replace('{dataLettera}', esteso);
+          n.textContent = n.tagName === 'BLOCKQUOTE' ? '\u00ab' + t + '\u00bb' : t;
+        });
+      })();
+    </script>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -421,14 +493,17 @@ function legalPage(locale, key) {
   const sections = doc.sections.map((s) => `
       <section>
         <h2>${esc(s.h)}</h2>
-        ${s.p.map((x) => `<p>${marcaSegnaposto(x)}</p>`).join('\n        ')}
+        ${s.p.map((x) => `<p>${esc(x)}</p>`).join('\n        ')}
       </section>`).join('');
 
   return `<!doctype html>
 <html lang="${HTML_LANG[locale]}">
   <head>
-${head(locale, { title: `${doc.title} — AI-Swisse`, description: doc.intro.replace(/\[DA COMPLETARE[^\]]*\]/g, '').trim(), canonical })}
-    <meta name="robots" content="index, follow" />
+${head(locale, { title: `${doc.title} — AI-Swisse`, description: doc.intro, canonical })}
+    <!-- Finché mancano ragione sociale, indirizzo e IDI, queste pagine dicono
+         il vero ma non sono complete: non devono farsi indicizzare come se lo
+         fossero. Con LEGAL_COMPLETE = true tornano index, follow. -->
+    <meta name="robots" content="${LEGAL_COMPLETE ? 'index, follow' : 'noindex, nofollow'}" />
   </head>
   <body>
     <a class="skip" href="#main">${esc(c.skip)}</a>
@@ -439,8 +514,8 @@ ${topbar(locale, c, { onLanding: false, legalKey: key })}
       <div class="legal-head">
         <p><a class="back-link" href="index.html">${icon('arrowLeft')}<span>${esc(c.legal.backToSite)}</span></a></p>
         <h1>${esc(doc.title)}</h1>
-        <p class="section-lead">${marcaSegnaposto(doc.intro)}</p>
-        <p class="legal-updated">${marcaSegnaposto(c.legal.updated)}</p>
+        <p class="section-lead">${esc(doc.intro)}</p>
+        <p class="legal-updated">${esc(c.legal.updated.replace('{data}', dataCH(OGGI)))}</p>
       </div>
       <div class="legal-body">${sections}
       </div>
@@ -555,7 +630,11 @@ const today = process.env.BUILD_DATE || '';
 const urls = [];
 for (const l of LOCALES) {
   urls.push(`${SITE_URL}${LOCALE_PATH[l]}`);
-  for (const k of LEGAL_PAGES) urls.push(`${SITE_URL}${LOCALE_PATH[l]}${LEGAL_SLUG[l][k]}.html`);
+  // Una pagina con `noindex` dichiarata nella sitemap è una contraddizione:
+  // si chiede di indicizzarla e le si dice di non farlo.
+  if (LEGAL_COMPLETE) {
+    for (const k of LEGAL_PAGES) urls.push(`${SITE_URL}${LOCALE_PATH[l]}${LEGAL_SLUG[l][k]}.html`);
+  }
 }
 writeFileSync(
   join(OUT, 'sitemap.xml'),

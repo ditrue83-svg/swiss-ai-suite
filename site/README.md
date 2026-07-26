@@ -92,18 +92,53 @@ Per rifarla: aprire una pagina qualsiasi del sito e incollare nella console il
 codice che disegna il canvas (è in fondo a questo file), oppure aprire `og.html`
 e catturare l'area a 1200×630.
 
+## Dati mancanti: campi vuoti, non segnaposto
+
+**In produzione non compare nessuna parentesi quadra.** Dove manca un dato reale
+la frase è scritta in modo da reggere senza; dove il dato è una voce a sé
+(`aboutRole`, `aboutPlace`, `contactAddress`, `contactPhone`) il campo è una
+stringa **vuota** e il generatore salta il blocco. Riempirlo è l'unica cosa da
+fare quando il dato arriva.
+
+`LEGAL_COMPLETE` in `content.mjs` governa impressum, privacy e condizioni:
+
+| | `false` (adesso) | `true` |
+|---|---|---|
+| `<meta name="robots">` | `noindex, nofollow` | `index, follow` |
+| collegamenti nel piè di pagina | assenti, resta solo l'email | presenti |
+| pagine nella `sitemap.xml` | escluse | incluse |
+
+Sono pagine che dicono il vero ma non sono complete — mancano ragione sociale,
+forma giuridica, indirizzo, IDI e la revisione di un legale — e finché è così
+non devono farsi indicizzare come se lo fossero. Messi i dati: `true`, e tornano
+raggiungibili e collegate.
+
+## Le date dell'esempio non invecchiano
+
+L'esempio in home page mostrava «31.08.2026 · Mancano 12 giorni»: già alla
+pubblicazione era falso (mancavano 36 giorni) e dal 31 agosto la scadenza
+sarebbe risultata passata. Una vetrina che dimostra come si leggono le scadenze
+non può sbagliare la propria.
+
+Ora la data è sempre a **40 giorni da oggi**: calcolata alla costruzione e
+ricalcolata al caricamento da uno script inline di undici righe — nessuna
+richiesta di rete, nessun cookie, niente che l'informativa non dichiari. Senza
+JavaScript resta la data della costruzione, corretta al momento della
+pubblicazione. La citazione dentro la lettera e quella nell'analisi vengono
+dalla stessa fonte, quindi non possono divergere.
+
+I formati seguono la convenzione di ciascuna lingua: `04.09.2026` ovunque nella
+riga della scadenza, e per esteso nel corpo della lettera — «4 settembre 2026»,
+«4. September 2026», «4 septembre 2026».
+
 ## Cosa manca
 
-- **L'hosting non è ancora deciso.** Con i nameserver su Aruba il CNAME non è
-  ammesso sull'apex, quindi non basta un secondo progetto Cloudflare Pages. Le
-  strade: spazio web Aruba via FTP, la landing su `www` con un redirect
-  dall'apex, oppure spostare i DNS su Cloudflare — che però obbliga a ricreare
-  gli MX delle caselle email attive.
-- **I dati legali.** Ogni segnaposto `[DA COMPLETARE]` è visibile anche nella
-  pagina resa, in ambra: un segnaposto che si confonde col testo finisce
-  pubblicato. Servono ragione sociale, forma giuridica, sede, IDI, e la revisione
-  di un legale per le condizioni d'uso e per la base giuridica del trasferimento
-  dei dati fuori dall'UE.
+- **I dati legali**: ragione sociale, forma giuridica, indirizzo, IDI, telefono,
+  e la sede per il foro competente. Servono anche il ruolo e la località in
+  «Chi c'è dietro». Finché non ci sono, `LEGAL_COMPLETE` resta `false`.
+- **La revisione di un legale** per le condizioni d'uso e per la base giuridica
+  del trasferimento dei dati fuori dall'UE — oggi il fatto è dichiarato, la base
+  giuridica no.
 - **Tedesco e francese non sono stati riletti da un madrelingua**, come quelli
   dell'app: vanno aggiunti a `docs/revisione-traduzioni.md` del progetto
   principale.
