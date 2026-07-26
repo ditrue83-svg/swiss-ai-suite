@@ -149,7 +149,7 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
           <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> {L.supportType(p.supportType)}</span>
           <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{p.authority}</b></span>
           <span className="ax-chip"><Icon name="calendar" className="ic-sm" /> {p.applicationWindow}</span>
-          <span className={`badge badge-${match.priority.level}`}>{t('subsidy.results.priority', { level: match.priority.level })}</span>
+          <span className={`badge badge-${match.priority.level}`}>{t('subsidy.results.priority', { level: L.urgency(match.priority.level) })}</span>
         </div>
         {/* 0011 — la sospensione viene PRIMA di ogni altra informazione: il
             resto della scheda descrive un contributo che oggi non si ottiene, e

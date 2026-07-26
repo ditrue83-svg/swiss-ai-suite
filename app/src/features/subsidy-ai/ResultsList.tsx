@@ -55,10 +55,13 @@ export function ResultsList({
     <>
       {panel}
       <div className="demo-banner">
-        {matches.length} programmi <strong>rilevanti</strong> per <strong>{company?.legalName ?? 'la tua impresa'}</strong>
-        {` (${company?.canton ?? '—'}${settoreLabel ? ', ' + settoreLabel : ''}). `}
-        La <strong>Rilevanza</strong> indica quanto il programma sembra pertinente al progetto, <em>non</em> la probabilità di ottenere il contributo.
-        L’idoneità va verificata programma per programma. <button type="button" className="btn-link" onClick={onEditProfile}>{t('subsidy.results.editProfile')}</button>
+        {t('subsidy.results.summary', {
+          n: matches.length,
+          company: company?.legalName ?? t('subsidy.results.yourCompany'),
+          context: `${company?.canton ?? '—'}${settoreLabel ? ', ' + settoreLabel : ''}`,
+        })}{' '}
+        {t('subsidy.results.relevanceNote')}{' '}
+        <button type="button" className="btn-link" onClick={onEditProfile}>{t('subsidy.results.editProfile')}</button>
       </div>
 
       {matches.map((m) => {
@@ -84,7 +87,7 @@ export function ResultsList({
                   <span className="badge badge-neutral"><Icon name="calendar" className="ic-sm" /> {p.applicationWindow}</span>
                   {p.mustApplyBeforeStart && <span className="badge badge-alta"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.applyBeforeStart')}</span>}
                   <span className="badge badge-neutral">{t('subsidy.results.requirementsToVerify', { n: m.reqToVerify })}</span>
-                  <span className={`badge badge-${m.priority.level}`}>{t('subsidy.results.priority', { level: m.priority.level })}</span>
+                  <span className={`badge badge-${m.priority.level}`}>{t('subsidy.results.priority', { level: L.urgency(m.priority.level) })}</span>
                 </div>
               </div>
               <button className="btn btn-primary btn-sm" onClick={() => onOpen(p.id)}>{t('subsidy.results.checkEligibility')} <Icon name="arrowRight" className="ic-sm" /></button>

@@ -420,6 +420,9 @@ export const fr: Dictionary = {
       saved: 'Profil de subventions enregistré',
     },
     results: {
+      summary: '{n} programmes pertinents pour {company} ({context}).',
+      relevanceNote: 'La pertinence indique dans quelle mesure le programme correspond au projet, et non la probabilité d’obtenir la contribution : l’éligibilité doit être vérifiée programme par programme.',
+      yourCompany: 'votre entreprise',
       relevance: 'Pertinence',
       eligibilityToVerify: 'Éligibilité : à vérifier',
       suspended: 'Actuellement suspendu',

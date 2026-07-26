@@ -5,6 +5,7 @@ import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useOverview } from './useOverview';
 import { collectPriorities, type PriorityItem } from './overview';
 import { useT } from '@/i18n';
+import { useLabels } from '@/i18n/labels';
 
 function greetingKey(): 'home.greetingMorning' | 'home.greetingAfternoon' | 'home.greetingEvening' {
   const h = new Date().getHours();
@@ -14,6 +15,7 @@ function greetingKey(): 'home.greetingMorning' | 'home.greetingAfternoon' | 'hom
 }
 
 function PriorityRow({ it }: { it: PriorityItem }) {
+  const L = useLabels();
   return (
     <div className="action-row">
       <div className={`action-ico p-${it.priority}`}><Icon name={it.icon} className="ic-sm" /></div>
@@ -22,7 +24,7 @@ function PriorityRow({ it }: { it: PriorityItem }) {
         <div className="action-sub">{it.sub}</div>
       </div>
       <div className="action-meta">
-        <span className={`badge badge-${it.priority}`}>{it.priority}</span>
+        <span className={`badge badge-${it.priority}`}>{L.urgency(it.priority)}</span>
         <Link className="action-link" to={it.to} aria-label={it.cta}><Icon name="arrowRight" className="ic-sm" /></Link>
       </div>
     </div>

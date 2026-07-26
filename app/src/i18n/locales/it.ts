@@ -428,6 +428,9 @@ export const it = {
       saved: 'Profilo incentivi salvato',
     },
     results: {
+      summary: '{n} programmi rilevanti per {company} ({context}).',
+      relevanceNote: 'La Rilevanza indica quanto il programma sembra pertinente al progetto, non la probabilità di ottenere il contributo: l’idoneità va verificata programma per programma.',
+      yourCompany: 'la tua impresa',
       relevance: 'Rilevanza',
       eligibilityToVerify: 'Idoneità: da verificare',
       suspended: 'Attualmente sospeso',

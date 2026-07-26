@@ -109,7 +109,7 @@ function DashboardBody({ data }: { data: OverviewData }) {
           <div className="action-row" key={i}>
             <div className={`action-ico p-${it.priority}`}><Icon name={it.icon} className="ic-sm" /></div>
             <div className="action-main"><div className="action-title">{it.title}</div><div className="action-sub">{it.sub}</div></div>
-            <div className="action-meta"><span className={`badge badge-${it.priority}`}>{it.priority}</span>
+            <div className="action-meta"><span className={`badge badge-${it.priority}`}>{L.urgency(it.priority)}</span>
               <Link className="action-link" to={it.to} aria-label={it.cta}><Icon name="arrowRight" className="ic-sm" /></Link></div>
           </div>
         ))}

@@ -421,6 +421,9 @@ export const de: Dictionary = {
       saved: 'Förderprofil gespeichert',
     },
     results: {
+      summary: '{n} relevante Programme für {company} ({context}).',
+      relevanceNote: 'Die Relevanz gibt an, wie gut das Programm zum Vorhaben passt — nicht die Wahrscheinlichkeit, den Beitrag zu erhalten: Die Anspruchsberechtigung ist für jedes Programm einzeln zu prüfen.',
+      yourCompany: 'Ihr Unternehmen',
       relevance: 'Relevanz',
       eligibilityToVerify: 'Anspruch: zu prüfen',
       suspended: 'Zurzeit ausgesetzt',
