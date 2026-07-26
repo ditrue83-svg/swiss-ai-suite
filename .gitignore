@@ -24,3 +24,6 @@ npm-debug.log*
 .claude/
 .vscode/
 .idea/
+
+# Cache locale del CLI wrangler (creata interrogando i deployment Pages)
+.wrangler/
