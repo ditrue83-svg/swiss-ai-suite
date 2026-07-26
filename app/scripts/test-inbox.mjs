@@ -164,9 +164,36 @@ async function seedInbox(companyId, ownerId, suffix) {
   return { connectionId: connection.id, messageId: message.id, attachmentId: attachment.id, documentId: document.id };
 }
 
+/**
+ * Pulizia dei dati di test.
+ *
+ * ⚠️ La versione precedente scriveva `await admin.from('companies').delete()` e
+ * NON guardava l'esito: supabase-js non solleva, restituisce `{ error }`. Una
+ * cancellazione fallita passava quindi in silenzio, e il 2026-07-26 due aziende
+ * di test («Alfa Test», «Beta Test») sono rimaste nel database di PRODUZIONE
+ * con le loro connessioni e i loro messaggi finti — scoperte solo perché la
+ * diagnostica dell'Inbox le ha mostrate accanto a quelle vere.
+ *
+ * Un test che sporca il database e non se ne accorge è peggio di un test che
+ * non pulisce affatto: chi lo esegue crede che non abbia lasciato nulla.
+ * Adesso l'esito viene verificato e, se qualcosa sopravvive, lo si DICHIARA.
+ */
 async function cleanup() {
-  for (const id of created.companies) await admin.from('companies').delete().eq('id', id);
+  const rimasti = [];
+  for (const id of created.companies) {
+    const { error } = await admin.from('companies').delete().eq('id', id);
+    if (error) { rimasti.push(`${id} (${error.message})`); continue; }
+    const { data } = await admin.from('companies').select('id').eq('id', id).maybeSingle();
+    if (data) rimasti.push(`${id} (ancora presente dopo la delete)`);
+  }
   for (const id of created.users) await admin.auth.admin.deleteUser(id).catch(() => {});
+
+  if (rimasti.length) {
+    fail++;
+    console.log(`\n  ${R}✗ PULIZIA INCOMPLETA — dati di test rimasti nel database:${X}`);
+    for (const r of rimasti) console.log(`     ${DIM}${r}${X}`);
+    console.log(`     ${DIM}Vanno rimossi a mano: sono aziende con nome «Alfa Test …» / «Beta Test …».${X}`);
+  }
 }
 
 // ---------------------------------------------------------------------------

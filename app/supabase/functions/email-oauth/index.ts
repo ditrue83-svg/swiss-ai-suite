@@ -175,6 +175,25 @@ async function handleCallback(url: URL): Promise<Response> {
 
   const adapter = adapterForProvider(provider);
   const tokens = await adapter.exchangeCode({ code, codeVerifier });
+
+  // Il permesso di lettura della posta è mostrato da Google come una CASELLA DA
+  // SPUNTARE. Chi preme «Continua» senza spuntarla completa il consenso e
+  // riceve un token perfettamente valido — ma senza quello scope. La prima
+  // chiamata a Gmail risponde 403, che tradotto diventa «permesso
+  // insufficiente»: sembra un guasto di configurazione del server, mentre è una
+  // spunta mancante che solo l'utente può rimettere.
+  //
+  // Si verifica QUI, sul campo `scope` della risposta del provider, perché è
+  // l'ultimo momento in cui si può dirlo con precisione invece di dedurlo da un
+  // codice HTTP a valle. Se il provider non dichiara gli scope non si conclude
+  // nulla: meglio proseguire e fallire più avanti che inventare una diagnosi.
+  const requiredScope = provider === 'google' ? 'auth/gmail.readonly' : 'mail.read';
+  const granted = tokens.scopes.map((s) => s.toLowerCase());
+  if (granted.length > 0 && !granted.some((s) => s.endsWith(requiredScope))) {
+    logEvent('email-oauth', { action: 'callback', provider, code: 'SCOPE_NOT_GRANTED' });
+    return redirectToApp(state.redirect_path as string, { connect: 'error', code: 'SCOPE_NOT_GRANTED' });
+  }
+
   const identity = await adapter.getAccountIdentity(tokens.accessToken);
 
   // §74 — stesso account già collegato a questa azienda: si AGGIORNA, non si

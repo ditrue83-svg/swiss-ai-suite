@@ -71,8 +71,13 @@ export function inboxErrorMessage(code: string | null | undefined): string | nul
   if (!code) return null;
   switch (code) {
     case 'AUTH_EXPIRED':
-    case 'AUTH_INSUFFICIENT_SCOPE':
       return tr('inbox.errors.reauthRequired');
+    // Distinto da «connessione da rinnovare»: qui non c'è nulla da rinnovare,
+    // manca un permesso che solo l'utente può concedere. Confonderli manda a
+    // ricollegare una casella che è collegata benissimo.
+    case 'SCOPE_NOT_GRANTED':
+    case 'AUTH_INSUFFICIENT_SCOPE':
+      return tr('inbox.errors.scopeNotGranted');
     case 'PROVIDER_UNAVAILABLE':
       return tr('inbox.errors.providerUnavailable');
     case 'PROVIDER_RATE_LIMITED':

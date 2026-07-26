@@ -801,6 +801,7 @@ export const fr: Dictionary = {
     },
     errors: {
       reauthRequired: 'La connexion à la messagerie doit être renouvelée.',
+      scopeNotGranted: 'L’autorisation de lecture du courrier n’a pas été accordée. Réessayez et, dans la fenêtre du fournisseur, cochez la case autorisant la lecture des courriels.',
       providerUnavailable: 'Le fournisseur de messagerie est momentanément injoignable.',
       rateLimited: 'Le fournisseur de messagerie a limité les requêtes. Réessayez dans quelques minutes.',
       syncBusy: 'Une synchronisation est déjà en cours.',

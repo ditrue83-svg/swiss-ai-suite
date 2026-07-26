@@ -808,6 +808,7 @@ export const it = {
     },
     errors: {
       reauthRequired: 'La connessione alla casella deve essere rinnovata.',
+      scopeNotGranted: 'Il permesso di lettura della posta non è stato concesso. Riprova e, nella schermata del fornitore, spunta la casella che autorizza la lettura delle email.',
       providerUnavailable: 'Il fornitore di posta non è raggiungibile in questo momento.',
       rateLimited: 'Il fornitore di posta ha limitato le richieste. Riprova fra qualche minuto.',
       syncBusy: 'Una sincronizzazione è già in corso.',

@@ -802,6 +802,7 @@ export const de: Dictionary = {
     },
     errors: {
       reauthRequired: 'Die Verbindung zum Postfach muss erneuert werden.',
+      scopeNotGranted: 'Die Berechtigung zum Lesen der Post wurde nicht erteilt. Versuchen Sie es erneut und aktivieren Sie im Fenster des Anbieters das Kontrollkästchen, das den Zugriff auf die E-Mails erlaubt.',
       providerUnavailable: 'Der E-Mail-Anbieter ist derzeit nicht erreichbar.',
       rateLimited: 'Der E-Mail-Anbieter hat die Anfragen begrenzt. Versuchen Sie es in einigen Minuten erneut.',
       syncBusy: 'Eine Synchronisierung läuft bereits.',
