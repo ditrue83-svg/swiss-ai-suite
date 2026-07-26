@@ -163,7 +163,17 @@ html { -webkit-text-size-adjust: 100%; }
 body { background: var(--bg); color: var(--ink); font-size: var(--fs-body); line-height: 1.55; display: flex; min-height: 100vh; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 button { font: inherit; cursor: pointer; color: inherit; }
 input, select, textarea { font: inherit; color: var(--ink); }
-a { color: var(--accent-text); }
+/* I collegamenti non sono sottolineati per default: nell'app quasi tutti sono
+   voci di navigazione o pulsanti, dove la sottolineatura è rumore — la stessa
+   convenzione che già seguono .action-link e .ev-btn.
+   Restano invece sottolineati i collegamenti dentro un testo corrente, dove
+   sono l'unico segnale che distingue un link da una parola qualsiasi. */
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.nav-btn:hover, .btn:hover, .brand:hover, .company-switch:hover { text-decoration: none; }
+p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-sub a, .legal-note a {
+  text-decoration: underline;
+}
 /* focus accessibile e coerente su tutti gli elementi interattivi */
 :focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px; }
 .ic { width: 20px; height: 20px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
