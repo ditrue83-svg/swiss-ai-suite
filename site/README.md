@@ -100,18 +100,30 @@ la frase è scritta in modo da reggere senza; dove il dato è una voce a sé
 stringa **vuota** e il generatore salta il blocco. Riempirlo è l'unica cosa da
 fare quando il dato arriva.
 
-`LEGAL_COMPLETE` in `content.mjs` governa impressum, privacy e condizioni:
+`LEGAL_COMPLETE` in `content.mjs` governa impressum, privacy e condizioni.
+**Oggi è `true`**: i dati del titolare sono arrivati il 2026-07-26.
 
-| | `false` (adesso) | `true` |
+| | `false` | `true` (oggi) |
 |---|---|---|
 | `<meta name="robots">` | `noindex, nofollow` | `index, follow` |
 | collegamenti nel piè di pagina | assenti, resta solo l'email | presenti |
-| pagine nella `sitemap.xml` | escluse | incluse |
+| pagine nella `sitemap.xml` | escluse (3 URL) | incluse (12 URL) |
 
-Sono pagine che dicono il vero ma non sono complete — mancano ragione sociale,
-forma giuridica, indirizzo, IDI e la revisione di un legale — e finché è così
-non devono farsi indicizzare come se lo fossero. Messi i dati: `true`, e tornano
-raggiungibili e collegate.
+Serve rimetterlo a `false` se un domani si aggiunge una pagina legale ancora da
+compilare: pagine che dicono il vero ma non sono complete non devono farsi
+indicizzare come se lo fossero.
+
+### Dati del titolare
+
+```
+AI-Swisse, ditta individuale
+Titolare: Andrea Cavalieri
+Via Rovello 32, 6942 Savosa (Canton Ticino), Svizzera
+```
+
+Stanno in `content.mjs` e compaiono nell'impressum, come titolare del
+trattamento nell'informativa, nei contatti, in «Chi c'è dietro» e nel foro
+competente delle condizioni d'uso.
 
 ## Le date dell'esempio non invecchiano
 
@@ -133,12 +145,16 @@ riga della scadenza, e per esteso nel corpo della lettera — «4 settembre 2026
 
 ## Cosa manca
 
-- **I dati legali**: ragione sociale, forma giuridica, indirizzo, IDI, telefono,
-  e la sede per il foro competente. Servono anche il ruolo e la località in
-  «Chi c'è dietro». Finché non ci sono, `LEGAL_COMPLETE` resta `false`.
+- **Il numero IDI/CHE**, se la ditta è iscritta al registro di commercio — in
+  Svizzera l'obbligo scatta sopra una certa cifra d'affari. Le pagine sono
+  scritte in modo da non presupporre l'iscrizione, quindi oggi sono corrette
+  comunque; se il numero esiste, va aggiunto all'impressum.
+- **Il telefono**: `contactPhone` è vuoto e il blocco non viene scritto. Basta
+  riempirlo e compare nei contatti e nell'impressum, con il collegamento `tel:`.
 - **La revisione di un legale** per le condizioni d'uso e per la base giuridica
-  del trasferimento dei dati fuori dall'UE — oggi il fatto è dichiarato, la base
-  giuridica no.
+  del trasferimento dei dati fuori dall'UE — oggi il fatto è dichiarato (il testo
+  estratto va ad Anthropic, che ha sede negli Stati Uniti), la base giuridica no.
+  È la prima cosa che chiederà un cliente attento.
 - **Tedesco e francese non sono stati riletti da un madrelingua**, come quelli
   dell'app: vanno aggiunti a `docs/revisione-traduzioni.md` del progetto
   principale.
