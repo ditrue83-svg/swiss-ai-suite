@@ -215,6 +215,7 @@ export const de: Dictionary = {
     pastePlaceholder: 'Fügen Sie hier den Inhalt des Briefes oder der E-Mail ein…',
     titleField: 'Titel (freiwillig)',
     titlePlaceholder: 'z. B. Schreiben Ausgleichskasse August',
+    analyzeAnother: 'Weiteres Dokument analysieren',
     analyze: 'Dokument analysieren',
     trySample: 'Mit einem Beispiel testen:',
     loadingAnalysis: 'Analyse wird geladen…',

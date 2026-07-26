@@ -40,6 +40,9 @@ export function AdminAIPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [retrySrc, setRetrySrc] = useState<{ src: RunSource; title: string } | null>(null);
+  // Chi apre un documento dall'archivio vuole LEGGERE l'analisi, non caricarne
+  // un'altra: in quel caso il modulo di caricamento parte chiuso e sta in fondo.
+  const [uploaderOpen, setUploaderOpen] = useState(false);
   const [drag, setDrag] = useState(false);
 
   const [document, setDocument] = useState<DocumentRecord | null>(null);
@@ -214,13 +217,7 @@ export function AdminAIPage() {
     void runAnalysis({ text, extraction: fromPlainText(text) }, title);
   }
 
-  return (
-    <>
-      <div className="page-head">
-        <div className="page-title">Swiss Admin AI</div>
-        <div className="page-desc">{t('adminAi.intro')}</div>
-      </div>
-
+  const uploader = (
       <div className="card">
         <div className="card-title">{t('adminAi.stepDoc')}</div>
         <button
@@ -282,7 +279,12 @@ export function AdminAIPage() {
           </div>
         )}
       </div>
+  );
 
+  // Aperto dall'archivio: c'è un'analisi da leggere e non se ne sta calcolando una.
+  const readingStored = !!docParam && !!analysis && !analyzing && !loadingDoc;
+
+  const result = (
       <div ref={resultRef}>
         {analyzing && progress && (
           <div className="card mt-16" role="status" aria-live="polite"><span className="spinner" /> {progress}</div>
@@ -295,6 +297,37 @@ export function AdminAIPage() {
           <div className="card mt-16"><div className="muted-sm">{t('adminAi.noAnalysisYet')}</div></div>
         )}
       </div>
+  );
+
+  // In lettura l'ordine si inverte: prima il risultato, poi — su richiesta — il
+  // modulo per analizzare un altro documento.
+  if (readingStored) {
+    return (
+      <>
+        <div className="page-head">
+          <div className="page-title">{t('adminAi.title')}</div>
+          <div className="page-desc">{t('adminAi.intro')}</div>
+        </div>
+        {result}
+        <div className="mt-16">
+          {uploaderOpen ? uploader : (
+            <button className="btn" onClick={() => setUploaderOpen(true)}>
+              <Icon name="document" className="ic-sm" /> {t('adminAi.analyzeAnother')}
+            </button>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="page-head">
+        <div className="page-title">{t('adminAi.title')}</div>
+        <div className="page-desc">{t('adminAi.intro')}</div>
+      </div>
+      {uploader}
+      {result}
     </>
   );
 }

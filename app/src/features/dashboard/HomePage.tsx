@@ -71,13 +71,13 @@ export function HomePage() {
         <div className="grid-2 mt-16">
           <div className="card module-card">
             <div className="module-kicker">Modulo 1</div>
-            <div className="card-title mt-10">Swiss Admin AI</div>
+            <div className="card-title mt-10">{t('adminAi.title')}</div>
             <p className="muted-sm">{t('home.adminAiDesc')}</p>
             <Link className="btn btn-sm mt-12" to="/admin">{t('home.openAdminAi')} <Icon name="arrowRight" className="ic-sm" /></Link>
           </div>
           <div className="card module-card">
             <div className="module-kicker">Modulo 2</div>
-            <div className="card-title mt-10">Swiss Subsidy AI</div>
+            <div className="card-title mt-10">{t('subsidy.title')}</div>
             <p className="muted-sm">{t('home.subsidyAiDesc')}</p>
             <Link className="btn btn-sm mt-12" to="/subsidy">{t('home.openSubsidyAi')} <Icon name="arrowRight" className="ic-sm" /></Link>
           </div>

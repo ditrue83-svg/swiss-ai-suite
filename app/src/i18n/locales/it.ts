@@ -222,6 +222,7 @@ export const it = {
     pastePlaceholder: 'Incolla qui il contenuto della lettera o dell’email…',
     titleField: 'Titolo (facoltativo)',
     titlePlaceholder: 'Es. Lettera cassa AVS agosto',
+    analyzeAnother: 'Analizza un altro documento',
     analyze: 'Analizza documento',
     trySample: 'Prova con un esempio:',
     loadingAnalysis: 'Caricamento analisi…',

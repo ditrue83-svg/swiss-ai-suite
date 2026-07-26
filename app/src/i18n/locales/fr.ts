@@ -214,6 +214,7 @@ export const fr: Dictionary = {
     pastePlaceholder: 'Collez ici le contenu du courrier ou de l’e-mail…',
     titleField: 'Titre (facultatif)',
     titlePlaceholder: 'p. ex. Courrier caisse AVS août',
+    analyzeAnother: 'Analyser un autre document',
     analyze: 'Analyser le document',
     trySample: 'Essayer avec un exemple :',
     loadingAnalysis: 'Chargement de l’analyse…',
