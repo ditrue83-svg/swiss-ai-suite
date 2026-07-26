@@ -1,0 +1,588 @@
+// ============================================================================
+// Genera la vetrina AI-Swisse: `node build.mjs` → dist/
+//
+//   dist/index.html            italiano (radice)      dist/de/  dist/fr/
+//   dist/impressum.html        pagine legali, una per lingua
+//   dist/privacy.html          (in de e fr con gli slug della lingua)
+//   dist/condizioni.html
+//   dist/style.css             tokens.css + style.css concatenati
+//   dist/og.html               sorgente dell'anteprima social, da fotografare
+//   dist/autonoma/*.html       una pagina per lingua, CSS incorporato
+//
+// PERCHÉ TRE PAGINE E NON UNA CON UNO SWITCH JS
+// Il pubblico è in tre regioni linguistiche e il mercato più grande è quello
+// germanofono. Con un'unica pagina che cambia i testi via JavaScript, i motori
+// di ricerca ne indicizzano una sola: la vetrina esisterebbe in tedesco solo
+// per chi ci arriva già. Tre pagine statiche con `hreflang` costano un
+// generatore, e si fanno trovare in tutte e tre.
+//
+// ORDINE DELLE SEZIONI
+// promessa → come funziona → esempio → moduli → verificabilità → lingue →
+// quello che è giusto sapere → prezzi → chi c'è dietro → contatti.
+// I limiti stanno PRIMA dei prezzi di proposito: chi legge una cifra deve
+// sapere già che cosa il prodotto non fa. Metterli dopo sarebbe far firmare
+// prima e leggere poi.
+// ============================================================================
+import { mkdirSync, writeFileSync, readFileSync, copyFileSync, readdirSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  CONTENT, LOCALES, LOCALE_LABEL, LOCALE_PATH, HTML_LANG,
+  LEGAL_PAGES, LEGAL_SLUG, APP_URL, SITE_URL, CONTACT_EMAIL,
+} from './content.mjs';
+
+const ROOT = dirname(fileURLToPath(import.meta.url));
+const OUT = join(ROOT, 'dist');
+
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Evidenzia i segnaposto [DA COMPLETARE: …] invece di lasciarli passare per testo. */
+const marcaSegnaposto = (s) => esc(s).replace(/\[DA COMPLETARE[^\]]*\]/g, (m) => `<span class="todo">${m}</span>`);
+
+const assetPrefix = (locale) => (locale === 'it' ? '' : '../');
+
+// ---------------------------------------------------------------------------
+// Icone: le stesse dell'applicazione, non ridisegnate. Le quattro schede della
+// verificabilità avevano tutte lo stesso segno, e quattro volte la stessa icona
+// non è un sistema: è un riempitivo.
+// ---------------------------------------------------------------------------
+const ICONS = {
+  logo: '<path d="M12 3v18M3 12h18"/>',
+  check: '<path d="M4.5 12.5 9 17l10.5-10.5"/>',
+  arrow: '<path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"/>',
+  arrowLeft: '<path d="M19 12H6M11.5 6.5 5 12l6.5 5.5"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3c-2.5 2.5-2.5 15 0 18M12 3c2.5 2.5 2.5 15 0 18"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
+  // documento con lente: «mostra nel documento», la citazione verificata
+  quote: '<path d="M6.5 3h6l5 5v3.2"/><path d="M12.5 3v5h5"/><path d="M6.5 3A.5.5 0 0 0 6 3.5V21a.5.5 0 0 0 .5.5H12"/><circle cx="16.5" cy="16.5" r="2.7"/><path d="m18.6 18.6 1.9 1.9"/>',
+  // punto interrogativo in cerchio: ciò che il sistema non sa
+  question: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.7"/><path d="M12 17.2h.01"/>',
+  // etichetta: la provenienza dichiarata di ogni azione
+  tag: '<path d="M3.5 11.2V4.5a1 1 0 0 1 1-1h6.7a1 1 0 0 1 .7.3l8 8a1 1 0 0 1 0 1.4l-6.7 6.7a1 1 0 0 1-1.4 0l-8-8a1 1 0 0 1-.3-.7Z"/><circle cx="8" cy="8" r="1.4"/>',
+  // orologio con freccia: si può tornare a com'era
+  history: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5V9h4.5"/><path d="M12 7.5V12l3 1.8"/>',
+  doc: '<path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7Z"/><path d="M14 3v4h4"/>',
+  checkCircle: '<circle cx="12" cy="12" r="8.5"/><path d="m8.4 12 2.5 2.5 4.7-5.2"/>',
+  gauge: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="m12 16 4.2-4.2"/><circle cx="12" cy="16" r="1.2"/>',
+  users: '<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6.2a3 3 0 0 1 0 5.6M17.5 19a5.6 5.6 0 0 0-2-4.3"/>',
+  layers: '<path d="m12 3 8.5 4.5L12 12 3.5 7.5Z"/><path d="m3.5 12 8.5 4.5 8.5-4.5"/><path d="m3.5 16.5 8.5 4.5 8.5-4.5"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+};
+const icon = (name) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+
+/**
+ * Selettore di lingua. Due cose che sembrano dettagli e non lo sono:
+ *  · la lingua corrente NON è un collegamento — portava a `#`, cioè da nessuna
+ *    parte, ed era annunciata come link dalle tecnologie assistive;
+ *  · da una pagina legale si va alla STESSA pagina nell'altra lingua. Chi sta
+ *    leggendo l'informativa privacy in tedesco e passa al francese vuole
+ *    l'informativa in francese, non essere rispedito in home page.
+ */
+function languageNav(current, legalKey) {
+  return LOCALES.map((l) => {
+    if (l === current) {
+      return `<span class="lang-current" aria-current="page">${LOCALE_LABEL[l]}</span>`;
+    }
+    const href = legalKey
+      ? `${SITE_URL}${LOCALE_PATH[l]}${LEGAL_SLUG[l][legalKey]}.html`
+      : `${SITE_URL}${LOCALE_PATH[l]}`;
+    return `<a class="lang-link" href="${href}" hreflang="${l}">${LOCALE_LABEL[l]}</a>`;
+  }).join('');
+}
+
+function head(locale, { title, description, canonical, extraLd }) {
+  const alternates = LOCALES.map(
+    (l) => `<link rel="alternate" hreflang="${l}-CH" href="${SITE_URL}${LOCALE_PATH[l]}" />`,
+  ).join('\n    ') + `\n    <link rel="alternate" hreflang="x-default" href="${SITE_URL}/" />`;
+  const p = assetPrefix(locale);
+  return `    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${esc(title)}</title>
+    <meta name="description" content="${esc(description)}" />
+    <link rel="canonical" href="${canonical}" />
+    ${alternates}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AI-Swisse" />
+    <meta property="og:locale" content="${locale}_CH" />
+    <meta property="og:title" content="${esc(title)}" />
+    <meta property="og:description" content="${esc(description)}" />
+    <meta property="og:url" content="${canonical}" />
+    <meta property="og:image" content="${SITE_URL}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="AI-Swisse — ${esc(CONTENT[locale].tagline)}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="${SITE_URL}/og.png" />
+    <!-- Lo stesso accento dell'applicazione, hsl(207 88% 39%): era rimasto un
+         blu diverso, scritto a mano quando i token vivevano in due copie. -->
+    <meta name="theme-color" content="#0b6bc0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="stylesheet" href="${p}style.css" />${extraLd ? `\n    <script type="application/ld+json">${extraLd}</script>` : ''}`;
+}
+
+function topbar(locale, c, { onLanding, legalKey }) {
+  // Dalla pagina legale il marchio torna alla home DELLA STESSA LINGUA, con un
+  // percorso relativo: `../index.html` avrebbe riportato un lettore tedesco
+  // sulla home italiana.
+  const home = onLanding ? '#main' : 'index.html';
+  return `    <header class="topbar">
+      <a class="brand" href="${home}">
+        <span class="brand-mark" aria-hidden="true">${icon('logo')}</span>
+        <span><span class="brand-name">AI-Swisse</span><span class="brand-sub">${esc(c.tagline)}</span></span>
+      </a>${onLanding ? `
+      <nav class="topnav" aria-label="${esc(c.mainNav)}">
+        <a href="#how">${esc(c.nav.how)}</a>
+        <a href="#trust">${esc(c.nav.trust)}</a>
+        <a href="#pricing">${esc(c.nav.pricing)}</a>
+        <a href="#about">${esc(c.nav.about)}</a>
+        <a href="#contact">${esc(c.nav.contact)}</a>
+      </nav>` : ''}
+      <div class="topactions">
+        <span class="langs">${languageNav(locale, legalKey)}</span>
+        <a class="btn" href="${APP_URL}">${esc(c.login)}</a>
+      </div>
+    </header>`;
+}
+
+function footer(locale, c, legalKey) {
+  // Percorsi RELATIVI senza prefisso: le pagine legali di ogni lingua stanno
+  // nella cartella della lingua. Con `../` un lettore tedesco finiva su
+  // `dist/datenschutz.html`, che non esiste.
+  const legal = LEGAL_PAGES.map(
+    (k) => `<a href="${LEGAL_SLUG[locale][k]}.html">${esc(c.footerLegal[k])}</a>`,
+  ).join('<span class="foot-sep" aria-hidden="true">·</span>');
+  return `    <footer class="foot">
+      <p>${esc(c.footerNote)}</p>
+      <p class="foot-links">
+        <a href="${APP_URL}">${esc(c.footerApp)}</a>
+        <span class="foot-sep" aria-hidden="true">·</span>
+        <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>
+        <span class="foot-sep" aria-hidden="true">·</span>
+        ${legal}
+      </p>
+      <p class="foot-links langs">${languageNav(locale, legalKey)}</p>
+    </footer>`;
+}
+
+/** Le due chiamate all'azione, sempre insieme: iscriversi o parlare con qualcuno. */
+function ctaPair(c, { primary = 'demo' } = {}) {
+  const demo = `<a class="btn ${primary === 'demo' ? 'btn-primary' : ''}" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(c.demo)}">${esc(c.demo)} ${icon(primary === 'demo' ? 'arrow' : 'mail')}</a>`;
+  const signup = `<a class="btn ${primary === 'signup' ? 'btn-primary' : ''}" href="${APP_URL}">${esc(c.signup)} ${primary === 'signup' ? icon('arrow') : ''}</a>`;
+  return primary === 'signup' ? signup + '\n          ' + demo : demo + '\n          ' + signup;
+}
+
+// ---------------------------------------------------------------------------
+// Pagina principale
+// ---------------------------------------------------------------------------
+function page(locale) {
+  const c = CONTENT[locale];
+  const canonical = SITE_URL + LOCALE_PATH[locale];
+
+  // Dati strutturati: solo fatti verificabili. Niente `offers`, perché il
+  // listino non è definito — pubblicare prezzi in JSON-LD e scrivere accanto
+  // che si stanno definendo sarebbe dire due cose diverse a due lettori
+  // diversi, il motore di ricerca e la persona.
+  const jsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'AI-Swisse',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: canonical,
+    inLanguage: LOCALES.map((l) => `${l}-CH`),
+    description: c.description,
+    provider: { '@type': 'Organization', name: 'AI-Swisse', url: SITE_URL, email: CONTACT_EMAIL },
+  });
+
+  const steps = c.how.map((s) => `
+        <li class="step">
+          <span class="step-n" aria-hidden="true">${esc(s.n)}</span>
+          <div><h3>${esc(s.t)}</h3><p>${esc(s.d)}</p></div>
+        </li>`).join('');
+
+  const modules = c.modules.map((m) => `
+        <article class="card module">
+          <div class="kicker">${esc(m.kicker)}</div>
+          <h3>${esc(m.name)}</h3>
+          <p class="module-lead">${esc(m.lead)}</p>
+          <ul class="ticks">
+            ${m.points.map((x) => `<li>${icon('check')}<span>${esc(x)}</span></li>`).join('\n            ')}
+          </ul>
+        </article>`).join('');
+
+  const trust = c.trust.map((t) => `
+        <article class="card trust-card">
+          <div class="trust-ico">${icon(t.icon)}</div>
+          <h3>${esc(t.t)}</h3>
+          <p>${esc(t.d)}</p>
+        </article>`).join('');
+
+  const axisIcons = ['doc', 'search', 'users', 'layers'];
+  const axes = c.pricingAxes.map((a, i) => `
+          <div class="axis">
+            <span class="axis-ico" aria-hidden="true">${icon(axisIcons[i] || 'doc')}</span>
+            <div><h3>${esc(a.t)}</h3><p>${esc(a.d)}</p></div>
+          </div>`).join('');
+
+  const limits = c.limits.map((x) => `<li>${esc(x)}</li>`).join('\n          ');
+
+  const e = c.example;
+
+  return `<!doctype html>
+<html lang="${HTML_LANG[locale]}">
+  <head>
+${head(locale, { title: c.title, description: c.description, canonical, extraLd: jsonLd })}
+  </head>
+  <body>
+    <a class="skip" href="#main">${esc(c.skip)}</a>
+
+${topbar(locale, c, { onLanding: true })}
+
+    <main id="main">
+      <section class="hero">
+        <h1>${esc(c.heroTitle)}</h1>
+        <p class="lead">${esc(c.heroLead)}</p>
+        <div class="hero-actions">
+          ${ctaPair(c, { primary: 'signup' })}
+        </div>
+        <p class="hero-note">${icon('globe')}<span>${esc(c.heroNote)}</span></p>
+      </section>
+
+      <section class="section" id="how">
+        <h2>${esc(c.howTitle)}</h2>
+        <ol class="steps">${steps}
+        </ol>
+      </section>
+
+      <!-- Lettera e analisi affiancate, con la frase citata evidenziata nel
+           testo: è la cosa che il prodotto fa. Non è uno screenshot — una
+           schermata reale mostrerebbe la ragione sociale e i documenti di
+           un'impresa vera — e i dati sono dichiarati fittizi. -->
+      <section class="section mid" id="example">
+        <h2>${esc(e.title)}</h2>
+        <p class="section-lead">${esc(e.lead)}</p>
+        <div class="example-head">
+          <span class="example-label">${esc(e.label)}</span>
+          <span class="example-note">${esc(e.note)}</span>
+        </div>
+        <div class="example-split">
+          <div>
+            <div class="pane-title">${icon('doc')}<span>${esc(e.letterTitle)}</span></div>
+            <div class="letter">
+              <div class="letter-from">${esc(e.letterFrom)}</div>
+              <div class="letter-subject">${esc(e.letterSubject)}</div>
+              <div class="letter-body">${esc(e.letterBefore)}<mark>${esc(e.letterHighlight)}</mark>${esc(e.letterAfter)}</div>
+            </div>
+          </div>
+          <div>
+            <div class="pane-title">${icon('checkCircle')}<span>${esc(e.analysisTitle)}</span></div>
+            <div class="mock">
+              <div class="mock-top">
+                <h3>${esc(e.docTitle)}</h3>
+                <span class="mock-badges"><span class="chip chip-hot">${esc(e.urgency)}</span><span class="chip">${esc(e.confidence)}</span></span>
+              </div>
+              <div class="mock-callout">
+                <span class="mock-ico" aria-hidden="true">${icon('checkCircle')}</span>
+                <div>
+                  <div class="mock-kicker">${esc(e.kicker)}</div>
+                  <div class="mock-action">${esc(e.action)} <span class="chip chip-origin">${icon('quote')}${esc(e.origin)}</span></div>
+                  <div class="mock-when">${esc(e.when)}</div>
+                </div>
+              </div>
+              <div class="mock-quote">
+                <div class="mock-quote-label">${icon('quote')}<span>${esc(e.quoteLabel)}</span></div>
+                <blockquote>«${esc(e.quote)}»</blockquote>
+              </div>
+              <div class="mock-verify">
+                <div class="mock-verify-title">${esc(e.verifyTitle)}</div>
+                <div class="mock-verify-item"><span class="q" aria-hidden="true">?</span><span>${esc(e.verify)}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="modules">
+        <h2>${esc(c.modulesTitle)}</h2>
+        <div class="grid-2">${modules}
+        </div>
+      </section>
+
+      <section class="section" id="trust">
+        <h2>${esc(c.trustTitle)}</h2>
+        <p class="section-lead">${esc(c.trustLead)}</p>
+        <div class="grid-2">${trust}
+        </div>
+      </section>
+
+      <section class="section band" id="languages">
+        <h2>${icon('globe')} ${esc(c.langTitle)}</h2>
+        <p class="section-lead">${esc(c.langLead)}</p>
+      </section>
+
+      <!-- I limiti PRIMA dei prezzi: chi legge una cifra deve già sapere che
+           cosa il prodotto non fa. -->
+      <section class="section narrow" id="limits">
+        <h2>${esc(c.limitsTitle)}</h2>
+        <ul class="limits">
+          ${limits}
+        </ul>
+      </section>
+
+      <section class="section" id="pricing">
+        <h2>${esc(c.pricingTitle)}</h2>
+        <p class="section-lead">${esc(c.pricingLead)}</p>
+        <h3 class="kicker">${esc(c.pricingAxesTitle)}</h3>
+        <div class="axes">${axes}
+        </div>
+        <p class="pricing-note">${esc(c.pricingNote)}</p>
+        <p class="center"><a class="btn btn-primary" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(c.demo)}">${esc(c.pricingCta)} ${icon('arrow')}</a></p>
+      </section>
+
+      <section class="section narrow" id="about">
+        <h2>${esc(c.aboutTitle)}</h2>
+        <p class="section-lead">${esc(c.aboutLead)}</p>
+        <div class="about">
+          <div class="about-photo" aria-hidden="true">AC</div>
+          <div class="about-main">
+            <div class="about-name">${esc(c.aboutName)}</div>
+            <div class="about-meta">
+              <span>${marcaSegnaposto(c.aboutRole)}</span>
+              <span>${marcaSegnaposto(c.aboutPlace)}</span>
+            </div>
+            <p class="about-why">${esc(c.aboutWhy)}</p>
+            <p class="about-contact">${esc(c.aboutContactLine)} <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="contact">
+        <h2>${esc(c.contactTitle)}</h2>
+        <p class="section-lead">${esc(c.contactLead)}</p>
+        <div class="contact-grid">
+          <div class="contact-item">
+            <span class="contact-ico" aria-hidden="true">${icon('mail')}</span>
+            <div>
+              <div class="contact-label">${esc(c.contactEmailLabel)}</div>
+              <div class="contact-value"><a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></div>
+              <div class="contact-sub">${esc(c.contactHours)}</div>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="contact-ico" aria-hidden="true">${icon('checkCircle')}</span>
+            <div>
+              <div class="contact-label">${esc(c.contactDemoLabel)}</div>
+              <div class="contact-value"><a href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(c.demo)}">${esc(c.demo)}</a></div>
+              <div class="contact-sub">${esc(c.contactDemoText)}</div>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="contact-ico" aria-hidden="true">${icon('doc')}</span>
+            <div>
+              <div class="contact-label">${esc(c.contactAddressLabel)}</div>
+              <div class="contact-value">${marcaSegnaposto(c.contactAddress)}</div>
+            </div>
+          </div>
+          <div class="contact-item">
+            <span class="contact-ico" aria-hidden="true">${icon('globe')}</span>
+            <div>
+              <div class="contact-label">${esc(c.nav.about)}</div>
+              <div class="contact-value">${esc(c.aboutName)}</div>
+              <div class="contact-sub">${marcaSegnaposto(c.aboutPlace)}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section cta">
+        <h2>${esc(c.ctaTitle)}</h2>
+        <p class="section-lead">${esc(c.ctaLead)}</p>
+        <p class="cta-actions">
+          ${ctaPair(c, { primary: 'signup' })}
+        </p>
+      </section>
+    </main>
+
+${footer(locale, c)}
+  </body>
+</html>
+`;
+}
+
+// ---------------------------------------------------------------------------
+// Pagine legali
+// ---------------------------------------------------------------------------
+function legalPage(locale, key) {
+  const c = CONTENT[locale];
+  const doc = c.legal[key];
+  const p = assetPrefix(locale);
+  const canonical = `${SITE_URL}${LOCALE_PATH[locale]}${LEGAL_SLUG[locale][key]}.html`;
+
+  const sections = doc.sections.map((s) => `
+      <section>
+        <h2>${esc(s.h)}</h2>
+        ${s.p.map((x) => `<p>${marcaSegnaposto(x)}</p>`).join('\n        ')}
+      </section>`).join('');
+
+  return `<!doctype html>
+<html lang="${HTML_LANG[locale]}">
+  <head>
+${head(locale, { title: `${doc.title} — AI-Swisse`, description: doc.intro.replace(/\[DA COMPLETARE[^\]]*\]/g, '').trim(), canonical })}
+    <meta name="robots" content="index, follow" />
+  </head>
+  <body>
+    <a class="skip" href="#main">${esc(c.skip)}</a>
+
+${topbar(locale, c, { onLanding: false, legalKey: key })}
+
+    <main id="main" class="narrow">
+      <div class="legal-head">
+        <p><a class="back-link" href="index.html">${icon('arrowLeft')}<span>${esc(c.legal.backToSite)}</span></a></p>
+        <h1>${esc(doc.title)}</h1>
+        <p class="section-lead">${marcaSegnaposto(doc.intro)}</p>
+        <p class="legal-updated">${marcaSegnaposto(c.legal.updated)}</p>
+      </div>
+      <div class="legal-body">${sections}
+      </div>
+    </main>
+
+${footer(locale, c, key)}
+  </body>
+</html>
+`;
+}
+
+// ---------------------------------------------------------------------------
+// Anteprima social: una pagina 1200×630 da fotografare per ottenere og.png.
+// Non esiste un convertitore SVG→PNG su questa macchina, quindi l'immagine si
+// produce aprendo questa pagina e catturandola. Il sorgente resta qui, così
+// rifarla è una cosa di trenta secondi invece che un lavoro grafico.
+// ---------------------------------------------------------------------------
+function ogPage() {
+  const c = CONTENT.it;
+  return `<!doctype html>
+<html lang="it-CH">
+  <head>
+    <meta charset="utf-8" />
+    <title>AI-Swisse — anteprima social 1200×630</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* Fondo pieno con l'accento del prodotto. Colori fissi e non token:
+         l'immagine è un file PNG, non segue il tema di chi guarda. */
+      html, body { margin: 0; padding: 0; background: #0b1220; }
+      .og {
+        width: 1200px; height: 630px; box-sizing: border-box;
+        background: hsl(207, 88%, 32%);
+        color: #fff; padding: 76px 84px; display: flex; flex-direction: column;
+        justify-content: space-between; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      }
+      .og-brand { display: flex; align-items: center; gap: 18px; }
+      .og-mark {
+        width: 68px; height: 68px; border-radius: 16px; background: rgba(255,255,255,0.16);
+        display: grid; place-items: center;
+      }
+      .og-mark svg { width: 38px; height: 38px; stroke: #fff; fill: none; stroke-width: 2.25; stroke-linecap: round; }
+      .og-name { font-size: 40px; font-weight: 800; letter-spacing: -0.5px; }
+      .og-sub { font-size: 22px; opacity: 0.82; margin-top: 2px; }
+      .og-claim { font-size: 62px; font-weight: 800; line-height: 1.1; letter-spacing: -1.6px; max-width: 15ch; }
+      .og-foot { display: flex; justify-content: space-between; align-items: flex-end; font-size: 24px; opacity: 0.9; }
+      .og-langs { display: flex; gap: 12px; font-size: 20px; opacity: 0.8; }
+    </style>
+  </head>
+  <body>
+    <div class="og">
+      <div class="og-brand">
+        <div class="og-mark"><svg viewBox="0 0 24 24">${ICONS.logo}</svg></div>
+        <div>
+          <div class="og-name">AI-Swisse</div>
+          <div class="og-sub">${esc(c.tagline)}</div>
+        </div>
+      </div>
+      <div class="og-claim">${esc(c.heroTitle)}</div>
+      <div class="og-foot">
+        <span>ai-swisse.com</span>
+        <span class="og-langs"><span>Italiano</span><span>·</span><span>Deutsch</span><span>·</span><span>Français</span></span>
+      </div>
+    </div>
+  </body>
+</html>
+`;
+}
+
+// ---------------------------------------------------------------------------
+// Scrittura
+// ---------------------------------------------------------------------------
+mkdirSync(OUT, { recursive: true });
+
+const tokens = readFileSync(join(ROOT, 'tokens.css'), 'utf8');
+const styles = readFileSync(join(ROOT, 'style.css'), 'utf8');
+const css = `${tokens}\n${styles}`;
+writeFileSync(join(OUT, 'style.css'), css, 'utf8');
+console.log('  css → dist/style.css (tokens.css + style.css)');
+
+for (const locale of LOCALES) {
+  const dir = locale === 'it' ? OUT : join(OUT, locale);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'index.html'), page(locale), 'utf8');
+  console.log(`  ${locale} → ${join(dir, 'index.html').replace(ROOT + '/', '')}`);
+  for (const key of LEGAL_PAGES) {
+    const name = `${LEGAL_SLUG[locale][key]}.html`;
+    writeFileSync(join(dir, name), legalPage(locale, key), 'utf8');
+    console.log(`  ${locale} → ${join(dir, name).replace(ROOT + '/', '')}`);
+  }
+}
+
+writeFileSync(join(OUT, 'og.html'), ogPage(), 'utf8');
+
+// Risorse statiche già pronte: l'anteprima social. È un PNG perché X e
+// Facebook non renderizzano SVG, e su questa macchina non esiste un
+// convertitore: è stata disegnata su canvas nel browser (il codice sta nel
+// README) partendo dallo stesso testo e dallo stesso accento di og.html, che
+// resta come sorgente leggibile per rifarla.
+const STATIC = join(ROOT, 'static');
+if (existsSync(STATIC)) {
+  for (const f of readdirSync(STATIC)) {
+    copyFileSync(join(STATIC, f), join(OUT, f));
+    console.log(`  static → dist/${f}`);
+  }
+} else {
+  console.log('  ! cartella static/ assente: og.png non copiata');
+}
+
+writeFileSync(join(OUT, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${SITE_URL}/sitemap.xml\n`, 'utf8');
+
+const today = process.env.BUILD_DATE || '';
+const urls = [];
+for (const l of LOCALES) {
+  urls.push(`${SITE_URL}${LOCALE_PATH[l]}`);
+  for (const k of LEGAL_PAGES) urls.push(`${SITE_URL}${LOCALE_PATH[l]}${LEGAL_SLUG[l][k]}.html`);
+}
+writeFileSync(
+  join(OUT, 'sitemap.xml'),
+  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    urls.map((u) => `  <url><loc>${u}</loc>${today ? `<lastmod>${today}</lastmod>` : ''}</url>`).join('\n') +
+    `\n</urlset>\n`,
+  'utf8',
+);
+console.log('  robots.txt, sitemap.xml');
+
+// Versione autonoma: un file per lingua con il CSS incorporato, da aprire con
+// un doppio clic senza server. Per la pubblicazione restano le pagine di dist,
+// che tengono il foglio separato e quindi in cache fra una pagina e l'altra.
+const ALONE = join(OUT, 'autonoma');
+mkdirSync(ALONE, { recursive: true });
+for (const locale of LOCALES) {
+  let html = page(locale).replace(/<link rel="stylesheet" href="[^"]*" \/>/, `<style>\n${css}\n    </style>`);
+  // I collegamenti alle pagine legali sono relativi alla cartella della
+  // lingua: in un file che vive da solo non risolverebbero. Qui diventano
+  // assoluti verso il sito — funzioneranno quando sarà pubblicato, e nel
+  // frattempo è chiaro dove puntano.
+  for (const key of LEGAL_PAGES) {
+    const slug = LEGAL_SLUG[locale][key];
+    html = html.split(`href="${slug}.html"`).join(`href="${SITE_URL}${LOCALE_PATH[locale]}${slug}.html"`);
+  }
+  writeFileSync(join(ALONE, `ai-swisse-${locale}.html`), html, 'utf8');
+  console.log(`  autonoma → dist/autonoma/ai-swisse-${locale}.html`);
+}
+
+console.log('\nFatto. Apri dist/index.html oppure servi la cartella dist/.\n');

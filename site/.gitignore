@@ -1,0 +1,4 @@
+# dist/ è generato da `node build.mjs`: sotto controllo di versione va il
+# sorgente, non il prodotto. Chi clona ricostruisce con due comandi.
+dist/
+.DS_Store

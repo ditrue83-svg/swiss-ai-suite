@@ -1,0 +1,164 @@
+/* ============================================================================
+   GENERATO — non modificare a mano.
+
+   Token estratti da src/styles/app.css dell'applicazione con
+   `node sync-tokens.mjs`. La vetrina e l'app devono avere lo stesso aspetto:
+   chi arriva dal sito e crea un account non deve credere di cambiare prodotto.
+
+   Per aggiornarli: cambiare il valore NELL'APP, poi rilanciare lo script.
+   `node sync-tokens.mjs --check` dice se questo file è rimasto indietro.
+
+   La documentazione delle scelte sta in docs/design-system.md del progetto
+   principale.
+   ========================================================================== */
+:root {
+
+  /* --- Colore d'azione -----------------------------------------------------
+     Blu più fondo del precedente hsl(199,100%,50%), che era saturo quasi al
+     massimo. Qui accompagna solleciti dell'AFC, termini di pagamento e importi:
+     stessa famiglia cromatica, tono meno clamoroso. I tre token derivati sono
+     usati in 52 punti dell'app, quindi restano con gli stessi nomi. */
+  --accent: hsl(207, 88%, 39%);        /* fondo dei pulsanti, elementi attivi   */
+  --accent-dark: hsl(207, 90%, 31%);   /* stato premuto / hover                 */
+  --accent-text: hsl(207, 90%, 30%);   /* testo e link: contrasto AA su bianco  */
+  --accent-soft: hsl(207, 65%, 95%);   /* fondi tenui, chip informativi         */
+  --accent-line: hsl(207, 58%, 82%);   /* bordo di ciò che sta su --accent-soft */
+
+  /* --- Neutri --------------------------------------------------------------
+     Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti. */
+  --ink: hsl(213, 40%, 13%);           /* testo principale                      */
+  --on-ink: #ffffff;                   /* testo sopra il fondo --ink (toast)    */
+  --ink-soft: hsl(213, 22%, 30%);      /* testo secondario                      */
+  --muted: hsl(213, 12%, 42%);         /* metadati, didascalie                  */
+  --line: hsl(210, 20%, 90%);
+  --line-strong: hsl(210, 20%, 78%);   /* bordi marcati: hover, stati attivi */
+  --bg: hsl(210, 20%, 98%);
+  --card: #ffffff;
+  --on-accent: #ffffff;               /* testo sopra i fondi pieni colorati */
+  --surface-2: hsl(210, 20%, 94%);     /* superficie tenue: pastiglie neutre */
+  --track: hsl(210, 20%, 92%);         /* fondo delle barre di avanzamento  */
+  --highlight: hsl(48, 100%, 78%);     /* evidenziazione della citazione     */
+  --on-highlight: hsl(45, 60%, 12%);   /* testo sopra l'evidenziazione       */
+
+  /* --- Colori di stato -----------------------------------------------------
+     NON sono decorazione: dicono quanto manca a una scadenza e se un'azione è
+     stata svolta. Restano separati dal colore d'azione, così un pulsante non
+     compete mai con un avviso. (Valori invariati in questo passo: vanno
+     ritoccati insieme ai componenti che li usano, non prima.) */
+  --red: hsl(0, 84%, 60%);
+  --red-soft: hsl(0, 84%, 96%);
+  --red-line: hsl(0, 84%, 86%);
+  --red-hover: hsl(0, 84%, 92%);
+  --red-dark: hsl(0, 72%, 45%);
+  /* Ambra e verde scuriti fino al minimo necessario per il contrasto AA sui
+     rispettivi fondi tenui: prima erano 3.31:1 e 4.00:1, cioè sotto la soglia
+     proprio sulle pastiglie che dicono quanto manca a una scadenza.
+     Il rosso resta com'è: lo usiamo per barre, bordi e riempimenti, dove il
+     contrasto del testo non c'entra. Per il testo esiste --red-dark. */
+  --green: hsl(151, 48%, 32%);      /* 4.69:1 su --green-soft */
+  --green-soft: #e6f4ec;
+  --green-line: #c6e6d2;
+  --amber: hsl(35, 78%, 34%);       /* 4.61:1 su --amber-soft */
+  --amber-soft: #fdf3e0;
+  --amber-line: #ecd9ae;
+  /* Riempimenti: barre, pallini, superfici piene. Sono l'altra metà della
+     coppia che il rosso ha già (--red riempie, --red-dark scrive). Ambra e
+     verde erano stati scuriti per il CONTRASTO DEL TESTO e poi riusati come
+     riempimento: da lì il marrone della barra «Media», che nessuno aveva
+     scelto. Un colore che deve essere leggibile e un colore che deve essere
+     riconoscibile non sono lo stesso colore. */
+  --amber-fill: hsl(35, 92%, 50%);
+  --green-fill: hsl(151, 52%, 40%);
+
+  /* --- Scala tipografica ---------------------------------------------------
+     Sei gradini, uno per compito. Se un testo non rientra in nessuno, il
+     problema è la gerarchia, non la scala. La base sale da 13px a 15px: chi
+     usa l'app legge importi e scadenze, spesso oltre i 45 anni e di fretta. */
+  --fs-label: 12px;    /* etichette maiuscole, con letter-spacing */
+  --fs-meta: 13px;     /* metadati e didascalie                   */
+  --fs-body: 15px;     /* corpo del testo                          */
+  --fs-strong: 17px;   /* titoli di scheda e di riga               */
+  --fs-h2: 22px;       /* titoli di sezione                        */
+  --fs-h1: 30px;       /* titoli di pagina                         */
+
+  --lh-tight: 1.25;    /* titoli                                   */
+  --lh: 1.55;          /* testo corrente                           */
+
+  --ls-label: 0.08em;  /* solo per le etichette maiuscole          */
+  --ls-title: -0.01em; /* i titoli grandi respirano meglio stretti */
+
+  /* --- Ritmo delle spaziature ----------------------------------------------
+     Multipli di 4: sette valori coprono tutta l'interfaccia. */
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-6: 24px;  --sp-8: 32px;  --sp-12: 48px;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  /* ombre molto leggere (look premium/fintech, non glow) */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
+
+  --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
+  font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+
+    /* Fondo e superficie distanziati di 8 punti di luminosità: le schede si
+       staccano dalla pagina. Il bordo delle schede è decorativo e non deve
+       raggiungere 3:1 — quella soglia WCAG vale per i CONTROLLI (input, select,
+       pulsanti), che infatti usano --line-strong, portato a 48%. */
+    --bg: hsl(213, 30%, 6%);
+    --card: hsl(213, 22%, 14%);
+    --surface-2: hsl(213, 18%, 20%);
+    --track: hsl(213, 18%, 22%);
+    --line: hsl(213, 16%, 28%);
+    --line-strong: hsl(213, 14%, 48%);   /* 3.31:1 su --card: bordo dei controlli */
+
+    --ink: hsl(210, 25%, 93%);
+    --ink-soft: hsl(210, 14%, 78%);
+    --muted: hsl(210, 10%, 64%);
+    --on-ink: hsl(213, 30%, 10%);      /* il toast inverte: fondo chiaro, testo scuro */
+
+    --accent: hsl(207, 75%, 58%);
+    --accent-dark: hsl(207, 78%, 66%);  /* in scuro l'hover SCHIARISCE            */
+    --accent-text: hsl(207, 80%, 72%);
+    --accent-soft: hsl(207, 40%, 20%);
+    --on-accent: hsl(213, 35%, 10%);    /* testo scuro sopra l'accento chiaro     */
+
+    --red: hsl(0, 62%, 58%);
+    --red-soft: hsl(0, 35%, 17%);
+    --red-line: hsl(0, 32%, 30%);
+    --red-hover: hsl(0, 35%, 23%);
+    --red-dark: hsl(0, 75%, 74%);       /* è il colore del TESTO: in scuro schiarisce */
+
+    --green: hsl(151, 45%, 62%);
+    --green-soft: hsl(151, 30%, 14%);
+    --green-line: hsl(151, 26%, 26%);
+
+    --amber: hsl(38, 75%, 64%);
+    --amber-soft: hsl(38, 35%, 15%);
+    --amber-line: hsl(38, 30%, 28%);
+
+    --accent-line: hsl(207, 40%, 34%);
+    --amber-fill: hsl(38, 80%, 58%);
+    --green-fill: hsl(151, 48%, 50%);
+
+    /* In scuro l'evidenziazione diventa un ocra di luminanza media: il testo
+       sopra deve restare SCURO, non seguire --ink che qui è quasi bianco.
+       Con --ink il contrasto era 2.54:1, sotto la soglia AA di 4.5. */
+    --highlight: hsl(48, 85%, 38%);
+    --on-highlight: hsl(45, 80%, 8%);
+
+    /* Su fondo scuro un'ombra chiara non esiste: la profondità la dà il bordo,
+       quindi le ombre restano appena accennate e più profonde. */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+
+    --focus: hsl(207, 80%, 66%);
+  }
+}
