@@ -155,9 +155,13 @@ riga della scadenza, e per esteso nel corpo della lettera — «4 settembre 2026
   del trasferimento dei dati fuori dall'UE — oggi il fatto è dichiarato (il testo
   estratto va ad Anthropic, che ha sede negli Stati Uniti), la base giuridica no.
   È la prima cosa che chiederà un cliente attento.
-- **Tedesco e francese non sono stati riletti da un madrelingua**, come quelli
-  dell'app: vanno aggiunti a `docs/revisione-traduzioni.md` del progetto
-  principale.
+- **Una rilettura madrelingua di tedesco e francese**, che il titolare ha deciso
+  di non commissionare (2026-07-26). I testi sono stati rivisti internamente con
+  i controlli verificabili — «ss» al posto di «ß», tipografia francese, forma di
+  cortesia, coerenza dei termini, calchi dall'italiano, lunghezze a confronto —
+  e le correzioni trovate sono state applicate. Il limite resta: chi ha riletto è
+  lo stesso strumento che ha scritto, quindi una formulazione innaturale ma
+  coerente con sé stessa non emerge da nessun controllo automatico.
 
 ## Il vecchio `~/ai-swisse-sito`
 

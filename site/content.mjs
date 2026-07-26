@@ -31,8 +31,10 @@
 // non sono complete, e non devono farsi indicizzare come se lo fossero.
 // Messi quei dati: `LEGAL_COMPLETE = true`, e tornano indicizzabili e collegate.
 //
-// ⚠️ Tedesco e francese sono stati redatti internamente, come quelli dell'app:
-// vanno nella stessa revisione madrelingua (docs/revisione-traduzioni.md).
+// ⚠️ Tedesco e francese sono redatti e riletti internamente: il titolare ha
+// deciso di non commissionare una revisione madrelingua (2026-07-26). I
+// controlli verificabili sono stati fatti e le correzioni applicate; quello che
+// nessun controllo trova è una frase corretta ma innaturale.
 // ============================================================================
 
 export const APP_URL = 'https://app.ai-swisse.com';
@@ -291,7 +293,7 @@ export const CONTENT = {
       title: 'So sieht ein Ergebnis aus',
       lead: 'Links der erhaltene Brief, rechts das, was das System daraus gewinnt. Der hervorgehobene Satz ist jener, aus dem die Frist stammt — und so ist es bei jeder Angabe.',
       label: 'Illustratives Beispiel',
-      note: 'Fiktive Daten: zeigt die Form des Ergebnisses, keinen echten Fall.',
+      note: 'Fiktive Daten: Sie zeigen die Form des Ergebnisses, keinen echten Fall.',
       letterTitle: 'Der erhaltene Brief',
       letterFrom: 'Eidgenössische Steuerverwaltung (ESTV)\nHauptabteilung MWST\n3003 Bern',
       letterSubject: 'Betreff: MWST-Abrechnung — 2. Quartal',
@@ -401,7 +403,7 @@ export const CONTENT = {
     aboutContactLine: 'Für ein direktes Gespräch:',
 
     ctaTitle: 'Testen Sie es mit einem Brief, der auf Ihrem Tisch liegt',
-    ctaLead: 'Konto erstellen, Unternehmen in einer Minute einrichten, erstes Dokument hochladen. Wenn Sie es lieber zuerst in Aktion sehen: fragen Sie eine Vorführung an.',
+    ctaLead: 'Konto erstellen, Unternehmen in einer Minute einrichten, erstes Dokument hochladen. Wenn Sie es lieber zuerst in Aktion sehen: Fragen Sie eine Vorführung an.',
     contactTitle: 'Kontakt',
     contactLead: 'Für Fragen, eine Vorführung oder den Einsatz in einem Treuhandbüro.',
     contactEmailLabel: 'E-Mail',

@@ -483,10 +483,18 @@ usa la modalità AI; chi sceglie il motore locale sta scegliendo riservatezza, e
   (requisiti, descrizione del contributo, finestra di domanda) sono mostrati in italiano anche in
   tedesco e francese, perché vivono nel database e non nei dizionari. Si nota subito con un utente
   germanofono o romando.
-- **Traduzioni non riviste da madrelingua**: l'interfaccia è completa in italiano, tedesco e francese
-  (`npm run i18n:coverage` → nessun testo scritto a mano) e i dizionari sono garantiti dal
-  compilatore, ma i testi sono stati redatti internamente. Le ~100 stringhe portate nei dizionari il
-  2026-07-26 non sono ancora nel materiale per il revisore. Prima del lancio è consigliata una rilettura professionale,
+- **Traduzioni riviste internamente, non da un madrelingua indipendente.** L'interfaccia è completa
+  in italiano, tedesco e francese (`npm run i18n:coverage` → nessun testo scritto a mano) e i
+  dizionari sono garantiti dal compilatore. Il 2026-07-26 il titolare ha deciso di non
+  commissionare una rilettura esterna: i testi sono stati rivisti con i controlli che si possono
+  verificare — «ss» al posto di «ß», terminologia federale, forma di cortesia costante, coerenza dei
+  termini chiave, ricerca di calchi dall'italiano, confronto delle lunghezze per scovare omissioni —
+  e le correzioni trovate sono state applicate (fra cui «Incitation», calco dall'italiano
+  «incentivo», che in francese significa istigazione).
+  **Il limite resta e va detto**: chi ha riletto è lo stesso strumento che ha scritto, quindi un
+  errore di registro o una formulazione innaturale che sia coerente con sé stessa non emerge da
+  nessuno di questi controlli. Se un cliente germanofono o romando segnala che «suona straniero»,
+  è quello il segnale che manca. Prima del lancio è consigliata una rilettura professionale,
   soprattutto del disclaimer legale.
 - **Non implementati**: invio email, calendar sync, notifiche push, Stripe/pagamenti,
   interfaccia fiduciaria completa, fine-tuning.

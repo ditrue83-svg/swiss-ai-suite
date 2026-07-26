@@ -7,8 +7,13 @@
 //  · terminologia federale: IDE (Identifiant des entreprises), canton, commune,
 //    forme juridique — non i termini francesi di Francia (SIRET ecc.);
 //  · forma di cortesia «vous».
-// NB: prima del lancio è consigliata una rilettura da parte di un madrelingua,
-// soprattutto per il disclaimer legale.
+// REVISIONE (2026-07-26): il titolare ha deciso di NON commissionare una
+// rilettura madrelingua. I testi sono stati rivisti internamente con controlli
+// verificabili — «ss» al posto di «ß», terminologia federale, forma di cortesia
+// costante, coerenza dei termini chiave, ricerca di calchi dall'italiano,
+// confronto delle lunghezze per scovare omissioni — e le correzioni trovate
+// sono state applicate. Resta il limite dichiarato nel README: è una revisione
+// interna, non indipendente.
 // ============================================================================
 import type { Dictionary } from './it';
 
@@ -168,9 +173,9 @@ export const fr: Dictionary = {
     dueDate: 'Date d’échéance',
     noneInView: 'Aucune échéance dans cette vue.',
     titleField: 'Titre',
-    titlePlaceholder: 'Ex. Envoyer le décompte AVS',
+    titlePlaceholder: 'p. ex. Envoyer le décompte AVS',
     authorityField: 'Autorité / référence',
-    authorityPlaceholder: 'Ex. Caisse de compensation',
+    authorityPlaceholder: 'p. ex. Caisse de compensation',
     add: 'Ajouter',
     listTitle: 'Échéances',
     filterOpen: 'ouvertes',
@@ -568,7 +573,7 @@ export const fr: Dictionary = {
       restart: 'Recommencer la vérification',
       mustApplyBeforeStart: 'La demande doit être déposée avant de commencer le projet ou l’achat.',
       notTranslated: 'Les textes de ce programme ne sont pas encore disponibles dans votre langue : ce qui suit est en italien, tel que publié par l’organisme.',
-    suspendedTitle: 'Incitation actuellement suspendue.',
+    suspendedTitle: 'Subvention actuellement suspendue.',
       suspendedGeneric: 'Le programme existe mais n’est pas octroyé actuellement.',
       suspendedSource: 'Vérifier sur la source officielle',
       suspendedChecked: 'statut vérifié le',

@@ -28,7 +28,14 @@ Le chiavi fra apici servono a ritrovare il testo nel codice (`src/i18n/locales/`
 
 **486 testi in totale.** Con poco tempo, i livelli 1 e 2 (55 testi) sono quelli che contano.
 
-> ⚠️ **Questo documento non è più completo (2026-07-26).** Circa cento etichette erano rimaste
+> 🛑 **Questo documento non verrà consegnato a nessuno (deciso il 2026-07-26).**
+> Il titolare ha scelto di non commissionare una revisione madrelingua. I testi sono stati rivisti
+> internamente con i controlli verificabili elencati nel README, e le correzioni trovate sono state
+> applicate. Il documento resta come materiale di confronto fra le tre lingue, utile se un giorno la
+> revisione esterna si farà — per esempio perché un cliente germanofono o romando segnala che
+> qualcosa «suona straniero», che è l'unico modo in cui questo limite può emergere.
+>
+> ⚠️ **Non è più completo (2026-07-26).** Circa cento etichette erano rimaste
 > scritte a mano nei componenti — la dashboard, lo scadenziario, buona parte della schermata di
 > analisi e le pratiche di Subsidy erano in italiano anche in tedesco e in francese — e sono state
 > portate nei dizionari in quella data. **Le loro traduzioni DE e FR non sono ancora elencate qui

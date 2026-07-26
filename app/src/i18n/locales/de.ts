@@ -8,8 +8,13 @@
 //  · terminologia amministrativa federale: UID (non «IDI»), Kanton, Gemeinde,
 //    Rechtsform, AHV/MWST dove ricorrono;
 //  · forma di cortesia «Sie».
-// NB: prima del lancio è consigliata una rilettura da parte di un madrelingua,
-// soprattutto per il disclaimer legale.
+// REVISIONE (2026-07-26): il titolare ha deciso di NON commissionare una
+// rilettura madrelingua. I testi sono stati rivisti internamente con controlli
+// verificabili — «ss» al posto di «ß», terminologia federale, forma di cortesia
+// costante, coerenza dei termini chiave, ricerca di calchi dall'italiano,
+// confronto delle lunghezze per scovare omissioni — e le correzioni trovate
+// sono state applicate. Resta il limite dichiarato nel README: è una revisione
+// interna, non indipendente.
 // ============================================================================
 import type { Dictionary } from './it';
 
@@ -321,7 +326,7 @@ export const de: Dictionary = {
       riskInferred: 'Mögliche Folge — zu prüfen',
       riskUnknown: 'Aus dem Dokument nicht bestimmbar',
       requestedDocuments: 'Verlangte Unterlagen',
-      noRequestedDocuments: 'Im Text wurden keine bestimmten Unterlagen erkannt.',
+      noRequestedDocuments: 'Im Text wurden keine bestimmten Dokumente erkannt.',
       uncertainties: 'Zu prüfen',
       corrections: 'Manuelle Überprüfung',
       correctionsHint: 'Falls eine Angabe falsch ist, korrigieren Sie sie: die Korrektur wird erfasst und verändert die ursprüngliche KI-Analyse NICHT.',
@@ -348,13 +353,13 @@ export const de: Dictionary = {
 
   errors: {
     generic: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
-    emailNotSent: 'Die E-Mail konnte nicht versendet werden. Es liegt nicht an Ihnen: Der Mailversand der Anwendung wurde abgelehnt. Versuchen Sie es später erneut und melden Sie es andernfalls der Betreiberin oder dem Betreiber.',
+    emailNotSent: 'Die E-Mail konnte nicht versendet werden. Es liegt nicht an Ihnen: Der Mailversand der Anwendung wurde abgelehnt. Versuchen Sie es später erneut und melden Sie es der Betreiberin oder dem Betreiber, falls das Problem bestehen bleibt.',
     badCredentials: 'E-Mail oder Passwort sind nicht korrekt.',
     emailNotConfirmed: 'Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden. Prüfen Sie Ihren Posteingang.',
     userExists: 'Mit dieser E-Mail-Adresse besteht bereits ein Konto. Versuchen Sie sich anzumelden.',
-    weakPassword: 'Das Passwort ist zu schwach: verwenden Sie mindestens 8 Zeichen.',
+    weakPassword: 'Das Passwort ist zu schwach: Verwenden Sie mindestens 8 Zeichen.',
     invalidEmail: 'Ungültige oder vom Anbieter nicht akzeptierte E-Mail-Adresse.',
-    tooManyAttempts: 'Zu viele Versuche in kurzer Zeit. Bitte warten Sie einen Moment.',
+    tooManyAttempts: 'Zu viele Versuche in kurzer Zeit. Bitte warten Sie einen Moment und versuchen Sie es erneut.',
     sessionExpired: 'Die Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
     sessionInvalid: 'Sitzung ungültig oder abgelaufen. Bitte melden Sie sich erneut an.',
     forbidden: 'Sie haben keine Berechtigung für diese Ressource.',
