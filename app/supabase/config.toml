@@ -41,6 +41,9 @@ file_size_limit = "15MiB"
 # In produzione va impostato al dominio reale dell'applicazione. Sul progetto
 # hosted questo valore si cambia in: Authentication → URL Configuration.
 # ---------------------------------------------------------------------------
+# Valore applicato al progetto hosted il 2026-07-26 (Management API):
+#   site_url = https://app.ai-swisse.com
+# Qui resta l'URL locale, perché questo file configura `supabase start`.
 site_url = "http://localhost:5174"
 
 # ---------------------------------------------------------------------------
@@ -51,7 +54,11 @@ site_url = "http://localhost:5174"
 # ---------------------------------------------------------------------------
 additional_redirect_urls = [
   "http://localhost:5174/**",
-  # "https://IL-TUO-DOMINIO.ch/**",
+  # Allowlist realmente applicata al progetto hosted (2026-07-26):
+  #   https://app.ai-swisse.com/**       ← dominio di produzione
+  #   https://swiss-ai-suite.pages.dev/** ← indirizzo Cloudflare, tenuto come rete di sicurezza
+  #   http://localhost:5174/**            ← sviluppo
+  # Verificabile in ogni momento con: npm run check:auth -- https://app.ai-swisse.com
 ]
 
 jwt_expiry = 3600
