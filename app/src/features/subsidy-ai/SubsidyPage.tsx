@@ -1,7 +1,7 @@
 // Subsidy AI — orchestratore a 3 tab: Profilo incentivi · Incentivi rilevanti · Le mie pratiche.
 import { useMemo, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
-import { useT } from '@/i18n';
+import { useT, useI18n } from '@/i18n';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAsync } from '@/hooks/useAsync';
 import { programService } from '@/services/programService';
@@ -17,13 +17,14 @@ type Tab = 'profile' | 'results' | 'cases';
 
 export function SubsidyPage() {
   const t = useT();
+  const { locale } = useI18n();
   const { activeCompany, activeCompanyId, companyProfile } = useCompany();
   const companyId = activeCompanyId as string;
 
   // Catalogo reale dei programmi (dal DB), non più hardcoded.
   // L'errore NON va ignorato: un guasto di caricamento non è «nessun programma
   // rilevante» — sarebbe un fallback silenzioso, vietato dalla governance.
-  const { data: programs, loading: programsLoading, error: programsError } = useAsync(() => programService.listActive(), [companyId]);
+  const { data: programs, loading: programsLoading, error: programsError } = useAsync(() => programService.listActive(locale), [companyId, locale]);
 
   const hasProjects = (companyProfile?.currentProjects.length ?? 0) > 0;
   const [tab, setTab] = useState<Tab>(hasProjects ? 'results' : 'profile');

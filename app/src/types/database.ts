@@ -204,6 +204,7 @@ export interface Database {
           must_apply_before_start: boolean; must_apply_before_start_text: string | null; documents_required: string[];
           official_source_url: string; source_title: string | null; last_checked_at: string | null;
           data_status: string; active: boolean; created_at: string; updated_at: string;
+          translations: Json;   // 0012 — contenuti tradotti per lingua
           // 0011 — disponibilità: distinta da `active` (che nasconde il programma)
           // e da `data_status` (che riguarda l'affidabilità del dato).
           availability: string; availability_note: string | null;

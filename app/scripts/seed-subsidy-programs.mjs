@@ -11,6 +11,7 @@
 // ============================================================================
 import WebSocket from 'ws';
 import { createClient } from '@supabase/supabase-js';
+import { TRANSLATIONS } from './subsidy-translations.mjs';
 if (!globalThis.WebSocket) globalThis.WebSocket = WebSocket;
 
 const CHECKED = '2026-07-25';
@@ -211,6 +212,8 @@ for (const p of PROGRAMS) {
   console.log(`  [${p.data_status.toUpperCase().padEnd(8)}] ${p.id.padEnd(18)} ${p.name}${susp}`);
   console.log(`             ${p.requirements.length} requisiti · ${p.exclusions.length} esclusioni · ${p.official_source_url}`);
   if (susp) console.log(`             ${p.availability_note.slice(0, 100)}…`);
+  const langs = Object.keys(TRANSLATIONS[p.id] ?? {});
+  console.log(`             lingue dei contenuti: ${langs.length ? langs.join(', ') : 'SOLO ITALIANO'}`);
 }
 
 // Un programma dichiarato sospeso senza motivo non è verificabile: meglio
@@ -241,6 +244,8 @@ for (const p of PROGRAMS) {
     availability_note: p.availability_note ?? null,
     availability_source_url: p.availability_source_url ?? null,
     availability_checked_at: p.availability_checked_at ?? null,
+    // 0012 — contenuti tradotti. L'italiano resta nelle colonne base.
+    translations: TRANSLATIONS[p.id] ?? {},
   };
   const { error } = await admin.from('subsidy_programs').upsert(row, { onConflict: 'id' });
   if (error) { fail++; console.log(`  ✗ ${p.id}: ${error.message}`); } else { ok++; }

@@ -18,6 +18,10 @@ const SECTORS = ['industria', 'costruzioni', 'commercio', 'servizi', 'ict', 'tur
 const SUPPORT_TYPES = ['grant', 'tax_relief', 'guarantee', 'loan', 'reimbursement', 'advisory', 'other'];
 const DATA_STATUS = ['verified', 'recheck', 'demo'];
 const AVAILABILITY = ['available', 'suspended'];
+// Lingue in cui l'interfaccia esiste: i contenuti dovrebbero seguirla.
+const CONTENT_LOCALES = ['de', 'fr'];
+// Campi che, se non tradotti, lasciano l'utente davanti a testo italiano.
+const TRANSLATABLE = ['name', 'authority', 'contribution_description', 'application_window', 'documents_required'];
 const ANSWERS = ['si', 'no'];
 
 // La sospensione dipende da condizioni che cambiano su base ANNUALE (per
@@ -132,7 +136,15 @@ const run = async () => {
         toRecheck.push(`${p.id} (stato di sospensione da riverificare: ${availAge == null ? 'mai controllato' : `${availAge}g > ${AVAILABILITY_STALE_DAYS}g`})`);
     }
 
-    const suspTag = p.availability === 'suspended' ? ' ⚠ SOSPESO' : '';
+    // 0012 — traduzioni dei contenuti: una lingua assente non è un errore di
+  // integrità (l'app lo dichiara all'utente), ma è un avviso da tenere d'occhio.
+  const tr = (p.translations && typeof p.translations === 'object') ? p.translations : {};
+  const missingLangs = CONTENT_LOCALES.filter((l) => !tr[l]);
+  const partial = CONTENT_LOCALES.filter((l) => tr[l] && TRANSLATABLE.some((f) => !tr[l][f]));
+  if (missingLangs.length) warnings.push(`${p.id}: contenuti non tradotti in ${missingLangs.join(', ')}`);
+  if (partial.length) warnings.push(`${p.id}: traduzione incompleta in ${partial.join(', ')}`);
+
+  const suspTag = p.availability === 'suspended' ? ' ⚠ SOSPESO' : '';
     const flag = errs.length ? '✗ ERRORI' : stale ? '· da ricontrollare' : '✓ ok';
     console.log(`  [${String(p.data_status).padEnd(8)}] ${String(p.id).padEnd(18)} chk ${String(p.last_checked_at ?? '—').padEnd(10)} (${ageTxt.padStart(4)})  ${flag}${suspTag}`);
     for (const e of errs) { console.log(`             ✗ ${e}`); integrityIssues.push(`${p.id}: ${e}`); }
@@ -143,6 +155,11 @@ const run = async () => {
   console.log(`  Programmi: ${rows.length}  (verified ${byStatus.verified} · recheck ${byStatus.recheck} · demo ${byStatus.demo}${byStatus.other ? ` · altro ${byStatus.other}` : ''})`);
   console.log(`  Attivi: ${activeCount}/${rows.length}`);
   console.log(`  Concedibili: ${rows.length - suspendedCount}/${rows.length}${suspendedCount ? `  (${suspendedCount} sospesi)` : ''}`);
+  const fullyTranslated = rows.filter((p) => {
+    const tr = (p.translations && typeof p.translations === 'object') ? p.translations : {};
+    return CONTENT_LOCALES.every((l) => tr[l] && TRANSLATABLE.every((f) => tr[l][f]));
+  }).length;
+  console.log(`  Contenuti tradotti (de+fr): ${fullyTranslated}/${rows.length}`);
   console.log(`  Errori di integrità: ${integrityIssues.length}`);
   console.log(`  Da ricontrollare (freschezza): ${toRecheck.length}`);
 

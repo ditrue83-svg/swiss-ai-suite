@@ -89,6 +89,12 @@ export interface ProgramModel {
   /** Fonte che attesta lo stato: senza, «sospeso» non sarebbe verificabile. */
   availabilitySourceUrl: string | null;
   availabilityCheckedAt: string | null;
+  // 0012 — lingue in cui i CONTENUTI di questo programma sono disponibili.
+  // Se la lingua attiva non c'è, i testi restano in italiano e l'app lo dichiara:
+  // un requisito mostrato in un'altra lingua senza avviso sembrerebbe tradotto.
+  translatedInto: string[];
+  /** true quando l'utente sta leggendo testi in italiano perché la sua lingua manca. */
+  showingFallbackLanguage: boolean;
 }
 
 export const DATA_STATUS_LABEL: Record<ProgramModel['dataStatus'], { label: string; cls: string }> = {

@@ -156,6 +156,13 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
             l'utente deve saperlo prima di leggere requisiti e documenti.
             Il motivo e la fonte vengono dal catalogo: senza fonte, «sospeso»
             sarebbe un'affermazione dell'app invece di un fatto controllabile. */}
+        {/* 0012 — se la traduzione manca, l'utente sta leggendo testi in una lingua
+            diversa da quella scelta: dirlo, invece di lasciarglielo scoprire. */}
+        {p.showingFallbackLanguage && (
+          <div className="info-box mt-14">
+            <Icon name="alert" className="ic-sm" /> {t('subsidy.detail.notTranslated')}
+          </div>
+        )}
         {p.availability === 'suspended' && (
           <div className="warn-box mt-14">
             <Icon name="alert" />

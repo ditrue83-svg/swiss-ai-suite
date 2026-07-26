@@ -1,4 +1,5 @@
 import { useCompany } from '@/contexts/CompanyContext';
+import { useI18n } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { taskService } from '@/services/taskService';
 import { documentService } from '@/services/documentService';
@@ -20,6 +21,7 @@ export interface OverviewData {
 export function useOverview() {
   const { activeCompanyId, activeCompany, companyProfile } = useCompany();
   const companyId = activeCompanyId as string;
+  const { locale } = useI18n();
 
   return useAsync<OverviewData>(async () => {
     const [tasks, documents, analyses, cases, programs] = await Promise.all([
@@ -27,9 +29,9 @@ export function useOverview() {
       documentService.list(companyId),
       analysisService.listForCompany(companyId),
       subsidyService.listCases(companyId),
-      programService.listActive(),
+      programService.listActive(locale),
     ]);
     const matches = matchPrograms(buildMatchProfile(activeCompany, companyProfile), programs);
     return { tasks, documents, analyses, cases, matches };
-  }, [companyId, activeCompany?.id, companyProfile]);
+  }, [companyId, activeCompany?.id, companyProfile, locale]);
 }
