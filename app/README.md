@@ -162,6 +162,26 @@ su Supabase, `VITE_PUBLIC_SITE_URL` su Cloudflare — poi si ridistribuisce e si
 sul nuovo dominio. Conviene lasciare l'URL `pages.dev` nei Redirect URLs finché la migrazione non è
 confermata.
 
+### Stato dell'installazione di produzione
+
+| | |
+|---|---|
+| Applicazione | `https://app.ai-swisse.com` (Cloudflare Pages, CNAME dal DNS del registrar) |
+| Site URL / Redirect | dominio + indirizzo `pages.dev` + `localhost:5174` — verificato con `check:auth` |
+| SMTP | server del provider di posta del dominio, porta **587** (STARTTLS), mittente dedicato |
+| Limite email | 30/ora, con intervallo minimo di 60 s verso lo stesso indirizzo |
+| Autenticazione email | SPF, **DKIM** (RSA 2048) e DMARC (`p=none`) tutti attivi sul dominio |
+
+Due avvertenze imparate mettendo online questo:
+
+- **Il blocco SMTP della Management API di Supabase è atomico.** Un `PATCH` con un solo campo
+  (es. la porta) azzera host, utente, mittente **e password**. La configurazione SMTP va fatta dal
+  dashboard, non via API.
+- **Una casella di posta ordinaria non è un servizio di invio applicativo.** Il provider può
+  disabilitarne l'invio come misura antiabuso (si sblocca cambiando la password della casella), e
+  i limiti giornalieri sono pensati per l'uso umano. Se i volumi crescono, il passaggio naturale è
+  un servizio di invio transazionale: cambiano solo i cinque campi SMTP.
+
 ## Variabili d'ambiente
 
 | Variabile | Dove | Scopo |
