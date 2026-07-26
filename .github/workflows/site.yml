@@ -1,0 +1,104 @@
+# ============================================================================
+# Pubblica la vetrina (site/) su GitHub Pages → https://ai-swisse.com
+#
+# L'applicazione NON passa di qui: sta su app.ai-swisse.com ed è costruita da
+# Cloudflare Pages a partire dalla cartella `app`. Questo workflow tocca solo
+# `site/`, e infatti parte solo quando cambia qualcosa lì dentro.
+#
+# Il sito è statico e senza dipendenze: non c'è `npm install`, solo Node che
+# esegue un generatore di poche centinaia di righe.
+# ============================================================================
+name: Vetrina → GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/site.yml'
+      # I token della vetrina sono derivati da questo file: se cambia, il
+      # controllo di allineamento qui sotto deve rieseguire.
+      - 'app/src/styles/app.css'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un deploy alla volta; se ne arrivano due, l'ultimo vince senza interrompere
+# quello in corso a metà.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # I token della vetrina sono GENERATI da quelli dell'app, che in questo
+      # repository sta nella cartella accanto. Qui non si rigenerano: si
+      # VERIFICA che siano allineati. Se qualcuno ha cambiato un colore
+      # nell'app senza rilanciare `node sync-tokens.mjs`, la build si ferma —
+      # meglio un deploy mancato che una vetrina di un altro colore.
+      - name: Token allineati a quelli dell'applicazione
+        working-directory: site
+        run: APP_CSS=../app/src/styles/app.css node sync-tokens.mjs --check
+
+      - name: Genera il sito
+        working-directory: site
+        run: BUILD_DATE=$(date -u +%Y-%m-%d) node build.mjs
+
+      # Controlli minimi prima di mettere online: le pagine attese esistono, il
+      # dominio è dichiarato, e nessun collegamento interno punta nel vuoto.
+      - name: Controlli
+        working-directory: site
+        run: |
+          test -f dist/index.html
+          test -f dist/de/index.html
+          test -f dist/fr/index.html
+          test -f dist/og.png
+          grep -qx 'ai-swisse.com' dist/CNAME
+          node --input-type=module -e '
+            import { readFileSync, existsSync } from "node:fs";
+            import { readdirSync, statSync } from "node:fs";
+            import { join, dirname, normalize } from "node:path";
+            const files = [];
+            (function walk(d){ for (const n of readdirSync(d)) {
+              const p = join(d, n);
+              statSync(p).isDirectory() ? walk(p) : (n.endsWith(".html") && files.push(p));
+            }})("dist");
+            let rotti = 0;
+            for (const f of files) {
+              const src = readFileSync(f, "utf8");
+              for (const m of src.matchAll(/href="([^"]+)"/g)) {
+                const h = m[1];
+                if (/^(https?:|mailto:|#)/.test(h)) continue;
+                const t = normalize(join(dirname(f), h));
+                if (!existsSync(t)) { console.error(`ROTTO ${f} → ${h}`); rotti++; }
+              }
+            }
+            console.log(`${files.length} pagine, ${rotti} collegamenti rotti`);
+            if (rotti) process.exit(1);
+          '
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
