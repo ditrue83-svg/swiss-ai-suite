@@ -550,12 +550,15 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .prog-card .prog-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .prog-main { flex: 1; min-width: 220px; }
 .prog-name { font-weight: 700; font-size: var(--fs-strong); letter-spacing: -0.2px; }
-.rel-badge { flex-shrink: 0; width: 66px; text-align: center; border: 2px solid var(--line); border-radius: 10px; padding: 8px 4px; }
+/* Larghezza automatica con un minimo, non fissa: l'etichetta cambia con la
+   lingua — RILEVANZA, RELEVANZ, PERTINENCE — e a 66px il testo usciva dal
+   riquadro. Il minimo tiene allineate le schede quando le etichette sono corte. */
+.rel-badge { flex-shrink: 0; width: auto; min-width: 66px; text-align: center; border: 2px solid var(--line); border-radius: 10px; padding: 8px var(--sp-3); }
 .rel-badge.hi { border-color: var(--accent); }
 .rel-badge.mid { border-color: var(--amber); }
 .rel-badge .rb-num { font-size: var(--fs-h2); font-weight: 800; letter-spacing: -0.5px; color: var(--ink); }
 .rel-badge.hi .rb-num { color: var(--accent-text); } .rel-badge.mid .rb-num { color: var(--amber); }
-.rel-badge .rb-lbl { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.rel-badge .rb-lbl { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
 .rel-badge.sm { width: auto; display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 10px; border-radius: 8px; }
 .rel-badge.sm .rb-num { font-size: var(--fs-body); } .rel-badge.sm .rb-lbl { font-size: var(--fs-label); }
 
