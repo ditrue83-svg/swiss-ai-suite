@@ -26,7 +26,7 @@ export function PricingPage() {
       <div className="grid-4">
         {PLANS.map((p) => (
           <div key={p.nome} className={`card price-card${p.featured ? ' featured' : ''}`}>
-            {p.featured && <div className="featured-flag">Consigliato</div>}
+            {p.featured && <div className="featured-flag">{t('pricing.plans.recommended')}</div>}
             <div className="card-title">{p.nome}</div>
             <div className="price-target">{t(p.targetKey)}</div>
             <div className="price-tag">{p.prezzo ? <>CHF {p.prezzo}<small> {t('pricing.plans.perMonth')}</small></> : <span className="price-custom">{t('pricing.plans.custom')}</span>}</div>

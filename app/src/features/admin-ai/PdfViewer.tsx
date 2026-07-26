@@ -131,7 +131,7 @@ export function PdfViewer({ storagePath, highlight }: {
 
       {!error && pageCount > 0 && rendered < Math.min(pageCount, MAX_RENDERED_PAGES) && (
         <div className="muted-sm" style={{ marginBottom: 8 }}>
-          <span className="spinner" aria-hidden="true" /> Rendering pagina {rendered + 1} di {Math.min(pageCount, MAX_RENDERED_PAGES)}…
+          <span className="spinner" aria-hidden="true" /> {t('adminAi.result.renderingPage', { n: rendered + 1, total: Math.min(pageCount, MAX_RENDERED_PAGES) })}
         </div>
       )}
       {!error && pageCount === 0 && (
@@ -142,8 +142,7 @@ export function PdfViewer({ storagePath, highlight }: {
 
       {truncated && (
         <div className="muted-sm" style={{ marginTop: 6 }}>
-          Anteprima limitata alle prime {MAX_RENDERED_PAGES} pagine di {pageCount}. Questo riguarda solo la
-          visualizzazione; se anche l’<em>analisi</em> non copre tutto il documento, viene dichiarato fra le incertezze.
+          {t('adminAi.result.previewLimited', { max: MAX_RENDERED_PAGES, total: pageCount })}
         </div>
       )}
     </>

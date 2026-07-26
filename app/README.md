@@ -23,24 +23,31 @@ supabase/
                 0005_storage · 0006_admin_ai_pipeline · 0007_subsidy_programs
                 0008_analysis_truth · 0009_quota_and_upload_limits
                 0010_analysis_immutability · 0011_program_availability
-                0012_program_translations
+                0012_program_translations · 0013_inbox · 0014_inbox_grants
   functions/
-    _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist)
+    _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
+                       extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
     generate-reply     bozza di risposta on-demand
     interpret-project  interpretazione progetto per il Subsidy AI
     lookup-company     proxy Registro IDI (Zefix)
+    email-oauth        consenso e callback OAuth delle caselle di posta
+    email-sync         sincronizzazione e analisi su richiesta
+    email-webhook      notifiche push Google Pub/Sub e Microsoft Graph
+    email-disconnect   scollegamento di una casella
+    email-maintenance  rinnovo sottoscrizioni, riconciliazione, pulizia
 src/
   lib/            supabase, env, errori, hash (SHA-256), uid (IDI), formattazione
   types/          database.ts (schema) · models.ts (dominio)
   services/       auth · company · document · analysis · task · subsidy · reply
-                  correction · program · interpret · companyLookup
+                  correction · program · interpret · companyLookup · emailConnection · inbox
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
-  features/       auth · companies · admin-ai · subsidy-ai · tasks · dashboard · archive · pricing
-scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · eval-admin-ai
+  features/       auth · companies · admin-ai · subsidy-ai · tasks · dashboard · archive · pricing · inbox
+scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
+                  eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
                   subsidy-translations (contenuti de/fr) · check-auth-config · bundle-migrations
-docs/             design-system.md · revisione-traduzioni.md
+docs/             design-system.md · revisione-traduzioni.md · ai-inbox.md
 ```
 
 ## Setup
@@ -335,11 +342,14 @@ npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:subsidy    # eval interpretazione progetto (14 test)
 npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
+npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto (134 test)
+npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare)
 npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
+npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
 ```
 
 Gli script che toccano il DB o l'AI richiedono `.env.test` (copia da `.env.test.example`).
@@ -363,6 +373,19 @@ Creano dati reali e li rimuovono alla fine.
   costruiti ad arte: scadenza con citazione falsa → marcata da verificare; azione senza citazione → declassata a
   suggerimento; rischi espliciti prima degli inferiti; importo dovuto scelto correttamente e tipizzato; ente ambiguo →
   null + incertezza; valori fuori range normalizzati; output vuoto che non produce dati dal nulla.
+- **`test:inbox-unit` (134)** — i livelli dell'Inbox che decidono la sicurezza, provati **offline**:
+  dodici vettori XSS reali (`<script>`, `onerror`, `iframe`, `javascript:`, SVG, form, pixel di
+  tracciamento, tag spezzato) di cui non resta traccia nel testo; URL validati da un parser e non da un
+  pattern; normalizzazione RFC 2047, indirizzi, storico citato con le sue condizioni di rinuncia;
+  politica sugli allegati e **riconoscimento dai byte** (un eseguibile rinominato `.pdf` e dichiarato
+  `application/pdf` viene respinto); pre-classificazione conservativa (posta di massa **con** un indizio
+  amministrativo NON viene fermata); prompt injection nel corpo che non altera l'esito; adapter Google e
+  Microsoft che da payload diversi producono lo **stesso** modello; cifratura dei token con AAD, IV
+  irripetuto e rilevamento delle manomissioni.
+- **`test:inbox`** — i permessi VERI del database: A non vede né tocca nulla di B; i segreti non sono
+  raggiungibili nemmeno dall'owner; dal client si può cambiare solo `seen_at` e «metti via», e il
+  ripristino ricalcola lo stato dalla classificazione ignorando il valore inviato; i duplicati sono
+  respinti dai vincoli, non da un `if`.
 
 ## Sicurezza
 
@@ -455,6 +478,35 @@ significherebbe inviare comunque il documento in rete, cancellando la ragione pe
 cambio di una garanzia che il default (`ai`) offre già. Chi ha bisogno di uno snapshot probatorio
 usa la modalità AI; chi sceglie il motore locale sta scegliendo riservatezza, e ora sa cosa scambia.
 
+### Inbox: token, scope e webhook
+
+I token OAuth delle caselle collegate stanno in `email_connection_secrets`, **cifrati con
+AES-256-GCM** con una chiave che vive come secret della Edge Function e **non nel database**. La
+tabella non ha alcuna policy e nessun `GRANT` al ruolo `authenticated`: un client con la chiave anon
+non la raggiunge in nessun modo, nemmeno con un `select('*')` scritto per errore. L'AAD della
+cifratura è l'id della connessione, quindi un ciphertext spostato su un'altra riga non si decifra.
+
+Gli scope richiesti sono di **sola lettura** — `gmail.readonly` per Google, `Mail.Read` per
+Microsoft — e il contratto dell'adapter non contiene alcun metodo di scrittura: inviare, cancellare
+o spostare un messaggio non è impedito da una nostra regola, è impossibile con il token che abbiamo.
+
+Dal client si possono scrivere **due sole colonne** di `email_messages`: `seen_at` e
+`attention_status`. Oggetto, mittente, corpo, classificazione e impronta della fonte sono il verbale
+di ciò che è arrivato e non sono riscrivibili. ⚠️ Questo vale **dalla 0014**: la 0013 concedeva i
+permessi di colonna senza revocare prima quelli di tabella, e su Supabase ogni tabella nuova di
+`public` nasce con i permessi completi per `authenticated` — quindi la restrizione non restringeva
+nulla e un membro poteva riscrivere l'oggetto di un messaggio. Trovato da `npm run test:inbox` alla
+prima esecuzione sul database reale. **Regola generale del progetto: su `public` un permesso di
+colonna non significa niente senza un `revoke all` che lo preceda.**
+
+Gli endpoint webhook sono pubblici per definizione e vengono autenticati nel codice: **firma OIDC**
+verificata contro le chiavi pubbliche di Google per Pub/Sub, `clientState` confrontato a **tempo
+costante** per Microsoft Graph. Ogni evento è idempotente per vincolo unico sull'impronta.
+
+L'HTML dei messaggi **non viene conservato**: il corpo è ridotto a testo server-side da un
+tokenizzatore, quindi non esiste HTML non fidato da sanificare al momento del render e nessuna
+immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai-inbox.md`.
+
 ## Privacy
 
 - In modalità `ai` **il testo del documento viene inviato all'API di Anthropic**: è il compromesso necessario
@@ -496,6 +548,13 @@ usa la modalità AI; chi sceglie il motore locale sta scegliendo riservatezza, e
   nessuno di questi controlli. Se un cliente germanofono o romando segnala che «suona straniero»,
   è quello il segnale che manca. Prima del lancio è consigliata una rilettura professionale,
   soprattutto del disclaimer legale.
+- **Inbox**: il codice è completo e verificato offline, ma **non è attiva in produzione** finché non
+  vengono configurate le credenziali dei provider (vedi `docs/ai-inbox.md`). Lo scope Gmail richiesto
+  è riservato: fuori dalla modalità «Test» Google impone una verifica dell'app con valutazione di
+  sicurezza di terzi. Il flusso OAuth reale, le notifiche push reali e il rinnovo delle sottoscrizioni
+  non sono coperti da test automatici: richiedono credenziali di provider e si verificano collegando una
+  casella vera. La posta acquisita non viene mai cancellata automaticamente e scollegare una casella non
+  elimina i dati già importati.
 - **Non implementati**: invio email, calendar sync, notifiche push, Stripe/pagamenti,
   interfaccia fiduciaria completa, fine-tuning.
 

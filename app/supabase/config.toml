@@ -84,3 +84,39 @@ subject = "Conferma il tuo indirizzo email — AI-Swisse"
 
 [auth.email.template.recovery]
 subject = "Reimposta la password — AI-Swisse"
+
+# ============================================================================
+# Edge Functions — verifica del JWT
+#
+# Per impostazione predefinita Supabase respinge una richiesta a una Edge
+# Function se non porta un JWT valido, PRIMA che il codice della funzione venga
+# eseguito. Per la maggior parte delle funzioni è quello che si vuole. Per due
+# di queste no, e la ragione è nella natura del chiamante:
+#
+#   email-webhook      lo chiamano Google Pub/Sub e Microsoft Graph, che non
+#                      hanno una sessione Supabase e non possono averla. La
+#                      richiesta viene autenticata DENTRO la funzione: token
+#                      OIDC firmato da Google verificato contro le sue chiavi
+#                      pubbliche, `clientState` per Microsoft. Vedi §25 di
+#                      docs/ai-inbox.md.
+#   email-oauth        il callback è una GET del browser di ritorno dal
+#                      consenso: non porta il JWT dell'utente. La sicurezza sta
+#                      nello `state` monouso, e i percorsi /start e /providers
+#                      verificano l'autenticazione nel codice (401 se manca).
+#   email-maintenance  lo chiama uno scheduler, non una persona. Autenticato con
+#                      un segreto confrontato a tempo costante.
+#
+# ⚠️ Questo file NON viene applicato al progetto hosted: al momento del deploy
+# va passato `--no-verify-jwt` alle tre funzioni. Il comando esatto è in
+# docs/ai-inbox.md. Se lo si dimentica, i webhook ricevono 401 e la posta
+# smette di arrivare in tempo reale — senza alcun errore visibile nell'app,
+# perché la riconciliazione periodica continua a funzionare.
+# ============================================================================
+[functions.email-webhook]
+verify_jwt = false
+
+[functions.email-oauth]
+verify_jwt = false
+
+[functions.email-maintenance]
+verify_jwt = false

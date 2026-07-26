@@ -47,8 +47,7 @@ export function InterpretationPanel({ interpretation, showTimingWarning }: {
       )}
 
       <div className="muted-sm mt-12">
-        Interpretazione automatica del testo che hai scritto: serve a trovare programmi <em>pertinenti</em>,
-        non dichiara l’idoneità — che va verificata requisito per requisito e confermata dall’ente.
+        {t('subsidy.interpretation.disclaimer')}
       </div>
     </div>
   );

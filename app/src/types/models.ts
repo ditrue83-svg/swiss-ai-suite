@@ -5,11 +5,15 @@
 import type {
   MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource,
   EligibilityStatus, SubsidyCaseStatus,
+  EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
+  EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
 } from './database';
 
 export type {
   MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource,
   EligibilityStatus, SubsidyCaseStatus,
+  EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
+  EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
 };
 
 // ---- Utente / azienda -------------------------------------------------------
@@ -295,6 +299,132 @@ export interface SubsidyCaseItem {
   title: string;
   completed: boolean;
   sortOrder: number;
+}
+
+// ---- Inbox ------------------------------------------------------------------
+// Il dominio parla di «connessione», «messaggio», «allegato»: la UI non vede
+// mai una riga snake_case né sa che dietro c'è Gmail o Graph.
+
+export interface EmailConnection {
+  id: string;
+  companyId: string;
+  connectedBy: string | null;
+  provider: EmailProvider;
+  providerAccountId: string;
+  emailAddress: string;
+  displayName: string | null;
+  status: EmailConnectionStatus;
+  scopes: string[];
+  syncEnabled: boolean;
+  initialSyncCompletedAt: string | null;
+  lastSyncAt: string | null;
+  lastSuccessfulSyncAt: string | null;
+  /** Codice tecnico del provider. Non si mostra: si mappa (§108). */
+  lastErrorCode: string | null;
+  lastErrorAt: string | null;
+  watchExpiresAt: string | null;
+  /** Valorizzato quando una sincronizzazione è in corso: è un lease, quindi scade. */
+  syncLeaseUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailRecipient {
+  name: string | null;
+  email: string;
+}
+
+/** Collegamento estratto dal corpo: `host` è la destinazione REALE (§56). */
+export interface EmailLink {
+  url: string;
+  label: string;
+  host: string;
+}
+
+/** Riga della lista: solo ciò che serve a decidere se aprire (§104/§105). */
+export interface EmailMessageSummary {
+  id: string;
+  companyId: string;
+  connectionId: string;
+  threadId: string | null;
+  subject: string | null;
+  senderName: string | null;
+  senderEmail: string | null;
+  receivedAt: string;
+  preview: string | null;
+  hasAttachments: boolean;
+  attachmentCount: number;
+  processingStatus: EmailProcessingStatus;
+  attentionStatus: EmailAttentionStatus;
+  relevance: EmailRelevance | null;
+  seenAt: string | null;
+  handledAt: string | null;
+  errorCode: string | null;
+  /**
+   * Scadenza rilevata dall'analisi collegata. È una COPIA sulla riga del
+   * messaggio, tenuta per poter filtrare e ordinare senza join: la fonte di
+   * verità — con citazione, fiducia e tipo — resta l'analisi, che il dettaglio
+   * legge per intero.
+   */
+  deadline: string | null;
+  /** Livello derivato dalla scadenza: scaduta · urgente · prossima · nessuna. */
+  deadlineLevel: DeadlineLevel;
+  daysToDeadline: number | null;
+}
+
+export interface EmailAttachment {
+  id: string;
+  emailMessageId: string;
+  providerAttachmentId: string;
+  filename: string | null;
+  mimeType: string | null;
+  declaredMimeType: string | null;
+  sizeBytes: number | null;
+  isInline: boolean;
+  storagePath: string | null;
+  importStatus: EmailAttachmentImportStatus;
+  /** Perché non è stato importato. Chiave di traduzione, non frase. */
+  skipReason: string | null;
+  /** Documento AI-Swisse generato da questo allegato, se importato. */
+  documentId: string | null;
+}
+
+/** Documento generato dal messaggio, con il ruolo che aveva nell'email. */
+export interface EmailLinkedDocument {
+  documentId: string;
+  relation: EmailDocumentRelation;
+  attachmentId: string | null;
+  title: string;
+  status: DocumentStatus;
+}
+
+export interface EmailMessageDetail extends EmailMessageSummary {
+  toRecipients: EmailRecipient[];
+  ccRecipients: EmailRecipient[];
+  sentAt: string | null;
+  bodyText: string | null;
+  bodyLinks: EmailLink[];
+  isBulk: boolean;
+  importance: string | null;
+  /** Motivazione breve del classificatore. Operativa, mai promozionale (§61). */
+  relevanceReason: string | null;
+  relevanceConfidence: number | null;
+  errorMessageSafe: string | null;
+  attachments: EmailAttachment[];
+  documents: EmailLinkedDocument[];
+  connection: { emailAddress: string; provider: EmailProvider } | null;
+  /** Messaggi noti nello stesso thread, questo compreso (1 = nessun seguito). */
+  threadCount: number;
+}
+
+/** Un filtro della Inbox. Il valore è una chiave, mai un'etichetta tradotta. */
+export type InboxFilter = 'all' | 'to_handle' | 'urgent' | 'to_verify' | 'handled';
+
+/** Pagina di risultati con cursore keyset (§76): niente offset su dataset grandi. */
+export interface InboxPage {
+  items: EmailMessageSummary[];
+  /** Cursore per la pagina successiva; null = non c'è altro. */
+  nextCursor: string | null;
 }
 
 // ---- Subsidy AI · interpretazione progetto (§S2) ----------------------------

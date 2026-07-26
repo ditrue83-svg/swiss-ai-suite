@@ -61,7 +61,7 @@ export function ResetPasswordPage() {
             </div>
             <div className="auth-actions">
               <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
-                {submitting ? <span className="spinner" aria-hidden="true" /> : null} Salva password
+                {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.reset.submit')}
               </button>
             </div>
           </form>

@@ -44,7 +44,7 @@ export function ForgotPasswordPage() {
         {error && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{error}</span></div>}
         {sent ? (
           <div className="form-success">
-            Se esiste un account con questa email, riceverai a breve un messaggio con le istruzioni per reimpostare la password.
+            {t('auth.forgot.sent')}
           </div>
         ) : (
           <form onSubmit={onSubmit} noValidate>
@@ -54,7 +54,7 @@ export function ForgotPasswordPage() {
             </div>
             <div className="auth-actions">
               <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
-                {submitting ? <span className="spinner" aria-hidden="true" /> : null} Invia link di reimpostazione
+                {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.forgot.submit')}
               </button>
             </div>
           </form>

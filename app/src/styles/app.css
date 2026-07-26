@@ -700,3 +700,74 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .filter-group .btn { flex: 1; }
   .kpi-value { font-size: var(--fs-h1); }
 }
+
+/* ---------- Inbox ----------
+   Nessun colore nuovo, nessuna misura in px per il testo: la scala tipografica
+   e i token esistenti bastano. L'unico elemento con un carattere proprio è il
+   corpo del messaggio, che è testo grezzo di provenienza esterna e va reso
+   riconoscibile come tale — non impaginato come se fosse contenuto nostro. */
+.inbox-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+.inbox-head-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.inbox-status { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); font-size: var(--fs-meta); }
+.inbox-tools { display: flex; gap: var(--sp-2); align-items: center; margin-left: auto; flex-wrap: wrap; }
+
+.inbox-search {
+  font: inherit; font-size: var(--fs-meta); color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 6px 10px; min-width: 220px; min-height: 32px;
+}
+.inbox-search::placeholder { color: var(--muted); }
+
+.inbox-list { list-style: none; margin: 0; padding: 0; }
+.inbox-row {
+  display: flex; align-items: flex-start; gap: var(--sp-4); width: 100%;
+  padding: var(--sp-3) 0; border-top: 1px solid var(--line);
+  background: none; border-left: 0; border-right: 0; border-bottom: 0;
+  text-align: left; cursor: pointer; color: var(--ink); font: inherit;
+}
+.inbox-list li:first-child .inbox-row { border-top: none; }
+.inbox-row:hover { background: var(--surface-2); }
+.inbox-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.inbox-row-side { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
+/* Il grassetto NON è l'unico segnale del non letto: la pastiglia di stato dice
+   già cosa richiede attenzione, e questo resta una comodità visiva. */
+.inbox-row.is-unseen .inbox-subject { font-weight: 650; }
+.inbox-sender { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-subject {
+  font-size: var(--fs-body); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.inbox-meta { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-processing { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-label); color: var(--muted); margin-top: 2px; }
+.inbox-processing.is-failed { color: var(--red-dark); }
+.inbox-more { margin-top: var(--sp-4); }
+.inbox-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
+
+.inbox-fields { display: grid; gap: var(--sp-2); margin: 0; }
+.inbox-fields > div { display: grid; grid-template-columns: 180px 1fr; gap: var(--sp-3); align-items: baseline; }
+.inbox-fields dt { font-size: var(--fs-label); color: var(--muted); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.inbox-fields dd { margin: 0; font-size: var(--fs-body); color: var(--ink); overflow-wrap: anywhere; }
+
+/* Corpo del messaggio: testo di provenienza esterna, mostrato come testo.
+   `white-space: pre-wrap` conserva gli a capo dell'originale senza permettere
+   ad alcun markup di prendere forma — qui non arriva mai HTML. */
+.inbox-body {
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  font-size: var(--fs-body); line-height: var(--lh); color: var(--ink);
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: var(--sp-4);
+  max-height: 32em; overflow-y: auto;
+}
+.inbox-link-row { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; font-size: var(--fs-body); }
+.inbox-link-row .text-muted { font-size: var(--fs-meta); }
+
+@media (max-width: 600px) {
+  .inbox-head-actions { width: 100%; }
+  .inbox-head-actions .btn { flex: 1 1 auto; }
+  .inbox-tools { width: 100%; margin-left: 0; }
+  .inbox-search { min-width: 0; flex: 1; }
+  .inbox-row { gap: var(--sp-2); }
+  .inbox-row-side { flex-basis: 100%; }
+  .inbox-fields > div { grid-template-columns: 1fr; gap: 2px; }
+  .inbox-fields dd { margin-bottom: var(--sp-2); }
+}

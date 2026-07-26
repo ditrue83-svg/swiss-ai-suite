@@ -81,7 +81,7 @@ export function RegisterPage() {
           </div>
           <div className="auth-actions">
             <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
-              {submitting ? <span className="spinner" aria-hidden="true" /> : null} Crea account
+              {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.register.submit')}
             </button>
           </div>
         </form>

@@ -12,6 +12,8 @@ import { OnboardingPage } from '@/features/companies/OnboardingPage';
 import { HomePage } from '@/features/dashboard/HomePage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { ScadenziarioPage } from '@/features/tasks/ScadenziarioPage';
+import { InboxPage } from '@/features/inbox/InboxPage';
+import { EmailAccountsPage } from '@/features/inbox/EmailAccountsPage';
 import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
 import { SubsidyPage } from '@/features/subsidy-ai/SubsidyPage';
 import { ArchivePage } from '@/features/archive/ArchivePage';
@@ -78,6 +80,8 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/inbox" element={<InboxPage />} />
+            <Route path="/inbox/account" element={<EmailAccountsPage />} />
             <Route path="/scadenziario" element={<ScadenziarioPage />} />
             <Route path="/admin" element={<AdminAIPage />} />
             <Route path="/subsidy" element={<SubsidyPage />} />

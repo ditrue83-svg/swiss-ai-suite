@@ -48,6 +48,14 @@ export function toUserMessage(err: unknown, fallback = tr('errors.generic')): st
     return tr('errors.forbidden');
   if (code === 'PGRST116') return tr('errors.notFound');
   if (code === '23505') return tr('errors.duplicate');
+  // Tabella o colonna che il database non conosce: succede quando il codice è
+  // più avanti dello schema, cioè quando una migrazione non è ancora stata
+  // applicata. È un problema di messa in opera, non dell'utente, e il nome
+  // della tabella mancante non gli dice nulla di utile (§108).
+  if (code === 'PGRST205' || code === 'PGRST204' || code === '42P01' || code === '42703'
+      || msg.includes('schema cache')) {
+    return tr('errors.schemaOutdated');
+  }
 
   // Rete / Storage
   if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed'))

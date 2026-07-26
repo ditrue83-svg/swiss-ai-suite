@@ -25,6 +25,23 @@ export type TaskSource = 'admin_ai' | 'subsidy_ai' | 'manual';
 export type EligibilityStatus = 'unknown' | 'likely' | 'unlikely' | 'ineligible';
 export type SubsidyCaseStatus = 'draft' | 'collecting_documents' | 'ready' | 'submitted' | 'closed';
 
+// ---- Inbox (0013) ----------------------------------------------------------
+// Enum separati per stati che descrivono cose diverse (§8 del capitolato):
+// dove è arrivata la macchina (`EmailProcessingStatus`), cosa deve fare una
+// persona (`EmailAttentionStatus`), cosa ha concluso il classificatore
+// (`EmailRelevance`). Fonderli renderebbe un guasto tecnico indistinguibile da
+// «niente da fare».
+export type EmailProvider = 'google' | 'microsoft';
+export type EmailConnectionStatus = 'active' | 'reauth_required' | 'error' | 'disconnected';
+export type EmailSyncType = 'initial' | 'incremental' | 'manual' | 'reconciliation';
+export type EmailSyncStatus = 'running' | 'ok' | 'partial' | 'failed';
+export type EmailProcessingStatus = 'pending' | 'classifying' | 'importing' | 'analyzing' | 'done' | 'failed';
+export type EmailAttentionStatus = 'needs_attention' | 'to_verify' | 'informational' | 'ignored' | 'handled';
+export type EmailRelevance = 'likely_actionable' | 'possibly_actionable' | 'informational' | 'clearly_irrelevant';
+export type EmailDocumentRelation = 'body' | 'attachment';
+export type EmailAttachmentImportStatus =
+  | 'pending' | 'imported' | 'skipped_inline' | 'skipped_unsupported' | 'skipped_too_large' | 'failed';
+
 export interface Database {
   public: {
     Tables: {
@@ -216,6 +233,101 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+
+      // ---- Inbox (0013) ----------------------------------------------------
+      // Le Row rispecchiano SOLO le colonne che la 0013 concede al ruolo
+      // `authenticated`. `sync_cursor`, `watch_resource_id`, `history_floor_at`
+      // e le colonne dei segreti non compaiono qui perché il client non ha il
+      // permesso di leggerle: se comparissero, il tipo prometterebbe un dato
+      // che il database rifiuta di dare.
+      email_connections: {
+        Row: {
+          id: string; company_id: string; connected_by: string | null;
+          provider: EmailProvider; provider_account_id: string; email_address: string; display_name: string | null;
+          status: EmailConnectionStatus; scopes: string[]; sync_enabled: boolean;
+          initial_sync_completed_at: string | null; last_sync_at: string | null; last_successful_sync_at: string | null;
+          last_error_code: string | null; last_error_at: string | null;
+          watch_expires_at: string | null; sync_lease_until: string | null;
+          created_at: string; updated_at: string;
+        };
+        // Il ciclo di vita della connessione passa dalle Edge Function, che
+        // verificano il ruolo: al client non serve alcuna scrittura.
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      email_messages: {
+        Row: {
+          id: string; company_id: string; connection_id: string;
+          provider_message_id: string; provider_thread_id: string | null; internet_message_id: string | null;
+          subject: string | null; sender_name: string | null; sender_email: string | null;
+          to_recipients: Json; cc_recipients: Json;
+          received_at: string; sent_at: string | null;
+          body_text: string | null; body_preview: string | null; body_links: Json; body_char_count: number | null;
+          body_clean: string | null; quoted_removed: boolean;
+          has_attachments: boolean; attachment_count: number; importance: string | null; is_bulk: boolean;
+          processing_status: EmailProcessingStatus; attention_status: EmailAttentionStatus;
+          relevance: EmailRelevance | null; relevance_confidence: number | null; relevance_reason: string | null;
+          classifier_version: string | null; classifier_provider: string | null; classifier_model: string | null;
+          classifier_prompt_version: string | null; classified_at: string | null;
+          error_code: string | null; error_message_safe: string | null;
+          seen_at: string | null; handled_at: string | null; handled_by: string | null;
+          source_fingerprint: string | null; analysis_deadline: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: Record<string, never>;
+        // 0013 — il grant di colonna concede solo queste due. `handled_by` e
+        // `handled_at` li scrive il trigger, e il ripristino ricalcola lo stato
+        // dalla classificazione ignorando il valore inviato.
+        Update: { seen_at?: string | null; attention_status?: EmailAttentionStatus };
+        Relationships: [];
+      };
+      email_attachments: {
+        Row: {
+          id: string; company_id: string; email_message_id: string; provider_attachment_id: string;
+          filename: string | null; safe_filename: string | null;
+          declared_mime_type: string | null; mime_type: string | null; size_bytes: number | null;
+          content_id: string | null; is_inline: boolean;
+          storage_path: string | null; file_hash: string | null;
+          import_status: EmailAttachmentImportStatus; skip_reason: string | null; error_code: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      email_message_documents: {
+        Row: {
+          id: string; company_id: string; email_message_id: string; document_id: string;
+          relation: EmailDocumentRelation; attachment_id: string | null; created_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      email_sync_runs: {
+        Row: {
+          id: string; company_id: string; connection_id: string;
+          sync_type: EmailSyncType; status: EmailSyncStatus; triggered_by: string | null;
+          started_at: string; completed_at: string | null; duration_ms: number | null;
+          messages_seen: number; messages_new: number; messages_updated: number;
+          attachments_imported: number; documents_created: number; analyses_started: number;
+          cursor_before: string | null; cursor_after: string | null;
+          error_code: string | null; error_detail_safe: string | null; created_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      email_audit_log: {
+        Row: {
+          id: string; company_id: string; connection_id: string | null; actor_user_id: string | null;
+          action: string; detail: Json; created_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -241,6 +353,15 @@ export interface Database {
       task_source: TaskSource;
       eligibility_status: EligibilityStatus;
       subsidy_case_status: SubsidyCaseStatus;
+      email_provider: EmailProvider;
+      email_connection_status: EmailConnectionStatus;
+      email_sync_type: EmailSyncType;
+      email_sync_status: EmailSyncStatus;
+      email_processing_status: EmailProcessingStatus;
+      email_attention_status: EmailAttentionStatus;
+      email_relevance: EmailRelevance;
+      email_document_relation: EmailDocumentRelation;
+      email_attachment_import_status: EmailAttachmentImportStatus;
     };
     CompositeTypes: Record<string, never>;
   };

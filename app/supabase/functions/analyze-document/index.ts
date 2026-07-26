@@ -16,6 +16,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { runAnalysisPipeline, type CreateMessage, type ModelMessage } from '../_shared/pipeline.ts';
 import { ERROR_MESSAGES, type ErrorCode, type ExtractionResult } from '../_shared/validate.ts';
 import { logAiRequest, reserveAiSlot, finalizeAiRequest } from '../_shared/persist.ts';
+// 2026-07-26 — la trascrizione è stata spostata in `_shared/extract.ts` perché
+// serve anche alla sincronizzazione dell'Inbox. Stesso codice, un solo posto.
+import { ocrExtract as sharedOcrExtract, MAX_FILE_BYTES as SHARED_MAX_FILE_BYTES } from '../_shared/extract.ts';
 import type { CompanyContext } from '../_shared/prompt.ts';
 
 const CORS = {
@@ -235,6 +238,9 @@ Deno.serve(async (req: Request) => {
 });
 
 // ---- OCR via Claude vision (§4) --------------------------------------------
+// Il download dallo Storage resta qui — dipende dal client Supabase di questa
+// funzione — mentre la trascrizione vera vive in `_shared/extract.ts`, condivisa
+// con la sincronizzazione dell'Inbox.
 async function ocrExtract(
   sb: ReturnType<typeof createClient>,
   anthropic: Anthropic,
@@ -244,47 +250,10 @@ async function ocrExtract(
   const { data: blob, error } = await sb.storage.from('company-documents').download(storagePath);
   if (error || !blob) throw new Error('download fallito');
 
-  // §28 — il limite si applica alla dimensione REALE dell'oggetto scaricato:
-  // `documents.file_size` è scritto dal browser e non è una fonte attendibile.
-  if (blob.size > MAX_FILE_BYTES) {
-    const err = new Error('file troppo grande') as Error & { code?: string };
-    err.code = 'FILE_TOO_LARGE';
-    throw err;
-  }
-
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  // Conversione a blocchi: concatenare carattere per carattere su file da MB
-  // saturava la memoria dell'isolate.
-  let bin = '';
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  const b64 = btoa(bin);
-  const mt = mimeType ?? 'application/octet-stream';
-
-  const isPdf = mt.includes('pdf');
-  const source = isPdf
-    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
-    : { type: 'image', source: { type: 'base64', media_type: mt.startsWith('image/') ? mt : 'image/png', data: b64 } };
-
-  const msg = await anthropic.messages.create({
-    model: 'claude-opus-4-8',
-    max_tokens: 8000,
-    output_config: { effort: 'low' },
-    system: 'Trascrivi FEDELMENTE tutto il testo del documento, senza correggere né riassumere. Restituisci solo un oggetto JSON {"pages":[{"pageNumber":1,"text":"…"}],"fullText":"…"} con il testo per pagina. Nessun testo attorno al JSON.',
-    messages: [{ role: 'user', content: [source, { type: 'text', text: 'Trascrivi il testo di questo documento, pagina per pagina.' }] }],
-  } as never) as ModelMessage;
-
-  const block = msg.content.find((b) => b.type === 'text' && typeof b.text === 'string');
-  const raw = block?.text ?? '';
-  const parsed = JSON.parse(raw.slice(raw.indexOf('{')));
-  const pages = (Array.isArray(parsed.pages) ? parsed.pages : []).map((p: { pageNumber?: number; text?: string }, i: number) => ({
-    pageNumber: typeof p.pageNumber === 'number' ? p.pageNumber : i + 1,
-    text: String(p.text ?? ''),
-  }));
-  const fullText = typeof parsed.fullText === 'string' && parsed.fullText.trim()
-    ? parsed.fullText
-    : pages.map((p: { text: string }) => p.text).join('\n\n');
-  return { fullText, pages: pages.length ? pages : [{ pageNumber: 1, text: fullText }], extractionMethod: 'ocr' };
+  return await sharedOcrExtract({
+    bytes: new Uint8Array(await blob.arrayBuffer()),
+    mimeType,
+    maxBytes: SHARED_MAX_FILE_BYTES,
+    createMessage: (request) => anthropic.messages.create(request as never) as Promise<ModelMessage>,
+  });
 }

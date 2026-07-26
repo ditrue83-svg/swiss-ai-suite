@@ -26,7 +26,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
         <div>{message}</div>
         {onRetry && (
           <button className="btn btn-sm mt-8" onClick={onRetry}>
-            <Icon name="refresh" className="ic-sm" /> Riprova
+            <Icon name="refresh" className="ic-sm" /> {tr('common.retry')}
           </button>
         )}
       </div>

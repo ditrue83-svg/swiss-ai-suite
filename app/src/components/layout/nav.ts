@@ -10,6 +10,9 @@ export type NavEntry = NavItem | NavSection;
 export const NAV: NavEntry[] = [
   { sectionKey: 'nav.sectionPlatform' },
   { id: 'home', labelKey: 'nav.home', icon: 'home', path: '/' },
+  // Inbox sta subito dopo la panoramica: è il punto d'ingresso di ciò che
+  // arriva, e viene prima delle scadenze, che sono ciò che ne deriva.
+  { id: 'inbox', labelKey: 'nav.inbox', icon: 'inbox', path: '/inbox' },
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'dashboard', path: '/dashboard' },
   { id: 'deadlines', labelKey: 'nav.tasks', icon: 'calendar', path: '/scadenziario' },
   { sectionKey: 'nav.sectionModules' },
