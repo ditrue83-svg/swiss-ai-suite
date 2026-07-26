@@ -38,7 +38,7 @@ export const de: Dictionary = {
   },
 
   brand: {
-    name: 'SwissAI Suite',
+    name: 'AI-Swisse',
     tagline: 'für Schweizer KMU',
   },
   nav: {
@@ -572,6 +572,6 @@ export const de: Dictionary = {
   },
 
   legal: {
-    disclaimer: 'SwissAI Suite ist ein Hilfsmittel für administrative Aufgaben. Die Analysen werden automatisch erstellt und ersetzen keine rechtliche, steuerliche oder treuhänderische Beratung. Wenn das System unsicher ist, weist es darauf hin und empfiehlt eine manuelle Prüfung.',
+    disclaimer: 'AI-Swisse ist ein Hilfsmittel für administrative Aufgaben. Die Analysen werden automatisch erstellt und ersetzen keine rechtliche, steuerliche oder treuhänderische Beratung. Wenn das System unsicher ist, weist es darauf hin und empfiehlt eine manuelle Prüfung.',
   },
 };

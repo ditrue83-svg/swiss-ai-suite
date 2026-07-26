@@ -40,7 +40,7 @@ export function ResetPasswordPage() {
       <div className="auth-card">
         <div className="auth-brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div><div className="brand-name">SwissAI Suite</div><div className="brand-sub">{t('brand.tagline')}</div></div>
+          <div><div className="brand-name">{t('brand.name')}</div><div className="brand-sub">{t('brand.tagline')}</div></div>
         </div>
         <div className="auth-title">{t('auth.reset.title')}</div>
         <div className="auth-sub">{t('auth.reset.subtitle')}</div>

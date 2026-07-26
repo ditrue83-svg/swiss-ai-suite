@@ -136,7 +136,7 @@ export function AppShell() {
         </button>
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div className="brand-name">SwissAI Suite</div>
+          <div className="brand-name">{t('brand.name')}</div>
         </div>
       </header>
 
@@ -145,7 +145,7 @@ export function AppShell() {
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
           <div>
-            <div className="brand-name">SwissAI Suite</div>
+            <div className="brand-name">{t('brand.name')}</div>
             <div className="brand-sub">{t('brand.tagline')}</div>
           </div>
         </div>
@@ -161,7 +161,7 @@ export function AppShell() {
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
           <div>
-            <div className="brand-name">SwissAI Suite</div>
+            <div className="brand-name">{t('brand.name')}</div>
             <div className="brand-sub">{t('brand.tagline')}</div>
           </div>
         </div>

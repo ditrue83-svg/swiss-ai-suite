@@ -122,7 +122,7 @@ export function OnboardingPage() {
       <div className="auth-card onboarding-card">
         <div className="auth-brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="building" /></div>
-          <div><div className="brand-name">SwissAI Suite</div><div className="brand-sub">{t('brand.tagline')}</div></div>
+          <div><div className="brand-name">{t('brand.name')}</div><div className="brand-sub">{t('brand.tagline')}</div></div>
         </div>
         <div className="auth-title">{t('onboarding.title')}</div>
         <div className="auth-sub">{t('onboarding.subtitle')}</div>

@@ -1,18 +1,35 @@
+/* ============================================================================
+   AI-Swisse — token dell'interfaccia.
+   Ogni misura dell'app deve venire da qui: un valore scritto a mano dentro una
+   regola è un errore che si moltiplica. Prima di questo blocco l'app usava 23
+   dimensioni di testo diverse (13.5px, 11.5px, 10.5px…), segno di aggiustamenti
+   fatti a occhio schermata per schermata.
+   ========================================================================== */
 :root {
-  /* Palette AI-Swisse (ai-swisse.com): base chiara, ink navy, accento azzurro neon */
-  --accent: hsl(199, 100%, 50%);
-  --accent-dark: hsl(199, 100%, 42%);
-  --accent-text: hsl(202, 100%, 36%);
-  --accent-soft: hsl(199, 100%, 96%);
-  --neon-glow: hsla(199, 100%, 60%, 0.35);
-  --grad-start: hsl(199, 100%, 50%);
-  --grad-end: hsl(187, 100%, 65%);
-  --ink: hsl(220, 40%, 13%);
-  --ink-soft: hsl(220, 25%, 30%);
-  --muted: hsl(220, 10%, 40%);
+  /* --- Colore d'azione -----------------------------------------------------
+     Blu più fondo del precedente hsl(199,100%,50%), che era saturo quasi al
+     massimo. Qui accompagna solleciti dell'AFC, termini di pagamento e importi:
+     stessa famiglia cromatica, tono meno clamoroso. I tre token derivati sono
+     usati in 52 punti dell'app, quindi restano con gli stessi nomi. */
+  --accent: hsl(207, 88%, 39%);        /* fondo dei pulsanti, elementi attivi   */
+  --accent-dark: hsl(207, 90%, 31%);   /* stato premuto / hover                 */
+  --accent-text: hsl(207, 90%, 30%);   /* testo e link: contrasto AA su bianco  */
+  --accent-soft: hsl(207, 65%, 95%);   /* fondi tenui, chip informativi         */
+
+  /* --- Neutri --------------------------------------------------------------
+     Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti. */
+  --ink: hsl(213, 40%, 13%);           /* testo principale                      */
+  --ink-soft: hsl(213, 22%, 30%);      /* testo secondario                      */
+  --muted: hsl(213, 12%, 42%);         /* metadati, didascalie                  */
   --line: hsl(210, 20%, 90%);
   --bg: hsl(210, 20%, 98%);
   --card: #ffffff;
+
+  /* --- Colori di stato -----------------------------------------------------
+     NON sono decorazione: dicono quanto manca a una scadenza e se un'azione è
+     stata svolta. Restano separati dal colore d'azione, così un pulsante non
+     compete mai con un avviso. (Valori invariati in questo passo: vanno
+     ritoccati insieme ai componenti che li usano, non prima.) */
   --red: hsl(0, 84%, 60%);
   --red-soft: hsl(0, 84%, 96%);
   --red-dark: hsl(0, 72%, 45%);
@@ -20,13 +37,38 @@
   --green-soft: #e6f4ec;
   --amber: #b7791f;
   --amber-soft: #fdf3e0;
+
+  /* --- Scala tipografica ---------------------------------------------------
+     Sei gradini, uno per compito. Se un testo non rientra in nessuno, il
+     problema è la gerarchia, non la scala. La base sale da 13px a 15px: chi
+     usa l'app legge importi e scadenze, spesso oltre i 45 anni e di fretta. */
+  --fs-label: 12px;    /* etichette maiuscole, con letter-spacing */
+  --fs-meta: 13px;     /* metadati e didascalie                   */
+  --fs-body: 15px;     /* corpo del testo                          */
+  --fs-strong: 17px;   /* titoli di scheda e di riga               */
+  --fs-h2: 22px;       /* titoli di sezione                        */
+  --fs-h1: 30px;       /* titoli di pagina                         */
+
+  --lh-tight: 1.25;    /* titoli                                   */
+  --lh: 1.55;          /* testo corrente                           */
+
+  --ls-label: 0.08em;  /* solo per le etichette maiuscole          */
+  --ls-title: -0.01em; /* i titoli grandi respirano meglio stretti */
+
+  /* --- Ritmo delle spaziature ----------------------------------------------
+     Multipli di 4: sette valori coprono tutta l'interfaccia. */
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-6: 24px;  --sp-8: 32px;  --sp-12: 48px;
+
   --radius: 12px;
   --radius-sm: 8px;
+
   /* ombre molto leggere (look premium/fintech, non glow) */
   --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
-  --focus-ring: 0 0 0 3px hsla(199, 100%, 50%, 0.35);
+
+  --focus-ring: 0 0 0 3px hsla(207, 88%, 45%, 0.35);
   --topbar-h: 56px;
   font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }

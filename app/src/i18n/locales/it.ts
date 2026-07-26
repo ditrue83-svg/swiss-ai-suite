@@ -36,7 +36,7 @@ export const it = {
 
   // ---- Marchio e navigazione ----------------------------------------------
   brand: {
-    name: 'SwissAI Suite',
+    name: 'AI-Swisse',
     tagline: 'per le PMI svizzere',
   },
   nav: {
@@ -579,7 +579,7 @@ export const it = {
   },
 
   legal: {
-    disclaimer: 'SwissAI Suite è uno strumento di supporto amministrativo. Le analisi sono generate automaticamente e non sostituiscono la consulenza legale, fiscale o fiduciaria. Quando il sistema non è sicuro, lo segnala e invita a una verifica manuale.',
+    disclaimer: 'AI-Swisse è uno strumento di supporto amministrativo. Le analisi sono generate automaticamente e non sostituiscono la consulenza legale, fiscale o fiduciaria. Quando il sistema non è sicuro, lo segnala e invita a una verifica manuale.',
   },
 };
 // NB: niente `as const`. Servono le CHIAVI come contratto, non i valori: con i

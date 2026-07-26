@@ -49,7 +49,7 @@ export function RegisterPage() {
         <div className="auth-brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
           <div>
-            <div className="brand-name">SwissAI Suite</div>
+            <div className="brand-name">{t('brand.name')}</div>
             <div className="brand-sub">{t('brand.tagline')}</div>
           </div>
         </div>

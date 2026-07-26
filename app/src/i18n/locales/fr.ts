@@ -37,7 +37,7 @@ export const fr: Dictionary = {
   },
 
   brand: {
-    name: 'SwissAI Suite',
+    name: 'AI-Swisse',
     tagline: 'pour les PME suisses',
   },
   nav: {
@@ -571,6 +571,6 @@ export const fr: Dictionary = {
   },
 
   legal: {
-    disclaimer: 'SwissAI Suite est un outil d’assistance administrative. Les analyses sont générées automatiquement et ne remplacent pas un conseil juridique, fiscal ou fiduciaire. Lorsque le système n’est pas sûr, il le signale et invite à une vérification manuelle.',
+    disclaimer: 'AI-Swisse est un outil d’assistance administrative. Les analyses sont générées automatiquement et ne remplacent pas un conseil juridique, fiscal ou fiduciaire. Lorsque le système n’est pas sûr, il le signale et invite à une vérification manuelle.',
   },
 };
