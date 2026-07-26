@@ -203,7 +203,7 @@ export const de: Dictionary = {
   },
 
   adminAi: {
-    title: 'Swiss Admin AI',
+    title: 'Admin AI',
     intro: 'Laden Sie ein PDF hoch oder fügen Sie eine E-Mail bzw. einen Brief ein: Das System erkennt Absender, Sprache und Fristen und bereitet Checkliste und Antwortentwurf vor.',
     stepDoc: '1 · Zu analysierendes Dokument',
     dropzone: 'Datei hierher ziehen oder klicken zum Auswählen',
@@ -356,7 +356,7 @@ export const de: Dictionary = {
     noDocsAnalyzed: 'Noch kein Dokument analysiert.',
   },
   pricing: {
-    subtitle: 'Richtpreise für beide Module: Swiss Admin AI und Swiss Subsidy AI. Beträge in CHF, exkl. MWST.',
+    subtitle: 'Richtpreise für beide Module: Admin AI und Subsidy AI. Beträge in CHF, exkl. MWST.',
     demoNote: 'Demo: Die Anfrage für den Pilotzugang wird in diesem Prototyp nicht versendet.',
     disclaimer: 'Die Ergebnisse sind keine rechtliche, steuerliche oder treuhänderische Beratung; bei Unsicherheit weist das System darauf hin und empfiehlt eine fachliche Prüfung.',
     plans: {
@@ -383,7 +383,7 @@ export const de: Dictionary = {
   },
 
   subsidy: {
-    title: 'Swiss Subsidy AI',
+    title: 'Subsidy AI',
     intro: 'Unternehmensprofil → relevante Programme → Prüfung der Anspruchsberechtigung → Dossier. Relevanz und Anspruchsberechtigung sind zwei verschiedene Dinge. Abdeckung: Bund + Kanton Tessin.',
     footnote: 'Programme an den offiziellen Quellen geprüft (mit Datum der Überprüfung). Ein Programm kann als «zurzeit ausgesetzt» erscheinen: Es besteht, wird aber gesetzlich zurzeit nicht gewährt. Die «Relevanz» misst die Passung zum Vorhaben, nicht die Wahrscheinlichkeit, den Beitrag zu erhalten; die «Anspruchsberechtigung» ist eine Einschätzung auf Basis Ihrer Antworten und ersetzt die Beurteilung der Stelle nicht. Beträge, Anforderungen und Fristen sind stets an der offiziellen Quelle zu bestätigen.',
     tabProfile: '1 · Unternehmensprofil',

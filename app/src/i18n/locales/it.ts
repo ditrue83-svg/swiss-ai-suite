@@ -210,7 +210,7 @@ export const it = {
   // Vivevano come costanti in engine.ts: erano l'ultimo punto in cui la UI
   // restava italiana anche cambiando lingua.
   adminAi: {
-    title: 'Swiss Admin AI',
+    title: 'Admin AI',
     intro: 'Carica un PDF, incolla un’email o una lettera: il sistema identifica ente, lingua, scadenze e prepara checklist e bozza di risposta.',
     stepDoc: '1 · Documento da analizzare',
     dropzone: 'Trascina qui un file o clicca per selezionarlo',
@@ -363,7 +363,7 @@ export const it = {
     noDocsAnalyzed: 'Nessun documento analizzato.',
   },
   pricing: {
-    subtitle: 'Prezzi indicativi per entrambi i moduli: Swiss Admin AI e Swiss Subsidy AI. Importi in CHF, IVA esclusa.',
+    subtitle: 'Prezzi indicativi per entrambi i moduli: Admin AI e Subsidy AI. Importi in CHF, IVA esclusa.',
     demoNote: 'Demo: la richiesta di accesso pilota non viene inviata in questo prototipo.',
     disclaimer: 'L’output non costituisce consulenza legale, fiscale o fiduciaria; in caso di incertezza il sistema lo segnala e invita a una verifica professionale.',
     plans: {
@@ -390,7 +390,7 @@ export const it = {
   },
 
   subsidy: {
-    title: 'Swiss Subsidy AI',
+    title: 'Subsidy AI',
     intro: 'Profilo aziendale → programmi rilevanti → verifica di idoneità → pratica. Rilevanza e idoneità sono due cose distinte. Copertura: Confederazione + Cantone Ticino.',
     footnote: '**Programmi verificati sulle fonti ufficiali** (con data di revisione). Un programma può risultare «attualmente sospeso»: esiste, ma per legge oggi non viene concesso. La «Rilevanza» misura la pertinenza al progetto, non la probabilità di ottenere il contributo; l’«Idoneità» è una stima basata sulle tue risposte e non sostituisce la valutazione dell’ente. Importi, requisiti e scadenze vanno sempre confermati sulla fonte ufficiale.',
     tabProfile: '1 · Profilo impresa',

@@ -202,7 +202,7 @@ export const fr: Dictionary = {
   },
 
   adminAi: {
-    title: 'Swiss Admin AI',
+    title: 'Admin AI',
     intro: 'Chargez un PDF ou collez un e-mail ou un courrier : le système identifie l’expéditeur, la langue et les délais, et prépare une checklist et un projet de réponse.',
     stepDoc: '1 · Document à analyser',
     dropzone: 'Glissez un fichier ici ou cliquez pour le sélectionner',
@@ -355,7 +355,7 @@ export const fr: Dictionary = {
     noDocsAnalyzed: 'Aucun document analysé.',
   },
   pricing: {
-    subtitle: 'Prix indicatifs pour les deux modules : Swiss Admin AI et Swiss Subsidy AI. Montants en CHF, TVA non comprise.',
+    subtitle: 'Prix indicatifs pour les deux modules : Admin AI et Subsidy AI. Montants en CHF, TVA non comprise.',
     demoNote: 'Démo : la demande d’accès pilote n’est pas envoyée dans ce prototype.',
     disclaimer: 'Les résultats ne constituent pas un conseil juridique, fiscal ou fiduciaire ; en cas d’incertitude, le système le signale et invite à une vérification professionnelle.',
     plans: {
@@ -382,7 +382,7 @@ export const fr: Dictionary = {
   },
 
   subsidy: {
-    title: 'Swiss Subsidy AI',
+    title: 'Subsidy AI',
     intro: 'Profil de l’entreprise → programmes pertinents → vérification de l’éligibilité → dossier. Pertinence et éligibilité sont deux choses distinctes. Couverture : Confédération + canton du Tessin.',
     footnote: 'Programmes vérifiés aux sources officielles (avec date de révision). Un programme peut être « actuellement suspendu » : il existe, mais la loi ne permet pas de l’octroyer aujourd’hui. La « Pertinence » mesure l’adéquation au projet, non la probabilité d’obtenir la contribution ; l’« Éligibilité » est une estimation fondée sur vos réponses et ne remplace pas l’appréciation de l’organisme. Montants, conditions et délais doivent toujours être confirmés à la source officielle.',
     tabProfile: '1 · Profil de l’entreprise',
