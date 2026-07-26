@@ -95,6 +95,52 @@ export const MANUAL_SYNC_MIN_INTERVAL_SECONDS = 60;
  */
 export const ANALYSIS_DRAIN_BATCH = 5;
 
+/**
+ * Sotto questa lunghezza il corpo di un messaggio non contiene una pratica.
+ * «Ok, grazie» non si analizza: si dichiara che non c'era niente da analizzare.
+ */
+export const MIN_BODY_CHARS_FOR_ANALYSIS = 40;
+
+/**
+ * Quanto può durare UNA esecuzione prima di consegnare il lavoro alla
+ * successiva.
+ *
+ * Supabase chiude una richiesta che non risponde entro **150 secondi**
+ * (`IDLE_TIMEOUT`), e l'isolate viene ucciso: il `finally` non gira e restano
+ * stati appesi. Misurato sul campo il 2026-07-27, sulla casella reale: la
+ * manutenzione ha impiegato 133 secondi per cinque analisi ed è stata uccisa
+ * mentre iniziava la sesta.
+ *
+ * Il lavoro dell'Inbox è a lotti per costruzione — la coda esiste proprio per
+ * distribuirlo nel tempo — quindi fermarsi in tempo e lasciare il resto alla
+ * prossima esecuzione non toglie niente a nessuno, mentre farsi uccidere sì.
+ */
+export const EDGE_TIME_BUDGET_MS = 100_000;
+
+/**
+ * Spazio da lasciare libero prima di iniziare un'ALTRA analisi documentale.
+ *
+ * Un'analisi (estrazione, modello, validazione, persistenza) ha impiegato fra i
+ * 22 e i 30 secondi sui documenti reali di questa casella. Quaranta secondi
+ * danno margine al caso lento: se non ci stanno, non si comincia. Controllare
+ * solo «il budget non è ancora finito» non basterebbe — si comincerebbe
+ * un'analisi con dieci secondi davanti, e la si perderebbe a metà.
+ */
+export const ANALYSIS_SLOT_MS = 40_000;
+
+/**
+ * Dopo quanto un messaggio o una sincronizzazione «in lavorazione» è, con
+ * certezza, un lavoro interrotto e non un lavoro lento.
+ *
+ * Un'Edge Function non vive più di qualche minuto e il lease di sincronizzazione
+ * dura {@link SYNC_LEASE_SECONDS}: mezz'ora è molto oltre qualunque esecuzione
+ * viva, quindi non c'è modo di dichiarare interrotto qualcosa che sta ancora
+ * lavorando. Serve perché un isolate ucciso a metà non esegue il proprio
+ * `finally`: lo stato resta appeso, e uno stato appeso è indistinguibile da un
+ * lavoro in corso — cioè è un guasto che si presenta come normalità.
+ */
+export const STALE_PROCESSING_MINUTES = 30;
+
 // ---- Rinnovo delle sottoscrizioni push --------------------------------------
 
 /**
@@ -112,6 +158,7 @@ export const MICROSOFT_SUBSCRIPTION_MINUTES = 4200;      // ~70 ore, sotto il ma
 export const INBOX_ERROR_CODES = [
   'PROVIDER_UNAVAILABLE', 'PROVIDER_RATE_LIMITED', 'AUTH_EXPIRED', 'AUTH_INSUFFICIENT_SCOPE',
   'CURSOR_EXPIRED', 'SUBSCRIPTION_GONE', 'NOT_FOUND', 'INVALID_RESPONSE', 'CONFIG_MISSING',
-  'SYNC_BUSY', 'QUOTA_EXCEEDED', 'ATTACHMENT_FAILED', 'ANALYSIS_FAILED', 'UNKNOWN',
+  'SYNC_BUSY', 'QUOTA_EXCEEDED', 'ATTACHMENT_FAILED', 'ANALYSIS_FAILED', 'INTERRUPTED',
+  'TIME_BUDGET', 'UNKNOWN',
 ] as const;
 export type InboxErrorCode = (typeof INBOX_ERROR_CODES)[number];

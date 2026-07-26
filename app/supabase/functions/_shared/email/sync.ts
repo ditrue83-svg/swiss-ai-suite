@@ -26,8 +26,9 @@ import { ocrExtract, textExtraction } from '../extract.ts';
 import type { CompanyContext } from '../prompt.ts';
 import type { ExtractionResult } from '../validate.ts';
 import {
-  ANALYSIS_DRAIN_BATCH, INCREMENTAL_MAX_MESSAGES, INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES,
-  RECONCILE_MAX_MESSAGES, RECONCILE_WINDOW_HOURS, SYNC_LEASE_SECONDS, attentionForRelevance,
+  ANALYSIS_DRAIN_BATCH, ANALYSIS_SLOT_MS, INCREMENTAL_MAX_MESSAGES, INITIAL_SYNC_DAYS,
+  INITIAL_SYNC_MAX_MESSAGES, MIN_BODY_CHARS_FOR_ANALYSIS, RECONCILE_MAX_MESSAGES,
+  RECONCILE_WINDOW_HOURS, SYNC_LEASE_SECONDS, attentionForRelevance,
 } from './contract.ts';
 import { buildClassifierInput, prescreen, CLASSIFIER_VERSION } from './classify.ts';
 import { buildClassifyRequest, validateClassifierOutput, CLASSIFIER_MODEL, CLASSIFIER_PROMPT_VERSION } from './classifyPrompt.ts';
@@ -35,11 +36,11 @@ import { pickPrimaryAttachment, planAttachments, sniffMatches, safeAttachmentNam
 import { EmailProviderError } from './types.ts';
 import type { EmailProviderAdapter, NormalizedEmailMessage, OAuthTokens } from './types.ts';
 import {
-  acquireLease, createOrReuseDocument, finalizeSystemAiSlot, finishSyncRun, getConnection,
-  hasLinkedDocument, isKnownAdministrativeSender, linkDocument, markAttachment, newCounters,
-  readSecrets, recordAttachmentPlan, releaseLease, reserveSystemAiSlot, setMessageClassification,
-  setMessageProcessing, startSyncRun, upsertMessage, writeSecrets,
-  type ConnectionRow, type ServerClient, type SyncCounters,
+  acquireLease, createOrReuseDocument, downloadDocument, finalizeSystemAiSlot, finishSyncRun,
+  getConnection, isKnownAdministrativeSender, linkDocument, listLinkedDocuments, markAttachment,
+  newCounters, readSecrets, recordAttachmentPlan, releaseLease, reserveSystemAiSlot,
+  setMessageClassification, setMessageProcessing, startSyncRun, upsertMessage, writeSecrets,
+  type ConnectionRow, type LinkedDocument, type ServerClient, type SyncCounters,
 } from './store.ts';
 
 /** Limiti di spesa AI per azienda al minuto, distinti per tipo di lavoro (§58). */
@@ -145,7 +146,15 @@ async function markConnectionError(sb: ServerClient, connectionId: string, code:
 
 export async function runSync(
   deps: SyncDeps,
-  input: { connectionId: string; syncType: SyncType; triggeredBy: string },
+  input: {
+    connectionId: string; syncType: SyncType; triggeredBy: string;
+    /**
+     * Istante oltre il quale non si comincia altro lavoro. Chi chiama da una
+     * Edge Function lo passa sempre: senza, il rischio non è finire tardi, è
+     * essere uccisi a metà (vedi {@link EDGE_TIME_BUDGET_MS}).
+     */
+    deadlineMs?: number;
+  },
 ): Promise<SyncOutcome> {
   const counters = newCounters();
   const startedAtMs = Date.now();
@@ -172,6 +181,8 @@ export async function runSync(
   let errorCode: string | null = null;
   let status: 'ok' | 'partial' | 'failed' = 'ok';
   let cursorAfter: string | null = connection.sync_cursor;
+  /** Il tempo è finito prima della lista: restano messaggi non guardati. */
+  let truncated = false;
 
   try {
     const adapter = deps.adapterFor(connection);
@@ -195,6 +206,15 @@ export async function runSync(
     }
 
     for (const messageId of listing.messageIds) {
+      // Fermarsi con il lavoro in ordine è meglio che essere uccisi a metà: i
+      // messaggi rimasti li prende la prossima esecuzione, e l'esito lo DICE
+      // invece di farlo sembrare un lavoro concluso.
+      if (input.deadlineMs && Date.now() + ANALYSIS_SLOT_MS > input.deadlineMs) {
+        status = 'partial';
+        errorCode = 'TIME_BUDGET';
+        truncated = true;
+        break;
+      }
       try {
         await processMessage(deps, {
           connection, adapter, accessToken, providerMessageId: messageId, counters,
@@ -223,7 +243,8 @@ export async function runSync(
     // Il contatore lo incrementa già `analyzeDocument`: sommare anche il
     // risultato dello smaltimento conterebbe due volte le stesse analisi, e un
     // registro che gonfia i numeri è peggio di un registro assente.
-    await drainPendingAnalyses(deps, connection, adapter, accessToken, counters);
+    await drainPendingAnalyses(deps, connection, adapter, accessToken, counters,
+      ANALYSIS_DRAIN_BATCH, input.deadlineMs);
 
     const patch: Record<string, unknown> = {
       sync_cursor: cursorAfter,
@@ -234,7 +255,11 @@ export async function runSync(
       patch.last_error_code = null;
       patch.last_error_at = null;
     }
-    if (input.syncType === 'initial') {
+    // «Import iniziale completato» significa che la lista è stata percorsa
+    // tutta. Se il tempo è finito prima, scriverlo sarebbe una dichiarazione
+    // falsa — e per giunta una che spegne la ripresa: la manutenzione riprende
+    // proprio le caselle che questo campo dichiara incomplete.
+    if (input.syncType === 'initial' && !truncated) {
       patch.initial_sync_completed_at = new Date().toISOString();
       patch.history_floor_at = new Date(Date.now() - INITIAL_SYNC_DAYS * 86_400_000).toISOString();
     }
@@ -549,39 +574,126 @@ export async function importAndAnalyze(
     }
   }
 
-  const primary = pickPrimaryAttachment(imported.map((a) => ({ ...a, mimeType: a.mimeType, sizeBytes: a.sizeBytes })));
+  const bodyText = message.textBody.trim();
+  const linked = await listLinkedDocuments(deps.sb, companyId, input.messageId);
+  const plan = planAnalysisTarget({
+    freshAttachments: imported.map((a) => ({ documentId: a.documentId, mimeType: a.mimeType, sizeBytes: a.sizeBytes })),
+    linkedDocuments: linked,
+    bodyLength: bodyText.length,
+  });
 
-  if (primary) {
-    return await analyzeDocument(deps, {
-      companyId, documentId: primary.documentId, messageId: input.messageId,
-      bytes: primary.bytes, mimeType: primary.mimeType, counters,
-    });
+  switch (plan.kind) {
+    case 'fresh': {
+      const primary = imported.find((a) => a.documentId === plan.documentId)!;
+      return await analyzeDocument(deps, {
+        companyId, documentId: primary.documentId, messageId: input.messageId,
+        bytes: primary.bytes, mimeType: primary.mimeType, counters,
+      });
+    }
+
+    // Il documento esiste già da un tentativo precedente: si analizza quello,
+    // rileggendo dall'archivio i byte che sono stati davvero salvati.
+    case 'resume': {
+      const doc = linked.find((d) => d.documentId === plan.documentId)!;
+      const bytes = await downloadDocument(deps.sb, doc.storagePath!);
+      // Un documento in elenco il cui file non si scarica è un guasto, non un
+      // «niente da fare»: se restituissimo false il messaggio verrebbe marcato
+      // come gestito senza che nessuno l'abbia letto. Errore normale e non
+      // `EmailProviderError`, che descrive i guasti del fornitore di posta: qui
+      // il fornitore non c'entra. Il chiamante lo registra come ANALYSIS_FAILED.
+      if (!bytes) throw new Error('documento non rileggibile dall\'archivio');
+      return await analyzeDocument(deps, {
+        companyId, documentId: doc.documentId, messageId: input.messageId,
+        bytes, mimeType: doc.mimeType, counters,
+      });
+    }
+
+    // Nessun allegato analizzabile: la richiesta è nel corpo. Diventa un
+    // documento vero, con il suo file in Storage e il suo hash — non un testo
+    // passato di nascosto al modello (§14).
+    case 'body': {
+      const bytes = new TextEncoder().encode(bodyText);
+      const doc = await createOrReuseDocument(deps.sb, {
+        companyId,
+        title: message.subject ?? `${message.from?.email ?? 'email'} — ${message.receivedAt.slice(0, 10)}`,
+        filename: 'messaggio.txt',
+        mimeType: 'text/plain',
+        bytes,
+        folder: 'email',
+      });
+      await linkDocument(deps.sb, { companyId, messageId: input.messageId, documentId: doc.documentId, relation: 'body' });
+      if (!doc.reused) counters.documentsCreated++;
+
+      return await analyzeDocument(deps, {
+        companyId, documentId: doc.documentId, messageId: input.messageId,
+        bytes, mimeType: 'text/plain', counters,
+      });
+    }
+
+    case 'unavailable':
+      throw new Error('documento collegato senza file in archivio');
+
+    // `already` = l'analisi c'è già (deduplicazione per hash, o un ritentativo
+    // dopo un'esecuzione andata a buon fine). Vale come lavoro fatto.
+    case 'already':
+      return true;
+
+    case 'nothing':
+      return false;
+  }
+}
+
+/**
+ * Decide COSA analizzare per un messaggio. Pura: nessun database, nessuna rete.
+ *
+ * È separata dall'esecuzione perché è la decisione che al primo collegamento
+ * reale è stata sbagliata, e una decisione che si può provare da sola è una
+ * decisione che si può difendere. Il codice precedente chiedeva «esiste già un
+ * documento per questo messaggio?» e, se sì, usciva senza fare nulla: il
+ * chiamante lo leggeva come «niente da analizzare» e marcava il messaggio come
+ * gestito. Quattordici messaggi reali, con il documento in archivio e l'analisi
+ * mai eseguita, sarebbero passati a «fatto» senza che nessuno li leggesse.
+ *
+ * Le regole, in ordine:
+ *   1. un allegato appena importato che merita l'analisi ha la precedenza;
+ *   2. altrimenti il documento già collegato (allegato principale, se non c'è
+ *      il corpo): se è già analizzato il lavoro c'è, se il suo file non è
+ *      raggiungibile è un guasto, altrimenti si analizza;
+ *   3. altrimenti si crea il documento dal corpo, se il corpo dice qualcosa;
+ *   4. altrimenti non c'è niente da analizzare, e lo si dichiara.
+ */
+export type AnalysisTarget =
+  | { kind: 'fresh'; documentId: string }
+  | { kind: 'resume'; documentId: string }
+  | { kind: 'body' }
+  | { kind: 'unavailable' }
+  | { kind: 'already' }
+  | { kind: 'nothing' };
+
+export function planAnalysisTarget(input: {
+  freshAttachments: { documentId: string; mimeType: string; sizeBytes: number | null }[];
+  linkedDocuments: LinkedDocument[];
+  bodyLength: number;
+}): AnalysisTarget {
+  const fresh = pickPrimaryAttachment(input.freshAttachments);
+  if (fresh) return { kind: 'fresh', documentId: fresh.documentId };
+
+  // Stesso criterio del primo passaggio — `pickPrimaryAttachment` scarta i
+  // `text/plain`, perché per un allegato di testo la fonte principale resta il
+  // corpo del messaggio.
+  const attachments = input.linkedDocuments.filter((d) => d.relation === 'attachment');
+  const chosen = pickPrimaryAttachment(attachments)
+    ?? input.linkedDocuments.find((d) => d.relation === 'body')
+    ?? null;
+
+  if (chosen) {
+    if (chosen.analysed) return { kind: 'already' };
+    if (!chosen.storagePath) return { kind: 'unavailable' };
+    return { kind: 'resume', documentId: chosen.documentId };
   }
 
-  // Nessun allegato analizzabile: la richiesta è nel corpo. Diventa un documento
-  // vero, con il suo file in Storage e il suo hash — non un testo passato di
-  // nascosto al modello (§14).
-  const bodyText = message.textBody.trim();
-  if (bodyText.length < 40) return false;         // niente da analizzare: si dichiara
-
-  if (await hasLinkedDocument(deps.sb, input.messageId, 'body')) return false;
-
-  const bytes = new TextEncoder().encode(bodyText);
-  const doc = await createOrReuseDocument(deps.sb, {
-    companyId,
-    title: message.subject ?? `${message.from?.email ?? 'email'} — ${message.receivedAt.slice(0, 10)}`,
-    filename: 'messaggio.txt',
-    mimeType: 'text/plain',
-    bytes,
-    folder: 'email',
-  });
-  await linkDocument(deps.sb, { companyId, messageId: input.messageId, documentId: doc.documentId, relation: 'body' });
-  if (!doc.reused) counters.documentsCreated++;
-
-  return await analyzeDocument(deps, {
-    companyId, documentId: doc.documentId, messageId: input.messageId,
-    bytes, mimeType: 'text/plain', counters,
-  });
+  if (input.bodyLength >= MIN_BODY_CHARS_FOR_ANALYSIS) return { kind: 'body' };
+  return { kind: 'nothing' };
 }
 
 /** Esegue la pipeline Admin AI — la stessa del caricamento manuale, non una copia. */
@@ -671,6 +783,7 @@ export async function drainPendingAnalyses(
   accessToken: string,
   counters: SyncCounters,
   max = ANALYSIS_DRAIN_BATCH,
+  deadlineMs?: number,
 ): Promise<number> {
   if (!deps.createMessage) return 0;
 
@@ -686,6 +799,11 @@ export async function drainPendingAnalyses(
   let done = 0;
 
   for (const row of pending) {
+    // Un'analisi iniziata senza tempo davanti è un'analisi persa a metà, che
+    // lascia il messaggio in `analyzing` e costa comunque una richiesta al
+    // modello. Se non ci sta, resta in coda: è il posto giusto per aspettare.
+    if (deadlineMs && Date.now() + ANALYSIS_SLOT_MS > deadlineMs) break;
+
     let message: NormalizedEmailMessage;
     try {
       message = await adapter.getMessage({ accessToken, messageId: row.provider_message_id });

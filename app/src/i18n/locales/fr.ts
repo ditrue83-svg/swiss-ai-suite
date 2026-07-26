@@ -813,6 +813,8 @@ export const fr: Dictionary = {
       notConfigured: 'La fonction Inbox n’est pas configurée sur ce serveur.',
       aiNotConfigured: 'L’analyse automatique n’est pas configurée sur ce serveur.',
       analysisFailed: 'L’analyse de cette communication a échoué. La communication reste dans l’Inbox.',
+      interrupted: 'Le traitement de cette communication s’est interrompu avant la fin. La communication reste dans l’Inbox : vous pouvez lancer l’analyse maintenant.',
+      timeBudget: 'Tout ce qui tient dans un seul passage a été traité. Le reste se poursuit tout seul : inutile de réessayer.',
       attachmentFailed: 'Une pièce jointe n’a pas été téléchargée.',
       sourceChanged: 'Le contenu chez le fournisseur a changé après l’importation.',
       generic: 'Un problème est survenu avec l’Inbox.',

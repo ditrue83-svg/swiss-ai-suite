@@ -820,6 +820,8 @@ export const it = {
       notConfigured: 'La funzione Inbox non è configurata su questo server.',
       aiNotConfigured: 'L’analisi automatica non è configurata su questo server.',
       analysisFailed: 'L’analisi di questa comunicazione non è riuscita. La comunicazione resta nella Inbox.',
+      interrupted: 'L’elaborazione di questa comunicazione si è interrotta prima di concludersi. La comunicazione resta nella Inbox: puoi farla analizzare adesso.',
+      timeBudget: 'È stato elaborato quanto entra in una sola esecuzione. Il resto prosegue da solo: non serve riprovare.',
       attachmentFailed: 'Un allegato non è stato scaricato.',
       sourceChanged: 'Il contenuto presso il fornitore è cambiato dopo l’acquisizione.',
       generic: 'Si è verificato un problema con la Inbox.',

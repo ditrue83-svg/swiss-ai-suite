@@ -33,7 +33,8 @@ import { createMicrosoftAdapter } from '../supabase/functions/_shared/email/micr
 import { seal, open as openSealed, importKey, generateKeyBase64, timingSafeEqual, sha256Hex } from '../supabase/functions/_shared/email/crypto.ts';
 import {
   INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES, attentionForRelevance, MAX_ATTACHMENT_BYTES,
-  PROCESSING_VALUES, ANALYSIS_DRAIN_BATCH,
+  PROCESSING_VALUES, ANALYSIS_DRAIN_BATCH, INBOX_ERROR_CODES, MIN_BODY_CHARS_FOR_ANALYSIS,
+  STALE_PROCESSING_MINUTES, SYNC_LEASE_SECONDS, EDGE_TIME_BUDGET_MS, ANALYSIS_SLOT_MS,
 } from '../supabase/functions/_shared/email/contract.ts';
 import { INITIAL_SYNC_DAYS as UI_DAYS, INITIAL_SYNC_MAX_MESSAGES as UI_MAX } from '../src/features/inbox/constants';
 import type { NormalizedEmailMessage } from '../supabase/functions/_shared/email/types.ts';
@@ -41,8 +42,10 @@ import type { NormalizedEmailMessage } from '../supabase/functions/_shared/email
 // sono raggiungibili da `src/`, quindi senza questo import `npm run typecheck`
 // non li guarderebbe mai — e un errore di tipo nell'orchestrazione della
 // sincronizzazione si scoprirebbe solo in produzione.
-import { newCounters } from '../supabase/functions/_shared/email/store.ts';
-import { runSync, importAndAnalyze, getValidAccessToken, drainPendingAnalyses } from '../supabase/functions/_shared/email/sync.ts';
+import { newCounters, type LinkedDocument } from '../supabase/functions/_shared/email/store.ts';
+import {
+  runSync, importAndAnalyze, getValidAccessToken, drainPendingAnalyses, planAnalysisTarget,
+} from '../supabase/functions/_shared/email/sync.ts';
 
 let pass = 0, fail = 0;
 const G = '\x1b[32m', R = '\x1b[31m', B = '\x1b[1m', DIM = '\x1b[2m', X = '\x1b[0m';
@@ -605,6 +608,102 @@ ok(ANALYSIS_DRAIN_BATCH > 0 && ANALYSIS_DRAIN_BATCH < 12,
   ok(typeof runSync === 'function' && typeof importAndAnalyze === 'function' && typeof getValidAccessToken === 'function',
     'l’orchestrazione della sincronizzazione è compilabile e importabile fuori da Deno');
 }
+
+// ===========================================================================
+section('9 · Ripresa di un’analisi interrotta (§102)');
+// ===========================================================================
+// Questa sezione esiste per un difetto TROVATO IN PRODUZIONE, non immaginato.
+// Quando la quota AI si esaurisce fra la creazione del documento e la chiamata
+// al modello, il messaggio resta in coda con il documento già in archivio. Al
+// ritentativo il codice chiedeva «esiste già un documento?» e, trovandolo,
+// usciva senza fare nulla: il chiamante lo leggeva come «niente da analizzare»
+// e marcava il messaggio come GESTITO. Quattordici messaggi reali erano in
+// questa condizione: sarebbero passati a «fatto» senza che nessuno li leggesse.
+//
+// Il primo controllo qui sotto è quello che il codice precedente NON superava.
+const linked = (over: Partial<LinkedDocument> = {}): LinkedDocument => ({
+  documentId: 'doc-1', relation: 'body', storagePath: 'c/email/doc-1/messaggio.txt',
+  mimeType: 'text/plain', sizeBytes: 900, analysed: false, ...over,
+});
+const LONG_BODY = 500;
+
+{
+  const plan = planAnalysisTarget({ freshAttachments: [], linkedDocuments: [linked()], bodyLength: LONG_BODY });
+  ok(plan.kind === 'resume' && plan.documentId === 'doc-1',
+    'documento già creato e mai analizzato: si ANALIZZA quello, non si dichiara «niente da fare»',
+    `ottenuto: ${plan.kind}`);
+}
+{
+  const plan = planAnalysisTarget({
+    freshAttachments: [], linkedDocuments: [linked({ analysed: true })], bodyLength: LONG_BODY,
+  });
+  ok(plan.kind === 'already', 'documento già analizzato: non si rianalizza e non si spende');
+}
+{
+  const plan = planAnalysisTarget({
+    freshAttachments: [], linkedDocuments: [linked({ storagePath: null })], bodyLength: LONG_BODY,
+  });
+  ok(plan.kind === 'unavailable',
+    'documento collegato senza file in archivio: è un GUASTO dichiarato, non un «niente da analizzare»');
+}
+{
+  const plan = planAnalysisTarget({
+    freshAttachments: [{ documentId: 'nuovo', mimeType: 'application/pdf', sizeBytes: 120_000 }],
+    linkedDocuments: [linked()], bodyLength: LONG_BODY,
+  });
+  ok(plan.kind === 'fresh' && plan.documentId === 'nuovo',
+    'un allegato appena importato ha la precedenza su ciò che era rimasto in sospeso');
+}
+{
+  const plan = planAnalysisTarget({
+    freshAttachments: [],
+    linkedDocuments: [
+      linked(),
+      linked({ documentId: 'doc-pdf', relation: 'attachment', mimeType: 'application/pdf', sizeBytes: 90_000,
+        storagePath: 'c/email/doc-pdf/lettera.pdf' }),
+    ],
+    bodyLength: LONG_BODY,
+  });
+  ok(plan.kind === 'resume' && plan.documentId === 'doc-pdf',
+    'fra corpo e allegato in sospeso si riprende l’ALLEGATO: nelle comunicazioni amministrative la pratica è lì');
+}
+{
+  const plan = planAnalysisTarget({ freshAttachments: [], linkedDocuments: [], bodyLength: LONG_BODY });
+  ok(plan.kind === 'body', 'nessun documento in sospeso e corpo con contenuto: si crea il documento dal corpo');
+}
+{
+  const plan = planAnalysisTarget({ freshAttachments: [], linkedDocuments: [], bodyLength: 12 });
+  ok(plan.kind === 'nothing', '«Ok, grazie»: si dichiara che non c’era niente da analizzare');
+}
+{
+  // Un allegato di testo non sposta la fonte principale, che resta il corpo:
+  // stessa regola del primo passaggio (`pickPrimaryAttachment` scarta text/plain).
+  const plan = planAnalysisTarget({
+    freshAttachments: [],
+    linkedDocuments: [linked({ documentId: 'doc-txt', relation: 'attachment', mimeType: 'text/plain' })],
+    bodyLength: LONG_BODY,
+  });
+  ok(plan.kind === 'body', 'un allegato di solo testo non prende il posto del corpo del messaggio');
+}
+ok(STALE_PROCESSING_MINUTES * 60 > SYNC_LEASE_SECONDS,
+  `la soglia di «lavoro interrotto» (${STALE_PROCESSING_MINUTES} min) sta oltre il lease di sincronizzazione: `
+  + 'non si può dichiarare interrotto un lavoro ancora vivo');
+ok(MIN_BODY_CHARS_FOR_ANALYSIS > 0 && MIN_BODY_CHARS_FOR_ANALYSIS < 200,
+  `la soglia del corpo analizzabile (${MIN_BODY_CHARS_FOR_ANALYSIS} caratteri) è dichiarata, non nascosta in una funzione`);
+ok(INBOX_ERROR_CODES.includes('INTERRUPTED'),
+  'esiste un codice per «interrotto»: distinguerlo da «fallito» cambia cosa può fare la persona');
+
+// Il budget di tempo: misurato sul campo, non stimato. La piattaforma chiude la
+// richiesta a 150 secondi e uccide l'isolate; un'analisi ne è costata fra 22 e
+// 30. Se queste due costanti smettono di stare dentro quel limite, la
+// manutenzione torna a farsi uccidere a metà — con stati appesi al seguito.
+ok(EDGE_TIME_BUDGET_MS < 150_000,
+  `il budget di un'esecuzione (${EDGE_TIME_BUDGET_MS / 1000}s) sta sotto il limite di 150s della piattaforma`);
+ok(ANALYSIS_SLOT_MS > 30_000 && EDGE_TIME_BUDGET_MS + ANALYSIS_SLOT_MS < 150_000,
+  `l'ultima analisi avviata (fino a ${ANALYSIS_SLOT_MS / 1000}s) finisce comunque entro i 150s: `
+  + 'il margine non è un augurio, è aritmetica');
+ok(INBOX_ERROR_CODES.includes('TIME_BUDGET'),
+  '«tempo esaurito» ha un codice proprio: non è un guasto e non va detto come tale');
 
 // ===========================================================================
 console.log(`\n${B}Riepilogo${X}  ${G}${pass} superati${X}${fail ? `  ${R}${fail} falliti${X}` : ''}\n`);

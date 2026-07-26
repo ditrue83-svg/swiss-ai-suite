@@ -217,7 +217,12 @@ export function InboxPage() {
         0,
       );
       const failure = results.find((r) => 'error' in (r as object)) as { error: unknown } | undefined;
+      // Il tempo di una singola esecuzione è finito prima del lavoro. Non è un
+      // guasto e non è «niente di nuovo»: dirlo com'è evita che l'utente prema
+      // di nuovo un pulsante per una cosa che sta già andando avanti da sola.
+      const truncated = results.some((r) => (r as { code?: string }).code === 'TIME_BUDGET');
       if (failure) showToast(toUserMessage(failure.error));
+      else if (truncated) showToast(inboxErrorMessage('TIME_BUDGET') ?? t('inbox.syncNothingNew'));
       else showToast(added === 0 ? t('inbox.syncNothingNew') : added === 1 ? t('inbox.syncNewOne') : t('inbox.syncNew', { n: added }));
       await loadConnections();
       await loadPage(true, null);

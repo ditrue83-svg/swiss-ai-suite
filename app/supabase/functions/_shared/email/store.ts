@@ -518,14 +518,74 @@ export async function linkDocument(
   if (error && code !== '23505') throw new Error('collegamento email/documento fallito');
 }
 
-/** Il messaggio ha già un documento per questo ruolo? Evita lavoro ripetuto. */
-export async function hasLinkedDocument(
-  sb: ServerClient, messageId: string, relation: 'body' | 'attachment', attachmentId?: string | null,
-): Promise<boolean> {
-  let query = sb.from('email_message_documents').select('id').eq('email_message_id', messageId).eq('relation', relation);
-  if (relation === 'attachment') query = query.eq('attachment_id', attachmentId ?? '');
-  const { data } = await query.limit(1);
-  return Array.isArray(data) && data.length > 0;
+export interface LinkedDocument {
+  documentId: string;
+  relation: 'body' | 'attachment';
+  storagePath: string | null;
+  mimeType: string;
+  sizeBytes: number | null;
+  /** Esiste già un'analisi non fallita su questo documento? */
+  analysed: boolean;
+}
+
+/**
+ * I documenti già creati per questo messaggio da un tentativo precedente.
+ *
+ * Esiste perché un'analisi può interrompersi DOPO che il documento è stato
+ * creato — la quota si esaurisce fra la creazione e la chiamata al modello — e
+ * al ritentativo quel documento va ANALIZZATO, non scambiato per lavoro già
+ * fatto. Il codice precedente si limitava a chiedere «esiste?» e usava la
+ * risposta per non fare nulla: quattordici messaggi reali sono rimasti così,
+ * con il documento in archivio e nessuna analisi.
+ */
+export async function listLinkedDocuments(
+  sb: ServerClient, companyId: string, messageId: string,
+): Promise<LinkedDocument[]> {
+  const { data } = await sb.from('email_message_documents')
+    .select('document_id, relation, documents (id, storage_path, mime_type, file_size)')
+    .eq('company_id', companyId)
+    .eq('email_message_id', messageId);
+
+  const rows = (data ?? []) as {
+    document_id: string;
+    relation: 'body' | 'attachment';
+    documents: { storage_path: string | null; mime_type: string | null; file_size: number | null } | null;
+  }[];
+  if (!rows.length) return [];
+
+  // Una sola interrogazione per tutti i documenti: quali hanno già un'analisi
+  // che vale. `failed` non conta — un'analisi fallita è lavoro da rifare.
+  const ids = rows.map((r) => r.document_id);
+  const { data: analyses } = await sb.from('document_analyses')
+    .select('document_id, analysis_status').in('document_id', ids);
+  const analysed = new Set(
+    ((analyses ?? []) as { document_id: string; analysis_status: string }[])
+      .filter((a) => a.analysis_status !== 'failed')
+      .map((a) => a.document_id),
+  );
+
+  return rows.map((r) => ({
+    documentId: r.document_id,
+    relation: r.relation,
+    storagePath: r.documents?.storage_path ?? null,
+    mimeType: r.documents?.mime_type ?? 'application/octet-stream',
+    sizeBytes: r.documents?.file_size ?? null,
+    analysed: analysed.has(r.document_id),
+  }));
+}
+
+/**
+ * Rilegge dallo Storage i byte di un documento già archiviato.
+ *
+ * Si analizza il file COME È STATO SALVATO, non una ricostruzione dal
+ * messaggio: il corpo di una email può essere cambiato presso il provider
+ * (§117), e analizzare un testo diverso da quello archiviato produrrebbe
+ * citazioni che non si ritrovano nel documento mostrato all'utente.
+ */
+export async function downloadDocument(sb: ServerClient, storagePath: string): Promise<Uint8Array | null> {
+  const { data, error } = await sb.storage.from(DOCUMENTS_BUCKET).download(storagePath);
+  if (error || !data) return null;
+  return new Uint8Array(await (data as Blob).arrayBuffer());
 }
 
 // ---- Quota AI (§58) ---------------------------------------------------------

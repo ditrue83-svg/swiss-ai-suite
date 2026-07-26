@@ -13,6 +13,9 @@ dist-ssr/
 
 # supabase CLI local
 supabase/.temp/
+
+# scarto locale (script usa e getta, backup di lavorazione)
+.temp/
 supabase/.branches/
 
 # logs / editor

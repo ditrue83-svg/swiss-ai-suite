@@ -6,11 +6,14 @@ di posta**: non invia, non risponde, non archivia, non modifica nulla nella
 casella. È il punto d'ingresso da cui una comunicazione amministrativa diventa
 un documento AI-Swisse e passa dalla pipeline Admin AI già esistente.
 
-> **Stato.** Il codice è completo e verificato offline. La funzione **non è
-> attiva in produzione** finché non sono state eseguite le configurazioni di
-> questo documento: senza le credenziali dei provider l'applicazione mostra lo
-> stato reale («nessun fornitore configurato»), non un pulsante che porta a un
-> errore. Vedi «Cosa manca per andare in produzione» in fondo.
+> **Stato al 2026-07-27.** **Attiva con Google**: le Edge Function sono
+> deployate, una casella Gmail reale è collegata e la posta viene importata,
+> classificata e analizzata. Microsoft non è configurato e l'applicazione lo
+> dichiara («questo fornitore non è configurato su questo server»).
+> Restano da fare: lo scheduler della manutenzione (6.5), le notifiche push via
+> Pub/Sub (4.4, richiede la fatturazione attiva su Google Cloud) e la verifica
+> CASA dell'app Google, senza la quale possono collegarsi solo gli utenti di
+> prova. Vedi «Cosa manca per andare in produzione» in fondo.
 
 ---
 
@@ -401,8 +404,33 @@ npx supabase functions deploy email-maintenance --project-ref tcjmagaqktmzijbfnt
 
 ### 6.5 Manutenzione periodica
 
-`email-maintenance` rinnova le sottoscrizioni push in scadenza, riconcilia le
-caselle silenziose e ripulisce ciò che non serve più. **Va richiamata ogni ora.**
+`email-maintenance` rinnova le sottoscrizioni push in scadenza, recupera i
+lavori interrotti, riconcilia le caselle silenziose, smaltisce un lotto della
+coda di analisi e ripulisce ciò che non serve più. **Va richiamata ogni ora.**
+
+**Recupero dei lavori interrotti.** Un'Edge Function che supera il proprio tempo
+massimo viene uccisa e il suo `finally` non gira: restano un messaggio in
+`analyzing` e una sincronizzazione in `running` che nessun'altra parte del
+sistema ripesca. Uno stato appeso è indistinguibile da un lavoro in corso —
+cioè è un guasto che si presenta come normalità. Oltre
+`STALE_PROCESSING_MINUTES` (30 minuti, molto più del lease di 5):
+
+- un messaggio già riconosciuto come azionabile e interrotto durante
+  importazione o analisi torna **in coda** (`awaiting_analysis`), perché
+  riprenderlo è sicuro: l'analisi riparte dal documento già creato;
+- tutto il resto diventa `failed` con codice **`INTERRUPTED`**, distinto da
+  `ANALYSIS_FAILED` perché la persona può ancora premere «Analizza». Un
+  messaggio interrotto durante la classificazione non è riclassificabile in
+  automatico (la sincronizzazione salta i messaggi già acquisiti);
+- le sincronizzazioni rimaste `running` vengono chiuse come `failed`
+  / `INTERRUPTED`, con `duration_ms` **vuoto**: quanto siano durate prima di
+  morire non lo sappiamo, e un numero inventato in un registro diagnostico è
+  peggio di un campo vuoto.
+
+Il ritentativo è **uno solo**: `error_code` resta `INTERRUPTED` mentre il
+messaggio è in coda, quindi una seconda interruzione lo trova già marcato e lo
+ferma. Un'analisi che si interrompe sempre non può diventare una spesa
+ricorrente. Al successo la pipeline azzera il codice: la traccia sparisce da sé.
 
 Non è configurata automaticamente dalla migrazione, di proposito: richiederebbe
 di mettere un segreto dentro il database. Due modi:
@@ -493,6 +521,41 @@ crea un secondo documento: si riusa quello esistente (hash per azienda, indice
 della 0006). **La relazione con il nuovo messaggio viene comunque scritta**:
 deduplicare il documento non fa perdere la provenienza.
 
+### Ripresa di un'analisi interrotta
+
+L'analisi può fermarsi **dopo** che il documento è stato creato: la quota si
+esaurisce fra la creazione e la chiamata al modello, oppure l'esecuzione viene
+uccisa a metà. Al ritentativo il documento c'è già, e va **analizzato**.
+
+`planAnalysisTarget` (in `_shared/email/sync.ts`, funzione pura) decide cosa
+analizzare, in quest'ordine:
+
+| Situazione | Decisione |
+|---|---|
+| Allegato appena importato che merita l'analisi | si analizza quello |
+| Documento già collegato, mai analizzato | **si riprende**: byte riletti dallo Storage |
+| Documento già collegato e già analizzato | non si rianalizza, non si spende |
+| Documento collegato il cui file non si scarica | guasto dichiarato (`ANALYSIS_FAILED`) |
+| Nessun documento e corpo con contenuto | si crea il documento dal corpo |
+| Nessun documento e corpo troppo breve | si dichiara che non c'era nulla da analizzare |
+
+⚠️ **Perché è una funzione a parte, e perché ha i suoi test.** Fino al
+2026-07-27 il codice chiedeva soltanto «esiste già un documento per questo
+messaggio?» e, trovandolo, usciva senza fare nulla: il chiamante interpretava
+quell'uscita come «niente da analizzare» e marcava il messaggio **`done`**.
+Sul database di produzione c'erano **quattordici messaggi** in esattamente
+quella condizione — documento in archivio, nessuna analisi — e allo smaltimento
+successivo sarebbero passati a «fatto» senza che nessuno li leggesse. La coda si
+sarebbe svuotata da sola, con «Da gestire» pulito e quattordici comunicazioni
+amministrative mai lette: un fallimento che si presenta come successo.
+I casi della tabella sono nella sezione 9 di `npm run test:inbox-unit`, e il
+primo è quello che il codice precedente **non** superava.
+
+Si rileggono i byte **dallo Storage** e non si ricostruisce il testo dal
+messaggio: presso il provider il contenuto può essere cambiato (§117), e
+analizzare qualcosa di diverso da ciò che è archiviato produrrebbe citazioni
+che nel documento mostrato all'utente non si ritrovano.
+
 ---
 
 ## 8. Sviluppo locale
@@ -519,7 +582,7 @@ preferenza:
 La maggior parte della logica non ha bisogno di nulla di tutto questo:
 
 ```bash
-npm run test:inbox-unit    # 134 asserzioni, nessuna rete, nessuna credenziale
+npm run test:inbox-unit    # 148 asserzioni, nessuna rete, nessuna credenziale
 ```
 
 ---
@@ -576,14 +639,14 @@ implementata.
 ## 11. Test
 
 ```bash
-npm run test:inbox-unit   # 134 asserzioni offline: HTML/XSS, normalizzazione,
+npm run test:inbox-unit   # 148 asserzioni offline: HTML/XSS, normalizzazione,
                           # allegati, classificazione, injection, adapter, crypto
 npm run test:inbox        # 50 asserzioni sul database reale: RLS, isolamento fra
                           # aziende, permessi di colonna, vincoli, quota di sistema
 ```
 
 Il primo non richiede nulla. Il secondo richiede `.env.test` e le migrazioni 0013 + 0014, e lo
-dichiara chiaramente se mancano. **Entrambi verdi al 2026-07-26** (134 e 50).
+dichiara chiaramente se mancano. **Entrambi verdi al 2026-07-27** (148 e 50).
 
 `test:inbox` non è decorativo: alla prima esecuzione sul database reale ha smontato la garanzia sui
 permessi di colonna che la 0013 dichiarava nei commenti e che questo documento affermava. È il
@@ -604,9 +667,15 @@ e non sono simulabili in modo onesto — si verificano collegando una casella ve
    sicurezza CASA. Fino ad allora si possono collegare solo gli indirizzi
    elencati come utenti di test. È il vincolo esterno più pesante.
 3. **Scheduler della manutenzione** (sezione 6.5). Senza, il push si spegne dopo
-   qualche giorno e resta la sola sincronizzazione manuale.
+   qualche giorno, la coda delle analisi si smaltisce solo premendo
+   «Sincronizza» e i lavori interrotti restano appesi.
 4. **Prova end-to-end su una casella reale**: consenso, import iniziale, arrivo
    di una notifica, analisi di un allegato, scollegamento.
+   *(2026-07-27: fatta fino all'analisi. Il primo collegamento reale ha mostrato
+   due cose che nessun test aveva colto — l'import iniziale ucciso a metà lascia
+   stati appesi, e il ritentativo di un'analisi in coda scambiava il documento
+   già creato per lavoro già fatto. Entrambe corrette; restano da provare sul
+   campo l'arrivo di una notifica push e lo scollegamento.)*
 5. **Valutazione d'impatto sulla protezione dei dati.** Leggere la posta
    aziendale di un cliente è un trattamento di natura diversa dall'analizzare un
    PDF che ha caricato lui: va detto nell'informativa e nelle condizioni d'uso,

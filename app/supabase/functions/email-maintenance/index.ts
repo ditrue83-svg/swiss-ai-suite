@@ -11,7 +11,11 @@
 //   2. RICONCILIA le caselle che non si aggiornano da troppo tempo, rileggendo
 //      una finestra recente. Google stesso raccomanda di non considerare il push
 //      una garanzia di consegna.
-//   3. PULISCE ciò che non serve più: stati OAuth scaduti, impronte di eventi
+//   3. RECUPERA ciò che è rimasto a metà. Un'Edge Function uccisa a metà non
+//      esegue il proprio `finally`: il messaggio resta «in elaborazione» e la
+//      sincronizzazione resta «in corso» per sempre. Nessuno li ripescava, e
+//      uno stato appeso è un guasto travestito da lavoro in corso.
+//   4. PULISCE ciò che non serve più: stati OAuth scaduti, impronte di eventi
 //      webhook vecchie. Nessuna cancellazione di dati aziendali (§53).
 //
 // AUTENTICAZIONE: un'intestazione segreta, confrontata a tempo costante. Non è
@@ -20,7 +24,8 @@
 // ============================================================================
 import { timingSafeEqual } from '../_shared/email/crypto.ts';
 import {
-  GOOGLE_WATCH_RENEW_EVERY_HOURS, WATCH_RENEW_BEFORE_HOURS,
+  EDGE_TIME_BUDGET_MS, GOOGLE_WATCH_RENEW_EVERY_HOURS, STALE_PROCESSING_MINUTES,
+  WATCH_RENEW_BEFORE_HOURS,
 } from '../_shared/email/contract.ts';
 import {
   adapterForConnection, adminClient, aiCreateMessage, CORS, env, failure,
@@ -50,7 +55,13 @@ Deno.serve(async (req: Request) => {
   const language = outputLanguage((body as { outputLanguage?: unknown })?.outputLanguage);
 
   const sb = adminClient();
-  const report = { renewed: 0, renewFailed: 0, reconciled: 0, reconcileFailed: 0, analysed: 0, cleanedStates: 0, cleanedEvents: 0 };
+  const report = {
+    renewed: 0, renewFailed: 0, reconciled: 0, reconcileFailed: 0, analysed: 0,
+    requeued: 0, interrupted: 0, runsClosed: 0, cleanedStates: 0, cleanedEvents: 0,
+    // Dichiarato nella risposta: chi legge il report deve poter distinguere
+    // «non c'era altro da fare» da «il tempo è finito prima del lavoro».
+    timeBudgetReached: false,
+  };
 
   try {
     const deps: SyncDeps = {
@@ -62,11 +73,22 @@ Deno.serve(async (req: Request) => {
       notificationUrl: null,
     };
 
-    await renewWatches(deps, report);
-    await reconcile(deps, report);
-    report.analysed = await drainAnalyses(deps);
+    // Il tempo è la risorsa scarsa qui: oltre i 150 secondi la richiesta viene
+    // chiusa e l'isolate ucciso a metà. Tutti i passi lavorano dentro lo stesso
+    // budget e si fermano in ordine; il lavoro rimasto è quello della prossima
+    // esecuzione, che arriva fra un'ora.
+    const deadline = Date.now() + EDGE_TIME_BUDGET_MS;
+
+    await renewWatches(deps, report, deadline);
+    // Prima di riconciliare e di smaltire: ciò che è rimasto appeso torna in uno
+    // stato onesto, e quello che merita un ritentativo entra in coda in tempo per
+    // lo smaltimento di questa stessa esecuzione.
+    await recoverInterrupted(sb, report);
+    await reconcile(deps, report, deadline);
+    report.analysed = await drainAnalyses(deps, deadline);
     report.cleanedStates = await cleanupOauthStates(sb);
     report.cleanedEvents = await cleanupWebhookEvents(sb);
+    report.timeBudgetReached = Date.now() >= deadline;
   } catch (error) {
     const code = error instanceof EmailProviderError ? error.code : 'UNKNOWN';
     logEvent('email-maintenance', { code });
@@ -79,7 +101,9 @@ Deno.serve(async (req: Request) => {
 
 // ---- 1. Rinnovo delle sottoscrizioni ----------------------------------------
 
-async function renewWatches(deps: SyncDeps, report: { renewed: number; renewFailed: number }): Promise<void> {
+async function renewWatches(
+  deps: SyncDeps, report: { renewed: number; renewFailed: number }, deadline: number,
+): Promise<void> {
   const threshold = new Date(Date.now() + WATCH_RENEW_BEFORE_HOURS * 3600_000).toISOString();
   // Si prendono anche quelle SENZA scadenza nota: una sottoscrizione di cui non
   // si conosce la scadenza è indistinguibile da una che non c'è.
@@ -90,6 +114,7 @@ async function renewWatches(deps: SyncDeps, report: { renewed: number; renewFail
     .limit(MAX_PER_RUN);
 
   for (const row of (data ?? []) as { id: string }[]) {
+    if (Date.now() >= deadline) return;
     const connection = await getConnection(deps.sb, row.id);
     if (!connection) continue;
 
@@ -142,17 +167,31 @@ async function renewWatches(deps: SyncDeps, report: { renewed: number; renewFail
 
 // ---- 2. Riconciliazione ------------------------------------------------------
 
-async function reconcile(deps: SyncDeps, report: { reconciled: number; reconcileFailed: number }): Promise<void> {
+async function reconcile(
+  deps: SyncDeps, report: { reconciled: number; reconcileFailed: number }, deadline: number,
+): Promise<void> {
   const silentSince = new Date(Date.now() - RECONCILE_IF_SILENT_HOURS * 3600_000).toISOString();
+  // Si prendono anche le caselle il cui import iniziale non è mai arrivato in
+  // fondo, ANCHE se si sono sincronizzate da poco: senza questa condizione un
+  // import troncato non verrebbe mai ripreso, perché la riconciliazione guarda
+  // solo le ultime 72 ore e i messaggi più vecchi resterebbero fuori per sempre.
   const { data } = await deps.sb.from('email_connections')
-    .select('id')
+    .select('id, initial_sync_completed_at')
     .eq('status', 'active').eq('sync_enabled', true)
-    .or(`last_successful_sync_at.is.null,last_successful_sync_at.lt.${silentSince}`)
+    .or(`last_successful_sync_at.is.null,last_successful_sync_at.lt.${silentSince},initial_sync_completed_at.is.null`)
     .limit(MAX_PER_RUN);
 
-  for (const row of (data ?? []) as { id: string }[]) {
+  for (const row of (data ?? []) as { id: string; initial_sync_completed_at: string | null }[]) {
+    if (Date.now() >= deadline) return;
+    // Un import iniziale incompleto si RIPRENDE come import iniziale: rileggere
+    // solo le ultime 72 ore lascerebbe fuori proprio la parte che manca. Costa
+    // poco: i messaggi già acquisiti vengono riconosciuti e saltati, senza
+    // classificarli e senza spendere.
     const outcome = await runSync(deps, {
-      connectionId: row.id, syncType: 'reconciliation', triggeredBy: 'schedule',
+      connectionId: row.id,
+      syncType: row.initial_sync_completed_at ? 'reconciliation' : 'initial',
+      triggeredBy: 'schedule',
+      deadlineMs: deadline,
     });
     // `busy` non è un fallimento: significa che una sincronizzazione è già in
     // corso, cioè esattamente ciò che si voleva ottenere.
@@ -171,7 +210,7 @@ async function reconcile(deps: SyncDeps, report: { reconciled: number; reconcile
  * smaltire a lotti è ciò che rende il primo collegamento sopportabile senza
  * alzare un limite che protegge davvero.
  */
-async function drainAnalyses(deps: SyncDeps): Promise<number> {
+async function drainAnalyses(deps: SyncDeps, deadline: number): Promise<number> {
   const { data } = await deps.sb.from('email_connections')
     .select('id')
     .eq('status', 'active').eq('sync_enabled', true)
@@ -179,12 +218,14 @@ async function drainAnalyses(deps: SyncDeps): Promise<number> {
 
   let totale = 0;
   for (const row of (data ?? []) as { id: string }[]) {
+    if (Date.now() >= deadline) break;
     const connection = await getConnection(deps.sb, row.id);
     if (!connection) continue;
     try {
       const adapter = adapterForConnection(connection);
       const accessToken = await getValidAccessToken(deps, connection, adapter);
-      totale += await drainPendingAnalyses(deps, connection, adapter, accessToken, newCounters());
+      totale += await drainPendingAnalyses(deps, connection, adapter, accessToken, newCounters(),
+        undefined, deadline);
     } catch (error) {
       // Una casella che non si autentica non blocca le altre: il suo stato è
       // già stato registrato da `getValidAccessToken`.
@@ -197,7 +238,74 @@ async function drainAnalyses(deps: SyncDeps): Promise<number> {
   return totale;
 }
 
-// ---- 4. Pulizia --------------------------------------------------------------
+// ---- 4. Recupero di ciò che è rimasto a metà ---------------------------------
+
+/**
+ * Rimette in uno stato onesto i lavori interrotti.
+ *
+ * Un'Edge Function che supera il proprio tempo massimo viene uccisa: il `finally`
+ * non gira, e restano un messaggio in `analyzing` e una sincronizzazione in
+ * `running` che nessuna parte del sistema ripesca. Visto sul campo al primo
+ * collegamento reale: un messaggio fermo in `classifying` e una sincronizzazione
+ * «in corso» da ventiquattro ore.
+ *
+ * Due destini diversi, perché due cose diverse:
+ *   · un messaggio già riconosciuto come azionabile e interrotto durante
+ *     l'importazione o l'analisi torna IN CODA — merita un ritentativo, e
+ *     riprenderlo è sicuro perché l'analisi riparte dal documento già creato;
+ *   · tutto il resto diventa un ERRORE DICHIARATO. Un messaggio interrotto
+ *     durante la classificazione non è riclassificabile in automatico (la
+ *     sincronizzazione salta i messaggi già acquisiti): resta visibile fra
+ *     quelli da verificare, con il suo codice, e la persona decide.
+ *
+ * Il ritentativo è UNO SOLO: `error_code` resta `INTERRUPTED` mentre il
+ * messaggio è in coda, quindi una seconda interruzione lo trova già marcato e
+ * lo ferma. Un'analisi che si interrompe sempre non può diventare una spesa
+ * ricorrente. Al successo il codice viene azzerato dalla pipeline: la traccia
+ * sparisce da sola.
+ */
+async function recoverInterrupted(
+  sb: ServerClient, report: { requeued: number; interrupted: number; runsClosed: number },
+): Promise<void> {
+  const cutoff = new Date(Date.now() - STALE_PROCESSING_MINUTES * 60_000).toISOString();
+
+  const { data: stale } = await sb.from('email_messages')
+    .select('id, processing_status, relevance, error_code')
+    .in('processing_status', ['pending', 'classifying', 'importing', 'analyzing'])
+    .lt('updated_at', cutoff)
+    .limit(200);
+
+  for (const row of (stale ?? []) as {
+    id: string; processing_status: string; relevance: string | null; error_code: string | null;
+  }[]) {
+    const inAnalysis = row.processing_status === 'importing' || row.processing_status === 'analyzing';
+    const retryable = inAnalysis && row.relevance === 'likely_actionable' && row.error_code !== 'INTERRUPTED';
+
+    if (retryable) {
+      await sb.from('email_messages')
+        .update({ processing_status: 'awaiting_analysis', error_code: 'INTERRUPTED' })
+        .eq('id', row.id);
+      report.requeued++;
+    } else {
+      await sb.from('email_messages')
+        .update({ processing_status: 'failed', error_code: 'INTERRUPTED' })
+        .eq('id', row.id);
+      report.interrupted++;
+    }
+  }
+
+  // Una sincronizzazione «in corso» da mezz'ora non è in corso. `duration_ms`
+  // resta vuoto di proposito: quanto sia durata prima di morire non lo sappiamo,
+  // e un numero inventato in un registro diagnostico è peggio di un campo vuoto.
+  const { data: runs } = await sb.from('email_sync_runs')
+    .update({ status: 'failed', completed_at: new Date().toISOString(), error_code: 'INTERRUPTED' })
+    .eq('status', 'running')
+    .lt('started_at', cutoff)
+    .select('id');
+  report.runsClosed = Array.isArray(runs) ? runs.length : 0;
+}
+
+// ---- 5. Pulizia --------------------------------------------------------------
 
 async function cleanupOauthStates(sb: ServerClient): Promise<number> {
   const { data } = await sb.from('email_oauth_states')

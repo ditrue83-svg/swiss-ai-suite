@@ -342,7 +342,7 @@ npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:subsidy    # eval interpretazione progetto (14 test)
 npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
-npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto (134 test)
+npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto (148 test)
 npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
@@ -373,7 +373,7 @@ Creano dati reali e li rimuovono alla fine.
   costruiti ad arte: scadenza con citazione falsa → marcata da verificare; azione senza citazione → declassata a
   suggerimento; rischi espliciti prima degli inferiti; importo dovuto scelto correttamente e tipizzato; ente ambiguo →
   null + incertezza; valori fuori range normalizzati; output vuoto che non produce dati dal nulla.
-- **`test:inbox-unit` (134)** — i livelli dell'Inbox che decidono la sicurezza, provati **offline**:
+- **`test:inbox-unit` (148)** — i livelli dell'Inbox che decidono la sicurezza, provati **offline**:
   dodici vettori XSS reali (`<script>`, `onerror`, `iframe`, `javascript:`, SVG, form, pixel di
   tracciamento, tag spezzato) di cui non resta traccia nel testo; URL validati da un parser e non da un
   pattern; normalizzazione RFC 2047, indirizzi, storico citato con le sue condizioni di rinuncia;

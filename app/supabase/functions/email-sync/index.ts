@@ -11,7 +11,7 @@
 // Il lavoro vero sta in `_shared/email/sync.ts`: questa funzione è un
 // involucro HTTP sottile, come `analyze-document`.
 // ============================================================================
-import { MANUAL_SYNC_MIN_INTERVAL_SECONDS } from '../_shared/email/contract.ts';
+import { EDGE_TIME_BUDGET_MS, MANUAL_SYNC_MIN_INTERVAL_SECONDS } from '../_shared/email/contract.ts';
 import { timingSafeEqual } from '../_shared/email/crypto.ts';
 import {
   adapterForConnection, adminClient, aiCreateMessage, assertMember, authenticate,
@@ -107,7 +107,12 @@ async function handleSync(req: Request, body: Record<string, unknown>, internal:
   }
 
   const deps = await buildDeps(sb, body.outputLanguage);
-  const outcome = await runSync(deps, { connectionId, syncType, triggeredBy });
+  // Anche una sincronizzazione chiesta da una persona ha 150 secondi, non di
+  // più: si fa quello che ci sta e lo si dichiara, invece di essere uccisi a
+  // metà lasciando un messaggio appeso in «analisi in corso».
+  const outcome = await runSync(deps, {
+    connectionId, syncType, triggeredBy, deadlineMs: Date.now() + EDGE_TIME_BUDGET_MS,
+  });
 
   logEvent('email-sync', {
     provider: connection.provider, type: syncType, status: outcome.status,

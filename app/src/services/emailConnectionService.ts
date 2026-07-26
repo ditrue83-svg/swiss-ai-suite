@@ -99,6 +99,14 @@ export function inboxErrorMessage(code: string | null | undefined): string | nul
     case 'ANALYSIS_FAILED':
     case 'ANALYSIS_SKIPPED':
       return tr('inbox.errors.analysisFailed');
+    // Distinto da un'analisi fallita: qui l'elaborazione non è arrivata in
+    // fondo. Dirlo com'è cambia cosa può fare la persona — riprovare ha senso.
+    case 'INTERRUPTED':
+      return tr('inbox.errors.interrupted');
+    // Non è un guasto: è un lotto che finisce. Chiamarlo errore manderebbe la
+    // persona a riprovare una cosa che sta già proseguendo da sola.
+    case 'TIME_BUDGET':
+      return tr('inbox.errors.timeBudget');
     case 'ATTACHMENT_FAILED':
       return tr('inbox.errors.attachmentFailed');
     case 'SOURCE_CHANGED':
