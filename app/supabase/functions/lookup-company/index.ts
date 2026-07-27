@@ -12,6 +12,25 @@
 // Config: secret ZEFIX_AUTH = "utente:password" (credenziali gratuite Zefix).
 //   npx supabase secrets set ZEFIX_AUTH="utente:password" --project-ref <ref>
 // Senza secret la funzione risponde 503 (l'onboarding resta manuale).
+//
+// ⚠️ STATO AL 2026-07-27: gli endpoint qui sotto sono stati allineati al
+// documento OpenAPI ufficiale (`/ZefixPublicREST/v3/api-docs`, versione
+// 2.7.2.3), che dichiara Basic Auth su tutte le rotte. La versione precedente
+// chiamava `/api/v1/firm/search` e `/api/v1/firm/{uid}`: **rotte che non
+// esistono**, quindi la ricerca avrebbe risposto 404 anche con credenziali
+// valide. Erano sbagliati anche due campi della risposta — `canton`, che nella
+// ricerca per nome l'API non restituisce affatto, e `legalFormId`, che è
+// annidato in `legalForm.id`.
+//
+// **Questo codice non è ancora stato provato contro l'API viva**: le credenziali
+// dell'API Zefix vanno richieste a zefix@bj.admin.ch e non sono state ancora
+// rilasciate. È allineato a una specifica, non a una risposta vera — e su
+// questo progetto la differenza è già costata abbastanza. Alla prima chiamata
+// reale vanno riverificati: forma del corpo accettato, presenza dei campi e
+// numero di risultati restituiti senza paginazione.
+// (Attenzione a non confondere Zefix con **Regix**, che è il servizio dell'UFRC
+// per la verifica dei NOMI di nuove ditte: altro servizio, altre credenziali,
+// nessuna API pubblica.)
 // ============================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -36,9 +55,20 @@ const cantonLabel = (code: unknown): string | null => {
   return CANTON_LABEL[code.toUpperCase()] ?? 'Altro';
 };
 
+/** Forma giuridica: nella risposta è un OGGETTO, non un identificativo sciolto. */
+interface ZefixLegalForm { id?: number; uid?: string }
+
+/**
+ * Campi che leggiamo dalla risposta di Zefix. Rispecchiano `CompanyShort`
+ * (ricerca per nome) e `CompanyFull` (ricerca per IDI) del documento OpenAPI.
+ *
+ * ⚠️ `canton` esiste **solo** in `CompanyFull`: cercando per nome l'API non lo
+ * restituisce. Resta null e lo compila la persona — dedurlo dal comune sarebbe
+ * inventare un dato che il registro non ha dato.
+ */
 interface ZefixCompany {
   name?: string; uid?: string; chid?: string; legalSeat?: string; canton?: string;
-  legalFormId?: number; status?: string; deletionDate?: string | null;
+  legalForm?: ZefixLegalForm; status?: string; deletionDate?: string | null;
 }
 interface Candidate {
   uid: string | null; name: string | null; canton: string | null;
@@ -50,7 +80,7 @@ const normalize = (c: ZefixCompany): Candidate => ({
   canton: cantonLabel(c?.canton),
   municipality: c?.legalSeat ?? null,
   status: c?.status ?? null,
-  legalFormId: typeof c?.legalFormId === 'number' ? c.legalFormId : null,
+  legalFormId: typeof c?.legalForm?.id === 'number' ? c.legalForm.id : null,
 });
 
 // "CHE-123.456.789" / "CHE 123 456 789" → "CHE123456789" (compatto per il path).
@@ -99,8 +129,8 @@ Deno.serve(async (req: Request) => {
     let companies: Candidate[] = [];
 
     if (uid) {
-      // Ricerca per IDI/UID esatto.
-      const r = await fetch(`${ZEFIX_BASE}/firm/${uid}`, { headers: zHeaders });
+      // Ricerca per IDI/UID esatto → `CompanyFull`, che porta anche il cantone.
+      const r = await fetch(`${ZEFIX_BASE}/company/uid/${uid}`, { headers: zHeaders });
       if (r.status === 404) companies = [];
       else if (!r.ok) throw new UpstreamError(r.status, (await r.text().catch(() => '')).slice(0, 200));
       else {
@@ -109,10 +139,16 @@ Deno.serve(async (req: Request) => {
         companies = arr.filter(Boolean).map(normalize);
       }
     } else {
-      // Ricerca per nome.
-      const r = await fetch(`${ZEFIX_BASE}/firm/search`, {
+      // Ricerca per nome → array di `CompanyShort`.
+      //
+      // Il corpo contiene SOLO i campi che lo schema `CompanySearchQuery`
+      // dichiara: `name` (obbligatorio) e `activeOnly`. `maxEntries`, `offset` e
+      // `languageKey` non esistono in quello schema — c'erano, e mandare campi
+      // che l'API non conosce è un modo di scoprire tardi che non funzionano.
+      // Il numero di risultati lo limitiamo qui, dove è una nostra decisione.
+      const r = await fetch(`${ZEFIX_BASE}/company/search`, {
         method: 'POST', headers: zHeaders,
-        body: JSON.stringify({ name: query, activeOnly: true, languageKey: 'it', maxEntries: MAX_RESULTS, offset: 0 }),
+        body: JSON.stringify({ name: query, activeOnly: true }),
       });
       if (!r.ok) throw new UpstreamError(r.status, (await r.text().catch(() => '')).slice(0, 200));
       const data = await r.json();

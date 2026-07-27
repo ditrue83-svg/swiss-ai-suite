@@ -529,6 +529,14 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
   sola per documento). È voluto, ma lo storico cresce e prima o poi va deciso per quanto conservarlo.
 - **Registro IDI (Zefix)**: implementato, ma richiede credenziali API rilasciate su richiesta
   (`zefix@bj.admin.ch`); senza `ZEFIX_AUTH` l'onboarding resta manuale e lo dichiara.
+  ⚠️ Gli endpoint sono stati **corretti il 2026-07-27** contro il documento OpenAPI ufficiale
+  (2.7.2.3): la versione precedente chiamava `/api/v1/firm/*`, rotte inesistenti, e avrebbe
+  risposto 404 anche con credenziali valide. **Il codice non è però ancora stato provato contro
+  l'API viva**, perché le credenziali non sono state rilasciate: è allineato a una specifica, non
+  a una risposta reale. Alla prima chiamata vera vanno riverificati corpo accettato, campi
+  presenti e numero di risultati.
+  ⚠️ **Zefix non è Regix**: quest'ultimo è il servizio dell'UFRC per verificare la disponibilità
+  del NOME di una ditta nuova — altre credenziali, nessuna API pubblica, non utilizzabile qui.
 - **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali (0 in stato `recheck`), di cui
   **1 sospeso** — vedi sotto. Copertura Confederazione + Ticino, non 26 Cantoni.
 - **Contenuti del catalogo solo in italiano**: l'interfaccia è tradotta, ma i testi dei programmi
