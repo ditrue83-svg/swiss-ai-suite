@@ -86,10 +86,7 @@ export function TaskDetailPage() {
     try {
       const updated = await taskService.update(data.task.id, change);
       setData({ ...data, task: updated });
-      // Lo storico è cambiato: lo si rilegge invece di indovinare cosa il
-      // database ha registrato.
-      const events = await taskEventService.list(data.task.id);
-      setData((prev) => (prev ? { ...prev, task: updated, events } : prev));
+      await refreshEvents(data.task.id);
       showToast(t('tasks.saved'));
     } catch (e) {
       showToast(toUserMessage(e));
@@ -110,11 +107,28 @@ export function TaskDetailPage() {
     } catch (e) { showToast(toUserMessage(e)); }
   }
 
+  /**
+   * Rilegge lo storico dal database.
+   *
+   * Serve dopo ogni azione che genera un evento — spuntare un passaggio,
+   * commentare — perché quegli eventi li scrivono i TRIGGER: la schermata non
+   * sa cosa è stato registrato, e indovinarlo significherebbe raccontare una
+   * storia parallela a quella vera. Senza questa rilettura «Attività recente»
+   * restava ferma alla creazione mentre nel database c'erano già tre eventi.
+   */
+  async function refreshEvents(taskId: string) {
+    try {
+      const events = await taskEventService.list(taskId);
+      setData((prev) => (prev ? { ...prev, events } : prev));
+    } catch { /* lo storico è un di più: se non si rilegge, il resto vale comunque */ }
+  }
+
   async function toggleItem(item: TaskChecklistItem, done: boolean) {
     if (!data) return;
     try {
       const saved = await taskChecklistService.setDone(item.id, done);
       setData({ ...data, checklist: data.checklist.map((c) => (c.id === saved.id ? saved : c)) });
+      if (done) await refreshEvents(data.task.id);
     } catch (e) { showToast(toUserMessage(e)); reload(); }
   }
 
@@ -147,6 +161,7 @@ export function TaskDetailPage() {
       });
       setData({ ...data, comments: [saved, ...data.comments] });
       setComment('');
+      await refreshEvents(data.task.id);
     } catch (e) { showToast(toUserMessage(e)); }
   }
 
@@ -285,12 +300,17 @@ export function TaskDetailPage() {
       {/* ---- Descrizione ---- */}
       <div className="card mt-16">
         <div className="card-title">{t('tasks.description')}</div>
-        <textarea rows={3} defaultValue={task.description ?? ''} disabled={busy}
-          aria-label={t('tasks.description')}
-          onBlur={(e) => {
-            const next = e.target.value.trim() || null;
-            if (next !== (task.description ?? null)) void patch({ description: next });
-          }} />
+        {/* Dentro `.field`: lo stile di input e textarea del design system è
+            legato a quella classe, e senza il campo resta con lo sfondo bianco
+            del browser — in tema scuro, testo chiaro su fondo bianco. */}
+        <div className="field" style={{ margin: 0 }}>
+          <textarea rows={3} defaultValue={task.description ?? ''} disabled={busy}
+            aria-label={t('tasks.description')}
+            onBlur={(e) => {
+              const next = e.target.value.trim() || null;
+              if (next !== (task.description ?? null)) void patch({ description: next });
+            }} />
+        </div>
       </div>
 
       {/* ---- Checklist ---- */}
@@ -320,10 +340,11 @@ export function TaskDetailPage() {
         ))}
 
         <div className="row-wrap mt-10">
-          <input value={newItem} onChange={(e) => setNewItem(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addChecklistItem(); } }}
-            placeholder={t('tasks.checklistAdd')} aria-label={t('tasks.checklistAdd')}
-            style={{ flex: 1, minWidth: 200 }} />
+          <div className="field" style={{ flex: 1, minWidth: 200, margin: 0 }}>
+            <input value={newItem} onChange={(e) => setNewItem(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addChecklistItem(); } }}
+              placeholder={t('tasks.checklistAdd')} aria-label={t('tasks.checklistAdd')} />
+          </div>
           <button className="btn btn-sm" onClick={() => void addChecklistItem()} disabled={!newItem.trim()}>
             {t('tasks.add')}
           </button>
@@ -334,10 +355,11 @@ export function TaskDetailPage() {
       <div className="card mt-16">
         <div className="card-title">{t('tasks.comments')}</div>
         <div className="row-wrap">
-          <input value={comment} onChange={(e) => setComment(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addComment(); } }}
-            placeholder={t('tasks.commentPlaceholder')} aria-label={t('tasks.commentPlaceholder')}
-            style={{ flex: 1, minWidth: 220 }} />
+          <div className="field" style={{ flex: 1, minWidth: 220, margin: 0 }}>
+            <input value={comment} onChange={(e) => setComment(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addComment(); } }}
+              placeholder={t('tasks.commentPlaceholder')} aria-label={t('tasks.commentPlaceholder')} />
+          </div>
           <button className="btn btn-sm" onClick={() => void addComment()} disabled={!comment.trim()}>
             {t('tasks.commentSend')}
           </button>
