@@ -326,7 +326,7 @@ export function TaskDetailPage() {
 
         {checklist.map((item, i) => (
           <div className="list-row" key={item.id}>
-            <label className="list-main" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <label className="list-main task-check" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input type="checkbox" checked={item.done} onChange={(e) => void toggleItem(item, e.target.checked)} />
               <span className={item.done ? 'muted-sm' : ''}>{item.text}</span>
             </label>

@@ -771,3 +771,14 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .inbox-fields > div { grid-template-columns: 1fr; gap: 2px; }
   .inbox-fields dd { margin-bottom: var(--sp-2); }
 }
+
+/* Checklist delle attività (0016).
+   Il bersaglio da toccare è la LABEL, non la casella: avvolge testo e casella,
+   così su un telefono si spunta con il dito senza dover mirare. WCAG 2.2 chiede
+   24px sul bersaglio e la label ne misurava 23 — un pixel sotto è comunque
+   sotto. La casella passa da 13 a 18px e prende il colore dell'accento, invece
+   del blu di sistema che in tema scuro stona. */
+.task-check { min-height: 26px; }
+.task-check input[type="checkbox"] {
+  width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer;
+}
