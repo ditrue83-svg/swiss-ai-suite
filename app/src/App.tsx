@@ -21,6 +21,10 @@ import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
 import { SubsidyPage } from '@/features/subsidy-ai/SubsidyPage';
 import { DocumentsPage } from '@/features/documents/DocumentsPage';
 import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
+import { AutomationsPage } from '@/features/automations/AutomationsPage';
+import { AutomationBuilderPage } from '@/features/automations/AutomationBuilderPage';
+import { AutomationDetailPage } from '@/features/automations/AutomationDetailPage';
+import { RunDetailPage } from '@/features/automations/RunDetailPage';
 import { PricingPage } from '@/features/pricing/PricingPage';
 import { useT } from '@/i18n';
 
@@ -102,6 +106,14 @@ export default function App() {
                 in email, appunti e segnalibri delle persone: reindirizzamento,
                 non una seconda pagina da mantenere. */}
             <Route path="/archivio" element={<Navigate to="/documenti" replace />} />
+            {/* Automazioni (0020). Il generatore è la STESSA pagina per creare
+                e per modificare: due moduli avrebbero significato due posti in
+                cui ricordarsi della validazione e della frase riassuntiva. */}
+            <Route path="/automazioni" element={<AutomationsPage />} />
+            <Route path="/automazioni/nuova" element={<AutomationBuilderPage />} />
+            <Route path="/automazioni/:id" element={<AutomationDetailPage />} />
+            <Route path="/automazioni/:id/modifica" element={<AutomationBuilderPage />} />
+            <Route path="/automazioni/:id/esecuzioni/:runId" element={<RunDetailPage />} />
             <Route path="/prezzi" element={<PricingPage />} />
           </Route>
         </Route>

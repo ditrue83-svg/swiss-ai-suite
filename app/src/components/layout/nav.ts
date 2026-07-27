@@ -26,6 +26,12 @@ export const NAV: NavEntry[] = [
   // gli altri lavorano. Restano però qui, in fondo ai moduli, perché spostare
   // il menu è un'altra decisione e non va presa di straforo insieme a questa.
   { id: 'documents', labelKey: 'nav.documents', icon: 'archive', path: '/documenti' },
+  // L'Automazione è una sezione a sé e non una voce fra i moduli: i moduli
+  // sono i posti in cui il lavoro sta, questa è la regola che lo muove. Sta
+  // dopo tutti, perché è l'ultimo strato — si automatizza ciò che si è già
+  // capito, organizzato e assegnato.
+  { sectionKey: 'nav.sectionAutomation' },
+  { id: 'automations', labelKey: 'nav.automations', icon: 'settings', path: '/automazioni' },
   { sectionKey: 'nav.sectionAccount' },
   { id: 'pricing', labelKey: 'nav.pricing', icon: 'tag', path: '/prezzi' },
 ];

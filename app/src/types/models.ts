@@ -10,6 +10,7 @@ import type {
   EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
   CalendarProvider, CalendarConnectionStatus, CalendarSyncStatus,
   NotificationType, NotificationChannel, NotificationDeliveryStatus,
+  AutomationEventType, WorkflowStatus, WorkflowRunStatus, WorkflowActionStatus, WorkflowAuditKind,
 } from './database';
 
 export type {
@@ -20,6 +21,7 @@ export type {
   EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
   CalendarProvider, CalendarConnectionStatus, CalendarSyncStatus,
   NotificationType, NotificationChannel, NotificationDeliveryStatus,
+  AutomationEventType, WorkflowStatus, WorkflowRunStatus, WorkflowActionStatus, WorkflowAuditKind,
 };
 
 // ---- Utente / azienda -------------------------------------------------------
@@ -431,6 +433,11 @@ export interface Task {
   archivedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  /**
+   * L'esecuzione che l'ha creata, quando è nata da una regola (0020).
+   * `null` per tutte le altre — la stragrande maggioranza.
+   */
+  workflowRunId: string | null;
 }
 
 /** Un'attività con i nomi già risolti, per non far fare join alla UI. */
@@ -530,7 +537,15 @@ export interface AppNotification {
   entityType: string;
   entityId: string;
   /** Solo metadati: titolo, scadenza, priorità. Mai contenuti di documenti o email. */
-  payload: { title?: string; dueDate?: string | null; priority?: TaskPriority; kind?: string };
+  payload: {
+    title?: string; dueDate?: string | null; priority?: TaskPriority; kind?: string;
+    /**
+     * 0020 — il testo scritto dall'azienda dentro la regola, già reso. Non
+     * passa dai dizionari perché non è testo del prodotto: è una frase che
+     * l'azienda ha composto nella propria lingua, e tradurla la falserebbe.
+     */
+    text?: string; workflowName?: string; workflowId?: string;
+  };
   readAt: string | null;
   createdAt: string;
 }
@@ -748,3 +763,114 @@ export interface ProjectInterpretation {
   overallConfidence: number;
   meta: { droppedEvidence: number; warnings: string[] };
 }
+
+
+// I tipi delle CONFIGURAZIONI vengono dal registro, non riscritti qui: il
+// registro è l'unico posto in cui esistono i campi, gli operatori e le azioni
+// ammesse, e una seconda dichiarazione diventerebbe la copia che diverge.
+import type { WorkflowAction, WorkflowCondition } from '@/features/automations/registry';
+export type { WorkflowAction, WorkflowCondition };
+
+// ---------------------------------------------------------------------------
+// Automazioni (0020)
+//
+// QUANDO succede X, SE valgono le condizioni Y, ALLORA esegui Z.
+// Le forme applicative delle CONFIGURAZIONI non stanno qui: vivono nel registro
+// (`supabase/functions/_shared/automation/registry.ts`), che è l'unico posto in
+// cui esistono i campi, gli operatori e le azioni ammesse — e che il browser
+// legge attraverso `src/features/automations/registry.ts`. Riscriverli qui
+// avrebbe prodotto due elenchi da tenere allineati a mano.
+// ---------------------------------------------------------------------------
+
+/** Una regola, come la mostra l'elenco. */
+export interface Workflow {
+  id: string;
+  companyId: string;
+  name: string;
+  description: string | null;
+  status: WorkflowStatus;
+  triggerType: AutomationEventType;
+  conditionMatch: 'all' | 'any';
+  conditions: WorkflowCondition[];
+  actions: WorkflowAction[];
+  version: number;
+  /** Da quando è in vigore. Gli eventi precedenti non la riguardano (§163). */
+  activatedAt: string | null;
+  /**
+   * Configurazione diventata invalida a regola già attiva: il responsabile è
+   * uscito, l'etichetta è stata cancellata. È un CODICE — la frase la scrive
+   * l'interfaccia nella lingua di chi legge.
+   */
+  attentionCode: string | null;
+  attentionAt: string | null;
+  consecutiveFailures: number;
+  lastRunAt: string | null;
+  lastRunStatus: WorkflowRunStatus | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Un'esecuzione. Immutabile: la scrive il worker. */
+export interface WorkflowRun {
+  id: string;
+  companyId: string;
+  workflowId: string;
+  workflowVersion: number;
+  /** La configurazione USATA: una run di ieri resta interpretabile (§46). */
+  configSnapshot: {
+    name?: string; version?: number; triggerType?: string;
+    conditionMatch?: 'all' | 'any';
+    conditions?: WorkflowCondition[]; actions?: WorkflowAction[];
+  };
+  triggerEventId: string | null;
+  entityType: 'document' | 'email_message' | 'task' | null;
+  entityId: string | null;
+  status: WorkflowRunStatus;
+  conditionResults: WorkflowConditionResult[];
+  startedAt: string;
+  completedAt: string | null;
+  durationMs: number | null;
+  errorCode: string | null;
+}
+
+/** L'esito di UNA condizione. `unknown` non è «no»: è «non lo so» (§26). */
+export interface WorkflowConditionResult {
+  field: string;
+  operator: string;
+  expected: string | number | boolean | string[] | null;
+  currency?: string | null;
+  outcome: 'true' | 'false' | 'unknown';
+  reason?: 'missing' | 'low_confidence' | 'currency_mismatch' | 'unknown_field';
+}
+
+export interface WorkflowActionRun {
+  id: string;
+  workflowRunId: string;
+  actionKey: string;
+  actionPosition: number;
+  status: WorkflowActionStatus;
+  outputEntityType: string | null;
+  outputEntityId: string | null;
+  errorCode: string | null;
+  completedAt: string | null;
+}
+
+export interface WorkflowAuditEntry {
+  id: string;
+  workflowId: string;
+  actorUserId: string | null;
+  kind: WorkflowAuditKind;
+  detail: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface WorkflowMetrics {
+  runs: number;
+  actionsDone: number;
+  actionsFailed: number;
+  errors: number;
+}
+
+/** Un elemento su cui provare la regola, scelto fra quelli recenti. */
+export interface AutomationSample { id: string; label: string | null }

@@ -32,7 +32,13 @@ export type DocumentCategory =
   | 'administration' | 'taxes' | 'social_insurance' | 'invoices' | 'contracts'
   | 'insurance' | 'banking' | 'employees' | 'clients' | 'suppliers' | 'subsidies' | 'other';
 /** Chi ha deciso la categoria. Nessun valore `ai`: nessuna AI classifica. */
-export type DocumentCategorySource = 'rule' | 'manual';
+/**
+ * Chi ha deciso la categoria. Nessun valore `ai`: nessuna AI classifica.
+ * `rule` = la regola deterministica del prodotto (tipo di documento + ente),
+ * `workflow` = una regola scritta dall'azienda (0020). Sono due cose diverse e
+ * il documento deve poter dire quale delle due.
+ */
+export type DocumentCategorySource = 'rule' | 'manual' | 'workflow';
 export type TaskPriority = 'low' | 'medium' | 'high';
 /**
  * Stato di un'attività. `open` è il nome storico del database e nell'interfaccia
@@ -44,7 +50,13 @@ export type TaskEventKind =
   | 'created' | 'status_changed' | 'assignee_changed' | 'priority_changed'
   | 'due_date_changed' | 'completed' | 'reopened' | 'archived' | 'restored'
   | 'checklist_item_completed' | 'comment_added';
-export type TaskSource = 'admin_ai' | 'subsidy_ai' | 'manual';
+/**
+ * Da dove nasce il lavoro. `workflow` (0020) è la provenienza di un'attività
+ * creata da una REGOLA aziendale: non l'ha scritta una persona e non viene da
+ * un modulo, e chi la riceve ha diritto di saperlo. Quale regola lo dice
+ * `tasks.workflow_run_id`.
+ */
+export type TaskSource = 'admin_ai' | 'subsidy_ai' | 'manual' | 'workflow';
 export type EligibilityStatus = 'unknown' | 'likely' | 'unlikely' | 'ineligible';
 export type SubsidyCaseStatus = 'draft' | 'collecting_documents' | 'ready' | 'submitted' | 'closed';
 
@@ -76,9 +88,31 @@ export type CalendarConnectionStatus = 'active' | 'reauth_required' | 'error' | 
 export type CalendarSyncStatus = 'pending' | 'synced' | 'failed';
 export type NotificationType =
   | 'task_assigned' | 'task_due_soon' | 'task_due_today' | 'task_overdue'
-  | 'unassigned_task_due_soon' | 'calendar_sync_failed' | 'calendar_reauth_required';
+  | 'unassigned_task_due_soon' | 'calendar_sync_failed' | 'calendar_reauth_required'
+  // 0020 — l'avviso prodotto da una regola aziendale. Il TESTO lo scrive
+  // l'azienda dentro la regola: non è traducibile, ed è dichiarato come tale.
+  | 'workflow_alert';
 /** L'in-app non è un canale: l'in-app È la notifica. Vedi 0018. */
 export type NotificationChannel = 'email';
+
+// ---- Automazioni (0020) ----------------------------------------------------
+// Gli inneschi sono SEI e corrispondono a fatti che il prodotto produce
+// davvero: un innesco dichiarato e mai emesso sarebbe una funzione finta.
+export type AutomationEventType =
+  | 'document_analysis_completed' | 'document_category_changed' | 'email_attention_ready'
+  | 'task_created' | 'task_status_changed' | 'task_became_overdue';
+export type AutomationEventStatus = 'pending' | 'processing' | 'done' | 'failed' | 'dead_letter';
+/**
+ * Stato di una regola. L'archiviazione è uno STATO — non una data come per le
+ * attività — perché ogni interrogazione del motore filtra proprio su questo
+ * campo, e una regola archiviata non deve comparire in nessun elenco operativo.
+ */
+export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'archived';
+export type WorkflowRunStatus = 'pending' | 'running' | 'succeeded' | 'partial' | 'failed' | 'skipped';
+export type WorkflowActionStatus = 'pending' | 'succeeded' | 'skipped' | 'failed';
+export type WorkflowAuditKind =
+  | 'created' | 'updated' | 'activated' | 'paused' | 'archived' | 'restored'
+  | 'retried' | 'auto_paused' | 'chain_depth_exceeded';
 export type NotificationDeliveryStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'cancelled';
 
 export interface Database {
@@ -119,6 +153,8 @@ export interface Database {
           category_set_by: string | null; category_set_at: string | null;
           archived_at: string | null; archived_by: string | null;
           internal_notes: string | null; notes_updated_at: string | null; notes_updated_by: string | null;
+          // 0020 — quale esecuzione di quale regola ha messo la categoria.
+          category_workflow_run_id: string | null;
         };
         Insert: { id?: string; company_id: string; uploaded_by?: string | null; title: string; original_filename?: string | null; mime_type?: string | null; file_size?: number | null; storage_path?: string | null; source_type?: DocumentSourceType; status?: DocumentStatus; file_hash?: string | null; page_count?: number | null };
         // 0017 — `category_source`, `category_set_by/at`, `archived_by` e i timbri
@@ -262,7 +298,7 @@ export interface Database {
         Relationships: [];
       };
       tasks: {
-        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string };
+        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null };
         Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null };
         // `completed_at`, `completed_by`, `archived_by` non compaiono in Update:
         // li scrive il trigger `tasks_guard`, e un client che li mandasse li
@@ -485,6 +521,66 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+
+      // ---- Automazioni (0020) ------------------------------------------
+      // ⚠️ Tutte in SOLA LETTURA per il client, e non per prudenza: le regole
+      // si scrivono passando dalla Edge Function `automation-admin`, che
+      // verifica il ruolo e valida la configurazione contro il registro
+      // tipizzato. Il database quel registro non ce l'ha, e ripeterlo in SQL
+      // avrebbe creato un secondo elenco destinato a divergere dal primo.
+      workflow_definitions: {
+        Row: {
+          id: string; company_id: string; name: string; description: string | null;
+          status: WorkflowStatus; trigger_type: AutomationEventType;
+          condition_match: 'all' | 'any'; conditions: Json; actions: Json;
+          version: number; activated_at: string | null;
+          attention_code: string | null; attention_at: string | null;
+          consecutive_failures: number;
+          last_run_at: string | null; last_run_status: WorkflowRunStatus | null;
+          created_by: string | null; updated_by: string | null;
+          created_at: string; updated_at: string;
+          archived_at: string | null; archived_by: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      workflow_runs: {
+        Row: {
+          id: string; company_id: string; workflow_id: string; workflow_version: number;
+          config_snapshot: Json; trigger_event_id: string | null;
+          entity_type: string | null; entity_id: string | null;
+          status: WorkflowRunStatus; condition_results: Json;
+          started_at: string; completed_at: string | null; duration_ms: number | null;
+          error_code: string | null; created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      workflow_action_runs: {
+        Row: {
+          id: string; company_id: string; workflow_run_id: string;
+          action_key: string; action_position: number; status: WorkflowActionStatus;
+          idempotency_key: string;
+          output_entity_type: string | null; output_entity_id: string | null;
+          error_code: string | null;
+          started_at: string | null; completed_at: string | null; created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      workflow_events: {
+        // Chi ha creato, attivato, messo in pausa. Solo amministratori.
+        Row: {
+          id: string; company_id: string; workflow_id: string;
+          actor_user_id: string | null; kind: WorkflowAuditKind; detail: Json; created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -592,6 +688,22 @@ export interface Database {
           assignee_name: string | null; email_message_id: string | null; total_count: number;
         })[];
       };
+      /** Quante esecuzioni, quante azioni, quanti errori negli ultimi N giorni (§102). */
+      workflow_metrics: {
+        Args: { p_workflow_id: string; p_days?: number };
+        Returns: { runs: number; actions_done: number; actions_failed: number; errors: number }[];
+      };
+      /**
+       * Lo stato della coda del motore: quanti eventi aspettano, da quanto, e
+       * quanti hanno smesso di essere ritentati. Risponde a «sta girando?» con
+       * un numero invece che con un'impressione (§169). Solo amministratori.
+       */
+      automation_backlog: {
+        Args: { p_company_id: string };
+        Returns: { pending: number; dead_letter: number; oldest_pending_seconds: number }[];
+      };
+      /** I limiti che il database APPLICA. Il test li confronta con il contratto TypeScript. */
+      automation_limits: { Args: Record<string, never>; Returns: Json };
     };
     Enums: {
       member_role: MemberRole;
@@ -622,6 +734,12 @@ export interface Database {
       notification_type: NotificationType;
       notification_channel: NotificationChannel;
       notification_delivery_status: NotificationDeliveryStatus;
+      automation_event_type: AutomationEventType;
+      automation_event_status: AutomationEventStatus;
+      workflow_status: WorkflowStatus;
+      workflow_run_status: WorkflowRunStatus;
+      workflow_action_status: WorkflowActionStatus;
+      workflow_audit_kind: WorkflowAuditKind;
     };
     CompositeTypes: Record<string, never>;
   };

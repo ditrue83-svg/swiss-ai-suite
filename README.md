@@ -43,6 +43,7 @@ sono un sistema solo, non sei strumenti affiancati.
 | [`app/docs/ai-inbox.md`](app/docs/ai-inbox.md) | Inbox: architettura, configurazione passo passo, modello di minaccia, diagnostica. **Sede unica dello stato operativo dell'Inbox.** |
 | [`app/docs/document-hub.md`](app/docs/document-hub.md) | Documenti: modello dati, ricerca, categorie, provenienza, limiti della ricerca full-text. |
 | [`app/docs/calendar-notifications.md`](app/docs/calendar-notifications.md) | Calendario e notifiche: stato desiderato degli eventi, promemoria e fusi orari, sincronizzazione a senso unico, configurazione Google e Microsoft, email. |
+| [`app/docs/workflow-automation.md`](app/docs/workflow-automation.md) | Automazioni: outbox e catena causale, inneschi, condizioni a tre valori, azioni e loro limiti, idempotenza, protezione dei cicli, messa in opera. |
 | [`app/docs/design-system.md`](app/docs/design-system.md) | Scala tipografica, colori, contrasti, tema scuro, aree cliccabili. |
 | [`site/README.md`](site/README.md) | Vetrina: contenuti, build, pubblicazione. |
 
@@ -75,6 +76,15 @@ contro l'API viva**.
 **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali, di cui 1 dichiarato
 sospeso. Copertura Confederazione + Ticino, non i 26 Cantoni. I contenuti delle schede sono
 mostrati in italiano anche in tedesco e francese: vivono nel database, non nei dizionari.
+
+**Automazioni** (migrazione 0020): **in esercizio dal 2026-07-27**. 61 controlli sul database
+reale, 103 offline, Edge Function deployate e scheduler ogni 5 minuti; la catena — analisi →
+evento → cron → worker → attività — è stata provata **end-to-end in produzione** su un'azienda
+temporanea, poi rimossa. La **schermata** `/automazioni` esiste però solo in locale: non è ancora
+pubblicata su `app.ai-swisse.com`, quindi per ora le regole si creano solo via API. Le azioni disponibili sono sei e tutte reversibili:
+creare un'attività, assegnarla, cambiarne la priorità, classificare un documento, aggiungere
+un'etichetta, notificare. Nessuna invia email, muove denaro o accetta impegni. Vedi
+[`app/docs/workflow-automation.md`](app/docs/workflow-automation.md).
 
 **Non implementati**: invio email, sincronizzazione calendario, pagamenti, interfaccia fiduciaria
 completa.

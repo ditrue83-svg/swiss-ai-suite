@@ -25,11 +25,14 @@ supabase/
                 0010_analysis_immutability · 0011_program_availability
                 0012_program_translations · 0013_inbox · 0014_inbox_grants
                 0015_inbox_awaiting_analysis · 0016_work_hub · 0017_document_hub
-                0018_calendar_notifications
+                0018_calendar_notifications · 0019_notifications_mark_read
+                0020_workflow_automation
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
                        + calendar/ (stato desiderato PURO, promemoria con fuso, adapter, invio email)
+                       + automation/ (REGISTRO di inneschi e azioni, valutatore a tre valori,
+                       modelli di testo, motore — tutti moduli portabili, provati in Node)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
     generate-reply     bozza di risposta on-demand
     interpret-project  interpretazione progetto per il Subsidy AI
@@ -38,6 +41,8 @@ supabase/
     email-sync         sincronizzazione e analisi su richiesta
     email-webhook      notifiche push Google Pub/Sub e Microsoft Graph
     email-disconnect   scollegamento di una casella
+    automation-worker  consuma la coda degli eventi ed esegue le regole (scheduler)
+    automation-admin   crea, attiva, mette in pausa, prova a vuoto (JWT + ruolo)
     email-maintenance  rinnovo sottoscrizioni, riconciliazione, pulizia
     calendar-oauth        consenso e callback OAuth dei calendari (personale, non aziendale)
     calendar-sync         coda di sincronizzazione, «Sincronizza ora», riconciliazione
@@ -338,6 +343,11 @@ Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estr
 | `task_checklist_items` | i passaggi operativi di un'attività — non è `action_progress` |
 | `task_comments` | la conversazione attorno a un'attività (testo semplice, mai markup) |
 | `task_events` | storico: lo scrivono i trigger, il client può solo leggerlo |
+| `automation_events` | **outbox** dei fatti del dominio (0020). Lo scrivono i TRIGGER nella stessa transazione del fatto; il client non ha alcun permesso, né di lettura né di scrittura. Porta la catena causale: `correlation_id`, `causation_id`, `root_event_id`, `chain_depth` |
+| `workflow_definitions` | la **regola**: quando / se / allora. Configurazione JSONB validata contro il registro tipizzato; il browser non può scriverla, si passa da `automation-admin` |
+| `workflow_runs` | un'esecuzione, con la **configurazione usata** e l'esito di ogni condizione. `unique (workflow_id, trigger_event_id)`: lo stesso evento due volte non produce due esecuzioni |
+| `workflow_action_runs` | ogni azione con la propria **chiave di idempotenza** — l'unicità la impone il database, non un controllo applicativo |
+| `workflow_events` | chi ha creato, attivato, messo in pausa, archiviato una regola. Solo amministratori |
 
 ### Attività (Work Hub) — migrazione 0016
 
@@ -522,6 +532,10 @@ npm run test:documents       # Documenti su DB: isolamento della RICERCA, catego
 npm run test:calendar-unit   # Calendario e notifiche offline: stato desiderato, promemoria con ora
                              # legale, idempotenza degli adapter, griglia del mese (158 test)
 npm run test:calendar        # Calendario su DB: isolamento fra aziende E FRA PERSONE, coda, trigger
+npm run test:workflows-unit  # Automazioni offline: registro, validazione, operatori, logica a tre
+                             # valori, valute, incertezza, modelli di testo, frase (103 test)
+npm run test:workflows       # Automazioni su DB: esegue il MOTORE VERO — outbox, idempotenza,
+                             # cicli, profondità della catena, guardie (richiede la 0020)
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
@@ -711,6 +725,22 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
 
 ## Limitazioni attuali (dichiarate, non nascoste)
 
+- **Automazioni (0020): il motore È in esercizio, il FRONTEND non è ancora pubblicato.**
+  Migrazione applicata (`test:workflows` 61/61), Edge Function deployate, scheduler pg_cron ogni 5
+  minuti, catena provata end-to-end in produzione su un'azienda temporanea poi rimossa. Ma la
+  schermata `/automazioni` esiste solo in locale: su `app.ai-swisse.com` non c'è. Finché non si
+  pubblica, le regole si creano solo chiamando `automation-admin` o scrivendole via SQL.
+  ⚠️ Il **budget di tempo** non è mai stato messo sotto pressione: le esecuzioni provate trattavano
+  un evento alla volta. Il comportamento con decine di eventi in coda si vedrà al primo carico vero,
+  e il rapporto del worker lo dichiara (`timeBudgetReached`).
+- **Le automazioni non hanno azioni ad alto rischio, e non hanno un percorso di approvazione.**
+  Il campo `riskLevel` esiste su ogni azione e il motore esegue automaticamente solo quelle `low`;
+  il flusso di approvazione umana non è implementato, e per questo non esiste nessuna azione che ne
+  avrebbe bisogno. Nessuna azione invia email, muove denaro, accetta impegni o cancella qualcosa.
+- **Le esecuzioni che NON corrispondono non lasciano traccia** (scelta deliberata: con novecento
+  documenti l'anno seppellirebbero le venti volte in cui la regola ha agito). Conseguenza da sapere:
+  «la regola non è scattata e non capisco perché» si risponde con la **prova a vuoto**, non con lo
+  storico.
 - **Processing asincrono senza coda persistente**: la richiesta ritorna subito (202) e il lavoro
   prosegue sul server (background task del runtime Edge), con lo stato osservabile nel DB. Non c'è
   però una *coda durevole*: se l'istanza muore a metà, il documento resta in `analyzing` finché non

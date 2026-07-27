@@ -213,6 +213,10 @@ export function NotificationBell({ count, setCount }: NotificationBellProps) {
               <span className={`bell-dot${isProblem(n.type) ? ' is-problem' : ''}`} aria-hidden="true" />
               <span className="bell-main">
                 <span className="bell-row-title">{t(notificationTitleKey(n))}</span>
+                {/* Il testo di un avviso prodotto da una regola lo ha scritto
+                    l'azienda, e si mostra com'è: non passa dai dizionari perché
+                    non è testo del prodotto, e tradurlo lo falserebbe. */}
+                {n.payload?.text && <span className="bell-row-sub">{n.payload.text}</span>}
                 {n.payload?.title && <span className="bell-row-sub">{n.payload.title}</span>}
                 <span className="bell-row-meta">
                   {n.payload?.dueDate

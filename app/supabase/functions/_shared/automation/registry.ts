@@ -1,0 +1,460 @@
+// ============================================================================
+// IL REGISTRO: quali inneschi esistono, quali campi si possono confrontare,
+// quali azioni si possono eseguire.
+//
+// ⚠️ È IL CUORE DELLA SICUREZZA DI QUESTO MODULO, non un elenco di comodo.
+// Una condizione può nominare SOLO un campo dichiarato qui, e un'azione può
+// essere SOLO una di quelle dichiarate qui. Non esiste alcun percorso in cui
+// una stringa scritta da un utente diventi un accesso a una proprietà, una
+// query, un'espressione o del codice: i «fatti» sono una mappa piatta con
+// chiavi note, e ciò che non è nella mappa non esiste (§20/§23/§105).
+//
+// ⚠️ NESSUN IMPORT, NESSUNA DIPENDENZA, e va tenuto così.
+// Questo file lo leggono tre runtime diversi: il worker (Deno), i test (Node) e
+// il BROWSER, che lo importa attraverso `src/features/automations/registry.ts`.
+// Un solo `import` verso qualcosa di Deno lo renderebbe non compilabile da
+// Vite, e la divergenza si scoprirebbe al deploy.
+//
+// Le ETICHETTE sono chiavi di traduzione, non testo: nel database vive
+// `document_analysis_completed`, e «Quando viene analizzato un documento» è
+// solo il modo in cui lo si legge in italiano (§157).
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// Tipi di base
+// ---------------------------------------------------------------------------
+
+export const AUTOMATION_EVENT_TYPES = [
+  'document_analysis_completed',
+  'document_category_changed',
+  'email_attention_ready',
+  'task_created',
+  'task_status_changed',
+  'task_became_overdue',
+] as const;
+export type AutomationEventType = (typeof AUTOMATION_EVENT_TYPES)[number];
+
+export type AutomationEntityType = 'document' | 'email_message' | 'task';
+
+export type FieldType = 'string' | 'number' | 'enum' | 'date' | 'boolean' | 'user';
+
+/**
+ * Gli operatori. Un insieme CHIUSO e piccolo (§21): ognuno di questi è una
+ * funzione scritta in `conditions.ts`, non una stringa che finisce dentro
+ * un'espressione da valutare.
+ *
+ * `within_days` esiste solo per le date ed è l'unica forma che serviva davvero
+ * (§28): «scade entro trenta giorni». Un confronto con una data ASSOLUTA non è
+ * stato aggiunto di proposito — una regola che dice «scadenza prima del
+ * 31.12.2026» è giusta per due mesi e sbagliata per sempre dopo.
+ */
+export const OPERATORS = [
+  'equals', 'not_equals', 'contains', 'not_contains', 'starts_with',
+  'exists', 'not_exists',
+  'greater_than', 'greater_or_equal', 'less_than', 'less_or_equal',
+  'in', 'within_days',
+] as const;
+export type Operator = (typeof OPERATORS)[number];
+
+/** Operatori che non hanno un valore di confronto. */
+export const UNARY_OPERATORS: readonly Operator[] = ['exists', 'not_exists'];
+
+/** Quali operatori hanno senso su quale tipo. Fuori da qui, la regola è invalida. */
+export const OPERATORS_BY_TYPE: Record<FieldType, readonly Operator[]> = {
+  string: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'in', 'exists', 'not_exists'],
+  number: ['equals', 'not_equals', 'greater_than', 'greater_or_equal', 'less_than', 'less_or_equal', 'exists', 'not_exists'],
+  enum: ['equals', 'not_equals', 'in', 'exists', 'not_exists'],
+  // Le date non si confrontano con altre date scritte a mano: si guarda se
+  // esistono e fra quanto cadono.
+  date: ['exists', 'not_exists', 'within_days'],
+  boolean: ['equals'],
+  user: ['equals', 'not_equals', 'exists', 'not_exists'],
+};
+
+// ---------------------------------------------------------------------------
+// Valori di dominio ripetuti
+//
+// Vengono dal database (enum delle migrazioni 0002/0006/0013/0017) e servono a
+// costruire i menu a tendina del generatore. Sono elenchi di CHIAVI: le
+// etichette stanno nei dizionari, sotto `labels.*`, che è dove le legge già
+// tutto il resto del prodotto.
+// ---------------------------------------------------------------------------
+
+export const DOCUMENT_CATEGORIES = [
+  'administration', 'taxes', 'social_insurance', 'invoices', 'contracts',
+  'insurance', 'banking', 'employees', 'clients', 'suppliers', 'subsidies', 'other',
+] as const;
+
+export const DOCUMENT_TYPES = [
+  'information', 'request_for_documents', 'payment_request', 'reminder', 'invoice',
+  'declaration_request', 'official_decision', 'inspection_notice', 'tax_document',
+  'social_insurance', 'employment', 'permit', 'contract_related', 'other',
+] as const;
+
+export const AUTHORITY_TYPES = [
+  'federal', 'cantonal', 'municipal', 'social_insurance', 'insurance', 'pension',
+  'private', 'unknown',
+] as const;
+
+export const URGENCY_VALUES = ['alta', 'media', 'bassa'] as const;
+export const TASK_PRIORITIES = ['high', 'medium', 'low'] as const;
+export const TASK_STATUSES = ['open', 'in_progress', 'waiting', 'completed'] as const;
+export const TASK_SOURCES = ['admin_ai', 'subsidy_ai', 'manual'] as const;
+export const DOCUMENT_SOURCE_TYPES = ['upload', 'pasted_text', 'email'] as const;
+export const EMAIL_RELEVANCE = [
+  'likely_actionable', 'possibly_actionable', 'informational', 'clearly_irrelevant',
+] as const;
+export const EMAIL_ATTENTION = [
+  'needs_attention', 'to_verify', 'informational', 'ignored', 'handled',
+] as const;
+export const CATEGORY_SOURCES = ['rule', 'manual', 'workflow'] as const;
+
+/** Le valute che il prodotto tratta. Nessuna conversione: mai (§27). */
+export const CURRENCIES = ['CHF', 'EUR', 'USD'] as const;
+
+// ---------------------------------------------------------------------------
+// Campi
+// ---------------------------------------------------------------------------
+
+export interface TriggerField {
+  /** Chiave del fatto. Piatta e nota: non è un percorso dentro un JSON (§23). */
+  path: string;
+  type: FieldType;
+  labelKey: string;
+  /** Dove stanno le etichette dei valori, per i menu a tendina. */
+  optionsLabelPath?: string;
+  options?: readonly string[];
+  /**
+   * Il valore viene da un'analisi AI: la sua certezza va valutata prima di
+   * trattarlo come un fatto (§25). Una correzione umana lo rende certo (§24).
+   */
+  aiDerived?: boolean;
+  /** Il valore ha una valuta: il confronto la richiede e non converte (§27). */
+  hasCurrency?: boolean;
+}
+
+export interface TriggerDef {
+  key: AutomationEventType;
+  entityType: AutomationEntityType;
+  /** Versione del contratto dell'evento (§15). */
+  version: number;
+  labelKey: string;
+  descriptionKey: string;
+  fields: readonly TriggerField[];
+  /** I segnaposto ammessi nei modelli di testo, per questo innesco (§30). */
+  templates: readonly string[];
+}
+
+// I campi del documento e dell'analisi, condivisi dai due inneschi documentali:
+// scritti una volta perché due elenchi «quasi uguali» divergono al primo
+// campo aggiunto da una parte sola.
+const DOCUMENT_FIELDS: readonly TriggerField[] = [
+  { path: 'document.category', type: 'enum', labelKey: 'automations.fields.documentCategory',
+    options: DOCUMENT_CATEGORIES, optionsLabelPath: 'labels.categories' },
+  { path: 'document.source_type', type: 'enum', labelKey: 'automations.fields.documentSource',
+    options: DOCUMENT_SOURCE_TYPES, optionsLabelPath: 'automations.values.documentSource' },
+  { path: 'document.title', type: 'string', labelKey: 'automations.fields.documentTitle' },
+  { path: 'analysis.document_type', type: 'enum', labelKey: 'automations.fields.documentType',
+    options: DOCUMENT_TYPES, optionsLabelPath: 'labels.docTypes', aiDerived: true },
+  { path: 'analysis.sender', type: 'string', labelKey: 'automations.fields.sender', aiDerived: true },
+  { path: 'analysis.sender_authority_type', type: 'enum', labelKey: 'automations.fields.authorityType',
+    options: AUTHORITY_TYPES, optionsLabelPath: 'labels.authorityTypes', aiDerived: true },
+  { path: 'analysis.urgency', type: 'enum', labelKey: 'automations.fields.urgency',
+    options: URGENCY_VALUES, optionsLabelPath: 'labels.urgency', aiDerived: true },
+  { path: 'analysis.deadline', type: 'date', labelKey: 'automations.fields.deadline', aiDerived: true },
+  { path: 'analysis.amount', type: 'number', labelKey: 'automations.fields.amount',
+    aiDerived: true, hasCurrency: true },
+  { path: 'analysis.overall_confidence', type: 'number', labelKey: 'automations.fields.confidence' },
+  { path: 'analysis.reply_needed', type: 'boolean', labelKey: 'automations.fields.replyNeeded', aiDerived: true },
+];
+
+/**
+ * ⚠️ SOLO VALORI CHE NON HANNO BISOGNO DI ESSERE TRADOTTI.
+ *
+ * Un titolo, un mittente, una data, un importo si scrivono uguali in italiano,
+ * tedesco e francese. La CATEGORIA e il TIPO DI DOCUMENTO no: nel database
+ * vivono come `taxes` e `reminder`, e per metterli in un titolo servirebbe un
+ * dizionario lato server — cioè una QUARTA copia delle etichette, dopo `it`,
+ * `de` e `fr`, che prima o poi direbbe una cosa diversa dalle altre tre.
+ * Si è preferito non offrirli: un segnaposto in meno vale meno di un'etichetta
+ * che diverge.
+ */
+const DOCUMENT_TEMPLATES = [
+  '{{document.title}}', '{{analysis.sender}}',
+  '{{analysis.deadline}}', '{{analysis.amount}}',
+] as const;
+
+const TASK_FIELDS: readonly TriggerField[] = [
+  { path: 'task.title', type: 'string', labelKey: 'automations.fields.taskTitle' },
+  { path: 'task.priority', type: 'enum', labelKey: 'automations.fields.taskPriority',
+    options: TASK_PRIORITIES, optionsLabelPath: 'automations.values.taskPriority' },
+  { path: 'task.status', type: 'enum', labelKey: 'automations.fields.taskStatus',
+    options: TASK_STATUSES, optionsLabelPath: 'automations.values.taskStatus' },
+  { path: 'task.source', type: 'enum', labelKey: 'automations.fields.taskSource',
+    options: TASK_SOURCES, optionsLabelPath: 'automations.values.taskSource' },
+  { path: 'task.assignee', type: 'user', labelKey: 'automations.fields.taskAssignee' },
+  { path: 'task.due_date', type: 'date', labelKey: 'automations.fields.taskDueDate' },
+  { path: 'task.authority', type: 'string', labelKey: 'automations.fields.taskAuthority' },
+  { path: 'task.has_document', type: 'boolean', labelKey: 'automations.fields.taskHasDocument' },
+];
+
+const TASK_TEMPLATES = ['{{task.title}}', '{{task.due_date}}', '{{task.authority}}'] as const;
+
+export const TRIGGERS: readonly TriggerDef[] = [
+  {
+    key: 'document_analysis_completed',
+    entityType: 'document',
+    version: 1,
+    labelKey: 'automations.triggers.documentAnalysed',
+    descriptionKey: 'automations.triggers.documentAnalysedDesc',
+    fields: DOCUMENT_FIELDS,
+    templates: DOCUMENT_TEMPLATES,
+  },
+  {
+    key: 'document_category_changed',
+    entityType: 'document',
+    version: 1,
+    labelKey: 'automations.triggers.categoryChanged',
+    descriptionKey: 'automations.triggers.categoryChangedDesc',
+    fields: [
+      ...DOCUMENT_FIELDS,
+      { path: 'document.previous_category', type: 'enum', labelKey: 'automations.fields.previousCategory',
+        options: DOCUMENT_CATEGORIES, optionsLabelPath: 'labels.categories' },
+      { path: 'document.category_source', type: 'enum', labelKey: 'automations.fields.categorySource',
+        options: CATEGORY_SOURCES, optionsLabelPath: 'automations.values.categorySource' },
+    ],
+    templates: DOCUMENT_TEMPLATES,
+  },
+  {
+    key: 'email_attention_ready',
+    entityType: 'email_message',
+    version: 1,
+    labelKey: 'automations.triggers.emailReady',
+    descriptionKey: 'automations.triggers.emailReadyDesc',
+    fields: [
+      { path: 'email.sender_email', type: 'string', labelKey: 'automations.fields.emailSender' },
+      // Il dominio è un campo a sé e non una sottostringa dell'indirizzo: «il
+      // dominio è estv.admin.ch» e «l'indirizzo contiene estv.admin.ch» sono
+      // due domande diverse, e la seconda risponde sì anche a
+      // «truffa@estv.admin.ch.example.com».
+      { path: 'email.sender_domain', type: 'string', labelKey: 'automations.fields.emailDomain' },
+      { path: 'email.sender_name', type: 'string', labelKey: 'automations.fields.emailSenderName' },
+      { path: 'email.subject', type: 'string', labelKey: 'automations.fields.emailSubject' },
+      { path: 'email.relevance', type: 'enum', labelKey: 'automations.fields.emailRelevance',
+        options: EMAIL_RELEVANCE, optionsLabelPath: 'automations.values.emailRelevance' },
+      { path: 'email.attention_status', type: 'enum', labelKey: 'automations.fields.emailAttention',
+        options: EMAIL_ATTENTION, optionsLabelPath: 'automations.values.emailAttention' },
+      { path: 'email.has_attachments', type: 'boolean', labelKey: 'automations.fields.emailHasAttachments' },
+      { path: 'email.attachment_count', type: 'number', labelKey: 'automations.fields.emailAttachmentCount' },
+      { path: 'email.linked_document_count', type: 'number', labelKey: 'automations.fields.emailDocumentCount' },
+    ],
+    templates: ['{{email.subject}}', '{{email.sender_name}}', '{{email.sender_email}}'],
+  },
+  {
+    key: 'task_created',
+    entityType: 'task',
+    version: 1,
+    labelKey: 'automations.triggers.taskCreated',
+    descriptionKey: 'automations.triggers.taskCreatedDesc',
+    fields: TASK_FIELDS,
+    templates: TASK_TEMPLATES,
+  },
+  {
+    key: 'task_status_changed',
+    entityType: 'task',
+    version: 1,
+    labelKey: 'automations.triggers.taskStatusChanged',
+    descriptionKey: 'automations.triggers.taskStatusChangedDesc',
+    fields: [
+      ...TASK_FIELDS,
+      { path: 'task.previous_status', type: 'enum', labelKey: 'automations.fields.taskPreviousStatus',
+        options: TASK_STATUSES, optionsLabelPath: 'automations.values.taskStatus' },
+    ],
+    templates: TASK_TEMPLATES,
+  },
+  {
+    key: 'task_became_overdue',
+    entityType: 'task',
+    version: 1,
+    labelKey: 'automations.triggers.taskOverdue',
+    descriptionKey: 'automations.triggers.taskOverdueDesc',
+    fields: TASK_FIELDS,
+    templates: TASK_TEMPLATES,
+  },
+];
+
+export function findTrigger(key: string): TriggerDef | null {
+  return TRIGGERS.find((t) => t.key === key) ?? null;
+}
+
+export function findField(trigger: TriggerDef, path: string): TriggerField | null {
+  return trigger.fields.find((f) => f.path === path) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Azioni
+//
+// ⚠️ SEI, E TUTTE A BASSO RISCHIO (§19/§191).
+// Il livello di rischio è un dato dell'azione, non un commento: il motore
+// esegue automaticamente SOLO le azioni `low`. Il giorno in cui servirà
+// un'azione `medium` o `high` — inviare una email, accettare qualcosa — quel
+// campo esiste già e il motore la rifiuterà finché non ci sarà un percorso di
+// approvazione umana. Non c'è oggi, e per questo non c'è nessuna azione che ne
+// avrebbe bisogno.
+//
+// Ciò che NON esiste, e non per dimenticanza: inviare o rispondere a email,
+// pagare, cambiare coordinate bancarie, cancellare documenti o messaggi,
+// firmare o accettare contratti, trasmettere alle autorità, chiamare un
+// indirizzo esterno, eseguire SQL o JavaScript. Automatizzare il lavoro, non
+// automatizzare il rischio.
+// ---------------------------------------------------------------------------
+
+export const ACTION_KEYS = [
+  'create_task', 'assign_task', 'set_task_priority',
+  'set_document_category', 'add_document_tag', 'create_notification',
+] as const;
+export type ActionKey = (typeof ACTION_KEYS)[number];
+
+export type RiskLevel = 'low' | 'medium' | 'high';
+
+export interface ActionDef {
+  key: ActionKey;
+  labelKey: string;
+  descriptionKey: string;
+  riskLevel: RiskLevel;
+  /** Su quali entità ha senso. Un'azione fuori posto non è offerta e non è valida. */
+  entityTypes: readonly AutomationEntityType[];
+  outputEntityType: 'task' | 'document' | 'notification' | 'document_tag';
+}
+
+export const ACTIONS: readonly ActionDef[] = [
+  {
+    key: 'create_task',
+    labelKey: 'automations.actions.createTask',
+    descriptionKey: 'automations.actions.createTaskDesc',
+    riskLevel: 'low',
+    entityTypes: ['document', 'email_message', 'task'],
+    outputEntityType: 'task',
+  },
+  {
+    key: 'assign_task',
+    labelKey: 'automations.actions.assignTask',
+    descriptionKey: 'automations.actions.assignTaskDesc',
+    riskLevel: 'low',
+    // Solo sugli inneschi che PARLANO di un'attività: assegnare «l'attività» a
+    // partire da un documento non ha un referente, e offrirlo comunque
+    // significherebbe far configurare una regola che non potrà mai funzionare.
+    entityTypes: ['task'],
+    outputEntityType: 'task',
+  },
+  {
+    key: 'set_task_priority',
+    labelKey: 'automations.actions.setTaskPriority',
+    descriptionKey: 'automations.actions.setTaskPriorityDesc',
+    riskLevel: 'low',
+    entityTypes: ['task'],
+    outputEntityType: 'task',
+  },
+  {
+    key: 'set_document_category',
+    labelKey: 'automations.actions.setDocumentCategory',
+    descriptionKey: 'automations.actions.setDocumentCategoryDesc',
+    riskLevel: 'low',
+    entityTypes: ['document'],
+    outputEntityType: 'document',
+  },
+  {
+    key: 'add_document_tag',
+    labelKey: 'automations.actions.addDocumentTag',
+    descriptionKey: 'automations.actions.addDocumentTagDesc',
+    riskLevel: 'low',
+    entityTypes: ['document'],
+    outputEntityType: 'document_tag',
+  },
+  {
+    key: 'create_notification',
+    labelKey: 'automations.actions.createNotification',
+    descriptionKey: 'automations.actions.createNotificationDesc',
+    riskLevel: 'low',
+    entityTypes: ['document', 'email_message', 'task'],
+    outputEntityType: 'notification',
+  },
+];
+
+export function findAction(key: string): ActionDef | null {
+  return ACTIONS.find((a) => a.key === key) ?? null;
+}
+
+/** Le azioni offerte per un innesco: quelle che hanno senso sulla sua entità. */
+export function actionsForTrigger(trigger: TriggerDef): readonly ActionDef[] {
+  return ACTIONS.filter((a) => a.entityTypes.includes(trigger.entityType));
+}
+
+/**
+ * ⚠️ IL MOTORE ESEGUE AUTOMATICAMENTE SOLO QUESTO LIVELLO (§19).
+ * Esiste come funzione e non come confronto sparso nel codice perché il giorno
+ * in cui nascerà l'approvazione umana la modifica dovrà essere in un posto solo.
+ */
+export function isAutoExecutable(action: ActionDef): boolean {
+  return action.riskLevel === 'low';
+}
+
+// ---------------------------------------------------------------------------
+// Configurazioni delle azioni
+//
+// Tipi ESPLICITI e non `Record<string, unknown>`: il generatore, il validatore
+// e l'esecutore devono parlare della stessa cosa, e un campo scritto male deve
+// rompere il typecheck invece di essere ignorato a runtime.
+// ---------------------------------------------------------------------------
+
+/** Come si ricava la scadenza dell'attività creata. */
+export type DueDateMode = 'none' | 'from_deadline' | 'before_deadline' | 'in_days';
+/** Come si ricava la priorità. `from_urgency` solo dove l'urgenza esiste. */
+export type PriorityMode = 'low' | 'medium' | 'high' | 'from_urgency';
+
+export interface CreateTaskConfig {
+  titleTemplate: string;
+  descriptionTemplate?: string | null;
+  priority: PriorityMode;
+  assigneeUserId?: string | null;
+  dueDate: DueDateMode;
+  /** Giorni: prima della scadenza (`before_deadline`) o da oggi (`in_days`). */
+  dueDateDays?: number | null;
+  /** Collega il documento o la comunicazione all'attività creata. */
+  linkEntity?: boolean;
+}
+
+export interface AssignTaskConfig { assigneeUserId: string }
+export interface SetTaskPriorityConfig { priority: 'low' | 'medium' | 'high' }
+export interface SetDocumentCategoryConfig { category: string }
+export interface AddDocumentTagConfig { tagId: string }
+export interface CreateNotificationConfig {
+  recipient: 'assignee' | 'admins' | 'user';
+  userId?: string | null;
+  messageTemplate: string;
+}
+
+export type ActionConfig =
+  | CreateTaskConfig | AssignTaskConfig | SetTaskPriorityConfig
+  | SetDocumentCategoryConfig | AddDocumentTagConfig | CreateNotificationConfig;
+
+export interface WorkflowAction {
+  key: ActionKey;
+  config: ActionConfig;
+}
+
+export interface WorkflowCondition {
+  field: string;
+  operator: Operator;
+  /** Assente per `exists`/`not_exists`. Per `in` è un elenco. */
+  value?: string | number | boolean | string[] | null;
+  /** Obbligatoria sui campi con valuta: non si convertono valute (§27). */
+  currency?: string | null;
+}
+
+export interface WorkflowConfig {
+  triggerType: AutomationEventType;
+  conditionMatch: 'all' | 'any';
+  conditions: WorkflowCondition[];
+  actions: WorkflowAction[];
+}

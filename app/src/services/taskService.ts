@@ -67,6 +67,8 @@ function toTask(row: TaskRow): Task {
     archivedBy: row.archived_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    // 0020 — l'esecuzione che l'ha creata, se è nata da una regola.
+    workflowRunId: row.workflow_run_id ?? null,
   };
 }
 

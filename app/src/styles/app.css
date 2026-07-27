@@ -305,6 +305,16 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .check-pill:hover { border-color: var(--line-strong); background: var(--bg); }
 .check-pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
 .check-pill[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+/* ⚠️ La pastiglia nasce come PULSANTE; le automazioni (0020) sono le prime a
+   metterci dentro una casella di spunta vera. Senza questa regola la casella
+   resta quella predefinita del browser — 13 pixel e l'azzurro di sistema —
+   dentro un'interfaccia che altrove usa 18 pixel e l'accento del prodotto.
+   È lo stesso difetto già corretto per la checklist delle attività, e si vede
+   solo aprendo la schermata. */
+.check-pill input[type="checkbox"] {
+  width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer;
+}
+.check-pill:has(input[type="checkbox"]) { min-height: 26px; }
 
 .result-row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
 .result-row:first-child { border-top: none; }

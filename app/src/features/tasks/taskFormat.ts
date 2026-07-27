@@ -68,6 +68,9 @@ export function sourceLabelKey(source: Task['source']): TKey {
     case 'admin_ai': return 'tasks.sourceAdminAi';
     case 'subsidy_ai': return 'tasks.sourceSubsidyAi';
     case 'manual': return 'tasks.sourceManual';
+    // 0020 — creata da una regola aziendale. Non è «a mano» e non viene da un
+    // modulo: chi la riceve ha diritto di sapere che non l'ha scritta nessuno.
+    case 'workflow': return 'tasks.sourceWorkflow';
   }
 }
 

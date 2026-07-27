@@ -27,6 +27,10 @@ export function notificationTitleKey(n: Pick<AppNotification, 'type' | 'payload'
     case 'unassigned_task_due_soon': return 'notifications.typeUnassigned';
     case 'calendar_sync_failed': return 'notifications.typeSyncFailed';
     case 'calendar_reauth_required': return 'notifications.typeReauth';
+    // 0020 — l'avviso di una regola aziendale. Il TESTO lo ha scritto l'azienda
+    // dentro la regola e non è traducibile: questa chiave è solo l'intestazione
+    // («Automazione»), il testo sta nel payload e si mostra così com'è.
+    case 'workflow_alert': return 'notifications.typeWorkflow';
   }
 }
 
@@ -41,6 +45,11 @@ export function notificationTitleKey(n: Pick<AppNotification, 'type' | 'payload'
 export function notificationLink(n: Pick<AppNotification, 'entityType' | 'entityId'>): string {
   if (n.entityType === 'task') return `/attivita/${n.entityId}`;
   if (n.entityType === 'calendar_connection') return '/calendario/impostazioni';
+  // 0020 — un avviso di regola può riferirsi a un documento o a una
+  // comunicazione. Le comunicazioni non hanno un indirizzo proprio: si aprono
+  // dalla lista, e portare lì è la verità.
+  if (n.entityType === 'document') return `/documenti/${n.entityId}`;
+  if (n.entityType === 'email_message') return '/inbox';
   // Un tipo di entità che non conosciamo non diventa un collegamento inventato:
   // porta alla panoramica, che esiste sempre.
   return '/';
