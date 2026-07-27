@@ -136,6 +136,8 @@ export const de: Dictionary = {
     registryNoResults: 'Kein Unternehmen gefunden. Bitte erfassen Sie die Daten unten manuell.',
     registryImported: 'Daten übernommen. Bitte prüfen und Rechtsform, Branche und Mitarbeiterzahl ergänzen.',
     registryResultsAria: 'Ergebnisse aus dem UID-Register',
+    registrySource: 'Daten aus dem Zentralen Firmenindex (Zefix), Eidgenössisches Amt für das Handelsregister. Sie sind nicht verbindlich: Massgebend ist der beglaubigte Auszug des zuständigen kantonalen Handelsregisters.',
+    registryModified: 'Sie haben die übernommenen Daten geändert: Ab jetzt entsprechen sie nicht mehr dem im Register veröffentlichten Stand.',
     legalName: 'Firmenname',
     legalNamePlaceholder: 'z. B. Rossi Impianti GmbH',
     uid: 'UID-Nummer (CHE)',

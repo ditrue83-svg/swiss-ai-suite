@@ -135,6 +135,8 @@ export const fr: Dictionary = {
     registryNoResults: 'Aucune entreprise trouvée. Veuillez saisir les données manuellement ci-dessous.',
     registryImported: 'Données importées. Vérifiez et complétez la forme juridique, le secteur et le nombre d’employés.',
     registryResultsAria: 'Résultats du registre IDE',
+    registrySource: 'Données provenant de l’index central des raisons de commerce (Zefix), Office fédéral du registre du commerce. Elles ne sont pas contraignantes : seul l’extrait certifié du registre du commerce cantonal compétent fait foi.',
+    registryModified: 'Vous avez modifié les données importées : elles ne correspondent désormais plus à ce qui est publié au registre.',
     legalName: 'Raison sociale',
     legalNamePlaceholder: 'p. ex. Rossi Impianti Sàrl',
     uid: 'Numéro IDE (CHE)',

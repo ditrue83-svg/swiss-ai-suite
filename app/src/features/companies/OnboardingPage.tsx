@@ -50,6 +50,10 @@ export function OnboardingPage() {
   const [searching, setSearching] = useState(false);
   const [candidates, setCandidates] = useState<CompanyCandidate[]>([]);
   const [lookupMsg, setLookupMsg] = useState<string | null>(null);
+  /** Ciò che è stato importato dal registro, per riconoscere le modifiche. */
+  const [imported, setImported] = useState<
+    { legalName: string; uidChe: string; canton: string; municipality: string } | null
+  >(null);
 
   async function searchRegistry() {
     const q = lookupQuery.trim();
@@ -74,10 +78,21 @@ export function OnboardingPage() {
   }
 
   function applyCandidate(c: CompanyCandidate) {
-    if (c.name) setLegalName(c.name);
-    if (c.uid) setUidChe(formatUid(c.uid) ?? c.uid);
-    if (c.canton) setCanton(CANTONI.includes(c.canton) ? c.canton : 'Altro');
-    if (c.municipality) setMunicipality(c.municipality);
+    // Si conserva ciò che è stato davvero importato, per poter dire più tardi
+    // se i dati mostrati corrispondono ancora al registro: è una delle
+    // condizioni d'uso dell'API Zefix — indicare l'origine dei dati e le
+    // eventuali modifiche — e senza questo confronto non sarebbe verificabile.
+    const applied = {
+      legalName: c.name ?? legalName,
+      uidChe: c.uid ? (formatUid(c.uid) ?? c.uid) : uidChe,
+      canton: c.canton ? (CANTONI.includes(c.canton) ? c.canton : 'Altro') : canton,
+      municipality: c.municipality ?? municipality,
+    };
+    setLegalName(applied.legalName);
+    setUidChe(applied.uidChe);
+    setCanton(applied.canton);
+    setMunicipality(applied.municipality);
+    setImported(applied);
     setCandidates([]);
     setLookupMsg(c.name ? t('onboarding.registryImportedFrom', { name: c.name }) : t('onboarding.registryImported'));
   }
@@ -113,6 +128,16 @@ export function OnboardingPage() {
   // cifra di controllo non torna. Non blocca l'invio: segnala, non decide.
   const uidInvalid = uidChe.replace(/\D/g, '').length >= 9 && !isValidUid(uidChe);
 
+  // I dati importati sono stati corretti a mano? Non è un errore — correggere è
+  // previsto — ma da quel momento non sono più quelli pubblicati dal registro,
+  // e va detto invece di lasciar credere che lo siano ancora.
+  const importedModified = imported !== null && (
+    legalName !== imported.legalName
+    || uidChe !== imported.uidChe
+    || canton !== imported.canton
+    || municipality !== imported.municipality
+  );
+
   // L'onboarding non va mai mostrato a chi ha già un'azienda: torna all'app
   // (es. dopo che il recupero qui sopra ha ricaricato le membership).
   if (hasCompany) return <Navigate to="/" replace />;
@@ -140,6 +165,18 @@ export function OnboardingPage() {
           <div className="muted-sm" style={{ marginTop: 4 }}>{t('onboarding.registryHint')}</div>
 
           {lookupMsg && <div className="hint-accent" role="status" style={{ marginTop: 8 }}>{lookupMsg}</div>}
+
+          {/* Condizioni d'uso dell'API Zefix: l'origine dei dati va indicata, e
+              va detto che non sono vincolanti — chi legge una ragione sociale
+              precompilata non deve crederla certificata. */}
+          {imported && (
+            <div className="muted-sm" style={{ marginTop: 6 }}>{t('onboarding.registrySource')}</div>
+          )}
+          {importedModified && (
+            <div className="hint-accent" role="status" style={{ marginTop: 6 }}>
+              {t('onboarding.registryModified')}
+            </div>
+          )}
 
           {candidates.length > 0 && (
             <ul role="listbox" aria-label={t('onboarding.registryResultsAria')} style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>

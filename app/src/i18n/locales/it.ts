@@ -131,6 +131,8 @@ export const it = {
     registryNoResults: 'Nessuna azienda trovata. Inserisci i dati manualmente qui sotto.',
     registryImported: 'Dati importati. Verifica e completa forma giuridica, settore e numero di dipendenti.',
     registryResultsAria: 'Risultati del Registro IDI',
+    registrySource: 'Dati dall’Indice centrale delle ditte (Zefix), Ufficio federale del registro di commercio. Non sono vincolanti: fa fede l’estratto certificato del registro di commercio cantonale competente.',
+    registryModified: 'Hai modificato i dati importati: da qui in avanti non corrispondono più a quanto pubblicato nel registro.',
     legalName: 'Ragione sociale',
     legalNamePlaceholder: 'Es. Rossi Impianti Sagl',
     uid: 'Numero IDI / CHE',
