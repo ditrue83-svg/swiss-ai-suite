@@ -561,8 +561,21 @@ finestra».
 ## 9. Configurazione — Google Cloud Console
 
 > Le credenziali possono essere **le stesse dell'Inbox** (stesso progetto, stessa
-> app OAuth) oppure diverse: il codice legge prima
-> `GOOGLE_CALENDAR_CLIENT_ID`/`SECRET` e ripiega su `GOOGLE_CLIENT_ID`/`SECRET`.
+> app OAuth) oppure diverse — ma vanno **impostate esplicitamente** in
+> `GOOGLE_CALENDAR_CLIENT_ID`/`SECRET`, anche quando il valore è identico a
+> quello di `GOOGLE_CLIENT_ID`.
+>
+> ⚠️ **Non c'è un ripiego, ed è deliberato.** La prima versione ripiegava sulle
+> credenziali dell'Inbox, e in produzione il risultato è stato: `GOOGLE_CLIENT_ID`
+> esiste già per la posta, quindi la schermata dichiarava Google «configurato» e
+> offriva il pulsante — ma quell'app OAuth ha registrato **solo lo scope di
+> Gmail**. Premendolo, Google avrebbe rifiutato `calendar.app.created` e il
+> messaggio dell'applicazione («il permesso non è stato concesso, spunta la
+> casella») avrebbe mandato a cercare nel posto sbagliato.
+>
+> Che una schermata di consenso abbia quello scope, il server **non può saperlo**.
+> Quindi non lo deduce: chiede una variabile dedicata, e impostarla significa
+> «ho preparato questa app anche per il calendario».
 
 ### 9.1 API da abilitare
 

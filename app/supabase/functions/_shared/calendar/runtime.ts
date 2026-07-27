@@ -116,22 +116,36 @@ export function oauthRedirectUri(): string {
   return `${requireEnv('SUPABASE_URL').replace(/\/$/, '')}/functions/v1/calendar-oauth/callback`;
 }
 
+/**
+ * ⚠️ NESSUN RIPIEGO SULLE CREDENZIALI DELL'INBOX, e la ragione è la sola che
+ * conta: il server non può sostenere quell'affermazione.
+ *
+ * La prima versione leggeva `GOOGLE_CALENDAR_CLIENT_ID` e ripiegava su
+ * `GOOGLE_CLIENT_ID`, per non far configurare due volte la stessa app. Il
+ * risultato, visto in produzione: `GOOGLE_CLIENT_ID` esiste già per la posta,
+ * quindi la schermata dichiarava Google «configurato» e offriva il pulsante —
+ * ma quell'app OAuth ha registrato SOLO lo scope di Gmail. Premendolo, Google
+ * avrebbe rifiutato `calendar.app.created`, e il nostro messaggio («il permesso
+ * non è stato concesso, spunta la casella») avrebbe mandato a cercare nel posto
+ * sbagliato: la casella non c'è, manca la registrazione dello scope.
+ *
+ * Che una schermata di consenso abbia quello scope il server NON può saperlo.
+ * Quindi non lo deduce: chiede una variabile dedicata. Riusare la stessa app
+ * dell'Inbox resta possibilissimo — si imposta `GOOGLE_CALENDAR_CLIENT_ID` con
+ * lo stesso valore — e quel gesto significa «ho preparato questa app anche per
+ * il calendario». Una variabile in più, ma lo stato mostrato è VERO (§79).
+ */
 export function providerConfig(provider: 'google' | 'microsoft'): CalendarProviderConfig {
   if (provider === 'google') {
     return {
-      // ⚠️ Le credenziali del CALENDARIO possono essere le stesse dell'Inbox
-      // (stesso progetto Google Cloud, stessa app OAuth) oppure diverse. Si
-      // legge prima la variabile specifica: chi vuole tenere separate le due
-      // integrazioni può farlo senza toccare il codice, e chi non lo vuole non
-      // deve configurare niente due volte.
-      clientId: env('GOOGLE_CALENDAR_CLIENT_ID') ?? requireEnv('GOOGLE_CLIENT_ID'),
-      clientSecret: env('GOOGLE_CALENDAR_CLIENT_SECRET') ?? requireEnv('GOOGLE_CLIENT_SECRET'),
+      clientId: requireEnv('GOOGLE_CALENDAR_CLIENT_ID'),
+      clientSecret: requireEnv('GOOGLE_CALENDAR_CLIENT_SECRET'),
       redirectUri: oauthRedirectUri(),
     };
   }
   return {
-    clientId: env('MICROSOFT_CALENDAR_CLIENT_ID') ?? requireEnv('MICROSOFT_CLIENT_ID'),
-    clientSecret: env('MICROSOFT_CALENDAR_CLIENT_SECRET') ?? requireEnv('MICROSOFT_CLIENT_SECRET'),
+    clientId: requireEnv('MICROSOFT_CALENDAR_CLIENT_ID'),
+    clientSecret: requireEnv('MICROSOFT_CALENDAR_CLIENT_SECRET'),
     redirectUri: oauthRedirectUri(),
     tenant: env('MICROSOFT_TENANT') ?? 'common',
   };
@@ -143,13 +157,18 @@ export function adapterFor(provider: 'google' | 'microsoft'): CalendarProviderAd
     : createMicrosoftCalendarAdapter(providerConfig('microsoft'));
 }
 
-/** Quali provider sono davvero configurati: la UI mostra lo stato REALE (§79). */
+/**
+ * Quali provider sono davvero configurati PER IL CALENDARIO: la UI mostra lo
+ * stato REALE (§79).
+ *
+ * Le variabili sono dedicate e non si ripiega su quelle dell'Inbox: vedi il
+ * commento di `providerConfig`. Dichiarare configurato ciò che non lo è
+ * significa offrire un pulsante che porta a un errore, cioè una funzione finta.
+ */
 export function configuredProviders(): ('google' | 'microsoft')[] {
   const out: ('google' | 'microsoft')[] = [];
-  if ((env('GOOGLE_CALENDAR_CLIENT_ID') ?? env('GOOGLE_CLIENT_ID'))
-      && (env('GOOGLE_CALENDAR_CLIENT_SECRET') ?? env('GOOGLE_CLIENT_SECRET'))) out.push('google');
-  if ((env('MICROSOFT_CALENDAR_CLIENT_ID') ?? env('MICROSOFT_CLIENT_ID'))
-      && (env('MICROSOFT_CALENDAR_CLIENT_SECRET') ?? env('MICROSOFT_CLIENT_SECRET'))) out.push('microsoft');
+  if (env('GOOGLE_CALENDAR_CLIENT_ID') && env('GOOGLE_CALENDAR_CLIENT_SECRET')) out.push('google');
+  if (env('MICROSOFT_CALENDAR_CLIENT_ID') && env('MICROSOFT_CALENDAR_CLIENT_SECRET')) out.push('microsoft');
   return out;
 }
 
