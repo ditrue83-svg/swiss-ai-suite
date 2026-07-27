@@ -94,9 +94,9 @@ const de: Dict = {
 
 const fr: Dict = {
   eventIntro: 'Tâche synchronisée depuis AI-Swisse.',
-  eventCompany: 'Entreprise : {company}',
-  eventPriority: 'Priorité : {priority}',
-  eventOpen: 'Ouvrir dans AI-Swisse : {url}',
+  eventCompany: 'Entreprise : {company}',
+  eventPriority: 'Priorité : {priority}',
+  eventOpen: 'Ouvrir dans AI-Swisse : {url}',
   eventGenericTitle: 'Tâche AI-Swisse à échéance',
   priorityHigh: 'Haute',
   priorityMedium: 'Moyenne',
@@ -111,7 +111,7 @@ const fr: Dict = {
   subjectSyncFailed: 'AI-Swisse — Échec de la synchronisation du calendrier',
   subjectReauth: 'AI-Swisse — Le calendrier doit être reconnecté',
 
-  bodyDeadline: 'Échéance : {date}',
+  bodyDeadline: 'Échéance : {date}',
   bodyNoDeadline: 'Sans échéance',
   bodyOpen: 'Ouvrir la tâche',
   bodyOpenCalendar: 'Ouvrir les paramètres du calendrier',
