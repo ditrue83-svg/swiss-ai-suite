@@ -14,7 +14,11 @@ export const NAV: NavEntry[] = [
   // arriva, e viene prima delle scadenze, che sono ciò che ne deriva.
   { id: 'inbox', labelKey: 'nav.inbox', icon: 'inbox', path: '/inbox' },
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'dashboard', path: '/dashboard' },
-  { id: 'deadlines', labelKey: 'nav.tasks', icon: 'calendar', path: '/attivita' },
+  { id: 'deadlines', labelKey: 'nav.tasks', icon: 'checkCircle', path: '/attivita' },
+  // Il Calendario viene DOPO le Attività, e l'ordine è il racconto del prodotto:
+  // prima che cosa c'è da fare, poi quando. L'icona del calendario passa qui —
+  // la teneva Attività, ed era il nome sbagliato per il posto giusto.
+  { id: 'calendar', labelKey: 'nav.calendar', icon: 'calendar', path: '/calendario' },
   { sectionKey: 'nav.sectionModules' },
   { id: 'admin', labelKey: 'nav.adminAi', icon: 'document', path: '/admin' },
   { id: 'subsidy', labelKey: 'nav.subsidyAi', icon: 'banknote', path: '/subsidy' },

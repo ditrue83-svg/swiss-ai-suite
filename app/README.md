@@ -19,15 +19,17 @@ verificata** del documento; ciò che non è certo viene dichiarato come incertez
 
 ```
 supabase/
-  migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks · … · 0017_document_hub
+  migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks · … · 0018_calendar_notifications
                 0005_storage · 0006_admin_ai_pipeline · 0007_subsidy_programs
                 0008_analysis_truth · 0009_quota_and_upload_limits
                 0010_analysis_immutability · 0011_program_availability
                 0012_program_translations · 0013_inbox · 0014_inbox_grants
                 0015_inbox_awaiting_analysis · 0016_work_hub · 0017_document_hub
+                0018_calendar_notifications
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
+                       + calendar/ (stato desiderato PURO, promemoria con fuso, adapter, invio email)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
     generate-reply     bozza di risposta on-demand
     interpret-project  interpretazione progetto per il Subsidy AI
@@ -37,18 +39,25 @@ supabase/
     email-webhook      notifiche push Google Pub/Sub e Microsoft Graph
     email-disconnect   scollegamento di una casella
     email-maintenance  rinnovo sottoscrizioni, riconciliazione, pulizia
+    calendar-oauth        consenso e callback OAuth dei calendari (personale, non aziendale)
+    calendar-sync         coda di sincronizzazione, «Sincronizza ora», riconciliazione
+    calendar-disconnect   scollegamento, con scelta esplicita sugli eventi già scritti
+    notifications-worker  promemoria e consegna delle email
 src/
   lib/            supabase, env, errori, hash (SHA-256), uid (IDI), formattazione
   types/          database.ts (schema) · models.ts (dominio)
   services/       auth · company · document · documentHub · analysis · task · subsidy · reply
                   correction · program · interpret · companyLookup · emailConnection · inbox
+                  calendar · calendarConnection · notification
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
-  features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing · inbox
+  features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing
+                  inbox · calendar · notifications
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
                   subsidy-translations (contenuti de/fr) · check-auth-config · bundle-migrations
 docs/             design-system.md · revisione-traduzioni.md · ai-inbox.md · document-hub.md
+                  calendar-notifications.md
 ```
 
 ## Setup
@@ -425,6 +434,70 @@ schermata — e se la seconda metà fallisce, lo si dice.
 
 Documento completo: **`docs/document-hub.md`**.
 
+### Calendario e notifiche — migrazioni 0018 e 0019
+
+Il Work Hub sa **che cosa** c'è da fare. Questo modulo aggiunge **quando** lo si
+vede nel tempo (`/calendario`) e **che cosa non si può permettere di dimenticare**
+(la campanella, i promemoria, le email opzionali).
+
+La fonte di verità del lavoro resta `tasks`. Il calendario è una **proiezione**:
+in questo modulo non esiste nessuna tabella che contenga titolo, scadenza o stato
+di un'attività. `calendar_event_links` contiene solo la corrispondenza fra una
+task e l'evento presso un provider — un identificativo e un'impronta, non una
+copia. Due posti in cui vive una scadenza sono due scadenze che possono divergere.
+
+**La sincronizzazione esterna va in una direzione sola: AI-Swisse → provider.**
+Se una persona sposta un evento nel proprio calendario, la scadenza dell'attività
+non cambia, e alla riconciliazione successiva l'evento torna alla data
+dell'attività. La schermata lo dichiara.
+
+| Garanzia | Come |
+|---|---|
+| Isolamento **fra persone** della stessa azienda | RLS su `user_id = auth.uid()`: due colleghi non si leggono le notifiche, non si vedono le connessioni, non si toccano le preferenze. Un amministratore **non può** accendere le email a un collega |
+| Token irraggiungibili | `calendar_connection_secrets`: nessun GRANT, nessuna policy, AES-256-GCM con la chiave in un secret della Edge Function |
+| Nessuno si fabbrica una notifica | il client non ha alcuna scrittura; «segna come letta» passa da una funzione |
+| Un worker eseguito due volte non duplica | `unique (user_id, dedupe_key)` per i promemoria, `unique (connection_id, task_id)` per gli eventi |
+| Otto modifiche rapide = una sola sincronizzazione | la coda ha `task_id` come chiave primaria |
+| Un guasto del calendario non tocca il lavoro | la coda è un outbox: la task è salvata sempre, la sincronizzazione è un lavoro ritentabile |
+
+**Google e Microsoft non danno le stesse garanzie, e non si finge il contrario.**
+Su Google lo scope è `calendar.app.created`, che copre **solo i calendari creati
+da questa applicazione**: «non leggiamo il tuo calendario personale» è un fatto
+imposto dal token. Su Microsoft un permesso equivalente non esiste — il minimo
+utile è `Calendars.ReadWrite`, che copre tutti i calendari della persona — quindi
+là la stessa frase sarebbe un impegno, non un limite tecnico. La schermata del
+consenso mostra **due avvertenze diverse**.
+
+⚠️ Il prezzo dello scope minimo di Google: `calendarList.list` non è autorizzato,
+quindi il calendario dedicato **non si può cercare per nome**. Il suo
+identificativo si conserva in `calendar_connections.provider_calendar_id` e si
+salva *prima* di scriverci dentro qualunque evento — altrimenti un'esecuzione
+interrotta a metà ne farebbe creare un secondo senza che ce ne accorgessimo.
+
+**I promemoria non dipendono dal browser**: li genera uno scheduler server-side.
+Le finestre sono sette giorni, un giorno, il giorno stesso e — una volta sola —
+quando l'attività diventa scaduta; nessuna prima delle **8 locali** di chi la
+riceve, con il fuso letto da `notification_preferences.timezone` e calcolato con
+`Intl`, non a mano. Le condizioni sono **intervalli**: un job saltato fa arrivare
+un promemoria tardi, non lo fa perdere.
+
+**Le email sono opzionali e spente per impostazione predefinita.** Se
+l'installazione non ha un servizio di invio configurato, la schermata le dichiara
+**non disponibili** invece di mostrare un interruttore che non farebbe partire
+niente. In un'email finiscono azienda, titolo, scadenza e un collegamento: mai
+importi, IBAN, mittenti, allegati o contenuti di documenti.
+
+⚠️ La **0019** corregge un difetto della 0018 emerso alla PRIMA esecuzione di
+`npm run test:calendar` sul database reale: `notifications_mark_read` era
+`security invoker`, quindi girava con i permessi del chiamante — che su
+`notifications` ha solo `SELECT` — e l'UPDATE veniva respinto con 42501. La
+campanella non riusciva a segnare niente come letto. Se la funzione gira come il
+chiamante, **la funzione è il chiamante**: un GRANT che manca a lui manca anche a
+lei. Ora sono `security definer`, e la condizione `user_id = auth.uid()` scritta
+dentro è l'unica difesa — non più una ridondanza.
+
+Documento completo: **`docs/calendar-notifications.md`**.
+
 ## Comandi
 
 ```bash
@@ -446,11 +519,16 @@ npm run test:tasks      # Attività su DB: isolamento, assegnazione, autore, com
 npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run test:documents-unit  # Documenti offline: stati, ricerca, estratti, indirizzo (60 test)
 npm run test:documents       # Documenti su DB: isolamento della RICERCA, categorie, etichette, archivio
+npm run test:calendar-unit   # Calendario e notifiche offline: stato desiderato, promemoria con ora
+                             # legale, idempotenza degli adapter, griglia del mese (158 test)
+npm run test:calendar        # Calendario su DB: isolamento fra aziende E FRA PERSONE, coda, trigger
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
                         # Rifiuta di generare se una migrazione usa un valore enum appena aggiunto,
-                        # o se crea un trigger/una policy senza «drop … if exists» che li preceda
+                        # o se crea un trigger/una policy senza «drop … if exists» che li preceda —
+                        # anche quando il nome è fra virgolette, che è il caso che gli era sfuggito
+npm run db:bundle -- --self-test   # verifica che il CONTROLLO stesso riconosca i propri casi noti
 npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
 npm run inbox:diagnose  # «perché questa casella non si aggiorna»: stati, sync run, conteggi.
                         # Solo metadati tecnici: mai oggetti, mittenti o contenuti
@@ -467,6 +545,16 @@ Creano dati reali e li rimuovono alla fine.
   (B non legge/scarica/scrive nulla di A), cascade delete, nessun accesso senza sessione, persistenza dopo re-login.
 - **`test:phase2` (36)** — autorizzazione via membership (403 cross-tenant), 401/400/422, **rate limit** (429),
   analisi reale end-to-end con verifica che **tutte** le citazioni esistano nel testo, persistenza della provenienza.
+- **`test:calendar-unit` (156)** — le decisioni che si sbagliano in silenzio: lo **stato desiderato**
+  di un evento (compresa la distinzione fra «non deve esserci» e «non si può toccare», che salva il
+  calendario di chi ha solo un token scaduto), i **promemoria attraverso il cambio dell'ora legale**,
+  la deduplicazione, l'**idempotenza degli adapter** contro un provider finto (un 409 di Google non
+  crea un secondo evento), e l'**assenza** dei metodi che leggerebbero i calendari personali.
+  Controprove eseguite: rimettendo i difetti, 2, 6 e 1 controlli falliscono.
+- **`test:calendar` (DB)** — isolamento fra aziende e, per la prima volta, **fra persone della stessa
+  azienda**: due colleghi non si leggono le notifiche, non si vedono le connessioni, non si toccano
+  le preferenze. Più: token irraggiungibili, notifiche non fabbricabili, coda del solo server,
+  coalescenza del trigger (otto modifiche → una riga), prenotazione atomica della coda.
 - **`test:pipeline` (18)** — il flusso completo del *Definition of Done*: analisi → persistenza → re-login → task → bozza.
 - **`eval:admin` (35)** — qualità su documenti reali (AVS tedesco, AFC francese, Comune italiano) e **casi difficili**:
   nessuna scadenza → `null`; scadenza relativa → nessuna data inventata; due importi → array corretto;
@@ -633,6 +721,24 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
 - **Nessuna politica di conservazione delle analisi**: dalla 0010 il client non può più cancellarle,
   quindi rianalizzare un documento accumula righe e vince la più recente (la panoramica ne mostra una
   sola per documento). È voluto, ma lo storico cresce e prima o poi va deciso per quanto conservarlo.
+- **Calendario esterno: mai provato contro le API vive.** Gli adapter Google e Microsoft sono
+  allineati alla documentazione ufficiale corrente, non a una risposta reale — la stessa distinzione
+  già dichiarata per Zefix, e vale la stessa cautela. Le migrazioni 0018 e 0019 sono applicate e
+  `npm run test:calendar` è verde (58/58), ma nessuna connessione OAuth reale è mai stata stabilita.
+- **Le notifiche non seguono per cascata la cancellazione di un'attività**: `entity_id` è polimorfico
+  e non ha una chiave esterna. Nella pratica non succede — nulla nell'applicazione cancella una
+  task, si archiviano — e cascatano comunque su azienda e utente.
+- **Spegnere le notifiche in AI-Swisse spegne anche le email**: la consegna è appesa alla notifica,
+  quindi l'email è una copia dell'avviso in-app e non un canale indipendente. La schermata delle
+  impostazioni lo scrive, invece di lasciare due interruttori che sembrano scollegati e non lo sono.
+- **Un'attività cancellata davvero** (non archiviata) lascia l'evento orfano presso il provider: la
+  cascata rimuove il collegamento e con esso l'unica informazione su dove cercarlo. Le attività si
+  archiviano, e l'archiviazione passa dal percorso normale che l'evento lo rimuove.
+- **`tasks.due_date` è una DATA, non un istante**: gli eventi sul calendario esterno sono di giornata
+  intera. Inventare un orario — le 9, le 17 — significherebbe scrivere nel calendario di una persona
+  un'informazione che nessuno ha mai dato. Quando esisterà un vero `due_at`, cambierà in un punto solo.
+- **Nessuna politica di conservazione** per notifiche, consegne email ed esecuzioni di
+  sincronizzazione: si accumulano, come le analisi dalla 0010.
 - **Registro IDI (Zefix)**: implementato, ma richiede credenziali API rilasciate su richiesta
   (`zefix@bj.admin.ch`); senza `ZEFIX_AUTH` l'onboarding resta manuale e lo dichiara.
   ⚠️ Gli endpoint sono stati **corretti il 2026-07-27** contro il documento OpenAPI ufficiale

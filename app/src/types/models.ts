@@ -8,6 +8,8 @@ import type {
   EligibilityStatus, SubsidyCaseStatus,
   EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
   EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
+  CalendarProvider, CalendarConnectionStatus, CalendarSyncStatus,
+  NotificationType, NotificationChannel, NotificationDeliveryStatus,
 } from './database';
 
 export type {
@@ -16,6 +18,8 @@ export type {
   EligibilityStatus, SubsidyCaseStatus,
   EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
   EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
+  CalendarProvider, CalendarConnectionStatus, CalendarSyncStatus,
+  NotificationType, NotificationChannel, NotificationDeliveryStatus,
 };
 
 // ---- Utente / azienda -------------------------------------------------------
@@ -475,6 +479,76 @@ export interface AssignableMember {
   userId: string;
   name: string;
   role: MemberRole;
+}
+
+// ---- Calendario e notifiche (0018) ------------------------------------------
+
+/**
+ * Una riga del calendario interno.
+ *
+ * ⚠️ È DELIBERATAMENTE POVERA. Non ha descrizione, checklist, commenti, storico
+ * né analisi collegata: una griglia mensile con quaranta attività non deve
+ * scaricare quaranta analisi documentali per disegnare quaranta righe di testo
+ * (§22). Chi vuole il resto apre l'attività, che è a un clic.
+ */
+export interface CalendarTaskItem {
+  id: string;
+  title: string;
+  /** `YYYY-MM-DD`. Sempre presente: senza scadenza un'attività non entra nel calendario. */
+  dueDate: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  source: TaskSource;
+  assigneeUserId: string | null;
+  assigneeName: string | null;
+  documentId: string | null;
+}
+
+export interface CalendarConnection {
+  id: string;
+  companyId: string;
+  userId: string;
+  provider: CalendarProvider;
+  emailAddress: string;
+  /** Il calendario dedicato. `null` finché non è stato creato: stato legittimo. */
+  providerCalendarId: string | null;
+  calendarName: string | null;
+  status: CalendarConnectionStatus;
+  scopes: string[];
+  syncEnabled: boolean;
+  initialSyncCompletedAt: string | null;
+  lastSyncAt: string | null;
+  lastSuccessfulSyncAt: string | null;
+  lastErrorCode: string | null;
+  lastErrorAt: string | null;
+}
+
+export interface AppNotification {
+  id: string;
+  companyId: string;
+  type: NotificationType;
+  entityType: string;
+  entityId: string;
+  /** Solo metadati: titolo, scadenza, priorità. Mai contenuti di documenti o email. */
+  payload: { title?: string; dueDate?: string | null; priority?: TaskPriority; kind?: string };
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPreferences {
+  companyId: string;
+  userId: string;
+  inAppEnabled: boolean;
+  emailEnabled: boolean;
+  remind7Days: boolean;
+  remind1Day: boolean;
+  remindDueDay: boolean;
+  remindOverdue: boolean;
+  /** Fuso IANA. I promemoria si generano al mattino LOCALE di questa zona. */
+  timezone: string;
+  locale: string;
+  /** §96 — quando è falso, il titolo dell'attività non lascia AI-Swisse. */
+  showTaskTitle: boolean;
 }
 
 // ---- Subsidy ----------------------------------------------------------------

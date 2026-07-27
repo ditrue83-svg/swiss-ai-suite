@@ -106,6 +106,27 @@ export function scanJsxText(src) {
     let depth = 0;
     while (k < n) {
       const ch = src[k];
+      // ⚠️ I COMMENTI VANNO SALTATI PRIMA DELLE VIRGOLETTE, e non è un dettaglio.
+      // Un attributo può contenere un'espressione su più righe con dentro un
+      // commento, e un commento italiano contiene apostrofi: senza questo
+      // controllo, `// l'etichetta` apriva una stringa che si chiudeva molto
+      // più avanti, dentro un'altra istruzione. Da lì in poi il conteggio delle
+      // graffe era sfasato, il `>` di chiusura non veniva riconosciuto e
+      // l'automa restava convinto di trovarsi fra i figli di un elemento —
+      // segnalando come «testo d'interfaccia» le righe di commento successive.
+      // Trovato il 2026-07-27 su CalendarPage.tsx: un falso positivo, quindi
+      // meno pericoloso di un falso verde, ma un controllo che segnala il nulla
+      // insegna a ignorarlo, ed è così che poi passa quello che conta.
+      if (ch === '/' && src[k + 1] === '/') {
+        const nl = src.indexOf('\n', k);
+        k = nl < 0 ? n : nl + 1;
+        continue;
+      }
+      if (ch === '/' && src[k + 1] === '*') {
+        const end = src.indexOf('*/', k + 2);
+        k = end < 0 ? n : end + 2;
+        continue;
+      }
       if (ch === '"' || ch === "'" || ch === '`') {
         const q = ch; k++;
         while (k < n && src[k] !== q) { if (src[k] === '\\') k++; k++; }
@@ -226,6 +247,31 @@ const SELF_TEST_CASES = [
     export function P({ x }: { x: boolean }) {
       return (<div>{x ? <b>Scaduta</b> : null}</div>);
     }` },
+  // ⚠️ IL CASO DEL 2026-07-27, e il motivo per cui sembra scritto male.
+  //
+  // Un commento italiano dentro la lista degli attributi di un tag contiene un
+  // apostrofo, e l'apostrofo veniva letto come APERTURA DI STRINGA. Se prima
+  // del `>` ne compare un numero pari, l'ultima «stringa» resta aperta e si
+  // mangia il `>` del tag: da lì in poi l'automa crede di essere fra i figli di
+  // un elemento e segnala come testo d'interfaccia le righe di commento
+  // successive. Su `CalendarPage.tsx` bastavano due commenti.
+  //
+  // Questo frammento NON è prosa scritta a mano: è il riproduttore MINIMO
+  // ottenuto per delta debugging dal file vero, verificato contro la versione
+  // difettosa (segnala) e contro quella corretta (non segnala). Tre tentativi
+  // di riscriverlo «in bello» avevano prodotto casi che non fallivano più
+  // nemmeno con il difetto rimesso — cioè test inerti, che sono peggio di
+  // nessun test perché suggeriscono una copertura che non c'è.
+  //
+  // È un caso NEGATIVO, e i casi negativi contano quanto i positivi: un
+  // controllo che segnala il nulla insegna a ignorarlo, ed è così che poi passa
+  // quello che conta.
+  { name: 'apostrofi in commenti dentro un tag (falso positivo del 2026-07-27)', expected: 0, file: 'a.tsx', src: `                <td
+                    // l'etichetta, e visivamente è un cerchio pieno (§98).
+                      aprire. Su telefono il numero vero sta nell'etichetta
+                </td>
+// ---- Vista agenda ------------------------------------------------------------
+` },
   { name: 'tutto tradotto: nessuna segnalazione', expected: 0, file: 'a.tsx', src: `
     export function P() {
       const t = useT();

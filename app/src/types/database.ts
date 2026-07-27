@@ -66,6 +66,21 @@ export type EmailDocumentRelation = 'body' | 'attachment';
 export type EmailAttachmentImportStatus =
   | 'pending' | 'imported' | 'skipped_inline' | 'skipped_unsupported' | 'skipped_too_large' | 'failed';
 
+// ---- Calendario e notifiche (0018) -----------------------------------------
+// `CalendarProvider` è un tipo PROPRIO e non un alias di `EmailProvider`: oggi
+// hanno gli stessi due valori per coincidenza, e legarli significherebbe che
+// aggiungere un provider di calendario ne aggiunge uno di posta.
+export type CalendarProvider = 'google' | 'microsoft';
+export type CalendarConnectionStatus = 'active' | 'reauth_required' | 'error' | 'disconnected';
+/** Stato di un collegamento fra attività ed evento. `pending` è normale, non un guasto. */
+export type CalendarSyncStatus = 'pending' | 'synced' | 'failed';
+export type NotificationType =
+  | 'task_assigned' | 'task_due_soon' | 'task_due_today' | 'task_overdue'
+  | 'unassigned_task_due_soon' | 'calendar_sync_failed' | 'calendar_reauth_required';
+/** L'in-app non è un canale: l'in-app È la notifica. Vedi 0018. */
+export type NotificationChannel = 'email';
+export type NotificationDeliveryStatus = 'pending' | 'sending' | 'sent' | 'failed' | 'cancelled';
+
 export interface Database {
   public: {
     Tables: {
@@ -275,6 +290,67 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      notifications: {
+        // Sola lettura per il client (0018): le righe le scrivono i trigger e il
+        // worker, e «segna come letta» passa da una funzione.
+        Row: {
+          id: string; company_id: string; user_id: string; type: NotificationType;
+          entity_type: string; entity_id: string; payload: Json;
+          dedupe_key: string | null; read_at: string | null; created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      notification_preferences: {
+        Row: {
+          company_id: string; user_id: string;
+          in_app_enabled: boolean; email_enabled: boolean;
+          remind_7_days: boolean; remind_1_day: boolean; remind_due_day: boolean; remind_overdue: boolean;
+          timezone: string; locale: string; show_task_title: boolean;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          company_id: string; user_id: string;
+          in_app_enabled?: boolean; email_enabled?: boolean;
+          remind_7_days?: boolean; remind_1_day?: boolean; remind_due_day?: boolean; remind_overdue?: boolean;
+          timezone?: string; locale?: string; show_task_title?: boolean;
+        };
+        Update: {
+          in_app_enabled?: boolean; email_enabled?: boolean;
+          remind_7_days?: boolean; remind_1_day?: boolean; remind_due_day?: boolean; remind_overdue?: boolean;
+          timezone?: string; locale?: string; show_task_title?: boolean;
+        };
+        Relationships: [];
+      };
+      calendar_connections: {
+        // ⚠️ La 0018 concede al client la SELECT su un elenco di colonne, non
+        // sulla tabella: `select('*')` fallisce con «permission denied for
+        // column». È il motivo per cui il service le elenca una per una.
+        Row: {
+          id: string; company_id: string; user_id: string; provider: CalendarProvider;
+          email_address: string; provider_calendar_id: string | null; calendar_name: string | null;
+          status: CalendarConnectionStatus; scopes: string[]; sync_enabled: boolean;
+          initial_sync_completed_at: string | null; last_sync_at: string | null;
+          last_successful_sync_at: string | null; last_error_code: string | null; last_error_at: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      calendar_event_links: {
+        Row: {
+          id: string; company_id: string; user_id: string; connection_id: string; task_id: string;
+          provider_event_id: string; provider_calendar_id: string;
+          sync_status: CalendarSyncStatus; content_hash: string | null;
+          last_synced_at: string | null; error_code: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       subsidy_matches: {
         Row: { id: string; company_id: string; program_id: string; relevance_score: number | null; eligibility_status: EligibilityStatus; answers: Json; satisfied_requirements: Json; unknown_requirements: Json; failed_requirements: Json; source_last_checked_at: string | null; evaluated_at: string; created_at: string; updated_at: string };
         Insert: { id?: string; company_id: string; program_id: string; relevance_score?: number | null; eligibility_status?: EligibilityStatus; answers?: Json; satisfied_requirements?: Json; unknown_requirements?: Json; failed_requirements?: Json; source_last_checked_at?: string | null; evaluated_at?: string };
@@ -479,6 +555,31 @@ export interface Database {
         Args: { p_company_id: string; p_ids: string[]; p_tag_id: string };
         Returns: number;
       };
+      /**
+       * Calendario interno (0018): le attività con scadenza in un intervallo,
+       * più le scadute che restano pertinenti anche fuori intervallo.
+       * NON restituisce checklist, commenti, storico né analisi: una vista
+       * mensile con quaranta attività non deve caricare quaranta analisi.
+       * ⚠️ Non c'è `is_overdue`: che cosa sia «in ritardo» lo decide
+       * `isOverdue()` in `taskFormat`, una definizione sola per tutto il prodotto.
+       */
+      calendar_tasks: {
+        Args: {
+          p_company_id: string; p_from: string; p_to: string;
+          p_mine?: boolean; p_status?: TaskStatus | null; p_priority?: TaskPriority | null;
+          p_assignee?: string | null; p_include_overdue?: boolean; p_limit?: number;
+        };
+        Returns: {
+          id: string; title: string; due_date: string;
+          priority: TaskPriority; status: TaskStatus; source: TaskSource;
+          assignee_user_id: string | null; assignee_name: string | null; document_id: string | null;
+        }[];
+      };
+      /** Quante attività aperte non hanno scadenza. Si mostra il numero, non si inventa una data. */
+      calendar_undated_count: { Args: { p_company_id: string; p_mine?: boolean }; Returns: number };
+      notifications_mark_read: { Args: { p_ids: string[] }; Returns: number };
+      notifications_mark_all_read: { Args: { p_company_id: string }; Returns: number };
+      notifications_unread_count: { Args: { p_company_id: string }; Returns: number };
       /** Lista attività: filtri, ordinamento e paginazione nel database. */
       list_tasks: {
         Args: {
@@ -515,6 +616,12 @@ export interface Database {
       email_relevance: EmailRelevance;
       email_document_relation: EmailDocumentRelation;
       email_attachment_import_status: EmailAttachmentImportStatus;
+      calendar_provider: CalendarProvider;
+      calendar_connection_status: CalendarConnectionStatus;
+      calendar_link_status: CalendarSyncStatus;
+      notification_type: NotificationType;
+      notification_channel: NotificationChannel;
+      notification_delivery_status: NotificationDeliveryStatus;
     };
     CompositeTypes: Record<string, never>;
   };

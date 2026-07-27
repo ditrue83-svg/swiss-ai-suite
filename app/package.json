@@ -29,7 +29,9 @@
     "test:tasks-unit": "node --import tsx scripts/test-tasks-unit.ts",
     "test:tasks": "node --env-file=.env.test scripts/test-tasks.mjs",
     "test:documents-unit": "node --import tsx scripts/test-documents-unit.ts",
-    "test:documents": "node --env-file=.env.test scripts/test-documents.mjs"
+    "test:documents": "node --env-file=.env.test scripts/test-documents.mjs",
+    "test:calendar-unit": "node --import tsx scripts/test-calendar-unit.ts",
+    "test:calendar": "node --env-file=.env.test scripts/test-calendar.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

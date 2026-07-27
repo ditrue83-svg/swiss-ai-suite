@@ -27,7 +27,20 @@ const header = `-- =============================================================
 -- Contiene, in ordine:
 ${names.map((n) => `--   ${n}`).join('\n')}
 --
--- È idempotente quanto lo sono le singole migrazioni: rieseguirlo è sicuro.
+-- SERVE A INSTALLARE DA ZERO. Su un database già in esercizio si applica UNA
+-- MIGRAZIONE ALLA VOLTA: questo file non aggiunge niente e in caso di errore
+-- fa fallire l'intera transazione, compresa la migrazione che si voleva applicare.
+--
+-- Rieseguirlo è comunque sicuro, e la promessa è VERIFICATA prima di essere
+-- scritta — non solo dichiarata. Il generatore controlla che:
+--   · nessun trigger e nessuna policy vengano creati senza un «drop … if exists»
+--     che li preceda (42710 fermerebbe tutto il file), riconoscendo anche i nomi
+--     fra virgolette;
+--   · nessun valore enum appena aggiunto venga usato nello stesso file (55P04).
+-- Ciò che NON controlla, e che quindi resta responsabilità di chi scrive una
+-- migrazione: tabelle, indici, colonne, vincoli, tipi e inserimenti di dati,
+-- che vanno resi ripetibili a mano («if not exists», «do $$ … exception»,
+-- «on conflict», «drop constraint if exists»).
 -- ============================================================================
 
 `;
@@ -104,20 +117,123 @@ for (let i = 0; i < files.length; i++) {
 // un file generato — la stessa classe di guasto del controllo i18n che diceva
 // verde. Ora la promessa è verificata prima di essere scritta.
 // ---------------------------------------------------------------------------
-for (let i = 0; i < files.length; i++) {
-  const codice = senzaCommenti(readFileSync(join(MIG_DIR, files[i]), 'utf8'));
-  const protetti = {
-    trigger: new Set([...codice.matchAll(/drop\s+trigger\s+if\s+exists\s+(\w+)/gi)].map((m) => m[1].toLowerCase())),
-    policy: new Set([...codice.matchAll(/drop\s+policy\s+if\s+exists\s+(\w+)/gi)].map((m) => m[1].toLowerCase())),
-  };
+// ⚠️ IL BUCO DEL 2026-07-27 (secondo giro): I NOMI FRA VIRGOLETTE
+//
+// La prima versione cercava `create policy (\w+)`. In `0005_storage.sql` le
+// quattro policy si chiamano `"company_documents_select"` e simili — con le
+// VIRGOLETTE — e `\w` non le comprende: l'espressione non trovava proprio
+// nulla, e il controllo dichiarava che il file era ripetibile. Non lo era.
+// Riapplicando `full-setup.sql` si otteneva
+//     42710: policy "company_documents_select" for table "objects" already exists
+// esattamente il guasto che questo controllo era stato scritto per impedire.
+//
+// È la stessa forma di difetto già vista due volte nel controllo i18n: non
+// sbagliava il ragionamento, non vedeva il caso. Per questo ora c'è
+// `npm run db:bundle -- --self-test`, con casi che DEVONO farlo fallire.
+//
+// Un nome SQL può essere nudo (`trg_x`) o fra virgolette (`"trg x"`), e i due
+// si riferiscono allo stesso oggetto quando il nome è tutto minuscolo. Qui si
+// legge l'una o l'altra forma e si confronta in minuscolo.
+const NOME = '(?:"([^"]+)"|([\\w$]+))';
+const nomeDi = (m) => (m[1] ?? m[2] ?? '').toLowerCase();
+
+/**
+ * I problemi di ripetibilità di UNA migrazione. Funzione pura: riceve il testo,
+ * restituisce l'elenco. Serve al controllo e alla sua autoverifica — un
+ * controllo che non si può mettere alla prova è un controllo di cui ci si fida
+ * senza motivo.
+ */
+export function problemiDiRipetibilita(sql) {
+  const codice = senzaCommenti(sql);
+  const trovati = [];
   for (const tipo of ['trigger', 'policy']) {
-    const re = new RegExp(`create\\s+${tipo}\\s+(\\w+)`, 'gi');
+    const protetti = new Set(
+      [...codice.matchAll(new RegExp(`drop\\s+${tipo}\\s+if\\s+exists\\s+${NOME}`, 'gi'))].map(nomeDi),
+    );
+    // `create or replace trigger` (Postgres 14+) è già ripetibile per conto suo:
+    // pretendere un drop davanti sarebbe un falso positivo. Per le policy quella
+    // forma non esiste, e infatti il gruppo resta sempre vuoto.
+    const re = new RegExp(`create\\s+(or\\s+replace\\s+)?${tipo}\\s+${NOME}`, 'gi');
     for (const m of codice.matchAll(re)) {
-      if (!protetti[tipo].has(m[1].toLowerCase())) {
-        problemi.push(`${names[i]}: ${tipo} ${m[1]} senza «drop ${tipo} if exists» che lo preceda`);
+      if (m[1]) continue;                       // or replace: si ricrea da sé
+      const nome = (m[2] ?? m[3] ?? '').toLowerCase();
+      if (!protetti.has(nome)) {
+        trovati.push(`${tipo} ${nome} senza «drop ${tipo} if exists» che lo preceda`);
       }
     }
   }
+  return trovati;
+}
+
+for (let i = 0; i < files.length; i++) {
+  const sql = readFileSync(join(MIG_DIR, files[i]), 'utf8');
+  for (const p of problemiDiRipetibilita(sql)) problemi.push(`${names[i]}: ${p}`);
+}
+
+// ---------------------------------------------------------------------------
+// Autoverifica del controllo di ripetibilità.
+//   npm run db:bundle -- --self-test
+//
+// Ogni caso porta il numero di problemi ATTESI. I casi negativi (attese 0)
+// contano quanto i positivi: un controllo che segnala tutto verrebbe disattivato
+// il giorno dopo, e uno che non segnala niente è già stato disattivato senza che
+// nessuno lo sapesse — è quello che è successo con le policy fra virgolette.
+// ---------------------------------------------------------------------------
+const AUTOVERIFICA = [
+  { nome: 'policy con nome nudo, senza drop', attesi: 1, sql: `
+    create policy p_letture on public.t for select to authenticated using (true);` },
+  { nome: 'policy con nome nudo, con drop', attesi: 0, sql: `
+    drop policy if exists p_letture on public.t;
+    create policy p_letture on public.t for select to authenticated using (true);` },
+  // ⚠️ IL CASO DEL 2026-07-27: è questo che la versione precedente non vedeva.
+  { nome: 'policy con nome FRA VIRGOLETTE, senza drop', attesi: 1, sql: `
+    create policy "company_documents_select"
+      on storage.objects for select to authenticated using (true);` },
+  { nome: 'policy fra virgolette, con drop fra virgolette', attesi: 0, sql: `
+    drop policy if exists "company_documents_select" on storage.objects;
+    create policy "company_documents_select"
+      on storage.objects for select to authenticated using (true);` },
+  { nome: 'drop senza virgolette protegge un create con virgolette', attesi: 0, sql: `
+    drop policy if exists company_documents_select on storage.objects;
+    create policy "company_documents_select"
+      on storage.objects for select to authenticated using (true);` },
+  { nome: 'trigger senza drop', attesi: 1, sql: `
+    create trigger trg_x before insert on public.t for each row execute function public.f();` },
+  { nome: 'trigger con drop', attesi: 0, sql: `
+    drop trigger if exists trg_x on public.t;
+    create trigger trg_x before insert on public.t for each row execute function public.f();` },
+  { nome: 'create or replace trigger si ricrea da sé', attesi: 0, sql: `
+    create or replace trigger trg_x before insert on public.t for each row execute function public.f();` },
+  { nome: 'un create policy dentro un commento non conta', attesi: 0, sql: `
+    -- create policy p_finta on public.t for select using (true);
+    select 1;` },
+];
+
+if (process.argv.includes('--self-test')) {
+  console.log('\nAutoverifica del controllo di ripetibilità\n');
+  let falliti = 0;
+  for (const c of AUTOVERIFICA) {
+    const trovati = problemiDiRipetibilita(c.sql).length;
+    const ok = trovati === c.attesi;
+    if (!ok) falliti++;
+    console.log(`  ${ok ? '✓' : '✗'} ${c.nome} — attesi ${c.attesi}, trovati ${trovati}`);
+  }
+  console.log(falliti
+    ? `\n  ${falliti} casi non superati: il controllo NON è affidabile.\n`
+    : '\n  Tutti i casi superati.\n');
+  process.exit(falliti ? 1 : 0);
+}
+
+// Il controllo non gira mai senza essersi prima messo alla prova: un verde dato
+// da un rilevatore rotto vale meno di nessun controllo.
+const autoverificaFallita = AUTOVERIFICA.filter(
+  (c) => problemiDiRipetibilita(c.sql).length !== c.attesi,
+);
+if (autoverificaFallita.length) {
+  console.error('\n✗ Il controllo di ripetibilità non riconosce i propri casi noti:');
+  for (const c of autoverificaFallita) console.error(`    ${c.nome}`);
+  console.error('  Esegui: npm run db:bundle -- --self-test\n');
+  process.exit(1);
 }
 
 if (problemi.length) {

@@ -13,6 +13,8 @@ import { HomePage } from '@/features/dashboard/HomePage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
+import { CalendarPage } from '@/features/calendar/CalendarPage';
+import { CalendarSettingsPage } from '@/features/calendar/CalendarSettingsPage';
 import { InboxPage } from '@/features/inbox/InboxPage';
 import { EmailAccountsPage } from '@/features/inbox/EmailAccountsPage';
 import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
@@ -90,6 +92,8 @@ export default function App() {
                 funzionare: sono in email, appunti e segnalibri delle persone.
                 Reindirizzamento, non una seconda pagina da mantenere. */}
             <Route path="/scadenziario" element={<Navigate to="/attivita" replace />} />
+            <Route path="/calendario" element={<CalendarPage />} />
+            <Route path="/calendario/impostazioni" element={<CalendarSettingsPage />} />
             <Route path="/admin" element={<AdminAIPage />} />
             <Route path="/subsidy" element={<SubsidyPage />} />
             <Route path="/documenti" element={<DocumentsPage />} />

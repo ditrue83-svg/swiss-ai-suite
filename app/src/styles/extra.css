@@ -65,3 +65,187 @@
 .spin-btn { position: relative; }
 .divider { height: 1px; background: var(--line); margin: 16px 0; }
 .badge-alta.badge, .badge-media.badge, .badge-bassa.badge { white-space: nowrap; }
+
+/* ============================================================================
+   Calendario e notifiche (0018)
+
+   Nessuna libreria: una griglia mensile è una tabella di sette colonne, e
+   duecento kilobyte di dipendenza per disegnarla sarebbero più di tutta la UI
+   messa insieme (§100). Tutti i colori, le spaziature e le misure del testo
+   passano dai token del design system: nessun px per il testo, nessun colore
+   scritto a mano.
+   ============================================================================ */
+
+/* ---- Campanella ---------------------------------------------------------- */
+.bell-wrap { position: relative; margin-left: auto; }
+.bell-btn {
+  position: relative; display: grid; place-items: center;
+  width: 40px; height: 40px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--card); color: var(--ink);
+}
+.bell-btn:hover { background: var(--bg); }
+/* Il pallino non contiene mai più di due caratteri: oltre il nove diventa «9+»,
+   perché un pallino che deve stare dietro a «147» o cresce quanto una parola o
+   rimpicciolisce il testo sotto la soglia leggibile (§80). */
+.bell-badge {
+  position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px;
+  padding: 0 4px; border-radius: 9px; background: var(--red); color: #fff;
+  font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
+}
+.bell-panel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 70;
+  width: 340px; max-width: calc(100vw - 28px);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 12%); max-height: 70vh; overflow-y: auto;
+}
+.bell-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  padding: var(--sp-3); border-bottom: 1px solid var(--line);
+}
+.bell-title { font-size: var(--fs-strong); font-weight: 600; }
+.bell-empty { padding: var(--sp-6) var(--sp-3); text-align: center; color: var(--muted); }
+.bell-row {
+  display: flex; gap: var(--sp-2); width: 100%; text-align: left;
+  padding: var(--sp-3); border: 0; border-bottom: 1px solid var(--line); background: transparent;
+}
+.bell-row:hover { background: var(--bg); }
+.bell-row.is-unread { background: var(--accent-soft); }
+/* Il pallino NON è l'unico segnale del non letto: lo sfondo cambia e il testo
+   del titolo è in grassetto. Un indicatore di solo colore non dice niente a chi
+   non lo distingue (§98). */
+.bell-row.is-unread .bell-row-title { font-weight: 600; }
+.bell-dot {
+  flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); margin-top: 6px;
+}
+.bell-dot.is-problem { background: var(--red); }
+.bell-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bell-row-title { font-size: var(--fs-body); }
+.bell-row-sub { font-size: var(--fs-meta); color: var(--ink); overflow-wrap: anywhere; }
+.bell-row-meta { font-size: var(--fs-label); color: var(--muted); }
+.bell-foot { padding: var(--sp-3); }
+
+/* ---- Barra degli strumenti del calendario -------------------------------- */
+.cal-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.cal-nav { display: flex; align-items: center; gap: var(--sp-1); }
+.cal-title { font-size: var(--fs-h2); font-weight: 600; }
+.cal-title::first-letter { text-transform: uppercase; }
+.cal-filters { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-left: auto; }
+
+/* ---- Griglia del mese ---------------------------------------------------- */
+.cal-grid { width: 100%; table-layout: fixed; border-collapse: collapse; }
+/* La didascalia serve a chi naviga con uno screen reader: dice di che mese è
+   la tabella. Visivamente il titolo è già nella barra, quindi qui si nasconde
+   senza toglierla dall'albero di accessibilità. */
+.cal-caption {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+.cal-grid th {
+  padding: var(--sp-1) var(--sp-2); text-align: left;
+  font-size: var(--fs-label); font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line);
+}
+/* `height` su una cella di tabella vale come MINIMO: una giornata piena fa
+   crescere la riga invece di far uscire il contenuto dal bordo. */
+.cal-cell {
+  vertical-align: top; height: 100px; padding: var(--sp-1);
+  border: 1px solid var(--line); background: var(--card);
+}
+.cal-cell.out { background: var(--bg); }
+.cal-cell.out .cal-daynum { color: var(--muted); }
+/* Oggi: un cerchio pieno intorno al numero. È una FORMA, non un colore, quindi
+   resta riconoscibile anche a chi non distingue le tinte — e l'etichetta della
+   cella lo dice comunque a parole (§98). */
+.cal-cell.today .cal-daynum {
+  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+}
+.cal-daynum {
+  display: grid; place-items: center; min-width: 24px; min-height: 24px;
+  margin-bottom: 2px; padding: 0 4px;
+  border: 1px solid transparent; border-radius: 12px;
+  background: transparent; color: var(--ink); font-size: var(--fs-meta);
+}
+.cal-daynum:hover { background: var(--bg); border-color: var(--line); }
+/* ⚠️ `min-height: 24px` non è estetica: è la soglia dei bersagli cliccabili di
+   WCAG 2.2, la stessa regola che nella 0016 ha alzato `.mini-btn` e `.ev-btn`.
+   Misurato qui a 20 pixel aprendo la griglia, non leggendo il codice. */
+.cal-item {
+  display: flex; align-items: center; min-height: 24px;
+  margin-bottom: 1px; padding: 2px var(--sp-1);
+  border-left: 3px solid var(--accent-line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--ink);
+  font-size: var(--fs-label); line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cal-item:hover { background: var(--card); border-left-color: var(--accent); }
+.cal-item.p-high { border-left-color: var(--red); }
+.cal-item.p-medium { border-left-color: var(--amber-fill); }
+.cal-item.p-low { border-left-color: var(--green-fill); }
+/* Un'attività conclusa resta visibile — vedere che una cosa è stata fatta ha
+   valore — ma non compete con ciò che c'è ancora da fare. */
+.cal-item.is-done { opacity: .6; text-decoration: line-through; }
+.cal-more {
+  display: flex; align-items: center; width: 100%; min-height: 24px; padding: 0 var(--sp-1);
+  border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: var(--accent); font-size: var(--fs-label); text-align: left;
+}
+.cal-more:hover { background: var(--bg); }
+
+/* ---- Agenda -------------------------------------------------------------- */
+.cal-agenda { display: flex; flex-direction: column; gap: var(--sp-4); }
+.cal-agenda-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  padding-bottom: var(--sp-1); border-bottom: 1px solid var(--line);
+}
+/* ⚠️ `capitalize` maiuscolerebbe OGNI parola: «Lunedì 27 Luglio», che in
+   italiano e in francese è sbagliato — i nomi dei mesi sono minuscoli. Solo la
+   prima lettera, quindi. In tedesco non cambia niente perché i sostantivi sono
+   già maiuscoli, ed è per questo che il difetto si vedeva in due lingue su tre. */
+.cal-agenda-date { font-size: var(--fs-strong); font-weight: 600; }
+.cal-agenda-date::first-letter { text-transform: uppercase; }
+.cal-agenda-date.is-today { color: var(--accent); }
+
+.cal-overdue { border-left: 3px solid var(--red); }
+
+/* Un canale non disponibile non è una casella spenta: è un testo che dice
+   perché. Una casella che non si può spuntare sembra un guasto (§79). */
+.check-off { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-1) 0; }
+.connect-choice { display: flex; flex-direction: column; gap: var(--sp-2); max-width: 460px; }
+
+/* ---- Schermi stretti ------------------------------------------------------
+   La griglia resta usabile e NON obbliga a scorrere in orizzontale (§97): le
+   celle si abbassano, il testo delle attività sparisce e resta un segnale di
+   presenza. Chi vuole leggerle passa all'agenda, che su telefono è già la vista
+   predefinita. */
+@media (max-width: 720px) {
+  .cal-filters { margin-left: 0; width: 100%; }
+  .cal-cell { height: 62px; padding: 2px; }
+  .cal-grid th { padding: 2px; font-size: var(--fs-label); }
+  /* Il numero del giorno è l'UNICO controllo della casella su telefono, quindi
+     prende tutta la larghezza: è il bersaglio, e deve essere facile da colpire. */
+  .cal-daynum { width: 100%; min-height: 24px; border-radius: var(--radius-sm); }
+  /* Le barre sono indicatori, non controlli: qui sono `<span>` e non
+     collegamenti, perché tre bersagli da 24 pixel non stanno in una casella
+     alta 62 — e un collegamento alto 6 pixel non è un collegamento. */
+  .cal-item {
+    display: block; height: 5px; margin-bottom: 2px; padding: 0;
+    border-left-width: 0; border-radius: 3px;
+    background: var(--accent-line); font-size: 0; color: transparent;
+    pointer-events: none;
+  }
+  .cal-item.p-high { background: var(--red); }
+  .cal-item.p-medium { background: var(--amber-fill); }
+  .cal-item.p-low { background: var(--green-fill); }
+  .cal-more { font-size: var(--fs-label); }
+  .bell-panel { width: calc(100vw - 28px); }
+}
+
+/* Un KPI che è anche un collegamento: la riga intera è il bersaglio, non una
+   freccia da centrare. Eredita `--ink` perché altrimenti il numero diventerebbe
+   blu — la stessa correzione già fatta su `.action-row.is-link` nella 0016. */
+.kpi-link { color: var(--ink); text-decoration: none; display: block; }
+.kpi-link:hover { border-color: var(--accent-line); }

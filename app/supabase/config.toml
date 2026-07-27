@@ -120,3 +120,28 @@ verify_jwt = false
 
 [functions.email-maintenance]
 verify_jwt = false
+
+# ---------------------------------------------------------------------------
+# Calendario e notifiche (0018). Stessa logica, stessi chiamanti anomali:
+#
+#   calendar-oauth        il callback è una GET del browser di ritorno dal
+#                         consenso: non porta il JWT dell'utente. La sicurezza
+#                         sta nello `state` monouso, e /start e /providers
+#                         verificano l'autenticazione nel codice (401 se manca).
+#   notifications-worker  lo chiama uno scheduler, non una persona. Autenticato
+#                         con un segreto confrontato a tempo costante.
+#
+# ⚠️ `calendar-sync` NON compare qui, ed è deliberato: ha DUE chiamanti — lo
+# scheduler con il proprio segreto e una persona con il proprio JWT — e tenere
+# la verifica del JWT attiva non gli toglie nulla, perché lo scheduler chiama
+# comunque con la service role key nell'header `Authorization`. Disattivarla
+# avrebbe allargato la superficie senza alcun guadagno.
+# ⚠️ Questo file NON viene applicato al progetto hosted: al deploy va passato
+# `--no-verify-jwt` alle due funzioni. Il comando esatto è in
+# docs/calendar-notifications.md.
+# ---------------------------------------------------------------------------
+[functions.calendar-oauth]
+verify_jwt = false
+
+[functions.notifications-worker]
+verify_jwt = false

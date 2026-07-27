@@ -92,6 +92,21 @@ export function TasksPage() {
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState('');
+  // Il Calendario NON ha un proprio modulo di creazione (§17): quando si preme
+  // un giorno, porta qui con la data nell'URL e si apre QUESTO modulo, che è
+  // l'unico del prodotto. Due moduli avrebbero significato due posti in cui
+  // ricordarsi della priorità proposta e dei passaggi derivati da un'analisi.
+  useEffect(() => {
+    const prefill = params.get('nuova');
+    if (!prefill) return;
+    // Si accetta solo una data nella forma attesa: un valore arbitrario
+    // dall'URL non deve finire in un campo che poi viene salvato.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(prefill)) setDueDate(prefill);
+    setCreating(true);
+    const next = new URLSearchParams(params);
+    next.delete('nuova');
+    setParams(next, { replace: true });
+  }, [params, setParams]);
   const [newPriority, setNewPriority] = useState<TaskPriority | ''>('');
   const [newAssignee, setNewAssignee] = useState('');
   const [saving, setSaving] = useState(false);

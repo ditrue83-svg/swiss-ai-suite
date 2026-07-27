@@ -31,6 +31,8 @@ const ICONS = {
   download: '<path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 19h14"/>',
   external: '<path d="M14 5h5v5"/><path d="M19 5 11 13"/><path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/>',
   refresh: '<path d="M4 12a8 8 0 0 1 13.5-5.8L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.5 5.8L4 16"/><path d="M4 20v-4h4"/>',
+  bell: '<path d="M6 9.5a6 6 0 0 1 12 0c0 3.2.7 4.9 1.6 6.1a.6.6 0 0 1-.5 1H4.9a.6.6 0 0 1-.5-1C5.3 14.4 6 12.7 6 9.5Z"/><path d="M9.8 19.5a2.4 2.4 0 0 0 4.4 0"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M4.9 7.8l1.7 1M17.4 15.2l1.7 1M4.9 16.2l1.7-1M17.4 8.8l1.7-1"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;

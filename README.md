@@ -19,9 +19,10 @@ francese, ne ricava scadenze, importi e cose da fare, e tiene insieme documenti 
 | **Inbox** | Collega la casella aziendale e individua le comunicazioni che richiedono attenzione. Non è un client di posta: non invia, non risponde, non modifica nulla nella casella. |
 | **Attività** | Il lavoro che nasce da un documento o da una comunicazione: responsabile, stato, scadenza, storico. |
 | **Documenti** | La memoria documentale: dove ritrovare ciò che l'azienda ha ricevuto, con categoria, etichette, ricerca nel testo e provenienza. |
+| **Calendario e notifiche** | Quando il lavoro richiede attenzione, e che cosa non si può permettere di dimenticare. Il calendario è una proiezione delle Attività, non un secondo elenco; verso Google e Outlook la sincronizzazione va in una direzione sola. |
 
-Inbox → Documenti → Analisi → Attività, e all'indietro: sono un sistema solo, non cinque
-strumenti affiancati.
+Inbox → Documenti → Analisi → Attività → Calendario → Notifica → Completamento, e all'indietro:
+sono un sistema solo, non sei strumenti affiancati.
 
 ## Cartelle
 
@@ -41,6 +42,7 @@ strumenti affiancati.
 | [`app/README.md`](app/README.md) | Installazione, variabili d'ambiente, pipeline di analisi, database, comandi, test, sicurezza, **limitazioni dichiarate**. |
 | [`app/docs/ai-inbox.md`](app/docs/ai-inbox.md) | Inbox: architettura, configurazione passo passo, modello di minaccia, diagnostica. **Sede unica dello stato operativo dell'Inbox.** |
 | [`app/docs/document-hub.md`](app/docs/document-hub.md) | Documenti: modello dati, ricerca, categorie, provenienza, limiti della ricerca full-text. |
+| [`app/docs/calendar-notifications.md`](app/docs/calendar-notifications.md) | Calendario e notifiche: stato desiderato degli eventi, promemoria e fusi orari, sincronizzazione a senso unico, configurazione Google e Microsoft, email. |
 | [`app/docs/design-system.md`](app/docs/design-system.md) | Scala tipografica, colori, contrasti, tema scuro, aree cliccabili. |
 | [`site/README.md`](site/README.md) | Vetrina: contenuti, build, pubblicazione. |
 
@@ -57,6 +59,13 @@ automatica.
 impone una verifica dell'app con valutazione di sicurezza di terzi. Finché non c'è, **un cliente
 reale non può collegare la propria casella**. Microsoft è implementato ma non configurato, e
 l'applicazione lo dichiara invece di fallire.
+
+**Calendario e notifiche** (migrazioni 0018 e 0019): **applicate e verificate** — 58 controlli sul
+database reale, 158 offline, e le schermate provate nel browser con dati veri nelle tre lingue. Il
+calendario **esterno** resta però **mai provato contro le API vive**: nessuna connessione OAuth reale
+a Google o Microsoft è stata stabilita, perché le credenziali non sono configurate. Gli adapter sono
+allineati alla documentazione ufficiale corrente, non a una risposta reale. Vedi
+[`app/docs/calendar-notifications.md`](app/docs/calendar-notifications.md).
 
 **Implementato ma non attivo**: le notifiche push dell'Inbox (rimandate per scelta motivata —
 vedi [`app/docs/ai-inbox.md`](app/docs/ai-inbox.md)); la ricerca nel Registro IDI (Zefix), in

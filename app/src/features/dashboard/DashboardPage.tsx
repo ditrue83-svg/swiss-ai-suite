@@ -5,6 +5,11 @@ import { ErrorState, SkeletonKpiGrid, SkeletonCard } from '@/components/ui/state
 import { useOverview, type OverviewData } from './useOverview';
 import { collectPriorities, activeCasesCount } from './overview';
 import { daysUntil } from '@/lib/format';
+// ⚠️ I giorni di CALENDARIO, non i millisecondi: alle 23:30 una scadenza di
+// domani non deve contare come «oggi». È la stessa funzione usata da Attività e
+// dal Calendario — tre definizioni di «oggi» sarebbero tre schermate che prima
+// o poi si contraddicono.
+import { calendarDaysUntil } from '@/features/tasks/taskFormat';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 
@@ -82,6 +87,15 @@ function DashboardBody({ data }: { data: OverviewData }) {
     if (d < 0) horizon.overdue++; else if (d <= 30) horizon.d30++; else if (d <= 90) horizon.d90++; else horizon.beyond++;
   });
 
+  // Oggi e i prossimi sette giorni, contati sulle attività già caricate. Nessuna
+  // interrogazione in più: `data.tasks` sono le attività da fare, ordinate dal
+  // database, ed è esattamente l'insieme su cui la domanda ha senso.
+  const dueToday = data.tasks.filter((task) => calendarDaysUntil(task.dueDate) === 0).length;
+  const dueWeek = data.tasks.filter((task) => {
+    const d = calendarDaysUntil(task.dueDate);
+    return d != null && d >= 0 && d <= 7;
+  }).length;
+
   const priorities = collectPriorities(data).slice(0, 8);
 
   return (
@@ -104,6 +118,18 @@ function DashboardBody({ data }: { data: OverviewData }) {
             {counts.inProgress ? ` · ${t('dashboard.kpiTasksInProgress', { n: counts.inProgress })}` : ''}
           </div>
         </div>
+        {/* §92 — UNA scheda, non una dashboard nuova. «Scadute» c'era già nella
+            scheda accanto: qui si aggiunge ciò che mancava, cioè oggi e la
+            settimana. I due numeri escono dalle STESSE attività, contate con
+            `calendarDaysUntil` — la stessa funzione che usano Attività e il
+            Calendario — perché tre definizioni di «oggi» sono tre schermate che
+            prima o poi si contraddicono. */}
+        <Link className="kpi kpi-link" to="/calendario">
+          <div className={`kpi-ico ${dueToday ? 'warn' : ''}`}><Icon name="calendar" className="ic-sm" /></div>
+          <div className="kpi-label">{t('dashboard.kpiDueToday')}</div>
+          <div className={`kpi-value ${dueToday ? 'hot' : ''}`}>{dueToday}</div>
+          <div className="kpi-sub">{t('dashboard.kpiDueWeek', { n: dueWeek })}</div>
+        </Link>
         <div className="kpi">
           <div className={`kpi-ico ${toVerify.length ? 'amb' : ''}`}><Icon name="fileSearch" className="ic-sm" /></div>
           <div className="kpi-label">{t('dashboard.kpiToVerify')}</div>

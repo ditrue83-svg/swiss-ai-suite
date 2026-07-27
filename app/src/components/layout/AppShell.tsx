@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { NotificationBell, useUnreadCount } from '@/features/notifications/NotificationBell';
 
 // I ruoli restano in chiave: l'etichetta si traduce al render.
 const ROLE_KEY: Record<string, TKey> = { owner: 'roles.owner', admin: 'roles.admin', member: 'roles.member' };
@@ -117,6 +118,13 @@ export function AppShell() {
   const t = useT();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
+  const { activeCompanyId } = useCompany();
+  // Il conteggio vive QUI e non nelle campanelle: nell'albero ce ne sono due —
+  // barra superiore per il telefono, colonna laterale per il desktop — e il CSS
+  // ne nasconde una. Due conteggi indipendenti significherebbero due
+  // interrogazioni per ogni caricamento, una delle quali per un pulsante che
+  // nessuno può premere.
+  const { count, setCount } = useUnreadCount(activeCompanyId);
 
   // Chiudi il drawer al cambio pagina.
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
@@ -138,6 +146,9 @@ export function AppShell() {
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
           <div className="brand-name">{t('brand.name')}</div>
         </div>
+        {/* Su schermo stretto la campanella sta qui; su desktop questa barra è
+            nascosta dal CSS e quella che si vede è nella colonna laterale. */}
+        <NotificationBell count={count} setCount={setCount} />
       </header>
 
       {/* Sidebar (desktop) */}
@@ -148,6 +159,7 @@ export function AppShell() {
             <div className="brand-name">{t('brand.name')}</div>
             <div className="brand-sub">{t('brand.tagline')}</div>
           </div>
+          <NotificationBell count={count} setCount={setCount} />
         </div>
         <CompanySwitch />
         <NavList />
