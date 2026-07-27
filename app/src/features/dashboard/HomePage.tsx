@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
-import { useOverview } from './useOverview';
+import { useHome } from './useOverview';
 import { collectPriorities, type PriorityItem } from './overview';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
@@ -35,10 +35,10 @@ function PriorityRow({ it }: { it: PriorityItem }) {
 
 export function HomePage() {
   const t = useT();
-  const { loading, error, data, reload } = useOverview();
+  const { loading, error, data, reload } = useHome();
 
   const priorities = data ? collectPriorities(data).slice(0, 7) : [];
-  const hasData = !!data && (data.documents.length > 0 || data.tasks.length > 0 || !!data.matches.length);
+  const hasData = !!data && (data.documentCount > 0 || data.tasks.length > 0 || !!data.matches.length);
 
   return (
     <div id="home-body">
@@ -51,6 +51,7 @@ export function HomePage() {
         <Link className="btn btn-primary btn-block-mobile" to="/admin"><Icon name="document" className="ic-sm" /> {t('home.analyzeDoc')}</Link>
         <Link className="btn" to="/subsidy"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
         <Link className="btn btn-ghost" to="/attivita"><Icon name="calendar" className="ic-sm" /> {t('nav.tasks')}</Link>
+        <Link className="btn btn-ghost" to="/documenti"><Icon name="archive" className="ic-sm" /> {t('nav.documents')}</Link>
       </div>
 
       <div className="mt-16">

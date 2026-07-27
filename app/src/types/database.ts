@@ -19,6 +19,20 @@ export type DocumentStatus =
   | 'processing' | 'analyzed';
 export type AnalysisStatus = 'pending' | 'completed' | 'needs_review' | 'failed';
 export type ExtractionMethod = 'native_pdf' | 'ocr' | 'text';
+/**
+ * Categoria documentale (0017). NON è il tipo di documento: `DocumentType` dice
+ * che cosa è un documento, la categoria dice dove sta nell'organizzazione
+ * dell'azienda. Un sollecito dell'AFC è di tipo «sollecito» e di categoria
+ * «imposte». Nel database si salva la chiave tecnica; l'etichetta si risolve al
+ * render dai dizionari.
+ * L'assenza di categoria (`null`) è uno stato legittimo — nessuno ha ancora
+ * classificato — e va tenuta distinta da `other`, che è una scelta esplicita.
+ */
+export type DocumentCategory =
+  | 'administration' | 'taxes' | 'social_insurance' | 'invoices' | 'contracts'
+  | 'insurance' | 'banking' | 'employees' | 'clients' | 'suppliers' | 'subsidies' | 'other';
+/** Chi ha deciso la categoria. Nessun valore `ai`: nessuna AI classifica. */
+export type DocumentCategorySource = 'rule' | 'manual';
 export type TaskPriority = 'low' | 'medium' | 'high';
 /**
  * Stato di un'attività. `open` è il nome storico del database e nell'interfaccia
@@ -80,9 +94,43 @@ export interface Database {
         Relationships: [];
       };
       documents: {
-        Row: { id: string; company_id: string; uploaded_by: string | null; title: string; original_filename: string | null; mime_type: string | null; file_size: number | null; storage_path: string | null; source_type: DocumentSourceType; status: DocumentStatus; file_hash: string | null; page_count: number | null; created_at: string; updated_at: string };
+        Row: {
+          id: string; company_id: string; uploaded_by: string | null; title: string;
+          original_filename: string | null; mime_type: string | null; file_size: number | null;
+          storage_path: string | null; source_type: DocumentSourceType; status: DocumentStatus;
+          file_hash: string | null; page_count: number | null; created_at: string; updated_at: string;
+          // 0017 — organizzazione aziendale. Il dato del documento resta nell'analisi.
+          category: DocumentCategory | null; category_source: DocumentCategorySource | null;
+          category_set_by: string | null; category_set_at: string | null;
+          archived_at: string | null; archived_by: string | null;
+          internal_notes: string | null; notes_updated_at: string | null; notes_updated_by: string | null;
+        };
         Insert: { id?: string; company_id: string; uploaded_by?: string | null; title: string; original_filename?: string | null; mime_type?: string | null; file_size?: number | null; storage_path?: string | null; source_type?: DocumentSourceType; status?: DocumentStatus; file_hash?: string | null; page_count?: number | null };
-        Update: { title?: string; original_filename?: string | null; mime_type?: string | null; file_size?: number | null; storage_path?: string | null; source_type?: DocumentSourceType; status?: DocumentStatus; file_hash?: string | null; page_count?: number | null };
+        // 0017 — `category_source`, `category_set_by/at`, `archived_by` e i timbri
+        // della nota NON compaiono: li scrive il trigger `documents_guard`, e un
+        // client che li mandasse li vedrebbe comunque sovrascritti. `archived_at`
+        // c'è perché è il modo in cui si DICHIARA di voler archiviare; il valore
+        // vero lo mette il database.
+        Update: {
+          title?: string; original_filename?: string | null; mime_type?: string | null;
+          file_size?: number | null; storage_path?: string | null; source_type?: DocumentSourceType;
+          status?: DocumentStatus; file_hash?: string | null; page_count?: number | null;
+          category?: DocumentCategory | null; archived_at?: string | null; internal_notes?: string | null;
+        };
+        Relationships: [];
+      };
+      document_tags: {
+        Row: { id: string; company_id: string; name: string; created_by: string | null; created_at: string };
+        // `created_by` lo imposta il trigger: chi crea un'etichetta è chi sta scrivendo.
+        Insert: { id?: string; company_id: string; name: string };
+        Update: { name?: string };
+        Relationships: [];
+      };
+      document_tag_links: {
+        Row: { company_id: string; document_id: string; tag_id: string; created_by: string | null; created_at: string };
+        Insert: { company_id: string; document_id: string; tag_id: string };
+        // Un collegamento non si modifica: si toglie e si rimette.
+        Update: Record<string, never>;
         Relationships: [];
       };
       document_extractions: {
@@ -379,6 +427,58 @@ export interface Database {
         Args: { p_company_id: string };
         Returns: { user_id: string; display_name: string | null; role: MemberRole }[];
       };
+      /**
+       * Document Hub (0017): una riga di lista già composta dal database —
+       * documento, ultima analisi, correzioni umane applicate, etichette,
+       * attività collegate, comunicazioni di provenienza, estratto di ricerca.
+       * NON restituisce mai il testo estratto né il JSON dell'analisi.
+       */
+      list_documents: {
+        Args: {
+          p_company_id: string; p_query?: string | null;
+          p_category?: DocumentCategory | null; p_uncategorized?: boolean;
+          p_source?: DocumentSourceType | null; p_state?: string | null;
+          p_tag_ids?: string[] | null; p_date_from?: string | null; p_date_to?: string | null;
+          p_has_deadline?: boolean; p_archived?: boolean; p_sort?: string;
+          p_limit?: number; p_offset?: number; p_document_id?: string | null;
+        };
+        Returns: {
+          id: string; title: string; original_filename: string | null; mime_type: string | null;
+          file_size: number | null; storage_path: string | null;
+          source_type: DocumentSourceType; status: DocumentStatus; page_count: number | null;
+          created_at: string; archived_at: string | null;
+          category: DocumentCategory | null; category_source: DocumentCategorySource | null;
+          analysis_id: string | null; analysis_status: AnalysisStatus | null;
+          last_attempt_failed: boolean; error_code: string | null;
+          document_type: string | null; document_type_corrected: boolean;
+          sender: string | null; sender_corrected: boolean; sender_authority_type: string | null;
+          document_date: string | null; deadline: string | null; deadline_corrected: boolean;
+          deadline_requires_verification: boolean;
+          amount: number | null; amount_currency: string | null; amount_corrected: boolean;
+          confidence: string | null;
+          tags: { id: string; name: string }[];
+          open_task_count: number; task_count: number; email_count: number;
+          snippet: string | null; total_count: number;
+        }[];
+      };
+      /** Conteggi per categoria in un'unica aggregazione (§102). */
+      document_category_counts: {
+        Args: { p_company_id: string; p_archived?: boolean };
+        Returns: { category: DocumentCategory | null; n: number }[];
+      };
+      /** Azioni di gruppo: tutte o nessuna, mai a metà (§84). */
+      documents_bulk_set_category: {
+        Args: { p_company_id: string; p_ids: string[]; p_category: DocumentCategory | null };
+        Returns: number;
+      };
+      documents_bulk_archive: {
+        Args: { p_company_id: string; p_ids: string[]; p_archived: boolean };
+        Returns: number;
+      };
+      documents_bulk_add_tag: {
+        Args: { p_company_id: string; p_ids: string[]; p_tag_id: string };
+        Returns: number;
+      };
       /** Lista attività: filtri, ordinamento e paginazione nel database. */
       list_tasks: {
         Args: {
@@ -396,6 +496,8 @@ export interface Database {
       member_role: MemberRole;
       document_source_type: DocumentSourceType;
       document_status: DocumentStatus;
+      document_category: DocumentCategory;
+      document_category_source: DocumentCategorySource;
       analysis_status: AnalysisStatus;
       extraction_method: ExtractionMethod;
       task_priority: TaskPriority;

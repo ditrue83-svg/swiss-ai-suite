@@ -46,6 +46,7 @@ create index if not exists idx_tasks_document    on public.tasks (document_id);
 -- ---------------------------------------------------------------------------
 -- Trigger updated_at
 -- ---------------------------------------------------------------------------
+drop trigger if exists trg_tasks_updated on public.tasks;
 create trigger trg_tasks_updated before update on public.tasks for each row execute function public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
@@ -53,12 +54,16 @@ create trigger trg_tasks_updated before update on public.tasks for each row exec
 -- ---------------------------------------------------------------------------
 alter table public.tasks enable row level security;
 
+drop policy if exists tasks_select_member on public.tasks;
 create policy tasks_select_member on public.tasks
   for select to authenticated using (public.is_company_member(company_id));
+drop policy if exists tasks_insert_member on public.tasks;
 create policy tasks_insert_member on public.tasks
   for insert to authenticated with check (public.is_company_member(company_id) and created_by = auth.uid());
+drop policy if exists tasks_update_member on public.tasks;
 create policy tasks_update_member on public.tasks
   for update to authenticated using (public.is_company_member(company_id)) with check (public.is_company_member(company_id));
+drop policy if exists tasks_delete_member on public.tasks;
 create policy tasks_delete_member on public.tasks
   for delete to authenticated using (public.is_company_member(company_id));
 

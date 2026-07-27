@@ -202,8 +202,11 @@ grant execute on function public.create_company_with_owner(text, text, text, tex
 -- ---------------------------------------------------------------------------
 -- Trigger updated_at
 -- ---------------------------------------------------------------------------
+drop trigger if exists trg_profiles_updated on public.profiles;
 create trigger trg_profiles_updated        before update on public.profiles         for each row execute function public.set_updated_at();
+drop trigger if exists trg_companies_updated on public.companies;
 create trigger trg_companies_updated       before update on public.companies        for each row execute function public.set_updated_at();
+drop trigger if exists trg_company_profiles_updated on public.company_profiles;
 create trigger trg_company_profiles_updated before update on public.company_profiles for each row execute function public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
@@ -215,32 +218,43 @@ alter table public.company_members  enable row level security;
 alter table public.company_profiles enable row level security;
 
 -- profiles: ognuno vede/aggiorna solo il proprio profilo (l'insert è via trigger)
+drop policy if exists profiles_select_own on public.profiles;
 create policy profiles_select_own on public.profiles
   for select to authenticated using (id = auth.uid());
+drop policy if exists profiles_update_own on public.profiles;
 create policy profiles_update_own on public.profiles
   for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
 -- companies: leggibile dai membri; modificabile da owner/admin. Creazione via RPC.
+drop policy if exists companies_select_member on public.companies;
 create policy companies_select_member on public.companies
   for select to authenticated using (public.is_company_member(id));
+drop policy if exists companies_update_admin on public.companies;
 create policy companies_update_admin on public.companies
   for update to authenticated using (public.is_company_admin(id)) with check (public.is_company_admin(id));
 
 -- company_members: i membri vedono i co-membri; owner/admin gestiscono la membership.
+drop policy if exists members_select_member on public.company_members;
 create policy members_select_member on public.company_members
   for select to authenticated using (public.is_company_member(company_id));
+drop policy if exists members_insert_admin on public.company_members;
 create policy members_insert_admin on public.company_members
   for insert to authenticated with check (public.is_company_admin(company_id));
+drop policy if exists members_update_admin on public.company_members;
 create policy members_update_admin on public.company_members
   for update to authenticated using (public.is_company_admin(company_id)) with check (public.is_company_admin(company_id));
+drop policy if exists members_delete_admin on public.company_members;
 create policy members_delete_admin on public.company_members
   for delete to authenticated using (public.is_company_admin(company_id));
 
 -- company_profiles: leggibile/modificabile dai membri (dati operativi del profilo).
+drop policy if exists company_profiles_select_member on public.company_profiles;
 create policy company_profiles_select_member on public.company_profiles
   for select to authenticated using (public.is_company_member(company_id));
+drop policy if exists company_profiles_insert_member on public.company_profiles;
 create policy company_profiles_insert_member on public.company_profiles
   for insert to authenticated with check (public.is_company_member(company_id));
+drop policy if exists company_profiles_update_member on public.company_profiles;
 create policy company_profiles_update_member on public.company_profiles
   for update to authenticated using (public.is_company_member(company_id)) with check (public.is_company_member(company_id));
 

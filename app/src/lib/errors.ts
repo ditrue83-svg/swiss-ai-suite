@@ -52,7 +52,13 @@ export function toUserMessage(err: unknown, fallback = tr('errors.generic')): st
   // più avanti dello schema, cioè quando una migrazione non è ancora stata
   // applicata. È un problema di messa in opera, non dell'utente, e il nome
   // della tabella mancante non gli dice nulla di utile (§108).
-  if (code === 'PGRST205' || code === 'PGRST204' || code === '42P01' || code === '42703'
+  // `PGRST202` è lo stesso caso per una FUNZIONE che il database non conosce
+  // (`list_documents` senza la 0017, `list_tasks` senza la 0016). Mancava, e il
+  // risultato era il messaggio generico «si è verificato un errore»: verificato
+  // nel browser con la 0017 non ancora applicata. Un guasto di messa in opera
+  // deve dirsi tale, altrimenti si cerca il problema dalla parte sbagliata.
+  if (code === 'PGRST205' || code === 'PGRST204' || code === 'PGRST202'
+      || code === '42P01' || code === '42703' || code === '42883'
       || msg.includes('schema cache')) {
     return tr('errors.schemaOutdated');
   }

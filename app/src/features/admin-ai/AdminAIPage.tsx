@@ -14,6 +14,7 @@ import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT } from '@/i18n';
 import { formatBytes } from '@/lib/format';
 import { extractFromFile, fromPlainText, reconstructText, type ClientExtraction } from './pdf';
+import { analyzeStoredDocument } from './analyzeStored';
 import { SAMPLE_DOCUMENTS } from './engine';
 import { ResultView } from './ResultView';
 import type { DocumentAnalysis, DocumentRecord } from '@/types/models';
@@ -168,12 +169,10 @@ export function AdminAIPage() {
     setError(null);
     setProgress(t('adminAi.progressResuming'));
     try {
-      const ext = await documentService.getExtraction(document.id);
-      const extraction: ClientExtraction | null = ext?.fullText
-        ? { fullText: ext.fullText, pages: ext.pages, extractionMethod: 'text' }
-        : null;
-      const { analysis: an, status } = await analysisService.analyzeAndPersist({
-        document, extraction, companyName, outputLanguage: locale, onProgress: setProgress,
+      // Stessa funzione che usa il dettaglio di un documento nel Document Hub:
+      // due orchestrazioni della stessa rianalisi finirebbero per divergere.
+      const { analysis: an, status } = await analyzeStoredDocument({
+        document, companyName, outputLanguage: locale, onProgress: setProgress,
       });
       setAnalysis(an);
       showToast(status === 'needs_review' ? t('adminAi.savedNeedsReview') : t('adminAi.analysisDone'));
@@ -307,7 +306,7 @@ export function AdminAIPage() {
         {/* In lettura l'intestazione descriveva ancora come CARICARE un
             documento, mentre il documento è già lì e lo si sta leggendo. */}
         <div className="page-head">
-          <Link className="btn btn-sm btn-ghost mb-8" to="/archivio"><Icon name="arrowLeft" className="ic-sm" /> {t('adminAi.backToArchive')}</Link>
+          <Link className="btn btn-sm btn-ghost mb-8" to={`/documenti/${document?.id ?? ''}`}><Icon name="arrowLeft" className="ic-sm" /> {t('adminAi.backToDocuments')}</Link>
           <div className="page-title">{t('adminAi.title')}</div>
           <div className="page-desc">{t('adminAi.introReading')}</div>
         </div>

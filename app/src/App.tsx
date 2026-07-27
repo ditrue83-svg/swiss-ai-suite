@@ -17,7 +17,8 @@ import { InboxPage } from '@/features/inbox/InboxPage';
 import { EmailAccountsPage } from '@/features/inbox/EmailAccountsPage';
 import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
 import { SubsidyPage } from '@/features/subsidy-ai/SubsidyPage';
-import { ArchivePage } from '@/features/archive/ArchivePage';
+import { DocumentsPage } from '@/features/documents/DocumentsPage';
+import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
 import { PricingPage } from '@/features/pricing/PricingPage';
 import { useT } from '@/i18n';
 
@@ -91,7 +92,12 @@ export default function App() {
             <Route path="/scadenziario" element={<Navigate to="/attivita" replace />} />
             <Route path="/admin" element={<AdminAIPage />} />
             <Route path="/subsidy" element={<SubsidyPage />} />
-            <Route path="/archivio" element={<ArchivePage />} />
+            <Route path="/documenti" element={<DocumentsPage />} />
+            <Route path="/documenti/:id" element={<DocumentDetailPage />} />
+            {/* L'Archivio è diventato Documenti. I vecchi collegamenti stanno
+                in email, appunti e segnalibri delle persone: reindirizzamento,
+                non una seconda pagina da mantenere. */}
+            <Route path="/archivio" element={<Navigate to="/documenti" replace />} />
             <Route path="/prezzi" element={<PricingPage />} />
           </Route>
         </Route>

@@ -98,8 +98,11 @@ grant execute on function public.is_case_member(uuid) to authenticated;
 -- ---------------------------------------------------------------------------
 -- Trigger updated_at
 -- ---------------------------------------------------------------------------
+drop trigger if exists trg_matches_updated on public.subsidy_matches;
 create trigger trg_matches_updated    before update on public.subsidy_matches    for each row execute function public.set_updated_at();
+drop trigger if exists trg_cases_updated on public.subsidy_cases;
 create trigger trg_cases_updated       before update on public.subsidy_cases      for each row execute function public.set_updated_at();
+drop trigger if exists trg_case_items_updated on public.subsidy_case_items;
 create trigger trg_case_items_updated  before update on public.subsidy_case_items for each row execute function public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
@@ -109,30 +112,42 @@ alter table public.subsidy_matches    enable row level security;
 alter table public.subsidy_cases      enable row level security;
 alter table public.subsidy_case_items enable row level security;
 
+drop policy if exists matches_select_member on public.subsidy_matches;
 create policy matches_select_member on public.subsidy_matches
   for select to authenticated using (public.is_company_member(company_id));
+drop policy if exists matches_insert_member on public.subsidy_matches;
 create policy matches_insert_member on public.subsidy_matches
   for insert to authenticated with check (public.is_company_member(company_id));
+drop policy if exists matches_update_member on public.subsidy_matches;
 create policy matches_update_member on public.subsidy_matches
   for update to authenticated using (public.is_company_member(company_id)) with check (public.is_company_member(company_id));
+drop policy if exists matches_delete_member on public.subsidy_matches;
 create policy matches_delete_member on public.subsidy_matches
   for delete to authenticated using (public.is_company_member(company_id));
 
+drop policy if exists cases_select_member on public.subsidy_cases;
 create policy cases_select_member on public.subsidy_cases
   for select to authenticated using (public.is_company_member(company_id));
+drop policy if exists cases_insert_member on public.subsidy_cases;
 create policy cases_insert_member on public.subsidy_cases
   for insert to authenticated with check (public.is_company_member(company_id) and created_by = auth.uid());
+drop policy if exists cases_update_member on public.subsidy_cases;
 create policy cases_update_member on public.subsidy_cases
   for update to authenticated using (public.is_company_member(company_id)) with check (public.is_company_member(company_id));
+drop policy if exists cases_delete_member on public.subsidy_cases;
 create policy cases_delete_member on public.subsidy_cases
   for delete to authenticated using (public.is_company_member(company_id));
 
+drop policy if exists case_items_select_member on public.subsidy_case_items;
 create policy case_items_select_member on public.subsidy_case_items
   for select to authenticated using (public.is_case_member(subsidy_case_id));
+drop policy if exists case_items_insert_member on public.subsidy_case_items;
 create policy case_items_insert_member on public.subsidy_case_items
   for insert to authenticated with check (public.is_case_member(subsidy_case_id));
+drop policy if exists case_items_update_member on public.subsidy_case_items;
 create policy case_items_update_member on public.subsidy_case_items
   for update to authenticated using (public.is_case_member(subsidy_case_id)) with check (public.is_case_member(subsidy_case_id));
+drop policy if exists case_items_delete_member on public.subsidy_case_items;
 create policy case_items_delete_member on public.subsidy_case_items
   for delete to authenticated using (public.is_case_member(subsidy_case_id));
 

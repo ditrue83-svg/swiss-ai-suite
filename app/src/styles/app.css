@@ -782,3 +782,83 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .task-check input[type="checkbox"] {
   width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer;
 }
+
+/* ============================================================================
+   Documenti — Smart Document Hub (0017)
+   Nessun colore scritto a mano e nessuna misura di testo in px: solo i token
+   della scala tipografica e delle spaziature. Le aree cliccabili restano sopra
+   i 24px richiesti da WCAG 2.2.
+   ============================================================================ */
+
+/* La ricerca è l'elemento dominante della pagina: occupa lo spazio che avanza
+   accanto al pulsante di caricamento e scende a tutta larghezza sul telefono. */
+.doc-search { flex: 1; min-width: 220px; margin: 0; }
+
+/* Barra delle categorie a sinistra sul desktop, striscia scorrevole sul
+   telefono: le stesse voci, senza un secondo componente da mantenere. */
+.doc-layout { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: var(--sp-4); }
+.doc-side { display: flex; flex-direction: column; gap: 2px; }
+.doc-cat {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  min-height: 32px; padding: var(--sp-2) var(--sp-3);
+  border: 1px solid transparent; border-radius: 8px; background: none;
+  color: var(--ink); font: inherit; font-size: var(--fs-meta); text-align: left; cursor: pointer;
+}
+.doc-cat:hover { background: var(--surface-2); }
+.doc-cat.is-active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); font-weight: 600; }
+.doc-cat-n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.doc-cat.is-active .doc-cat-n { color: var(--accent-text); }
+
+.doc-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.doc-filter-wide { grid-column: 1 / -1; }
+
+.doc-bulk {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3); margin-bottom: var(--sp-3);
+  background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 8px;
+}
+
+.doc-row { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.doc-row:first-of-type { border-top: none; }
+.doc-row.is-selected { background: var(--accent-soft); }
+/* Il bersaglio della casella è la label, non il quadratino: 26px di altezza,
+   come nella checklist delle attività. */
+.doc-check { display: flex; align-items: center; min-height: 26px; min-width: 26px; padding-top: 2px; }
+.doc-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+/* Tutta la riga è il collegamento: centrare una freccia di sedici pixel su un
+   trackpad è una prova di mira. */
+.doc-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; color: var(--ink); text-decoration: none; }
+.doc-row-main:hover .doc-row-title { text-decoration: underline; }
+.doc-row-title { font-size: var(--fs-body); font-weight: 600; }
+.doc-row-sub { font-size: var(--fs-meta); color: var(--muted); }
+.doc-snippet {
+  font-size: var(--fs-meta); color: var(--ink-soft); margin-top: 4px;
+  padding-left: var(--sp-3); border-left: 2px solid var(--line-strong);
+}
+.doc-row-side { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); flex-shrink: 0; max-width: 50%; }
+
+.doc-tag {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 26px;
+  padding: 2px var(--sp-2); border-radius: 999px;
+  background: var(--surface-2); color: var(--ink-soft); font-size: var(--fs-label);
+}
+.doc-tag-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; border: none; border-radius: 999px;
+  background: none; color: var(--muted); cursor: pointer;
+}
+.doc-tag-x:hover { background: var(--line); color: var(--ink); }
+
+/* Le schede di dettaglio: etichetta e valore, in colonna sul telefono. */
+.detail-list dt { font-size: var(--fs-label); color: var(--muted); margin-top: var(--sp-3); }
+.detail-list dd { font-size: var(--fs-body); color: var(--ink); margin: 0; }
+
+@media (max-width: 900px) {
+  .doc-layout { grid-template-columns: minmax(0, 1fr); }
+  /* Le categorie diventano una striscia orizzontale scorrevole: stessi
+     pulsanti, stesso stato premuto, nessun menu nascosto da imparare. */
+  .doc-side { flex-direction: row; overflow-x: auto; padding-bottom: var(--sp-2); }
+  .doc-cat { flex: none; }
+  .doc-row-side { max-width: none; justify-content: flex-start; }
+  .doc-row { flex-wrap: wrap; }
+}

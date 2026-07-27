@@ -172,18 +172,36 @@ export const documentService = {
     return data;
   },
 
-  /** Elimina file da Storage + record DB (analisi collegate cascano via FK). */
-  async remove(doc: DocumentRecord): Promise<void> {
+  /**
+   * Cancellazione DEFINITIVA: record nel database (con tutto ciò che ne dipende)
+   * e file in Storage.
+   *
+   * ⚠️ NON È ATOMICA, E NON SI FINGE CHE LO SIA. Postgres e Storage sono due
+   * sistemi: una transazione che li comprenda entrambi non esiste. Quello che si
+   * può scegliere è l'ORDINE, cioè quale metà del guasto si è disposti ad avere.
+   *
+   *   · Storage prima (com'era): se poi il database fallisce resta un documento
+   *     VISIBILE il cui file non c'è più. La schermata continua a offrirlo, e
+   *     «Apri originale» non trova niente: l'applicazione dice una cosa falsa.
+   *   · Database prima (adesso): se poi Storage fallisce resta un file non
+   *     referenziato da nessuno. Nessuno lo vede, nessuna schermata mente,
+   *     occupa spazio.
+   *
+   * Fra un'informazione sbagliata e dello spazio sprecato si sceglie lo spazio.
+   * E se la seconda metà fallisce lo si DICE a chi ha cancellato, invece di
+   * riportare un successo pieno: `storageOrphan` risale fino alla schermata.
+   */
+  async remove(doc: DocumentRecord): Promise<{ storageOrphan: boolean }> {
     const sb = requireSupabase();
-    if (doc.storagePath) {
-      const { error: sErr } = await sb.storage.from(DOCUMENTS_BUCKET).remove([doc.storagePath]);
-      // Non blocchiamo la cancellazione del record se il file è già assente,
-      // ma segnaliamo altri errori di storage.
-      if (sErr && !String(sErr.message ?? '').toLowerCase().includes('not found')) {
-        throw new AppError(toUserMessage(sErr), sErr);
-      }
-    }
+
     const { error } = await sb.from('documents').delete().eq('id', doc.id);
     if (error) throw new AppError(toUserMessage(error), error);
+
+    if (!doc.storagePath) return { storageOrphan: false };
+    const { error: sErr } = await sb.storage.from(DOCUMENTS_BUCKET).remove([doc.storagePath]);
+    if (!sErr) return { storageOrphan: false };
+    // Un file già assente non è un guasto: l'esito voluto è che non ci sia.
+    if (String(sErr.message ?? '').toLowerCase().includes('not found')) return { storageOrphan: false };
+    return { storageOrphan: true };
   },
 };

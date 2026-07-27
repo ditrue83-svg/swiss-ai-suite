@@ -4,6 +4,7 @@
 // ============================================================================
 import type {
   MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource, TaskEventKind,
+  DocumentCategory, DocumentCategorySource,
   EligibilityStatus, SubsidyCaseStatus,
   EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
   EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
@@ -11,6 +12,7 @@ import type {
 
 export type {
   MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource, TaskEventKind,
+  DocumentCategory, DocumentCategorySource,
   EligibilityStatus, SubsidyCaseStatus,
   EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
   EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
@@ -107,6 +109,21 @@ export interface DocumentRecord {
   status: DocumentStatus;
   createdAt: string;
   updatedAt: string;
+  // ---- Organizzazione aziendale (0017) --------------------------------------
+  // Modificabile liberamente: NON descrive il documento, descrive dove l'azienda
+  // lo tiene. Cambiarla non produce una `analysis_correction` e non tocca
+  // l'analisi, che resta il verbale immutabile di ciò che il documento dice.
+  category?: DocumentCategory | null;
+  categorySource?: DocumentCategorySource | null;
+  categorySetBy?: string | null;
+  categorySetAt?: string | null;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  internalNotes?: string | null;
+  notesUpdatedAt?: string | null;
+  notesUpdatedBy?: string | null;
+  pageCount?: number | null;
+  fileHash?: string | null;
 }
 
 /** Importo rilevato (§12): la pipeline può estrarne più di uno, con tipo e citazione. */
@@ -241,6 +258,150 @@ export interface DocumentReply {
   isEdited: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// ---- Documenti (Smart Document Hub, 0017) -----------------------------------
+// Il Hub non possiede dati sui documenti: li COMPONE. Mittente, tipo, scadenza
+// e importi vengono dall'analisi; la correzione umana, se c'è, ha la
+// precedenza; categoria, etichette, archiviazione e note sono l'unica parte che
+// appartiene al Hub. Ogni campo «effettivo» porta accanto il flag che dice se a
+// dirlo è stata una persona: senza quel flag la schermata mostrerebbe un
+// valore corretto a mano come se l'avesse estratto l'AI.
+
+export interface DocumentTag {
+  id: string;
+  name: string;
+}
+
+/** Stato dell'analisi come lo legge una persona, non come lo scrive il motore. */
+export type DocumentState = 'analyzed' | 'to_verify' | 'failed' | 'processing' | 'none';
+
+/** Una riga della lista Documenti, già composta dal database (§25). */
+export interface DocumentHubItem {
+  id: string;
+  title: string;
+  originalFilename: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  storagePath: string | null;
+  sourceType: DocumentSourceType;
+  status: DocumentStatus;
+  pageCount: number | null;
+  createdAt: string;
+  archivedAt: string | null;
+  category: DocumentCategory | null;
+  categorySource: DocumentCategorySource | null;
+  /** Esito dell'ULTIMO tentativo di analisi: dice lo stato, non il contenuto. */
+  state: DocumentState;
+  analysisId: string | null;
+  /** L'ultimo tentativo è fallito ma resta disponibile un'analisi valida. */
+  lastAttemptFailed: boolean;
+  errorCode: string | null;
+  /** Valori EFFETTIVI: correzione umana se presente, altrimenti dato dell'analisi. */
+  documentType: string | null;
+  documentTypeCorrected: boolean;
+  sender: string | null;
+  senderCorrected: boolean;
+  senderAuthorityType: string | null;
+  documentDate: string | null;
+  deadline: string | null;
+  deadlineCorrected: boolean;
+  /** L'analisi dichiara che la scadenza va verificata: non è un fatto (§36). */
+  deadlineRequiresVerification: boolean;
+  amount: number | null;
+  amountCurrency: string | null;
+  amountCorrected: boolean;
+  confidence: string | null;
+  tags: DocumentTag[];
+  openTaskCount: number;
+  taskCount: number;
+  /** Quante comunicazioni hanno portato questo documento (può essere > 1, §34). */
+  emailCount: number;
+  /** Estratto del testo dove compare il termine cercato. Testo semplice (§23). */
+  snippet: string | null;
+}
+
+export interface DocumentPage {
+  items: DocumentHubItem[];
+  /** Quanti documenti soddisfano il filtro, non quanti ne sono stati consegnati. */
+  total: number;
+}
+
+/** I filtri della lista. Tipizzati, mai `Record<string, unknown>` (§103). */
+export interface DocumentHubFilters {
+  query?: string | null;
+  category?: DocumentCategory | null;
+  /** Solo i documenti che nessuno ha ancora classificato. */
+  uncategorized?: boolean;
+  source?: DocumentSourceType | null;
+  state?: DocumentState | null;
+  tagIds?: string[] | null;
+  /** Estremi sulla DATA DEL DOCUMENTO, con ripiego sulla data di importazione. */
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  hasDeadline?: boolean;
+  archived?: boolean;
+  sort?: DocumentSort;
+  limit?: number;
+  offset?: number;
+}
+
+export type DocumentSort = 'recent' | 'oldest' | 'document_date' | 'title' | 'deadline';
+
+/** La comunicazione da cui un documento è arrivato (§33). */
+export interface DocumentEmailSource {
+  messageId: string;
+  relation: EmailDocumentRelation;
+  subject: string | null;
+  senderName: string | null;
+  senderEmail: string | null;
+  receivedAt: string;
+  accountEmail: string | null;
+}
+
+/**
+ * Un'attività collegata al documento (§38).
+ *
+ * Porta l'IDENTIFICATIVO del responsabile, non il suo nome: `profiles` è
+ * leggibile solo dal proprietario, e il nome di un collega si risolve dalla
+ * rubrica `company_member_directory`. Un tipo che promettesse `assigneeName`
+ * prometterebbe un dato che il database non dà.
+ */
+export interface DocumentLinkedTask {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string | null;
+  assigneeUserId: string | null;
+  archivedAt: string | null;
+}
+
+/** Informazioni tecniche: servono al supporto e a chi verifica, non in vetrina (§94). */
+export interface DocumentTechnicalInfo {
+  extractionMethod: string | null;
+  charCount: number | null;
+  ocrConfidence: number | null;
+  truncated: boolean;
+  provider: string | null;
+  model: string | null;
+  promptVersion: string | null;
+  engine: string | null;
+  analysisCreatedAt: string | null;
+}
+
+/** Tutto ciò che il dettaglio di un documento mette insieme (§99). */
+export interface DocumentDetail {
+  document: DocumentRecord;
+  item: DocumentHubItem;
+  analysis: DocumentAnalysis | null;
+  corrections: AnalysisCorrection[];
+  tags: DocumentTag[];
+  emails: DocumentEmailSource[];
+  tasks: DocumentLinkedTask[];
+  technical: DocumentTechnicalInfo | null;
+  /** Altri documenti dell'azienda con lo STESSO contenuto (§46): stessa risorsa. */
+  sameContentIds: string[];
 }
 
 // ---- Attività (Work Hub) ----------------------------------------------------

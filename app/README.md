@@ -19,11 +19,12 @@ verificata** del documento; ciò che non è certo viene dichiarato come incertez
 
 ```
 supabase/
-  migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks · … · 0016_work_hub
+  migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks · … · 0017_document_hub
                 0005_storage · 0006_admin_ai_pipeline · 0007_subsidy_programs
                 0008_analysis_truth · 0009_quota_and_upload_limits
                 0010_analysis_immutability · 0011_program_availability
                 0012_program_translations · 0013_inbox · 0014_inbox_grants
+                0015_inbox_awaiting_analysis · 0016_work_hub · 0017_document_hub
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -39,15 +40,15 @@ supabase/
 src/
   lib/            supabase, env, errori, hash (SHA-256), uid (IDI), formattazione
   types/          database.ts (schema) · models.ts (dominio)
-  services/       auth · company · document · analysis · task · subsidy · reply
+  services/       auth · company · document · documentHub · analysis · task · subsidy · reply
                   correction · program · interpret · companyLookup · emailConnection · inbox
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
-  features/       auth · companies · admin-ai · subsidy-ai · tasks · dashboard · archive · pricing · inbox
+  features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing · inbox
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
                   subsidy-translations (contenuti de/fr) · check-auth-config · bundle-migrations
-docs/             design-system.md · revisione-traduzioni.md · ai-inbox.md
+docs/             design-system.md · revisione-traduzioni.md · ai-inbox.md · document-hub.md
 ```
 
 ## Setup
@@ -57,9 +58,13 @@ Su [supabase.com](https://supabase.com) crea un progetto. Da **Project Settings 
 `Project URL`, chiave `anon`/`publishable`, chiave `service_role` (quest'ultima **solo** per i test locali).
 
 ### 2) Migrazioni
-**Opzione A — SQL Editor:** incolla ed esegui `supabase/full-setup.sql` (contiene tutte le migrazioni in
-ordine; è un file **generato** — si rigenera con `npm run db:bundle`), oppure esegui in ordine i singoli
-file di `supabase/migrations/`.
+**Installazione da zero — SQL Editor:** incolla ed esegui `supabase/full-setup.sql` (contiene tutte le
+migrazioni in ordine; è un file **generato** — si rigenera con `npm run db:bundle`).
+
+⚠️ **Su un database che ha già le migrazioni precedenti si applica UNA migrazione alla volta**, il singolo
+file di `supabase/migrations/`. `full-setup.sql` è rieseguibile — `npm run db:bundle` lo verifica riga per
+riga — ma rieseguirlo per aggiungere l'ultima migrazione significa ricreare policy e trigger di tutto lo
+schema per ottenere una cosa sola, ed è lavoro inutile su un database in esercizio.
 
 **Opzione B — CLI:**
 ```bash
@@ -313,7 +318,8 @@ Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estr
 | Tabella | Ruolo |
 |---|---|
 | `companies`, `company_members`, `company_profiles` | multi-tenant, ruoli, profilo operativo |
-| `documents` | metadati, `file_hash` (dedup), `page_count`, stato |
+| `documents` | metadati, `file_hash` (dedup), `page_count`, stato + **organizzazione** (0017): `category`, `category_source`, `archived_at/by`, `internal_notes` |
+| `document_tags`, `document_tag_links` | etichette aziendali; nome unico per azienda senza distinzione di maiuscole |
 | `document_extractions` | testo per pagina, `extraction_method`, confidence OCR |
 | `document_analyses` | analisi: campi query-critical + JSONB (actions, amounts, risks, evidence, uncertainties) + provenienza (`provider`, `model`, `prompt_version`, `schema_version`, timestamp, `error_code`). **Immutabile**: dalla 0010 il client ha solo `select` e un `insert` vincolato al motore locale — niente `update`, niente `delete` |
 | `action_progress` | spunte della checklist: una riga per azione spuntata, con autore e momento assegnati dal database. Sta qui, e non dentro l'analisi, perché è uno stato dell'utente |
@@ -371,6 +377,54 @@ Stati documento: `uploaded → extracting → analyzing → completed | needs_re
 Lo stato arriva **fino alla UI**: un'analisi `failed` non viene mai resa come un risultato (niente mittente o
 tipo "di default"), e un tentativo fallito non cancella un'analisi valida ottenuta in precedenza.
 
+### Documenti (Smart Document Hub) — migrazione 0017
+
+L'Archivio è diventato **Documenti**: `/archivio` reindirizza a `/documenti`, e
+il dettaglio di un documento vive su `/documenti/:id`.
+
+Il Hub **compone, non copia**. Mittente, tipo, data, importi e scadenze restano
+in `document_analyses` (immutabile dalla 0010) e in `analysis_corrections`; la
+provenienza resta in `email_message_documents`; il lavoro resta in `tasks`.
+Il Hub aggiunge solo l'**organizzazione aziendale** — categoria, etichette,
+archiviazione, titolo mostrato, nota interna — che è anche l'unica parte
+liberamente modificabile: cambiare categoria **non** produce una correzione
+dell'analisi.
+
+Non esiste nessuna tabella con copie dei dati dell'analisi, e nessuna seconda
+pipeline AI: un documento già analizzato non viene rimandato al modello per
+comparire qui.
+
+| Garanzia | Come |
+|---|---|
+| La ricerca non esce dalla propria azienda | `list_documents` è `security invoker` (la RLS resta in vigore) **più** filtro esplicito su `company_id` **più** `is_company_member`. Il test cerca una parola rara presente in un solo documento di una sola azienda |
+| La categoria automatica non sovrascrive una scelta umana | trigger che scrive `category_source`; una persona la si riconosce da `auth.uid()` e `pg_trigger_depth()`, che un browser non può falsificare |
+| Chi ha archiviato e quando | `archived_at`/`archived_by` scritti dal database, come nelle attività |
+| Le etichette non attraversano le aziende | trigger che confronta azienda del documento, dell'etichetta e dichiarata |
+| Un'azione di gruppo non lavora a metà | `documents_assert_all_mine` confronta il conteggio **prima** di scrivere |
+| La cancellazione definitiva | policy: amministratori, oppure chi ha caricato quel documento |
+
+**Categoria ≠ tipo di documento.** Il tipo dice che cosa è (un sollecito); la
+categoria dice dove sta (imposte). La classificazione è **deterministica**,
+ricavata dal tipo di documento e dal tipo di ente, e **si ferma dove non sa**:
+un documento non classificato resta senza categoria e compare fra quelli da
+classificare, invece di ricevere «altro» — che sarebbe una certezza inventata.
+
+**Ricerca full-text con configurazione `simple`**, senza radici: i documenti
+arrivano in tre lingue e le regole di una sola peggiorerebbero le altre due. Il
+prezzo, dichiarato: `Rechnung` non trova `Rechnungen` nel corpo del testo (li
+trova nei metadati, che sono a sottostringa). L'indice copre i primi **500'000
+caratteri** del testo estratto: oltre quella soglia un `tsvector` rischierebbe
+di superare il limite di 1 MB e farebbe fallire il salvataggio dell'estrazione.
+
+**Archiviare non perde niente** (analisi, email di provenienza e attività
+restano) e la cancellazione definitiva sta in una sezione separata, con l'elenco
+di ciò che si porta via verificato contro lo schema. Storage e database non sono
+atomici: si cancella **prima la riga** e poi il file, perché un file orfano è
+invisibile mentre un documento senza file farebbe dire una cosa falsa alla
+schermata — e se la seconda metà fallisce, lo si dice.
+
+Documento completo: **`docs/document-hub.md`**.
+
 ## Comandi
 
 ```bash
@@ -390,9 +444,13 @@ npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto (
 npm run test:tasks-unit # Attività offline: scadenze, ritardo, ordinamento, etichette (28 test)
 npm run test:tasks      # Attività su DB: isolamento, assegnazione, autore, completamento
 npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
+npm run test:documents-unit  # Documenti offline: stati, ricerca, estratti, indirizzo (60 test)
+npm run test:documents       # Documenti su DB: isolamento della RICERCA, categorie, etichette, archivio
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
-npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare)
+npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
+                        # Rifiuta di generare se una migrazione usa un valore enum appena aggiunto,
+                        # o se crea un trigger/una policy senza «drop … if exists» che li preceda
 npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni

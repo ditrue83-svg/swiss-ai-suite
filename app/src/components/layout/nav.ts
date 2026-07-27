@@ -18,7 +18,10 @@ export const NAV: NavEntry[] = [
   { sectionKey: 'nav.sectionModules' },
   { id: 'admin', labelKey: 'nav.adminAi', icon: 'document', path: '/admin' },
   { id: 'subsidy', labelKey: 'nav.subsidyAi', icon: 'banknote', path: '/subsidy' },
-  { id: 'archive', labelKey: 'nav.archive', icon: 'archive', path: '/archivio' },
+  // I Documenti non sono un modulo accanto agli altri: sono la memoria su cui
+  // gli altri lavorano. Restano però qui, in fondo ai moduli, perché spostare
+  // il menu è un'altra decisione e non va presa di straforo insieme a questa.
+  { id: 'documents', labelKey: 'nav.documents', icon: 'archive', path: '/documenti' },
   { sectionKey: 'nav.sectionAccount' },
   { id: 'pricing', labelKey: 'nav.pricing', icon: 'tag', path: '/prezzi' },
 ];

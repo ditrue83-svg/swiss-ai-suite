@@ -89,12 +89,46 @@ for (let i = 0; i < files.length; i++) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Controllo: `full-setup.sql` deve essere RIESEGUIBILE, come dichiara la sua
+// intestazione.
+//
+// `create trigger` e `create policy` non hanno una forma `if not exists`: su un
+// database che li ha già, falliscono con 42710 e — siccome il SQL editor esegue
+// tutto in una transazione sola — fanno fallire l'INTERO file. L'unica forma
+// ripetibile è `drop … if exists` immediatamente prima.
+//
+// È successo il 2026-07-27: `full-setup.sql` dichiarava «rieseguirlo è sicuro»
+// e si fermava alla prima riga della 0001 (`trg_profiles_updated already
+// exists`). Non era un difetto di una migrazione, era un'AFFERMAZIONE FALSA in
+// un file generato — la stessa classe di guasto del controllo i18n che diceva
+// verde. Ora la promessa è verificata prima di essere scritta.
+// ---------------------------------------------------------------------------
+for (let i = 0; i < files.length; i++) {
+  const codice = senzaCommenti(readFileSync(join(MIG_DIR, files[i]), 'utf8'));
+  const protetti = {
+    trigger: new Set([...codice.matchAll(/drop\s+trigger\s+if\s+exists\s+(\w+)/gi)].map((m) => m[1].toLowerCase())),
+    policy: new Set([...codice.matchAll(/drop\s+policy\s+if\s+exists\s+(\w+)/gi)].map((m) => m[1].toLowerCase())),
+  };
+  for (const tipo of ['trigger', 'policy']) {
+    const re = new RegExp(`create\\s+${tipo}\\s+(\\w+)`, 'gi');
+    for (const m of codice.matchAll(re)) {
+      if (!protetti[tipo].has(m[1].toLowerCase())) {
+        problemi.push(`${names[i]}: ${tipo} ${m[1]} senza «drop ${tipo} if exists» che lo preceda`);
+      }
+    }
+  }
+}
+
 if (problemi.length) {
-  console.error('\n✗ Uso non sicuro di un valore enum appena aggiunto:');
+  console.error('\n✗ Uso non sicuro di un valore enum appena aggiunto, oppure istruzione non ripetibile:');
   for (const p of problemi) console.error(`    ${p}`);
-  console.error('  Postgres lo rifiuta con 55P04 quando lo script gira in una sola transazione,');
-  console.error('  cioè sempre nel SQL editor e sempre per full-setup.sql.');
-  console.error('  L\'etichetta nuova non deve comparire in nessun\'altra istruzione dello stesso file.\n');
+  console.error('  · Un valore enum appena aggiunto: Postgres lo rifiuta con 55P04 quando lo script');
+  console.error('    gira in una transazione sola, cioè sempre nel SQL editor e sempre in full-setup.');
+  console.error('    L\'etichetta nuova non deve comparire in nessun\'altra istruzione dello stesso file.');
+  console.error('  · Un trigger o una policy senza «drop … if exists»: falliscono con 42710 su un');
+  console.error('    database che li ha già, e fermano l\'intero file. full-setup.sql dichiara di');
+  console.error('    essere rieseguibile: deve esserlo davvero.\n');
   process.exit(1);
 }
 

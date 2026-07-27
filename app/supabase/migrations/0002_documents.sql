@@ -75,7 +75,9 @@ create index if not exists idx_analyses_company  on public.document_analyses (co
 -- ---------------------------------------------------------------------------
 -- Trigger updated_at
 -- ---------------------------------------------------------------------------
+drop trigger if exists trg_documents_updated on public.documents;
 create trigger trg_documents_updated  before update on public.documents         for each row execute function public.set_updated_at();
+drop trigger if exists trg_analyses_updated on public.document_analyses;
 create trigger trg_analyses_updated   before update on public.document_analyses for each row execute function public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
@@ -84,21 +86,29 @@ create trigger trg_analyses_updated   before update on public.document_analyses 
 alter table public.documents         enable row level security;
 alter table public.document_analyses enable row level security;
 
+drop policy if exists documents_select_member on public.documents;
 create policy documents_select_member on public.documents
   for select to authenticated using (public.is_company_member(company_id));
+drop policy if exists documents_insert_member on public.documents;
 create policy documents_insert_member on public.documents
   for insert to authenticated with check (public.is_company_member(company_id) and uploaded_by = auth.uid());
+drop policy if exists documents_update_member on public.documents;
 create policy documents_update_member on public.documents
   for update to authenticated using (public.is_company_member(company_id)) with check (public.is_company_member(company_id));
+drop policy if exists documents_delete_member on public.documents;
 create policy documents_delete_member on public.documents
   for delete to authenticated using (public.is_company_member(company_id));
 
+drop policy if exists analyses_select_member on public.document_analyses;
 create policy analyses_select_member on public.document_analyses
   for select to authenticated using (public.is_company_member(company_id));
+drop policy if exists analyses_insert_member on public.document_analyses;
 create policy analyses_insert_member on public.document_analyses
   for insert to authenticated with check (public.is_company_member(company_id));
+drop policy if exists analyses_update_member on public.document_analyses;
 create policy analyses_update_member on public.document_analyses
   for update to authenticated using (public.is_company_member(company_id)) with check (public.is_company_member(company_id));
+drop policy if exists analyses_delete_member on public.document_analyses;
 create policy analyses_delete_member on public.document_analyses
   for delete to authenticated using (public.is_company_member(company_id));
 

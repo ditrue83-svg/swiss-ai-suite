@@ -32,6 +32,11 @@ export function useLabels() {
     docType: (v: string | null | undefined) => pick('labels.docTypes', v),
     /** Tipo di autorità mittente (§47). */
     authorityType: (v: string | null | undefined) => pick('labels.authorityTypes', v),
+    /**
+     * Categoria documentale (0017). NON è il tipo di documento: quello dice che
+     * cosa è, questa dice dove sta nell'organizzazione dell'azienda.
+     */
+    category: (v: string | null | undefined) => pick('labels.categories', v),
     /** Natura dell'importo (§12): dovuto, multa, tassa… */
     amountType: (v: string | null | undefined) => pick('labels.amountTypes', v),
     /** Lingua del documento. */

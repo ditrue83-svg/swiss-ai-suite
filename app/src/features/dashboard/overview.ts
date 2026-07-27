@@ -1,5 +1,5 @@
 // Logica condivisa Panoramica/Dashboard: profilo di matching + "Priorità di oggi".
-import type { Company, CompanyProfile, DocumentAnalysis, DocumentRecord, SubsidyCase, TaskWithPeople } from '@/types/models';
+import type { Company, CompanyProfile, DocumentAnalysis, DocumentHubItem, SubsidyCase, TaskWithPeople } from '@/types/models';
 import type { MatchProfile, MatchResult } from '@/features/subsidy-ai/engine';
 import type { IconName } from '@/components/ui/Icon';
 import { daysUntil } from '@/lib/format';
@@ -26,8 +26,17 @@ export interface PriorityItem {
 
 export interface OverviewInput {
   tasks: TaskWithPeople[];
-  documents: DocumentRecord[];
-  analyses: DocumentAnalysis[];
+  /**
+   * ⚠️ NON tutti i documenti: solo quelli che richiedono attenzione.
+   *
+   * Prima qui arrivavano TUTTE le analisi dell'azienda, e la Panoramica ne
+   * ricavava anche le «azioni incomplete su documenti non urgenti» — cioè un
+   * elenco di documenti travestito da priorità. Con duemila documenti quella
+   * schermata avrebbe scaricato duemila analisi per mostrarne tre.
+   * Una fattura archiviata correttamente non è una priorità: la Panoramica
+   * risponde a «cosa richiede attenzione», e la risposta non è «tutto».
+   */
+  attention: DocumentHubItem[];
   matches: MatchResult[];
 }
 
@@ -43,7 +52,7 @@ const rank: Record<PriorityItem['priority'], number> = { alta: 0, media: 1, bass
  * vince perché dice cosa fare, chi lo fa ed entro quando; il documento è la
  * fonte, e si raggiunge dall'attività.
  */
-export function collectPriorities({ tasks, analyses, matches }: OverviewInput): PriorityItem[] {
+export function collectPriorities({ tasks, attention, matches }: OverviewInput): PriorityItem[] {
   const items: PriorityItem[] = [];
 
   // Documenti che hanno già un'attività aperta: non si ripetono più sotto.
@@ -86,29 +95,30 @@ export function collectPriorities({ tasks, analyses, matches }: OverviewInput): 
     });
   });
 
-  // 2) documenti con urgenza alta — solo quelli che NON hanno già un'attività
-  analyses.filter((a) => a.urgency === 'alta' && !documentsWithOpenTask.has(a.documentId)).forEach((a) => {
-    const undone = a.actions.filter((c) => !c.done).length;
-    items.push({
-      priority: 'alta', icon: 'document', order: -100,
-      title: a.documentTypeLabel,
-      sub: (a.sender ?? tr('home.prioDocument')) + ' · ' + tr('home.prioHighUrgency') + ' · ' + (undone ? tr('home.prioActionsLeft', { n: undone }) : tr('home.prioActionsDone')),
-      to: '/archivio', cta: tr('home.ctaArchive'),
+  // 2) documenti che richiedono attenzione — e SOLO quelli.
+  //
+  //    Due casi, entrambi verificabili: l'analisi non è riuscita (il documento
+  //    è lì e non lo ha letto nessuno) oppure l'analisi stessa dichiara che va
+  //    verificata. Non compaiono i documenti «con azioni aperte»: quelle,
+  //    quando contano, diventano un'attività, e l'attività è già sopra.
+  //    Resta la regola di non duplicazione: se da un documento è già nata
+  //    un'attività aperta, in Panoramica compare l'attività.
+  attention
+    .filter((d) => !documentsWithOpenTask.has(d.id))
+    .forEach((d) => {
+      const failed = d.state === 'failed';
+      items.push({
+        priority: failed ? 'alta' : 'media',
+        icon: failed ? 'alert' : 'fileSearch',
+        order: failed ? -100 : 10,
+        title: d.title,
+        sub: [d.sender, failed ? tr('home.prioDocFailed') : tr('home.prioDocToVerify')]
+          .filter(Boolean).join(' · '),
+        to: `/documenti/${d.id}`, cta: tr('home.ctaDocument'),
+      });
     });
-  });
 
-  // 3) azioni incomplete su documenti non urgenti
-  analyses.filter((a) => a.urgency !== 'alta' && !documentsWithOpenTask.has(a.documentId) && a.actions.some((c) => !c.done)).slice(0, 3).forEach((a) => {
-    const undone = a.actions.filter((c) => !c.done).length;
-    items.push({
-      priority: 'media', icon: 'checkCircle', order: 20,
-      title: a.documentTypeLabel,
-      sub: `${tr('home.prioActionsLeft', { n: undone })} · ${a.sender ?? tr('home.prioDocument')}`,
-      to: '/archivio', cta: tr('home.ctaArchive'),
-    });
-  });
-
-  // 4) incentivi con domanda da presentare prima di iniziare
+  // 3) incentivi con domanda da presentare prima di iniziare
   // 0011 — esclusi i sospesi: «Priorità di oggi» invita ad agire subito, e un
   // programma che oggi non viene concesso non è un'azione da fare. Resta
   // visibile in Subsidy AI, dove il motivo della sospensione è dichiarato.

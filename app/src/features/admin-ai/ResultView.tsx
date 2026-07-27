@@ -6,9 +6,7 @@ import { analysisService } from '@/services/analysisService';
 import { actionProgressService } from '@/services/actionProgressService';
 import { replyService } from '@/services/replyService';
 import { correctionService } from '@/services/correctionService';
-import { taskService } from '@/services/taskService';
-import { taskChecklistService } from '@/services/taskChecklistService';
-import { stepsFromActions } from '@/features/tasks/taskFormat';
+import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
@@ -18,9 +16,7 @@ import { TONI } from '@/features/admin-ai/engine';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { PdfViewer } from '@/features/admin-ai/PdfViewer';
-import type { ActionSource, AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence, TaskPriority } from '@/types/models';
-
-const URGENCY_TO_PRIORITY: Record<string, TaskPriority> = { alta: 'high', media: 'medium', bassa: 'low' };
+import type { ActionSource, AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence } from '@/types/models';
 
 /** Tono predefinito della bozza, come prima della 0010 (era il default di reply_tone). */
 const DEFAULT_TONE = 'formale';
@@ -279,26 +275,25 @@ export function ResultView({ analysis, document, onRetry }: {
    * verrebbero riscritti con quelli di adesso.
    */
   async function createTask(title: string) {
-    const steps = stepsFromActions(actions, title);
-    let task;
     try {
-      task = await taskService.create({
-        companyId: r.companyId, userId: user!.id, title,
-        authority: r.sender, dueDate: r.deadline, priority: URGENCY_TO_PRIORITY[r.urgency] ?? 'medium',
-        source: 'admin_ai', documentId: document.id,
+      // La conversione vive in `taskFromDocument`: la usa anche il dettaglio di
+      // un documento nel Document Hub, e due copie della stessa regola —
+      // soprattutto della parte che decide cosa NON copiare — col tempo
+      // divergono.
+      const outcome = await createTaskFromDocument({
+        companyId: r.companyId, userId: user!.id, documentId: document.id, title,
+        analysis: { ...r, actions },
       });
-    } catch (e) { showToast(toUserMessage(e)); return; }
-
-    if (!steps.length) { showToast(t('adminAi.result.taskAdded')); return; }
-
-    try {
-      await taskChecklistService.addMany(r.companyId, task.id, steps);
-      showToast(t('adminAi.result.taskAddedWithSteps', { n: steps.length }));
-    } catch {
-      // L'attività c'è, i passaggi no: lo si DICE, invece di lasciar credere
-      // che sia tutto a posto o di far sparire anche l'attività.
-      showToast(t('adminAi.result.taskAddedStepsFailed'));
-    }
+      if (outcome.stepsFailed) {
+        // L'attività c'è, i passaggi no: lo si DICE, invece di lasciar credere
+        // che sia tutto a posto o di far sparire anche l'attività.
+        showToast(t('adminAi.result.taskAddedStepsFailed'));
+      } else if (outcome.steps) {
+        showToast(t('adminAi.result.taskAddedWithSteps', { n: outcome.steps }));
+      } else {
+        showToast(t('adminAi.result.taskAdded'));
+      }
+    } catch (e) { showToast(toUserMessage(e)); }
   }
 
   // AI (§35): genera la bozza su richiesta con la Edge Function; la persiste server-side.
