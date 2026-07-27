@@ -332,7 +332,12 @@ export function CalendarSettingsPage() {
             </div>
           ))}
 
-          {providers !== null && providers.length === 0 && (
+          {/* ⚠️ Solo quando una connessione ESISTE già: senza questa condizione
+              il messaggio compariva DUE volte, perché lo rende anche il ramo
+              dello stato vuoto qui sopra. Visto in produzione, non leggendo il
+              codice — a schermo erano due righe identiche una sotto l'altra. */}
+          {providers !== null && providers.length === 0
+            && connections.some((c) => c.status !== 'disconnected') && (
             <p className="muted-sm">{t('calendar.noneConfigured')}</p>
           )}
 
