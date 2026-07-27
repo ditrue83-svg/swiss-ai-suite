@@ -10,10 +10,13 @@ un documento AI-Swisse e passa dalla pipeline Admin AI già esistente.
 > deployate, una casella Gmail reale è collegata e la posta viene importata,
 > classificata e analizzata. Microsoft non è configurato e l'applicazione lo
 > dichiara («questo fornitore non è configurato su questo server»).
-> Restano da fare: lo scheduler della manutenzione (6.5), le notifiche push via
-> Pub/Sub (4.4, richiede la fatturazione attiva su Google Cloud) e la verifica
-> CASA dell'app Google, senza la quale possono collegarsi solo gli utenti di
-> prova. Vedi «Cosa manca per andare in produzione» in fondo.
+> Lo **scheduler della manutenzione è attivo** (pg_cron, ogni 15 minuti) e
+> verificato in esercizio. Restano da fare: le notifiche push via Pub/Sub (4.4,
+> richiede un account di fatturazione su Google Cloud — **rimandate per scelta**,
+> perché senza push l'attesa massima è un quarto d'ora e le comunicazioni
+> amministrative hanno termini che si misurano in settimane) e la verifica CASA
+> dell'app Google, senza la quale possono collegarsi solo gli utenti di prova.
+> Vedi «Cosa manca per andare in produzione» in fondo.
 
 ---
 
@@ -406,7 +409,14 @@ npx supabase functions deploy email-maintenance --project-ref tcjmagaqktmzijbfnt
 
 `email-maintenance` rinnova le sottoscrizioni push in scadenza, recupera i
 lavori interrotti, riconcilia le caselle silenziose, smaltisce un lotto della
-coda di analisi e ripulisce ciò che non serve più. **Va richiamata ogni ora.**
+coda di analisi e ripulisce ciò che non serve più.
+
+**Cadenza: ogni 15 minuti** (`*/15 * * * *`) sul progetto reale dal 2026-07-27.
+Ogni ora basterebbe per la manutenzione in sé, ma senza le notifiche push la
+cadenza dello scheduler È il tempo di risposta della Inbox: a un quarto d'ora
+l'attesa media scende da mezz'ora a sette minuti. Un'esecuzione senza lavoro da
+fare dura pochi secondi e non chiama nessun provider, quindi il costo di
+guardare più spesso è trascurabile.
 
 **Recupero dei lavori interrotti.** Un'Edge Function che supera il proprio tempo
 massimo viene uccisa e il suo `finally` non gira: restano un messaggio in
@@ -445,7 +455,7 @@ select vault.create_secret('<INBOX_MAINTENANCE_SECRET>', 'inbox_maintenance_secr
 
 select cron.schedule(
   'inbox-maintenance',
-  '7 * * * *',                       -- ogni ora al minuto 7
+  '*/15 * * * *',                    -- ogni quarto d'ora
   $$
   select net.http_post(
     url     := 'https://tcjmagaqktmzijbfntvy.supabase.co/functions/v1/email-maintenance',
@@ -666,9 +676,9 @@ e non sono simulabili in modo onesto — si verificano collegando una casella ve
    dalla modalità «Test» Google richiede una verifica con valutazione di
    sicurezza CASA. Fino ad allora si possono collegare solo gli indirizzi
    elencati come utenti di test. È il vincolo esterno più pesante.
-3. **Scheduler della manutenzione** (sezione 6.5). Senza, il push si spegne dopo
-   qualche giorno, la coda delle analisi si smaltisce solo premendo
-   «Sincronizza» e i lavori interrotti restano appesi.
+3. ~~**Scheduler della manutenzione**~~ (sezione 6.5) — **FATTO il 2026-07-27**:
+   pg_cron ogni 15 minuti, provato in esercizio. Finché non ci sono le notifiche
+   push, questa cadenza È il tempo di risposta della Inbox.
 4. **Prova end-to-end su una casella reale**: consenso, import iniziale, arrivo
    di una notifica, analisi di un allegato, scollegamento.
    *(2026-07-27: fatta fino all'analisi. Il primo collegamento reale ha mostrato
