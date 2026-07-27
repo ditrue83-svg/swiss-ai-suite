@@ -51,17 +51,39 @@ export function collectPriorities({ tasks, analyses, matches }: OverviewInput): 
     tasks.filter((t) => t.status !== 'completed' && t.documentId).map((t) => t.documentId as string),
   );
 
-  // 1) attività aperte entro 10 giorni o scadute
-  tasks.filter((t) => t.status !== 'completed' && t.dueDate).forEach((t) => {
+  // 1) attività che richiedono attenzione: quelle in scadenza entro 10 giorni
+  //    e TUTTE quelle a priorità alta.
+  //
+  //    ⚠️ La seconda condizione non è un di più. Con la sola soglia dei 10
+  //    giorni, creare un'attività da un documento urgente lo faceva SPARIRE
+  //    dalla Home: il documento veniva deduplicato (giustamente, il lavoro ora
+  //    è l'attività) ma l'attività non lo sostituiva, perché scadeva fra dodici
+  //    giorni. Risultato visto sul campo: «sei in pari con scadenze e
+  //    documenti» con un sollecito IVA da pagare. Una priorità alta significa
+  //    che richiede attenzione — che è esattamente la domanda a cui questa
+  //    schermata risponde — e non si misura in giorni.
+  tasks.filter((t) => t.status !== 'completed').forEach((t) => {
     const dd = daysUntil(t.dueDate);
-    if (dd != null && dd <= 10) {
-      items.push({
-        priority: dd <= 3 ? 'alta' : 'media', icon: 'calendar', order: dd,
-        title: t.title,
-        sub: (t.assigneeName ?? t.authority ?? tr('home.prioActivity')) + ' · ' + (dd < 0 ? tr('home.prioOverdue', { n: Math.abs(dd) }) : dd === 0 ? tr('home.prioToday') : tr('home.prioInDays', { n: dd })),
-        to: `/attivita/${t.id}`, cta: tr('home.ctaTasks'),
-      });
-    }
+    const nearDeadline = dd != null && dd <= 10;
+    const highPriority = t.priority === 'high';
+    if (!nearDeadline && !highPriority) return;
+
+    const when = dd == null
+      ? tr('home.prioNoDeadline')
+      : dd < 0 ? tr('home.prioOverdue', { n: Math.abs(dd) })
+      : dd === 0 ? tr('home.prioToday')
+      : tr('home.prioInDays', { n: dd });
+
+    items.push({
+      priority: dd != null && dd <= 3 ? 'alta' : highPriority ? 'alta' : 'media',
+      icon: 'calendar',
+      // Le scadenze vicine restano davanti; le alte priorità senza urgenza
+      // immediata seguono, invece di scavalcare ciò che scade domani.
+      order: dd ?? 30,
+      title: t.title,
+      sub: (t.assigneeName ?? t.authority ?? tr('home.prioActivity')) + ' · ' + when,
+      to: `/attivita/${t.id}`, cta: tr('home.ctaTasks'),
+    });
   });
 
   // 2) documenti con urgenza alta — solo quelli che NON hanno già un'attività
