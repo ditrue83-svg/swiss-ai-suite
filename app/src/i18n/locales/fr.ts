@@ -415,6 +415,8 @@ export const fr: Dictionary = {
       deadlineNoneSub: 'Vérifiez le document manuellement : le système n’invente pas de date.',
       checklist: 'Ce que vous devez faire',
       addToTasks: 'Ajouter aux échéances',
+      taskAddedWithSteps: 'Activité créée avec {n} étapes issues des actions suggérées',
+      taskAddedStepsFailed: 'Activité créée, mais les étapes n’ont pas été enregistrées : vous pouvez les ajouter depuis le détail.',
       taskAdded: 'Échéance ajoutée',
       createTask: 'Créer une tâche',
       risk: 'Risque en cas d’inaction',

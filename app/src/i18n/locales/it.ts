@@ -420,6 +420,8 @@ export const it = {
       deadlineNoneSub: 'Verifica manualmente il documento: il sistema non inventa una data.',
       checklist: 'Cosa devi fare',
       addToTasks: 'Aggiungi allo scadenziario',
+      taskAddedWithSteps: 'Attività creata con {n} passaggi dalle azioni suggerite',
+      taskAddedStepsFailed: 'Attività creata, ma i passaggi non sono stati salvati: puoi aggiungerli dal dettaglio.',
       taskAdded: 'Scadenza aggiunta allo scadenziario',
       createTask: 'Crea attività',
       risk: 'Rischio se non agisci',

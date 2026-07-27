@@ -8,7 +8,7 @@
 // direbbe «Domani» a chi ha la scadenza oggi.
 // ============================================================================
 import type { TKey } from '@/i18n';
-import type { Task, TaskEventKind, TaskStatus } from '@/types/models';
+import type { ChecklistAction, Task, TaskEventKind, TaskStatus } from '@/types/models';
 
 /**
  * Chiave di traduzione + parametri: il testo lo compone la schermata.
@@ -119,4 +119,27 @@ export function compareTasks(a: Task, b: Task, today: Date = new Date()): number
 
 export function sortTasks<T extends Task>(tasks: T[], today: Date = new Date()): T[] {
   return [...tasks].sort((a, b) => compareTasks(a, b, today));
+}
+
+/**
+ * I passaggi di un'attività nata da un'analisi Admin AI.
+ *
+ * Regola, e le ragioni di ognuna:
+ *   · si copiano solo le azioni ancora APERTE — ricopiare come «da fare» una
+ *     cosa già fatta è falso;
+ *   · quelle già completate restano dove sono, nell'analisi, con la loro data e
+ *     il loro autore veri: copiarle «già spuntate» farebbe riscrivere al trigger
+ *     chi e quando con l'utente e l'ora di adesso;
+ *   · si salta l'azione che coincide con il titolo, perché il titolo la dice
+ *     già e un primo passaggio identico all'intestazione è rumore;
+ *   · si scartano i testi vuoti, che il database rifiuterebbe comunque.
+ *
+ * È una DERIVAZIONE UNA TANTUM: dopo la creazione le due liste non si inseguono.
+ */
+export function stepsFromActions(actions: ChecklistAction[], title: string): string[] {
+  const normalizedTitle = title.trim().toLowerCase();
+  return actions
+    .filter((a) => !a.done)
+    .map((a) => a.text.trim())
+    .filter((text) => text.length > 0 && text.toLowerCase() !== normalizedTitle);
 }

@@ -13,9 +13,9 @@
 // ============================================================================
 import {
   calendarDaysUntil, compareTasks, dueLabel, eventLabelKey, isOverdue,
-  sortTasks, sourceLabelKey, statusLabelKey,
+  sortTasks, sourceLabelKey, statusLabelKey, stepsFromActions,
 } from '../src/features/tasks/taskFormat';
-import type { Task, TaskEventKind, TaskSource, TaskStatus } from '../src/types/models';
+import type { ChecklistAction, Task, TaskEventKind, TaskSource, TaskStatus } from '../src/types/models';
 
 let pass = 0, fail = 0;
 const G = '\x1b[32m', R = '\x1b[31m', B = '\x1b[1m', DIM = '\x1b[2m', X = '\x1b[0m';
@@ -147,6 +147,46 @@ section('5 · Ogni valore ha la sua etichetta');
   ];
   ok(kinds.every((k) => eventLabelKey(k).startsWith('tasks.event')), 'ogni evento dello storico è raccontabile');
   ok(new Set(kinds.map(eventLabelKey)).size === kinds.length, 'due eventi diversi non si raccontano allo stesso modo');
+}
+
+// ===========================================================================
+section('6 · Dall’analisi Admin AI ai passaggi dell’attività');
+// ===========================================================================
+// La conversione copia le azioni UNA VOLTA. Le regole qui sotto esistono per
+// non scrivere cose false nell'attività: un'azione già fatta ricopiata come «da
+// fare» direbbe che c'è del lavoro che invece è concluso.
+{
+  const action = (over: Partial<ChecklistAction>): ChecklistAction => ({
+    id: over.id ?? 1, text: over.text ?? 'Fare qualcosa', done: over.done ?? false,
+    sourceType: 'extracted', evidence: null,
+  });
+
+  const actions = [
+    action({ id: 1, text: 'Trasmettere il rendiconto', done: false }),
+    action({ id: 2, text: 'Allegare i giustificativi', done: false }),
+    action({ id: 3, text: 'Verificare i totali', done: true }),
+    action({ id: 4, text: '   ', done: false }),
+  ];
+
+  const steps = stepsFromActions(actions, 'Trasmettere rendiconto IVA');
+  ok(steps.length === 2, 'si copiano solo le azioni aperte e non vuote', `ottenuto: ${JSON.stringify(steps)}`);
+  ok(!steps.includes('Verificare i totali'),
+    'un’azione GIÀ COMPLETATA non torna come passaggio da fare: sarebbe una falsità, e la sua data e il suo autore veri restano nell’analisi');
+  ok(!steps.some((s) => s.trim() === ''), 'i testi vuoti non diventano passaggi');
+
+  const withTitle = stepsFromActions(
+    [action({ text: 'Trasmettere rendiconto IVA' }), action({ id: 2, text: 'Altro passaggio' })],
+    'Trasmettere rendiconto IVA',
+  );
+  ok(withTitle.length === 1 && withTitle[0] === 'Altro passaggio',
+    'l’azione che coincide con il titolo non si ripete come primo passaggio');
+
+  const caseInsensitive = stepsFromActions([action({ text: 'trasmettere RENDICONTO iva' })], 'Trasmettere rendiconto IVA');
+  ok(caseInsensitive.length === 0, 'il confronto col titolo non si fa ingannare dalle maiuscole');
+
+  ok(stepsFromActions([], 'Titolo').length === 0, 'nessuna azione, nessun passaggio: non se ne inventano');
+  ok(stepsFromActions([action({ done: true })], 'Titolo').length === 0,
+    'se tutte le azioni sono già fatte, l’attività nasce senza passaggi invece che con passaggi finti');
 }
 
 // ===========================================================================

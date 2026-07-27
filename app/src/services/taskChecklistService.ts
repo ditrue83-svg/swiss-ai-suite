@@ -7,9 +7,16 @@
 //     chiede. Non si aggiungono e non si riscrivono.
 //   · Le voci di checklist sono i passaggi che una persona decide per portare
 //     a termine un'attività. Si aggiungono, si riordinano, si cancellano.
-// Quando un'azione suggerita diventa attività ne usa il testo per titolo e
-// descrizione: non si travasa in checklist, o gli stessi dati vivrebbero in due
-// posti con due cicli di vita diversi.
+// Convertendo un'analisi in attività, le azioni ancora APERTE vengono copiate
+// come passaggi. È una DERIVAZIONE UNA TANTUM, non una sincronizzazione: da
+// quel momento le due liste vivono separate, e nessuna delle due insegue
+// l'altra. Spuntare un passaggio non tocca l'analisi — che è immutabile — e
+// spuntare un'azione nell'analisi non tocca l'attività.
+//
+// Le azioni GIÀ completate non si copiano: ricopiarle come «da fare» sarebbe
+// falso, e copiarle già spuntate lo sarebbe di più, perché il trigger
+// riscriverebbe «chi» e «quando» con l'utente e l'ora di adesso, cancellando
+// un fatto che nell'analisi è registrato con i suoi veri estremi.
 //
 // «Chi ha spuntato e quando» lo scrive il trigger `checklist_guard`: qui non si
 // manda, perché verrebbe comunque sovrascritto.
@@ -67,6 +74,26 @@ export const taskChecklistService = {
       .single();
     if (error || !data) throw new AppError(taskErrorMessage(error), error);
     return toItem(data);
+  },
+
+  /**
+   * Aggiunge più passaggi in un colpo solo.
+   *
+   * Serve alla conversione di un'analisi Admin AI in attività: le azioni
+   * suggerite diventano i passaggi. Un solo inserimento e non uno per riga —
+   * con otto azioni sarebbero otto viaggi, e un fallimento a metà lascerebbe
+   * una checklist monca senza che nessuno lo dica.
+   */
+  async addMany(companyId: string, taskId: string, texts: string[]): Promise<TaskChecklistItem[]> {
+    const rows = texts
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+      .map((text, i) => ({ company_id: companyId, task_id: taskId, text: text.slice(0, 500), position: i }));
+    if (!rows.length) return [];
+    const { data, error } = await requireSupabase()
+      .from('task_checklist_items').insert(rows).select('*');
+    if (error) throw new AppError(taskErrorMessage(error), error);
+    return (data ?? []).map(toItem);
   },
 
   async setDone(id: string, done: boolean): Promise<TaskChecklistItem> {

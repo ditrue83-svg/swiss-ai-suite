@@ -2636,9 +2636,15 @@ comment on column public.tasks.archived_at is
 --      · `task_checklist_items` sono i passaggi che una persona decide per
 --        portare a termine un'attività. Si aggiungono, si riordinano, si
 --        cancellano.
---    Convertire un'azione suggerita in attività ne usa il testo per titolo e
---    descrizione; NON si travasa automaticamente ogni azione in checklist,
---    perché sarebbero gli stessi dati in due posti con due cicli di vita.
+--    Convertendo un'analisi in attività le azioni ancora APERTE vengono copiate
+--    come passaggi: è una DERIVAZIONE UNA TANTUM, non una sincronizzazione. Da
+--    quel momento le due liste vivono separate e nessuna insegue l'altra —
+--    spuntare un passaggio non tocca l'analisi, che resta immutabile.
+--    Le azioni già completate NON si copiano: ricopiarle come «da fare» sarebbe
+--    falso, e copiarle già spuntate lo sarebbe di più, perché il trigger
+--    riscriverebbe «chi» e «quando» con l'utente e l'ora di adesso.
+--    (Questo commento non descrive alcun oggetto del database: cambiarlo non
+--    richiede di riapplicare la migrazione.)
 -- ---------------------------------------------------------------------------
 create table if not exists public.task_checklist_items (
   id          uuid primary key default gen_random_uuid(),

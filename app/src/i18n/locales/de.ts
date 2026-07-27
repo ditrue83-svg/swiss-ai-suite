@@ -416,6 +416,8 @@ export const de: Dictionary = {
       deadlineNoneSub: 'Bitte das Dokument manuell prüfen: das System erfindet kein Datum.',
       checklist: 'Was zu tun ist',
       addToTasks: 'Zum Fristenkalender hinzufügen',
+      taskAddedWithSteps: 'Aufgabe mit {n} Schritten aus den vorgeschlagenen Massnahmen erstellt',
+      taskAddedStepsFailed: 'Aufgabe erstellt, die Schritte wurden jedoch nicht gespeichert: Sie können sie im Detail ergänzen.',
       taskAdded: 'Frist zum Fristenkalender hinzugefügt',
       createTask: 'Aufgabe erstellen',
       risk: 'Risiko bei Untätigkeit',

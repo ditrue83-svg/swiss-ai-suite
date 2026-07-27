@@ -354,9 +354,16 @@ sorvegliano.
 
 ⚠️ **`task_checklist_items` non è `action_progress`.** Le azioni di Admin AI
 appartengono all'analisi, che è immutabile, e dicono cosa il documento chiede;
-la checklist sono i passaggi che una persona decide. Convertire un'azione in
-attività ne usa il testo — non si travasa, o gli stessi dati vivrebbero in due
-posti con due cicli di vita.
+la checklist sono i passaggi che una persona decide.
+
+Convertendo un'analisi in attività, le azioni ancora **aperte** diventano i
+passaggi: una **derivazione una tantum**, non una sincronizzazione. Da lì le due
+liste vivono separate — spuntare un passaggio non riscrive l'analisi. Le azioni
+già completate non si copiano: rimetterle come «da fare» sarebbe falso, e
+copiarle già spuntate farebbe riscrivere data e autore con quelli di adesso,
+cancellando un fatto registrato con i suoi veri estremi.
+La regola è `stepsFromActions()` in `features/tasks/taskFormat.ts`, con i suoi
+casi nella sezione 6 di `npm run test:tasks-unit`.
 | `subsidy_programs`, `subsidy_matches`, `subsidy_cases` | catalogo incentivi + attività utente |
 | `ai_request_log` | osservabilità e rate limit — **senza contenuto del documento** |
 

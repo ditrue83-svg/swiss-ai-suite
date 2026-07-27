@@ -7,6 +7,8 @@ import { actionProgressService } from '@/services/actionProgressService';
 import { replyService } from '@/services/replyService';
 import { correctionService } from '@/services/correctionService';
 import { taskService } from '@/services/taskService';
+import { taskChecklistService } from '@/services/taskChecklistService';
+import { stepsFromActions } from '@/features/tasks/taskFormat';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
@@ -264,15 +266,39 @@ export function ResultView({ analysis, document, onRetry }: {
     }
   }
 
+  /**
+   * Trasforma l'analisi in un'attività, portandosi dietro i passaggi.
+   *
+   * Le azioni ancora APERTE diventano la checklist. È una copia fatta una volta
+   * sola: da qui in poi le due liste vivono separate — l'analisi resta il
+   * verbale immutabile di ciò che il documento chiede, l'attività è il lavoro
+   * che qualcuno porta avanti. Spuntare un passaggio non riscrive l'analisi.
+   *
+   * Le azioni già completate NON si copiano: rimetterle come «da fare» sarebbe
+   * falso, e copiarle già fatte lo sarebbe di più, perché data e autore
+   * verrebbero riscritti con quelli di adesso.
+   */
   async function createTask(title: string) {
+    const steps = stepsFromActions(actions, title);
+    let task;
     try {
-      await taskService.create({
+      task = await taskService.create({
         companyId: r.companyId, userId: user!.id, title,
         authority: r.sender, dueDate: r.deadline, priority: URGENCY_TO_PRIORITY[r.urgency] ?? 'medium',
         source: 'admin_ai', documentId: document.id,
       });
-      showToast(t('adminAi.result.taskAdded'));
-    } catch (e) { showToast(toUserMessage(e)); }
+    } catch (e) { showToast(toUserMessage(e)); return; }
+
+    if (!steps.length) { showToast(t('adminAi.result.taskAdded')); return; }
+
+    try {
+      await taskChecklistService.addMany(r.companyId, task.id, steps);
+      showToast(t('adminAi.result.taskAddedWithSteps', { n: steps.length }));
+    } catch {
+      // L'attività c'è, i passaggi no: lo si DICE, invece di lasciar credere
+      // che sia tutto a posto o di far sparire anche l'attività.
+      showToast(t('adminAi.result.taskAddedStepsFailed'));
+    }
   }
 
   // AI (§35): genera la bozza su richiesta con la Edge Function; la persiste server-side.
