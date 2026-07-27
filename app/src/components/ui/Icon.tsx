@@ -19,6 +19,8 @@ const ICONS = {
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.6"/>',
   arrowRight: '<path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"/>',
   arrowLeft: '<path d="M19 12H6M11.5 6.5 5 12l6.5 5.5"/>',
+  arrowUp: '<path d="M12 19V6M6.5 12.5 12 6l5.5 6.5"/>',
+  arrowDown: '<path d="M12 5v13M6.5 11.5 12 18l5.5-6.5"/>',
   building: '<rect x="5" y="3.5" width="14" height="17" rx="1.2"/><path d="M9 7.5h.01M15 7.5h.01M9 11h.01M15 11h.01M9 14.5h.01M15 14.5h.01M10 20.5v-3h4v3"/>',
   inbox: '<path d="M4 13.5 6 5.5a1.5 1.5 0 0 1 1.45-1.1h9.1A1.5 1.5 0 0 1 18 5.5l2 8"/><path d="M4 13.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5.5h-5l-1.2 2H9.2L8 13.5Z"/>',
   logout: '<path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3"/><path d="M10 8 6 12l4 4M6 12h11"/>',

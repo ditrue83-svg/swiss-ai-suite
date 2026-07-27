@@ -19,7 +19,7 @@ verificata** del documento; ciò che non è certo viene dichiarato come incertez
 
 ```
 supabase/
-  migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks
+  migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks · … · 0016_work_hub
                 0005_storage · 0006_admin_ai_pipeline · 0007_subsidy_programs
                 0008_analysis_truth · 0009_quota_and_upload_limits
                 0010_analysis_immutability · 0011_program_availability
@@ -319,7 +319,44 @@ Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estr
 | `action_progress` | spunte della checklist: una riga per azione spuntata, con autore e momento assegnati dal database. Sta qui, e non dentro l'analisi, perché è uno stato dell'utente |
 | `document_replies` | bozze di risposta, modificabili e persistenti — **unica sede** della bozza corrente, sia AI sia motore locale |
 | `analysis_corrections` | correzioni umane **append-only**: l'analisi AI non viene mai riscritta |
-| `tasks` | scadenziario (creato solo su conferma dell'utente) |
+| `tasks` | **Attività** (Work Hub): il lavoro da fare, con responsabile, stato e provenienza |
+| `task_checklist_items` | i passaggi operativi di un'attività — non è `action_progress` |
+| `task_comments` | la conversazione attorno a un'attività (testo semplice, mai markup) |
+| `task_events` | storico: lo scrivono i trigger, il client può solo leggerlo |
+
+### Attività (Work Hub) — migrazione 0016
+
+Lo Scadenziario è diventato **Attività**: la scadenza è una proprietà del lavoro,
+non il lavoro stesso. `/scadenziario` reindirizza a `/attivita`, perché i vecchi
+collegamenti stanno negli appunti delle persone.
+
+Quattro garanzie, tutte imposte dal **database** e non dal browser:
+
+| Garanzia | Come |
+|---|---|
+| L'assegnatario è un membro della stessa azienda | trigger `tasks_guard`, che rifiuta l'inserimento |
+| Chi ha completato e quando | scritti da `auth.uid()`/`now()`; un valore del client viene ignorato |
+| L'autore di un commento | policy + trigger: firmare a nome d'altri viene **rifiutato**, non corretto in silenzio |
+| Lo storico | lo scrivono i trigger; `task_events` non è scrivibile dal client |
+
+**Stati**: `open` (mostrato come «Da fare»), `in_progress`, `waiting`, `completed`.
+Il nome storico `open` è rimasto nel database: rinominarlo avrebbe richiesto una
+migrazione distruttiva su dati veri per guadagnare una parola.
+
+**Non si cancella, si archivia** (`archived_at`): su un prodotto B2B un clic di
+troppo faceva sparire il lavoro senza lasciare traccia.
+
+**L'ordine della lista** — prima le scadute, poi la priorità alta, poi la
+scadenza più vicina — sta nella funzione SQL `list_tasks`, che filtra e pagina
+nel database. Lo stesso criterio esiste in `taskFormat.compareTasks` per gli
+elenchi già in memoria (la Home): la duplicazione è deliberata e i test la
+sorvegliano.
+
+⚠️ **`task_checklist_items` non è `action_progress`.** Le azioni di Admin AI
+appartengono all'analisi, che è immutabile, e dicono cosa il documento chiede;
+la checklist sono i passaggi che una persona decide. Convertire un'azione in
+attività ne usa il testo — non si travasa, o gli stessi dati vivrebbero in due
+posti con due cicli di vita.
 | `subsidy_programs`, `subsidy_matches`, `subsidy_cases` | catalogo incentivi + attività utente |
 | `ai_request_log` | osservabilità e rate limit — **senza contenuto del documento** |
 
@@ -343,6 +380,8 @@ npm run eval:subsidy    # eval interpretazione progetto (14 test)
 npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
 npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto (148 test)
+npm run test:tasks-unit # Attività offline: scadenze, ritardo, ordinamento, etichette (28 test)
+npm run test:tasks      # Attività su DB: isolamento, assegnazione, autore, completamento
 npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)

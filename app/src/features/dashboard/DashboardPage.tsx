@@ -39,15 +39,16 @@ function Bars({ rows }: { rows: BarRow[] }) {
 function DashboardBody({ data }: { data: OverviewData }) {
   const t = useT();
   const L = useLabels();
-  const { tasks, analyses, matches, cases } = data;
-  const openTasks = tasks.filter((t) => t.status !== 'completed');
-  const withDate = openTasks.filter((t) => t.dueDate);
+  const { tasks, counts, analyses, matches, cases } = data;
+  // `tasks` sono le attività aperte più urgenti (le prime della lista ordinata
+  // dal database), non tutte: per i CONTEGGI si usa `counts`, che il database
+  // calcola prima di paginare. Un numero preso dalla lunghezza di un elenco
+  // troncato direbbe «20» qualunque sia la realtà.
+  const withDate = tasks.filter((t) => t.dueDate);
 
   let openActions = 0;
   analyses.forEach((a) => { openActions += a.actions.filter((c) => !c.done).length; });
   const docsWithOpen = analyses.filter((a) => a.actions.some((c) => !c.done)).length;
-  const next7 = withDate.filter((t) => (daysUntil(t.dueDate) ?? 99) <= 7);
-  const overdue7 = next7.filter((t) => (daysUntil(t.dueDate) ?? 0) < 0).length;
   const toVerify = analyses.filter((a) => a.confidence !== 'alta' || a.senderUncertain);
   const relevantCount = matches.length;
   // 0011 — «idoneità da verificare» conta solo ciò che si può davvero ottenere:
@@ -93,13 +94,14 @@ function DashboardBody({ data }: { data: OverviewData }) {
           <div className="kpi-sub">{t(docsWithOpen === 1 ? 'dashboard.kpiOpenActionsDocsOne' : 'dashboard.kpiOpenActionsDocsMany', { n: docsWithOpen })}</div>
         </div>
         <div className="kpi">
-          <div className={`kpi-ico ${next7.length ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
-          <div className="kpi-label">{t('dashboard.kpiNext7')}</div>
-          <div className={`kpi-value ${overdue7 ? 'hot' : ''}`}>{next7.length}</div>
+          <div className={`kpi-ico ${counts.overdue ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
+          <div className="kpi-label">{t('dashboard.kpiTasksOpen')}</div>
+          <div className={`kpi-value ${counts.overdue ? 'hot' : ''}`}>{counts.open}</div>
           <div className="kpi-sub">
-            {overdue7
-              ? t(overdue7 === 1 ? 'dashboard.kpiOverdueOne' : 'dashboard.kpiOverdueMany', { n: overdue7 })
+            {counts.overdue
+              ? t(counts.overdue === 1 ? 'dashboard.kpiOverdueOne' : 'dashboard.kpiOverdueMany', { n: counts.overdue })
               : t('dashboard.kpiNoneOverdue')}
+            {counts.inProgress ? ` · ${t('dashboard.kpiTasksInProgress', { n: counts.inProgress })}` : ''}
           </div>
         </div>
         <div className="kpi">

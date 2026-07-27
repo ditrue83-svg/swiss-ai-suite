@@ -11,7 +11,8 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { OnboardingPage } from '@/features/companies/OnboardingPage';
 import { HomePage } from '@/features/dashboard/HomePage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
-import { ScadenziarioPage } from '@/features/tasks/ScadenziarioPage';
+import { TasksPage } from '@/features/tasks/TasksPage';
+import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
 import { InboxPage } from '@/features/inbox/InboxPage';
 import { EmailAccountsPage } from '@/features/inbox/EmailAccountsPage';
 import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
@@ -82,7 +83,12 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/inbox/account" element={<EmailAccountsPage />} />
-            <Route path="/scadenziario" element={<ScadenziarioPage />} />
+            <Route path="/attivita" element={<TasksPage />} />
+            <Route path="/attivita/:id" element={<TaskDetailPage />} />
+            {/* I vecchi collegamenti allo Scadenziario devono continuare a
+                funzionare: sono in email, appunti e segnalibri delle persone.
+                Reindirizzamento, non una seconda pagina da mantenere. */}
+            <Route path="/scadenziario" element={<Navigate to="/attivita" replace />} />
             <Route path="/admin" element={<AdminAIPage />} />
             <Route path="/subsidy" element={<SubsidyPage />} />
             <Route path="/archivio" element={<ArchivePage />} />

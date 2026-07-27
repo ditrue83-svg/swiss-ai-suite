@@ -3,14 +3,14 @@
 // la mappatura Row <-> dominio avviene nei service.
 // ============================================================================
 import type {
-  MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource,
+  MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource, TaskEventKind,
   EligibilityStatus, SubsidyCaseStatus,
   EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
   EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
 } from './database';
 
 export type {
-  MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource,
+  MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource, TaskEventKind,
   EligibilityStatus, SubsidyCaseStatus,
   EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
   EmailRelevance, EmailDocumentRelation, EmailAttachmentImportStatus, EmailSyncType, EmailSyncStatus,
@@ -243,7 +243,7 @@ export interface DocumentReply {
   updatedAt: string;
 }
 
-// ---- Tasks ------------------------------------------------------------------
+// ---- Attività (Work Hub) ----------------------------------------------------
 export interface Task {
   id: string;
   companyId: string;
@@ -257,8 +257,63 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   source: TaskSource;
+  /** Chi è responsabile. null = non assegnata, che è uno stato legittimo. */
+  assigneeUserId: string | null;
+  completedAt: string | null;
+  completedBy: string | null;
+  /** Archiviata: fuori dalle viste correnti, ancora nello storico. */
+  archivedAt: string | null;
+  archivedBy: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Un'attività con i nomi già risolti, per non far fare join alla UI. */
+export interface TaskWithPeople extends Task {
+  assigneeName: string | null;
+  /** La comunicazione da cui nasce, se il documento collegato viene da email. */
+  emailMessageId: string | null;
+}
+
+export interface TaskChecklistItem {
+  id: string;
+  companyId: string;
+  taskId: string;
+  text: string;
+  position: number;
+  done: boolean;
+  doneAt: string | null;
+  doneBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskComment {
+  id: string;
+  companyId: string;
+  taskId: string;
+  authorUserId: string;
+  authorName: string | null;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskEvent {
+  id: string;
+  taskId: string;
+  actorUserId: string | null;
+  actorName: string | null;
+  kind: TaskEventKind;
+  detail: Record<string, unknown>;
+  createdAt: string;
+}
+
+/** Membro dell'azienda utilizzabile come assegnatario. */
+export interface AssignableMember {
+  userId: string;
+  name: string;
+  role: MemberRole;
 }
 
 // ---- Subsidy ----------------------------------------------------------------

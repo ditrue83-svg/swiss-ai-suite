@@ -20,7 +20,16 @@ export type DocumentStatus =
 export type AnalysisStatus = 'pending' | 'completed' | 'needs_review' | 'failed';
 export type ExtractionMethod = 'native_pdf' | 'ocr' | 'text';
 export type TaskPriority = 'low' | 'medium' | 'high';
-export type TaskStatus = 'open' | 'completed';
+/**
+ * Stato di un'attività. `open` è il nome storico del database e nell'interfaccia
+ * si chiama «Da fare»: rinominarlo avrebbe richiesto una migrazione distruttiva
+ * su dati esistenti, per guadagnare solo una parola.
+ */
+export type TaskStatus = 'open' | 'in_progress' | 'waiting' | 'completed';
+export type TaskEventKind =
+  | 'created' | 'status_changed' | 'assignee_changed' | 'priority_changed'
+  | 'due_date_changed' | 'completed' | 'reopened' | 'archived' | 'restored'
+  | 'checklist_item_completed' | 'comment_added';
 export type TaskSource = 'admin_ai' | 'subsidy_ai' | 'manual';
 export type EligibilityStatus = 'unknown' | 'likely' | 'unlikely' | 'ineligible';
 export type SubsidyCaseStatus = 'draft' | 'collecting_documents' | 'ready' | 'submitted' | 'closed';
@@ -190,9 +199,32 @@ export interface Database {
         Relationships: [];
       };
       tasks: {
-        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; created_at: string; updated_at: string };
-        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource };
-        Update: { title?: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus };
+        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null };
+        // `completed_at`, `completed_by`, `archived_by` non compaiono in Update:
+        // li scrive il trigger `tasks_guard`, e un client che li mandasse li
+        // vedrebbe comunque sovrascritti. `archived_at` c'è perché è il modo in
+        // cui si DICHIARA di voler archiviare; il valore vero lo mette il server.
+        Update: { title?: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; assignee_user_id?: string | null; archived_at?: string | null };
+        Relationships: [];
+      };
+      task_checklist_items: {
+        Row: { id: string; company_id: string; task_id: string; text: string; position: number; done: boolean; done_at: string | null; done_by: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; company_id: string; task_id: string; text: string; position?: number; done?: boolean };
+        Update: { text?: string; position?: number; done?: boolean };
+        Relationships: [];
+      };
+      task_comments: {
+        Row: { id: string; company_id: string; task_id: string; author_user_id: string; body: string; created_at: string; updated_at: string };
+        Insert: { id?: string; company_id: string; task_id: string; author_user_id: string; body: string };
+        Update: { body?: string };
+        Relationships: [];
+      };
+      task_events: {
+        // Sola lettura per il client: le righe le scrivono i trigger.
+        Row: { id: string; company_id: string; task_id: string; actor_user_id: string | null; kind: TaskEventKind; detail: Json; created_at: string };
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
       subsidy_matches: {
@@ -342,6 +374,23 @@ export interface Database {
         };
         Returns: string;
       };
+      /** Rubrica dei membri: `profiles` è leggibile solo dal proprietario. */
+      company_member_directory: {
+        Args: { p_company_id: string };
+        Returns: { user_id: string; display_name: string | null; role: MemberRole }[];
+      };
+      /** Lista attività: filtri, ordinamento e paginazione nel database. */
+      list_tasks: {
+        Args: {
+          p_company_id: string; p_view?: string; p_status?: TaskStatus | null;
+          p_priority?: TaskPriority | null; p_source?: TaskSource | null;
+          p_assignee?: string | null; p_search?: string | null;
+          p_limit?: number; p_offset?: number;
+        };
+        Returns: (Database['public']['Tables']['tasks']['Row'] & {
+          assignee_name: string | null; email_message_id: string | null; total_count: number;
+        })[];
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -352,6 +401,7 @@ export interface Database {
       task_priority: TaskPriority;
       task_status: TaskStatus;
       task_source: TaskSource;
+      task_event_kind: TaskEventKind;
       eligibility_status: EligibilityStatus;
       subsidy_case_status: SubsidyCaseStatus;
       email_provider: EmailProvider;

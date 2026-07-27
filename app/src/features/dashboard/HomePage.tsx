@@ -50,7 +50,7 @@ export function HomePage() {
       <div className="row-wrap">
         <Link className="btn btn-primary btn-block-mobile" to="/admin"><Icon name="document" className="ic-sm" /> {t('home.analyzeDoc')}</Link>
         <Link className="btn" to="/subsidy"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
-        <Link className="btn btn-ghost" to="/scadenziario"><Icon name="calendar" className="ic-sm" /> {t('nav.tasks')}</Link>
+        <Link className="btn btn-ghost" to="/attivita"><Icon name="calendar" className="ic-sm" /> {t('nav.tasks')}</Link>
       </div>
 
       <div className="mt-16">

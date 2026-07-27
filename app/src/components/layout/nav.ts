@@ -14,7 +14,7 @@ export const NAV: NavEntry[] = [
   // arriva, e viene prima delle scadenze, che sono ciò che ne deriva.
   { id: 'inbox', labelKey: 'nav.inbox', icon: 'inbox', path: '/inbox' },
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'dashboard', path: '/dashboard' },
-  { id: 'deadlines', labelKey: 'nav.tasks', icon: 'calendar', path: '/scadenziario' },
+  { id: 'deadlines', labelKey: 'nav.tasks', icon: 'calendar', path: '/attivita' },
   { sectionKey: 'nav.sectionModules' },
   { id: 'admin', labelKey: 'nav.adminAi', icon: 'document', path: '/admin' },
   { id: 'subsidy', labelKey: 'nav.subsidyAi', icon: 'banknote', path: '/subsidy' },
