@@ -5,7 +5,10 @@
 Questo documento descrive lo **Step 5** di AI-Swisse: il modulo che trasforma
 ciò che il prodotto ha capito in **processi ripetibili e controllati**.
 
-**Stato al 2026-07-27**: codice completo, `typecheck` / `build` /
+**Stato al 2026-07-27**: ✅ **PUBBLICATO E IN ESERCIZIO.** Commit `a89d60a`,
+deployment Cloudflare `de9a9f2c`, asset `index-Dj5JAe08.js` confermato identico
+fra deployment e dominio, con i marcatori del codice nuovo verificati DENTRO il
+bundle servito da `app.ai-swisse.com` nelle tre lingue. `typecheck` / `build` /
 `i18n:coverage` verdi, `npm run test:workflows-unit` **103/103**.
 
 ✅ **Migrazione 0020 APPLICATA dall'utente e verificata**: `npm run test:workflows`
@@ -647,10 +650,11 @@ essere provato qui contro il database vero.
 
 ## 15. Limiti dichiarati
 
-1. **Il frontend non è ancora pubblicato.** Il motore gira in produzione, ma la
-   schermata `/automazioni` esiste solo in locale: su `app.ai-swisse.com` non c'è
-   ancora. Finché non si pubblica, le regole si possono creare solo chiamando
-   `automation-admin` direttamente o scrivendole via SQL.
+1. **Nessuna regola è mai stata creata dall'interfaccia in produzione.** Il
+   percorso di SCRITTURA (`save` → `activate`) è provato dai test e dalla
+   validazione, e `automation-admin` risponde correttamente in produzione su una
+   chiamata di sola lettura; ma nessuno ha ancora premuto «Attiva automazione»
+   su un'azienda vera. È il prossimo gesto, e va fatto da una persona.
 2. **`task_became_overdue` guarda indietro 3 giorni.** Un'attività scaduta da un
    mese quando la regola viene attivata non produce alcun evento — è la scelta
    che evita il backfill.
