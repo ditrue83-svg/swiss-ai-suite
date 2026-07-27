@@ -440,8 +440,8 @@ npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:subsidy    # eval interpretazione progetto (14 test)
 npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
-npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto (148 test)
-npm run test:tasks-unit # Attività offline: scadenze, ritardo, ordinamento, etichette (28 test)
+npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto, ripresa (151 test)
+npm run test:tasks-unit # Attività offline: scadenze, ritardo, ordinamento, etichette (35 test)
 npm run test:tasks      # Attività su DB: isolamento, assegnazione, autore, completamento
 npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run test:documents-unit  # Documenti offline: stati, ricerca, estratti, indirizzo (60 test)
@@ -452,6 +452,8 @@ npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--c
                         # Rifiuta di generare se una migrazione usa un valore enum appena aggiunto,
                         # o se crea un trigger/una policy senza «drop … if exists» che li preceda
 npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
+npm run inbox:diagnose  # «perché questa casella non si aggiorna»: stati, sync run, conteggi.
+                        # Solo metadati tecnici: mai oggetti, mittenti o contenuti
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
 ```
@@ -463,7 +465,7 @@ Creano dati reali e li rimuovono alla fine.
 
 - **`test:phase1` (26)** — onboarding, documenti, Storage privato, task, pratiche, **RLS cross-tenant**
   (B non legge/scarica/scrive nulla di A), cascade delete, nessun accesso senza sessione, persistenza dopo re-login.
-- **`test:phase2` (23)** — autorizzazione via membership (403 cross-tenant), 401/400/422, **rate limit** (429),
+- **`test:phase2` (36)** — autorizzazione via membership (403 cross-tenant), 401/400/422, **rate limit** (429),
   analisi reale end-to-end con verifica che **tutte** le citazioni esistano nel testo, persistenza della provenienza.
 - **`test:pipeline` (18)** — il flusso completo del *Definition of Done*: analisi → persistenza → re-login → task → bozza.
 - **`eval:admin` (35)** — qualità su documenti reali (AVS tedesco, AFC francese, Comune italiano) e **casi difficili**:
@@ -477,7 +479,7 @@ Creano dati reali e li rimuovono alla fine.
   costruiti ad arte: scadenza con citazione falsa → marcata da verificare; azione senza citazione → declassata a
   suggerimento; rischi espliciti prima degli inferiti; importo dovuto scelto correttamente e tipizzato; ente ambiguo →
   null + incertezza; valori fuori range normalizzati; output vuoto che non produce dati dal nulla.
-- **`test:inbox-unit` (148)** — i livelli dell'Inbox che decidono la sicurezza, provati **offline**:
+- **`test:inbox-unit` (151)** — i livelli dell'Inbox che decidono la sicurezza, provati **offline**:
   dodici vettori XSS reali (`<script>`, `onerror`, `iframe`, `javascript:`, SVG, form, pixel di
   tracciamento, tag spezzato) di cui non resta traccia nel testo; URL validati da un parser e non da un
   pattern; normalizzazione RFC 2047, indirizzi, storico citato con le sue condizioni di rinuncia;
@@ -660,15 +662,33 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
   nessuno di questi controlli. Se un cliente germanofono o romando segnala che «suona straniero»,
   è quello il segnale che manca. Prima del lancio è consigliata una rilettura professionale,
   soprattutto del disclaimer legale.
-- **Inbox**: il codice è completo e verificato offline, ma **non è attiva in produzione** finché non
-  vengono configurate le credenziali dei provider (vedi `docs/ai-inbox.md`). Lo scope Gmail richiesto
-  è riservato: fuori dalla modalità «Test» Google impone una verifica dell'app con valutazione di
-  sicurezza di terzi. Il flusso OAuth reale, le notifiche push reali e il rinnovo delle sottoscrizioni
-  non sono coperti da test automatici: richiedono credenziali di provider e si verificano collegando una
-  casella vera. La posta acquisita non viene mai cancellata automaticamente e scollegare una casella non
-  elimina i dati già importati.
-- **Non implementati**: invio email, calendar sync, notifiche push, Stripe/pagamenti,
-  interfaccia fiduciaria completa, fine-tuning.
+- **Inbox — in esercizio con Google, non utilizzabile da clienti reali.**
+  ⚠️ Fino al 2026-07-27 questa riga diceva che l'Inbox «non è attiva in produzione»: era rimasta
+  indietro e contraddiceva `docs/ai-inbox.md`, che nel frattempo raccontava lo stato vero. La
+  correzione è stata anche strutturale — **lo stato operativo dell'Inbox si racconta in UN SOLO
+  posto**, `docs/ai-inbox.md`, e qui resta solo ciò che è un limite. Due sedi che descrivono lo
+  stesso fatto divergono, e nessuno se ne accorge finché qualcuno non le legge di fila.
+  Il limite che resta è **esterno e pesante**: `gmail.readonly` è uno scope riservato e fuori dalla
+  modalità «Test» Google impone una verifica dell'app con valutazione di sicurezza di terzi (CASA).
+  Oggi possono collegarsi solo gli indirizzi elencati come utenti di prova: **un cliente reale non
+  può collegare la propria casella.** Microsoft è implementato ma non configurato, e
+  l'applicazione lo dichiara invece di fallire.
+  **Notifiche push implementate ma non attivate**, per scelta motivata e non per lavoro incompleto:
+  richiedono un account di fatturazione su Google Cloud, e senza di esse l'attesa massima è la
+  cadenza dello scheduler — un quarto d'ora — su comunicazioni con termini che si misurano in
+  settimane. Motivazione, conseguenze e passaggi per accenderla: `docs/ai-inbox.md` §4.4 e §12.
+  **Non coperti da test automatici** e verificabili solo collegando una casella vera: il flusso
+  OAuth reale, l'arrivo di una notifica push e lo scollegamento. Dei tre, i primi due percorsi sono
+  stati provati sul campo il 2026-07-27 fino all'analisi; **notifica push e scollegamento no**.
+  La posta acquisita non viene mai cancellata automaticamente e scollegare una casella non elimina
+  i dati già importati.
+- **Non implementati**: invio email, calendar sync, Stripe/pagamenti, interfaccia fiduciaria
+  completa, fine-tuning.
+  ⚠️ Fino al 2026-07-27 questo elenco comprendeva anche le **notifiche push**, che invece sono
+  implementate e solo non attivate (vedi il punto sull'Inbox qui sopra). «Non fatto» e «fatto, non
+  acceso per decisione» sono stati diversi, ed è lo stesso errore che il catalogo incentivi evita
+  con il campo `availability`: un programma sospeso non è né assente né disponibile. Confonderli
+  fa sottovalutare ciò che manca davvero — qui, la verifica CASA di Google.
 
 ## Disclaimer
 

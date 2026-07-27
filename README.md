@@ -1,57 +1,84 @@
-# SwissAI Suite
+# AI-Swisse
 
-SaaS per le PMI svizzere con due moduli:
+SaaS per le PMI svizzere: legge la posta amministrativa che arriva in italiano, tedesco e
+francese, ne ricava scadenze, importi e cose da fare, e tiene insieme documenti e lavoro.
 
-- **Swiss Admin AI** — analizza lettere, PDF ed email amministrative (IT/DE/FR): identifica
-  ente mittente, tipo di documento, importi e scadenze; produce spiegazione semplice,
-  checklist operativa, elenco documenti richiesti, rischio in caso di inazione e bozza di
-  risposta formale nella lingua del mittente.
-- **Swiss Subsidy AI** — costruisce il profilo aziendale (IDI/CHE, Cantone, settore,
-  dimensione, progetti previsti), interpreta la descrizione libera del progetto e la
-  confronta con un database strutturato di programmi (Confederazione + Ticino):
-  **rilevanza** (pertinenza al progetto) tenuta distinta dall'**idoneità** (hard/soft rule ed
-  esclusioni valutabili), scheda incentivo con fonte ufficiale e data di verifica, verifica
-  guidata e avvisi "domanda prima di agire".
+> **Questo file è un indice, non un manuale.** La documentazione vera sta accanto al codice che
+> descrive, e questa pagina rimanda a quella. È una scelta deliberata: fino al 2026-07-27 la
+> radice ripeteva lo stato del prodotto, è rimasta indietro di una settimana e ha finito per
+> dichiarare il falso su otto punti — dal nome del prodotto alle funzioni «non ancora
+> implementate» che nel frattempo esistevano. Un fatto raccontato in due posti diverge, e nessuno
+> se ne accorge finché non li legge di fila.
 
-Completano la piattaforma: scadenziario, archivio documenti, pratiche incentivi e pagina
-piani/prezzi. Grafica allineata ai colori di [ai-swisse.com](https://ai-swisse.com).
+## I moduli
+
+| Modulo | Cosa fa |
+|---|---|
+| **Admin AI** | Analizza lettere, PDF ed email amministrative: ente mittente, tipo, importi, scadenze, azioni richieste, bozza di risposta. Ogni affermazione è legata a una citazione **verificata alla lettera** nel documento; ciò che non è certo viene dichiarato, non inventato. |
+| **Subsidy AI** | Confronta il progetto dell'impresa con un catalogo di programmi di incentivo (Confederazione + Ticino), tenendo distinte la **rilevanza** (pertinenza al progetto) e l'**idoneità** (requisiti verificabili). |
+| **Inbox** | Collega la casella aziendale e individua le comunicazioni che richiedono attenzione. Non è un client di posta: non invia, non risponde, non modifica nulla nella casella. |
+| **Attività** | Il lavoro che nasce da un documento o da una comunicazione: responsabile, stato, scadenza, storico. |
+| **Documenti** | La memoria documentale: dove ritrovare ciò che l'azienda ha ricevuto, con categoria, etichette, ricerca nel testo e provenienza. |
+
+Inbox → Documenti → Analisi → Attività, e all'indietro: sono un sistema solo, non cinque
+strumenti affiancati.
 
 ## Cartelle
 
 | Cartella | Cos'è | Come si avvia |
-|----------|-------|---------------|
-| [`app/`](app/) | **L'applicazione vera.** SaaS multi-tenant su **Supabase** (Auth, PostgreSQL, Storage privato, RLS) in React + TypeScript, con analisi documenti tramite **Claude** lato server. È la versione su cui prosegue lo sviluppo. | `cd app && npm install`, configura `.env` (vedi [app/README.md](app/README.md)) → `npm run dev` |
-| [`html/`](html/) | Prototipo dimostrativo in **un unico file** `index.html` (vanilla JS, `localStorage`, nessuna dipendenza). Resta il riferimento del design. | Apri `html/index.html` nel browser. Pronto per GitHub Pages. |
+|---|---|---|
+| [`app/`](app/) | **L'applicazione.** React + TypeScript su Supabase (Auth, PostgreSQL, Storage privato, RLS), con l'analisi eseguita da Claude lato server. È qui che prosegue lo sviluppo. | `cd app && npm install`, configura `.env` (vedi [`app/README.md`](app/README.md)) → `npm run dev` |
+| [`site/`](site/) | **La vetrina** `ai-swisse.com`. Generatore statico senza dipendenze, contenuti in `content.mjs` (unica fonte, tre lingue), pubblicata da GitHub Actions. | `cd site && node build.mjs` → `site/dist` |
+| [`html/`](html/) | Prototipo dimostrativo in un unico `index.html` (vanilla JS, `localStorage`). Resta come riferimento storico del design; non è più la fonte. | Apri `html/index.html` nel browser. |
 
 > Un primo scaffold React senza backend (`react/`) è stato rimosso perché superato da `app/`;
 > resta recuperabile dalla storia git (fino al commit `89588a8`).
 
-## Architettura di `app/`
+## Dove sta la documentazione
 
-- **Multi-tenant dal principio**: utente e azienda sono concetti separati (`profiles`,
-  `companies`, `company_members`, `company_profiles`); un utente può appartenere a più aziende
-  (base per la futura vista fiduciaria).
-- **Row Level Security su tutte le tabelle aziendali**: si accede a una risorsa solo se si è
-  membri della sua company. Le policy usano funzioni `SECURITY DEFINER` per evitare ricorsione;
-  l'onboarding passa da un'RPC atomica. Migrazioni SQL versionate in `app/supabase/migrations`.
-- **Storage privato** (`company-documents`) con signed URL e policy per membership: il contenuto
-  dei documenti non sta nel database.
-- **Service layer** che isola UI, logica e accesso al DB.
-- **Analisi documenti**: `analysisService` sceglie il motore senza che la UI se ne accorga —
-  Claude tramite Edge Function server-side (la chiave API non tocca mai il browser), oppure il
-  motore deterministico locale come fallback o per chi non vuole inviare nulla all'esterno.
-- **Le citazioni dell'AI sono verificate**: ogni frase citata deve esistere alla lettera nel
-  documento, altrimenti viene scartata e l'azione declassata da "dal documento" a "suggerimento".
-  Gli offset di evidenziazione sono ricalcolati localmente, mai presi dal modello.
+| Documento | Cosa copre |
+|---|---|
+| [`app/README.md`](app/README.md) | Installazione, variabili d'ambiente, pipeline di analisi, database, comandi, test, sicurezza, **limitazioni dichiarate**. |
+| [`app/docs/ai-inbox.md`](app/docs/ai-inbox.md) | Inbox: architettura, configurazione passo passo, modello di minaccia, diagnostica. **Sede unica dello stato operativo dell'Inbox.** |
+| [`app/docs/document-hub.md`](app/docs/document-hub.md) | Documenti: modello dati, ricerca, categorie, provenienza, limiti della ricerca full-text. |
+| [`app/docs/design-system.md`](app/docs/design-system.md) | Scala tipografica, colori, contrasti, tema scuro, aree cliccabili. |
+| [`site/README.md`](site/README.md) | Vetrina: contenuti, build, pubblicazione. |
 
-## Stato e limiti
+## Stato
 
-- Il **database dei programmi di incentivo è dimostrativo**: ogni scheda espone fonte ufficiale e
-  data di verifica; la rilevanza è una stima di pertinenza, l'idoneità non sostituisce la
-  valutazione dell'ente.
-- L'output non costituisce consulenza legale, fiscale o fiduciaria; in caso di incertezza il
-  sistema la dichiara invece di inventare.
-- In modalità AI il testo del documento viene inviato all'API di Anthropic: da valutare
-  nell'informativa privacy (la modalità `deterministic` tiene tutto dentro Supabase).
-- Non ancora implementati: OCR, Registro IDI live, database incentivi reale, pagamenti,
-  email/calendar, interfaccia fiduciaria completa, copertura dei 26 Cantoni.
+**Online**, verificato il 2026-07-27: l'applicazione su `app.ai-swisse.com` (Cloudflare Pages) e
+la vetrina su `ai-swisse.com` (GitHub Pages).
+
+**In esercizio**: Admin AI, Subsidy AI, Attività, Documenti. L'**Inbox è attiva con Google** —
+una casella reale collegata, posta importata, classificata e analizzata, manutenzione periodica
+automatica.
+
+**Il limite che conta oggi**: lo scope Gmail è riservato, e fuori dalla modalità «Test» Google
+impone una verifica dell'app con valutazione di sicurezza di terzi. Finché non c'è, **un cliente
+reale non può collegare la propria casella**. Microsoft è implementato ma non configurato, e
+l'applicazione lo dichiara invece di fallire.
+
+**Implementato ma non attivo**: le notifiche push dell'Inbox (rimandate per scelta motivata —
+vedi [`app/docs/ai-inbox.md`](app/docs/ai-inbox.md)); la ricerca nel Registro IDI (Zefix), in
+attesa delle credenziali — il codice è allineato alla specifica ufficiale ma **non ancora provato
+contro l'API viva**.
+
+**Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali, di cui 1 dichiarato
+sospeso. Copertura Confederazione + Ticino, non i 26 Cantoni. I contenuti delle schede sono
+mostrati in italiano anche in tedesco e francese: vivono nel database, non nei dizionari.
+
+**Non implementati**: invio email, sincronizzazione calendario, pagamenti, interfaccia fiduciaria
+completa.
+
+Il dettaglio di ciascun punto, con le trappole già incontrate, sta in
+[`app/README.md`](app/README.md) → «Limitazioni attuali (dichiarate, non nascoste)».
+
+## Disclaimer
+
+AI-Swisse è uno **strumento di supporto amministrativo**. Le analisi sono generate
+automaticamente e **non sostituiscono la consulenza legale, fiscale o fiduciaria**. Quando il
+sistema non è sicuro lo segnala e invita a una verifica manuale; importi, requisiti e scadenze
+vanno confermati sulla fonte ufficiale.
+
+In modalità AI il testo estratto dal documento viene inviato all'API di Anthropic (Stati Uniti):
+è dichiarato nell'informativa privacy. La modalità `deterministic` tiene tutto dentro Supabase.
