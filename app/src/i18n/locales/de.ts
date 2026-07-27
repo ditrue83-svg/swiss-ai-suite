@@ -242,6 +242,7 @@ export const de: Dictionary = {
     history: 'Letzte Vorgänge',
     historyEmpty: 'Keine Vorgänge erfasst.',
     links: 'Verknüpfungen',
+    linksEmpty: 'Diese Aufgabe ist mit keinem Dokument und keinem Gesuch verknüpft.',
     linkedDocument: 'Verknüpftes Dokument',
     linkedEmail: 'Verknüpfte Mitteilung',
     linkedCase: 'Fördergesuch',

@@ -240,6 +240,7 @@ export const it = {
     history: 'Attività recente',
     historyEmpty: 'Nessun evento registrato.',
     links: 'Collegamenti',
+    linksEmpty: 'Questa attività non è collegata a documenti o pratiche.',
     linkedDocument: 'Documento collegato',
     linkedEmail: 'Comunicazione collegata',
     linkedCase: 'Pratica incentivo',

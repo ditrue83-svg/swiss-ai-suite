@@ -241,6 +241,7 @@ export const fr: Dictionary = {
     history: 'Activité récente',
     historyEmpty: 'Aucun événement enregistré.',
     links: 'Liens',
+    linksEmpty: 'Cette activité n’est liée à aucun document ni dossier.',
     linkedDocument: 'Document lié',
     linkedEmail: 'Communication liée',
     linkedCase: 'Dossier de subvention',

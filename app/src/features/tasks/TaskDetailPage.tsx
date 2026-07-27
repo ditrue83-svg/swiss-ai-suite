@@ -58,8 +58,23 @@ export function TaskDetailPage() {
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
 
+  /** Il responsabile di un'attività: senza, «Non assegnata». */
   function name(userId: string | null): string {
     if (!userId) return t('tasks.unassigned');
+    const m = byId.get(userId);
+    if (!m) return t('tasks.eventUnknownActor');
+    return m.name || t('tasks.unnamedMember');
+  }
+
+  /**
+   * Chi ha COMPIUTO un'azione. Formula diversa da quella del responsabile, e
+   * non è pedanteria: con `name()` lo storico diceva «Non assegnata ha creato
+   * l'attività» per gli eventi senza attore — quelli nati da un processo
+   * automatico o da uno script. Un'azione senza autore noto è di «Qualcuno»,
+   * non di nessuno. Trovato provando la pagina, non leggendo il codice.
+   */
+  function actor(userId: string | null): string {
+    if (!userId) return t('tasks.eventUnknownActor');
     const m = byId.get(userId);
     if (!m) return t('tasks.eventUnknownActor');
     return m.name || t('tasks.unnamedMember');
@@ -244,7 +259,7 @@ export function TaskDetailPage() {
         <div className="card">
           <div className="card-title">{t('tasks.links')}</div>
           {!task.documentId && !task.subsidyCaseId && (
-            <div className="muted-sm">{t('tasks.descriptionEmpty')}</div>
+            <div className="muted-sm">{t('tasks.linksEmpty')}</div>
           )}
           {task.documentId && (
             <div className="list-row">
@@ -332,7 +347,7 @@ export function TaskDetailPage() {
         {comments.map((c) => (
           <div className="list-row" key={c.id}>
             <div className="list-main">
-              <div className="list-sub">{name(c.authorUserId)} · {formatDate(c.createdAt)}</div>
+              <div className="list-sub">{actor(c.authorUserId)} · {formatDate(c.createdAt)}</div>
               {/* Testo, mai markup: il corpo non viene interpretato. */}
               <div className="list-title" style={{ fontWeight: 400, whiteSpace: 'pre-wrap' }}>{c.body}</div>
             </div>
@@ -348,7 +363,7 @@ export function TaskDetailPage() {
           <div className="list-row" key={ev.id}>
             <div className="list-main">
               <div className="list-sub">
-                {name(ev.actorUserId)} {t(eventLabelKey(ev.kind))} · {formatDate(ev.createdAt)}
+                {actor(ev.actorUserId)} {t(eventLabelKey(ev.kind))} · {formatDate(ev.createdAt)}
               </div>
             </div>
           </div>
