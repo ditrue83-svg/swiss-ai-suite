@@ -157,6 +157,7 @@ export const fr: Dictionary = {
     noPreference: 'Je préfère ne pas indiquer',
     uidPlaceholder: 'CHE-123.456.789',
     registryImportedFrom: 'Données importées de « {name} ». Vérifiez et complétez la forme juridique, le secteur et le nombre d’employés.',
+    registryImportedNoCanton: 'Données importées de « {name} ». Lors d’une recherche par nom, le registre n’indique pas le canton : vérifiez le canton, ainsi que la forme juridique, le secteur et le nombre d’employés.',
     errorName: 'Veuillez saisir la raison sociale.',
   },
 

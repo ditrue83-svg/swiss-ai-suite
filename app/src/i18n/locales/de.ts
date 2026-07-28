@@ -158,6 +158,7 @@ export const de: Dictionary = {
     noPreference: 'Keine Angabe',
     uidPlaceholder: 'CHE-123.456.789',
     registryImportedFrom: 'Daten aus «{name}» übernommen. Bitte prüfen und Rechtsform, Branche und Mitarbeiterzahl ergänzen.',
+    registryImportedNoCanton: 'Daten aus «{name}» übernommen. Bei der Suche nach Namen nennt das Register den Kanton nicht: Bitte den Kanton prüfen sowie Rechtsform, Branche und Mitarbeiterzahl ergänzen.',
     errorName: 'Bitte geben Sie den Firmennamen ein.',
   },
 

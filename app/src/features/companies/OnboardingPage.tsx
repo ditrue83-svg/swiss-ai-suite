@@ -52,7 +52,7 @@ export function OnboardingPage() {
   const [lookupMsg, setLookupMsg] = useState<string | null>(null);
   /** Ciò che è stato importato dal registro, per riconoscere le modifiche. */
   const [imported, setImported] = useState<
-    { legalName: string; uidChe: string; canton: string; municipality: string } | null
+    { legalName: string; uidChe: string; canton: string | null; municipality: string } | null
   >(null);
 
   async function searchRegistry() {
@@ -77,24 +77,50 @@ export function OnboardingPage() {
     }
   }
 
-  function applyCandidate(c: CompanyCandidate) {
+  async function applyCandidate(c: CompanyCandidate) {
+    // ⚠️ La ricerca per NOME non restituisce il cantone: l'API lo espone solo
+    // nel dettaglio per IDI. Lasciare il valore corrente significava mostrare
+    // il DEFAULT del modulo — «Ticino» — in mezzo a campi appena importati, e
+    // per un'azienda di Zugo era semplicemente falso (visto a schermo il
+    // 2026-07-28: Comune «Zug», Cantone «Ticino»). Il cantone non si deduce
+    // dal comune: si CHIEDE al registro, che lo sa.
+    let registryCanton = c.canton;
+    if (!registryCanton && c.uid) {
+      try {
+        const [detail] = await companyLookupService.search(c.uid);
+        registryCanton = detail?.canton ?? null;
+      } catch {
+        // Non è un fallback silenzioso: l'esito è dichiarato all'utente qui
+        // sotto, dove il cantone entra fra i campi da verificare.
+        registryCanton = null;
+      }
+    }
+
     // Si conserva ciò che è stato davvero importato, per poter dire più tardi
     // se i dati mostrati corrispondono ancora al registro: è una delle
     // condizioni d'uso dell'API Zefix — indicare l'origine dei dati e le
     // eventuali modifiche — e senza questo confronto non sarebbe verificabile.
+    // `canton: null` significa «il registro non l'ha dato»: il campo mostrato
+    // resta quello del modulo e NON va confrontato, altrimenti correggerlo a
+    // mano farebbe dire «hai modificato i dati importati» di un dato che
+    // importato non era.
     const applied = {
       legalName: c.name ?? legalName,
       uidChe: c.uid ? (formatUid(c.uid) ?? c.uid) : uidChe,
-      canton: c.canton ? (CANTONI.includes(c.canton) ? c.canton : 'Altro') : canton,
+      canton: registryCanton ? (CANTONI.includes(registryCanton) ? registryCanton : 'Altro') : null,
       municipality: c.municipality ?? municipality,
     };
     setLegalName(applied.legalName);
     setUidChe(applied.uidChe);
-    setCanton(applied.canton);
+    if (applied.canton) setCanton(applied.canton);
     setMunicipality(applied.municipality);
     setImported(applied);
     setCandidates([]);
-    setLookupMsg(c.name ? t('onboarding.registryImportedFrom', { name: c.name }) : t('onboarding.registryImported'));
+    setLookupMsg(
+      c.name
+        ? t(applied.canton ? 'onboarding.registryImportedFrom' : 'onboarding.registryImportedNoCanton', { name: c.name })
+        : t('onboarding.registryImported'),
+    );
   }
 
   async function onSubmit(e: FormEvent) {
@@ -131,10 +157,15 @@ export function OnboardingPage() {
   // I dati importati sono stati corretti a mano? Non è un errore — correggere è
   // previsto — ma da quel momento non sono più quelli pubblicati dal registro,
   // e va detto invece di lasciar credere che lo siano ancora.
+  // ⚠️ Il cantone si confronta SOLO se il registro l'ha davvero dato
+  // (`imported.canton === null` = ricerca per nome, che non lo restituisce):
+  // altrimenti sceglierlo a mano — cioè fare quel che l'avviso chiede —
+  // farebbe comparire «hai modificato i dati importati» su un dato che nessuno
+  // ha importato.
   const importedModified = imported !== null && (
     legalName !== imported.legalName
     || uidChe !== imported.uidChe
-    || canton !== imported.canton
+    || (imported.canton !== null && canton !== imported.canton)
     || municipality !== imported.municipality
   );
 
@@ -182,7 +213,7 @@ export function OnboardingPage() {
             <ul role="listbox" aria-label={t('onboarding.registryResultsAria')} style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
               {candidates.map((c, i) => (
                 <li key={c.uid ?? i}>
-                  <button type="button" className="btn btn-sm" onClick={() => applyCandidate(c)}
+                  <button type="button" className="btn btn-sm" onClick={() => void applyCandidate(c)}
                     style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', marginBottom: 6 }}>
                     <span>
                       <strong>{c.name}</strong>

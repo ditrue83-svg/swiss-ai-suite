@@ -153,6 +153,7 @@ export const it = {
     noPreference: 'Preferisco non indicare',
     uidPlaceholder: 'CHE-123.456.789',
     registryImportedFrom: 'Dati importati da «{name}». Verifica e completa forma giuridica, settore e numero di dipendenti.',
+    registryImportedNoCanton: 'Dati importati da «{name}». Cercando per nome il registro non indica il cantone: verifica il cantone, oltre a forma giuridica, settore e numero di dipendenti.',
     errorName: 'Inserisci la ragione sociale.',
   },
 
