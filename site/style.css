@@ -6,25 +6,119 @@
    Erano stati copiati a mano e avevano già iniziato a divergere. In `dist` i
    due file vengono concatenati, quindi il browser fa una richiesta sola.
 
-   Nessuna dipendenza: nessun carattere remoto (si usa quello di sistema, come
-   nell'app), nessun framework, nessuno script.
+   SOPRA i token vive lo strato MARKETING, con prefisso --ms-*: la scala di
+   una pagina di vendita, separata dalla scala dell'applicazione (che serve
+   un'interfaccia densa, non un manifesto). Un futuro `sync-tokens` non lo
+   tocca. I colori restano quelli dei token; qui si aggiungono solo superfici
+   derivate (pozzetto, carta, inversione) e misure.
+
+   La direzione è «Protocollo»: la pagina composta come un documento tecnico
+   svizzero — filetti hairline come ossatura, sezioni numerate 01–09 in cifre
+   tabellari, tre registri di superficie (fondo, banda elevata, UNA inversione
+   totale d'inchiostro: i limiti), il carattere a fare quasi tutto il lavoro.
+
+   Carattere: Inter Tight (SIL OFL), file VARIABILE self-hostato in
+   static/fonts/ con la licenza accanto. Nessuna risorsa remota: nessun
+   carattere da CDN, nessun framework — l'informativa sulla privacy dichiara
+   che questo sito non carica nulla da altri server, e deve restare vero.
    ========================================================================== */
 
-:root {
-  /* Larghezze di colonna: il ritmo della pagina.
-     Le griglie di schede respirano larghe; l'esempio e i limiti stanno su una
-     colonna più stretta, dove le righe di testo restano leggibili e la pagina
-     cambia passo invece di scorrere sempre uguale. */
-  --wrap: 1080px;         /* griglie di schede            */
-  --wrap-mid: 900px;      /* esempio di risultato         */
-  --wrap-narrow: 720px;   /* limiti, chi siamo, legali    */
+/* L'asse di peso è LIMITATO a 400–600: un `font-weight: 800` scritto per
+   errore rende comunque 600 — la disciplina dei due pesi è imposta dal file,
+   non dalla buona volontà. Il subset latin-ext è dichiarato ma non viene mai
+   scaricato per it/de/fr: il browser lo chiede solo se un glifo lo richiede. */
+@font-face {
+  font-family: 'Inter Tight';
+  src: url('fonts/inter-tight-var-latin.woff2') format('woff2');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter Tight';
+  src: url('fonts/inter-tight-var-latin-ext.woff2') format('woff2');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+:root {
+  /* Colonna delle pagine legali; la pagina principale usa la griglia --ms-. */
+  --wrap-narrow: 720px;
+
+  --ms-font: 'Inter Tight', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  /* Scala tipografica del manifesto: il salto H1/corpo è ~4:1, contro il
+     2:1 della scala applicativa. */
+  --ms-fs-h1: clamp(2.75rem, 6vw, 4.5rem);      /* 44 → 72px */
+  --ms-fs-h2: clamp(1.75rem, 3vw, 2.5rem);      /* 28 → 40px */
+  --ms-fs-h3: 1.25rem;                           /* 20px */
+  --ms-fs-lead: clamp(1.1875rem, 1.6vw, 1.3125rem); /* 19 → 21px */
+  --ms-fs-body: 1.0625rem;                       /* 17px */
+  --ms-fs-meta: 0.875rem;                        /* 14px */
+  --ms-fs-label: 0.75rem;                        /* 12px */
+  --ms-lh-h1: 1.05;
+  --ms-lh-h2: 1.12;
+  --ms-ls-h1: -0.028em;
+  --ms-ls-h2: -0.02em;
+  --ms-ls-label: 0.07em;
+
+  /* Griglia: contenitore largo, variante breakout per il dossier d'esempio.
+     Il padding laterale con max() produce bande full-bleed i cui contenuti
+     restano allineati alla griglia — senza 100vw, che conta la barra di
+     scorrimento e crea trabocco orizzontale. */
+  --ms-wrap: 1240px;
+  --ms-wrap-x: 1320px;
+  --ms-gutter: max(var(--sp-6), calc((100% - var(--ms-wrap)) / 2));
+  --ms-gutter-x: max(var(--sp-6), calc((100% - var(--ms-wrap-x)) / 2));
+
+  /* Spaziatura verticale delle sezioni: scala fluida, non a occhio. */
+  --ms-sp-block: clamp(4.5rem, 9vw, 7.5rem);     /* 72 → 120px */
+  --ms-sp-half: clamp(2.25rem, 4.5vw, 3.75rem);  /* 36 → 60px  */
+
+  /* Pozzetto: la superficie ribassata su cui il dossier d'esempio stacca. */
+  --ms-well: hsl(210, 20%, 95%);
+
+  /* Carta: il foglio della lettera d'esempio. FISSA nei due temi — la carta
+     resta carta anche quando l'interfaccia intorno è scura; è anche ciò che
+     tiene leggibile l'evidenziazione gialla. Coppie verificate ≥ 4.5:1. */
+  --ms-paper: hsl(45, 12%, 97%);
+  --ms-paper-ink: hsl(213, 30%, 16%);
+  --ms-paper-muted: hsl(213, 10%, 38%);
+  --ms-paper-line: hsl(45, 8%, 85%);
+  --ms-paper-hl: hsl(48, 100%, 78%);
+  --ms-paper-on-hl: hsl(45, 60%, 12%);
+  --ms-paper-ref-bg: hsl(207, 65%, 93%);
+  --ms-paper-ref-fg: hsl(207, 90%, 30%);
+
+  /* Inversione totale (sezione limiti): puro rimappaggio dei token del tema
+     opposto — fondo --ink, testo --on-ink, gradazioni per miscela. Nel tema
+     scuro l'inverso: una sezione chiara dentro la pagina scura. */
+  --ms-inv-soft: color-mix(in srgb, var(--on-ink) 88%, var(--ink));
+  --ms-inv-muted: color-mix(in srgb, var(--on-ink) 62%, var(--ink));
+  --ms-inv-line: color-mix(in srgb, var(--on-ink) 28%, var(--ink));
+
+  --ms-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 16px 40px -12px rgba(16, 24, 40, 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ms-well: hsl(213, 28%, 9%);
+    --ms-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 20px 48px -12px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ---------- base ---------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 body {
   background: var(--bg); color: var(--ink);
-  font-size: var(--fs-body); line-height: var(--lh, 1.55);
+  font-family: var(--ms-font);
+  /* L'asse caricato è 400–600: un corsivo o un grassetto sintetizzati dal
+     browser sarebbero un terzo e un quarto peso che nessuno ha scelto. */
+  font-synthesis: none;
+  font-size: var(--ms-fs-body); line-height: 1.6;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
 a { color: var(--accent-text); text-decoration: none; }
@@ -40,10 +134,13 @@ a:hover { text-decoration: underline; }
 }
 .skip:focus { left: var(--sp-4); }
 
-/* ---------- barra superiore ---------- */
+/* ---------- barra superiore ----------
+   Allineata alla griglia larga, chiusa da un filetto full-bleed: la prima
+   riga dell'ossatura di protocollo. */
 .topbar {
   display: flex; align-items: center; gap: var(--sp-6); flex-wrap: wrap;
-  max-width: var(--wrap); margin: 0 auto; padding: var(--sp-4) var(--sp-6);
+  padding: var(--sp-4) var(--ms-gutter);
+  border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: 10px; color: inherit; }
 .brand:hover { text-decoration: none; }
@@ -52,29 +149,39 @@ a:hover { text-decoration: underline; }
   color: var(--on-accent); display: grid; place-items: center; flex-shrink: 0;
 }
 .brand-mark .ic { width: 18px; height: 18px; stroke-width: 2.25; }
-.brand-name { display: block; font-weight: 700; letter-spacing: -0.2px; }
-.brand-sub { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: -2px; }
+.brand-name { display: block; font-weight: 600; letter-spacing: -0.2px; }
+.brand-sub { display: block; font-size: var(--ms-fs-meta); color: var(--muted); margin-top: -2px; }
 
 .topnav { display: flex; gap: var(--sp-4); flex-wrap: wrap; margin-left: auto; }
 .topnav a { color: var(--ink-soft); font-weight: 500; padding: var(--sp-1) 0; }
 .topnav a:hover { color: var(--accent-text); }
 .topactions { display: flex; align-items: center; gap: var(--sp-4); }
+/* Nelle pagine legali la topnav non esiste: la spinta a destra deve venire
+   dalle azioni stesse, altrimenti lingue e «Accedi» restano incollate al
+   marchio. Il combinatore scatta solo dove .topactions segue il marchio. */
+.brand + .topactions { margin-left: auto; }
+/* Bersaglio tattile del bottone in barra: 44px senza cambiare il disegno. */
+.topbar .btn { min-height: 44px; }
 
 /* La lingua corrente non è un collegamento: portava a `#`, cioè da nessuna
    parte, ed era annunciata come link dalle tecnologie assistive. */
 .langs { display: inline-flex; gap: 2px; align-items: center; }
 .lang-link, .lang-current {
-  font-size: var(--fs-meta); padding: 4px var(--sp-2); border-radius: 6px;
+  font-size: var(--ms-fs-meta); padding: 4px var(--sp-2); border-radius: 6px;
   min-height: 26px; display: inline-flex; align-items: center;
 }
 .lang-link { color: var(--muted); }
+/* Bersaglio tattile: l'area toccabile arriva a 44px in altezza senza
+   cambiare la resa visiva (26px resi + 9px sopra e sotto). */
+.lang-link { position: relative; }
+.lang-link::after { content: ''; position: absolute; inset: -9px 0; }
 .lang-link:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
 .lang-current { color: var(--accent-text); font-weight: 600; background: var(--accent-soft); }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid var(--line);
-  background: var(--card); color: var(--ink); font-weight: 600; font-size: var(--fs-body);
+  background: var(--card); color: var(--ink); font-weight: 600; font-size: var(--ms-fs-body);
   transition: background .12s, border-color .12s;
 }
 .btn:hover { border-color: var(--line-strong); background: var(--bg); text-decoration: none; }
@@ -83,83 +190,231 @@ a:hover { text-decoration: underline; }
 .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: var(--on-accent); }
 .btn .ic { width: 18px; height: 18px; }
 
-/* ---------- impaginazione ---------- */
-main { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--sp-6); }
-.section { padding: var(--sp-12) 0; border-top: 1px solid var(--line); }
-.section > h2 {
-  font-size: var(--fs-h2); font-weight: 700; letter-spacing: -0.3px;
-  display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3);
-}
-.section-lead { color: var(--ink-soft); max-width: 68ch; margin-bottom: var(--sp-6); }
-.center { text-align: center; margin-top: var(--sp-6); }
-/* Sezioni su colonna più stretta: cambiano il passo della pagina. */
+/* ---------- impaginazione ----------
+   `main` non impone una larghezza unica: ogni sezione sceglie il suo
+   registro tramite il padding-gutter. Le pagine legali (main.narrow)
+   restano su colonna stretta. */
+main { max-width: none; padding: 0; margin: 0; }
+main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp-6); }
 .narrow { max-width: var(--wrap-narrow); }
-.mid { max-width: var(--wrap-mid); }
 
-.hero { padding: var(--sp-12) 0 var(--sp-8); }
-.hero h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.15; letter-spacing: -0.8px; max-width: 22ch; font-weight: 800; }
-.hero .lead { margin-top: var(--sp-4); color: var(--ink-soft); font-size: var(--fs-strong); max-width: 62ch; line-height: 1.6; }
-.hero-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-6); }
-.hero-note { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-6); color: var(--muted); font-size: var(--fs-meta); }
-.hero-note .ic { width: 16px; height: 16px; }
+/* I tre registri di superficie.
+   A — fondo pagina, sezione con filetto d'apertura full-bleed;
+   B — banda elevata su --card, delimitata da filetti;
+   C — inversione totale d'inchiostro, UNA sola sezione: i limiti. */
+.ms-section { border-top: 1px solid var(--line); padding: var(--ms-sp-half) var(--ms-gutter) var(--ms-sp-block); }
+.ms-band { border-block: 1px solid var(--line); background: var(--card); padding: var(--ms-sp-half) var(--ms-gutter) var(--ms-sp-block); }
+.ms-invert { background: var(--ink); color: var(--on-ink); padding: var(--ms-sp-half) var(--ms-gutter) var(--ms-sp-block); }
+/* Dopo una banda o l'inversione il filetto d'apertura sarebbe una doppia
+   riga: lo stacco l'ha già dato il cambio di superficie. */
+.ms-example + .ms-section, .ms-band + .ms-section, .ms-invert + .ms-section { border-top: 0; }
 
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
+/* Testata di protocollo: numero tabellare + titolo, la stessa per tutte. */
+.ms-sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3) var(--sp-4); }
+.ms-sec-n {
+  font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: var(--ms-fs-h2); color: var(--muted);
+}
+.ms-sec-head h2 {
+  font-size: var(--ms-fs-h2); font-weight: 600;
+  line-height: var(--ms-lh-h2); letter-spacing: var(--ms-ls-h2);
+}
+.ms-sec-head .ms-tag { margin-left: auto; }
+.ms-tag {
+  font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase;
+  letter-spacing: var(--ms-ls-label); color: var(--ink-soft);
+  border: 1px dashed var(--line-strong); border-radius: 4px; padding: 4px 10px;
+  align-self: center;
+  /* La pill non si spezza al proprio interno: se non c'è spazio va a capo
+     intera (le testate che la ospitano hanno flex-wrap). */
+  white-space: nowrap;
+}
+.ms-sec-lead {
+  margin-top: var(--sp-4); font-size: var(--ms-fs-lead); line-height: 1.55;
+  color: var(--ink-soft); max-width: 62ch;
+}
+.kicker {
+  font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase;
+  letter-spacing: var(--ms-ls-label); color: var(--muted);
+}
+.ms-section > .kicker { display: block; margin-top: var(--ms-sp-half); }
+
+/* ---------- hero ----------
+   Nessun testo nasce a opacity:0: l'H1 è dipinto visibile al primo frame. */
+.ms-hero { padding: clamp(3.5rem, 8vw, 6.5rem) var(--ms-gutter) var(--ms-sp-block); }
+.ms-kicker {
+  display: flex; align-items: center; gap: var(--sp-3);
+  font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase;
+  letter-spacing: var(--ms-ls-label); color: var(--muted);
+}
+.ms-kicker::before { content: ''; width: 48px; height: 1px; background: var(--line-strong); }
+.ms-hero h1 {
+  margin-top: var(--sp-6);
+  font-size: var(--ms-fs-h1); font-weight: 600;
+  line-height: var(--ms-lh-h1); letter-spacing: var(--ms-ls-h1);
+  max-width: 20ch; text-wrap: balance;
+}
+/* Le parole composte tedesche non stanno in 44px su 375px senza sillabare —
+   e «Nutzungsbedingungen» a 30px sfonda i 320px anche nelle legali. */
+.ms-hero h1:lang(de), .legal-head h1:lang(de) { hyphens: auto; }
+.ms-hero .ms-lead {
+  margin-top: var(--sp-6);
+  font-size: var(--ms-fs-lead); line-height: 1.55;
+  color: var(--ink-soft); max-width: 62ch;
+}
+.ms-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-8); }
+.ms-actions .btn { min-height: 48px; padding: 10px 24px; font-size: var(--ms-fs-body); border-radius: var(--radius-sm); }
+.ms-hero-meta {
+  display: flex; align-items: center; gap: var(--sp-2);
+  margin-top: var(--ms-sp-half); padding-top: var(--sp-4);
+  border-top: 1px solid var(--line);
+  color: var(--muted); font-size: var(--ms-fs-meta);
+}
+.ms-hero-meta .ic { width: 16px; height: 16px; }
+
+/* ---------- 01 · come funziona ----------
+   Quattro colonne con filetto proprio: numeri tabellari, nessun cerchio. */
+.steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-8) var(--sp-6); margin-top: var(--ms-sp-half); }
+.step { display: flex; gap: var(--sp-3); align-items: flex-start; border-top: 1px solid var(--line); padding-top: var(--sp-4); }
+.step-n {
+  font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: var(--ms-fs-meta); color: var(--muted); padding-top: 2px;
+}
+.step h3 { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+.step p { color: var(--muted); font-size: var(--ms-fs-meta); margin-top: var(--sp-1); }
+
+/* ---------- griglie di schede (03 moduli · 04 verificabilità) ---------- */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); margin-top: var(--ms-sp-half); }
 .card {
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: var(--sp-6); box-shadow: var(--shadow-xs);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: var(--sp-8);
 }
-.card h3 { font-size: var(--fs-strong); font-weight: 700; letter-spacing: -0.2px; }
+.card h3 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.015em; }
 .card p { color: var(--ink-soft); }
+/* Dentro la banda elevata le schede si scavano nel fondo: quattro schede
+   discrete, ciascuna col proprio bordo, non celle di una tabella. */
+.ms-band .card { background: var(--bg); }
+.module-lead { color: var(--muted); font-size: var(--ms-fs-meta); margin: var(--sp-1) 0 var(--sp-6); }
+.ticks { list-style: none; display: grid; gap: var(--sp-3); }
+.ticks li { display: flex; gap: var(--sp-2); align-items: flex-start; color: var(--ink-soft); }
+/* Le spunte non sono azioni né citazioni: niente blu. */
+.ticks .ic { width: 18px; height: 18px; margin-top: 3px; color: var(--ink-soft); stroke-width: 2.25; }
+.trust-card { display: grid; gap: var(--sp-2); }
+.trust-card h3 { font-size: var(--ms-fs-h3); }
+.trust-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-soft); display: grid; place-items: center; }
+.trust-ico .ic { width: 18px; height: 18px; }
 
-/* ---------- esempio di risultato ----------
-   Documento e analisi AFFIANCATI, con la frase citata evidenziata nella
-   lettera: è la cosa che il prodotto fa e che nessun elenco di funzioni
-   riesce a spiegare. Su schermo stretto si impilano, la lettera sopra.
-   Non è uno screenshot: una schermata reale mostrerebbe la ragione sociale e
-   i documenti di un'impresa vera. */
-.example-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-.example-label {
-  font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--ink-soft); background: var(--surface-2); border-radius: 99px; padding: 3px var(--sp-3);
+/* ---------- 02 · esempio di risultato: il dossier ----------
+   Banda full-bleed ribassata; dentro, UN solo oggetto elevato: il dossier.
+   A sinistra la lettera su carta (chiara in entrambi i temi), a destra
+   l'estratto su superficie applicativa; le ancore numerate ①②③ collegano il
+   punto del testo all'informazione ricavata. L'etichetta di dati fittizi
+   apre la sezione, sta sul foglio e chiude il dossier. */
+.ms-example {
+  background: var(--ms-well);
+  border-block: 1px solid var(--line);
+  padding: var(--ms-sp-half) var(--ms-gutter-x) var(--ms-sp-block);
 }
-.example-note { font-size: var(--fs-meta); color: var(--muted); }
-
-.example-split { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
-.pane-title {
-  font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--muted); margin-bottom: var(--sp-2); display: flex; align-items: center; gap: 6px;
+.ms-dossier {
+  margin-top: var(--ms-sp-half);
+  display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--ms-shadow);
+  overflow: hidden;
 }
-.pane-title .ic { width: 14px; height: 14px; }
-
-.letter {
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: var(--sp-6); box-shadow: var(--shadow-xs);
-  font-size: var(--fs-meta); line-height: 1.65; color: var(--ink-soft);
-  word-break: break-word;
-}
-/* `pre-wrap` va sui blocchi di testo, NON sul contenitore: sul contenitore
-   rendeva visibili anche gli a capo dell'indentazione del sorgente HTML, e la
-   lettera si apriva con tre righe vuote. */
-.letter-from, .letter-body { white-space: pre-wrap; }
-.letter-from { color: var(--muted); }
-.letter-subject { font-weight: 700; color: var(--ink); margin: var(--sp-3) 0; }
-/* L'evidenziazione usa lo stesso token dell'app, dove serve a mostrare da dove
-   viene un'informazione. Il contorno la rende visibile anche a chi non
-   distingue il giallo dal fondo. */
-.letter mark {
-  background: var(--highlight); color: var(--on-highlight); border-radius: 3px;
-  padding: 1px 2px; box-shadow: 0 0 0 2px var(--highlight); font-weight: 600;
+.ms-pane-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-3);
+  font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase;
+  letter-spacing: var(--ms-ls-label);
+  margin-bottom: var(--sp-6);
 }
 
-.mock {
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow-md); padding: var(--sp-6); display: grid; gap: var(--sp-4);
+/* Il foglio. Colori fissi: --ms-paper-* non seguono il tema. */
+.ms-paper {
+  background: var(--ms-paper); color: var(--ms-paper-ink);
+  border-right: 1px solid var(--line);
+  padding: var(--sp-8);
+  font-size: var(--ms-fs-meta); line-height: 1.7;
 }
-.mock-top { display: flex; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
-.mock-top h3 { flex: 1; min-width: 200px; font-size: var(--fs-strong); }
-.mock-badges { display: flex; gap: var(--sp-1); flex-wrap: wrap; }
+.ms-paper .ms-pane-head { color: var(--ms-paper-muted); }
+.ms-paper .ms-tag { color: var(--ms-paper-muted); border-color: hsl(45, 6%, 72%); }
+.ms-paper .letter-from { color: var(--ms-paper-muted); white-space: pre-wrap; }
+.ms-paper .letter-subject { font-weight: 600; color: var(--ms-paper-ink); margin: var(--sp-4) 0; }
+.ms-paper .letter-body { white-space: pre-wrap; color: var(--ms-paper-ink); word-break: break-word; }
+.ms-paper mark {
+  background: var(--ms-paper-hl); color: var(--ms-paper-on-hl);
+  border-radius: 3px; padding: 1px 2px; box-shadow: 0 0 0 2px var(--ms-paper-hl);
+  font-weight: 600;
+}
+
+/* Ancora numerata: lo stesso numero sta sul foglio e sull'estratto.
+   Sul foglio usa i colori fissi della carta. */
+.ms-ref {
+  display: inline-flex; align-items: center; justify-content: center;
+  /* In rem, non in px: con lo zoom del solo testo il numero cresce e il
+     cerchio deve crescere con lui. */
+  width: 1.25rem; height: 1.25rem; border-radius: 50%; flex-shrink: 0;
+  font-size: 0.6875rem; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: var(--accent-soft); color: var(--accent-text);
+  vertical-align: text-bottom;
+}
+.ms-paper .ms-ref { background: var(--ms-paper-ref-bg); color: var(--ms-paper-ref-fg); }
+.ms-paper .letter-from .ms-ref, .ms-paper .letter-subject .ms-ref { margin-right: 8px; }
+.ms-paper .ms-ref-hl { margin-right: 6px; }
+
+/* L'estratto: superficie applicativa. Righe-campo separate da filetti; ogni
+   riga ancorata porta il numero nel margine sinistro e — sopra i 900px — uno
+   stub orizzontale che entra nel canale verso il foglio. Le posizioni degli
+   stub sono stabili per costruzione: partono dalle righe, non dal testo della
+   lettera, quindi nessuna misura a runtime e niente che si rompa cambiando
+   lingua o larghezza. Il pairing esatto lo fanno i numeri e l'eco del giallo. */
+.ms-analysis { padding: var(--sp-8); display: grid; gap: var(--sp-6); align-content: start; }
+.ms-analysis .ms-pane-head { color: var(--muted); margin-bottom: 0; }
+.ms-analysis .ms-row { position: relative; padding-left: 2rem; }
+.ms-analysis .ms-row > .ms-ref { position: absolute; left: 0; top: 2px; }
+.ms-analysis .ms-row ~ .ms-row { border-top: 1px solid var(--line); padding-top: var(--sp-6); }
+.ms-analysis .ms-row ~ .ms-row > .ms-ref { top: calc(var(--sp-6) + 2px); }
+.ms-analysis .mock-top { display: flex; align-items: flex-start; gap: var(--sp-2) var(--sp-3); flex-wrap: wrap; }
+.ms-analysis .mock-top h3 { flex: 1; min-width: 200px; font-size: var(--ms-fs-h3); font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+.ms-analysis .mock-badges { display: flex; gap: var(--sp-1); flex-wrap: wrap; }
+.ms-analysis .mock-kicker { font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ms-ls-label); color: var(--muted); }
+.ms-analysis .mock-action { font-size: var(--ms-fs-body); font-weight: 600; letter-spacing: -0.01em; margin-top: var(--sp-2); }
+/* La scadenza è il dato che a una PMI costa di più: riceve la scala maggiore. */
+.ms-analysis .mock-when {
+  font-size: 1.375rem; font-weight: 600; letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums; color: var(--ink); margin-top: var(--sp-3);
+}
+.ms-analysis .mock-quote-label { display: flex; align-items: center; gap: 5px; font-size: var(--ms-fs-meta); font-weight: 600; color: var(--accent-text); }
+.ms-analysis .mock-quote-label .ic { width: 14px; height: 14px; }
+/* L'eco del giallo: la stessa evidenzia della lettera, qui sull'intero blocco
+   di citazione (lo script delle date riscrive il testo del blockquote, quindi
+   lo stile sta sull'elemento, non su un segno interno). */
+.ms-analysis blockquote {
+  margin-top: var(--sp-2); background: var(--highlight); color: var(--on-highlight);
+  border-radius: 6px; padding: var(--sp-3) var(--sp-4);
+  font-size: var(--ms-fs-meta); line-height: 1.6;
+}
+.ms-analysis .mock-verify { border-top: 1px solid var(--line); padding-top: var(--sp-6); margin-left: 2rem; }
+.ms-analysis .mock-verify-title { font-weight: 600; font-size: var(--ms-fs-meta); margin-bottom: var(--sp-2); }
+.ms-analysis .mock-verify-item { display: flex; gap: var(--sp-2); align-items: flex-start; font-size: var(--ms-fs-meta); color: var(--ink-soft); }
+.ms-analysis .mock-verify-item .q {
+  width: 1.0625rem; height: 1.0625rem; flex-shrink: 0; border-radius: 50%; margin-top: 1px;
+  display: grid; place-items: center; font-size: 0.6875rem; font-weight: 600;
+  color: var(--amber); background: var(--amber-soft);
+}
+/* 900.02 e non 900: a 900 esatti vale anche il blocco max-width che impila
+   il dossier, e gli stub punterebbero a un canale che non esiste. */
+@media (min-width: 900.02px) {
+  .ms-analysis .ms-row > .ms-ref::before {
+    content: ''; position: absolute; right: 100%; top: 50%;
+    width: var(--sp-8); height: 1px; background: var(--line-strong);
+  }
+}
+.ms-dossier-note { margin-top: var(--sp-3); font-size: var(--ms-fs-label); color: var(--muted); }
+
+/* Chip di stato ed etichette dell'estratto. */
 .chip {
-  display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-label); font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px; font-size: var(--ms-fs-label); font-weight: 600;
   padding: 2px var(--sp-2); border-radius: 99px; background: var(--surface-2); color: var(--ink-soft);
   white-space: nowrap;
 }
@@ -168,120 +423,79 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--sp-6); }
 .chip-origin { background: var(--accent-soft); color: var(--accent-text); }
 .chip-origin .ic { width: 12px; height: 12px; }
 
-.mock-callout {
-  display: flex; gap: var(--sp-3); align-items: flex-start;
-  background: var(--accent-soft); border: 1px solid var(--accent-line);
-  border-radius: var(--radius-sm); padding: var(--sp-4);
-}
-.mock-ico {
-  width: 34px; height: 34px; flex-shrink: 0; border-radius: var(--radius-sm);
-  background: var(--accent); color: var(--on-accent); display: grid; place-items: center;
-}
-.mock-kicker { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-text); }
-.mock-action { font-size: var(--fs-strong); font-weight: 700; letter-spacing: -0.2px; margin-top: 2px; }
-.mock-when { font-size: var(--fs-meta); color: var(--ink-soft); margin-top: 3px; }
+/* ---------- 05 · lingue ---------- */
+.ms-langs .ms-sec-lead { max-width: 70ch; }
 
-.mock-quote-label { display: flex; align-items: center; gap: 5px; font-size: var(--fs-meta); font-weight: 600; color: var(--accent-text); }
-.mock-quote-label .ic { width: 14px; height: 14px; }
-.mock-quote blockquote {
-  margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft);
-  background: var(--bg); border-left: 3px solid var(--accent);
-  border-radius: 0 6px 6px 0; padding: var(--sp-2) var(--sp-3); font-style: italic;
-}
-.mock-verify { border-top: 1px solid var(--line); padding-top: var(--sp-3); }
-.mock-verify-title { font-weight: 700; font-size: var(--fs-meta); margin-bottom: var(--sp-2); }
-.mock-verify-item { display: flex; gap: var(--sp-2); align-items: flex-start; font-size: var(--fs-meta); color: var(--ink-soft); }
-.mock-verify-item .q {
-  width: 17px; height: 17px; flex-shrink: 0; border-radius: 50%; margin-top: 1px;
-  display: grid; place-items: center; font-size: 11px; font-weight: 800;
-  color: var(--amber); background: var(--amber-soft);
+/* ---------- 06 · limiti: l'inversione ----------
+   Il momento visivamente più solenne della pagina è l'elenco di ciò che il
+   prodotto non fa. Inchiostro pieno, stessa griglia, indici tabellari,
+   nessuna icona e nessun rosso: serietà, non disclaimer. */
+.ms-invert .ms-sec-n { color: var(--ms-inv-muted); }
+/* Oggi nell'inversione non c'è nulla di focalizzabile, ma se un domani ci
+   finisce un link l'anello --focus renderebbe 2:1 sul fondo invertito del
+   tema scuro: qui il focus usa il colore del testo, 15:1 in entrambi. */
+.ms-invert :focus-visible { outline-color: var(--on-ink); }
+.ms-limits { list-style: none; margin-top: var(--ms-sp-half); display: grid; gap: var(--sp-6); max-width: 78ch; }
+.ms-limits li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: var(--sp-4); }
+.ms-limits p { font-size: var(--ms-fs-body); line-height: 1.65; color: var(--ms-inv-soft); }
+.ms-lim-n {
+  font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--ms-fs-meta);
+  color: var(--ms-inv-muted); border-top: 1px solid var(--ms-inv-line); padding-top: var(--sp-2);
 }
 
-/* ---------- moduli ---------- */
-.module { border-top: 3px solid var(--accent); }
-.kicker { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-text); }
-.module h3 { margin-top: var(--sp-1); font-size: var(--fs-h2); }
-.module-lead { color: var(--muted); font-size: var(--fs-meta); margin-bottom: var(--sp-4); }
-.ticks { list-style: none; display: grid; gap: var(--sp-3); }
-.ticks li { display: flex; gap: var(--sp-2); align-items: flex-start; color: var(--ink-soft); }
-.ticks .ic { width: 18px; height: 18px; margin-top: 3px; color: var(--accent); stroke-width: 2.25; }
-
-/* ---------- passi ---------- */
-.steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
-.step { display: flex; gap: var(--sp-3); align-items: flex-start; }
-.step-n {
-  width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
-  background: var(--accent-soft); color: var(--accent-text);
-  display: grid; place-items: center; font-weight: 800; font-size: var(--fs-meta);
-}
-.step h3 { font-size: var(--fs-body); font-weight: 700; }
-.step p { color: var(--muted); font-size: var(--fs-meta); margin-top: 2px; }
-
-/* ---------- verificabilità ---------- */
-.trust-card { display: grid; gap: var(--sp-2); }
-.trust-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; }
-.trust-ico .ic { width: 18px; height: 18px; }
-
-.band { background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: var(--radius); padding: var(--sp-8); margin: var(--sp-12) 0; }
-.band h2 { color: var(--ink); }
-.band .section-lead { margin-bottom: 0; }
-.band .ic { color: var(--accent-text); }
-
-/* ---------- limiti dichiarati ---------- */
-.limits { list-style: none; display: grid; gap: var(--sp-3); }
-.limits li { position: relative; padding-left: var(--sp-6); color: var(--ink-soft); }
-.limits li::before {
-  content: ''; position: absolute; left: 0; top: 9px;
-  width: 8px; height: 8px; border-radius: 2px; background: var(--line-strong);
-}
-
-/* ---------- prezzi ----------
-   Non quattro schede con un importo: il listino si sta definendo, e quattro
-   cifre destinate a cambiare sarebbero una promessa. Restano gli assi su cui i
-   piani si differenzieranno, che sono veri oggi. */
-.axes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); margin-top: var(--sp-4); }
-.axis { display: flex; gap: var(--sp-3); align-items: flex-start; }
+/* ---------- 07 · prezzi ----------
+   Senza schede e senza cifre, di proposito: gli assi su cui i piani si
+   differenzieranno, e una nota che dice come stanno le cose. */
+.axes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4) var(--sp-6); margin-top: var(--sp-6); }
+.axis { display: flex; gap: var(--sp-3); align-items: flex-start; border-top: 1px solid var(--line); padding-top: var(--sp-4); }
 .axis-ico { width: 30px; height: 30px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-soft); display: grid; place-items: center; }
 .axis-ico .ic { width: 17px; height: 17px; }
-.axis h3 { font-size: var(--fs-body); font-weight: 700; }
-.axis p { color: var(--muted); font-size: var(--fs-meta); margin-top: 2px; }
+.axis h3 { font-size: var(--ms-fs-body); font-weight: 600; }
+.axis p { color: var(--muted); font-size: var(--ms-fs-meta); margin-top: 2px; }
 .pricing-note {
-  margin-top: var(--sp-6); padding: var(--sp-4);
-  background: var(--accent-soft); border: 1px solid var(--accent-line);
-  border-radius: var(--radius-sm); color: var(--ink);
+  margin-top: var(--ms-sp-half); padding: var(--sp-6);
+  background: var(--card); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm); font-size: var(--ms-fs-lead); line-height: 1.55;
+  max-width: 76ch;
 }
+.center { text-align: center; margin-top: var(--ms-sp-half); }
+.center .btn { min-height: 48px; padding: 10px 24px; }
 
-/* ---------- chi c'è dietro ---------- */
-.about { display: flex; gap: var(--sp-6); align-items: flex-start; flex-wrap: wrap; }
+/* ---------- 08 · chi c'è dietro ---------- */
+.about { display: flex; gap: var(--sp-6); align-items: flex-start; flex-wrap: wrap; margin-top: var(--ms-sp-half); max-width: 820px; }
 .about-photo {
   width: 92px; height: 92px; flex-shrink: 0; border-radius: var(--radius);
-  background: var(--accent-soft); color: var(--accent-text);
-  display: grid; place-items: center; font-size: var(--fs-h1); font-weight: 800;
-  border: 1px solid var(--accent-line);
+  background: var(--surface-2); color: var(--ink-soft);
+  display: grid; place-items: center; font-size: 1.875rem; font-weight: 600;
+  border: 1px solid var(--line);
 }
 .about-main { flex: 1; min-width: 260px; }
-.about-name { font-size: var(--fs-strong); font-weight: 700; }
-.about-meta { color: var(--muted); font-size: var(--fs-meta); margin-top: 2px; display: grid; gap: 1px; }
+.about-name { font-size: var(--ms-fs-h3); font-weight: 600; }
+.about-meta { color: var(--muted); font-size: var(--ms-fs-meta); margin-top: 2px; display: grid; gap: 1px; }
 .about-why { margin-top: var(--sp-4); color: var(--ink-soft); }
-.about-contact { margin-top: var(--sp-4); font-size: var(--fs-meta); color: var(--muted); }
+.about-contact { margin-top: var(--sp-4); font-size: var(--ms-fs-meta); color: var(--muted); }
 
-/* ---------- contatti ---------- */
-.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
-.contact-item { display: flex; gap: var(--sp-3); align-items: flex-start; }
-.contact-ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; }
+/* ---------- 09 · contatti ---------- */
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); margin-top: var(--ms-sp-half); max-width: 960px; }
+.contact-item { display: flex; gap: var(--sp-3); align-items: flex-start; border-top: 1px solid var(--line); padding-top: var(--sp-4); }
+.contact-ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-soft); display: grid; place-items: center; }
 .contact-ico .ic { width: 18px; height: 18px; }
-.contact-label { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.contact-label { font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ms-ls-label); color: var(--muted); }
 .contact-value { font-weight: 600; margin-top: 1px; }
-.contact-sub { color: var(--muted); font-size: var(--fs-meta); margin-top: 2px; }
+.contact-sub { color: var(--muted); font-size: var(--ms-fs-meta); margin-top: 2px; }
 
-.cta { text-align: center; }
-.cta h2 { justify-content: center; }
-.cta .section-lead { margin-left: auto; margin-right: auto; }
-.cta-actions { display: flex; gap: var(--sp-3); justify-content: center; flex-wrap: wrap; }
+/* ---------- chiusura sul registro B ---------- */
+.ms-cta { text-align: center; border-bottom: 0; padding-top: var(--ms-sp-block); }
+.ms-cta h2 {
+  font-size: var(--ms-fs-h2); font-weight: 600;
+  line-height: var(--ms-lh-h2); letter-spacing: var(--ms-ls-h2);
+}
+.ms-cta .ms-sec-lead { margin-inline: auto; }
+.ms-cta .ms-actions { justify-content: center; }
 
 .foot {
-  max-width: var(--wrap); margin: 0 auto; padding: var(--sp-8) var(--sp-6) var(--sp-12);
-  border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-meta);
+  padding: var(--sp-8) var(--ms-gutter) var(--sp-12);
+  border-top: 1px solid var(--line); color: var(--muted); font-size: var(--ms-fs-meta);
   display: grid; gap: var(--sp-2);
 }
 .foot-links { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
@@ -289,12 +503,13 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--sp-6); }
 
 /* ---------- pagine legali ---------- */
 .legal-head { padding: var(--sp-8) 0 var(--sp-6); }
-.legal-head h1 { font-size: var(--fs-h1); font-weight: 800; letter-spacing: -0.6px; }
+.legal-head h1 { font-size: clamp(1.875rem, 3.5vw, 2.5rem); font-weight: 600; letter-spacing: var(--ms-ls-h2); line-height: var(--ms-lh-h2); }
 .legal-head .section-lead { margin-top: var(--sp-3); margin-bottom: 0; }
-.legal-updated { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-3); }
+.section-lead { color: var(--ink-soft); max-width: 68ch; }
+.legal-updated { font-size: var(--ms-fs-meta); color: var(--muted); margin-top: var(--sp-3); }
 .legal-body { padding-bottom: var(--sp-12); display: grid; gap: var(--sp-8); }
 .legal-body section { border-top: 1px solid var(--line); padding-top: var(--sp-6); }
-.legal-body h2 { font-size: var(--fs-strong); font-weight: 700; margin-bottom: var(--sp-3); }
+.legal-body h2 { font-size: var(--ms-fs-h3); font-weight: 600; margin-bottom: var(--sp-3); }
 .legal-body p { color: var(--ink-soft); margin-bottom: var(--sp-2); }
 .back-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; min-height: 26px; }
 .back-link .ic { width: 16px; height: 16px; }
@@ -302,29 +517,62 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--sp-6); }
    pubblicato. */
 .todo {
   background: var(--amber-soft); color: var(--amber); border: 1px dashed var(--amber-line);
-  border-radius: 5px; padding: 0 6px; font-size: var(--fs-meta); font-weight: 600;
+  border-radius: 5px; padding: 0 6px; font-size: var(--ms-fs-meta); font-weight: 600;
+}
+
+/* ---------- rivelazione allo scroll ----------
+   Il CSS statico non nasconde nulla: .is-pending viene aggiunta dal piccolo
+   script inline DOPO il caricamento, e solo agli elementi sotto la piega.
+   Senza JavaScript, o con prefers-reduced-motion, tutto è visibile e fermo. */
+.ms-r { transition: opacity 180ms ease-out, transform 180ms ease-out; }
+.ms-r.is-pending { opacity: 0; transform: translateY(8px); }
+/* In stampa non esiste scroll che riveli: tutto visibile, sempre. */
+@media print {
+  .ms-r, .ms-r.is-pending { opacity: 1; transform: none; transition: none; }
 }
 
 /* ---------- schermi piccoli ---------- */
 @media (max-width: 900px) {
   .grid-2, .steps, .axes, .contact-grid { grid-template-columns: 1fr 1fr; }
-  .example-split { grid-template-columns: 1fr; }   /* lettera sopra, analisi sotto */
   .topnav { display: none; }
-  .topbar { padding: var(--sp-3) var(--sp-4); }
-  main { padding: 0 var(--sp-4); }
-  .band { padding: var(--sp-6); }
+  /* La topnav resta nel DOM anche se nascosta: il combinatore .brand +
+     .topactions non scatta, quindi la spinta a destra va data qui. */
+  .topactions { margin-left: auto; }
+  .topbar { padding-block: var(--sp-3); }
+  .ms-dossier { grid-template-columns: 1fr; }
+  .ms-paper { border-right: 0; border-bottom: 1px solid var(--line); }
 }
 @media (max-width: 600px) {
   .grid-2, .steps, .axes, .contact-grid { grid-template-columns: 1fr; }
-  .section { padding: var(--sp-8) 0; }
-  .hero { padding: var(--sp-8) 0 var(--sp-6); }
-  .hero h1 { max-width: none; }
-  .hero-actions .btn, .cta-actions .btn { flex: 1 1 auto; }
-  .topactions { margin-left: auto; }
-  .letter, .mock { padding: var(--sp-4); }
+
+  /* Sotto i 600px il minimo della scala desktop (44px) non contiene
+     «dell'amministrazione,»: misurato, la parola è 396px a 44px e 306px a
+     34px, su 327px utili. Qui la scala segue il viewport: ~34px a 375,
+     ~29px a 320 — e la parola sta, senza sillabazione. Il pavimento è
+     1.75rem: con 2rem, a 320px la clamp mordeva a 32px e la parola usciva
+     dalla colonna di ~16px (dentro il viewport, ma fuori posto). */
+  .ms-hero h1 { font-size: clamp(1.75rem, 9vw, 2.75rem); max-width: none; }
+  .ms-hero { padding-top: var(--sp-8); }
+  .ms-actions .btn { flex: 1 1 auto; }
+  .card { padding: var(--sp-6) var(--sp-4); }
+  .ms-paper, .ms-analysis { padding: var(--sp-6) var(--sp-4); }
+  .ms-analysis .mock-verify { margin-left: 0; }
+  .ms-sec-head .ms-tag { margin-left: 0; }
+  .ms-limits li { grid-template-columns: 36px minmax(0, 1fr); }
+
+  /* Topbar compatta: marchio e «Accedi» sulla prima riga, lingue sotto.
+     Il sottotitolo del marchio sparisce: due righe più in basso lo ripete
+     il kicker dell'hero. Da 142px si scende a ~92px: è lo spazio che
+     serve a tenere titolo, sottotitolo e CTA sopra la piega. */
+  .brand-sub { display: none; }
+  .topbar { padding: var(--sp-3) var(--sp-4); align-items: center; }
+  .topactions { display: contents; }
+  .topbar .btn { order: 1; margin-left: auto; }
+  .topbar .langs { order: 2; width: 100%; }
 }
 
-/* Chi chiede meno movimento non deve subire lo scorrimento animato. */
+/* Chi chiede meno movimento non deve subire né lo scorrimento animato né le
+   rivelazioni (lo script si spegne da solo, questa regola è la cintura). */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .btn:active { transform: none; }

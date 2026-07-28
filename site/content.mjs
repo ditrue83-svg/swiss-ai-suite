@@ -468,7 +468,7 @@ export const CONTENT = {
   fr: {
     title: 'AI-Swisse — le courrier administratif devient une liste de tâches',
     description:
-      'AI-Swisse lit les courriers et PDF des autorités suisses en français, allemand et italien : il identifie l’expéditeur, les délais et les montants en citant le passage exact du document, prépare la checklist et un projet de réponse. Et trouve les subventions pertinentes pour votre entreprise.',
+      'AI-Swisse lit les courriers et PDF des autorités suisses en français, allemand et italien : il identifie l’expéditeur, les délais et les montants en citant le passage exact du document, prépare la checklist et un projet de réponse. Et trouve les subventions pertinentes pour votre entreprise.',
     tagline: 'pour les PME suisses',
     mainNav: 'Navigation principale',
     nav: { how: 'Fonctionnement', trust: 'Vérifiabilité', pricing: 'Tarifs', about: 'Qui sommes-nous', contact: 'Contact' },
@@ -492,12 +492,12 @@ export const CONTENT = {
 
     example: {
       title: 'À quoi ressemble un résultat',
-      lead: 'À gauche le courrier reçu, à droite ce que le système en tire. La phrase surlignée est celle dont provient le délai : il en va de même pour chaque information.',
+      lead: 'À gauche le courrier reçu, à droite ce que le système en tire. La phrase surlignée est celle dont provient le délai : il en va de même pour chaque information.',
       label: 'Exemple illustratif',
-      note: 'Données fictives : montre la forme du résultat, pas un cas réel.',
+      note: 'Données fictives : montre la forme du résultat, pas un cas réel.',
       letterTitle: 'Le courrier reçu',
       letterFrom: 'Administration fédérale des contributions (AFC)\nDivision principale TVA\n3003 Berne',
-      letterSubject: 'Objet : décompte TVA — 2e trimestre',
+      letterSubject: 'Objet : décompte TVA — 2e trimestre',
       letterBefore: 'Madame, Monsieur,\n\nselon nos systèmes, le décompte de la taxe sur la valeur ajoutée du 2e trimestre ne nous est pas encore parvenu.\n\n',
       letterHighlight: 'Nous vous invitons à transmettre le décompte avant le {dataLettera}.',
       letterAfter: '\n\nEn cas de retard supplémentaire, l’Administration procède conformément aux dispositions légales.\n\nVeuillez agréer nos salutations distinguées.\nAdministration fédérale des contributions',
@@ -522,7 +522,7 @@ export const CONTENT = {
         name: 'Admin AI',
         lead: 'Documents administratifs',
         points: [
-          'Identifie l’autorité qui écrit et le type de courrier : rappel, contrôle, demande de pièces, décision.',
+          'Identifie l’autorité qui écrit et le type de courrier : rappel, contrôle, demande de pièces, décision.',
           'Extrait le délai, les montants et les numéros de référence, et montre pour chacun la phrase du document dont il provient.',
           'Prépare la checklist des tâches et un projet de réponse, dans la langue et le ton que vous choisissez.',
           'Lit les PDF, les courriers scannés et même une photo prise au téléphone.',
@@ -533,10 +533,10 @@ export const CONTENT = {
         name: 'Subsidy AI',
         lead: 'Subventions et contributions',
         points: [
-          'Décrivez le projet avec vos mots : le système en dégage les domaines et cherche les programmes pertinents.',
-          'Il distingue deux choses souvent confondues : la pertinence du programme et votre éligibilité.',
+          'Décrivez le projet avec vos mots : le système en dégage les domaines et cherche les programmes pertinents.',
+          'Il distingue deux choses souvent confondues : la pertinence du programme et votre éligibilité.',
           'Il vérifie les conditions une par une et indique celles qui restent à contrôler, au lieu de livrer un simple verdict.',
-          'Il alerte quand la demande doit être déposée avant le début des travaux : l’erreur qui coûte la contribution.',
+          'Il alerte quand la demande doit être déposée avant le début des travaux : l’erreur qui coûte la contribution.',
         ],
       },
     ],
@@ -548,17 +548,17 @@ export const CONTENT = {
       {
         icon: 'quote',
         t: 'Chaque conclusion a une citation',
-        d: 'À côté du délai, de l’expéditeur et des montants figure « Afficher dans le document » : la phrase dont l’information est issue, surlignée dans le texte original. Si la citation ne se retrouve pas dans le document, elle est écartée et la fiabilité annoncée baisse.',
+        d: 'À côté du délai, de l’expéditeur et des montants figure « Afficher dans le document » : la phrase dont l’information est issue, surlignée dans le texte original. Si la citation ne se retrouve pas dans le document, elle est écartée et la fiabilité annoncée baisse.',
       },
       {
         icon: 'question',
         t: 'Ce qui n’est pas sûr est annoncé',
-        d: 'Il n’existe pas de délai, de montant ou d’autorité de substitution. Quand une donnée n’est pas dans le document, elle apparaît parmi les points « à vérifier », avec le motif. Un risque non déterminable est déclaré comme tel, pas transformé en avertissement générique.',
+        d: 'Il n’existe pas de délai, de montant ou d’autorité de substitution. Quand une donnée n’est pas dans le document, elle apparaît parmi les points « à vérifier », avec le motif. Un risque non déterminable est déclaré comme tel, pas transformé en avertissement générique.',
       },
       {
         icon: 'tag',
         t: 'Les actions déclarent leur origine',
-        d: 'Chaque point de la checklist est marqué « du document » ou « suggestion AI-Swisse » : vous savez toujours ce que l’autorité demande et ce qui est un conseil pratique.',
+        d: 'Chaque point de la checklist est marqué « du document » ou « suggestion AI-Swisse » : vous savez toujours ce que l’autorité demande et ce qui est un conseil pratique.',
       },
       {
         icon: 'history',
@@ -569,14 +569,14 @@ export const CONTENT = {
 
     langTitle: 'Trois langues, comme votre courrier',
     langLead:
-      'L’interface et les textes générés suivent la langue choisie : français, allemand ou italien. Les citations restent dans la langue du document — traduites, elles seraient introuvables dans le texte, et la vérification les écarterait.',
+      'L’interface et les textes générés suivent la langue choisie : français, allemand ou italien. Les citations restent dans la langue du document — traduites, elles seraient introuvables dans le texte, et la vérification les écarterait.',
 
     limitsTitle: 'Ce qu’il est juste de savoir avant',
     limits: [
-      'AI-Swisse est un outil de soutien administratif : il ne remplace pas le conseil juridique, fiscal ou fiduciaire. Lorsque le système n’est pas sûr, il le signale et recommande une vérification.',
+      'AI-Swisse est un outil de soutien administratif : il ne remplace pas le conseil juridique, fiscal ou fiduciaire. Lorsque le système n’est pas sûr, il le signale et recommande une vérification.',
       'Le catalogue des subventions couvre aujourd’hui les programmes de la Confédération et du canton du Tessin. Les autres cantons ne sont pas encore couverts.',
       'Les données sont hébergées en Europe (Francfort), pas en Suisse. Pour analyser un document, le texte extrait est transmis au fournisseur du modèle de langage. La politique de confidentialité l’explique en détail.',
-      'Les conditions, montants et délais des programmes doivent toujours être vérifiés à la source officielle avant de poursuivre : le produit indique la source et la date du dernier contrôle.',
+      'Les conditions, montants et délais des programmes doivent toujours être vérifiés à la source officielle avant de poursuivre : le produit indique la source et la date du dernier contrôle.',
     ],
 
     pricingTitle: 'Tarifs',
@@ -587,7 +587,7 @@ export const CONTENT = {
       { t: 'Le nombre d’analyses par mois', d: 'Un artisan qui reçoit trois courriers par mois et un bureau qui en reçoit trois cents ne peuvent pas payer la même chose.' },
       { t: 'Le nombre de vérifications d’éligibilité', d: 'La recherche de subventions et la vérification condition par condition ont un coût par vérification.' },
       { t: 'Le nombre de personnes dans l’entreprise', d: 'Échéancier personnel ou partagé, avec les tâches attribuées à qui doit les faire.' },
-      { t: 'L’usage en fiduciaire', d: 'Plusieurs entreprises clientes suivies par le même bureau : c’est la direction de développement, pas encore disponible aujourd’hui.' },
+      { t: 'L’usage en fiduciaire', d: 'Plusieurs entreprises clientes suivies par le même bureau : c’est la direction de développement, pas encore disponible aujourd’hui.' },
     ],
     pricingNote:
       'Les entreprises qui entrent maintenant comme pilotes conviennent des conditions directement avec nous, et les gardent.',
@@ -600,8 +600,8 @@ export const CONTENT = {
     aboutRole: 'Titulaire',
     aboutPlace: 'Savosa, canton du Tessin',
     aboutWhy:
-      'AI-Swisse est né d’un problème concret : dans une PME suisse, le courrier administratif arrive en trois langues, chaque lettre cache un délai, et celui qui l’ouvre a généralement autre chose à faire. Les outils qui promettent de « résumer » un document n’y suffisent pas : s’ils se trompent de date sans le dire, le dommage dépasse le travail épargné. C’est pourquoi ici chaque information est accompagnée de la phrase dont elle provient — et ce que le système ne sait pas, il le déclare.',
-    aboutContactLine: 'Pour en parler directement :',
+      'AI-Swisse est né d’un problème concret : dans une PME suisse, le courrier administratif arrive en trois langues, chaque lettre cache un délai, et celui qui l’ouvre a généralement autre chose à faire. Les outils qui promettent de « résumer » un document n’y suffisent pas : s’ils se trompent de date sans le dire, le dommage dépasse le travail épargné. C’est pourquoi ici chaque information est accompagnée de la phrase dont elle provient — et ce que le système ne sait pas, il le déclare.',
+    aboutContactLine: 'Pour en parler directement :',
 
     ctaTitle: 'Essayez-le avec un courrier posé sur votre bureau',
     ctaLead: 'Vous créez le compte, configurez l’entreprise en une minute et chargez le premier document. Si vous préférez d’abord le voir fonctionner, demandez une démonstration.',
@@ -609,7 +609,7 @@ export const CONTENT = {
     contactLead: 'Pour une question, une démonstration ou un usage en fiduciaire.',
     contactEmailLabel: 'E-mail',
     contactDemoLabel: 'Démonstration',
-    contactDemoText: 'Une demi-heure, en visioconférence ou sur place. Apportez un de vos courriers : nous l’analysons ensemble.',
+    contactDemoText: 'Une demi-heure, en visioconférence ou sur place. Apportez un de vos courriers : nous l’analysons ensemble.',
     contactPhoneLabel: 'Téléphone',
     contactAddressLabel: 'Adresse',
     contactAddress: 'Via Rovello 32, 6942 Savosa',
@@ -623,13 +623,13 @@ export const CONTENT = {
 
     legal: {
       backToSite: 'Retour au site',
-      updated: 'Dernière mise à jour : {data}',
+      updated: 'Dernière mise à jour : {data}',
       impressum: {
         title: 'Impressum',
         intro: 'Informations sur l’exploitant de ce site et du service AI-Swisse.',
         sections: [
-          { h: 'Fournisseur du service', p: ['AI-Swisse, raison individuelle', 'Titulaire : Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Suisse'] },
-          { h: 'Contact', p: [`E-mail : ${CONTACT_EMAIL}`, 'Nous répondons en général dans le jour ouvrable.'] },
+          { h: 'Fournisseur du service', p: ['AI-Swisse, raison individuelle', 'Titulaire : Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Suisse'] },
+          { h: 'Contact', p: [`E-mail : ${CONTACT_EMAIL}`, 'Nous répondons en général dans le jour ouvrable.'] },
           { h: 'Responsable du contenu', p: ['Andrea Cavalieri'] },
           { h: 'Exclusion de responsabilité', p: ['Les contenus de ce site sont rédigés avec soin, sans garantie d’exhaustivité ni d’actualité. AI-Swisse est un outil de soutien administratif et ne remplace pas le conseil juridique, fiscal ou fiduciaire.', 'Les liens vers des sites tiers mènent à des contenus dont nous ne répondons pas.'] },
           { h: 'Droit d’auteur', p: ['Les textes, la présentation et le code de ce site appartiennent au fournisseur du service, sauf indication contraire.'] },
@@ -637,16 +637,16 @@ export const CONTENT = {
       },
       privacy: {
         title: 'Politique de confidentialité',
-        intro: 'Ce qu’il advient de vos données et de celles de vos documents. Rédigée pour être comprise sans avocat ; là où la loi exige des formules précises, elles y sont et sont signalées.',
+        intro: 'Ce qu’il advient de vos données et de celles de vos documents. Rédigée pour être comprise sans avocat ; là où la loi exige des formules précises, elles y sont et sont signalées.',
         sections: [
-          { h: 'Qui traite les données', p: ['AI-Swisse, raison individuelle d’Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Suisse', `Pour toute question sur vos données : ${CONTACT_EMAIL}`] },
-          { h: 'Ce site', p: ['Le site vitrine que vous lisez n’utilise pas de cookies, n’a pas d’outil de mesure d’audience et ne charge aucune ressource depuis un autre serveur : pas de police distante, pas de traçage. Le serveur journalise les requêtes selon la pratique ordinaire de l’hébergeur.', 'Le site est hébergé sur GitHub Pages, service de GitHub, Inc. (États-Unis), qui journalise les adresses IP des requêtes pour le fonctionnement et la sécurité du service. Ce site ne comporte ni connexion ni champ de saisie : l’application elle-même se trouve sur app.ai-swisse.com.'] },
-          { h: 'Quelles données l’application collecte', p: ['Données de compte : prénom, nom, adresse e-mail.', 'Données d’entreprise : raison sociale, canton, secteur, taille et les informations saisies dans le profil pour la recherche de subventions.', 'Documents : les fichiers chargés, le texte extrait et l’analyse produite.', 'Données techniques nécessaires au fonctionnement : journal des accès et des requêtes à l’IA, avec date, résultat et consommation.'] },
-          { h: 'Où se trouvent les données', p: ['Comptes, documents et analyses sont hébergés chez Supabase, dans un projet situé à Francfort, en Allemagne (Union européenne). Pas en Suisse : pour certaines entreprises la différence compte, elle figure donc aussi en page d’accueil.', 'Les fichiers chargés résident dans un espace privé : accessibles uniquement aux utilisateurs de votre entreprise, par des liens à durée limitée.'] },
-          { h: 'Le texte des documents est transmis à un fournisseur externe', p: [`Pour analyser un document, le texte extrait est transmis à ${AI_PROVIDER}, fournisseur du modèle de langage ${AI_MODEL}, qui traite la demande et renvoie le résultat. Sans cette transmission, l’analyse est impossible.`, 'C’est le texte qui est transmis, pas le fichier original. Si le document est un scan ou une photo, l’image est transmise pour la reconnaissance du texte.', 'Le fournisseur a son siège aux États-Unis : le texte transmis pour l’analyse quitte donc la Suisse et l’Espace économique européen. C’est la raison pour laquelle il existe aussi le mode local décrit ci-dessous.', 'Il existe aussi un mode de fonctionnement local, qui ne transmet rien à l’extérieur et exécute l’analyse dans votre navigateur : le résultat est plus limité et déclaré comme tel.'] },
+          { h: 'Qui traite les données', p: ['AI-Swisse, raison individuelle d’Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Suisse', `Pour toute question sur vos données : ${CONTACT_EMAIL}`] },
+          { h: 'Ce site', p: ['Le site vitrine que vous lisez n’utilise pas de cookies, n’a pas d’outil de mesure d’audience et ne charge aucune ressource depuis un autre serveur : pas de police distante, pas de traçage. Le serveur journalise les requêtes selon la pratique ordinaire de l’hébergeur.', 'Le site est hébergé sur GitHub Pages, service de GitHub, Inc. (États-Unis), qui journalise les adresses IP des requêtes pour le fonctionnement et la sécurité du service. Ce site ne comporte ni connexion ni champ de saisie : l’application elle-même se trouve sur app.ai-swisse.com.'] },
+          { h: 'Quelles données l’application collecte', p: ['Données de compte : prénom, nom, adresse e-mail.', 'Données d’entreprise : raison sociale, canton, secteur, taille et les informations saisies dans le profil pour la recherche de subventions.', 'Documents : les fichiers chargés, le texte extrait et l’analyse produite.', 'Données techniques nécessaires au fonctionnement : journal des accès et des requêtes à l’IA, avec date, résultat et consommation.'] },
+          { h: 'Où se trouvent les données', p: ['Comptes, documents et analyses sont hébergés chez Supabase, dans un projet situé à Francfort, en Allemagne (Union européenne). Pas en Suisse : pour certaines entreprises la différence compte, elle figure donc aussi en page d’accueil.', 'Les fichiers chargés résident dans un espace privé : accessibles uniquement aux utilisateurs de votre entreprise, par des liens à durée limitée.'] },
+          { h: 'Le texte des documents est transmis à un fournisseur externe', p: [`Pour analyser un document, le texte extrait est transmis à ${AI_PROVIDER}, fournisseur du modèle de langage ${AI_MODEL}, qui traite la demande et renvoie le résultat. Sans cette transmission, l’analyse est impossible.`, 'C’est le texte qui est transmis, pas le fichier original. Si le document est un scan ou une photo, l’image est transmise pour la reconnaissance du texte.', 'Le fournisseur a son siège aux États-Unis : le texte transmis pour l’analyse quitte donc la Suisse et l’Espace économique européen. C’est la raison pour laquelle il existe aussi le mode local décrit ci-dessous.', 'Il existe aussi un mode de fonctionnement local, qui ne transmet rien à l’extérieur et exécute l’analyse dans votre navigateur : le résultat est plus limité et déclaré comme tel.'] },
           { h: 'Pourquoi nous traitons ces données', p: ['Pour fournir le service que vous avez demandé, c’est-à-dire exécuter le contrat.', 'Pour la sécurité du service et le respect des obligations légales.', 'Nous n’utilisons pas vos documents pour entraîner des modèles et ne les cédons pas à des tiers à des fins commerciales.'] },
-          { h: 'Pendant combien de temps', p: ['Documents et analyses restent jusqu’à ce que vous les supprimiez : dans les archives, chaque document dispose d’une commande de suppression qui retire le fichier, le texte extrait et l’analyse liée.', 'Il n’existe pas aujourd’hui de suppression automatique après un certain délai : les analyses s’accumulent tant que vous n’intervenez pas. Nous le disons parce que c’est ainsi, non parce que ce serait l’état définitif.', 'Les données de compte subsistent tant que le compte existe. Après résiliation, elles sont supprimées sur demande écrite à l’adresse indiquée ci-dessus.'] },
-          { h: 'Vos droits', p: ['Vous pouvez demander l’accès à vos données, leur rectification, leur effacement, la limitation du traitement et leur remise dans un format lisible par machine.', `Il suffit d’écrire à ${CONTACT_EMAIL}.`, 'Si vous estimez que le traitement viole la loi, vous pouvez vous adresser à l’autorité compétente : en Suisse le Préposé fédéral à la protection des données et à la transparence (PFPDT), dans l’Union européenne l’autorité de votre pays.'] },
+          { h: 'Pendant combien de temps', p: ['Documents et analyses restent jusqu’à ce que vous les supprimiez : dans les archives, chaque document dispose d’une commande de suppression qui retire le fichier, le texte extrait et l’analyse liée.', 'Il n’existe pas aujourd’hui de suppression automatique après un certain délai : les analyses s’accumulent tant que vous n’intervenez pas. Nous le disons parce que c’est ainsi, non parce que ce serait l’état définitif.', 'Les données de compte subsistent tant que le compte existe. Après résiliation, elles sont supprimées sur demande écrite à l’adresse indiquée ci-dessus.'] },
+          { h: 'Vos droits', p: ['Vous pouvez demander l’accès à vos données, leur rectification, leur effacement, la limitation du traitement et leur remise dans un format lisible par machine.', `Il suffit d’écrire à ${CONTACT_EMAIL}.`, 'Si vous estimez que le traitement viole la loi, vous pouvez vous adresser à l’autorité compétente : en Suisse le Préposé fédéral à la protection des données et à la transparence (PFPDT), dans l’Union européenne l’autorité de votre pays.'] },
           { h: 'Modifications', p: ['Si cette politique change de manière substantielle, nous vous en informons par e-mail avant que la modification prenne effet.'] },
         ],
       },
@@ -659,7 +659,7 @@ export const CONTENT = {
           { h: 'Compte et usage correct', p: ['Vous êtes responsable de vos identifiants et de ce qui est fait avec votre compte.', 'Ne chargez que des documents que vous avez le droit de traiter. Pas de données de tiers sans titre.', 'L’usage à des fins illicites et le contournement des limites techniques ne sont pas autorisés.'] },
           { h: 'Disponibilité', p: ['Nous nous efforçons de maintenir le service disponible, sans garantir un fonctionnement ininterrompu. Maintenances et pannes de fournisseurs peuvent provoquer des interruptions. Aucun niveau de service n’est garanti contractuellement.'] },
           { h: 'Tarifs et paiement', p: ['Dans la phase actuelle, les conditions économiques sont convenues individuellement avec chaque entreprise pilote et figurent dans l’accord que vous recevez avant l’activation.'] },
-          { h: 'Responsabilité', p: ['Les dispositions du droit suisse s’appliquent.', 'Les analyses sont produites automatiquement et peuvent contenir des erreurs : chaque information doit être vérifiée sur le document original, qui reste consultable à côté de l’analyse, avant toute décision.'] },
+          { h: 'Responsabilité', p: ['Les dispositions du droit suisse s’appliquent.', 'Les analyses sont produites automatiquement et peuvent contenir des erreurs : chaque information doit être vérifiée sur le document original, qui reste consultable à côté de l’analyse, avant toute décision.'] },
           { h: 'Droit applicable et for', p: ['Le droit suisse s’applique.', 'Le for compétent est celui du siège du titulaire, à Savosa (canton du Tessin).'] },
         ],
       },

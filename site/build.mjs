@@ -23,7 +23,7 @@
 // sapere già che cosa il prodotto non fa. Metterli dopo sarebbe far firmare
 // prima e leggere poi.
 // ============================================================================
-import { mkdirSync, writeFileSync, readFileSync, copyFileSync, readdirSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, copyFileSync, cpSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -121,14 +121,23 @@ function languageNav(current, legalKey) {
     const href = legalKey
       ? `${SITE_URL}${LOCALE_PATH[l]}${LEGAL_SLUG[l][legalKey]}.html`
       : `${SITE_URL}${LOCALE_PATH[l]}`;
-    return `<a class="lang-link" href="${href}" hreflang="${l}">${LOCALE_LABEL[l]}</a>`;
+    // `lang` oltre a `hreflang`: hreflang descrive la destinazione, lang la
+    // lingua del TESTO del link — «Deutsch» su una pagina italiana va letto
+    // in tedesco dalle sintesi vocali.
+    return `<a class="lang-link" href="${href}" hreflang="${l}" lang="${l}">${LOCALE_LABEL[l]}</a>`;
   }).join('');
 }
 
-function head(locale, { title, description, canonical, extraLd }) {
+function head(locale, { title, description, canonical, extraLd, legalKey }) {
+  // Gli hreflang delle pagine legali puntano alla STESSA pagina nelle altre
+  // lingue, come fa il selettore: puntare alle tre home rendeva il canonical
+  // estraneo al proprio set hreflang, che i motori scartano come incoerente.
+  const altHref = (l) => legalKey
+    ? `${SITE_URL}${LOCALE_PATH[l]}${LEGAL_SLUG[l][legalKey]}.html`
+    : `${SITE_URL}${LOCALE_PATH[l]}`;
   const alternates = LOCALES.map(
-    (l) => `<link rel="alternate" hreflang="${l}-CH" href="${SITE_URL}${LOCALE_PATH[l]}" />`,
-  ).join('\n    ') + `\n    <link rel="alternate" hreflang="x-default" href="${SITE_URL}/" />`;
+    (l) => `<link rel="alternate" hreflang="${l}-CH" href="${altHref(l)}" />`,
+  ).join('\n    ') + `\n    <link rel="alternate" hreflang="x-default" href="${altHref('it')}" />`;
   const p = assetPrefix(locale);
   return `    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -152,6 +161,7 @@ function head(locale, { title, description, canonical, extraLd }) {
          blu diverso, scritto a mano quando i token vivevano in due copie. -->
     <meta name="theme-color" content="#0b6bc0" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="preload" href="${p}fonts/inter-tight-var-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="${p}style.css" />${extraLd ? `\n    <script type="application/ld+json">${extraLd}</script>` : ''}`;
 }
 
@@ -201,6 +211,20 @@ function footer(locale, c, legalKey) {
     </footer>`;
 }
 
+/**
+ * Testata di protocollo: numero tabellare e titolo, eventualmente un tag.
+ * È il filo conduttore delle sezioni — la stessa testata per tutte, come le
+ * intestazioni ricorrenti di un documento tecnico. Il filetto sopra la
+ * testata è il bordo della sezione, non un elemento a sé.
+ */
+function secHead(n, title, tag) {
+  return `<div class="ms-sec-head">
+          <span class="ms-sec-n" aria-hidden="true">${n}</span>
+          <h2>${esc(title)}</h2>${tag ? `
+          <span class="ms-tag">${esc(tag)}</span>` : ''}
+        </div>`;
+}
+
 /** Le due chiamate all'azione, sempre insieme: iscriversi o parlare con qualcuno. */
 function ctaPair(c, { primary = 'demo' } = {}) {
   const demo = `<a class="btn ${primary === 'demo' ? 'btn-primary' : ''}" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(c.demo)}">${esc(c.demo)} ${icon(primary === 'demo' ? 'arrow' : 'mail')}</a>`;
@@ -238,7 +262,7 @@ function page(locale) {
         </li>`).join('');
 
   const modules = c.modules.map((m) => `
-        <article class="card module">
+        <article class="card">
           <div class="kicker">${esc(m.kicker)}</div>
           <h3>${esc(m.name)}</h3>
           <p class="module-lead">${esc(m.lead)}</p>
@@ -261,7 +285,14 @@ function page(locale) {
             <div><h3>${esc(a.t)}</h3><p>${esc(a.d)}</p></div>
           </div>`).join('');
 
-  const limits = c.limits.map((x) => `<li>${esc(x)}</li>`).join('\n          ');
+  // Indici tabellari a due cifre: nell'inversione i limiti sono un elenco
+  // protocollato, non un fondo pagina di avvertenze.
+  const limits = c.limits.map((x, i) => `<li><span class="ms-lim-n" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span><p>${esc(x)}</p></li>`).join('\n          ');
+
+  // In francese i guillemet vogliono lo spazio fine unificatore interno
+  // (« texte ») — la stessa pagina francese lo usa già nelle citazioni del
+  // copy. In italiano e in de-CH i guillemet svizzeri stanno senza spazio.
+  const gsp = locale === 'fr' ? ' ' : '';
 
   // Le date dell'esempio non stanno nel testo: si calcolano.
   const e = { ...c.example };
@@ -281,110 +312,115 @@ ${head(locale, { title: c.title, description: c.description, canonical, extraLd:
 ${topbar(locale, c, { onLanding: true })}
 
     <main id="main">
-      <section class="hero">
+      <!-- L'H1 è l'elemento LCP: nessuna classe di rivelazione, nessuna
+           opacità. È dipinto visibile al primo frame, in entrambi i temi. -->
+      <section class="ms-hero">
+        <p class="ms-kicker">${esc(c.tagline)}</p>
         <h1>${esc(c.heroTitle)}</h1>
-        <p class="lead">${esc(c.heroLead)}</p>
-        <div class="hero-actions">
+        <p class="ms-lead">${esc(c.heroLead)}</p>
+        <div class="ms-actions">
           ${ctaPair(c, { primary: 'signup' })}
         </div>
-        <p class="hero-note">${icon('globe')}<span>${esc(c.heroNote)}</span></p>
+        <p class="ms-hero-meta">${icon('globe')}<span>${esc(c.heroNote)}</span></p>
       </section>
 
-      <section class="section" id="how">
-        <h2>${esc(c.howTitle)}</h2>
-        <ol class="steps">${steps}
+      <section class="ms-section" id="how">
+        ${secHead('01', c.howTitle)}
+        <ol class="steps ms-r">${steps}
         </ol>
       </section>
 
-      <!-- Lettera e analisi affiancate, con la frase citata evidenziata nel
-           testo: è la cosa che il prodotto fa. Non è uno screenshot — una
-           schermata reale mostrerebbe la ragione sociale e i documenti di
-           un'impresa vera — e i dati sono dichiarati fittizi. -->
-      <section class="section mid" id="example">
-        <h2>${esc(e.title)}</h2>
-        <p class="section-lead">${esc(e.lead)}</p>
-        <div class="example-head">
-          <span class="example-label">${esc(e.label)}</span>
-          <span class="example-note">${esc(e.note)}</span>
-        </div>
-        <div class="example-split">
-          <div>
-            <div class="pane-title">${icon('doc')}<span>${esc(e.letterTitle)}</span></div>
-            <div class="letter">
-              <div class="letter-from">${esc(e.letterFrom)}</div>
-              <div class="letter-subject">${esc(e.letterSubject)}</div>
-              <div class="letter-body">${esc(e.letterBefore)}<mark data-testo="${esc(c.example.letterHighlight)}">${esc(e.letterHighlight)}</mark>${esc(e.letterAfter)}</div>
-            </div>
+      <!-- IL DOSSIER: lettera e analisi sullo stesso foglio di lavoro, con le
+           ancore numerate ①②③ che collegano il punto del testo
+           all'informazione ricavata: è la cosa che il prodotto fa. Non è uno
+           screenshot — una schermata reale mostrerebbe la ragione sociale e i
+           documenti di un'impresa vera — e l'etichetta di dati fittizi apre la
+           sezione, sta sul foglio e chiude il dossier: ogni ritaglio la porta.
+           Le ancore sono aria-hidden: per chi ascolta, i due pannelli sono già
+           paralleli nel testo. I numeri stanno FUORI dagli elementi
+           [data-testo]: lo script delle date ne riscrive il contenuto. -->
+      <section class="ms-example" id="example">
+        ${secHead('02', e.title, e.label)}
+        <p class="ms-sec-lead">${esc(e.lead)}</p>
+        <div class="ms-dossier ms-r">
+          <div class="ms-paper">
+            <div class="ms-pane-head"><span>${esc(e.letterTitle)}</span><span class="ms-tag">${esc(e.label)}</span></div>
+            <div class="letter-from"><span class="ms-ref" aria-hidden="true">1</span>${esc(e.letterFrom)}</div>
+            <div class="letter-subject"><span class="ms-ref" aria-hidden="true">2</span>${esc(e.letterSubject)}</div>
+            <div class="letter-body">${esc(e.letterBefore)}<span class="ms-ref ms-ref-hl" aria-hidden="true">3</span><mark data-testo="${esc(c.example.letterHighlight)}">${esc(e.letterHighlight)}</mark>${esc(e.letterAfter)}</div>
           </div>
-          <div>
-            <div class="pane-title">${icon('checkCircle')}<span>${esc(e.analysisTitle)}</span></div>
-            <div class="mock">
-              <div class="mock-top">
-                <h3>${esc(e.docTitle)}</h3>
-                <span class="mock-badges"><span class="chip chip-hot">${esc(e.urgency)}</span><span class="chip">${esc(e.confidence)}</span></span>
-              </div>
-              <div class="mock-callout">
-                <span class="mock-ico" aria-hidden="true">${icon('checkCircle')}</span>
-                <div>
-                  <div class="mock-kicker">${esc(e.kicker)}</div>
-                  <div class="mock-action">${esc(e.action)} <span class="chip chip-origin">${icon('quote')}${esc(e.origin)}</span></div>
-                  <div class="mock-when" data-scadenza="${GIORNI_ESEMPIO}" data-formato="${esc(c.example.when)}">${esc(e.when)}</div>
-                </div>
-              </div>
-              <div class="mock-quote">
-                <div class="mock-quote-label">${icon('quote')}<span>${esc(e.quoteLabel)}</span></div>
-                <blockquote data-testo="${esc(c.example.quote)}">«${esc(e.quote)}»</blockquote>
-              </div>
-              <div class="mock-verify">
-                <div class="mock-verify-title">${esc(e.verifyTitle)}</div>
-                <div class="mock-verify-item"><span class="q" aria-hidden="true">?</span><span>${esc(e.verify)}</span></div>
-              </div>
+          <div class="ms-analysis">
+            <div class="ms-pane-head"><span>${esc(e.analysisTitle)}</span></div>
+            <div class="mock-top ms-row">
+              <span class="ms-ref" aria-hidden="true">1</span>
+              <h3>${esc(e.docTitle)}</h3>
+              <span class="mock-badges"><span class="chip chip-hot">${esc(e.urgency)}</span><span class="chip">${esc(e.confidence)}</span></span>
+            </div>
+            <div class="ms-row">
+              <span class="ms-ref" aria-hidden="true">2</span>
+              <div class="mock-kicker">${esc(e.kicker)}</div>
+              <div class="mock-action">${esc(e.action)} <span class="chip chip-origin">${icon('quote')}${esc(e.origin)}</span></div>
+              <div class="mock-when" data-scadenza="${GIORNI_ESEMPIO}" data-formato="${esc(c.example.when)}">${esc(e.when)}</div>
+            </div>
+            <div class="ms-row">
+              <span class="ms-ref" aria-hidden="true">3</span>
+              <div class="mock-quote-label">${icon('quote')}<span>${esc(e.quoteLabel)}</span></div>
+              <blockquote data-testo="${esc(c.example.quote)}">«${gsp}${esc(e.quote)}${gsp}»</blockquote>
+            </div>
+            <div class="mock-verify">
+              <div class="mock-verify-title">${esc(e.verifyTitle)}</div>
+              <div class="mock-verify-item"><span class="q" aria-hidden="true">?</span><span>${esc(e.verify)}</span></div>
             </div>
           </div>
         </div>
+        <p class="ms-dossier-note">${esc(e.note)}</p>
       </section>
 
-      <section class="section" id="modules">
-        <h2>${esc(c.modulesTitle)}</h2>
-        <div class="grid-2">${modules}
+      <section class="ms-section" id="modules">
+        ${secHead('03', c.modulesTitle)}
+        <div class="grid-2 ms-r">${modules}
         </div>
       </section>
 
-      <section class="section" id="trust">
-        <h2>${esc(c.trustTitle)}</h2>
-        <p class="section-lead">${esc(c.trustLead)}</p>
-        <div class="grid-2">${trust}
+      <!-- Registro B: banda elevata a piena larghezza. Le quattro schede
+           restano quattro schede discrete, ciascuna col proprio bordo. -->
+      <section class="ms-band" id="trust">
+        ${secHead('04', c.trustTitle)}
+        <p class="ms-sec-lead">${esc(c.trustLead)}</p>
+        <div class="grid-2 ms-r">${trust}
         </div>
       </section>
 
-      <section class="section band" id="languages">
-        <h2>${icon('globe')} ${esc(c.langTitle)}</h2>
-        <p class="section-lead">${esc(c.langLead)}</p>
+      <section class="ms-section ms-langs" id="languages">
+        ${secHead('05', c.langTitle)}
+        <p class="ms-sec-lead">${esc(c.langLead)}</p>
       </section>
 
       <!-- I limiti PRIMA dei prezzi: chi legge una cifra deve già sapere che
-           cosa il prodotto non fa. -->
-      <section class="section narrow" id="limits">
-        <h2>${esc(c.limitsTitle)}</h2>
-        <ul class="limits">
+           cosa il prodotto non fa. Registro C: l'unica inversione totale
+           d'inchiostro della pagina — il momento visivamente più solenne è
+           l'elenco dei limiti, di proposito. -->
+      <section class="ms-invert" id="limits">
+        ${secHead('06', c.limitsTitle)}
+        <ol class="ms-limits ms-r">
           ${limits}
-        </ul>
+        </ol>
       </section>
 
-      <section class="section" id="pricing">
-        <h2>${esc(c.pricingTitle)}</h2>
-        <p class="section-lead">${esc(c.pricingLead)}</p>
+      <section class="ms-section" id="pricing">
+        ${secHead('07', c.pricingTitle)}
+        <p class="ms-sec-lead">${esc(c.pricingLead)}</p>
         <h3 class="kicker">${esc(c.pricingAxesTitle)}</h3>
-        <div class="axes">${axes}
+        <div class="axes ms-r">${axes}
         </div>
         <p class="pricing-note">${esc(c.pricingNote)}</p>
         <p class="center"><a class="btn btn-primary" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(c.demo)}">${esc(c.pricingCta)} ${icon('arrow')}</a></p>
       </section>
 
-      <section class="section narrow" id="about">
-        <h2>${esc(c.aboutTitle)}</h2>
-        <p class="section-lead">${esc(c.aboutLead)}</p>
-        <div class="about">
+      <section class="ms-section" id="about">
+        ${secHead('08', c.aboutTitle)}
+        <p class="ms-sec-lead">${esc(c.aboutLead)}</p>
+        <div class="about ms-r">
           <div class="about-photo" aria-hidden="true">AC</div>
           <div class="about-main">
             <div class="about-name">${esc(c.aboutName)}</div>
@@ -398,10 +434,10 @@ ${[c.aboutRole, c.aboutPlace].filter(valorizzato).map((x) => `              <spa
         </div>
       </section>
 
-      <section class="section" id="contact">
-        <h2>${esc(c.contactTitle)}</h2>
-        <p class="section-lead">${esc(c.contactLead)}</p>
-        <div class="contact-grid">
+      <section class="ms-section" id="contact">
+        ${secHead('09', c.contactTitle)}
+        <p class="ms-sec-lead">${esc(c.contactLead)}</p>
+        <div class="contact-grid ms-r">
           <div class="contact-item">
             <span class="contact-ico" aria-hidden="true">${icon('mail')}</span>
             <div>
@@ -436,10 +472,12 @@ ${valorizzato(c.contactPhone) ? `          <div class="contact-item">
         </div>
       </section>
 
-      <section class="section cta">
+      <!-- Chiusura sul registro B, senza numero: non è una voce del
+           documento, è la sua ultima pagina. -->
+      <section class="ms-band ms-cta">
         <h2>${esc(c.ctaTitle)}</h2>
-        <p class="section-lead">${esc(c.ctaLead)}</p>
-        <p class="cta-actions">
+        <p class="ms-sec-lead">${esc(c.ctaLead)}</p>
+        <p class="ms-actions">
           ${ctaPair(c, { primary: 'signup' })}
         </p>
       </section>
@@ -447,6 +485,7 @@ ${valorizzato(c.contactPhone) ? `          <div class="contact-item">
 
 ${footer(locale, c)}
 ${scriptDate(locale)}
+${scriptReveal()}
   </body>
 </html>
 `;
@@ -462,6 +501,10 @@ ${scriptDate(locale)}
  */
 function scriptDate(locale) {
   const mesi = JSON.stringify(MESI[locale]);
+  // Stesso spazio fine unificatore della versione statica: se lo script
+  // riscrive la citazione francese senza, la pagina si corregge da sola
+  // all'indietro a ogni caricamento.
+  const gsp = locale === 'fr' ? '\\u202f' : '';
   return `    <script>
       (function () {
         var el = document.querySelector('.mock-when'); if (!el) return;
@@ -475,7 +518,34 @@ function scriptDate(locale) {
         el.textContent = el.dataset.formato.replace('{data}', breve).replace('{giorni}', g);
         document.querySelectorAll('[data-testo]').forEach(function (n) {
           var t = n.dataset.testo.replace('{dataLettera}', esteso);
-          n.textContent = n.tagName === 'BLOCKQUOTE' ? '\u00ab' + t + '\u00bb' : t;
+          n.textContent = n.tagName === 'BLOCKQUOTE' ? '\u00ab${gsp}' + t + '${gsp}\u00bb' : t;
+        });
+      })();
+    </script>`;
+}
+
+/**
+ * Rivelazione allo scroll dei blocchi sotto la piega: 180ms su opacità e 8px.
+ *
+ * Il CSS statico NON contiene alcun testo a opacity:0 — la classe .is-pending
+ * viene aggiunta QUI, dopo il caricamento, e solo agli elementi che stanno
+ * sotto la piega. Senza JavaScript, senza IntersectionObserver o con
+ * prefers-reduced-motion tutto è visibile e fermo: la degradazione è lo stato
+ * di partenza, non un ripiego. Come lo script delle date: locale, senza rete,
+ * senza cookie — l'informativa resta vera.
+ */
+function scriptReveal() {
+  return `    <script>
+      (function () {
+        if (!('IntersectionObserver' in window)) return;
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.remove('is-pending'); io.unobserve(en.target); }
+          });
+        }, { threshold: 0.12 });
+        document.querySelectorAll('.ms-r').forEach(function (el) {
+          if (el.getBoundingClientRect().top > innerHeight) { el.classList.add('is-pending'); io.observe(el); }
         });
       })();
     </script>`;
@@ -499,7 +569,7 @@ function legalPage(locale, key) {
   return `<!doctype html>
 <html lang="${HTML_LANG[locale]}">
   <head>
-${head(locale, { title: `${doc.title} — AI-Swisse`, description: doc.intro, canonical })}
+${head(locale, { title: `${doc.title} — AI-Swisse`, description: doc.intro, canonical, legalKey: key })}
     <!-- Finché mancano ragione sociale, indirizzo e IDI, queste pagine dicono
          il vero ma non sono complete: non devono farsi indicizzare come se lo
          fossero. Con LEGAL_COMPLETE = true tornano index, follow. -->
@@ -549,7 +619,11 @@ function ogPage() {
         width: 1200px; height: 630px; box-sizing: border-box;
         background: hsl(207, 88%, 32%);
         color: #fff; padding: 76px 84px; display: flex; flex-direction: column;
-        justify-content: space-between; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        justify-content: space-between;
+        /* Lo stesso carattere della vetrina: style.css è collegato, quindi
+           gli @font-face ci sono e fonts/ risolve. I pesi 800 del vecchio
+           disegno renderebbero comunque 600: l'asse è limitato. */
+        font-family: var(--ms-font);
       }
       .og-brand { display: flex; align-items: center; gap: 18px; }
       .og-mark {
@@ -587,6 +661,10 @@ function ogPage() {
 // ---------------------------------------------------------------------------
 // Scrittura
 // ---------------------------------------------------------------------------
+// dist/ è una funzione pura di build.mjs + static/: si azzera e si
+// ricostruisce. Senza questa riga i file orfani (prove locali, slug legali
+// cambiati) sopravvivevano a ogni build — e dist si pubblica integralmente.
+rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
 const tokens = readFileSync(join(ROOT, 'tokens.css'), 'utf8');
@@ -616,8 +694,10 @@ writeFileSync(join(OUT, 'og.html'), ogPage(), 'utf8');
 // resta come sorgente leggibile per rifarla.
 const STATIC = join(ROOT, 'static');
 if (existsSync(STATIC)) {
+  // `cpSync` ricorsivo: da quando i caratteri stanno in static/fonts/ la
+  // copia file-per-file non basta più (copyFileSync su una cartella fallisce).
   for (const f of readdirSync(STATIC)) {
-    copyFileSync(join(STATIC, f), join(OUT, f));
+    cpSync(join(STATIC, f), join(OUT, f), { recursive: true });
     console.log(`  static → dist/${f}`);
   }
 } else {
@@ -651,7 +731,11 @@ console.log('  robots.txt, sitemap.xml');
 const ALONE = join(OUT, 'autonoma');
 mkdirSync(ALONE, { recursive: true });
 for (const locale of LOCALES) {
-  let html = page(locale).replace(/<link rel="stylesheet" href="[^"]*" \/>/, `<style>\n${css}\n    </style>`);
+  let html = page(locale)
+    .replace(/<link rel="stylesheet" href="[^"]*" \/>/, `<style>\n${css}\n    </style>`)
+    // Niente preload dei caratteri: in un file aperto col doppio clic il
+    // percorso non risolve. Il testo usa il carattere di sistema.
+    .replace(/\s*<link rel="preload" href="[^"]*fonts\/[^"]*"[^>]*\/>/, '');
   // I collegamenti alle pagine legali sono relativi alla cartella della
   // lingua: in un file che vive da solo non risolverebbero. Qui diventano
   // assoluti verso il sito — funzioneranno quando sarà pubblicato, e nel

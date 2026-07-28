@@ -16,10 +16,12 @@ dist/
   de/index.html         tedesco    → /de/     + impressum, datenschutz, nutzungsbedingungen
   fr/index.html         francese   → /fr/     + impressum, confidentialite, conditions
   style.css             tokens.css + style.css concatenati
+  fonts/                Inter Tight variabile self-hostato + licenza OFL
   og.png                anteprima social 1200×630
   og.html               sorgente leggibile dell'anteprima
   robots.txt  sitemap.xml
   autonoma/             una pagina per lingua, CSS incorporato, da aprire con un doppio clic
+                        (senza i font: su file:// i percorsi non risolvono, resta il carattere di sistema)
 ```
 
 Per vederlo in locale: `python3 -m http.server 8745 --directory dist`
@@ -64,6 +66,38 @@ si differenzieranno** — che sono veri oggi — e porta al contatto.
 
 Di conseguenza il blocco JSON-LD **non contiene `offers`**: dire una cosa alla
 persona e un'altra al motore di ricerca è comunque dire una cosa falsa.
+
+## Il disegno: «Protocollo», e lo strato --ms-*
+
+La pagina è composta come un documento tecnico svizzero: sezioni numerate
+01–09 con la stessa testata di protocollo, filetti hairline come ossatura,
+tre registri di superficie — fondo pagina, banda elevata (esempio,
+verificabilità, chiusura), e **una sola inversione totale d'inchiostro: i
+limiti**. Il momento visivamente più solenne della pagina è l'elenco di ciò
+che il prodotto non fa, di proposito.
+
+Tutte le misure della vetrina (scala tipografica, griglia, spaziature,
+superfici derivate) vivono in variabili con prefisso **`--ms-*`** dentro
+`style.css`: un futuro `sync-tokens` non le tocca, e i COLORI restano quelli
+dei token dell'app.
+
+Il carattere è **Inter Tight** (SIL OFL, licenza in `static/fonts/OFL.txt`),
+un solo file variabile per subset, self-hostato: nessuna risorsa remota,
+come dichiara l'informativa. Tre scelte da conoscere:
+
+- l'asse di peso è **limitato a 400–600 negli `@font-face`**: un
+  `font-weight: 800` scritto per errore rende comunque 600;
+- il subset `latin-ext` è dichiarato con il suo `unicode-range` ma non viene
+  mai scaricato per it/de/fr: il browser lo chiede solo se serve un glifo;
+- sotto i 600px l'H1 scende a `clamp(2rem, 9vw, 2.75rem)`: misurato,
+  «dell'amministrazione,» è 396px a 44px su 327 utili — il minimo della
+  scala desktop non può fisicamente stare in italiano su un telefono.
+
+Gli script inline sono TRE, tutti locali, senza rete e senza cookie: il
+JSON-LD, le date dell'esempio (vedi sotto), e la rivelazione allo scroll —
+che aggiunge la classe `is-pending` DOPO il caricamento e solo agli elementi
+sotto la piega, quindi nessun testo nasce a `opacity: 0`: senza JavaScript,
+o con `prefers-reduced-motion`, tutto è visibile e fermo.
 
 ## Token: derivati, non copiati
 
