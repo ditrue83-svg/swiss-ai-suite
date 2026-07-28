@@ -41,6 +41,11 @@ export const NAV: NavEntry[] = [
   { sectionKey: 'nav.sectionAutomation' },
   { id: 'automations', labelKey: 'nav.automations', icon: 'settings', path: '/automazioni' },
   { sectionKey: 'nav.sectionAccount' },
+  // Impostazioni azienda: fino al 2026-07-28 i dati dell'impresa si potevano
+  // scrivere solo all'onboarding, una volta sola — un trasloco o un cambio di
+  // ragione sociale non avevano dove andare. Sta sotto ACCOUNT e non fra i
+  // moduli perché non è un posto dove si lavora: è chi si è.
+  { id: 'company', labelKey: 'nav.companySettings', icon: 'building', path: '/azienda' },
   { id: 'pricing', labelKey: 'nav.pricing', icon: 'tag', path: '/prezzi' },
 ];
 

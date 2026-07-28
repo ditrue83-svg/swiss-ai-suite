@@ -18,7 +18,15 @@ export function RequireAuth() {
 export function RequireCompany() {
   const t = useT();
   const { loading, error, hasCompany, refresh } = useCompany();
-  if (loading) return <FullScreenLoader label={t('states.loadingCompany')} />;
+  // ⚠️ Il loader a pagina intera SOLO quando non c'è ancora un'azienda da
+  // mostrare. Su `loading` e basta, ogni `refresh()` del contesto smontava
+  // l'intera app — sidebar compresa — e la rimontava: qualunque schermata
+  // perdeva il proprio stato locale. Visto il 2026-07-28 nelle impostazioni
+  // azienda, dove dopo un salvataggio il campo di ricerca si svuotava e gli
+  // avvisi sull'origine dei dati sparivano, cioè proprio le due cose che si
+  // stavano guardando. Prima non si notava perché l'unico a chiamare
+  // `refresh()` era l'onboarding, che subito dopo cambia pagina.
+  if (loading && !hasCompany) return <FullScreenLoader label={t('states.loadingCompany')} />;
   if (error) {
     return (
       <div className="centered-screen">

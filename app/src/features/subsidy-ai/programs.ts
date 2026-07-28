@@ -31,6 +31,14 @@ export const TIPI_PROGETTO: TipoProgetto[] = [
   { id: 'edilizia', label: 'Immobili / risanamento' },
 ];
 
+/**
+ * Valore sentinella salvato nel DB quando la fascia di fatturato non si vuole
+ * indicare. ⚠️ NON va tradotto: è un dato, non un'etichetta d'interfaccia.
+ * Vive qui — accanto a FASCE_FATTURATO — perché lo usano sia l'onboarding sia
+ * le impostazioni azienda, e due copie divergerebbero.
+ */
+export const NO_REVENUE = 'Preferisco non indicare';
+
 export const CANTONI = ['Ticino', 'Zurigo', 'Berna', 'Ginevra', 'Vaud', 'Grigioni', 'Altro'];
 export const FORME_GIURIDICHE = ['SA', 'Sagl', 'Ditta individuale', 'Società in nome collettivo', 'Associazione / altro'];
 export const FASCE_FATTURATO = ["< CHF 500'000", "CHF 500'000 – 2 mio", 'CHF 2 – 10 mio', '> CHF 10 mio', 'Preferisco non indicare'];

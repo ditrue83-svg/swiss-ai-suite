@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { companyService } from '@/services/companyService';
-import { companyLookupService, LookupError, type CompanyCandidate } from '@/services/companyLookupService';
+import { RegistryLookup, type RegistryFields } from '@/features/companies/RegistryLookup';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
@@ -10,10 +10,7 @@ import { toUserMessage } from '@/lib/errors';
 import { formatUid, isValidUid } from '@/lib/uid';
 import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { CANTONI, FORME_GIURIDICHE, SETTORI, FASCE_FATTURATO } from '@/features/subsidy-ai/programs';
-
-/** Valore sentinella salvato nel DB: resta invariato, si traduce solo l'etichetta. */
-const NO_REVENUE = 'Preferisco non indicare';
+import { CANTONI, FORME_GIURIDICHE, SETTORI, FASCE_FATTURATO, NO_REVENUE } from '@/features/subsidy-ai/programs';
 
 export function OnboardingPage() {
   const navigate = useNavigate();
@@ -45,82 +42,16 @@ export function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Ricerca nel Registro IDI (Zefix) per pre-compilare i dati.
-  const [lookupQuery, setLookupQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [candidates, setCandidates] = useState<CompanyCandidate[]>([]);
-  const [lookupMsg, setLookupMsg] = useState<string | null>(null);
-  /** Ciò che è stato importato dal registro, per riconoscere le modifiche. */
-  const [imported, setImported] = useState<
-    { legalName: string; uidChe: string; canton: string | null; municipality: string } | null
-  >(null);
+  // La ricerca nel Registro IDI (Zefix) vive in `RegistryLookup`, condiviso con
+  // le impostazioni azienda: le due schermate devono dire la stessa cosa sugli
+  // stessi dati, comprese le condizioni d'uso dell'API.
 
-  async function searchRegistry() {
-    const q = lookupQuery.trim();
-    if (q.length < 2 || searching) return;
-    setSearching(true); setLookupMsg(null); setCandidates([]);
-    try {
-      const list = await companyLookupService.search(q);
-      setCandidates(list);
-      if (list.length === 0) setLookupMsg(t('onboarding.registryNoResults'));
-    } catch (e) {
-      // "Non configurata" e "credenziali non valide" sono problemi di setup del
-      // servizio, non dell'utente: si dice solo che l'inserimento è manuale.
-      const setupIssue = e instanceof LookupError && (e.code === 'LOOKUP_NOT_CONFIGURED' || e.code === 'LOOKUP_AUTH_FAILED');
-      setLookupMsg(
-        setupIssue
-          ? t('onboarding.registryUnavailable')
-          : toUserMessage(e),
-      );
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  async function applyCandidate(c: CompanyCandidate) {
-    // ⚠️ La ricerca per NOME non restituisce il cantone: l'API lo espone solo
-    // nel dettaglio per IDI. Lasciare il valore corrente significava mostrare
-    // il DEFAULT del modulo — «Ticino» — in mezzo a campi appena importati, e
-    // per un'azienda di Zugo era semplicemente falso (visto a schermo il
-    // 2026-07-28: Comune «Zug», Cantone «Ticino»). Il cantone non si deduce
-    // dal comune: si CHIEDE al registro, che lo sa.
-    let registryCanton = c.canton;
-    if (!registryCanton && c.uid) {
-      try {
-        const [detail] = await companyLookupService.search(c.uid);
-        registryCanton = detail?.canton ?? null;
-      } catch {
-        // Non è un fallback silenzioso: l'esito è dichiarato all'utente qui
-        // sotto, dove il cantone entra fra i campi da verificare.
-        registryCanton = null;
-      }
-    }
-
-    // Si conserva ciò che è stato davvero importato, per poter dire più tardi
-    // se i dati mostrati corrispondono ancora al registro: è una delle
-    // condizioni d'uso dell'API Zefix — indicare l'origine dei dati e le
-    // eventuali modifiche — e senza questo confronto non sarebbe verificabile.
-    // `canton: null` significa «il registro non l'ha dato»: il campo mostrato
-    // resta quello del modulo e NON va confrontato, altrimenti correggerlo a
-    // mano farebbe dire «hai modificato i dati importati» di un dato che
-    // importato non era.
-    const applied = {
-      legalName: c.name ?? legalName,
-      uidChe: c.uid ? (formatUid(c.uid) ?? c.uid) : uidChe,
-      canton: registryCanton ? (CANTONI.includes(registryCanton) ? registryCanton : 'Altro') : null,
-      municipality: c.municipality ?? municipality,
-    };
-    setLegalName(applied.legalName);
-    setUidChe(applied.uidChe);
-    if (applied.canton) setCanton(applied.canton);
-    setMunicipality(applied.municipality);
-    setImported(applied);
-    setCandidates([]);
-    setLookupMsg(
-      c.name
-        ? t(applied.canton ? 'onboarding.registryImportedFrom' : 'onboarding.registryImportedNoCanton', { name: c.name })
-        : t('onboarding.registryImported'),
-    );
+  /** Applica al modulo ciò che il registro ha dato (vedi RegistryLookup). */
+  function applyRegistryFields(f: RegistryFields) {
+    setLegalName(f.legalName);
+    setUidChe(f.uidChe);
+    if (f.canton) setCanton(f.canton);
+    setMunicipality(f.municipality);
   }
 
   async function onSubmit(e: FormEvent) {
@@ -154,21 +85,6 @@ export function OnboardingPage() {
   // cifra di controllo non torna. Non blocca l'invio: segnala, non decide.
   const uidInvalid = uidChe.replace(/\D/g, '').length >= 9 && !isValidUid(uidChe);
 
-  // I dati importati sono stati corretti a mano? Non è un errore — correggere è
-  // previsto — ma da quel momento non sono più quelli pubblicati dal registro,
-  // e va detto invece di lasciar credere che lo siano ancora.
-  // ⚠️ Il cantone si confronta SOLO se il registro l'ha davvero dato
-  // (`imported.canton === null` = ricerca per nome, che non lo restituisce):
-  // altrimenti sceglierlo a mano — cioè fare quel che l'avviso chiede —
-  // farebbe comparire «hai modificato i dati importati» su un dato che nessuno
-  // ha importato.
-  const importedModified = imported !== null && (
-    legalName !== imported.legalName
-    || uidChe !== imported.uidChe
-    || (imported.canton !== null && canton !== imported.canton)
-    || municipality !== imported.municipality
-  );
-
   // L'onboarding non va mai mostrato a chi ha già un'azienda: torna all'app
   // (es. dopo che il recupero qui sopra ha ricaricato le membership).
   if (hasCompany) return <Navigate to="/" replace />;
@@ -183,49 +99,11 @@ export function OnboardingPage() {
         <div className="auth-title">{t('onboarding.title')}</div>
         <div className="auth-sub">{t('onboarding.subtitle')}</div>
 
-        <div className="field">
-          <label htmlFor="ob-lookup">{t('onboarding.registrySearch')}</label>
-          <div className="row-wrap">
-            <input id="ob-lookup" value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void searchRegistry(); } }}
-              placeholder={t('onboarding.registryPlaceholder')} style={{ flex: 1, minWidth: 220 }} />
-            <button type="button" className="btn btn-sm" onClick={() => void searchRegistry()} disabled={searching || lookupQuery.trim().length < 2} aria-busy={searching || undefined}>
-              {searching ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} {t('common.search')}
-            </button>
-          </div>
-          <div className="muted-sm" style={{ marginTop: 4 }}>{t('onboarding.registryHint')}</div>
-
-          {lookupMsg && <div className="hint-accent" role="status" style={{ marginTop: 8 }}>{lookupMsg}</div>}
-
-          {/* Condizioni d'uso dell'API Zefix: l'origine dei dati va indicata, e
-              va detto che non sono vincolanti — chi legge una ragione sociale
-              precompilata non deve crederla certificata. */}
-          {imported && (
-            <div className="muted-sm" style={{ marginTop: 6 }}>{t('onboarding.registrySource')}</div>
-          )}
-          {importedModified && (
-            <div className="hint-accent" role="status" style={{ marginTop: 6 }}>
-              {t('onboarding.registryModified')}
-            </div>
-          )}
-
-          {candidates.length > 0 && (
-            <ul role="listbox" aria-label={t('onboarding.registryResultsAria')} style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
-              {candidates.map((c, i) => (
-                <li key={c.uid ?? i}>
-                  <button type="button" className="btn btn-sm" onClick={() => void applyCandidate(c)}
-                    style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', marginBottom: 6 }}>
-                    <span>
-                      <strong>{c.name}</strong>
-                      {c.municipality ? ` · ${c.municipality}` : ''}{c.canton ? ` (${c.canton})` : ''}
-                      {c.uid ? ` · ${c.uid}` : ''}{c.status && c.status !== 'ACTIVE' ? ` · ${c.status}` : ''}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <RegistryLookup
+          idPrefix="ob"
+          current={{ legalName, uidChe, canton, municipality }}
+          onApply={applyRegistryFields}
+        />
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
           <LanguageSwitcher compact />

@@ -9,6 +9,7 @@ import { RegisterPage } from '@/features/auth/RegisterPage';
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { OnboardingPage } from '@/features/companies/OnboardingPage';
+import { CompanySettingsPage } from '@/features/companies/CompanySettingsPage';
 import { HomePage } from '@/features/dashboard/HomePage';
 import { TasksPage } from '@/features/tasks/TasksPage';
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
@@ -126,6 +127,11 @@ export default function App() {
             <Route path="/automazioni/:id" element={<AutomationDetailPage />} />
             <Route path="/automazioni/:id/modifica" element={<AutomationBuilderPage />} />
             <Route path="/automazioni/:id/esecuzioni/:runId" element={<RunDetailPage />} />
+            {/* Impostazioni azienda: i dati anagrafici (solo owner/admin, come
+                vuole `companies_update_admin`) e il profilo operativo, che ogni
+                membro può aggiornare. È anche l'unico posto in cui la ricerca
+                nel Registro IDI resta utilizzabile dopo l'onboarding. */}
+            <Route path="/azienda" element={<CompanySettingsPage />} />
             <Route path="/prezzi" element={<PricingPage />} />
           </Route>
         </Route>
