@@ -33,7 +33,9 @@
     "test:calendar-unit": "node --import tsx scripts/test-calendar-unit.ts",
     "test:calendar": "node --env-file=.env.test scripts/test-calendar.mjs",
     "test:workflows-unit": "node --import tsx scripts/test-workflows-unit.ts",
-    "test:workflows": "node --env-file=.env.test --import tsx scripts/test-workflows.ts"
+    "test:workflows": "node --env-file=.env.test --import tsx scripts/test-workflows.ts",
+    "test:finance-unit": "node --import tsx scripts/test-finance-unit.ts",
+    "test:finance": "node --env-file=.env.test --import tsx scripts/test-finance.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

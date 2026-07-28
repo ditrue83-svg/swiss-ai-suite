@@ -263,7 +263,83 @@ async function documentFacts(
       : missing(),
   };
 
+  // ---- I fatti finanziari (0021) ------------------------------------------
+  //
+  // ⚠️ SI AGGIUNGONO SEMPRE, non solo per gli inneschi di Finance, e la ragione
+  // è che `loadFacts` dispaccia sull'ENTITÀ (`document`) e non sul tipo di
+  // evento: costruire i fatti in due modi diversi a seconda dell'evento
+  // significherebbe che la stessa regola, letta due volte, vede due mondi
+  // diversi. Dove non c'è un elemento finanziario i fatti sono `missing()` — e
+  // una condizione su un fatto assente vale `unknown`, quindi NON si esegue.
+  //
+  // ⚠️ I VALORI SONO GIÀ QUELLI EFFETTIVI: le colonne `eff_*` sono la
+  // proiezione che il database ricalcola da estrazione più correzioni umane.
+  // Rileggere qui estrazione e correzioni sarebbe una seconda definizione di
+  // «valore effettivo», e prima o poi direbbe un importo diverso da quello che
+  // la schermata mostra sulla stessa fattura.
+  await addFinanceFacts(sb, facts, String(doc.id), event.company_id);
+
   return { facts, documentId: String(doc.id), emailMessageId: null, taskId: null, assigneeUserId: null };
+}
+
+/**
+ * I fatti della fattura o della spesa collegata a un documento.
+ * Il duplicato sospetto si CALCOLA (non è memorizzato: dipende da che cosa c'è
+ * intorno e cambia archiviando la controparte), con la stessa impronta che usa
+ * la lista.
+ */
+async function addFinanceFacts(
+  sb: ServerClient, facts: Facts, documentId: string, companyId: string,
+): Promise<void> {
+  const { data: rows } = await sb.from('finance_items')
+    .select('id, type, review_status, dup_key, quality_flags, '
+      + 'eff_supplier_name, eff_invoice_number, eff_currency, '
+      + 'eff_gross_amount, eff_vat_amount, eff_due_date, eff_invoice_date')
+    .eq('document_id', documentId).eq('company_id', companyId).limit(1);
+  const item = ((rows ?? []) as Record<string, unknown>[])[0] ?? null;
+
+  if (!item) {
+    for (const path of [
+      'finance.type', 'finance.supplier', 'finance.invoice_number', 'finance.gross_amount',
+      'finance.vat_amount', 'finance.currency', 'finance.due_date', 'finance.invoice_date',
+      'finance.review_status', 'finance.duplicate_suspected', 'finance.has_quality_flags',
+    ]) facts[path] = missing();
+    return;
+  }
+
+  const currency = (item.eff_currency as string | null) ?? null;
+  const gross = item.eff_gross_amount === null || item.eff_gross_amount === undefined
+    ? null : Number(item.eff_gross_amount);
+  const vat = item.eff_vat_amount === null || item.eff_vat_amount === undefined
+    ? null : Number(item.eff_vat_amount);
+  const flags = Array.isArray(item.quality_flags) ? item.quality_flags as string[] : [];
+
+  let duplicates = 0;
+  if (item.dup_key) {
+    const { data: dups } = await sb.from('finance_items')
+      .select('id')
+      .eq('company_id', companyId).eq('dup_key', item.dup_key)
+      .neq('id', item.id).is('archived_at', null);
+    duplicates = (dups ?? []).length;
+  }
+
+  facts['finance.type'] = known(item.type as string);
+  facts['finance.review_status'] = known(item.review_status as string);
+  facts['finance.supplier'] = optional(item.eff_supplier_name as string | null);
+  facts['finance.invoice_number'] = optional(item.eff_invoice_number as string | null);
+  facts['finance.currency'] = optional(currency);
+  // ⚠️ La valuta accompagna SEMPRE l'importo: senza, il motore confronterebbe
+  // in silenzio franchi con euro (§22).
+  facts['finance.gross_amount'] = gross === null || !Number.isFinite(gross)
+    ? { value: null, known: false, reason: 'missing', currency }
+    : known(gross, currency);
+  facts['finance.vat_amount'] = vat === null || !Number.isFinite(vat)
+    ? { value: null, known: false, reason: 'missing', currency }
+    : known(vat, currency);
+  facts['finance.due_date'] = optional(item.eff_due_date as string | null);
+  facts['finance.invoice_date'] = optional(item.eff_invoice_date as string | null);
+  facts['finance.duplicate_suspected'] = known(duplicates > 0);
+  facts['finance.has_quality_flags'] = known(flags.length > 0 || duplicates > 0);
 }
 
 async function emailFacts(sb: ServerClient, event: ClaimedEvent): Promise<EntityFacts | null> {

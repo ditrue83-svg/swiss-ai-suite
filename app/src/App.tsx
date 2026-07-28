@@ -10,7 +10,6 @@ import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { OnboardingPage } from '@/features/companies/OnboardingPage';
 import { HomePage } from '@/features/dashboard/HomePage';
-import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
@@ -21,6 +20,8 @@ import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
 import { SubsidyPage } from '@/features/subsidy-ai/SubsidyPage';
 import { DocumentsPage } from '@/features/documents/DocumentsPage';
 import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
+import { FinancePage } from '@/features/finance/FinancePage';
+import { FinanceDetailPage } from '@/features/finance/FinanceDetailPage';
 import { AutomationsPage } from '@/features/automations/AutomationsPage';
 import { AutomationBuilderPage } from '@/features/automations/AutomationBuilderPage';
 import { AutomationDetailPage } from '@/features/automations/AutomationDetailPage';
@@ -87,7 +88,12 @@ export default function App() {
         <Route element={<RequireCompany />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<HomePage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            {/* La Dashboard è stata assorbita dalla Panoramica il 2026-07-28:
+                rispondevano alla stessa domanda con gli stessi dati. Il vecchio
+                indirizzo continua a funzionare perché sta nei segnalibri e
+                negli appunti delle persone — stessa scelta di /scadenziario e
+                /archivio. */}
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/inbox/account" element={<EmailAccountsPage />} />
             <Route path="/attivita" element={<TasksPage />} />
@@ -106,6 +112,12 @@ export default function App() {
                 in email, appunti e segnalibri delle persone: reindirizzamento,
                 non una seconda pagina da mantenere. */}
             <Route path="/archivio" element={<Navigate to="/documenti" replace />} />
+            {/* Finanze (0021). Il dettaglio NON è un secondo visualizzatore di
+                documenti: il file resta del Document Hub e si apre là. La
+                sezione (fatture / spese) viaggia in `?sezione=`, non nel
+                percorso: `/finanze/spese` colliderebbe con `/finanze/:id`. */}
+            <Route path="/finanze" element={<FinancePage />} />
+            <Route path="/finanze/:id" element={<FinanceDetailPage />} />
             {/* Automazioni (0020). Il generatore è la STESSA pagina per creare
                 e per modificare: due moduli avrebbero significato due posti in
                 cui ricordarsi della validazione e della frase riassuntiva. */}

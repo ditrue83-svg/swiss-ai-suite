@@ -11,6 +11,9 @@ import type {
   CalendarProvider, CalendarConnectionStatus, CalendarSyncStatus,
   NotificationType, NotificationChannel, NotificationDeliveryStatus,
   AutomationEventType, WorkflowStatus, WorkflowRunStatus, WorkflowActionStatus, WorkflowAuditKind,
+  FinanceItemType, FinanceProcessingStatus, FinanceReviewStatus, FinanceOrigin,
+  FinanceFieldSource, FinanceReferenceType, FinanceExpenseCategory, FinancePaymentMethod,
+  FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
 } from './database';
 
 export type {
@@ -22,6 +25,9 @@ export type {
   CalendarProvider, CalendarConnectionStatus, CalendarSyncStatus,
   NotificationType, NotificationChannel, NotificationDeliveryStatus,
   AutomationEventType, WorkflowStatus, WorkflowRunStatus, WorkflowActionStatus, WorkflowAuditKind,
+  FinanceItemType, FinanceProcessingStatus, FinanceReviewStatus, FinanceOrigin,
+  FinanceFieldSource, FinanceReferenceType, FinanceExpenseCategory, FinancePaymentMethod,
+  FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
 };
 
 // ---- Utente / azienda -------------------------------------------------------
@@ -874,3 +880,223 @@ export interface WorkflowMetrics {
 
 /** Un elemento su cui provare la regola, scelto fra quelli recenti. */
 export interface AutomationSample { id: string; label: string | null }
+
+
+// ---------------------------------------------------------------------------
+// Finance Operations (0021)
+//
+// Il modulo COMPRENDE e PREPARA il denaro: non lo muove. In questi tipi non
+// esiste nulla che descriva un pagamento eseguito, un ordine bancario o una
+// registrazione contabile — e non è una dimenticanza, è il confine del prodotto
+// finché non ci sono approvazioni, integrazione bancaria e riconciliazione.
+//
+// Come per il Document Hub, i valori sono già quelli EFFETTIVI (correzione
+// umana se c'è, altrimenti estrazione) e ogni riga porta l'elenco dei campi che
+// una persona ha corretto: senza, la schermata mostrerebbe un valore scritto a
+// mano come se l'avesse letto la macchina.
+// ---------------------------------------------------------------------------
+
+/** Una riga della lista Finanze, già composta dal database. */
+export interface FinanceItem {
+  id: string;
+  documentId: string;
+  type: FinanceItemType;
+  processingStatus: FinanceProcessingStatus;
+  reviewStatus: FinanceReviewStatus;
+  origin: FinanceOrigin;
+  errorCode: string | null;
+  expenseCategory: FinanceExpenseCategory | null;
+  paymentMethod: FinancePaymentMethod | null;
+  /** Le ragioni per cui questa fattura va guardata. Chiavi, non frasi. */
+  qualityFlags: FinanceQualityFlag[];
+  /** Calcolato adesso, non memorizzato: dipende da che cosa c'è intorno (§70). */
+  duplicateSuspected: boolean;
+  duplicateCount: number;
+  supplierName: string | null;
+  invoiceNumber: string | null;
+  invoiceDate: string | null;
+  dueDate: string | null;
+  expenseDate: string | null;
+  merchant: string | null;
+  currency: string | null;
+  grossAmount: number | null;
+  netAmount: number | null;
+  vatAmount: number | null;
+  /** ⚠️ Si mostra, non si trasforma MAI in un collegamento di pagamento (§41). */
+  iban: string | null;
+  referenceType: FinanceReferenceType | null;
+  paymentReference: string | null;
+  /** Quali campi ha corretto una persona: la schermata deve poterlo dire (§11). */
+  correctedFields: string[];
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  extractionId: string | null;
+  extractionVersion: number | null;
+  documentTitle: string;
+  documentSource: DocumentSourceType;
+  documentStatus: DocumentStatus;
+  storagePath: string | null;
+  mimeType: string | null;
+  openTaskCount: number;
+  taskCount: number;
+  emailCount: number;
+}
+
+export interface FinancePage {
+  items: FinanceItem[];
+  /** Quanti soddisfano il filtro, non quanti ne sono stati consegnati. */
+  total: number;
+}
+
+/** I filtri della lista. Tipizzati, mai `Record<string, unknown>`. */
+export interface FinanceFilters {
+  tab?: 'invoices' | 'expenses' | null;
+  query?: string | null;
+  review?: FinanceReviewStatus | null;
+  processing?: FinanceProcessingStatus | null;
+  supplier?: string | null;
+  currency?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  dueFrom?: string | null;
+  dueTo?: string | null;
+  source?: DocumentSourceType | null;
+  category?: FinanceExpenseCategory | null;
+  duplicates?: boolean;
+  flagged?: boolean;
+  archived?: boolean;
+  sort?: FinanceSort;
+  limit?: number;
+  offset?: number;
+}
+
+export type FinanceSort = 'default' | 'due_date' | 'amount' | 'recent' | 'supplier';
+
+/** Una riga del dettaglio IVA. Gli importi sono STRINGHE decimali (§48). */
+export interface VatLine {
+  rate: number;
+  taxableBase: string | null;
+  taxAmount: string | null;
+  source: FinanceFieldSource;
+}
+
+/** Citazione di un campo estratto: da dove viene, nel testo del documento (§66). */
+export interface FinanceEvidence {
+  quote: string;
+  start: number | null;
+  end: number | null;
+  page: number | null;
+}
+
+/** Il verbale immutabile della lettura finanziaria. */
+export interface FinanceExtraction {
+  id: string;
+  financeItemId: string;
+  documentId: string;
+  extractionVersion: number;
+  status: FinanceExtractionStatus;
+  method: string;
+  provider: string | null;
+  model: string | null;
+  promptVersion: string | null;
+  invoiceNumber: string | null;
+  supplierName: string | null;
+  supplierAddress: string | null;
+  supplierVatId: string | null;
+  supplierCountry: string | null;
+  invoiceDate: string | null;
+  dueDate: string | null;
+  currency: string | null;
+  grossAmount: number | null;
+  netAmount: number | null;
+  vatAmount: number | null;
+  vatBreakdown: VatLine[];
+  creditorIban: string | null;
+  ibanIsQr: boolean | null;
+  referenceType: FinanceReferenceType | null;
+  paymentReference: string | null;
+  qrPresent: boolean;
+  qrValid: boolean | null;
+  qrSpecVersion: string | null;
+  qrErrors: string[];
+  merchant: string | null;
+  expenseDate: string | null;
+  /** campo → da dove viene quel campo. È ciò che rende verificabile il verbale. */
+  fieldSources: Record<string, FinanceFieldSource>;
+  fieldConfidence: Record<string, number>;
+  evidence: Record<string, FinanceEvidence>;
+  uncertainties: { field: string; description: string; severity: 'low' | 'medium' | 'high' }[];
+  qualityFlags: FinanceQualityFlag[];
+  documentLanguage: string | null;
+  errorCode: string | null;
+  createdAt: string;
+}
+
+/** Una correzione umana. L'estrazione resta intatta (§10). */
+export interface FinanceCorrection {
+  id: string;
+  financeItemId: string;
+  documentId: string;
+  extractionId: string | null;
+  field: string;
+  originalValue: unknown;
+  correctedValue: unknown;
+  correctedBy: string | null;
+  correctedAt: string;
+}
+
+export interface FinanceEvent {
+  id: string;
+  financeItemId: string;
+  actorUserId: string | null;
+  kind: FinanceEventKind;
+  detail: Record<string, unknown>;
+  createdAt: string;
+}
+
+/** Una controparte di possibile duplicato, per il confronto (§71). */
+export interface FinanceDuplicate {
+  id: string;
+  documentId: string;
+  supplierName: string | null;
+  invoiceNumber: string | null;
+  invoiceDate: string | null;
+  currency: string | null;
+  grossAmount: number | null;
+  reviewStatus: FinanceReviewStatus;
+  createdAt: string;
+}
+
+/**
+ * Un totale del cruscotto. ⚠️ SEMPRE per valuta, mai sommato fra valute (§22).
+ * `total` è `null` quando la valuta non è nota: quelle fatture si CONTANO ma
+ * non si sommano, perché un importo senza valuta non è un importo.
+ */
+export interface FinanceTotal {
+  currency: string | null;
+  n: number;
+  total: number | null;
+}
+
+export interface FinanceSummary {
+  needsReview: number;
+  dueSoon: FinanceTotal[];
+  overdue: FinanceTotal[];
+  expensesMonth: FinanceTotal[];
+}
+
+/** Tutto ciò che il dettaglio di una fattura mette insieme. */
+export interface FinanceDetail {
+  item: FinanceItem;
+  extraction: FinanceExtraction | null;
+  /** Le versioni precedenti: un verbale non si corregge, si affianca (§9). */
+  extractionHistory: { id: string; version: number; status: FinanceExtractionStatus; createdAt: string }[];
+  corrections: FinanceCorrection[];
+  events: FinanceEvent[];
+  duplicates: FinanceDuplicate[];
+  document: DocumentRecord | null;
+  emails: DocumentEmailSource[];
+  tasks: DocumentLinkedTask[];
+}

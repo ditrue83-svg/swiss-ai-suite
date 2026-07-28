@@ -71,23 +71,88 @@ const bundled = header + body;
 // 'completed' mentre `document_status` lo riceve per aggiunta. Stessa etichetta,
 // due tipi diversi.
 // ---------------------------------------------------------------------------
+// ⚠️ IL CORPO DI UNA FUNZIONE NON VIENE ESEGUITO QUANDO LA FUNZIONE VIENE
+// CREATA (2026-07-27, terzo giro).
+//
+// `create function … as $$ … $$` deposita il corpo come TESTO: Postgres non
+// risolve le etichette enum che vi compaiono, e lo farà solo alla prima
+// chiamata — cioè dopo il commit. Un'etichetta nuova nominata là dentro NON
+// produce 55P04 durante l'applicazione.
+//
+// La prima versione di questo controllo cercava l'etichetta ovunque nel file, e
+// avrebbe quindi bloccato una migrazione perfettamente valida: la 0021 deve
+// emettere due eventi di automazione da un trigger, e un trigger nomina per
+// forza il proprio tipo di evento. Un controllo che vieta ciò che è lecito
+// viene aggirato, e un controllo aggirato non protegge più da nulla.
+//
+// ⚠️ La distinzione NON vale per `do $$ … $$`: quello viene ESEGUITO subito, e
+// un'etichetta nuova al suo interno fa fallire l'applicazione davvero. I casi di
+// autoverifica coprono entrambe le direzioni.
+//
+// ⚠️ CIÒ CHE QUESTO CONTROLLO NON PUÒ VEDERE, e va detto: un blocco `do $$` che
+// CHIAMA una funzione il cui corpo nomina l'etichetta nuova la valuta comunque,
+// e qui non risulta. Chi scrive una migrazione deve evitarlo — nella 0021 è
+// scritto in chiaro accanto all'`alter type`.
 const senzaCommenti = (sql) =>
   sql.split('\n').filter((l) => !l.trimStart().startsWith('--')).join('\n');
 
-const problemi = [];
-for (let i = 0; i < files.length; i++) {
-  const sql = readFileSync(join(MIG_DIR, files[i]), 'utf8');
+/**
+ * Gli intervalli `[inizio, fine)` occupati dai CORPI delle funzioni.
+ *
+ * Scorre il testo saltando i blocchi con quotatura a dollaro e tenendo il
+ * confine dell'istruzione corrente: per ogni blocco guarda l'intestazione che
+ * lo precede e decide se è il corpo di una `create function` (non eseguito)
+ * oppure un `do` (eseguito). Funzione pura, così si può mettere alla prova.
+ */
+export function corpiDiFunzione(sql) {
+  const intervalli = [];
+  const dollaro = /\$([A-Za-z_]\w*)?\$/y;
+  let i = 0;
+  let inizioIstruzione = 0;
+  while (i < sql.length) {
+    if (sql[i] === ';') { inizioIstruzione = i + 1; i++; continue; }
+    if (sql[i] === '$') {
+      dollaro.lastIndex = i;
+      const m = dollaro.exec(sql);
+      if (m) {
+        const tag = m[0];
+        const apertura = i + tag.length;
+        const chiusura = sql.indexOf(tag, apertura);
+        if (chiusura < 0) break;                       // quotatura non chiusa
+        const intestazione = sql.slice(inizioIstruzione, i);
+        if (/\bcreate\b[\s\S]*\bfunction\b/i.test(intestazione)) {
+          intervalli.push([apertura, chiusura]);
+        }
+        i = chiusura + tag.length;
+        continue;
+      }
+    }
+    i++;
+  }
+  return intervalli;
+}
+
+/**
+ * I valori enum aggiunti E usati nello stesso file. Funzione pura, come
+ * `problemiDiRipetibilita`: il controllo e la sua autoverifica devono guardare
+ * esattamente la stessa cosa.
+ */
+export function problemiEnum(sql) {
   const codice = senzaCommenti(sql);
+  const trovati = [];
 
   const aggiunti = [...codice.matchAll(/alter\s+type\s+[\w.]+\s+add\s+value\s+(?:if\s+not\s+exists\s+)?'([^']+)'/gi)]
     .map((m) => m[1]);
-  if (!aggiunti.length) continue;
+  if (!aggiunti.length) return trovati;
 
   // Etichette che nello stesso file nascono anche da un CREATE TYPE: legittime.
   const creati = new Set(
     [...codice.matchAll(/create\s+type\s+[\w.]+\s+as\s+enum\s*\(([^)]*)\)/gi)]
       .flatMap((m) => [...m[1].matchAll(/'([^']+)'/g)].map((v) => v[1])),
   );
+
+  const corpi = corpiDiFunzione(codice);
+  const dentroUnCorpoDiFunzione = (idx) => corpi.some(([a, b]) => idx >= a && idx < b);
 
   for (const valore of aggiunti) {
     if (creati.has(valore)) continue;
@@ -96,10 +161,19 @@ for (let i = 0; i < files.length; i++) {
         const prima = codice.slice(Math.max(0, m.index - 140), m.index);
         if (/add\s+value\s*(?:if\s+not\s+exists\s*)?$/i.test(prima)) return false;
         const rigaCorrente = prima.split('\n').pop() ?? '';
-        return !/comment\s+on/i.test(rigaCorrente);
+        if (/comment\s+on/i.test(rigaCorrente)) return false;
+        if (dentroUnCorpoDiFunzione(m.index)) return false;
+        return true;
       });
-    if (usi.length) problemi.push(`${names[i]}: il valore '${valore}' viene aggiunto E usato nello stesso file`);
+    if (usi.length) trovati.push(`il valore '${valore}' viene aggiunto E usato nello stesso file`);
   }
+  return trovati;
+}
+
+const problemi = [];
+for (let i = 0; i < files.length; i++) {
+  const sql = readFileSync(join(MIG_DIR, files[i]), 'utf8');
+  for (const p of problemiEnum(sql)) problemi.push(`${names[i]}: ${p}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -209,14 +283,69 @@ const AUTOVERIFICA = [
     select 1;` },
 ];
 
+// ---------------------------------------------------------------------------
+// Autoverifica del controllo sugli enum.
+//
+// I casi 2 e 3 sono il cuore: la stessa etichetta, nello stesso file, è LECITA
+// dentro il corpo di una funzione e VIETATA dentro un blocco `do`. Un controllo
+// che non distinguesse i due casi sbaglierebbe in una delle due direzioni —
+// bloccando codice valido oppure lasciando passare un'installazione che
+// fallisce al primo cliente nuovo.
+// ---------------------------------------------------------------------------
+const AUTOVERIFICA_ENUM = [
+  { nome: 'valore aggiunto e usato in un indice parziale', attesi: 1, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    create index idx_x on public.t (a) where stato = 'nuovo';` },
+  { nome: 'valore aggiunto e usato SOLO nel corpo di una funzione', attesi: 0, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    create or replace function public.f() returns void language plpgsql as $$
+    begin
+      perform public.g('nuovo');
+    end $$;` },
+  // ⚠️ IL CASO CHE DEVE RESTARE VIETATO: un blocco «do» viene ESEGUITO subito.
+  { nome: 'valore aggiunto e usato dentro un blocco do', attesi: 1, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    do $$ begin
+      update public.t set stato = 'nuovo' where a = 1;
+    end $$;` },
+  { nome: 'valore aggiunto e usato in un insert', attesi: 1, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    insert into public.t (stato) values ('nuovo');` },
+  { nome: 'valore aggiunto e mai più nominato', attesi: 0, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    select 1;` },
+  { nome: 'valore nato da create type: usabile subito', attesi: 0, sql: `
+    create type public.altro as enum ('nuovo', 'vecchio');
+    alter type public.t_stato add value if not exists 'nuovo';
+    insert into public.t (altro) values ('nuovo');` },
+  { nome: 'valore nominato solo in un comment on', attesi: 0, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    comment on type public.t_stato is 'ora comprende anche ''nuovo''';` },
+  { nome: 'due funzioni: la seconda non eredita l’esenzione della prima', attesi: 1, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    create or replace function public.f() returns void language plpgsql as $$
+    begin perform 1; end $$;
+    insert into public.t (stato) values ('nuovo');` },
+];
+
+/** Esegue una batteria di autoverifica e restituisce i casi non superati. */
+function casiNonSuperati(casi, controllo) {
+  return casi.filter((c) => controllo(c.sql).length !== c.attesi);
+}
+
 if (process.argv.includes('--self-test')) {
-  console.log('\nAutoverifica del controllo di ripetibilità\n');
   let falliti = 0;
-  for (const c of AUTOVERIFICA) {
-    const trovati = problemiDiRipetibilita(c.sql).length;
-    const ok = trovati === c.attesi;
-    if (!ok) falliti++;
-    console.log(`  ${ok ? '✓' : '✗'} ${c.nome} — attesi ${c.attesi}, trovati ${trovati}`);
+  for (const [titolo, casi, controllo] of [
+    ['Autoverifica del controllo di ripetibilità', AUTOVERIFICA, problemiDiRipetibilita],
+    ['Autoverifica del controllo sugli enum', AUTOVERIFICA_ENUM, problemiEnum],
+  ]) {
+    console.log(`\n${titolo}\n`);
+    for (const c of casi) {
+      const trovati = controllo(c.sql).length;
+      const ok = trovati === c.attesi;
+      if (!ok) falliti++;
+      console.log(`  ${ok ? '✓' : '✗'} ${c.nome} — attesi ${c.attesi}, trovati ${trovati}`);
+    }
   }
   console.log(falliti
     ? `\n  ${falliti} casi non superati: il controllo NON è affidabile.\n`
@@ -226,11 +355,12 @@ if (process.argv.includes('--self-test')) {
 
 // Il controllo non gira mai senza essersi prima messo alla prova: un verde dato
 // da un rilevatore rotto vale meno di nessun controllo.
-const autoverificaFallita = AUTOVERIFICA.filter(
-  (c) => problemiDiRipetibilita(c.sql).length !== c.attesi,
-);
+const autoverificaFallita = [
+  ...casiNonSuperati(AUTOVERIFICA, problemiDiRipetibilita),
+  ...casiNonSuperati(AUTOVERIFICA_ENUM, problemiEnum),
+];
 if (autoverificaFallita.length) {
-  console.error('\n✗ Il controllo di ripetibilità non riconosce i propri casi noti:');
+  console.error('\n✗ I controlli non riconoscono i propri casi noti:');
   for (const c of autoverificaFallita) console.error(`    ${c.nome}`);
   console.error('  Esegui: npm run db:bundle -- --self-test\n');
   process.exit(1);

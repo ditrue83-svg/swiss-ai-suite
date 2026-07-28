@@ -348,6 +348,11 @@ Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estr
 | `workflow_runs` | un'esecuzione, con la **configurazione usata** e l'esito di ogni condizione. `unique (workflow_id, trigger_event_id)`: lo stesso evento due volte non produce due esecuzioni |
 | `workflow_action_runs` | ogni azione con la propria **chiave di idempotenza** — l'unicità la impone il database, non un controllo applicativo |
 | `workflow_events` | chi ha creato, attivato, messo in pausa, archiviato una regola. Solo amministratori |
+| `finance_items` | **Finanze** (0021): lo stato operativo di un documento finanziario — tipo, verifica, archiviazione, categoria di spesa. Le colonne `eff_*` sono una **proiezione** ricalcolata dal trigger, non una seconda verità; il client non ha alcun permesso di scrittura su di esse |
+| `finance_extractions` | il **verbale** della lettura finanziaria: **immutabile e versionato** come `document_analyses`. Un secondo tentativo produce la versione 2 e la 1 resta leggibile. Porta la provenienza **campo per campo** (`qr` · `deterministic` · `ai`), la fiducia, le citazioni e le incertezze |
+| `finance_corrections` | correzioni umane **append-only**, con un elenco **chiuso** di campi correggibili. Non riusa `analysis_corrections`: là il campo «amount» descrive l'analisi amministrativa, e scriverci un importo di fattura cambierebbe ciò che il Document Hub mostra |
+| `finance_events` | storico di Finanze: lo scrivono i trigger, il client può solo leggerlo. Non si registra la lettura |
+| `finance_vat_rates` | aliquote IVA ufficiali con **validità, fonte e data di verifica**. Sono suggerimenti: un'aliquota fuori elenco è accettata, non rifiutata |
 
 ### Attività (Work Hub) — migrazione 0016
 
@@ -508,6 +513,72 @@ dentro è l'unica difesa — non più una ridondanza.
 
 Documento completo: **`docs/calendar-notifications.md`**.
 
+### Finanze (Finance Operations) — migrazione 0021
+
+Fatture fornitori, ricevute e note di credito su `/finanze`, con il dettaglio su
+`/finanze/:id`. Il modulo **comprende e prepara il denaro, non lo muove**.
+
+⚠️ **Che cosa NON fa, e non per mancanza di tempo**: nessun pagamento, nessun file
+di pagamento, nessuna chiamata bancaria, nessun pulsante «Paga ora», nessuna
+riconciliazione, nessuna registrazione contabile, nessuna dichiarazione IVA,
+nessuna determinazione fiscale. **Un IBAN si mostra, non si trasforma mai in
+un'azione**: non esiste una colonna, una funzione, una Edge Function né un'azione
+delle automazioni che possa toccarlo. «Scaduta» significa **scadenza superata**,
+mai «non pagata» — senza dati bancari il prodotto non sa se una fattura è stata
+pagata.
+
+Il modulo **non crea una seconda verità sui documenti**: il file resta del
+documento, il testo dell'estrazione, la lettura amministrativa dell'analisi
+immutabile, la provenienza dell'Inbox, il lavoro delle attività. Qui si aggiunge
+solo la lettura finanziaria specializzata e lo stato operativo che ne deriva.
+
+```
+DOCUMENTO → ESTRAZIONE TESTO → ANALISI → ESTRAZIONE FINANCE → VERIFICA → ATTIVITÀ/REGOLE
+```
+
+**L'ordine di lettura è il cuore del modulo**: (1) codice QR — dato strutturato
+verificato riga per riga; (2) testo, deterministico — ciò che supera una cifra di
+controllo non è un'interpretazione; (3) modello, **solo per ciò che manca**. Non si
+paga l'AI per riestrarre ciò che il codice ha già letto con certezza, e non si
+sostituisce mai un dato verificato con uno probabile. Quando due fonti divergono
+non si sceglie in silenzio: si alza `qr_text_mismatch` e l'elemento resta da
+verificare.
+
+| Garanzia | Come |
+|---|---|
+| Il verbale non si riscrive | `finance_extractions` immutabile: un trigger rifiuta `update` e `delete` **anche al service role**, che è il ruolo con cui gira il worker |
+| Le correzioni si aggiungono, non sostituiscono | `finance_corrections` append-only, elenco **chiuso** di campi. Un valore malformato viene **rifiutato all'ingresso**, non salvato per poi non comparire |
+| Una correzione si firma con il proprio nome | il guardiano **rifiuta** (`finance_correction_author_mismatch`) invece di riscrivere l'autore in silenzio |
+| I valori effettivi sono uno solo | `finance_refresh_effective` ricalcola per intero la proiezione da estrazione + correzioni; il client non ha permesso di scrittura sulle `eff_*` e il guardiano annulla qualunque altra scrittura |
+| Nessun totale che sommi valute diverse | `finance_summary` restituisce **una riga per valuta**. Una fattura senza valuta viene contata ma il suo totale resta `null` |
+| Il duplicato si sospetta, mai si fonde | l'impronta è `null` se manca uno dei quattro elementi, e il sospetto si **calcola** in lettura invece di essere memorizzato — archiviare la controparte lo fa sparire da solo |
+| I verbali non sono scrivibili dal browser | `revoke all` **prima** dei `grant` (lezione della 0014), e la migrazione lo **verifica** prima di dirsi riuscita |
+| Nei log solo identificativi e codici | mai IBAN, riferimenti, fornitori, importi, né il messaggio grezzo di un errore — che può contenere il valore che ha violato un vincolo |
+
+**Lo standard QR-fattura, verificato il 2026-07-27**: Swiss Implementation
+Guidelines di SIX, versione **2.4 del 24.02.2026** (valida dal 14 novembre 2026)
+letta e verificata, versione **2.3 del 21.11.2025** in vigore e valida fino a
+novembre 2027. Il lettore le tratta allo stesso modo perché fra le due la
+struttura non cambia. ⚠️ **La decodifica dell'immagine del codice QR non è
+implementata**: la pipeline non ha un rasterizzatore e sul percorso `native_pdf` il
+file non arriva nemmeno al server. I dati di pagamento vengono quindi dal **testo**
+e la loro provenienza è `deterministic`, non `qr`; dove c'è un indizio di
+QR-fattura senza payload leggibile si alza la bandiera `qr_not_read`. Il punto
+unico da aggiornare quando esce una versione nuova è `SPEC` in `qrbill.ts`.
+
+**Le aliquote IVA sono un DATO, non una costante**: `finance_vat_rates` con
+validità, fonte e data di verifica — 8.1 % / 2.6 % / 3.8 % dal 1.1.2024, fonte
+AFC/ESTV, verificate il 2026-07-27. Sono **suggerimenti, non un validatore**:
+un'aliquota fuori elenco è accettata. Le aliquote **storiche non sono state
+seminate** perché non verificate su fonte primaria.
+
+⚠️ **Configurazione manuale necessaria**: il segreto `FINANCE_WORKER_SECRET` (con
+la stessa stringa nel Vault come `finance_worker_secret`) e il job cron che chiama
+`finance-worker` con `timeout_milliseconds := 150000`. Senza, la coda non viene mai
+letta e gli elementi restano `pending` per sempre.
+
+Documento completo: **`docs/finance-operations.md`**.
+
 ## Comandi
 
 ```bash
@@ -536,6 +607,11 @@ npm run test:workflows-unit  # Automazioni offline: registro, validazione, opera
                              # valori, valute, incertezza, modelli di testo, frase (103 test)
 npm run test:workflows       # Automazioni su DB: esegue il MOTORE VERO — outbox, idempotenza,
                              # cicli, profondità della catena, guardie (richiede la 0020)
+npm run test:finance-unit    # Finanze offline: importi esatti, date ambigue, cifre di controllo,
+                             # QR-fattura, validazione dell'estrazione, contratto (202 test)
+npm run test:finance         # Finanze su DB: immutabilità del verbale, correzioni, proiezione,
+                             # duplicati, valute mai sommate (95 asserzioni nel file — richiede
+                             # la 0021 applicata; non ancora eseguito)
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
@@ -590,6 +666,21 @@ Creano dati reali e li rimuovono alla fine.
   amministrativo NON viene fermata); prompt injection nel corpo che non altera l'esito; adapter Google e
   Microsoft che da payload diversi producono lo **stesso** modello; cifratura dei token con AAD, IV
   irripetuto e rilevamento delle manomissioni.
+- **`test:finance-unit` (202)** — le decisioni finanziarie che si sbagliano in silenzio, provate
+  **offline**: le quattro convenzioni di importo che convivono su una scrivania svizzera lette con
+  aritmetica **esatta** (`0.10 + 0.20` fa `0.30`), due valute che non si sommano mai e un importo senza
+  valuta che resta senza valuta; `02.03.2026` **dichiarata ambigua** invece di essere risolta; le cifre
+  di controllo di IBAN, riferimento QR a 27 cifre, ISO 11649 e IDI; l'**esempio ufficiale delle Swiss
+  Implementation Guidelines v2.4** letto senza violazioni, con la prova che ogni regola *può* fallire;
+  un tentativo di prompt injection nel documento che non sposta di un centesimo i valori strutturati;
+  e il **contratto letto dal file SQL della 0021** — l'elenco dei campi correggibili e ogni bandiera di
+  qualità con la sua frase nei tre dizionari. Ogni sezione porta almeno una controprova.
+- **`test:finance` (95 asserzioni nel file, non ancora eseguito)** — richiede la 0021 applicata.
+  Prova le garanzie sul database vero: il verbale immutabile che si affianca invece di riscriversi, la
+  correzione umana che vince con la firma di chi la scrive, la proiezione `eff_*` che si ricalcola e
+  che il guardiano non annulla, il duplicato **calcolato** e mai fuso, due valute che restano due righe,
+  le note di credito che non gonfiano il «da pagare», e il **doppione dichiarato** della cifra di
+  controllo dell'IBAN fra SQL e TypeScript confrontato su una matrice.
 - **`test:inbox`** — i permessi VERI del database: A non vede né tocca nulla di B; i segreti non sono
   raggiungibili nemmeno dall'owner; dal client si può cambiare solo `seen_at` e «metti via», e il
   ripristino ricalcola lo stato dalla classificazione ignorando il valore inviato; i duplicati sono

@@ -47,6 +47,24 @@ export function useLabels() {
     confidence: (v: string | null | undefined) => pick('labels.confidence', v),
     deadlineLevel: (v: string | null | undefined) => pick('labels.deadlineLevels', v),
 
+    // ---- Finanze (0021) -------------------------------------------------
+    /** Fattura fornitore, ricevuta, nota di credito. */
+    financeType: (v: string | null | undefined) => pick('labels.financeTypes', v),
+    /** Il lavoro della PERSONA: da verificare / verificata. */
+    financeReview: (v: string | null | undefined) => pick('labels.financeReview', v),
+    /** Lo stato della MACCHINA: in attesa, lettura in corso, letto, non riuscita. */
+    financeProcessing: (v: string | null | undefined) => pick('labels.financeProcessing', v),
+    /** Categoria di SPESA (§57): raggruppa, non registra. Non è un conto contabile. */
+    expenseCategory: (v: string | null | undefined) => pick('labels.expenseCategories', v),
+    /** Come è stata pagata una spesa, SE il documento lo dice (§59). */
+    paymentMethod: (v: string | null | undefined) => pick('labels.paymentMethods', v),
+    /** Riferimento QR, riferimento del creditore (SCOR), nessun riferimento. */
+    referenceType: (v: string | null | undefined) => pick('labels.referenceTypes', v),
+    /** Da dove viene un singolo campo: è ciò che rende verificabile la lettura. */
+    fieldSource: (v: string | null | undefined) => pick('labels.fieldSources', v),
+    /** Che cosa è cambiato su una fattura, nello storico (§87). */
+    financeEvent: (v: string | null | undefined) => pick('finance.eventKinds', v),
+
     // ---- Subsidy AI ----------------------------------------------------
     /** Tipo di sostegno: contributo a fondo perso, prestito, fideiussione… */
     supportType: (v: string | null | undefined) => pick('subsidy.labels.supportTypes', v),

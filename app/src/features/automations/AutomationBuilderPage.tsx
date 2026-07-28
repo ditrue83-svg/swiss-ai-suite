@@ -590,10 +590,22 @@ function ActionCard({
                     <option value="before_deadline">{t('automations.due.beforeDeadline')}</option>
                   </>
                 )}
+                {/* 0021 — la scadenza di PAGAMENTO, offerta solo dove esiste:
+                    sugli inneschi di Finanze. Mostrarla altrove significherebbe
+                    far comporre una regola che non potrà mai produrre una data,
+                    ed è la stessa ragione per cui «dalla scadenza del
+                    documento» compare solo dove c'è un'analisi. */}
+                {trigger.fields.some((f) => f.path === 'finance.due_date') && (
+                  <>
+                    <option value="from_finance_due_date">{t('automations.due.fromFinanceDue')}</option>
+                    <option value="before_finance_due_date">{t('automations.due.beforeFinanceDue')}</option>
+                  </>
+                )}
                 <option value="in_days">{t('automations.due.inDays')}</option>
               </select>
             </div>
-            {(config.dueDate === 'before_deadline' || config.dueDate === 'in_days') && (
+            {(config.dueDate === 'before_deadline' || config.dueDate === 'in_days'
+              || config.dueDate === 'before_finance_due_date') && (
               <div className="field">
                 <label htmlFor={`${id}-days`}>{t('automations.daysField')}</label>
                 <input id={`${id}-days`} type="number" min={0} max={365}
@@ -609,7 +621,8 @@ function ActionCard({
               {t('automations.linkEntity')}
             </label>
           )}
-          {config.dueDate === 'from_deadline' && (
+          {(config.dueDate === 'from_deadline'
+            || config.dueDate === 'from_finance_due_date') && (
             <p className="muted-sm mt-10">{t('automations.dueDateHint')}</p>
           )}
         </>

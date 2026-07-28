@@ -31,6 +31,12 @@ export const AUTOMATION_EVENT_TYPES = [
   'task_created',
   'task_status_changed',
   'task_became_overdue',
+  // 0021 — i due inneschi di Finance. L'entità resta il DOCUMENTO: una fattura
+  // è una lettura di un documento, e una regola che parla di fatture vuole
+  // poter guardare anche la categoria e il mittente di quel documento. Anche
+  // per questo `automation_events.entity_type` non ha dovuto cambiare.
+  'finance_item_needs_review',
+  'finance_item_ready',
 ] as const;
 export type AutomationEventType = (typeof AUTOMATION_EVENT_TYPES)[number];
 
@@ -184,6 +190,54 @@ const DOCUMENT_TEMPLATES = [
   '{{analysis.deadline}}', '{{analysis.amount}}',
 ] as const;
 
+/**
+ * I campi di una fattura o di una spesa (0021).
+ *
+ * ⚠️ Sono i valori EFFETTIVI — correzione umana se c'è, altrimenti estrazione —
+ * ed è la stessa regola con cui il Document Hub compone i propri. Una regola
+ * che decidesse sul valore letto dalla macchina invece che su quello che
+ * l'azienda ha corretto agirebbe su un dato che nessuno considera più vero.
+ *
+ * ⚠️ Gli importi portano `hasCurrency`: senza, il motore confronterebbe in
+ * silenzio CHF con EUR — e §22 vieta ogni conversione.
+ */
+const FINANCE_FIELDS: readonly TriggerField[] = [
+  { path: 'finance.type', type: 'enum', labelKey: 'automations.fields.financeType',
+    options: ['supplier_invoice', 'receipt', 'credit_note'] as const,
+    optionsLabelPath: 'labels.financeTypes' },
+  { path: 'finance.supplier', type: 'string', labelKey: 'automations.fields.financeSupplier',
+    aiDerived: true },
+  { path: 'finance.invoice_number', type: 'string', labelKey: 'automations.fields.financeInvoiceNumber',
+    aiDerived: true },
+  { path: 'finance.gross_amount', type: 'number', labelKey: 'automations.fields.financeGross',
+    aiDerived: true, hasCurrency: true },
+  { path: 'finance.vat_amount', type: 'number', labelKey: 'automations.fields.financeVat',
+    aiDerived: true, hasCurrency: true },
+  { path: 'finance.currency', type: 'string', labelKey: 'automations.fields.financeCurrency' },
+  { path: 'finance.due_date', type: 'date', labelKey: 'automations.fields.financeDueDate',
+    aiDerived: true },
+  { path: 'finance.invoice_date', type: 'date', labelKey: 'automations.fields.financeInvoiceDate',
+    aiDerived: true },
+  { path: 'finance.review_status', type: 'enum', labelKey: 'automations.fields.financeReview',
+    options: ['needs_review', 'ready'] as const, optionsLabelPath: 'labels.financeReview' },
+  { path: 'finance.duplicate_suspected', type: 'boolean',
+    labelKey: 'automations.fields.financeDuplicate' },
+  { path: 'finance.has_quality_flags', type: 'boolean',
+    labelKey: 'automations.fields.financeFlagged' },
+];
+
+/**
+ * ⚠️ SOLO VALORI CHE NON HANNO BISOGNO DI ESSERE TRADOTTI, come per i
+ * documenti: un fornitore, un numero, una data e un importo si scrivono uguali
+ * nelle tre lingue. Il TIPO di documento finanziario no — nel database vive
+ * `supplier_invoice` — e offrirlo come segnaposto richiederebbe un dizionario
+ * lato server, cioè una quarta copia delle etichette.
+ */
+const FINANCE_TEMPLATES = [
+  '{{document.title}}', '{{finance.supplier}}', '{{finance.invoice_number}}',
+  '{{finance.gross_amount}}', '{{finance.due_date}}',
+] as const;
+
 const TASK_FIELDS: readonly TriggerField[] = [
   { path: 'task.title', type: 'string', labelKey: 'automations.fields.taskTitle' },
   { path: 'task.priority', type: 'enum', labelKey: 'automations.fields.taskPriority',
@@ -249,6 +303,24 @@ export const TRIGGERS: readonly TriggerDef[] = [
       { path: 'email.linked_document_count', type: 'number', labelKey: 'automations.fields.emailDocumentCount' },
     ],
     templates: ['{{email.subject}}', '{{email.sender_name}}', '{{email.sender_email}}'],
+  },
+  {
+    key: 'finance_item_needs_review',
+    entityType: 'document',
+    version: 1,
+    labelKey: 'automations.triggers.financeNeedsReview',
+    descriptionKey: 'automations.triggers.financeNeedsReviewDesc',
+    fields: [...DOCUMENT_FIELDS, ...FINANCE_FIELDS],
+    templates: [...DOCUMENT_TEMPLATES, ...FINANCE_TEMPLATES],
+  },
+  {
+    key: 'finance_item_ready',
+    entityType: 'document',
+    version: 1,
+    labelKey: 'automations.triggers.financeReady',
+    descriptionKey: 'automations.triggers.financeReadyDesc',
+    fields: [...DOCUMENT_FIELDS, ...FINANCE_FIELDS],
+    templates: [...DOCUMENT_TEMPLATES, ...FINANCE_TEMPLATES],
   },
   {
     key: 'task_created',
@@ -408,7 +480,18 @@ export function isAutoExecutable(action: ActionDef): boolean {
 // ---------------------------------------------------------------------------
 
 /** Come si ricava la scadenza dell'attività creata. */
-export type DueDateMode = 'none' | 'from_deadline' | 'before_deadline' | 'in_days';
+/**
+ * Come si ricava la scadenza dell'attività creata.
+ *
+ * ⚠️ `from_finance_due_date` esiste separata da `from_deadline` perché le due
+ * date NON sono la stessa cosa: il termine letto dall'analisi amministrativa
+ * («rispondere entro il…») e la scadenza di pagamento di una fattura possono
+ * differire, e §47 vieta espressamente di sovrascrivere l'una con l'altra. Chi
+ * crea un'attività su una fattura vuole la data in cui va pagata.
+ */
+export type DueDateMode =
+  | 'none' | 'from_deadline' | 'before_deadline' | 'in_days'
+  | 'from_finance_due_date' | 'before_finance_due_date';
 /** Come si ricava la priorità. `from_urgency` solo dove l'urgenza esiste. */
 export type PriorityMode = 'low' | 'medium' | 'high' | 'from_urgency';
 

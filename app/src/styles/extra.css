@@ -249,3 +249,172 @@
    blu — la stessa correzione già fatta su `.action-row.is-link` nella 0016. */
 .kpi-link { color: var(--ink); text-decoration: none; display: block; }
 .kpi-link:hover { border-color: var(--accent-line); }
+
+/* ===========================================================================
+   Finanze (0021)
+
+   ⚠️ Nessuna regola qui costruisce un'affordance di pagamento: niente pulsanti
+   che sembrino «Paga», niente evidenziazione a chiamata all'azione sull'IBAN.
+   Un dato di pagamento si legge, e la sua veste dice «leggi», non «premi».
+
+   Nessun px sul testo: solo i token `--fs-*`. Spaziature `--sp-*`.
+   =========================================================================== */
+
+/* Utilità: visibile ai lettori di schermo, non agli occhi. La usa la didascalia
+   della tabella IVA — una tabella senza `caption` costringe chi naviga con lo
+   screen reader a indovinare che cosa sta leggendo. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* ---- Cruscotto ------------------------------------------------------------
+   Gli importi stanno UNO SOTTO L'ALTRO, mai su una riga sola: due valute
+   affiancate si leggono come una somma, ed è proprio la lettura che il modulo
+   non deve permettere (§22). */
+.fin-amounts { list-style: none; margin: var(--sp-1) 0 0; padding: 0; }
+.fin-amounts li {
+  font-size: var(--fs-strong); font-weight: 700;
+  font-variant-numeric: tabular-nums; line-height: 1.3;
+}
+
+/* ---- Testata dell'elenco -------------------------------------------------- */
+.fin-search { flex: 1; min-width: 220px; margin: 0; }
+.fin-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; }
+.fin-filters {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-3); margin-bottom: var(--sp-3);
+}
+.fin-filter-wide { grid-column: 1 / -1; }
+.fin-checks { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.fin-close { margin-left: auto; }
+
+/* ---- Una riga ------------------------------------------------------------
+   Tre zone: chi, quanto, come sta. L'importo ha una colonna sua e a larghezza
+   fissa, così i numeri si incolonnano davvero — `tabular-nums` allinea le cifre
+   fra loro, ma senza una colonna comune resterebbero righe di lunghezza
+   diversa. */
+.fin-row {
+  display: flex; align-items: flex-start; gap: var(--sp-3);
+  padding: var(--sp-3) 0; border-top: 1px solid var(--line);
+}
+.fin-row:first-of-type { border-top: none; }
+.fin-row-main {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;
+  color: var(--ink); text-decoration: none; min-height: 24px;
+}
+.fin-row-main:hover .fin-row-title { text-decoration: underline; }
+.fin-row-title { font-size: var(--fs-body); font-weight: 600; }
+.fin-row-sub { font-size: var(--fs-meta); color: var(--muted); }
+.fin-row-amount {
+  min-width: 132px; text-align: right; flex-shrink: 0;
+  font-size: var(--fs-body); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.fin-row-amount .muted-sm { font-weight: 500; }
+.fin-row-side {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+  gap: var(--sp-2); flex-shrink: 0; max-width: 42%;
+}
+
+.fin-pager {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--sp-2); margin-top: var(--sp-3);
+}
+.fin-page-n { font-variant-numeric: tabular-nums; }
+
+/* ---- Dettaglio: elenchi in parole ---------------------------------------- */
+.fin-flags, .fin-blockers { list-style: none; margin: 0; padding: 0; }
+.fin-flags li, .fin-blockers li {
+  position: relative; padding: var(--sp-1) 0 var(--sp-1) var(--sp-6);
+  font-size: var(--fs-body);
+}
+.fin-flags li::before, .fin-blockers li::before {
+  content: '•'; position: absolute; left: var(--sp-2); font-weight: 700;
+}
+.fin-flags li::before { color: var(--amber); }
+.fin-blockers li::before { color: var(--red-dark); }
+
+/* ---- Dettaglio: un campo -------------------------------------------------- */
+.fin-field { padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.fin-field:first-of-type { border-top: none; }
+.fin-field-label { font-size: var(--fs-label); color: var(--muted); font-weight: 600; }
+.fin-field-value {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
+  font-size: var(--fs-body); color: var(--ink); margin-top: 2px;
+}
+.fin-num { font-variant-numeric: tabular-nums; }
+/* Il bersaglio minimo di WCAG 2.2: `.btn-sm` da solo resta sotto i 24 pixel. */
+.fin-edit { margin-top: var(--sp-2); min-height: 24px; }
+.fin-edit-form { margin-top: var(--sp-2); max-width: 420px; }
+
+/* La provenienza di un dato è una verifica, non una decorazione: chiusa per
+   difetto, aperta da chi la sta cercando. */
+.fin-prov { margin-top: var(--sp-2); }
+.fin-prov summary {
+  font-size: var(--fs-meta); color: var(--accent-text); cursor: pointer;
+  min-height: 24px; display: flex; align-items: center;
+}
+.fin-quote {
+  margin: var(--sp-1) 0 0; padding: var(--sp-2) var(--sp-3);
+  border-left: 3px solid var(--accent-line); background: var(--bg);
+  font-size: var(--fs-meta); color: var(--ink-soft);
+}
+
+/* ---- Dettaglio IVA -------------------------------------------------------
+   La tabella scorre DENTRO il proprio contenitore: la pagina non deve mai
+   scorrere in orizzontale (§97). */
+.fin-tablewrap { overflow-x: auto; }
+.fin-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+.fin-table caption { text-align: left; }
+.fin-table th, .fin-table td {
+  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); text-align: left;
+}
+.fin-table thead th {
+  font-size: var(--fs-label); color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.04em; white-space: nowrap;
+}
+.fin-table .fin-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- Schermi stretti ------------------------------------------------------
+   Fino a 360 pixel senza scorrimento orizzontale: l'importo passa sotto e
+   torna allineato a sinistra, perché una colonna di numeri larga metà schermo
+   non è più una colonna. */
+@media (max-width: 720px) {
+  .fin-row { flex-wrap: wrap; }
+  .fin-row-main { flex-basis: 100%; }
+  .fin-row-amount { min-width: 0; text-align: left; }
+  .fin-row-side { max-width: none; justify-content: flex-start; }
+  .fin-actions { width: 100%; }
+  .fin-actions .btn { flex: 1; }
+  .fin-pager { justify-content: flex-start; }
+}
+
+/* ⚠️ `.filter-group` NON manda a capo, e la voce di ordinamento predefinita di
+   questa pagina è la frase più lunga dell'intera interfaccia («Prima ciò che
+   richiede attenzione», e in tedesco è ancora più lunga). A 360 pixel spingeva
+   il pulsante accanto fuori dallo schermo: 379 pixel di contenuto in 360 di
+   finestra, cioè scorrimento orizzontale (§97). Misurato nel browser, non
+   dedotto. Si corregge QUI e non su `.filter-group`, che è condiviso con
+   Documenti e Attività: allargare una regola per un caso solo significa
+   cambiare tre schermate senza averle guardate. */
+.fin-tools { flex-wrap: wrap; }
+.fin-tools > .field { min-width: 0; flex: 1 1 auto; }
+.fin-tools .select-inline { max-width: 100%; width: 100%; }
+
+/* Panoramica — la riga che spiega l'ordine dell'elenco delle priorità.
+   Era uno stile in linea con due margini scritti a mano: fuori dal sistema di
+   spaziature, e invisibile a chi cerca le regole nel foglio di stile. */
+.dash-sorted { margin: -6px 0 var(--sp-2); }
+
+/* Panoramica — i KPI sono CINQUE, e la griglia condivisa ne dispone quattro per
+   riga: il quinto restava da solo su una riga tutta sua, come se fosse un dato
+   di natura diversa dagli altri. Qui la griglia si adatta al numero che c'è.
+   La regola è limitata alla Panoramica di proposito: `.kpi-grid` la usano anche
+   Finanze e le altre schermate, dove le schede sono quattro e la disposizione
+   fissa è quella giusta. */
+#home-body .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
+/* 168 e non 184: la soglia decide QUANTE schede stanno in riga, e con 184 le
+   cinque non entravano nei 921 pixel della colonna centrale — restava esatta-
+   mente l'orfana che questa regola doveva togliere. Sotto i 168 le etichette su
+   due righe cominciano a spezzarsi male, quindi è il valore più alto che fa
+   entrare tutte e cinque, non un numero scelto a occhio. */

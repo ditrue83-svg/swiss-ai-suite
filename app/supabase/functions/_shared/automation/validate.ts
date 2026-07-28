@@ -303,12 +303,20 @@ function validateCreateTask(
   }
 
   const due = String(c.dueDate ?? 'none');
-  if (!['none', 'from_deadline', 'before_deadline', 'in_days'].includes(due)) {
+  if (!['none', 'from_deadline', 'before_deadline', 'in_days',
+        'from_finance_due_date', 'before_finance_due_date'].includes(due)) {
     out.push(issue('unknownDueMode', { value: due }, where));
   }
   if ((due === 'from_deadline' || due === 'before_deadline')
       && !trigger.fields.some((f) => f.path === 'analysis.deadline')) {
     out.push(issue('deadlineNotAvailable', { trigger: trigger.key }, where));
+  }
+  // La scadenza di PAGAMENTO esiste solo dove l'innesco parla di una fattura:
+  // offrirla altrove significherebbe far configurare una regola che non potrà
+  // mai produrre una data.
+  if ((due === 'from_finance_due_date' || due === 'before_finance_due_date')
+      && !trigger.fields.some((f) => f.path === 'finance.due_date')) {
+    out.push(issue('financeDueDateNotAvailable', { trigger: trigger.key }, where));
   }
   if (due === 'before_deadline' || due === 'in_days') {
     const n = Number(c.dueDateDays);

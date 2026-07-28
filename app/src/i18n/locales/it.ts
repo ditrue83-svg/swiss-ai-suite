@@ -46,13 +46,13 @@ export const it = {
     sectionAutomation: 'Automazione',
     automations: 'Automazioni',
     home: 'Panoramica',
-    dashboard: 'Dashboard',
     tasks: 'Attività',
     calendar: 'Calendario',
     adminAi: 'Admin AI — Documenti',
     subsidyAi: 'Subsidy AI — Incentivi',
     inbox: 'Inbox',
     documents: 'Documenti',
+    finance: 'Finanze',
     pricing: 'Piani e prezzi',
     activeCompany: 'Azienda attiva',
     switchCompany: 'Cambia azienda',
@@ -815,8 +815,6 @@ export const it = {
     subtitle: 'Ecco cosa richiede attenzione nella tua azienda.',
     analyzeDoc: 'Analizza un documento',
     findSubsidies: 'Trova incentivi',
-    priorities: 'Priorità di oggi',
-    noPriorities: 'Nessuna priorità urgente al momento: sei in pari con scadenze e documenti.',
     prioActivity: 'Attività', prioDocument: 'Documento',
     prioNoDeadline: 'senza scadenza',
     prioOverdue: 'scaduta da {n} gg', prioToday: 'scade oggi', prioInDays: 'tra {n} gg',
@@ -826,11 +824,6 @@ export const it = {
     // documento analizzato e archiviato correttamente non è una priorità.
     prioDocToVerify: 'analisi da verificare', prioDocFailed: 'analisi non riuscita',
     ctaTasks: 'Apri le attività', ctaDocument: 'Apri il documento', ctaSubsidies: 'Vai agli incentivi',
-    adminAiDesc: 'Carica una lettera, un PDF o un’email: il sistema identifica ente, lingua e scadenze, spiega il contenuto e prepara checklist e bozza di risposta nella lingua corretta.',
-    subsidyAiDesc: 'Descrivi il progetto: il motore lo confronta con i programmi federali e cantonali e mostra solo gli incentivi compatibili, con verifica di idoneità.',
-    openAdminAi: 'Apri Admin AI',
-    openSubsidyAi: 'Apri Subsidy AI',
-    module: 'Modulo {n}',
   },
   dashboard: {
     subtitle: 'Il quadro operativo della tua impresa: documenti, scadenze e incentivi in sintesi.',
@@ -1253,6 +1246,231 @@ export const it = {
     },
   },
 
+  // ---- Finanze (0021) ------------------------------------------------------
+  // Il modulo COMPRENDE e PREPARA il denaro: non lo muove. Nessuna stringa qui
+  // dentro promette un pagamento, una registrazione contabile o una
+  // dichiarazione IVA, perché il prodotto non fa nessuna di quelle cose.
+  //
+  // Vocabolario (§131): si parla di «dati estratti», «verificata», «categoria
+  // spesa». Le parole della contabilità — registrazione, conto, partita —
+  // resterebbero una promessa non mantenuta, quindi non compaiono.
+  //
+  // Le bandiere di qualità (`flags`) descrivono un FATTO osservato dal codice,
+  // mai un giudizio: «il totale non coincide», non «la fattura non è valida».
+  // Chi legge decide; AI-Swisse dice soltanto che cosa ha visto.
+  finance: {
+    title: 'Finanze',
+    subtitle: 'Fatture e spese che richiedono attenzione.',
+    tabs: {
+      invoices: 'Fatture',
+      expenses: 'Spese',
+    },
+    kpi: {
+      needsReview: 'Da verificare',
+      needsReviewHint: 'Documenti in cui manca un dato necessario o in cui un controllo non torna.',
+      dueSoon: 'In scadenza',
+      dueSoonHint: 'Fatture la cui scadenza cade nei prossimi giorni.',
+      overdue: 'Scadute',
+      overdueHint: 'Fatture la cui scadenza è già passata.',
+      expensesMonth: 'Spese del mese',
+      expensesMonthHint: 'Ricevute con data in questo mese.',
+      // Un importo senza valuta non è un importo: si conta, non si somma (§22).
+      noCurrency: 'valuta non indicata',
+      multiCurrencyHint: 'Gli importi non si sommano fra valute.',
+    },
+    filters: {
+      search: 'Cerca',
+      searchHint: 'La ricerca guarda fornitore, esercente, numero della fattura e titolo del documento.',
+      all: 'Tutti',
+      review: 'Verifica',
+      processing: 'Lettura',
+      supplier: 'Fornitore',
+      currency: 'Valuta',
+      source: 'Provenienza',
+      category: 'Categoria spesa',
+      dateFrom: 'Data dal',
+      dateTo: 'Data al',
+      dueFrom: 'Scadenza dal',
+      dueTo: 'Scadenza al',
+      duplicates: 'Solo possibili duplicati',
+      flagged: 'Solo con segnalazioni',
+      archived: 'Archiviati',
+      sort: 'Ordina',
+      reset: 'Rimuovi filtri',
+    },
+    sort: {
+      // L'ordine predefinito mette davanti scadute, in scadenza e da verificare:
+      // si chiama con quello che fa, non «Predefinito», che non dice niente.
+      default: 'Prima ciò che richiede attenzione',
+      dueDate: 'Scadenza più vicina',
+      amount: 'Importo più alto',
+      recent: 'Più recenti',
+      supplier: 'Fornitore',
+    },
+    list: {
+      empty: 'Qui compaiono le fatture e le spese dell’azienda.',
+      emptyHint: 'Arrivano dalla posta collegata e dai documenti che carichi.',
+      emptyFiltered: 'Nessun documento corrisponde ai filtri.',
+      loadError: 'Non è stato possibile caricare l’elenco.',
+      of: '{shown} di {total}',
+      page: 'Pagina {n}',
+      addExpense: 'Aggiungi spesa',
+      addFromDocument: 'Aggiungi da un documento',
+    },
+    row: {
+      invoiceNumber: 'N. {value}',
+      dueOn: 'Scadenza {date}',
+      expenseOn: 'Spesa del {date}',
+      noAmount: 'Importo non indicato',
+      processing: 'Lettura in corso',
+      failed: 'Lettura non riuscita',
+    },
+    detail: {
+      back: 'Torna alle finanze',
+      openDocument: 'Apri il documento',
+      source: 'Provenienza',
+      sourceEmail: 'Ricevuto via email',
+      sourceUpload: 'Caricato',
+      tabsData: 'Dati estratti',
+      tabsVat: 'IVA',
+      tabsPayment: 'Dati di pagamento',
+      tabsOrigin: 'Origine',
+      tabsTasks: 'Attività',
+      tabsAudit: 'Storico',
+      supplier: 'Fornitore',
+      supplierAddress: 'Indirizzo del fornitore',
+      vatId: 'Numero IVA',
+      invoiceNumber: 'Numero della fattura',
+      invoiceDate: 'Data della fattura',
+      dueDate: 'Scadenza',
+      expenseDate: 'Data della spesa',
+      merchant: 'Esercente',
+      amounts: 'Importi',
+      gross: 'Totale',
+      net: 'Netto',
+      vat: 'IVA',
+      currency: 'Valuta',
+      payment: 'Dati di pagamento',
+      iban: 'IBAN',
+      qrIban: 'QR-IBAN',
+      reference: 'Riferimento',
+      referenceType: 'Tipo di riferimento',
+      noPaymentData: 'Il documento non contiene dati di pagamento.',
+      // ⚠️ Questa frase è il confine del modulo (§41). Non va addolcita: un IBAN
+      // si mostra, non diventa mai un pulsante che paga.
+      paymentNotice: 'Questi dati servono a preparare il pagamento: AI-Swisse non esegue pagamenti.',
+      correctedManually: 'Corretto da una persona',
+      originalValue: 'L’analisi aveva letto: {value}',
+      extractedBy: 'Da dove viene questo dato',
+      confidence: 'Affidabilità',
+      evidence: 'Dove si legge nel documento',
+      noEvidence: 'Per questo campo non c’è una citazione dal documento.',
+      markReviewed: 'Segna come verificata',
+      markReviewedHint: 'Dichiari che i dati letti corrispondono al documento. Non esegue e non prepara nessun pagamento.',
+      reopen: 'Riapri la verifica',
+      archive: 'Archivia',
+      restore: 'Ripristina',
+      retry: 'Rileggi il documento',
+      retryHint: 'Rilegge il documento e affianca una nuova versione. Le correzioni fatte a mano restano.',
+      createTask: 'Crea attività',
+      editField: 'Modifica {field}',
+      save: 'Salva',
+      cancel: 'Annulla',
+      correctionSaved: 'Correzione salvata.',
+      highRiskField: 'Dato di pagamento: la modifica resta registrata.',
+      technical: 'Dati tecnici',
+      extractionVersion: 'Versione della lettura',
+      model: 'Modello',
+      processedAt: 'Letto il',
+      fieldSource: 'Provenienza del dato',
+    },
+    duplicate: {
+      banner: 'Possibile duplicato.',
+      explain: 'Un altro documento di questa azienda ha gli stessi dati. AI-Swisse non ne elimina e non ne unisce nessuno: la scelta è tua.',
+      compare: 'Confronta',
+      close: 'Chiudi il confronto',
+      sameNumberAndAmount: 'Stesso numero di fattura e stesso importo.',
+    },
+    // Un fatto per bandiera, nella lingua di chi legge. Le chiavi restano quelle
+    // dell'enum della 0021: cambiare lingua non cambia il dato.
+    flags: {
+      amount_mismatch: 'Netto e IVA non danno il totale indicato.',
+      vat_mismatch: 'Il totale IVA estratto non coincide con il dettaglio indicato.',
+      qr_text_mismatch: 'Il codice QR e il testo del documento indicano dati diversi.',
+      missing_currency: 'La valuta non è indicata.',
+      missing_total: 'L’importo totale non è stato trovato.',
+      missing_supplier: 'Il nome del fornitore non è stato trovato.',
+      duplicate_suspected: 'Un altro documento ha gli stessi dati.',
+      low_ocr_confidence: 'Il testo è stato letto con un’affidabilità bassa.',
+      invalid_iban: 'La cifra di controllo dell’IBAN non torna.',
+      invalid_reference: 'Il riferimento non supera il proprio controllo.',
+      reference_type_mismatch: 'Il tipo di riferimento non corrisponde al tipo di IBAN.',
+      inconsistent_due_date: 'La scadenza non è coerente con la data della fattura.',
+      ambiguous_date: 'Una data si può leggere sia come giorno.mese sia come mese.giorno.',
+      qr_not_read: 'C’è un codice QR, ma non è stato decodificato.',
+      negative_amount: 'L’importo è negativo su un documento che non è una nota di credito.',
+    },
+    // Lo storico (§87): che cosa è cambiato su questa fattura e quando. Le
+    // chiavi restano quelle dell'enum `finance_event_kind` della 0021 — cambiare
+    // lingua non cambia il fatto registrato.
+    eventKinds: {
+      created: 'Aggiunto alle finanze',
+      extraction_completed: 'Lettura completata',
+      extraction_failed: 'Lettura non riuscita',
+      corrected: 'Campo corretto',
+      reviewed: 'Dichiarato verificato',
+      reopened: 'Verifica riaperta',
+      archived: 'Archiviato',
+      restored: 'Ripristinato',
+      type_changed: 'Tipo cambiato',
+      category_changed: 'Categoria cambiata',
+      retry_requested: 'Rilettura richiesta',
+    },
+    errors: {
+      generic: 'Si è verificato un errore. Riprova.',
+      notFound: 'Documento non trovato, oppure non appartiene all’azienda attiva.',
+      cannotReview: 'Non si può dichiarare verificata: mancano il fornitore, l’importo totale o la valuta.',
+      cannotRetry: 'Questa lettura non si può ripetere adesso.',
+      correctionFailed: 'La correzione non è stata salvata.',
+      fieldNotEditable: 'Questo campo non si può correggere.',
+      // I vincoli che la 0021 solleva per nome. Il messaggio grezzo del
+      // database contiene nomi di tabelle: a chi legge non dicono niente, a chi
+      // guarda dicono troppo.
+      wrongCompany: 'Questo documento non appartiene all’azienda attiva.',
+      correctionWrongCompany: 'La correzione non appartiene all’azienda di questo documento.',
+      correctionAuthor: 'Una correzione si firma con il proprio nome.',
+      correctionAppendOnly: 'Le correzioni si aggiungono: per cambiare un valore se ne scrive una nuova.',
+      extractionImmutable: 'Una lettura non si modifica e non si cancella: se ne scrive una versione nuova.',
+      readyNeedsExtraction: 'Non si può dichiarare verificata prima che il documento sia stato letto.',
+      // Distinta da `fieldNotEditable`: quella dice che nell'interfaccia il
+      // campo non si tocca, questa che il nome di campo arrivato al database
+      // non è fra quelli previsti dal contratto.
+      fieldNotCorrectable: 'Il campo indicato non è fra quelli che si possono correggere.',
+      // Il guardiano della 0021 rifiuta una correzione malformata ALL'INGRESSO,
+      // e ognuno di questi rifiuti ha un nome. Senza queste frasi il messaggio
+      // grezzo del database — `finance_correction_bad_iban` — arriverebbe fino
+      // allo schermo: a chi legge non dice niente, e a chi guarda dice troppo.
+      correctionBadDate: 'La data non è in un formato riconoscibile.',
+      correctionBadAmount: 'L’importo non è un numero.',
+      correctionBadCurrency: 'La valuta è un codice di tre lettere, per esempio CHF.',
+      correctionBadReferenceType: 'Il tipo di riferimento non è fra quelli previsti.',
+      correctionBadIban: 'L’IBAN non supera la propria cifra di controllo.',
+      // Scatta quando il controllo preventivo era passato e qualcun altro ha
+      // aggiunto lo stesso documento nel frattempo: non è l'avviso pacato di
+      // `add.alreadyPresent`, è una corsa persa e va detto.
+      alreadyInFinance: 'Questo documento è già nelle finanze: è stato aggiunto nel frattempo.',
+      retryWhileProcessing: 'La lettura è già in corso: attendi che finisca.',
+    },
+    add: {
+      title: 'Aggiungi alle finanze',
+      chooseType: 'Che cosa stai aggiungendo',
+      chooseDocument: 'Scegli il documento',
+      confirm: 'Aggiungi',
+      added: 'Aggiunto alle finanze.',
+      alreadyPresent: 'Questo documento è già nelle finanze.',
+    },
+  },
+
   labels: {
     docTypes: {
       information: 'Comunicazione informativa',
@@ -1299,6 +1517,55 @@ export const it = {
       suppliers: 'Fornitori',
       subsidies: 'Incentivi',
       other: 'Altro',
+    },
+    // ---- Finanze (0021) ----
+    // Come sopra: nel database si salva la chiave tecnica («supplier_invoice»),
+    // qui c'è solo come la si legge.
+    financeTypes: {
+      supplier_invoice: 'Fattura fornitore',
+      receipt: 'Ricevuta',
+      credit_note: 'Nota di credito',
+    },
+    financeReview: {
+      needs_review: 'Da verificare',
+      ready: 'Verificata',
+    },
+    financeProcessing: {
+      pending: 'In attesa',
+      processing: 'Lettura in corso',
+      completed: 'Letto',
+      failed: 'Lettura non riuscita',
+    },
+    // Categorie di SPESA, non conti contabili: servono a raggruppare, non a
+    // registrare (§131).
+    expenseCategories: {
+      travel: 'Viaggi',
+      meals: 'Pasti',
+      office: 'Ufficio',
+      software: 'Software',
+      vehicle: 'Veicoli',
+      other: 'Altro',
+    },
+    // Come è stata pagata una spesa, SE il documento lo dice. Non si deduce.
+    paymentMethods: {
+      card: 'Carta',
+      cash: 'Contanti',
+      other: 'Altro',
+    },
+    referenceTypes: {
+      qrr: 'Riferimento QR',
+      scor: 'Riferimento del creditore (SCOR)',
+      non: 'Nessun riferimento',
+    },
+    // Da dove viene un singolo campo: è ciò che rende verificabile la lettura.
+    // «deterministic» è un dato ricavato da una regola che dà sempre lo stesso
+    // risultato (cifra di controllo, formato di data) — scartato «Lettura
+    // automatica», che confonderebbe la regola con il modello.
+    fieldSources: {
+      qr: 'Codice QR',
+      deterministic: 'Regola di lettura',
+      ai: 'Analisi automatica',
+      human: 'Corretto da una persona',
     },
     languages: { it: 'Italiano', de: 'Tedesco', fr: 'Francese' },
     tones: { formale: 'Formale', conciso: 'Conciso', cordiale: 'Cordiale' },
@@ -1537,6 +1804,11 @@ export const it = {
       fromDeadline: 'La scadenza del documento',
       beforeDeadline: 'Qualche giorno prima della scadenza',
       inDays: 'Fra alcuni giorni da oggi',
+      // 0021 — la scadenza di partenza è quella della FATTURA, non il
+      // termine del documento analizzato: sono due date diverse e il
+      // prodotto non sovrascrive l'una con l'altra.
+      fromFinanceDue: 'La scadenza della fattura',
+      beforeFinanceDue: 'Qualche giorno prima della scadenza della fattura',
     },
     triggers: {
       documentAnalysed: 'viene analizzato un documento',
@@ -1551,6 +1823,10 @@ export const it = {
       taskStatusChangedDesc: 'Scatta quando un\u2019attività passa da uno stato a un altro.',
       taskOverdue: 'un\u2019attività supera la scadenza',
       taskOverdueDesc: 'Scatta una volta sola, quando la scadenza è passata e l\u2019attività non è conclusa.',
+      financeNeedsReview: 'una fattura richiede attenzione',
+      financeNeedsReviewDesc: 'Scatta quando la lettura di una fattura o di una spesa si conclude e resta qualcosa da verificare.',
+      financeReady: 'una fattura è verificata',
+      financeReadyDesc: 'Scatta quando una persona dichiara che i dati letti corrispondono al documento.',
     },
     fields: {
       documentCategory: 'Categoria',
@@ -1584,6 +1860,17 @@ export const it = {
       taskAuthority: 'Ente',
       taskHasDocument: 'Ha un documento collegato',
       taskPreviousStatus: 'Stato precedente',
+      financeType: 'Tipo di documento finanziario',
+      financeSupplier: 'Fornitore',
+      financeInvoiceNumber: 'Numero della fattura',
+      financeGross: 'Importo totale',
+      financeVat: 'Importo IVA',
+      financeCurrency: 'Valuta',
+      financeDueDate: 'Scadenza della fattura',
+      financeInvoiceDate: 'Data della fattura',
+      financeReview: 'Stato della verifica',
+      financeDuplicate: 'Possibile duplicato',
+      financeFlagged: 'Ha segnalazioni',
     },
     values: {
       documentSource: { upload: 'Caricato', pasted_text: 'Testo incollato', email: 'Dalla posta' },
@@ -1669,6 +1956,7 @@ export const it = {
       urgencyNotAvailable: 'L\u2019urgenza non esiste per questo innesco: scegli una priorità.',
       unknownDueMode: 'Modalità di scadenza non valida.',
       deadlineNotAvailable: 'Questo innesco non ha una scadenza da cui partire.',
+      financeDueDateNotAvailable: 'Questa fattura non ha una scadenza da cui partire: scegli un’altra modalità.',
       assigneeInvalid: 'Responsabile non valido.',
       assigneeRequired: 'Scegli la persona a cui assegnare.',
       unknownCategory: 'Categoria non valida.',

@@ -1,0 +1,446 @@
+// ============================================================================
+// SWISS QR CODE — lettura e verifica DETERMINISTICHE del contenuto di una
+// QR-fattura svizzera.
+//
+// ⚠️ FONTE. Questo modulo è scritto contro le «Swiss Implementation Guidelines
+// for the QR-bill» di SIX, documento ufficiale, non contro una descrizione di
+// seconda mano:
+//
+//   · versione LETTA E VERIFICATA il 2026-07-27: 2.4 del 24.02.2026,
+//     valida dal 14 novembre 2026;
+//   · versione IN VIGORE alla stessa data: 2.3 del 21.11.2025, che secondo il
+//     controllo delle versioni della 2.4 «remains valid until November 2027».
+//     Le due convivono: un lettore deve saperle leggere entrambe.
+//   · https://www.six-group.com/dam/download/banking-services/standardization/
+//     qr-bill/ig-qr-bill-v2.4-en.pdf
+//
+// Fra la 2.3 e la 2.4 la STRUTTURA del codice non cambia — stesso ordine, stesse
+// occorrenze, stesso separatore — e la 2.4 lo dichiara: «does not result in any
+// technical adjustments for invoicing in Swiss francs». L'unica differenza
+// tecnica riguarda l'EURO, per la dismissione di euroSIC. Per un LETTORE le due
+// versioni si trattano quindi allo stesso modo, ed è per questo che il modulo
+// può dichiarare di supportarle entrambe senza doverle distinguere.
+//
+// Il giorno in cui una versione cambierà davvero la struttura, i due punti in
+// cui intervenire sono `SPEC` e `lineLayout()`: tutto il resto ragiona su un
+// oggetto già interpretato (§36/§178).
+//
+// ⚠️ QUESTO MODULO NON LEGGE IMMAGINI. Riceve il TESTO già decodificato dal
+// codice a barre. La decodifica dai pixel non è implementata e il motivo è
+// dichiarato in `docs/finance-operations.md`: la pipeline non ha un
+// rasterizzatore, e sul percorso dei PDF con testo il file non viene nemmeno
+// scaricato lato server. Chiedere a un modello linguistico di «leggere l'IBAN
+// dal QR» sarebbe l'esatto contrario di una decodifica deterministica.
+//
+// ⚠️ E NON ESEGUE NIENTE. Il contenuto di un codice QR è input NON FIDATO
+// (§121): qui diventa solo dati: nessun URL da aprire, nessun HTML, nessun
+// comando. Le stringhe si troncano alle lunghezze dello standard e i caratteri
+// di controllo si rimuovono.
+//
+// Modulo PORTABILE: funzioni pure, un solo import interno (le cifre di
+// controllo), nessuna dipendenza esterna.
+// ============================================================================
+import {
+  checkCreditorReference, checkIban, checkQrReference, compact, isQrIban,
+} from './checksums.ts';
+
+/**
+ * Che cosa questo lettore dichiara di sapere. È l'unico posto in cui una
+ * versione dello standard è nominata: se un domani cambia la struttura, si
+ * aggiunge qui e si dirama in `lineLayout()`.
+ */
+export const SPEC = {
+  /** Versione delle Implementation Guidelines letta per scrivere questo codice. */
+  verifiedVersion: '2.4',
+  verifiedOn: '2026-07-27',
+  /** Versione in vigore alla data di verifica. */
+  inForceVersion: '2.3',
+  /** Dalla quale la 2.4 sostituisce la 2.3. */
+  nextVersionFrom: '2026-11-14',
+  sourceUrl:
+    'https://www.six-group.com/dam/download/banking-services/standardization/qr-bill/ig-qr-bill-v2.4-en.pdf',
+  /** L'unico valore ammesso per l'intestazione. */
+  qrType: 'SPC',
+  /** Nella versione principale 02 è ammessa solo questa designazione. */
+  version: '0200',
+  /** UTF-8 ristretto al latino. */
+  coding: '1',
+  trailer: 'EPD',
+  /** Righe obbligatorie: da «QRType» fino a «Trailer» comprese. */
+  minLines: 31,
+  /** Con «Billing information» e fino a due procedure alternative. */
+  maxLines: 34,
+  /** Le uniche ammesse dallo standard: non è una scelta del prodotto. */
+  currencies: ['CHF', 'EUR'] as const,
+  /**
+   * Il tetto di lunghezza del contenuto, separatori compresi (capitolo 6 delle
+   * guideline). Oltre, il codice non sarebbe generabile — quindi un testo più
+   * lungo non è una QR-fattura, è qualcos'altro che le somiglia.
+   */
+  maxPayloadChars: 997,
+} as const;
+
+export type QrAddressType = 'S' | 'K';
+
+export interface QrAddress {
+  /**
+   * `S` indirizzo strutturato (l'unico ammesso dalla 2.3 in poi),
+   * `K` indirizzo combinato: non più ammesso per le fatture NUOVE, ma le
+   * fatture emesse prima restano in circolazione e vanno lette. Rifiutarle
+   * significherebbe non saper leggere documenti perfettamente legittimi.
+   */
+  addressType: QrAddressType | null;
+  name: string | null;
+  /** Indirizzo strutturato: la via. Combinato: la prima riga per esteso. */
+  streetOrLine1: string | null;
+  /** Indirizzo strutturato: il numero civico. Combinato: CAP e località. */
+  buildingOrLine2: string | null;
+  postalCode: string | null;
+  town: string | null;
+  country: string | null;
+}
+
+export type QrReferenceType = 'QRR' | 'SCOR' | 'NON';
+
+export interface SwissQrBill {
+  qrType: string;
+  version: string;
+  coding: string;
+  iban: string;
+  ibanIsQr: boolean;
+  creditor: QrAddress;
+  ultimateCreditor: QrAddress;
+  /** Stringa decimale così come scritta nel codice, oppure `null` se assente. */
+  amount: string | null;
+  currency: string;
+  ultimateDebtor: QrAddress;
+  referenceType: QrReferenceType | null;
+  reference: string | null;
+  unstructuredMessage: string | null;
+  trailer: string;
+  billingInformation: string | null;
+  alternativeProcedures: string[];
+}
+
+/**
+ * Codici di violazione. Sono CHIAVI: la frase la scrive l'interfaccia nella
+ * lingua di chi legge. Ognuno corrisponde a una regola scritta nelle
+ * Implementation Guidelines, non a un'opinione su come dovrebbe essere fatta
+ * una fattura.
+ */
+export type QrIssueCode =
+  | 'not_swiss_qr'            // l'intestazione non è «SPC»
+  | 'too_few_lines'
+  | 'too_many_lines'
+  | 'unsupported_version'
+  | 'unsupported_coding'
+  | 'missing_trailer'
+  | 'iban_bad_format'
+  | 'iban_bad_checksum'
+  | 'iban_country_not_allowed'  // ammessi solo CH e LI
+  | 'creditor_name_missing'
+  | 'creditor_address_type_invalid'
+  | 'creditor_country_missing'
+  | 'ultimate_creditor_filled'  // il gruppo deve restare vuoto
+  | 'currency_not_allowed'      // solo CHF ed EUR
+  | 'amount_invalid'
+  | 'amount_out_of_range'
+  | 'reference_type_invalid'
+  | 'reference_required_for_qr_iban'   // QR-IBAN → deve esserci QRR
+  | 'qrr_requires_qr_iban'
+  | 'qrr_only_chf'
+  | 'reference_bad_checksum'
+  | 'reference_bad_format'
+  | 'reference_present_with_non'       // con NON il riferimento va lasciato vuoto
+  | 'additional_info_too_long';        // Ustrd + StrdBkgInf ≤ 140 in totale
+
+export interface QrIssue {
+  code: QrIssueCode;
+  /** Il campo interessato, per poterlo indicare a schermo. */
+  field?: string;
+  /**
+   * Una violazione BLOCCANTE rende il contenuto inaffidabile: i dati non vanno
+   * usati come fatti. Una non bloccante va dichiarata ma non impedisce la
+   * lettura — un indirizzo combinato è fuori standard per le fatture nuove e
+   * perfettamente leggibile.
+   */
+  blocking: boolean;
+}
+
+export type QrParseResult =
+  | { ok: true; bill: SwissQrBill; issues: QrIssue[] }
+  | { ok: false; issues: QrIssue[] };
+
+// ---------------------------------------------------------------------------
+// Igiene dell'input
+// ---------------------------------------------------------------------------
+
+/**
+ * Toglie i caratteri di controllo e taglia alla lunghezza dello standard.
+ * Il codice QR è scritto da un terzo: nulla di ciò che contiene deve poter
+ * diventare qualcosa di diverso da testo.
+ */
+function clean(value: string | undefined, maxLength: number): string | null {
+  if (value === undefined) return null;
+  // eslint-disable-next-line no-control-regex
+  const stripped = value.replace(/[\u0000-\u001F\u007F]/g, '').trim();
+  if (!stripped) return null;
+  return stripped.slice(0, maxLength);
+}
+
+/**
+ * Dove sta ogni elemento. È l'unico punto che dipende dalla VERSIONE dello
+ * standard: la 2.3 e la 2.4 condividono questa disposizione.
+ */
+function lineLayout() {
+  return {
+    qrType: 0, version: 1, coding: 2, iban: 3,
+    creditor: 4,            // 4..10 — AdrTp, Name, Line1, Line2, PstCd, TwnNm, Ctry
+    ultimateCreditor: 11,   // 11..17
+    amount: 18, currency: 19,
+    ultimateDebtor: 20,     // 20..26
+    referenceType: 27, reference: 28,
+    unstructuredMessage: 29, trailer: 30,
+    billingInformation: 31, alternative: 32,
+  };
+}
+
+function readAddress(lines: string[], at: number): QrAddress {
+  const type = clean(lines[at], 1);
+  return {
+    addressType: type === 'S' || type === 'K' ? type : type === null ? null : (type as QrAddressType),
+    name: clean(lines[at + 1], 70),
+    streetOrLine1: clean(lines[at + 2], 70),
+    buildingOrLine2: clean(lines[at + 3], 70),
+    postalCode: clean(lines[at + 4], 16),
+    town: clean(lines[at + 5], 35),
+    country: clean(lines[at + 6], 2),
+  };
+}
+
+function addressIsEmpty(a: QrAddress): boolean {
+  return !a.addressType && !a.name && !a.streetOrLine1 && !a.buildingOrLine2
+    && !a.postalCode && !a.town && !a.country;
+}
+
+/** L'importo secondo lo standard: decimale, punto, due decimali, senza zeri iniziali. */
+function checkAmount(raw: string | null, issues: QrIssue[]): string | null {
+  if (raw === null) return null;              // l'importo è facoltativo (§ elemento 19)
+  if (!/^\d{1,9}(\.\d{1,2})?$/.test(raw)) {
+    issues.push({ code: 'amount_invalid', field: 'amount', blocking: true });
+    return null;
+  }
+  const value = Number(raw);
+  // Da 0.01 a 999'999'999.99, come prescrive la tabella degli elementi.
+  if (!(value >= 0.01 && value <= 999_999_999.99)) {
+    issues.push({ code: 'amount_out_of_range', field: 'amount', blocking: true });
+    return null;
+  }
+  return raw;
+}
+
+// ---------------------------------------------------------------------------
+// Il lettore
+// ---------------------------------------------------------------------------
+
+/**
+ * Legge il contenuto testuale di uno Swiss QR Code.
+ *
+ * ⚠️ NON «AGGIUSTA» NIENTE. Se qualcosa non torna lo dichiara e, se è
+ * bloccante, si rifiuta di restituire i dati. Un codice QR letto a metà e
+ * presentato come completo sarebbe peggio di un codice non letto: da un lato
+ * ci sarebbe un IBAN accanto a un importo, dall'altro nessuno saprebbe che uno
+ * dei due non è affidabile.
+ */
+export function parseSwissQrPayload(payload: string | null | undefined): QrParseResult {
+  const issues: QrIssue[] = [];
+  const text = String(payload ?? '');
+  if (!text.trim()) return { ok: false, issues: [{ code: 'not_swiss_qr', blocking: true }] };
+
+  // §4.1.4 — il ritorno a capo è CR+LF oppure LF, ma dev'essere lo stesso in
+  // tutto il documento. Si normalizza in lettura: accettare entrambi non
+  // indebolisce nulla, perché la struttura è posizionale.
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  // L'ultimo ritorno a capo è eliminato per specifica: una riga vuota finale
+  // sarebbe comunque tollerata, ma non deve contare come elemento.
+  while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
+
+  const L = lineLayout();
+
+  if (clean(lines[L.qrType], 3) !== SPEC.qrType) {
+    return { ok: false, issues: [{ code: 'not_swiss_qr', field: 'qrType', blocking: true }] };
+  }
+  if (lines.length < SPEC.minLines) {
+    return { ok: false, issues: [{ code: 'too_few_lines', blocking: true }] };
+  }
+  if (lines.length > SPEC.maxLines) {
+    issues.push({ code: 'too_many_lines', blocking: true });
+  }
+
+  const version = clean(lines[L.version], 4) ?? '';
+  if (version !== SPEC.version) {
+    // ⚠️ NON bloccante, e la scelta è deliberata: una versione futura della
+    // versione PRINCIPALE 02 resta leggibile con questa disposizione, e
+    // rifiutarla renderebbe il prodotto cieco il giorno dell'aggiornamento
+    // invece che semplicemente prudente. Si dichiara e si va avanti.
+    issues.push({ code: 'unsupported_version', field: 'version', blocking: false });
+  }
+  const coding = clean(lines[L.coding], 1) ?? '';
+  if (coding !== SPEC.coding) {
+    issues.push({ code: 'unsupported_coding', field: 'coding', blocking: false });
+  }
+
+  const trailer = clean(lines[L.trailer], 3) ?? '';
+  if (trailer !== SPEC.trailer) {
+    issues.push({ code: 'missing_trailer', field: 'trailer', blocking: true });
+  }
+
+  // ---- Conto -------------------------------------------------------------
+  const iban = compact(lines[L.iban]);
+  const ibanCheck = checkIban(iban);
+  // ⚠️ L'ORDINE DEI CONTROLLI DECIDE IL MESSAGGIO, e il messaggio è metà del
+  // valore di questa funzione. Un IBAN tedesco è di 22 caratteri: verificando
+  // prima la lunghezza fissa a 21 si otterrebbe «formato non valido», che manda
+  // a cercare un refuso di trascrizione. Il problema vero è un altro — su una
+  // QR-fattura sono ammessi soltanto conti svizzeri e liechtensteinesi — e va
+  // detto per primo.
+  if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(iban)) {
+    issues.push({ code: 'iban_bad_format', field: 'iban', blocking: true });
+  } else if (!['CH', 'LI'].includes(iban.slice(0, 2))) {
+    issues.push({ code: 'iban_country_not_allowed', field: 'iban', blocking: true });
+  } else if (iban.length !== 21) {
+    issues.push({ code: 'iban_bad_format', field: 'iban', blocking: true });
+  } else if (!ibanCheck.valid) {
+    issues.push({ code: 'iban_bad_checksum', field: 'iban', blocking: true });
+  }
+  const ibanIsQr = isQrIban(iban);
+
+  // ---- Creditore ---------------------------------------------------------
+  const creditor = readAddress(lines, L.creditor);
+  if (!creditor.name) {
+    issues.push({ code: 'creditor_name_missing', field: 'creditor.name', blocking: true });
+  }
+  if (creditor.addressType !== 'S' && creditor.addressType !== 'K') {
+    issues.push({ code: 'creditor_address_type_invalid', field: 'creditor.addressType', blocking: true });
+  }
+  if (!creditor.country) {
+    issues.push({ code: 'creditor_country_missing', field: 'creditor.country', blocking: false });
+  }
+
+  // Il gruppo «creditore finale» è riservato a un uso futuro e non va compilato.
+  const ultimateCreditor = readAddress(lines, L.ultimateCreditor);
+  if (!addressIsEmpty(ultimateCreditor)) {
+    issues.push({ code: 'ultimate_creditor_filled', field: 'ultimateCreditor', blocking: false });
+  }
+
+  // ---- Importo e valuta --------------------------------------------------
+  const amount = checkAmount(clean(lines[L.amount], 12), issues);
+  const currency = (clean(lines[L.currency], 3) ?? '').toUpperCase();
+  if (!(SPEC.currencies as readonly string[]).includes(currency)) {
+    issues.push({ code: 'currency_not_allowed', field: 'currency', blocking: true });
+  }
+
+  const ultimateDebtor = readAddress(lines, L.ultimateDebtor);
+
+  // ---- Riferimento -------------------------------------------------------
+  // È la parte in cui gli errori sono più facili e più cari: un riferimento
+  // sbagliato manda un pagamento nel posto giusto senza che nessuno lo
+  // riconosca, e il fornitore lo solleciterà lo stesso.
+  const rawType = (clean(lines[L.referenceType], 4) ?? '').toUpperCase();
+  const referenceType: QrReferenceType | null =
+    rawType === 'QRR' || rawType === 'SCOR' || rawType === 'NON' ? rawType : null;
+  if (referenceType === null) {
+    issues.push({ code: 'reference_type_invalid', field: 'referenceType', blocking: true });
+  }
+  const referenceRaw = clean(lines[L.reference], 27);
+  const reference = referenceRaw ? compact(referenceRaw) : null;
+
+  if (referenceType === 'QRR') {
+    // Un riferimento QR va usato SOLO con un QR-IBAN: è scritto nella tabella
+    // degli elementi ed è ripetuto nelle regole di lettura per i programmi.
+    if (!ibanIsQr) issues.push({ code: 'qrr_requires_qr_iban', field: 'reference', blocking: true });
+    // ⚠️ «Solo per fatture in CHF» compare nella versione 2.4 e NON nella 2.3,
+    // che è quella in vigore. Una fattura in euro con riferimento QR emessa
+    // oggi è ancora conforme: segnalarla come errore bloccante vorrebbe dire
+    // rifiutare un documento valido in nome di una regola non ancora entrata in
+    // vigore. Si dichiara e basta.
+    if (currency && currency !== 'CHF') {
+      issues.push({ code: 'qrr_only_chf', field: 'reference', blocking: false });
+    }
+    const check = checkQrReference(reference);
+    if (!check.valid) {
+      issues.push({
+        code: check.error === 'bad_checksum' ? 'reference_bad_checksum' : 'reference_bad_format',
+        field: 'reference', blocking: true,
+      });
+    }
+  } else if (referenceType === 'SCOR') {
+    const check = checkCreditorReference(reference);
+    if (!check.valid) {
+      issues.push({
+        code: check.error === 'bad_checksum' ? 'reference_bad_checksum' : 'reference_bad_format',
+        field: 'reference', blocking: true,
+      });
+    }
+  } else if (referenceType === 'NON') {
+    // Con «nessun riferimento» l'elemento deve restare vuoto.
+    if (reference) issues.push({ code: 'reference_present_with_non', field: 'reference', blocking: false });
+  }
+
+  // Un QR-IBAN senza riferimento QR è un errore del documento: quel conto
+  // esiste proprio per essere abbinato a un riferimento.
+  if (ibanIsQr && referenceType !== 'QRR') {
+    issues.push({ code: 'reference_required_for_qr_iban', field: 'referenceType', blocking: true });
+  }
+
+  // ---- Informazioni aggiuntive -------------------------------------------
+  const unstructuredMessage = clean(lines[L.unstructuredMessage], 140);
+  const billingInformation = clean(lines[L.billingInformation], 140);
+  if ((unstructuredMessage?.length ?? 0) + (billingInformation?.length ?? 0) > 140) {
+    issues.push({ code: 'additional_info_too_long', field: 'additionalInformation', blocking: false });
+  }
+
+  const alternativeProcedures = lines
+    .slice(L.alternative, L.alternative + 2)
+    .map((l) => clean(l, 100))
+    .filter((l): l is string => !!l);
+
+  if (issues.some((i) => i.blocking)) return { ok: false, issues };
+
+  return {
+    ok: true,
+    issues,
+    bill: {
+      qrType: SPEC.qrType,
+      version,
+      coding,
+      iban: ibanCheck.normalized,
+      ibanIsQr,
+      creditor,
+      ultimateCreditor,
+      amount,
+      currency,
+      ultimateDebtor,
+      referenceType,
+      reference,
+      unstructuredMessage,
+      trailer,
+      billingInformation,
+      alternativeProcedures,
+    },
+  };
+}
+
+/**
+ * L'indirizzo del creditore su una riga sola, per mostrarlo.
+ * Rende l'indirizzo strutturato e quello combinato nello stesso modo: chi
+ * legge non deve sapere quale forma aveva il codice.
+ */
+export function formatQrAddress(a: QrAddress): string | null {
+  if (a.addressType === 'K') {
+    return [a.streetOrLine1, a.buildingOrLine2].filter(Boolean).join(', ') || null;
+  }
+  const street = [a.streetOrLine1, a.buildingOrLine2].filter(Boolean).join(' ');
+  const place = [a.postalCode, a.town].filter(Boolean).join(' ');
+  return [street, place, a.country].filter(Boolean).join(', ') || null;
+}

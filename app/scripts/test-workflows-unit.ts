@@ -34,7 +34,7 @@ import {
   eventBackoffSeconds,
 } from '../supabase/functions/_shared/automation/contract.ts';
 import {
-  ACTIONS, OPERATORS, OPERATORS_BY_TYPE, TRIGGERS, actionsForTrigger, findAction,
+  ACTIONS, AUTOMATION_EVENT_TYPES, OPERATORS, OPERATORS_BY_TYPE, TRIGGERS, actionsForTrigger, findAction,
   findField, findTrigger, isAutoExecutable,
   type WorkflowAction, type WorkflowCondition,
 } from '../supabase/functions/_shared/automation/registry.ts';
@@ -93,7 +93,19 @@ console.log(`${B}AI-Swisse — Automazioni: regole, offline${X}`);
 section('1 · Il registro: nessun innesco e nessuna azione dichiarati a vuoto');
 // ===========================================================================
 {
-  ok(TRIGGERS.length === 6, 'sei inneschi dichiarati', String(TRIGGERS.length));
+  // ⚠️ NON SI FISSA PIÙ IL NUMERO. La versione precedente pretendeva «sei
+  // inneschi», e con i due di Finanze (0021) è diventata rossa senza che nulla
+  // fosse rotto: un test che conta invece di verificare una proprietà va
+  // aggiornato a ogni aggiunta legittima, e chi lo aggiorna finisce per
+  // cambiare il numero senza guardare che cosa è stato aggiunto.
+  // Quello che conta davvero è che ogni innesco DICHIARATO esista anche
+  // nell'enum che il database accetta: un innesco offerto nel menu e ignoto al
+  // database si può comporre e non scatterà mai.
+  ok(TRIGGERS.length === AUTOMATION_EVENT_TYPES.length,
+    'ogni tipo di evento del database ha il suo innesco nel registro, e viceversa',
+    `registro ${TRIGGERS.length}, enum ${AUTOMATION_EVENT_TYPES.length}`);
+  ok(TRIGGERS.every((t) => (AUTOMATION_EVENT_TYPES as readonly string[]).includes(t.key)),
+    'nessun innesco nomina un evento che il database non conosce');
   ok(ACTIONS.length === 6, 'sei azioni dichiarate', String(ACTIONS.length));
 
   let allFieldsSane = true, allOperatorsSane = true;

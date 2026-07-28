@@ -29,48 +29,19 @@ interface BaseData {
 
 export interface OverviewData extends BaseData {
   /**
-   * TUTTE le analisi dell'azienda. Le usa la sola Dashboard, che è una pagina
-   * di statistiche: i suoi grafici dicono «quanti documenti per tipo, lingua,
-   * urgenza» e per dirlo davvero devono contarli tutti. Troncare la lista
-   * renderebbe i numeri sbagliati invece che lenti — e un numero sbagliato è
-   * peggio di un caricamento lungo.
-   * La Panoramica NON le carica: usa `useHome`.
+   * TUTTE le analisi dell'azienda. Servono ai grafici, che dicono «quanti
+   * documenti per tipo, lingua, urgenza» e per dirlo davvero devono contarli
+   * tutti. Troncare la lista renderebbe i numeri sbagliati invece che lenti — e
+   * un numero sbagliato è peggio di un caricamento lungo.
+   * ⚠️ Fino al 2026-07-28 esisteva anche `useHome`, una versione ridotta per la
+   * Panoramica: due caricatori quasi uguali per due pagine quasi uguali. Fuse
+   * le pagine, è rimasto un caricatore solo.
    */
   analyses: DocumentAnalysis[];
   cases: SubsidyCase[];
 }
 
-/** Ciò che serve alla Panoramica: attività, documenti da guardare, incentivi. */
-export function useHome() {
-  const { activeCompanyId, activeCompany, companyProfile } = useCompany();
-  const companyId = activeCompanyId as string;
-  const { locale } = useI18n();
-
-  return useAsync<BaseData>(async () => {
-    const [todo, overdue, inProgress, completed, attention, documentCount, programs] = await Promise.all([
-      taskService.list(companyId, { view: 'todo', limit: HOME_TASKS }),
-      // `limit: 1` perché di queste interessa solo quante sono: chiedere venti
-      // righe per contarle sarebbe traffico speso per niente.
-      taskService.list(companyId, { view: 'overdue', limit: 1 }),
-      taskService.list(companyId, { view: 'all', status: 'in_progress', limit: 1 }),
-      taskService.list(companyId, { view: 'completed', limit: 1 }),
-      documentHubService.attention(companyId, 6),
-      documentHubService.activeCount(companyId),
-      programService.listActive(locale),
-    ]);
-    const matches = matchPrograms(buildMatchProfile(activeCompany, companyProfile), programs);
-    return {
-      tasks: todo.items,
-      counts: {
-        open: todo.total, overdue: overdue.total,
-        inProgress: inProgress.total, completed: completed.total,
-      },
-      attention, documentCount, matches,
-    };
-  }, [companyId, activeCompany?.id, companyProfile, locale]);
-}
-
-/** Ciò che serve alla Dashboard: come sopra, più le statistiche documentali. */
+/** Tutto ciò che la Panoramica mostra: attività, documenti, incentivi, statistiche. */
 export function useOverview() {
   const { activeCompanyId, activeCompany, companyProfile } = useCompany();
   const companyId = activeCompanyId as string;

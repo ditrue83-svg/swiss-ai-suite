@@ -145,3 +145,20 @@ verify_jwt = false
 
 [functions.notifications-worker]
 verify_jwt = false
+
+# ---------------------------------------------------------------------------
+# Finance Operations (0021). Stesso chiamante anomalo di sempre:
+#
+#   finance-worker  lo chiama uno scheduler, non una persona. Autenticato nel
+#                   codice con `FINANCE_WORKER_SECRET`, confrontato a tempo
+#                   costante: senza segreto 403, con quello sbagliato 403.
+#
+# ⚠️ Il segreto va impostato PRIMA del deploy (Edge Functions → Secrets):
+# senza, la funzione risponde 503 CONFIG_MISSING e la coda non viene mai letta —
+# le fatture restano in `pending` e nessuno se ne accorge, perché l'applicazione
+# continua a funzionare in tutto il resto.
+# ⚠️ Questo file NON viene applicato al progetto hosted: al deploy va passato
+# `--no-verify-jwt` anche a questa funzione, come alle altre elencate sopra.
+# ---------------------------------------------------------------------------
+[functions.finance-worker]
+verify_jwt = false

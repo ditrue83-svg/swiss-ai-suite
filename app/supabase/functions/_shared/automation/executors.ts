@@ -153,6 +153,17 @@ function planCreateTask(ctx: ActionContext, config: CreateTaskConfig): ActionPla
     dueDate = deadlineValue ? addDays(deadlineValue, -Math.abs(Number(config.dueDateDays ?? 0))) : null;
   } else if (config.dueDate === 'in_days') {
     dueDate = addDays(todayISO(ctx.now), Math.abs(Number(config.dueDateDays ?? 0)));
+  } else if (config.dueDate === 'from_finance_due_date'
+             || config.dueDate === 'before_finance_due_date') {
+    // La scadenza di PAGAMENTO della fattura, che non è il termine
+    // amministrativo del documento (§47). Se non c'è, l'attività nasce senza
+    // scadenza: è il fatto, non un ripiego.
+    const financeDue = ctx.facts['finance.due_date'];
+    const value = financeDue && financeDue.known && typeof financeDue.value === 'string'
+      ? financeDue.value : null;
+    dueDate = value && config.dueDate === 'before_finance_due_date'
+      ? addDays(value, -Math.abs(Number(config.dueDateDays ?? 0)))
+      : value;
   }
 
   const linkEntity = config.linkEntity !== false;
