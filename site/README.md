@@ -29,8 +29,15 @@ Per vederlo in locale: `python3 -m http.server 8745 --directory dist`
 
 ## Ordine delle sezioni, e perché
 
-promessa → come funziona → esempio → moduli → verificabilità → lingue →
+promessa → come funziona → esempio → **i tre movimenti** (cosa arriva, cosa
+diventa, cosa trova) → **automazioni** → verificabilità → lingue →
 **quello che è giusto sapere** → prezzi → contatti.
+
+Dal 2026-07-29 la sezione moduli non dice più «due moduli»: l'app ne ha
+dieci di aree, e elencarle sarebbe un manuale. La forma vera sono tre
+movimenti; Documenti è la memoria dentro «cosa diventa», le Automazioni
+hanno una sezione propria perché cambiano categoria al prodotto — da
+strumento che apri a cosa che lavora mentre non ci sei.
 
 I limiti stanno **prima** dei prezzi di proposito: chi legge una cifra deve già
 sapere che cosa il prodotto non fa. Metterli dopo sarebbe far firmare prima e
@@ -49,12 +56,22 @@ compaiono:
 - «dati in Svizzera» — il progetto Supabase è a Francoforte (`eu-central-1`),
   quindi si scrive «in Europa», e lo si dice in una sezione dedicata invece che
   in fondo alla pagina;
-- «ricerca automatica nel registro IDI» — Zefix è deployato ma inerte;
-- **le funzioni dei piani alti dell'applicazione** — posta amministrativa
-  automatica, workflow, monitoraggio continuo, gestione multi-cliente. Sono
-  elencate in `PricingPage.tsx` ma **non esistono**: metterle in vetrina
-  sarebbe vendere un prodotto che non c'è. Per questo la sezione prezzi non
-  elenca le funzioni dei piani.
+- «ricerca automatica nel registro IDI» — ⚠️ aggiornamento 2026-07-29: Zefix è
+  stato **provato contro l'API viva il 2026-07-28** (credenziali UFRC), quindi
+  il divieto non è più «non funziona» ma «non ancora raccontato»: se lo si
+  vuole in vetrina, va deciso apposta, non dedotto da qui;
+- «in tempo reale» per l'Inbox — la cadenza vera è il cron dei 15 minuti,
+  e il push Pub/Sub è rimandato per scelta;
+- «Outlook / Microsoft 365» — l'adapter è completo ma i secret non sono
+  impostati: l'app lo dichiara non configurato, la vetrina non lo nomina;
+- **gestione multi-cliente per fiduciarie** — il modello dati regge, la porta
+  non c'è: resta «direzione di sviluppo» negli assi dei prezzi.
+
+Fino al 2026-07-29 questo elenco vietava anche «posta amministrativa
+automatica» e «workflow»: oggi **esistono** (Inbox su cron da 15 minuti,
+Automazioni 0020 con worker da 5 minuti) e la vetrina li racconta — coi loro
+limiti dichiarati nella sezione limiti (solo Google, collegamento assistito,
+sei inneschi e sei azioni tutte reversibili).
 
 L'**esempio di risultato** è ricostruito con dati fittizi ed è etichettato come
 tale. Non è uno screenshot: una schermata reale mostrerebbe la ragione sociale e

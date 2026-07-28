@@ -66,7 +66,7 @@ export const CONTENT = {
   it: {
     title: 'AI-Swisse — la posta amministrativa diventa cose da fare',
     description:
-      'AI-Swisse legge lettere e PDF di enti svizzeri in italiano, tedesco e francese: estrae ente, scadenze e importi citando il punto esatto del documento, prepara la checklist e una bozza di risposta. E trova gli incentivi per cui la tua impresa è pertinente.',
+      'AI-Swisse legge da solo la posta amministrativa della casella collegata — e i documenti che carichi: estrae ente, scadenze e importi citando il punto esatto del documento, prepara la checklist e una bozza di risposta. E trova gli incentivi per cui la tua impresa è pertinente.',
     tagline: 'per le PMI svizzere',
     mainNav: 'Navigazione principale',
     nav: { how: 'Come funziona', trust: 'Verificabilità', pricing: 'Prezzi', contact: 'Contatti' },
@@ -75,14 +75,14 @@ export const CONTENT = {
     demo: 'Chiedi una dimostrazione',
     skip: 'Vai al contenuto',
 
-    heroTitle: 'La posta dell’amministrazione, [[tradotta in cose da fare]].',
+    heroTitle: 'La posta dell’amministrazione [[arriva già letta]].',
     heroLead:
-      'Un sollecito dell’AFC, un controllo del Comune, una richiesta della cassa di compensazione. AI-Swisse legge il documento — anche in tedesco o in francese — e ti dice chi scrive, entro quando, quanto, e cosa devi fare. Ogni informazione è legata al punto del testo da cui è stata ricavata.',
+      'Un sollecito dell’AFC, un controllo del Comune, una richiesta della cassa di compensazione. Collegata la casella, AI-Swisse legge da solo la posta che arriva — anche in tedesco o in francese — e ti dice chi scrive, entro quando, quanto e cosa devi fare, citando il punto del testo da cui lo sa. Un documento in mano? Lo carichi.',
     heroNote: 'Interfaccia e analisi in italiano, tedesco e francese.',
 
     howTitle: 'Come funziona',
     how: [
-      { n: '1', t: 'Carichi il documento', d: 'Un PDF, una foto della lettera, oppure incolli il testo di un’email.' },
+      { n: '1', t: 'La posta arriva — o la carichi', d: 'Dalla casella collegata, ogni quarto d’ora. Oppure un PDF, una foto della lettera, il testo incollato di un’email.' },
       { n: '2', t: 'Il sistema lo legge', d: 'Estrae ente, oggetto, scadenza, importi e azioni richieste, con la citazione di ogni informazione.' },
       { n: '3', t: 'Ottieni la checklist', d: 'Le cose da fare, spuntabili. E una bozza di risposta da rileggere e correggere.' },
       { n: '4', t: 'Le scadenze restano', d: 'Ogni termine finisce nello scadenziario, con i giorni che mancano.' },
@@ -113,22 +113,34 @@ export const CONTENT = {
       verify: 'Il documento non indica l’importo dell’eventuale multa.',
     },
 
-    modulesTitle: 'Due moduli, un unico posto',
+    modulesTitle: 'Cosa arriva, cosa diventa, cosa trova',
+    modulesLead: 'Un unico posto: ogni parte legge ciò che le altre hanno già capito.',
     modules: [
       {
-        kicker: 'Modulo 1',
-        name: 'Admin AI',
-        lead: 'Documenti amministrativi',
+        kicker: 'Inbox · Admin AI',
+        name: 'Quello che arriva',
+        lead: 'La posta e i documenti',
         points: [
+          'La casella collegata viene letta ogni quarto d’ora: le comunicazioni che chiedono attenzione diventano documenti analizzati, da sole.',
           'Riconosce l’ente che scrive e il tipo di comunicazione: sollecito, controllo, richiesta di documenti, decisione.',
           'Estrae scadenza, importi e numeri di riferimento, e per ognuno mostra la frase del documento da cui vengono.',
-          'Prepara la checklist delle cose da fare e una bozza di risposta, nella lingua e nel tono che scegli.',
-          'Legge PDF, lettere scansionate e anche una foto fatta col telefono.',
+          'Prepara la checklist e una bozza di risposta; legge PDF, lettere scansionate e foto fatte col telefono.',
         ],
       },
       {
-        kicker: 'Modulo 2',
-        name: 'Subsidy AI',
+        kicker: 'Attività · Calendario · Documenti',
+        name: 'Quello che diventa',
+        lead: 'Lavoro ordinato, memoria che resta',
+        points: [
+          'Ogni termine finisce nello scadenziario, con i giorni che mancano e le attività assegnate a chi le deve fare.',
+          'Il calendario è una proiezione delle attività: non un secondo elenco da tenere allineato a mano.',
+          'File originale, testo estratto e analisi restano separati e mai sovrascritti: l’archivio è la memoria su cui tutto il resto lavora.',
+          'Le Finanze leggono fatture e ricevute dall’archivio, i Contratti riportano date e condizioni: letture, non un altro posto dove scrivere.',
+        ],
+      },
+      {
+        kicker: 'Subsidy AI',
+        name: 'Quello che trova',
         lead: 'Incentivi e contributi',
         points: [
           'Descrivi il progetto a parole tue: il sistema individua gli ambiti e cerca i programmi pertinenti.',
@@ -137,6 +149,16 @@ export const CONTENT = {
           'Avvisa quando la domanda va presentata prima di iniziare i lavori: è l’errore che costa il contributo.',
         ],
       },
+    ],
+
+    autoTitle: 'Automazioni: regole, non magia',
+    autoLead:
+      'Quando succede una cosa, se valgono le condizioni, allora fai questo. Il motore gira ogni cinque minuti sui dati già capiti: nessuna chiamata AI per eseguire una regola, e nessuna regola si accende da sola.',
+    autoPoints: [
+      'Sei azioni possibili, tutte reversibili: creare un’attività, assegnarla, cambiarne la priorità, classificare un documento, aggiungere un’etichetta, mandare una notifica.',
+      'Sei punti d’innesco: un’analisi completata, una categoria che cambia, un messaggio che arriva, un’attività che nasce, che cambia stato o che supera la scadenza.',
+      'Ogni cosa fatta da una regola porta la provenienza «automazione»: si vede sempre che cosa è successo, e per mano di quale regola.',
+      'Le regole le imposta chi amministra l’azienda; chi collabora le vede e ne segue gli effetti.',
     ],
 
     trustTitle: 'Perché puoi controllare quello che leggi',
@@ -172,6 +194,8 @@ export const CONTENT = {
     limitsTitle: 'Quello che è giusto sapere prima',
     limits: [
       'AI-Swisse è uno strumento di supporto amministrativo: non sostituisce la consulenza legale, fiscale o fiduciaria. Quando il sistema non è sicuro, lo dichiara e invita a una verifica.',
+      'L’Inbox oggi legge caselle Google, in sola lettura: non invia, non risponde, non modifica nulla. Microsoft non è configurato, e il collegamento della casella si attiva insieme a noi.',
+      'La sincronizzazione con calendari esterni non è ancora attiva: scadenziario e calendario vivono dentro AI-Swisse.',
       'Il catalogo incentivi copre oggi i programmi della Confederazione e del Cantone Ticino. Gli altri cantoni non sono ancora coperti.',
       'I dati sono ospitati in Europa (Francoforte), non in Svizzera. Per analizzare un documento, il testo estratto viene trasmesso al fornitore del modello linguistico. È spiegato nell’informativa sulla privacy.',
       'Le condizioni, gli importi e le scadenze dei programmi di incentivo vanno sempre verificati sulla fonte ufficiale prima di procedere: il prodotto indica la fonte e la data dell’ultimo controllo.',
@@ -258,7 +282,7 @@ export const CONTENT = {
   de: {
     title: 'AI-Swisse — Behördenpost wird zu konkreten Aufgaben',
     description:
-      'AI-Swisse liest Briefe und PDF von Schweizer Behörden auf Deutsch, Französisch und Italienisch: erkennt Absender, Fristen und Beträge und belegt jede Angabe mit der Stelle im Dokument, erstellt die Checkliste und einen Antwortentwurf. Und findet die Fördermittel, für die Ihr Unternehmen relevant ist.',
+      'AI-Swisse liest die Behördenpost des verbundenen Postfachs von selbst — und die Dokumente, die Sie hochladen: erkennt Absender, Fristen und Beträge und belegt jede Angabe mit der Stelle im Dokument, erstellt die Checkliste und einen Antwortentwurf. Und findet die Fördermittel, für die Ihr Unternehmen relevant ist.',
     tagline: 'für Schweizer KMU',
     mainNav: 'Hauptnavigation',
     nav: { how: 'So funktioniert es', trust: 'Nachprüfbarkeit', pricing: 'Preise', contact: 'Kontakt' },
@@ -267,14 +291,14 @@ export const CONTENT = {
     demo: 'Vorführung anfragen',
     skip: 'Zum Inhalt springen',
 
-    heroTitle: 'Behördenpost, [[übersetzt in konkrete Aufgaben]].',
+    heroTitle: 'Behördenpost kommt [[schon gelesen]] an.',
     heroLead:
-      'Eine Mahnung der ESTV, eine Kontrolle der Gemeinde, eine Anfrage der Ausgleichskasse. AI-Swisse liest das Dokument — auch auf Italienisch oder Französisch — und sagt Ihnen, wer schreibt, bis wann, wie viel und was zu tun ist. Jede Angabe ist mit der Stelle im Text verknüpft, aus der sie stammt.',
+      'Eine Mahnung der ESTV, eine Kontrolle der Gemeinde, eine Anfrage der Ausgleichskasse. Ist das Postfach verbunden, liest AI-Swisse die eingehende Post von selbst — auch auf Italienisch oder Französisch — und sagt Ihnen, wer schreibt, bis wann, wie viel und was zu tun ist, mit der Stelle im Text als Beleg. Ein Dokument zur Hand? Sie laden es hoch.',
     heroNote: 'Oberfläche und Analyse auf Deutsch, Französisch und Italienisch.',
 
     howTitle: 'So funktioniert es',
     how: [
-      { n: '1', t: 'Dokument hochladen', d: 'Ein PDF, ein Foto des Briefes, oder Sie fügen den Text einer E-Mail ein.' },
+      { n: '1', t: 'Die Post kommt an — oder Sie laden sie hoch', d: 'Aus dem verbundenen Postfach, alle Viertelstunde. Oder ein PDF, ein Foto des Briefs, eingefügter E-Mail-Text.' },
       { n: '2', t: 'Das System liest es', d: 'Es erfasst Behörde, Betreff, Frist, Beträge und verlangte Schritte — mit Belegstelle zu jeder Angabe.' },
       { n: '3', t: 'Sie erhalten die Checkliste', d: 'Die Aufgaben, zum Abhaken. Und einen Antwortentwurf zum Prüfen und Anpassen.' },
       { n: '4', t: 'Die Fristen bleiben', d: 'Jeder Termin landet im Fristenkalender, mit den verbleibenden Tagen.' },
@@ -305,22 +329,34 @@ export const CONTENT = {
       verify: 'Das Dokument nennt die Höhe einer allfälligen Busse nicht.',
     },
 
-    modulesTitle: 'Zwei Module, ein Ort',
+    modulesTitle: 'Was ankommt, was daraus wird, was es findet',
+    modulesLead: 'Ein Ort: Jeder Teil liest, was die anderen schon verstanden haben.',
     modules: [
       {
-        kicker: 'Modul 1',
-        name: 'Admin AI',
-        lead: 'Behördliche Dokumente',
+        kicker: 'Inbox · Admin AI',
+        name: 'Was ankommt',
+        lead: 'Post und Dokumente',
         points: [
+          'Das verbundene Postfach wird alle Viertelstunde gelesen: Mitteilungen, die Aufmerksamkeit verlangen, werden von selbst zu analysierten Dokumenten.',
           'Erkennt die schreibende Behörde und die Art des Schreibens: Mahnung, Kontrolle, Aktenanforderung, Verfügung.',
           'Erfasst Frist, Beträge und Referenznummern — und zeigt zu jeder Angabe den Satz im Dokument, aus dem sie kommt.',
-          'Erstellt die Checkliste der Aufgaben und einen Antwortentwurf, in der Sprache und Tonalität Ihrer Wahl.',
-          'Liest PDF, eingescannte Briefe und auch ein mit dem Handy aufgenommenes Foto.',
+          'Erstellt Checkliste und Antwortentwurf; liest PDF, eingescannte Briefe und Handyfotos.',
         ],
       },
       {
-        kicker: 'Modul 2',
-        name: 'Subsidy AI',
+        kicker: 'Aufgaben · Kalender · Dokumente',
+        name: 'Was daraus wird',
+        lead: 'Geordnete Arbeit, bleibendes Gedächtnis',
+        points: [
+          'Jeder Termin landet im Fristenkalender, mit den verbleibenden Tagen und Aufgaben, die den Zuständigen zugewiesen sind.',
+          'Der Kalender ist eine Projektion der Aufgaben: keine zweite Liste, die man von Hand abgleicht.',
+          'Originaldatei, extrahierter Text und Analyse bleiben getrennt und werden nie überschrieben: das Archiv ist das Gedächtnis, auf dem alles andere arbeitet.',
+          'Die Finanzen lesen Rechnungen und Belege aus dem Archiv, die Verträge zeigen Daten und Konditionen: Lesarten, kein weiterer Ort zum Schreiben.',
+        ],
+      },
+      {
+        kicker: 'Subsidy AI',
+        name: 'Was es findet',
         lead: 'Fördermittel und Beiträge',
         points: [
           'Beschreiben Sie das Vorhaben in eigenen Worten: das System erkennt die Bereiche und sucht die relevanten Programme.',
@@ -329,6 +365,16 @@ export const CONTENT = {
           'Es warnt, wenn das Gesuch vor Beginn der Arbeiten einzureichen ist: der Fehler, der den Beitrag kostet.',
         ],
       },
+    ],
+
+    autoTitle: 'Automatisierung: Regeln, keine Magie',
+    autoLead:
+      'Wenn etwas geschieht, und die Bedingungen stimmen, dann tu dies. Der Motor läuft alle fünf Minuten auf bereits verstandenen Daten: kein KI-Aufruf, um eine Regel auszuführen — und keine Regel schaltet sich von selbst ein.',
+    autoPoints: [
+      'Sechs mögliche Aktionen, alle umkehrbar: Aufgabe erstellen, zuweisen, Priorität ändern, Dokument klassifizieren, Etikett hinzufügen, Benachrichtigung senden.',
+      'Sechs Auslöser: eine abgeschlossene Analyse, eine geänderte Kategorie, eine eingetroffene Nachricht, eine Aufgabe, die entsteht, den Status wechselt oder die Frist überschreitet.',
+      'Alles, was eine Regel tut, trägt die Herkunft «Automation»: man sieht stets, was geschehen ist — und durch welche Regel.',
+      'Regeln richtet ein, wer das Unternehmen verwaltet; das Team sieht sie und ihre Wirkung.',
     ],
 
     trustTitle: 'Warum Sie das Gelesene überprüfen können',
@@ -364,6 +410,8 @@ export const CONTENT = {
     limitsTitle: 'Was Sie vorher wissen sollten',
     limits: [
       'AI-Swisse ist ein Hilfsmittel für administrative Aufgaben: es ersetzt keine rechtliche, steuerliche oder treuhänderische Beratung. Wenn das System unsicher ist, weist es darauf hin und empfiehlt eine Prüfung.',
+      'Die Inbox liest heute Google-Postfächer, nur lesend: sie sendet nichts, antwortet nicht, verändert nichts. Microsoft ist nicht konfiguriert, und die Anbindung des Postfachs wird gemeinsam mit uns eingerichtet.',
+      'Die Synchronisierung mit externen Kalendern ist noch nicht aktiv: Fristenkalender und Kalender leben in AI-Swisse.',
       'Der Förderkatalog umfasst heute die Programme des Bundes und des Kantons Tessin. Weitere Kantone sind noch nicht abgedeckt.',
       'Die Daten liegen in Europa (Frankfurt), nicht in der Schweiz. Für die Analyse wird der extrahierte Text an den Anbieter des Sprachmodells übermittelt. Die Datenschutzerklärung erklärt es im Detail.',
       'Bedingungen, Beträge und Fristen der Förderprogramme sind vor dem Weitergehen stets an der offiziellen Quelle zu prüfen: das Produkt nennt die Quelle und das Datum der letzten Kontrolle.',
@@ -450,7 +498,7 @@ export const CONTENT = {
   fr: {
     title: 'AI-Swisse — le courrier administratif devient une liste de tâches',
     description:
-      'AI-Swisse lit les courriers et PDF des autorités suisses en français, allemand et italien : il identifie l’expéditeur, les délais et les montants en citant le passage exact du document, prépare la checklist et un projet de réponse. Et trouve les subventions pertinentes pour votre entreprise.',
+      'AI-Swisse lit de lui-même le courrier administratif de la boîte reliée — et les documents que vous chargez : il identifie l’expéditeur, les délais et les montants en citant le passage exact du document, prépare la checklist et un projet de réponse. Et trouve les subventions pertinentes pour votre entreprise.',
     tagline: 'pour les PME suisses',
     mainNav: 'Navigation principale',
     nav: { how: 'Fonctionnement', trust: 'Vérifiabilité', pricing: 'Tarifs', contact: 'Contact' },
@@ -459,14 +507,14 @@ export const CONTENT = {
     demo: 'Demander une démonstration',
     skip: 'Aller au contenu',
 
-    heroTitle: 'Le courrier de l’administration, [[traduit en tâches concrètes]].',
+    heroTitle: 'Le courrier administratif arrive [[déjà lu]].',
     heroLead:
-      'Un rappel de l’AFC, un contrôle de la commune, une demande de la caisse de compensation. AI-Swisse lit le document — même en allemand ou en italien — et vous dit qui écrit, pour quand, combien, et ce qu’il faut faire. Chaque information renvoie au passage du texte dont elle est issue.',
+      'Un rappel de l’AFC, un contrôle de la commune, une demande de la caisse de compensation. La boîte reliée, AI-Swisse lit de lui-même le courrier qui arrive — même en allemand ou en italien — et vous dit qui écrit, pour quand, combien et ce qu’il faut faire, en citant le passage du texte dont il le tient. Un document sous la main ? Vous le chargez.',
     heroNote: 'Interface et analyse en français, allemand et italien.',
 
     howTitle: 'Fonctionnement',
     how: [
-      { n: '1', t: 'Vous chargez le document', d: 'Un PDF, une photo du courrier, ou vous collez le texte d’un e-mail.' },
+      { n: '1', t: 'Le courrier arrive — ou vous le chargez', d: 'Depuis la boîte reliée, tous les quarts d’heure. Ou un PDF, une photo du courrier, le texte collé d’un e-mail.' },
       { n: '2', t: 'Le système le lit', d: 'Il extrait l’autorité, l’objet, le délai, les montants et les actions demandées, en citant chaque information.' },
       { n: '3', t: 'Vous obtenez la checklist', d: 'Les tâches, à cocher. Et un projet de réponse à relire et corriger.' },
       { n: '4', t: 'Les échéances restent', d: 'Chaque délai rejoint l’échéancier, avec les jours restants.' },
@@ -497,30 +545,52 @@ export const CONTENT = {
       verify: 'Le document n’indique pas le montant d’une éventuelle amende.',
     },
 
-    modulesTitle: 'Deux modules, un seul endroit',
+    modulesTitle: 'Ce qui arrive, ce que ça devient, ce qu’il trouve',
+    modulesLead: 'Un seul endroit : chaque partie lit ce que les autres ont déjà compris.',
     modules: [
       {
-        kicker: 'Module 1',
-        name: 'Admin AI',
-        lead: 'Documents administratifs',
+        kicker: 'Inbox · Admin AI',
+        name: 'Ce qui arrive',
+        lead: 'Le courrier et les documents',
         points: [
-          'Identifie l’autorité qui écrit et le type de courrier : rappel, contrôle, demande de pièces, décision.',
+          'La boîte reliée est lue tous les quarts d’heure : les communications qui demandent attention deviennent des documents analysés, d’elles-mêmes.',
+          'Identifie l’autorité qui écrit et le type de courrier : rappel, contrôle, demande de pièces, décision.',
           'Extrait le délai, les montants et les numéros de référence, et montre pour chacun la phrase du document dont il provient.',
-          'Prépare la checklist des tâches et un projet de réponse, dans la langue et le ton que vous choisissez.',
-          'Lit les PDF, les courriers scannés et même une photo prise au téléphone.',
+          'Prépare la checklist et un projet de réponse ; lit les PDF, les courriers scannés et les photos prises au téléphone.',
         ],
       },
       {
-        kicker: 'Module 2',
-        name: 'Subsidy AI',
-        lead: 'Subventions et contributions',
+        kicker: 'Tâches · Calendrier · Documents',
+        name: 'Ce que ça devient',
+        lead: 'Travail ordonné, mémoire qui reste',
         points: [
-          'Décrivez le projet avec vos mots : le système en dégage les domaines et cherche les programmes pertinents.',
-          'Il distingue deux choses souvent confondues : la pertinence du programme et votre éligibilité.',
-          'Il vérifie les conditions une par une et indique celles qui restent à contrôler, au lieu de livrer un simple verdict.',
-          'Il alerte quand la demande doit être déposée avant le début des travaux : l’erreur qui coûte la contribution.',
+          'Chaque délai rejoint l’échéancier, avec les jours restants et les tâches attribuées à qui doit les faire.',
+          'Le calendrier est une projection des tâches : pas une seconde liste à aligner à la main.',
+          'Fichier original, texte extrait et analyse restent séparés, jamais écrasés : les archives sont la mémoire sur laquelle tout le reste travaille.',
+          'Les Finances lisent factures et justificatifs depuis les archives, les Contrats en rapportent dates et conditions : des lectures, pas un autre endroit où écrire.',
         ],
       },
+      {
+        kicker: 'Subsidy AI',
+        name: 'Ce qu’il trouve',
+        lead: 'Subventions et contributions',
+        points: [
+          'Décrivez le projet avec vos mots : le système en dégage les domaines et cherche les programmes pertinents.',
+          'Il distingue deux choses souvent confondues : la pertinence du programme et votre éligibilité.',
+          'Il vérifie les conditions une par une et indique celles qui restent à contrôler, au lieu de livrer un simple verdict.',
+          'Il alerte quand la demande doit être déposée avant le début des travaux : l’erreur qui coûte la contribution.',
+        ],
+      },
+    ],
+
+    autoTitle: 'Automatisations : des règles, pas de magie',
+    autoLead:
+      'Quand quelque chose arrive, si les conditions valent, alors fais ceci. Le moteur tourne toutes les cinq minutes sur des données déjà comprises : aucun appel à l’IA pour exécuter une règle — et aucune règle ne s’active d’elle-même.',
+    autoPoints: [
+      'Six actions possibles, toutes réversibles : créer une tâche, l’attribuer, changer sa priorité, classer un document, ajouter une étiquette, envoyer une notification.',
+      'Six déclencheurs : une analyse terminée, une catégorie qui change, un message qui arrive, une tâche qui naît, change d’état ou dépasse son échéance.',
+      'Tout ce qu’une règle fait porte la provenance « automatisation » : on voit toujours ce qui s’est passé, et par quelle règle.',
+      'Les règles sont définies par qui administre l’entreprise ; l’équipe les voit et en suit les effets.',
     ],
 
     trustTitle: 'Pourquoi vous pouvez vérifier ce que vous lisez',
@@ -556,6 +626,8 @@ export const CONTENT = {
     limitsTitle: 'Ce qu’il est juste de savoir avant',
     limits: [
       'AI-Swisse est un outil de soutien administratif : il ne remplace pas le conseil juridique, fiscal ou fiduciaire. Lorsque le système n’est pas sûr, il le signale et recommande une vérification.',
+      'L’Inbox lit aujourd’hui les boîtes Google, en lecture seule : elle n’envoie rien, ne répond pas, ne modifie rien. Microsoft n’est pas configuré, et le raccordement de la boîte s’active avec nous.',
+      'La synchronisation avec des calendriers externes n’est pas encore active : échéancier et calendrier vivent dans AI-Swisse.',
       'Le catalogue des subventions couvre aujourd’hui les programmes de la Confédération et du canton du Tessin. Les autres cantons ne sont pas encore couverts.',
       'Les données sont hébergées en Europe (Francfort), pas en Suisse. Pour analyser un document, le texte extrait est transmis au fournisseur du modèle de langage. La politique de confidentialité l’explique en détail.',
       'Les conditions, montants et délais des programmes doivent toujours être vérifiés à la source officielle avant de poursuivre : le produit indique la source et la date du dernier contrôle.',

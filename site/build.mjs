@@ -18,7 +18,8 @@
 //
 // ORDINE DELLE SEZIONI
 // promessa → come funziona → esempio → moduli → verificabilità → lingue →
-// quello che è giusto sapere → prezzi → contatti.
+// quello che è giusto sapere → prezzi → contatti. Le Automazioni stanno
+// dopo i movimenti: si automatizza ciò che si è già capito e ordinato.
 // I limiti stanno PRIMA dei prezzi di proposito: chi legge una cifra deve
 // sapere già che cosa il prodotto non fa. Metterli dopo sarebbe far firmare
 // prima e leggere poi.
@@ -429,23 +430,40 @@ ${topbar(locale, c, { onLanding: true })}
         <p class="ms-dossier-note">${esc(e.note)}</p>
       </section>
 
+      <!-- Non più «due moduli»: tre movimenti — cosa arriva, cosa diventa,
+           cosa trova. È la forma vera del prodotto di oggi, senza elencare
+           dieci voci di menu come un manuale. -->
       <section class="ms-section" id="modules">
         ${secHead('03', c.modulesTitle)}
-        <div class="grid-2 ms-r">${modules}
+        <p class="ms-sec-lead">${esc(c.modulesLead)}</p>
+        <div class="grid-3 ms-r">${modules}
         </div>
+      </section>
+
+      <!-- Le Automazioni hanno una sezione propria: sono ciò che cambia
+           categoria al prodotto — da strumento che apri a cosa che lavora
+           mentre non ci sei. Ogni affermazione qui viene da docs/
+           workflow-automation.md: sei azioni, quattro inneschi, cinque
+           minuti, nessuna regola che si accende da sola. -->
+      <section class="ms-section" id="automations">
+        ${secHead('04', c.autoTitle)}
+        <p class="ms-sec-lead">${esc(c.autoLead)}</p>
+        <ul class="ticks ms-auto ms-r">
+          ${c.autoPoints.map((x) => `<li>${icon('check')}<span>${esc(x)}</span></li>`).join('\n          ')}
+        </ul>
       </section>
 
       <!-- Registro B: banda elevata a piena larghezza. Le quattro schede
            restano quattro schede discrete, ciascuna col proprio bordo. -->
       <section class="ms-band" id="trust">
-        ${secHead('04', c.trustTitle)}
+        ${secHead('05', c.trustTitle)}
         <p class="ms-sec-lead">${esc(c.trustLead)}</p>
         <div class="grid-2 ms-r">${trust}
         </div>
       </section>
 
       <section class="ms-section ms-langs" id="languages">
-        ${secHead('05', c.langTitle)}
+        ${secHead('06', c.langTitle)}
         <p class="ms-sec-lead">${esc(c.langLead)}</p>
       </section>
 
@@ -454,7 +472,7 @@ ${topbar(locale, c, { onLanding: true })}
            d'inchiostro della pagina — il momento visivamente più solenne è
            l'elenco dei limiti, di proposito. -->
       <section class="ms-invert" id="limits">
-        ${secHead('06', c.limitsTitle)}
+        ${secHead('07', c.limitsTitle)}
         <ol class="ms-limits ms-r">
           ${limits}
         </ol>
@@ -465,7 +483,7 @@ ${topbar(locale, c, { onLanding: true })}
            Sta fra l'inversione dei limiti e due sezioni chiare: è il gradino
            che rompe la fila. -->
       <section class="ms-band" id="pricing">
-        ${secHead('07', c.pricingTitle)}
+        ${secHead('08', c.pricingTitle)}
         <p class="ms-sec-lead">${esc(c.pricingLead)}</p>
         <h3 class="kicker">${esc(c.pricingAxesTitle)}</h3>
         <div class="axes ms-r">${axes}
@@ -475,7 +493,7 @@ ${topbar(locale, c, { onLanding: true })}
       </section>
 
       <section class="ms-section" id="contact">
-        ${secHead('08', c.contactTitle)}
+        ${secHead('09', c.contactTitle)}
         <p class="ms-sec-lead">${esc(c.contactLead)}</p>
         <div class="contact-grid ms-r">
           <div class="contact-item">
