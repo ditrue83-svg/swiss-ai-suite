@@ -20,6 +20,7 @@
     "db:bundle": "node scripts/bundle-migrations.mjs",
     "check:auth": "node --env-file=.env.test scripts/check-auth-config.mjs",
     "i18n:coverage": "node scripts/i18n-coverage.mjs",
+    "i18n:typography": "node scripts/i18n-typography.mjs",
     "test:uid": "node --import tsx scripts/test-uid.ts",
     "test:validate": "node --import tsx scripts/test-validate.ts",
     "test:pipeline": "node --env-file=.env.test --import tsx scripts/test-pipeline.ts",
