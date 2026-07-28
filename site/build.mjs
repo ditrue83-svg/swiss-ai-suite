@@ -18,10 +18,13 @@
 //
 // ORDINE DELLE SEZIONI
 // promessa → come funziona → esempio → moduli → verificabilità → lingue →
-// quello che è giusto sapere → prezzi → chi c'è dietro → contatti.
+// quello che è giusto sapere → prezzi → contatti.
 // I limiti stanno PRIMA dei prezzi di proposito: chi legge una cifra deve
 // sapere già che cosa il prodotto non fa. Metterli dopo sarebbe far firmare
 // prima e leggere poi.
+// «Chi c'è dietro» è stata TOLTA su decisione del titolare (2026-07-28):
+// i dati della persona restano nell'impressum e nell'informativa, dove la
+// legge li chiede, non in vetrina.
 // ============================================================================
 import { mkdirSync, writeFileSync, readFileSync, copyFileSync, cpSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -35,6 +38,24 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 const OUT = join(ROOT, 'dist');
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * L'EVIDENZIATORE È LA FIRMA DELLA PAGINA.
+ *
+ * Il prodotto ha un gesto proprio e vero: la frase del documento da cui viene
+ * un'informazione resta marcata in giallo. Qui quel gesto diventa il modo in
+ * cui la vetrina marca le proprie parole — non un ornamento inventato, ma la
+ * stessa cosa che il prodotto fa, applicata a sé stesso.
+ *
+ * Nei testi si scrive `[[parole]]`; il marcatore NON cambia una parola, quindi
+ * la linea editoriale resta quella. Regola per non abusarne: **una sola
+ * evidenziazione per schermata**, e solo su parole che dicono ciò che il
+ * prodotto fa davvero. Oggi sono due in tutta la pagina: la promessa nel
+ * titolo e la chiusura.
+ */
+const hl = (s) => esc(s).replace(/\[\[(.+?)\]\]/g, '<span class="ms-hl">$1</span>');
+/** Lo stesso testo senza marcatori: per `<title>`, meta e anteprima social. */
+const plain = (s) => String(s).replace(/\[\[|\]\]/g, '');
 
 /**
  * Data di riferimento della costruzione. Serve alla data delle pagine legali e
@@ -84,6 +105,8 @@ const ICONS = {
   logo: '<path d="M12 3v18M3 12h18"/>',
   check: '<path d="M4.5 12.5 9 17l10.5-10.5"/>',
   arrow: '<path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"/>',
+  // la freccia della trasformazione: dalla frase marcata all'azione che ne esce
+  arrowDown: '<path d="M12 5v13M6.5 11.5 12 18l5.5-6.5"/>',
   arrowLeft: '<path d="M19 12H6M11.5 6.5 5 12l6.5 5.5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3c-2.5 2.5-2.5 15 0 18M12 3c2.5 2.5 2.5 15 0 18"/>',
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
@@ -170,6 +193,8 @@ function topbar(locale, c, { onLanding, legalKey }) {
   // percorso relativo: `../index.html` avrebbe riportato un lettore tedesco
   // sulla home italiana.
   const home = onLanding ? '#main' : 'index.html';
+  // La barra resta chiara anche in home: dà al campo blu il suo bordo
+  // superiore e tiene il marchio identico a quello dell'applicazione.
   return `    <header class="topbar">
       <a class="brand" href="${home}">
         <span class="brand-mark" aria-hidden="true">${icon('logo')}</span>
@@ -179,7 +204,6 @@ function topbar(locale, c, { onLanding, legalKey }) {
         <a href="#how">${esc(c.nav.how)}</a>
         <a href="#trust">${esc(c.nav.trust)}</a>
         <a href="#pricing">${esc(c.nav.pricing)}</a>
-        <a href="#about">${esc(c.nav.about)}</a>
         <a href="#contact">${esc(c.nav.contact)}</a>
       </nav>` : ''}
       <div class="topactions">
@@ -189,7 +213,7 @@ function topbar(locale, c, { onLanding, legalKey }) {
     </header>`;
 }
 
-function footer(locale, c, legalKey) {
+function footer(locale, c, legalKey, onField) {
   // Percorsi RELATIVI senza prefisso: le pagine legali di ogni lingua stanno
   // nella cartella della lingua. Con `../` un lettore tedesco finiva su
   // `dist/datenschutz.html`, che non esiste.
@@ -198,7 +222,10 @@ function footer(locale, c, legalKey) {
         (k) => `<a href="${LEGAL_SLUG[locale][k]}.html">${esc(c.footerLegal[k])}</a>`,
       ).join('<span class="foot-sep" aria-hidden="true">·</span>')
     : '';
-  return `    <footer class="foot">
+  // In home il piè di pagina prosegue il campo blu della chiusura: sta fuori
+  // da <main>, quindi la classe gliela dà il generatore — un selettore
+  // fratello non lo raggiungerebbe.
+  return `    <footer class="foot${onField ? ' on-field' : ''}">
       <p>${esc(c.footerNote)}</p>
       <p class="foot-links">
         <a href="${APP_URL}">${esc(c.footerApp)}</a>
@@ -312,16 +339,42 @@ ${head(locale, { title: c.title, description: c.description, canonical, extraLd:
 ${topbar(locale, c, { onLanding: true })}
 
     <main id="main">
-      <!-- L'H1 è l'elemento LCP: nessuna classe di rivelazione, nessuna
-           opacità. È dipinto visibile al primo frame, in entrambi i temi. -->
+      <!-- L'HERO È IL CAMPO: l'unica superficie di colore pieno della pagina,
+           il blu dell'applicazione. Magiq ha il suo giallo; questo è il nostro,
+           ed è lo stesso colore dei pulsanti dell'app — chi arriva di qui e
+           crea un account non cambia prodotto.
+           L'H1 è l'elemento LCP: nessuna classe di rivelazione, nessuna
+           opacità. È dipinto visibile al primo frame, in entrambi i temi.
+           A destra LA PROVA: la stessa cosa che il prodotto fa, in miniatura —
+           una frase marcata nella lettera e l'azione che ne esce. Non è un
+           mockup inventato di un'applicazione che non esiste: è etichettata
+           come esempio e le sue date si ricalcolano come quelle del dossier. -->
       <section class="ms-hero">
-        <p class="ms-kicker">${esc(c.tagline)}</p>
-        <h1>${esc(c.heroTitle)}</h1>
-        <p class="ms-lead">${esc(c.heroLead)}</p>
-        <div class="ms-actions">
-          ${ctaPair(c, { primary: 'signup' })}
+        <div class="ms-hero-text">
+          <p class="ms-kicker">${esc(c.tagline)}</p>
+          <h1>${hl(c.heroTitle)}</h1>
+          <p class="ms-lead">${esc(c.heroLead)}</p>
+          <div class="ms-actions">
+            ${ctaPair(c, { primary: 'signup' })}
+          </div>
+          <p class="ms-hero-meta">${icon('globe')}<span>${esc(c.heroNote)}</span></p>
         </div>
-        <p class="ms-hero-meta">${icon('globe')}<span>${esc(c.heroNote)}</span></p>
+        <div class="ms-proof" aria-hidden="true">
+          <div class="ms-proof-tag">${esc(e.label)}</div>
+          <div class="ms-proof-paper">
+            <div class="ms-proof-from">${esc(e.letterFrom.split('\n')[0])}</div>
+            <p class="ms-proof-line">…${esc(e.letterBefore.trim().split('\n').pop())}</p>
+            <p class="ms-proof-line"><mark data-testo="${esc(c.example.letterHighlight)}">${esc(e.letterHighlight)}</mark></p>
+          </div>
+          <div class="ms-proof-arrow">${icon('arrowDown')}</div>
+          <div class="ms-proof-task">
+            <span class="ms-proof-check">${icon('check')}</span>
+            <div>
+              <div class="ms-proof-action">${esc(e.action)}</div>
+              <div class="ms-proof-when mock-when" data-scadenza="${GIORNI_ESEMPIO}" data-formato="${esc(c.example.when)}">${esc(e.when)}</div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="ms-section" id="how">
@@ -407,7 +460,11 @@ ${topbar(locale, c, { onLanding: true })}
         </ol>
       </section>
 
-      <section class="ms-section" id="pricing">
+      <!-- I prezzi sulla banda elevata: la sezione che dice «il listino non
+           c'è ancora» non deve anche sembrare la più smorta della pagina.
+           Sta fra l'inversione dei limiti e due sezioni chiare: è il gradino
+           che rompe la fila. -->
+      <section class="ms-band" id="pricing">
         ${secHead('07', c.pricingTitle)}
         <p class="ms-sec-lead">${esc(c.pricingLead)}</p>
         <h3 class="kicker">${esc(c.pricingAxesTitle)}</h3>
@@ -417,25 +474,8 @@ ${topbar(locale, c, { onLanding: true })}
         <p class="center"><a class="btn btn-primary" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(c.demo)}">${esc(c.pricingCta)} ${icon('arrow')}</a></p>
       </section>
 
-      <section class="ms-section" id="about">
-        ${secHead('08', c.aboutTitle)}
-        <p class="ms-sec-lead">${esc(c.aboutLead)}</p>
-        <div class="about ms-r">
-          <div class="about-photo" aria-hidden="true">AC</div>
-          <div class="about-main">
-            <div class="about-name">${esc(c.aboutName)}</div>
-${[c.aboutRole, c.aboutPlace].some(valorizzato) ? `            <div class="about-meta">
-${[c.aboutRole, c.aboutPlace].filter(valorizzato).map((x) => `              <span>${esc(x)}</span>`).join('\n')}
-            </div>
-` : ''}
-            <p class="about-why">${esc(c.aboutWhy)}</p>
-            <p class="about-contact">${esc(c.aboutContactLine)} <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
-          </div>
-        </div>
-      </section>
-
       <section class="ms-section" id="contact">
-        ${secHead('09', c.contactTitle)}
+        ${secHead('08', c.contactTitle)}
         <p class="ms-sec-lead">${esc(c.contactLead)}</p>
         <div class="contact-grid ms-r">
           <div class="contact-item">
@@ -472,10 +512,11 @@ ${valorizzato(c.contactPhone) ? `          <div class="contact-item">
         </div>
       </section>
 
-      <!-- Chiusura sul registro B, senza numero: non è una voce del
-           documento, è la sua ultima pagina. -->
-      <section class="ms-band ms-cta">
-        <h2>${esc(c.ctaTitle)}</h2>
+      <!-- Chiusura sul campo, senza numero: non è una voce del documento, è
+           la sua ultima pagina. La pagina si apre e si chiude nello stesso
+           blu — due sole comparse, così il colore resta un evento. -->
+      <section class="ms-cta-field ms-cta">
+        <h2>${hl(c.ctaTitle)}</h2>
         <p class="ms-sec-lead">${esc(c.ctaLead)}</p>
         <p class="ms-actions">
           ${ctaPair(c, { primary: 'signup' })}
@@ -483,7 +524,7 @@ ${valorizzato(c.contactPhone) ? `          <div class="contact-item">
       </section>
     </main>
 
-${footer(locale, c)}
+${footer(locale, c, null, true)}
 ${scriptDate(locale)}
 ${scriptReveal()}
   </body>
@@ -507,15 +548,17 @@ function scriptDate(locale) {
   const gsp = locale === 'fr' ? '\\u202f' : '';
   return `    <script>
       (function () {
-        var el = document.querySelector('.mock-when'); if (!el) return;
-        var g = +el.dataset.scadenza, d = new Date(Date.now() + g * 86400000);
+        var els = document.querySelectorAll('.mock-when'); if (!els.length) return;
+        var g = +els[0].dataset.scadenza, d = new Date(Date.now() + g * 86400000);
         var due = function (n) { return String(n).padStart(2, '0'); };
         var breve = due(d.getDate()) + '.' + due(d.getMonth() + 1) + '.' + d.getFullYear();
         var mesi = ${mesi}, gg = d.getDate();
         var esteso = ${locale === 'de' ? "gg + '. ' + mesi[d.getMonth()] + ' ' + d.getFullYear()"
           : locale === 'fr' ? "(gg === 1 ? '1er' : gg) + ' ' + mesi[d.getMonth()] + ' ' + d.getFullYear()"
           : "gg + ' ' + mesi[d.getMonth()] + ' ' + d.getFullYear()"};
-        el.textContent = el.dataset.formato.replace('{data}', breve).replace('{giorni}', g);
+        els.forEach(function (el) {
+          el.textContent = el.dataset.formato.replace('{data}', breve).replace('{giorni}', g);
+        });
         document.querySelectorAll('[data-testo]').forEach(function (n) {
           var t = n.dataset.testo.replace('{dataLettera}', esteso);
           n.textContent = n.tagName === 'BLOCKQUOTE' ? '\u00ab${gsp}' + t + '${gsp}\u00bb' : t;
@@ -647,7 +690,7 @@ function ogPage() {
           <div class="og-sub">${esc(c.tagline)}</div>
         </div>
       </div>
-      <div class="og-claim">${esc(c.heroTitle)}</div>
+      <div class="og-claim">${esc(plain(c.heroTitle))}</div>
       <div class="og-foot">
         <span>ai-swisse.com</span>
         <span class="og-langs"><span>Italiano</span><span>·</span><span>Deutsch</span><span>·</span><span>Français</span></span>

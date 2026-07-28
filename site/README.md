@@ -30,11 +30,15 @@ Per vederlo in locale: `python3 -m http.server 8745 --directory dist`
 ## Ordine delle sezioni, e perché
 
 promessa → come funziona → esempio → moduli → verificabilità → lingue →
-**quello che è giusto sapere** → prezzi → chi c'è dietro → contatti.
+**quello che è giusto sapere** → prezzi → contatti.
 
 I limiti stanno **prima** dei prezzi di proposito: chi legge una cifra deve già
 sapere che cosa il prodotto non fa. Metterli dopo sarebbe far firmare prima e
 leggere poi.
+
+«Chi c'è dietro» è stata **tolta su decisione del titolare** (2026-07-28): i
+dati della persona restano nell'impressum, nell'informativa e nel foro
+competente delle condizioni — dove la legge li chiede — non in vetrina.
 
 ## Regole sui contenuti
 
@@ -66,6 +70,50 @@ si differenzieranno** — che sono veri oggi — e porta al contatto.
 
 Di conseguenza il blocco JSON-LD **non contiene `offers`**: dire una cosa alla
 persona e un'altra al motore di ricerca è comunque dire una cosa falsa.
+
+## Il campo e la firma
+
+La pagina ha **un solo colore pieno e un solo gesto**, e vengono entrambi da
+cose che esistono già.
+
+**Il campo** è `--ms-field`, `hsl(207 88% 24%)`: il blu dei pulsanti
+dell'applicazione portato alla profondità che serve perché il bianco ci stia
+sopra (10,2:1). È **fisso nei due temi**, come la carta della lettera, e
+compare **due volte**: la sezione d'apertura e quella di chiusura, piè di
+pagina compreso. In mezzo la pagina è di carta.
+
+⚠️ **Sul campo l'azione è bianca, non blu**: l'accento dell'app su questo
+fondo fa 1,9:1. Primaria bianca piena, secondaria a contorno col bordo al
+45% (3,35:1, sopra la soglia dei controlli).
+
+⚠️ **La barra superiore resta chiara anche in home, ed è una decisione.**
+Tingerla di blu era più d'effetto — la pagina si apriva tutta nel colore,
+come fa magiq.ch col giallo — ma un campo senza bordo superiore è uno sfondo,
+non un blocco; e soprattutto l'applicazione ha la barra chiara e il marchio
+blu su bianco (verificato su `app.ai-swisse.com`). Invertire il marchio qui
+avrebbe dato due lockup diversi allo stesso prodotto.
+
+**La firma** è l'evidenziatore. Il prodotto marca in giallo la frase del
+documento da cui viene un'informazione; la vetrina marca le proprie parole
+allo stesso modo. Si scrive `[[parole]]` in `content.mjs` — il marcatore non
+cambia una parola, quindi la linea editoriale resta quella — e `hl()` in
+`build.mjs` lo trasforma in `<span class="ms-hl">`; `plain()` lo toglie per
+`<title>`, meta e anteprima social.
+
+Il giallo ha **due forme e ognuna significa una cosa sola**:
+
+| forma | dove | significato |
+|---|---|---|
+| riempimento (`<mark>`) | solo dentro la carta | «questo è ripreso alla lettera da un documento» |
+| tratto (`.ms-hl`) | solo sui titoli | «questa è una promessa nostra» |
+
+Riempire un titolo produrrebbe una cancellatura, non una marcatura — e farebbe
+passare una nostra affermazione per una prova citata, cioè la confusione che
+il prodotto esiste per eliminare. **Regola: una sola evidenziazione per
+schermata.** In tutta la pagina sono due, `heroTitle` e `ctaTitle`.
+
+Il tratto usa `text-decoration-skip-ink: auto`: con `none` la coda della «g»
+di «Aufgaben» finiva dentro il giallo, e bianco su giallo fa 1,22:1.
 
 ## Il disegno: «Protocollo», e lo strato --ms-*
 
@@ -156,7 +204,7 @@ Via Rovello 32, 6942 Savosa (Canton Ticino), Svizzera
 ```
 
 Stanno in `content.mjs` e compaiono nell'impressum, come titolare del
-trattamento nell'informativa, nei contatti, in «Chi c'è dietro» e nel foro
+trattamento nell'informativa, nei contatti e nel foro
 competente delle condizioni d'uso.
 
 ## Le date dell'esempio non invecchiano

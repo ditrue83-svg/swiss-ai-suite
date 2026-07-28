@@ -13,7 +13,7 @@
    derivate (pozzetto, carta, inversione) e misure.
 
    La direzione è «Protocollo»: la pagina composta come un documento tecnico
-   svizzero — filetti hairline come ossatura, sezioni numerate 01–09 in cifre
+   svizzero — filetti hairline come ossatura, sezioni numerate 01–08 in cifre
    tabellari, tre registri di superficie (fondo, banda elevata, UNA inversione
    totale d'inchiostro: i limiti), il carattere a fare quasi tutto il lavoro.
 
@@ -81,6 +81,20 @@
   /* Pozzetto: la superficie ribassata su cui il dossier d'esempio stacca. */
   --ms-well: hsl(210, 20%, 95%);
 
+  /* IL CAMPO — l'unica superficie di colore pieno della pagina.
+     È il blu dell'applicazione portato alla profondità che serve perché il
+     bianco ci stia sopra: 10.2:1. FISSO nei due temi, come la carta della
+     lettera: il colore del marchio non cambia con le preferenze di chi
+     guarda. ⚠️ Su questo fondo l'accento dell'app fa 1.9:1 — sul campo
+     l'azione è BIANCA, non blu. Misurate: bianco 10.24, bianco 82% 7.44,
+     bianco 70% 5.87, bordo bianco 45% 3.35 (soglia controlli 3:1). */
+  --ms-field: hsl(207, 88%, 24%);
+  --ms-on-field: #ffffff;
+  --ms-on-field-soft: rgba(255, 255, 255, 0.82);
+  --ms-on-field-muted: rgba(255, 255, 255, 0.70);
+  --ms-field-line: rgba(255, 255, 255, 0.22);
+  --ms-field-ctrl: rgba(255, 255, 255, 0.45);
+
   /* Carta: il foglio della lettera d'esempio. FISSA nei due temi — la carta
      resta carta anche quando l'interfaccia intorno è scura; è anche ciò che
      tiene leggibile l'evidenziazione gialla. Coppie verificate ≥ 4.5:1. */
@@ -100,7 +114,10 @@
   --ms-inv-muted: color-mix(in srgb, var(--on-ink) 62%, var(--ink));
   --ms-inv-line: color-mix(in srgb, var(--on-ink) 28%, var(--ink));
 
-  --ms-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 16px 40px -12px rgba(16, 24, 40, 0.14);
+  /* Luce coerente: tutte le ombre vengono dallo stesso punto in alto e sono
+     blu-nere, non grigie — una superficie che ne ombreggia un'altra prende un
+     po' del colore della pagina. */
+  --ms-shadow: 0 1px 2px rgba(11, 26, 46, 0.07), 0 16px 40px -12px rgba(11, 26, 46, 0.16);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -121,9 +138,38 @@ body {
   font-size: var(--ms-fs-body); line-height: 1.6;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
+/* Una sola grammatica per i collegamenti. Dentro la prosa sono sempre
+   sottolineati sottili e in hover il tratto ingrassa: nessun colore che
+   compare all'improvviso. I collegamenti di STRUTTURA — navigazione, lingue,
+   piè di pagina, pulsanti — non si sottolineano: lì la funzione è già detta
+   dalla posizione, e nove sottolineature in fila sono rumore. */
 a { color: var(--accent-text); text-decoration: none; }
-a:hover { text-decoration: underline; }
+/* Sottolineati SOLO i collegamenti dentro la prosa, elencati uno per uno:
+   `p a` prendeva anche i pulsanti (stanno in un paragrafo) e la riga di
+   collegamenti del piè di pagina. */
+.contact-value a, .legal-body a, .card p a, .ms-limits p a {
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;
+}
+.contact-value a:hover, .legal-body a:hover,
+.card p a:hover, .ms-limits p a:hover { text-decoration-thickness: 2px; }
+/* :not(.lang-link): nel piè di pagina i link di lingua matchavano
+   `.foot-links a:hover` e si sottolineavano — gli stessi identici link
+   nella barra in alto no. Un componente, un comportamento. */
+.topnav a:hover, .back-link:hover, .foot-links a:hover:not(.lang-link) { text-decoration: underline; text-underline-offset: 3px; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* La selezione del testo usa lo stesso giallo con cui il prodotto marca le
+   frasi: anche selezionare una parola, qui, somiglia a evidenziarla.
+   Sugli elementi GIÀ gialli la selezione si inverte, altrimenti selezionare
+   proprio la frase marcata — il gesto che la pagina promuove a firma — non
+   produrrebbe alcun cambiamento visibile. */
+::selection { background: var(--highlight); color: var(--on-highlight); }
+mark::selection, .ms-hl::selection,
+.ms-analysis blockquote::selection, .ms-analysis blockquote *::selection {
+  background: var(--on-highlight); color: var(--highlight);
+}
+/* I titoli si bilanciano, i paragrafi non lasciano parole sole in fondo. */
+h1, h2, h3 { text-wrap: balance; }
+p, li { text-wrap: pretty; }
 .ic { width: 20px; height: 20px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Collegamento per saltare la navigazione: visibile solo con la tastiera. */
@@ -209,17 +255,29 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
    riga: lo stacco l'ha già dato il cambio di superficie. */
 .ms-example + .ms-section, .ms-band + .ms-section, .ms-invert + .ms-section { border-top: 0; }
 
-/* Testata di protocollo: numero tabellare + titolo, la stessa per tutte. */
-.ms-sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3) var(--sp-4); }
-.ms-sec-n {
-  font-variant-numeric: tabular-nums; font-weight: 600;
-  font-size: var(--ms-fs-h2); color: var(--muted);
+/* Testata di protocollo: indice tabellare SOPRA il titolo, non accanto.
+   Nove cifre a 40px erano ciò che faceva «manuale d'uso»: l'indice deve
+   numerare, non annunciare. A 12px con il filetto resta la struttura del
+   documento e il titolo torna a essere la voce che si legge. */
+.ms-sec-head {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-3) var(--sp-4); align-items: center;
 }
+.ms-sec-n {
+  grid-column: 1; grid-row: 1;
+  display: flex; align-items: center; gap: var(--sp-3);
+  font-variant-numeric: tabular-nums; font-weight: 600;
+  font-size: var(--ms-fs-label); text-transform: uppercase;
+  letter-spacing: var(--ms-ls-label); color: var(--muted);
+}
+.ms-sec-n::after { content: ''; width: 32px; height: 1px; background: var(--line-strong); }
 .ms-sec-head h2 {
+  grid-column: 1; grid-row: 2;
   font-size: var(--ms-fs-h2); font-weight: 600;
   line-height: var(--ms-lh-h2); letter-spacing: var(--ms-ls-h2);
 }
-.ms-sec-head .ms-tag { margin-left: auto; }
+.ms-sec-head .ms-tag { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+.ms-invert .ms-sec-n::after { background: var(--ms-inv-line); }
 .ms-tag {
   font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase;
   letter-spacing: var(--ms-ls-label); color: var(--ink-soft);
@@ -239,38 +297,185 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 }
 .ms-section > .kicker { display: block; margin-top: var(--ms-sp-half); }
 
-/* ---------- hero ----------
+/* ---------- L'EVIDENZIATORE: la firma della pagina ----------
+   Il prodotto marca in giallo la frase del documento da cui viene
+   un'informazione. Qui la vetrina marca le proprie parole allo stesso modo:
+   non è un ornamento, è la stessa cosa che il prodotto fa, applicata a sé.
+   REGOLA: una sola evidenziazione per schermata, e solo su parole che dicono
+   ciò che il prodotto fa davvero. In tutta la pagina sono due: la promessa
+   nel titolo e la chiusura.
+   Nel corpo del testo — dentro la lettera — il giallo RIEMPIE, come fa il
+   prodotto. Sui titoli grandi riempire farebbe una cancellatura: due righe di
+   blocco giallo si leggono come un testo censurato, non come una frase
+   marcata. Quindi sui titoli il gesto diventa il TRATTO: un pennarello
+   passato sotto le parole, spesso, che va a capo insieme al testo e non
+   tocca mai i glifi — così il contrasto del titolo resta quello del titolo. */
+.ms-hl {
+  text-decoration: underline;
+  /* Il tratto è FISSO come le superfici su cui vive (oggi solo il campo blu):
+     con il token tematizzato, in tema scuro diventava senape a 3,4:1 sullo
+     stesso fondo immutato — e in pagina convivevano due gialli. Lo stesso
+     giallo della carta: 8,4:1 sul campo, nei due temi. */
+  text-decoration-color: var(--ms-paper-hl);
+  text-decoration-thickness: 0.11em;
+  text-underline-offset: 0.13em;
+  /* Il tratto SCANSA le discendenti. Con `none` la coda della «g» di
+     «Aufgaben» finiva dentro il giallo: bianco su giallo fa 1,22:1 e la
+     lettera spariva. Un pennarello vero, del resto, lascia trasparire la
+     lettera; è la gomma che la copre. */
+  text-decoration-skip-ink: auto;
+}
+
+/* ---------- hero: IL CAMPO ----------
+   L'unica superficie di colore pieno della pagina, e non è un colore nuovo:
+   è il blu dei pulsanti dell'applicazione. Magiq ha il suo giallo; questo è
+   il nostro, e regge la promessa della continuità dei token.
    Nessun testo nasce a opacity:0: l'H1 è dipinto visibile al primo frame. */
-.ms-hero { padding: clamp(3.5rem, 8vw, 6.5rem) var(--ms-gutter) var(--ms-sp-block); }
+.ms-hero {
+  background: var(--ms-field); color: var(--ms-on-field);
+  padding: clamp(2.5rem, 5vw, 4rem) var(--ms-gutter) clamp(3.5rem, 7vw, 6rem);
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(2rem, 5vw, 4.5rem); align-items: center;
+}
+.ms-hero-text { min-width: 0; }
 .ms-kicker {
   display: flex; align-items: center; gap: var(--sp-3);
   font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase;
-  letter-spacing: var(--ms-ls-label); color: var(--muted);
+  letter-spacing: var(--ms-ls-label); color: var(--ms-on-field-muted);
 }
-.ms-kicker::before { content: ''; width: 48px; height: 1px; background: var(--line-strong); }
+.ms-kicker::before { content: ''; width: 48px; height: 1px; background: var(--ms-field-ctrl); }
 .ms-hero h1 {
   margin-top: var(--sp-6);
   font-size: var(--ms-fs-h1); font-weight: 600;
   line-height: var(--ms-lh-h1); letter-spacing: var(--ms-ls-h1);
-  max-width: 20ch; text-wrap: balance;
+  max-width: 18ch; text-wrap: balance;
 }
 /* Le parole composte tedesche non stanno in 44px su 375px senza sillabare —
    e «Nutzungsbedingungen» a 30px sfonda i 320px anche nelle legali. */
 .ms-hero h1:lang(de), .legal-head h1:lang(de) { hyphens: auto; }
+/* Fra 1000 e 1230px la colonna di testo dell'hero è troppo stretta per
+   «dell'amministrazione,» alla scala piena: misurato, il titolo italiano
+   invadeva la colonna della prova di 3–16px. In quella finestra la scala
+   cede un gradino; da 1230 in su torna il clamp pieno. */
+@media (min-width: 1000.02px) and (max-width: 1230px) {
+  .ms-hero h1 { font-size: clamp(2.5rem, 4.7vw, 4.5rem); }
+}
 .ms-hero .ms-lead {
   margin-top: var(--sp-6);
   font-size: var(--ms-fs-lead); line-height: 1.55;
-  color: var(--ink-soft); max-width: 62ch;
+  color: var(--ms-on-field-soft); max-width: 54ch;
 }
 .ms-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-8); }
 .ms-actions .btn { min-height: 48px; padding: 10px 24px; font-size: var(--ms-fs-body); border-radius: var(--radius-sm); }
+/* Sul campo l'azione è BIANCA: l'accento dell'app farebbe 1.9:1 sul blu.
+   La primaria è un pieno bianco con l'inchiostro sopra; la secondaria è un
+   contorno, col bordo al 45% che supera i 3:1 richiesti ai controlli. */
+.ms-hero .btn-primary,
+.ms-cta-field .btn-primary {
+  background: var(--ms-on-field); border-color: var(--ms-on-field);
+  color: hsl(213, 40%, 13%); box-shadow: none;
+}
+.ms-hero .btn-primary:hover,
+.ms-cta-field .btn-primary:hover {
+  background: rgba(255, 255, 255, 0.88); border-color: rgba(255, 255, 255, 0.88);
+  color: hsl(213, 40%, 13%);
+}
+.ms-hero .btn:not(.btn-primary),
+.ms-cta-field .btn:not(.btn-primary) {
+  background: transparent; border-color: var(--ms-field-ctrl); color: var(--ms-on-field);
+}
+.ms-hero .btn:not(.btn-primary):hover,
+.ms-cta-field .btn:not(.btn-primary):hover {
+  background: rgba(255, 255, 255, 0.1); border-color: var(--ms-on-field);
+}
+.ms-hero :focus-visible, .ms-cta-field :focus-visible { outline-color: var(--ms-on-field); }
 .ms-hero-meta {
   display: flex; align-items: center; gap: var(--sp-2);
   margin-top: var(--ms-sp-half); padding-top: var(--sp-4);
-  border-top: 1px solid var(--line);
-  color: var(--muted); font-size: var(--ms-fs-meta);
+  border-top: 1px solid var(--ms-field-line);
+  color: var(--ms-on-field-muted); font-size: var(--ms-fs-meta);
 }
 .ms-hero-meta .ic { width: 16px; height: 16px; }
+
+/* ---------- la prova nell'hero ----------
+   La stessa cosa che il prodotto fa, in miniatura: una frase marcata nella
+   lettera, e l'azione che ne esce. Il dossier della sezione 02 dimostra il
+   MECCANISMO con le citazioni numerate; qui si annuncia solo il RISULTATO,
+   quindi non è una ripetizione ma la stessa storia a due lunghezze.
+   È `aria-hidden`: chi ascolta trova gli stessi testi, per esteso, nel
+   dossier. E porta l'etichetta di esempio, come ogni ritaglio della pagina. */
+.ms-proof { display: grid; gap: 0; justify-items: stretch; }
+.ms-proof-tag {
+  justify-self: start; margin-bottom: var(--sp-3);
+  font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase;
+  letter-spacing: var(--ms-ls-label); color: var(--ms-on-field-muted);
+  border: 1px dashed var(--ms-field-ctrl); border-radius: 4px; padding: 4px 10px;
+  white-space: nowrap;
+}
+.ms-proof-paper {
+  background: var(--ms-paper); color: var(--ms-paper-ink);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: var(--sp-6) var(--sp-6) var(--sp-8);
+  font-size: var(--ms-fs-meta); line-height: 1.7;
+  box-shadow: var(--ms-shadow);
+}
+.ms-proof-from {
+  font-size: var(--ms-fs-label); text-transform: uppercase;
+  letter-spacing: var(--ms-ls-label); color: var(--ms-paper-muted);
+  margin-bottom: var(--sp-4);
+}
+.ms-proof-line + .ms-proof-line { margin-top: var(--sp-3); }
+.ms-proof-paper mark {
+  background: var(--ms-paper-hl); color: var(--ms-paper-on-hl);
+  /* 2px e non 3: a 320px, in francese, il padding clonato dei frammenti
+     usciva di 2px dalla scatola del testo. */
+  border-radius: 3px; padding: 1px 2px;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  font-weight: 600;
+}
+/* La freccia sta a cavallo fra i due blocchi: è il passaggio, non un ornamento. */
+.ms-proof-arrow {
+  justify-self: center; margin: -18px 0 -18px; z-index: 1;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--ms-field); color: var(--ms-on-field);
+  border: 1px solid var(--ms-field-ctrl);
+  display: grid; place-items: center;
+}
+.ms-proof-arrow .ic { width: 18px; height: 18px; stroke-width: 2; }
+/* La scheda dell'azione è FISSA come il foglio sopra di lei: la prova sta
+   sul campo fisso, e un oggetto mezzo fisso e mezzo a tema mostrava in
+   scuro una scheda quasi nera sul blu (1,55:1) sotto un foglio chiaro.
+   Bianco 10,2:1 sul campo, nei due temi; l'accento della spunta è quello
+   del tema chiaro, 5,4:1 col bianco del segno. */
+.ms-proof-task {
+  display: flex; gap: var(--sp-3); align-items: flex-start;
+  background: #ffffff; color: hsl(213, 40%, 13%);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: var(--sp-6);
+  box-shadow: var(--ms-shadow);
+}
+.ms-proof-check {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+  background: hsl(207, 88%, 39%); color: #ffffff;
+  display: grid; place-items: center;
+}
+.ms-proof-check .ic { width: 14px; height: 14px; stroke-width: 2.5; }
+.ms-proof-action { font-weight: 600; letter-spacing: -0.01em; }
+.ms-proof-when {
+  margin-top: var(--sp-1); font-size: var(--ms-fs-meta);
+  font-variant-numeric: tabular-nums; color: hsl(213, 22%, 30%);
+}
+
+/* ⚠️ LA BARRA RESTA CHIARA, ed è una decisione, non una dimenticanza.
+   Tingerla di blu era più d'effetto: la pagina si apriva tutta nel colore,
+   come fa magiq col giallo. Due ragioni per non farlo, e la seconda decide.
+   1. Un campo senza bordo superiore non è un blocco, è uno sfondo. Con la
+      barra chiara il blu comincia su un filetto e diventa una superficie
+      stampata sul foglio — che è il registro di questa vetrina.
+   2. L'applicazione ha la barra chiara e il marchio blu su bianco (verificato
+      su app.ai-swisse.com). Invertire il marchio qui avrebbe dato due
+      lockup diversi allo stesso prodotto: esattamente il «cambio di
+      prodotto» che i token esistono per impedire. */
 
 /* ---------- 01 · come funziona ----------
    Quattro colonne con filetto proprio: numeri tabellari, nessun cerchio. */
@@ -291,9 +496,11 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 }
 .card h3 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.015em; }
 .card p { color: var(--ink-soft); }
-/* Dentro la banda elevata le schede si scavano nel fondo: quattro schede
-   discrete, ciascuna col proprio bordo, non celle di una tabella. */
-.ms-band .card { background: var(--bg); }
+/* Dentro la banda elevata le schede — e la nota sul listino — si scavano
+   nel fondo: pannelli discreti, ciascuno col proprio bordo, non celle di
+   una tabella. Senza questa regola la nota restava complanare alla banda:
+   stesso token, un bordo a reggere una cornice vuota. */
+.ms-band .card, .ms-band .pricing-note { background: var(--bg); }
 .module-lead { color: var(--muted); font-size: var(--ms-fs-meta); margin: var(--sp-1) 0 var(--sp-6); }
 .ticks { list-style: none; display: grid; gap: var(--sp-3); }
 .ticks li { display: flex; gap: var(--sp-2); align-items: flex-start; color: var(--ink-soft); }
@@ -330,8 +537,16 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 }
 
 /* Il foglio. Colori fissi: --ms-paper-* non seguono il tema. */
+/* Le due pieghe. Un A4 svizzero arriva piegato in tre, per la busta C5 con
+   finestra: due creste orizzontali a un terzo e a due terzi del foglio. Sono
+   due righe da 1px a opacità bassissima — si vedono solo se le si cerca, che
+   è esattamente quanto si vedono su una lettera vera. Solo sul foglio grande:
+   l'estratto dell'hero è un ritaglio, non un foglio piegato. */
 .ms-paper {
   background: var(--ms-paper); color: var(--ms-paper-ink);
+  background-image:
+    linear-gradient(to bottom, transparent calc(33.33% - 1px), rgba(16, 24, 32, 0.07) calc(33.33% - 1px), rgba(16, 24, 32, 0.07) 33.33%, transparent 33.33%),
+    linear-gradient(to bottom, transparent calc(66.66% - 1px), rgba(16, 24, 32, 0.07) calc(66.66% - 1px), rgba(16, 24, 32, 0.07) 66.66%, transparent 66.66%);
   border-right: 1px solid var(--line);
   padding: var(--sp-8);
   font-size: var(--ms-fs-meta); line-height: 1.7;
@@ -389,10 +604,13 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 /* L'eco del giallo: la stessa evidenzia della lettera, qui sull'intero blocco
    di citazione (lo script delle date riscrive il testo del blockquote, quindi
    lo stile sta sull'elemento, non su un segno interno). */
+/* Il caporale sporge nel margine: il bordo sinistro del testo resta dritto,
+   come in un libro composto bene. */
 .ms-analysis blockquote {
   margin-top: var(--sp-2); background: var(--highlight); color: var(--on-highlight);
   border-radius: 6px; padding: var(--sp-3) var(--sp-4);
   font-size: var(--ms-fs-meta); line-height: 1.6;
+  text-indent: -0.42em;
 }
 .ms-analysis .mock-verify { border-top: 1px solid var(--line); padding-top: var(--sp-6); margin-left: 2rem; }
 .ms-analysis .mock-verify-title { font-weight: 600; font-size: var(--ms-fs-meta); margin-bottom: var(--sp-2); }
@@ -435,6 +653,10 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
    finisce un link l'anello --focus renderebbe 2:1 sul fondo invertito del
    tema scuro: qui il focus usa il colore del testo, 15:1 in entrambi. */
 .ms-invert :focus-visible { outline-color: var(--on-ink); }
+/* Stessa cintura per la carta, l'altra superficie fissa: in tema scuro
+   l'anello --focus farebbe 2,2:1 sul foglio chiaro. Oggi lì non c'è nulla
+   di focalizzabile; se un giorno ci finisce, l'anello è d'inchiostro. */
+.ms-paper :focus-visible, .ms-proof-paper :focus-visible { outline-color: var(--ms-paper-ink); }
 .ms-limits { list-style: none; margin-top: var(--ms-sp-half); display: grid; gap: var(--sp-6); max-width: 78ch; }
 .ms-limits li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: var(--sp-4); }
 .ms-limits p { font-size: var(--ms-fs-body); line-height: 1.65; color: var(--ms-inv-soft); }
@@ -461,21 +683,7 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 .center { text-align: center; margin-top: var(--ms-sp-half); }
 .center .btn { min-height: 48px; padding: 10px 24px; }
 
-/* ---------- 08 · chi c'è dietro ---------- */
-.about { display: flex; gap: var(--sp-6); align-items: flex-start; flex-wrap: wrap; margin-top: var(--ms-sp-half); max-width: 820px; }
-.about-photo {
-  width: 92px; height: 92px; flex-shrink: 0; border-radius: var(--radius);
-  background: var(--surface-2); color: var(--ink-soft);
-  display: grid; place-items: center; font-size: 1.875rem; font-weight: 600;
-  border: 1px solid var(--line);
-}
-.about-main { flex: 1; min-width: 260px; }
-.about-name { font-size: var(--ms-fs-h3); font-weight: 600; }
-.about-meta { color: var(--muted); font-size: var(--ms-fs-meta); margin-top: 2px; display: grid; gap: 1px; }
-.about-why { margin-top: var(--sp-4); color: var(--ink-soft); }
-.about-contact { margin-top: var(--sp-4); font-size: var(--ms-fs-meta); color: var(--muted); }
-
-/* ---------- 09 · contatti ---------- */
+/* ---------- 08 · contatti ---------- */
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); margin-top: var(--ms-sp-half); max-width: 960px; }
 .contact-item { display: flex; gap: var(--sp-3); align-items: flex-start; border-top: 1px solid var(--line); padding-top: var(--sp-4); }
 .contact-ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-soft); display: grid; place-items: center; }
@@ -484,8 +692,15 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 .contact-value { font-weight: 600; margin-top: 1px; }
 .contact-sub { color: var(--muted); font-size: var(--ms-fs-meta); margin-top: 2px; }
 
-/* ---------- chiusura sul registro B ---------- */
-.ms-cta { text-align: center; border-bottom: 0; padding-top: var(--ms-sp-block); }
+/* ---------- chiusura sul campo ----------
+   La pagina si apre e si chiude nello stesso blu: due comparse in tutto,
+   così il colore resta un evento e non un tema. */
+.ms-cta-field {
+  background: var(--ms-field); color: var(--ms-on-field);
+  padding: var(--ms-sp-block) var(--ms-gutter);
+}
+.ms-cta-field .ms-sec-lead { color: var(--ms-on-field-soft); }
+.ms-cta { text-align: center; border-bottom: 0; }
 .ms-cta h2 {
   font-size: var(--ms-fs-h2); font-weight: 600;
   line-height: var(--ms-lh-h2); letter-spacing: var(--ms-ls-h2);
@@ -498,7 +713,23 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
   border-top: 1px solid var(--line); color: var(--muted); font-size: var(--ms-fs-meta);
   display: grid; gap: var(--sp-2);
 }
-.foot-links { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+/* Dopo la chiusura il campo arriva fino al bordo inferiore, piè di pagina
+   compreso: l'ultima pagina del documento porta il timbro, e non resta una
+   striscia chiara sotto il blu. */
+.foot.on-field {
+  background: var(--ms-field); color: var(--ms-on-field-muted); border-top: 0;
+}
+.foot.on-field a { color: var(--ms-on-field-soft); }
+.foot.on-field a:hover { color: var(--ms-on-field); }
+.foot.on-field .foot-sep { color: var(--ms-field-ctrl); }
+.foot.on-field .lang-current { background: rgba(255, 255, 255, 0.16); color: var(--ms-on-field); }
+.foot.on-field .lang-link { color: var(--ms-on-field-muted); }
+.foot.on-field .lang-link:hover { background: rgba(255, 255, 255, 0.12); color: var(--ms-on-field); }
+.foot.on-field :focus-visible { outline-color: var(--ms-on-field); }
+.foot-links { display: flex; flex-wrap: wrap; gap: 0 var(--sp-2); align-items: center; }
+/* Bersaglio tattile anche qui: i collegamenti del piè erano l'unica riga
+   interattiva sotto i 44px. Il min-height allarga la zona, non il testo. */
+.foot-links a { display: inline-flex; align-items: center; min-height: 44px; }
 .foot-sep { color: var(--line-strong); }
 
 /* ---------- pagine legali ---------- */
@@ -526,12 +757,28 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
    Senza JavaScript, o con prefers-reduced-motion, tutto è visibile e fermo. */
 .ms-r { transition: opacity 180ms ease-out, transform 180ms ease-out; }
 .ms-r.is-pending { opacity: 0; transform: translateY(8px); }
-/* In stampa non esiste scroll che riveli: tutto visibile, sempre. */
+/* In stampa non esiste scroll che riveli: tutto visibile, sempre.
+   E le superfici piene tornano carta: i browser di regola NON stampano gli
+   sfondi, quindi campo blu e inversione diventerebbero testo bianco su
+   foglio bianco. Su carta si stampa inchiostro. */
 @media print {
   .ms-r, .ms-r.is-pending { opacity: 1; transform: none; transition: none; }
+  .ms-hero, .ms-cta-field, .foot.on-field, .ms-invert { background: none; color: var(--ink); }
+  .ms-hero .ms-lead, .ms-cta-field .ms-sec-lead, .ms-kicker, .ms-hero-meta,
+  .foot.on-field, .ms-limits p { color: var(--ink-soft); }
+  .ms-lim-n, .ms-invert .ms-sec-n { color: var(--muted); border-color: var(--line-strong); }
+  .ms-hero .btn, .ms-cta-field .btn { background: none; color: var(--ink); border-color: var(--ink); }
 }
 
 /* ---------- schermi piccoli ---------- */
+/* Sotto i 1000px il campo si impila: prima la promessa, poi la prova. L'H1
+   resta il primo elemento dipinto e la CTA primaria non scende sotto la
+   piega — è l'errore più caro di magiq, dove sul primo schermo di un
+   telefono non si vede nessuna delle due chiamate all'azione. */
+@media (max-width: 1000px) {
+  .ms-hero { grid-template-columns: minmax(0, 1fr); gap: var(--ms-sp-half); }
+  .ms-proof { max-width: 34rem; }
+}
 @media (max-width: 900px) {
   .grid-2, .steps, .axes, .contact-grid { grid-template-columns: 1fr 1fr; }
   .topnav { display: none; }
@@ -557,7 +804,12 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
   .card { padding: var(--sp-6) var(--sp-4); }
   .ms-paper, .ms-analysis { padding: var(--sp-6) var(--sp-4); }
   .ms-analysis .mock-verify { margin-left: 0; }
-  .ms-sec-head .ms-tag { margin-left: 0; }
+
+  /* Sotto i 600px la testata si impila: la pillola (nowrap) non può più
+     rubare la colonna al titolo — a 320px lasciava all'H2 84px su 272 e
+     «presenta» usciva dalla colonna. Misurato, non temuto. */
+  .ms-sec-head { grid-template-columns: minmax(0, 1fr); }
+  .ms-sec-head .ms-tag { grid-column: 1; grid-row: 3; justify-self: start; }
   .ms-limits li { grid-template-columns: 36px minmax(0, 1fr); }
 
   /* Topbar compatta: marchio e «Accedi» sulla prima riga, lingue sotto.

@@ -69,13 +69,13 @@ export const CONTENT = {
       'AI-Swisse legge lettere e PDF di enti svizzeri in italiano, tedesco e francese: estrae ente, scadenze e importi citando il punto esatto del documento, prepara la checklist e una bozza di risposta. E trova gli incentivi per cui la tua impresa è pertinente.',
     tagline: 'per le PMI svizzere',
     mainNav: 'Navigazione principale',
-    nav: { how: 'Come funziona', trust: 'Verificabilità', pricing: 'Prezzi', about: 'Chi siamo', contact: 'Contatti' },
+    nav: { how: 'Come funziona', trust: 'Verificabilità', pricing: 'Prezzi', contact: 'Contatti' },
     login: 'Accedi',
     signup: 'Crea un account',
     demo: 'Chiedi una dimostrazione',
     skip: 'Vai al contenuto',
 
-    heroTitle: 'La posta dell’amministrazione, tradotta in cose da fare.',
+    heroTitle: 'La posta dell’amministrazione, [[tradotta in cose da fare]].',
     heroLead:
       'Un sollecito dell’AFC, un controllo del Comune, una richiesta della cassa di compensazione. AI-Swisse legge il documento — anche in tedesco o in francese — e ti dice chi scrive, entro quando, quanto, e cosa devi fare. Ogni informazione è legata al punto del testo da cui è stata ricavata.',
     heroNote: 'Interfaccia e analisi in italiano, tedesco e francese.',
@@ -191,17 +191,8 @@ export const CONTENT = {
       'Chi entra adesso come impresa pilota concorda le condizioni direttamente con noi, e le tiene.',
     pricingCta: 'Chiedi una dimostrazione',
 
-    aboutTitle: 'Chi c’è dietro',
-    aboutLead:
-      'Un prodotto che legge la posta della vostra impresa deve dire chi lo fa. Non è un marchio dietro cui non c’è nessuno.',
-    aboutName: 'Andrea Cavalieri',
-    aboutRole: 'Titolare',
-    aboutPlace: 'Savosa, Canton Ticino',
-    aboutWhy:
-      'AI-Swisse nasce da un problema concreto: in una PMI svizzera la posta amministrativa arriva in tre lingue, ogni lettera nasconde una scadenza, e chi la apre di solito ha altro da fare. Gli strumenti che promettono di «riassumere» un documento non bastano: se sbagliano una data e non lo dicono, il danno è peggiore del lavoro risparmiato. Per questo qui ogni informazione è accompagnata dalla frase da cui viene, e ciò che il sistema non sa lo dichiara.',
-    aboutContactLine: 'Per parlare direttamente:',
 
-    ctaTitle: 'Provalo con una lettera che hai sul tavolo',
+    ctaTitle: 'Provalo con [[una lettera che hai sul tavolo]]',
     ctaLead: 'Crei l’account, configuri l’impresa in un minuto e carichi il primo documento. Se preferisci prima vederlo in funzione, chiedi una dimostrazione.',
     contactTitle: 'Contatti',
     contactLead: 'Per domande, per una dimostrazione o per parlare di un uso in studio fiduciario.',
@@ -270,13 +261,13 @@ export const CONTENT = {
       'AI-Swisse liest Briefe und PDF von Schweizer Behörden auf Deutsch, Französisch und Italienisch: erkennt Absender, Fristen und Beträge und belegt jede Angabe mit der Stelle im Dokument, erstellt die Checkliste und einen Antwortentwurf. Und findet die Fördermittel, für die Ihr Unternehmen relevant ist.',
     tagline: 'für Schweizer KMU',
     mainNav: 'Hauptnavigation',
-    nav: { how: 'So funktioniert es', trust: 'Nachprüfbarkeit', pricing: 'Preise', about: 'Über uns', contact: 'Kontakt' },
+    nav: { how: 'So funktioniert es', trust: 'Nachprüfbarkeit', pricing: 'Preise', contact: 'Kontakt' },
     login: 'Anmelden',
     signup: 'Konto erstellen',
     demo: 'Vorführung anfragen',
     skip: 'Zum Inhalt springen',
 
-    heroTitle: 'Behördenpost, übersetzt in konkrete Aufgaben.',
+    heroTitle: 'Behördenpost, [[übersetzt in konkrete Aufgaben]].',
     heroLead:
       'Eine Mahnung der ESTV, eine Kontrolle der Gemeinde, eine Anfrage der Ausgleichskasse. AI-Swisse liest das Dokument — auch auf Italienisch oder Französisch — und sagt Ihnen, wer schreibt, bis wann, wie viel und was zu tun ist. Jede Angabe ist mit der Stelle im Text verknüpft, aus der sie stammt.',
     heroNote: 'Oberfläche und Analyse auf Deutsch, Französisch und Italienisch.',
@@ -392,17 +383,8 @@ export const CONTENT = {
       'Wer jetzt als Pilotunternehmen einsteigt, vereinbart die Konditionen direkt mit uns — und behält sie.',
     pricingCta: 'Vorführung anfragen',
 
-    aboutTitle: 'Wer dahintersteht',
-    aboutLead:
-      'Ein Produkt, das die Post Ihres Unternehmens liest, muss sagen, wer es macht. Keine Marke, hinter der niemand steht.',
-    aboutName: 'Andrea Cavalieri',
-    aboutRole: 'Inhaber',
-    aboutPlace: 'Savosa, Kanton Tessin',
-    aboutWhy:
-      'AI-Swisse ist aus einem konkreten Problem entstanden: In einem Schweizer KMU kommt die Behördenpost in drei Sprachen, hinter jedem Brief steckt eine Frist, und wer ihn öffnet, hat meist anderes zu tun. Werkzeuge, die ein Dokument «zusammenfassen», genügen dafür nicht: Wenn sie ein Datum falsch wiedergeben und es nicht sagen, ist der Schaden grösser als die gesparte Arbeit. Deshalb steht hier zu jeder Angabe der Satz, aus dem sie stammt — und was das System nicht weiss, sagt es.',
-    aboutContactLine: 'Für ein direktes Gespräch:',
 
-    ctaTitle: 'Testen Sie es mit einem Brief, der auf Ihrem Tisch liegt',
+    ctaTitle: 'Testen Sie es mit [[einem Brief, der auf Ihrem Tisch liegt]]',
     ctaLead: 'Konto erstellen, Unternehmen in einer Minute einrichten, erstes Dokument hochladen. Wenn Sie es lieber zuerst in Aktion sehen: Fragen Sie eine Vorführung an.',
     contactTitle: 'Kontakt',
     contactLead: 'Für Fragen, eine Vorführung oder den Einsatz in einem Treuhandbüro.',
@@ -471,13 +453,13 @@ export const CONTENT = {
       'AI-Swisse lit les courriers et PDF des autorités suisses en français, allemand et italien : il identifie l’expéditeur, les délais et les montants en citant le passage exact du document, prépare la checklist et un projet de réponse. Et trouve les subventions pertinentes pour votre entreprise.',
     tagline: 'pour les PME suisses',
     mainNav: 'Navigation principale',
-    nav: { how: 'Fonctionnement', trust: 'Vérifiabilité', pricing: 'Tarifs', about: 'Qui sommes-nous', contact: 'Contact' },
+    nav: { how: 'Fonctionnement', trust: 'Vérifiabilité', pricing: 'Tarifs', contact: 'Contact' },
     login: 'Se connecter',
     signup: 'Créer un compte',
     demo: 'Demander une démonstration',
     skip: 'Aller au contenu',
 
-    heroTitle: 'Le courrier de l’administration, traduit en tâches concrètes.',
+    heroTitle: 'Le courrier de l’administration, [[traduit en tâches concrètes]].',
     heroLead:
       'Un rappel de l’AFC, un contrôle de la commune, une demande de la caisse de compensation. AI-Swisse lit le document — même en allemand ou en italien — et vous dit qui écrit, pour quand, combien, et ce qu’il faut faire. Chaque information renvoie au passage du texte dont elle est issue.',
     heroNote: 'Interface et analyse en français, allemand et italien.',
@@ -593,17 +575,8 @@ export const CONTENT = {
       'Les entreprises qui entrent maintenant comme pilotes conviennent des conditions directement avec nous, et les gardent.',
     pricingCta: 'Demander une démonstration',
 
-    aboutTitle: 'Qui est derrière',
-    aboutLead:
-      'Un produit qui lit le courrier de votre entreprise doit dire qui le fait. Pas une marque derrière laquelle il n’y a personne.',
-    aboutName: 'Andrea Cavalieri',
-    aboutRole: 'Titulaire',
-    aboutPlace: 'Savosa, canton du Tessin',
-    aboutWhy:
-      'AI-Swisse est né d’un problème concret : dans une PME suisse, le courrier administratif arrive en trois langues, chaque lettre cache un délai, et celui qui l’ouvre a généralement autre chose à faire. Les outils qui promettent de « résumer » un document n’y suffisent pas : s’ils se trompent de date sans le dire, le dommage dépasse le travail épargné. C’est pourquoi ici chaque information est accompagnée de la phrase dont elle provient — et ce que le système ne sait pas, il le déclare.',
-    aboutContactLine: 'Pour en parler directement :',
 
-    ctaTitle: 'Essayez-le avec un courrier posé sur votre bureau',
+    ctaTitle: 'Essayez-le avec [[un courrier posé sur votre bureau]]',
     ctaLead: 'Vous créez le compte, configurez l’entreprise en une minute et chargez le premier document. Si vous préférez d’abord le voir fonctionner, demandez une démonstration.',
     contactTitle: 'Contact',
     contactLead: 'Pour une question, une démonstration ou un usage en fiduciaire.',
