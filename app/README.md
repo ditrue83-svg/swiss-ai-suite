@@ -860,14 +860,18 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
   un'informazione che nessuno ha mai dato. Quando esisterà un vero `due_at`, cambierà in un punto solo.
 - **Nessuna politica di conservazione** per notifiche, consegne email ed esecuzioni di
   sincronizzazione: si accumulano, come le analisi dalla 0010.
-- **Registro IDI (Zefix)**: implementato, ma richiede credenziali API rilasciate su richiesta
-  (`zefix@bj.admin.ch`); senza `ZEFIX_AUTH` l'onboarding resta manuale e lo dichiara.
-  ⚠️ Gli endpoint sono stati **corretti il 2026-07-27** contro il documento OpenAPI ufficiale
-  (2.7.2.3): la versione precedente chiamava `/api/v1/firm/*`, rotte inesistenti, e avrebbe
-  risposto 404 anche con credenziali valide. **Il codice non è però ancora stato provato contro
-  l'API viva**, perché le credenziali non sono state rilasciate: è allineato a una specifica, non
-  a una risposta reale. Alla prima chiamata vera vanno riverificati corpo accettato, campi
-  presenti e numero di risultati.
+- **Registro IDI (Zefix)**: **attivo dal 2026-07-28** — credenziali rilasciate dall'UFRC, secret
+  `ZEFIX_AUTH` impostato, catena provata contro l'API viva (dettagli misurati nel commento in testa
+  a `supabase/functions/lookup-company/index.ts`, che è l'unico posto dove questo stato è raccontato).
+  Senza il secret l'onboarding resta manuale e lo dichiara.
+  I limiti che **restano**, e che non dipendono da noi:
+  l'API **non pagina** — restituisce tutti i risultati (95 per «Rossi»), il taglio a 15 è nostro;
+  la ricerca per nome **non restituisce il cantone**, che arriva solo dal dettaglio per IDI, quindi
+  cercando per nome il campo resta vuoto e lo compila la persona;
+  l'UFRC **sconsiglia le interrogazioni di massa regolari** (la sola app web ne genera oltre 400'000
+  al giorno, e chi disturba viene bloccato): la ricerca resta legata a un gesto in onboarding.
+  ⚠️ I cantoni fuori dai sei di `CANTONI` diventano «Altro» nel modulo: è il perimetro del catalogo
+  incentivi, non un dato che Zefix non abbia dato.
   ⚠️ **Zefix non è Regix**: quest'ultimo è il servizio dell'UFRC per verificare la disponibilità
   del NOME di una ditta nuova — altre credenziali, nessuna API pubblica, non utilizzabile qui.
 - **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali (0 in stato `recheck`), di cui

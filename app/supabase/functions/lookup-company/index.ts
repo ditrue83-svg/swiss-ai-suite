@@ -22,12 +22,25 @@
 // ricerca per nome l'API non restituisce affatto, e `legalFormId`, che è
 // annidato in `legalForm.id`.
 //
-// **Questo codice non è ancora stato provato contro l'API viva**: le credenziali
-// dell'API Zefix vanno richieste a zefix@bj.admin.ch e non sono state ancora
-// rilasciate. È allineato a una specifica, non a una risposta vera — e su
-// questo progetto la differenza è già costata abbastanza. Alla prima chiamata
-// reale vanno riverificati: forma del corpo accettato, presenza dei campi e
-// numero di risultati restituiti senza paginazione.
+// ✅ **PROVATO CONTRO L'API VIVA il 2026-07-28** (credenziali rilasciate
+// dall'UFRC il 27.07, account attivo dal 28.07). Le tre cose che il commento
+// precedente dichiarava non verificate, ora misurate su risposte reali:
+//  - **corpo accettato**: `{name, activeOnly}` → 200. ⚠️ I campi che NON
+//    esistono in `CompanySearchQuery` (`maxEntries`, `offset`, `languageKey`)
+//    non vengono rifiutati: sono **ignorati in silenzio**, e la risposta è
+//    byte-identica. Il vecchio codice credeva quindi di limitare i risultati e
+//    li riceveva tutti. Non esiste alcun modo di paginare lato server.
+//  - **campi**: `canton` assente in TUTTI i risultati della ricerca per nome
+//    (c'è solo nel dettaglio per IDI), `legalForm` è un oggetto con `id`
+//    numerico, `status` arriva MAIUSCOLO (`ACTIVE`, `BEING_CANCELLED`).
+//    ⚠️ `activeOnly: true` non significa «solo ACTIVE»: restituisce anche le
+//    società in cancellazione.
+//  - **numero di risultati senza paginazione**: 95 per «Rossi» (7,9 KB).
+//    Arriva tutto; il taglio a MAX_RESULTS è nostro e resta necessario.
+// `GET /company/uid/{id}` risponde con un **array di uno**, come già gestito.
+// ⚠️ L'UFRC sconsiglia le interrogazioni di massa regolari: chi disturba viene
+// bloccato. La ricerca è legata a un gesto dell'utente in onboarding, non a un
+// processo automatico, e così deve restare.
 // (Attenzione a non confondere Zefix con **Regix**, che è il servizio dell'UFRC
 // per la verifica dei NOMI di nuove ditte: altro servizio, altre credenziali,
 // nessuna API pubblica.)
