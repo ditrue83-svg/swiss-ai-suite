@@ -1434,6 +1434,12 @@ export const fr: Dictionary = {
       retryWhileProcessing: 'La lecture est déjà en cours\u202f: attendez qu’elle se termine.',
     },
     add: {
+      filter: 'Filtrer par nom',
+      filterPlaceholder: 'facultatif',
+      countOne: '{n} document',
+      countMany: '{n} documents',
+      noMatch: 'Aucun document ne correspond à cette recherche.',
+      noDocuments: 'Cette entreprise n’a pas encore de documents : chargez-en un depuis Documents ou connectez la messagerie.',
       title: 'Ajouter aux finances',
       chooseType: 'Que voulez-vous ajouter',
       chooseDocument: 'Choisissez le document',

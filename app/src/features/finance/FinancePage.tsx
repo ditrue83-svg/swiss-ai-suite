@@ -738,16 +738,39 @@ function AddFromDocument({
         </select>
       </div>
 
+      {/* ⚠️ L'ETICHETTA STA DOVE SI SCEGLIE DAVVERO.
+          Prima «Scegli il documento» stava sopra la casella di ricerca, e la
+          scelta avveniva in un elenco più in basso: su uno schermo stretto
+          quell'elenco è fuori dalla vista, e chi legge fa esattamente quello
+          che l'etichetta dice — prova a scrivere il documento in una casella
+          che non serve a quello. Un campo che promette una cosa e ne fa
+          un'altra è un difetto anche quando il codice sotto funziona. */}
       <div className="field">
-        <label htmlFor="fin-add-doc">{t('finance.add.chooseDocument')}</label>
+        <label htmlFor="fin-add-doc">{t('finance.add.filter')}</label>
         <input id="fin-add-doc" type="search" value={query} disabled={busy}
+          placeholder={t('finance.add.filterPlaceholder')}
           onChange={(e) => setQuery(e.target.value)} />
+      </div>
+
+      <div className="group-label">
+        {t('finance.add.chooseDocument')}
+        {!loading && !error && docs.length > 0 && (
+          <span className="fin-add-count">
+            {t(docs.length === 1 ? 'finance.add.countOne' : 'finance.add.countMany', { n: docs.length })}
+          </span>
+        )}
       </div>
 
       {loading && <SkeletonLine width="70%" />}
       {!loading && error && <ErrorState message={error} />}
+      {/* ⚠️ Due vuoti DIVERSI. «Non hai documenti» e «la ricerca non trova
+          niente» chiedono due cose diverse a chi legge: la prima di caricarne
+          uno, la seconda di cambiare parola. Renderli con la stessa frase è la
+          confusione che questo progetto evita ovunque. */}
       {!loading && !error && docs.length === 0 && (
-        <div className="empty">{t('documents.noResults')}</div>
+        <div className="empty">
+          {query ? t('finance.add.noMatch') : t('finance.add.noDocuments')}
+        </div>
       )}
       {!loading && !error && docs.map((doc) => (
         <div className="list-row" key={doc.id}>

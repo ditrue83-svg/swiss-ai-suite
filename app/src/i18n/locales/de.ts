@@ -1427,6 +1427,12 @@ export const de: Dictionary = {
       retryWhileProcessing: 'Das Auslesen läuft bereits: Bitte warten Sie, bis es fertig ist.',
     },
     add: {
+      filter: 'Nach Namen filtern',
+      filterPlaceholder: 'optional',
+      countOne: '{n} Dokument',
+      countMany: '{n} Dokumente',
+      noMatch: 'Kein Dokument entspricht dieser Suche.',
+      noDocuments: 'Dieses Unternehmen hat noch keine Dokumente: Laden Sie eines unter Dokumente hoch oder verbinden Sie das Postfach.',
       title: 'Zu den Finanzen hinzufügen',
       chooseType: 'Was fügen Sie hinzu',
       chooseDocument: 'Dokument wählen',

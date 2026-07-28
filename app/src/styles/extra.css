@@ -418,3 +418,7 @@
    mente l'orfana che questa regola doveva togliere. Sotto i 168 le etichette su
    due righe cominciano a spezzarsi male, quindi è il valore più alto che fa
    entrare tutte e cinque, non un numero scelto a occhio. */
+
+/* «Aggiungi alle finanze» — il conteggio accanto al titolo dell'elenco: dice
+   che un elenco c'è, prima ancora di leggerlo. */
+.fin-add-count { color: var(--muted); font-weight: 500; margin-left: var(--sp-2); }

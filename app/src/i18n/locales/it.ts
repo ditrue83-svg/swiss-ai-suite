@@ -1462,6 +1462,12 @@ export const it = {
       retryWhileProcessing: 'La lettura è già in corso: attendi che finisca.',
     },
     add: {
+      filter: 'Filtra per nome',
+      filterPlaceholder: 'facoltativo',
+      countOne: '{n} documento',
+      countMany: '{n} documenti',
+      noMatch: 'Nessun documento corrisponde a questa ricerca.',
+      noDocuments: 'Questa azienda non ha ancora documenti: caricane uno da Documenti o collega la posta.',
       title: 'Aggiungi alle finanze',
       chooseType: 'Che cosa stai aggiungendo',
       chooseDocument: 'Scegli il documento',
