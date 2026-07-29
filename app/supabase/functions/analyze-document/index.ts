@@ -235,10 +235,16 @@ Deno.serve(async (req: Request) => {
     if (!done) await logAiRequest(sb, { companyId, userId, documentId, kind: 'analysis', provider: 'anthropic', model: 'claude-opus-4-8', status: 'error', errorCode: code });
   }
 
+  // ⚠️ `AI_OUTPUT_TRUNCATED` è 500 e NON 502, che è il ripiego di questa mappa.
+  // 502 dice «il servizio a monte ha risposto male»: qui il servizio a monte ha
+  // risposto benissimo fino al tetto che gli abbiamo imposto noi. Il guasto è di
+  // questa applicazione, e il codice di stato è la prima cosa che legge chi
+  // guarda i log senza aprire il corpo della risposta.
   const httpStatusFor = (code: ErrorCode) =>
     code === 'RATE_LIMITED' ? 429 : code === 'AI_NOT_CONFIGURED' ? 503
       : code === 'FILE_TOO_LARGE' ? 413
-        : code === 'EXTRACTION_FAILED' || code === 'OCR_FAILED' || code === 'EMPTY_DOCUMENT' ? 422 : 502;
+        : code === 'AI_OUTPUT_TRUNCATED' ? 500
+          : code === 'EXTRACTION_FAILED' || code === 'OCR_FAILED' || code === 'EMPTY_DOCUMENT' ? 422 : 502;
 
   // ---- §26 · modalità ASINCRONA (opt-in) -----------------------------------
   // La risposta torna subito; il lavoro prosegue in background sul server e lo

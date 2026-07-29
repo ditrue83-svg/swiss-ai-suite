@@ -216,6 +216,33 @@ function stepLabel(status: string | null): string {
   return key ? tr(key) : tr('adminAi.progressGeneric');
 }
 
+/**
+ * Il guasto dell'analisi, nella lingua di chi legge.
+ *
+ * ⚠️⚠️ PERCHÉ ESISTE (trovato il 2026-07-29). `error_message_safe` lo scrive il
+ * server prendendolo da `ERROR_MESSAGES`, che è **in italiano fisso**: un utente
+ * germanofono leggeva una frase italiana in mezzo a un'interfaccia tedesca.
+ * La chiave `errors.errorCreditExhausted` era stata scritta nei TRE dizionari il
+ * 2026-07-29 e non veniva usata da nessuno — la stessa trappola già annotata per
+ * `home.module` e `amountsFound`: la traduzione c'era, il collegamento no.
+ *
+ * ⚠️ SI TRADUCONO SOLO I CODICI CHE QUESTA MAPPA CONOSCE. Per tutti gli altri
+ * resta il messaggio del server: è il valore GREZZO invece di una categoria
+ * inventata, che è la regola di governance. Aggiungere qui una voce senza la
+ * chiave nei dizionari romperebbe il typecheck, ed è voluto.
+ */
+const ERROR_KEY: Record<string, TKey> = {
+  AI_CREDIT_EXHAUSTED: 'adminAi.result.errorCreditExhausted',
+  AI_OUTPUT_TRUNCATED: 'adminAi.result.errorOutputTruncated',
+};
+function messaggioDiErrore(code: unknown, serverMessage: unknown): string {
+  const key = typeof code === 'string' ? ERROR_KEY[code] : undefined;
+  if (key) return tr(key);
+  return typeof serverMessage === 'string' && serverMessage
+    ? serverMessage
+    : tr('errors.analysisFailed');
+}
+
 /** §26 — attende il completamento dell'elaborazione server-side osservando il DB. */
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 4 * 60 * 1000;
@@ -236,9 +263,9 @@ async function waitForCompletion(documentId: string, onProgress?: (s: string) =>
       // errore che questa destrutturazione ignora — e l'utente riceverebbe il
       // messaggio generico al posto della causa vera del fallimento.
       const { data: an } = await sb.from('document_analyses')
-        .select('error_message_safe').eq('document_id', documentId)
+        .select('error_code, error_message_safe').eq('document_id', documentId)
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
-      throw new AppError(an?.error_message_safe ?? tr('errors.analysisFailed'));
+      throw new AppError(messaggioDiErrore(an?.error_code, an?.error_message_safe));
     }
     if (status === 'completed' || status === 'needs_review' || status === 'analyzed') {
       return status === 'needs_review' ? 'needs_review' : 'completed';

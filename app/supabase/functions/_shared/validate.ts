@@ -335,8 +335,8 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
 // ---- Categorie d'errore (§46) -----------------------------------------------
 export const ERROR_CODES = [
   'UNSUPPORTED_FILE', 'FILE_TOO_LARGE', 'EMPTY_DOCUMENT', 'EXTRACTION_FAILED', 'OCR_FAILED',
-  'AI_TIMEOUT', 'AI_INVALID_OUTPUT', 'EVIDENCE_VALIDATION_FAILED', 'RATE_LIMITED',
-  'PROVIDER_ERROR', 'AI_NOT_CONFIGURED', 'AI_CREDIT_EXHAUSTED', 'UNKNOWN_ERROR',
+  'AI_TIMEOUT', 'AI_INVALID_OUTPUT', 'AI_OUTPUT_TRUNCATED', 'EVIDENCE_VALIDATION_FAILED',
+  'RATE_LIMITED', 'PROVIDER_ERROR', 'AI_NOT_CONFIGURED', 'AI_CREDIT_EXHAUSTED', 'UNKNOWN_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
@@ -375,6 +375,17 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   OCR_FAILED: 'Il riconoscimento del testo (OCR) non è riuscito.',
   AI_TIMEOUT: "L'analisi ha impiegato troppo tempo. Riprova.",
   AI_INVALID_OUTPUT: "La risposta del modello non è in un formato valido.",
+  // ⚠️ NON è `AI_INVALID_OUTPUT`, e la differenza non è una sfumatura: il modello
+  // stava rispondendo bene ed è stato interrotto dal tetto di token che abbiamo
+  // scelto NOI. «La risposta non è in un formato valido» accusa il fornitore di
+  // un limite nostro, e manda chi legge a cercare il guasto dove non è. Alzare
+  // il tetto è una decisione da prendere con i suoi conti (§28): con
+  // `messages.create` sincrono si scambierebbe una troncatura rara con un
+  // timeout nuovo, che è un guasto peggiore perché non dice nemmeno perché.
+  AI_OUTPUT_TRUNCATED:
+    "L'analisi si è interrotta prima della fine: il documento richiede una "
+    + "risposta più lunga di quella prevista. Non dipende dal documento — "
+    + "serve un intervento di chi amministra l'applicazione.",
   EVIDENCE_VALIDATION_FAILED: 'Le informazioni estratte non hanno superato la verifica.',
   RATE_LIMITED: 'Troppe analisi in poco tempo. Attendi qualche istante e riprova.',
   PROVIDER_ERROR: "Il servizio di analisi ha restituito un errore. Riprova più tardi.",

@@ -13,6 +13,14 @@ import {
 } from '../supabase/functions/_shared/validate.ts';
 import { buildAnalysisRow, reviewStatus } from '../supabase/functions/_shared/persist.ts';
 import { looksLikeScan, MIN_CHARS_ABSOLUTE } from '../supabase/functions/_shared/extractionQuality.ts';
+import { runAnalysisPipeline, type ModelMessage } from '../supabase/functions/_shared/pipeline.ts';
+// ⚠️ I DUE WORKER VERI, non una loro imitazione: è l'unico modo perché questo
+// test veda una guardia scollegata. Il client Supabase e il modello sono finti,
+// quindi nessuna rete e nessun credito — ma il modello finto è una funzione VERA
+// e non `null`, altrimenti «nessuna chiamata al modello» sarebbe verde per
+// costruzione invece che per merito della guardia.
+import { processFinanceItem } from '../supabase/functions/_shared/finance/process.ts';
+import { processContractDocument } from '../supabase/functions/_shared/contracts/process.ts';
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, label: string, detail = '') => {
@@ -263,6 +271,300 @@ console.log('\n7) Forma dell\'estrazione: scansione o documento davvero letto (�
   // Il pavimento assoluto resta quello di prima: se cambia, il testo incollato
   // e i .txt cambiano comportamento senza che nessuno se ne accorga.
   ok(MIN_CHARS_ABSOLUTE === 40, 'il pavimento assoluto è ancora 40 caratteri', String(MIN_CHARS_ABSOLUTE));
+}
+
+// ---------------------------------------------------------------------------
+// 8) Perché il modello ha smesso di scrivere (§28)
+//
+// ⚠️ QUI SI ESEGUE `runAnalysisPipeline` DAVVERO, non una sua imitazione. Il
+// client Supabase e il client AI sono finti, la funzione è quella che gira in
+// produzione: è la stessa scelta del «cervello condiviso» in `_shared/`.
+//
+// Che cosa protegge. Un JSON tagliato a metà dal tetto di token diventava
+// `AI_INVALID_OUTPUT` — «la risposta del modello non è in un formato valido»,
+// cioè accusare il fornitore di un limite scelto da noi, e mandare chi legge a
+// cercare il guasto dal lato sbagliato. La distinzione vive in un `if` di tre
+// righe, ed è esattamente il genere di riga che una modifica al prompt o un
+// aggiornamento dell'SDK spostano senza che nessuno se ne accorga.
+//
+// ⚠️ Il caso «troncato SENZA blocco di testo» è la CONTROPROVA dell'ordine: se
+// qualcuno rimettesse il controllo del troncamento dopo quello del blocco
+// testo, quel caso tornerebbe `AI_INVALID_OUTPUT` e questa riga diventerebbe
+// rossa. Senza di lui il riordino passerebbe inosservato.
+// ---------------------------------------------------------------------------
+console.log('\n8) Perché il modello ha smesso di scrivere (§28)');
+{
+  // Il minimo indispensabile perché `saveExtraction` e l'aggiornamento di stato
+  // arrivino in fondo: la pipeline si ferma prima di scrivere qualunque analisi.
+  const sbFinto = {
+    from: () => ({
+      upsert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'ext-1' }, error: null }) }) }),
+      update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
+    }),
+  } as unknown as Parameters<typeof runAnalysisPipeline>[0];
+
+  const risposta = (over: Partial<ModelMessage>): ModelMessage => ({
+    content: [{ type: 'text', text: '{"language":"de"}' }],
+    usage: { input_tokens: 10, output_tokens: 20 },
+    stop_reason: 'end_turn',
+    ...over,
+  });
+
+  async function codiceDi(msg: ModelMessage): Promise<string> {
+    try {
+      await runAnalysisPipeline(sbFinto, () => Promise.resolve(msg), {
+        documentId: 'doc-1', companyId: 'comp-1', userId: null,
+        extraction: EXTRACTION, extractionDurationMs: 1,
+        companyContext: {
+          legalName: 'Prova SA', canton: 'Ticino', municipality: 'Lugano',
+          legalForm: 'SA', sector: 'costruzioni',
+        },
+        todayIso: '2026-07-29', provider: 'anthropic',
+      });
+      return 'NESSUN_ERRORE';
+    } catch (e) {
+      return (e as { code?: string }).code ?? 'SENZA_CODICE';
+    }
+  }
+
+  const casi: { nome: string; msg: ModelMessage; atteso: string }[] = [
+    { nome: 'troncato dal tetto di token → non si accusa il modello',
+      msg: risposta({ stop_reason: 'max_tokens', content: [{ type: 'text', text: '{"language":"d' }] }),
+      atteso: 'AI_OUTPUT_TRUNCATED' },
+    // ⚠️ Budget finito DENTRO il thinking: nessun blocco di testo da trovare.
+    { nome: 'troncato senza alcun blocco di testo (l\'ordine dei controlli)',
+      msg: risposta({ stop_reason: 'max_tokens', content: [] }),
+      atteso: 'AI_OUTPUT_TRUNCATED' },
+    { nome: 'rifiuto del modello → resta PROVIDER_ERROR',
+      msg: risposta({ stop_reason: 'refusal' }),
+      atteso: 'PROVIDER_ERROR' },
+    // I due casi che NON devono cambiare comportamento: il ramo nuovo non deve
+    // rubare nulla a quello vecchio.
+    { nome: 'JSON malformato a fine turno → resta AI_INVALID_OUTPUT',
+      msg: risposta({ content: [{ type: 'text', text: 'non sono JSON' }] }),
+      atteso: 'AI_INVALID_OUTPUT' },
+    { nome: 'nessun blocco di testo a fine turno → resta AI_INVALID_OUTPUT',
+      msg: risposta({ content: [] }),
+      atteso: 'AI_INVALID_OUTPUT' },
+  ];
+
+  for (const c of casi) {
+    const code = await codiceDi(c.msg);
+    ok(code === c.atteso, c.nome, code);
+  }
+
+  // ⚠️ Un codice senza messaggio è un riquadro d'errore VUOTO a schermo: la
+  // registrazione in `ERROR_MESSAGES` è ciò che separa «errore dichiarato» da
+  // «errore che non dice niente». Il typecheck garantisce la chiave, non che ci
+  // sia scritto qualcosa.
+  const msgTroncato = ERROR_MESSAGES.AI_OUTPUT_TRUNCATED ?? '';
+  ok(msgTroncato.length > 20, 'il troncamento ha un messaggio, non una stringa vuota', String(msgTroncato.length));
+  // Stessa regola del credito esaurito: aspettare non allarga un tetto.
+  ok(!/riprova/i.test(msgTroncato), 'e NON invita a riprovare (riprovare dà lo stesso esito)');
+}
+
+// ---------------------------------------------------------------------------
+// 9) La guardia §4 è COLLEGATA a Finanze e Contratti, non solo scritta
+//
+// ⚠️ PERCHÉ NON BASTA LA SEZIONE 7. Là si prova `looksLikeScan` da sola, cioè
+// che la funzione sa riconoscere una scansione. Qui si prova la cosa diversa e
+// più fragile: che i due worker gliela CHIEDANO davvero, e con i dati giusti.
+//
+// ⚠️⚠️ IL MODO IN CUI QUESTA GUARDIA SI SPEGNE È SILENZIOSO. `looksLikeScan` è
+// conservativa per costruzione: senza `bytes` risponde `false` e lascia passare
+// tutto. Basta quindi che qualcuno tolga `file_size` da una `select` — una
+// modifica che sembra una pulizia — perché la guardia smetta di guardare senza
+// che nulla fallisca, nessun tipo cambi e nessun errore compaia. È esattamente
+// la forma di guasto che questo progetto ha già pagato con i permessi di
+// colonna della 0013 e con i due controlli i18n che davano verde a vuoto.
+//
+// ⚠️ `test:finance` NON copre questo caso, e va detto invece di essere dedotto:
+// il documento di prova di `test-finance.ts` è scritto con
+// `extraction_method: 'text'` e senza `file_size`, quindi `looksLikeScan` esce
+// `false` alla prima riga per DUE ragioni indipendenti. Quel test resta verde
+// qualunque cosa succeda a questa guardia.
+// ---------------------------------------------------------------------------
+console.log('\n9) La guardia §4 è COLLEGATA a Finanze e Contratti (§4)');
+{
+  type Riga = Record<string, unknown>;
+  type Traccia = { tabella: string; azione: string; dati: Riga };
+
+  /**
+   * Un client Supabase finto che REGISTRA. Non simula il database: restituisce
+   * le righe che gli si danno e annota ogni scrittura, perché ciò che qui va
+   * dimostrato non è che cosa viene salvato ma che cosa NON viene chiamato.
+   */
+  function clientFinto(tabelle: Record<string, Riga[]>) {
+    const tracce: Traccia[] = [];
+    const from = (tabella: string) => {
+      let esito: { data: unknown; error: null } = { data: tabelle[tabella] ?? [], error: null };
+      const b: Record<string, unknown> = {
+        select: () => b,
+        eq: () => b, order: () => b, limit: () => b, lt: () => b, in: () => b,
+        insert: (dati: Riga) => {
+          tracce.push({ tabella, azione: 'insert', dati });
+          esito = { data: [{ id: `${tabella}-1` }], error: null }; return b;
+        },
+        update: (dati: Riga) => {
+          tracce.push({ tabella, azione: 'update', dati });
+          esito = { data: null, error: null }; return b;
+        },
+        upsert: (dati: Riga) => {
+          tracce.push({ tabella, azione: 'upsert', dati });
+          esito = { data: [{ id: `${tabella}-1` }], error: null }; return b;
+        },
+        maybeSingle: () => Promise.resolve({ data: (esito.data as Riga[] | null)?.[0] ?? null, error: null }),
+        single: () => Promise.resolve({ data: (esito.data as Riga[] | null)?.[0] ?? null, error: null }),
+        then: (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
+          Promise.resolve(esito).then(res, rej),
+      };
+      return b;
+    };
+    // ⚠️ La prenotazione dello slot passa da `rpc('try_consume_ai_quota_system')`.
+    // Registrarla qui è ciò che rende verificabile «PRIMA di prenotare lo slot»:
+    // senza, resterebbe un'affermazione nei commenti.
+    const rpc = (nome: string) => {
+      tracce.push({ tabella: `rpc:${nome}`, azione: 'rpc', dati: {} });
+      // Uno slot CONCESSO, non negato: con `null` i due worker si fermerebbero
+      // alla quota e il ramo del troncamento qui sotto non verrebbe mai raggiunto.
+      return Promise.resolve({ data: 'slot-1', error: null });
+    };
+    return { sb: { from, rpc } as never, tracce };
+  }
+
+  /**
+   * ⚠️ IL MODELLO FINTO ESISTE PER RENDERE VERE LE DUE ASSERZIONI SULLO SLOT.
+   * Con `createMessage: null` i due worker non prenotano nulla in nessun caso, e
+   * «nessuno slot AI prenotato» sarebbe rimasto verde anche a guardia spenta:
+   * un test inerte, cioè il genere di verde che questo progetto ha già pagato
+   * tre volte. Con una funzione VERA il percorso arriva davvero alla quota, e
+   * l'asserzione dice qualcosa.
+   */
+  function modelloFinto(stopReason = 'end_turn', testo = '{}') {
+    const chiamate: number[] = [];
+    const createMessage = () => {
+      chiamate.push(1);
+      return Promise.resolve({
+        content: testo === null ? [] : [{ type: 'text', text: testo }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+        stop_reason: stopReason,
+      });
+    };
+    return { createMessage: createMessage as never, chiamate };
+  }
+
+  // La scansione vera del 2026-07-29: 44 caratteri su 455 KB, una pagina.
+  const SCANSIONE = {
+    full_text: '2.5 2.0   7.5  3.5   4   8.0  5.5   5   15.0',
+    pages: [{ pageNumber: 1, text: '2.5 2.0   7.5  3.5   4   8.0  5.5   5   15.0' }],
+    extraction_method: 'native_pdf', ocr_confidence: null, truncated: false, page_count: 1,
+  };
+  const FILE_PESANTE = [{ file_size: 455452 }];
+  // La controprova: stesso testo cortissimo, ma file leggero → documento letto.
+  const FILE_LEGGERO = [{ file_size: 12288 }];
+
+  // ---- Finanze ------------------------------------------------------------
+  {
+    const { sb, tracce } = clientFinto({
+      document_extractions: [SCANSIONE], documents: FILE_PESANTE,
+    });
+    const modello = modelloFinto();
+    const esito = await processFinanceItem({ sb, createMessage: modello.createMessage }, {
+      id: 'fin-1', company_id: 'comp-1', document_id: 'doc-1', type: 'supplier_invoice',
+      processing_status: 'processing', extraction_attempts: 1, updated_at: '2026-07-29T00:00:00Z',
+    } as never);
+
+    ok(esito.outcome === 'failed' && esito.code === 'SCANNED_NO_TEXT',
+      'Finanze: una scansione non diventa «non è una fattura»', JSON.stringify(esito));
+    ok(!tracce.some((t) => t.azione === 'rpc') && modello.chiamate.length === 0,
+      'Finanze: nessuno slot AI prenotato e nessuna chiamata — non si paga per del rumore');
+    ok(tracce.some((t) => t.tabella === 'finance_items'
+      && t.dati.processing_status === 'failed' && t.dati.error_code === 'SCANNED_NO_TEXT'),
+      'Finanze: l\'esito è DEFINITIVO, quindi «Riprova estrazione» compare');
+  }
+  {
+    const { sb, tracce } = clientFinto({ document_extractions: [SCANSIONE], documents: FILE_LEGGERO });
+    const esito = await processFinanceItem({ sb, createMessage: modelloFinto().createMessage }, {
+      id: 'fin-2', company_id: 'comp-1', document_id: 'doc-2', type: 'receipt',
+      processing_status: 'processing', extraction_attempts: 1, updated_at: '2026-07-29T00:00:00Z',
+    } as never);
+    ok(esito.outcome !== 'failed' || esito.code !== 'SCANNED_NO_TEXT',
+      'Finanze: la ricevuta corta e LEGGERA passa (è l\'AND che la salva)', JSON.stringify(esito));
+    // ⚠️ La controprova della controprova: qui lo slot SI PRENOTA. Senza questa
+    // riga «nessuno slot prenotato» del caso sopra non proverebbe che il
+    // percorso ci sarebbe arrivato — proverebbe solo che non ci arriva mai.
+    ok(tracce.some((t) => t.azione === 'rpc'),
+      'Finanze: e su un documento legittimo lo slot si prenota davvero');
+  }
+
+  // ---- Contratti ----------------------------------------------------------
+  {
+    const { sb, tracce } = clientFinto({
+      document_extractions: [SCANSIONE], documents: FILE_PESANTE, contract_extractions: [],
+    });
+    const modello = modelloFinto();
+    const esito = await processContractDocument({ sb, createMessage: modello.createMessage } as never, {
+      id: 'cd-1', contract_id: 'ct-1', company_id: 'comp-1', document_id: 'doc-1',
+      relation: 'agreement', processing_status: 'processing', extraction_attempts: 1,
+    } as never);
+
+    ok(esito.kind === 'failed' && esito.code === 'SCANNED_NO_TEXT',
+      'Contratti: una scansione non diventa «non è un contratto»', JSON.stringify(esito));
+    ok(!tracce.some((t) => t.azione === 'rpc') && modello.chiamate.length === 0,
+      'Contratti: nessuno slot AI prenotato e nessuna chiamata');
+    // ⚠️ La differenza che conta: un verbale `failed` fa scrivere al trigger
+    // `processing_status = 'failed'` e fa comparire «Riprova». `releaseDocument`
+    // rimetterebbe `pending`, e dopo CONTRACT_MAX_ATTEMPTS il documento
+    // resterebbe «In coda» per sempre, senza pulsante e senza spiegazione.
+    ok(tracce.some((t) => t.tabella === 'contract_extractions' && t.azione === 'insert'
+      && t.dati.status === 'failed' && t.dati.error_code === 'SCANNED_NO_TEXT'),
+      'Contratti: si scrive un verbale, non si rimette in coda per sempre');
+    ok(!tracce.some((t) => t.tabella === 'contract_documents'
+      && t.dati.processing_status === 'pending'),
+      'Contratti: NON si passa da releaseDocument');
+  }
+  {
+    const { sb, tracce } = clientFinto({
+      document_extractions: [SCANSIONE], documents: FILE_LEGGERO, contract_extractions: [],
+    });
+    const esito = await processContractDocument({ sb, createMessage: modelloFinto().createMessage } as never, {
+      id: 'cd-2', contract_id: 'ct-1', company_id: 'comp-1', document_id: 'doc-2',
+      relation: 'agreement', processing_status: 'processing', extraction_attempts: 1,
+    } as never);
+    ok(esito.kind !== 'failed' || esito.code !== 'SCANNED_NO_TEXT',
+      'Contratti: il documento corto e LEGGERO passa la guardia', JSON.stringify(esito));
+    ok(tracce.some((t) => t.azione === 'rpc'),
+      'Contratti: e su un documento legittimo lo slot si prenota davvero');
+  }
+
+  // ---- Il troncamento, nei due worker -------------------------------------
+  // ⚠️ La sezione 8 prova questo per Admin AI. Qui si prova che gli ALTRI DUE
+  // moduli, che hanno ciascuno la propria copia del controllo, non ricadano
+  // nella vecchia etichetta. Sono tre posti, ed è la ragione per cui questo
+  // difetto va provato tre volte: la 0025 ha già ripetuto una trappola della
+  // 0022 due migrazioni dopo, nella stessa identica forma.
+  {
+    const { sb } = clientFinto({ document_extractions: [SCANSIONE], documents: FILE_LEGGERO });
+    const esito = await processFinanceItem(
+      { sb, createMessage: modelloFinto('max_tokens', '{"supplier_na').createMessage },
+      { id: 'fin-3', company_id: 'comp-1', document_id: 'doc-3', type: 'supplier_invoice',
+        processing_status: 'processing', extraction_attempts: 1, updated_at: '2026-07-29T00:00:00Z' } as never,
+    );
+    ok(esito.outcome === 'failed' && esito.code === 'AI_OUTPUT_TRUNCATED',
+      'Finanze: il troncamento non si traveste da AI_INVALID_OUTPUT', JSON.stringify(esito));
+  }
+  {
+    const { sb } = clientFinto({
+      document_extractions: [SCANSIONE], documents: FILE_LEGGERO, contract_extractions: [],
+    });
+    const esito = await processContractDocument(
+      { sb, createMessage: modelloFinto('max_tokens', '{"counterpar').createMessage } as never,
+      { id: 'cd-3', contract_id: 'ct-1', company_id: 'comp-1', document_id: 'doc-3',
+        relation: 'agreement', processing_status: 'processing', extraction_attempts: 1 } as never,
+    );
+    ok(esito.kind === 'failed' && esito.code === 'AI_OUTPUT_TRUNCATED',
+      'Contratti: il troncamento non si traveste da AI_REFUSED', JSON.stringify(esito));
+  }
 }
 
 console.log(`\n${pass} passati, ${fail} falliti\n`);

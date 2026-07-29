@@ -34,6 +34,10 @@ import {
   EDGE_TIME_BUDGET_MS, FINANCE_BATCH, FINANCE_MIN_CONFIDENCE, FINANCE_SLOT_MS,
   type FinanceErrorCode, type FinanceQualityFlag,
 } from './contract.ts';
+// ⚠️ §4 — LA STESSA funzione che usano Admin AI (browser e server) e Contratti.
+// Una seconda copia con le proprie soglie direbbe che una scansione è una
+// scansione in un modulo e non nell'altro, sullo stesso identico documento.
+import { looksLikeScan } from '../extractionQuality.ts';
 import {
   checkCreditorReference, checkIban, checkQrReference, isQrIban, referenceShape,
 } from './checksums.ts';
@@ -93,7 +97,17 @@ export interface FinanceWorkerReport {
   failed: number;
   retryLater: number;
   noText: number;
+  /**
+   * ⚠️ CONTATO A PARTE DA `notFinancial`, ed è tutto il punto di questo esito.
+   * «L'ho letto e non era una fattura» e «non sono riuscito a leggerlo» finiscono
+   * entrambi in `failed`, ma portano a due azioni opposte: la prima si archivia,
+   * la seconda chiede di rileggere il file con l'OCR. Un rapporto che dicesse
+   * solo «failed: 3» costringerebbe ad aprire i log per sapere quale delle due.
+   */
+  scannedNoText: number;
   notFinancial: number;
+  /** Il modello tagliato dal nostro tetto di token: un limite da rivedere, non un documento da rifare. */
+  outputTruncated: number;
   qrRead: number;
   aiCalls: number;
   pendingLeft: number;
@@ -575,6 +589,39 @@ export async function processFinanceItem(
     await markFinanceFailed(deps.sb, item, 'NO_TEXT');
     return { outcome: 'failed', code: 'NO_TEXT' };
   }
+
+  // ⚠️⚠️ §4 — PRIMA DI QUALUNQUE LETTURA E PRIMA DELLO SLOT AI.
+  //
+  // `loadDocumentText` restituisce `null` solo su un testo VUOTO, e un testo
+  // vuoto non è il caso pericoloso: quello pericoloso sono le quarantaquattro
+  // battute che una scansione lascia dietro di sé. Passavano di qui, facevano
+  // prenotare uno slot di spesa, facevano pagare una lettura su del rumore, e
+  // finivano etichettate `NOT_FINANCIAL` — cioè il prodotto affermava una cosa
+  // sul documento («non è una fattura») basandosi su qualcosa che non aveva
+  // letto. È la stessa forma del difetto chiuso in Admin AI il 2026-07-29.
+  //
+  // ⚠️ L'ESITO È DEFINITIVO, e la scelta è deliberata. `markFinanceRetryLater`
+  // lascerebbe l'elemento in `processing` aspettando un ritentativo che darebbe
+  // lo stesso identico esito: il testo salvato non cambia da solo. `failed`
+  // invece accende «Riprova estrazione», che è il gesto giusto DOPO che qualcuno
+  // ha fatto rileggere il file con l'OCR da Admin AI.
+  //
+  // ⚠️ Qui NON si rilegge il file con l'OCR come fa `analyze-document`, e non
+  // per dimenticanza: quel percorso ha il file, la chiave e un utente che
+  // aspetta: questo è un worker su cron che tratta la coda di tutte le aziende,
+  // e una rilettura OCR a sorpresa moltiplicherebbe la spesa senza che nessuno
+  // l'abbia chiesta. La rilettura resta un gesto di Admin AI.
+  if (looksLikeScan({
+    chars: document.fullText.trim().length,
+    pages: document.pageCount,
+    bytes: document.fileSize,
+    extractionMethod: document.extractionMethod === 'native_pdf' ? 'native_pdf'
+      : document.extractionMethod === 'ocr' ? 'ocr' : 'text',
+  })) {
+    await markFinanceFailed(deps.sb, item, 'SCANNED_NO_TEXT');
+    return { outcome: 'failed', code: 'SCANNED_NO_TEXT' };
+  }
+
   const source: FinanceSourceText = { fullText: document.fullText, pages: document.pages };
 
   const flags = new Set<FinanceQualityFlag>();
@@ -684,6 +731,25 @@ export async function processFinanceItem(
 
     inputTokens = message.usage?.input_tokens ?? null;
     outputTokens = message.usage?.output_tokens ?? null;
+
+    // ⚠️ PRIMA del controllo qui sotto, che altrimenti se lo mangia. Un JSON
+    // tagliato dal tetto di token non ha un blocco di testo utilizzabile e
+    // finiva quindi in `AI_INVALID_OUTPUT`: il registro accusava il modello di
+    // un limite scelto da noi, e chi leggeva cercava il guasto dal lato
+    // sbagliato. Se il budget finisce durante il thinking non c'è nemmeno un
+    // blocco `text`, ed è la ragione per cui questo ramo viene prima.
+    //
+    // ⚠️ Esito DEFINITIVO e non `retry_later`: lo stesso documento con lo stesso
+    // prompt verrà tagliato di nuovo. Ripetere finché i tentativi finiscono
+    // spenderebbe tre chiamate per arrivare allo stesso posto.
+    if (message.stop_reason === 'max_tokens') {
+      await finalizeFinanceAiSlot(deps.sb, logId, {
+        status: 'error', errorCode: 'AI_OUTPUT_TRUNCATED', model: FINANCE_MODEL,
+        durationMs: now() - startedAt, inputTokens, outputTokens,
+      });
+      await markFinanceFailed(deps.sb, item, 'AI_OUTPUT_TRUNCATED');
+      return { outcome: 'failed', code: 'AI_OUTPUT_TRUNCATED' };
+    }
 
     const block = message.content.find((b) => b.type === 'text' && typeof b.text === 'string');
     if (message.stop_reason === 'refusal' || !block?.text) {
@@ -847,7 +913,8 @@ export async function processFinanceItem(
 
 export function emptyFinanceReport(): FinanceWorkerReport {
   return {
-    claimed: 0, completed: 0, failed: 0, retryLater: 0, noText: 0, notFinancial: 0,
+    claimed: 0, completed: 0, failed: 0, retryLater: 0, noText: 0, scannedNoText: 0,
+    notFinancial: 0, outputTruncated: 0,
     qrRead: 0, aiCalls: 0, pendingLeft: 0, timeBudgetReached: false,
   };
 }
@@ -885,7 +952,9 @@ export async function runFinanceWorker(deps: FinanceDeps): Promise<FinanceWorker
       } else if (outcome.outcome === 'failed') {
         report.failed++;
         if (outcome.code === 'NO_TEXT') report.noText++;
+        if (outcome.code === 'SCANNED_NO_TEXT') report.scannedNoText++;
         if (outcome.code === 'NOT_FINANCIAL') report.notFinancial++;
+        if (outcome.code === 'AI_OUTPUT_TRUNCATED') report.outputTruncated++;
       } else {
         report.retryLater++;
       }

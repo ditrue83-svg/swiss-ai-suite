@@ -19,6 +19,10 @@ import {
   CONTRACT_PROMPT_VERSION, type ContractOutputLanguage,
 } from './prompt.ts';
 import { parseModelJson, validateContractReading, type ContractReading } from './validate.ts';
+// ⚠️ §4 — LA STESSA funzione che usano Admin AI (browser e server) e Finanze.
+// Una seconda copia con le proprie soglie direbbe che una scansione è una
+// scansione in un modulo e non nell'altro, sullo stesso identico documento.
+import { looksLikeScan } from '../extractionQuality.ts';
 import {
   claimNextDocument, finalizeContractAiSlot, loadCompanyName, loadDocumentText,
   lastSuccessfulHash, nextExtractionVersion, releaseDocument, requeueStale,
@@ -30,6 +34,13 @@ import {
 export interface ContractModelMessage {
   content: { type: string; text?: string }[];
   usage?: { input_tokens?: number; output_tokens?: number };
+  /**
+   * ⚠️ PERCHÉ IL MOTIVO DI ARRESTO STA IN QUESTA FORMA MINIMA. Senza, un
+   * troncamento del modello arrivava qui indistinguibile da un rifiuto e da un
+   * JSON malformato — tutti e tre `payload === null`, tutti e tre `AI_REFUSED`.
+   * È l'unico campo che dice quale delle tre cose è successa.
+   */
+  stop_reason?: string | null;
 }
 export type ContractCreateMessage =
   (request: unknown) => Promise<ContractModelMessage>;
@@ -112,6 +123,33 @@ export async function processContractDocument(
 
   // §112 — lo stesso identico testo non si rilegge.
   const hash = contentHash(text.fullText);
+
+  // ⚠️⚠️ §4 — PRIMA DELLO SLOT AI, e con esito DEFINITIVO.
+  //
+  // `loadDocumentText` torna `null` solo su un testo vuoto; il caso pericoloso è
+  // l'altro — le quarantaquattro battute che una scansione lascia dietro di sé.
+  // Passavano di qui, facevano prenotare uno slot di spesa e finivano
+  // etichettate `NOT_A_CONTRACT`: il prodotto affermava una cosa sul documento
+  // («non è un contratto») basandosi su qualcosa che non aveva letto.
+  //
+  // ⚠️ NON si usa `releaseDocument`, e la ragione è precisa: rimetterebbe il
+  // documento in `pending`, dove `claimNextDocument` lo riprende finché
+  // `extraction_attempts < CONTRACT_MAX_ATTEMPTS`. Esauriti i tre tentativi la
+  // riga resterebbe `pending` PER SEMPRE — «In coda» a schermo, nessun pulsante
+  // «Riprova», nessuno stato che dica che cosa è successo. Un verbale `failed`
+  // invece fa scrivere al trigger `processing_status = 'failed'` con il codice,
+  // e il pulsante compare: è il gesto giusto dopo una rilettura OCR da Admin AI.
+  if (looksLikeScan({
+    chars: text.fullText.trim().length,
+    pages: text.pageCount,
+    bytes: text.fileSize,
+    extractionMethod: text.extractionMethod === 'native_pdf' ? 'native_pdf'
+      : text.extractionMethod === 'ocr' ? 'ocr' : 'text',
+  })) {
+    await writeFailure(deps, row, 'SCANNED_NO_TEXT', hash);
+    return { kind: 'failed', code: 'SCANNED_NO_TEXT' };
+  }
+
   const previous = await lastSuccessfulHash(deps.sb, row.contract_id, row.document_id);
   if (previous?.hash && previous.hash === hash) {
     await deps.sb.from('contract_documents')
@@ -182,6 +220,27 @@ export async function processContractDocument(
   }
 
   const durationMs = now() - started;
+
+  // ⚠️ PRIMA di `parseModelJson`, che altrimenti se lo mangia. Un JSON tagliato
+  // dal tetto di token non si parsa, `payload` resta null e il caso finiva in
+  // `AI_REFUSED` — «il modello non ha restituito JSON leggibile», cioè accusare
+  // il fornitore di un limite scelto da noi. Se il budget finisce durante il
+  // thinking non c'è nemmeno un blocco `text`, ed è la ragione dell'ordine.
+  //
+  // ⚠️ NON è transitorio: lo stesso contratto con lo stesso prompt verrà
+  // tagliato di nuovo, e `releaseDocument` brucerebbe i tre tentativi per
+  // arrivare allo stesso posto — poi `pending` per sempre, senza «Riprova».
+  if (message.stop_reason === 'max_tokens') {
+    await finalizeContractAiSlot(deps.sb, logId, {
+      status: 'error', errorCode: 'AI_OUTPUT_TRUNCATED', model: CONTRACT_MODEL,
+      durationMs,
+      inputTokens: message.usage?.input_tokens ?? null,
+      outputTokens: message.usage?.output_tokens ?? null,
+    });
+    await writeFailure(deps, row, 'AI_OUTPUT_TRUNCATED', hash);
+    return { kind: 'failed', code: 'AI_OUTPUT_TRUNCATED' };
+  }
+
   const raw = message.content?.find((c) => c.type === 'text')?.text ?? '';
   const payload = parseModelJson(raw);
 

@@ -79,8 +79,16 @@ export const FINANCE_COMMON_CURRENCIES = ['CHF', 'EUR', 'USD', 'GBP'] as const;
  */
 export const FINANCE_ERROR_CODES = [
   'NO_TEXT',              // il documento non ha testo estratto da cui leggere
+  // ⚠️ `SCANNED_NO_TEXT` NON È `NOT_FINANCIAL`, ed è la distinzione per cui
+  // questo codice esiste. Una scansione con uno strato di testo residuo produce
+  // qualche decina di caratteri di rumore: leggerli e concluderne «non è una
+  // fattura» è un'affermazione sul DOCUMENTO ricavata da qualcosa che non è
+  // stato letto. La verità è «non è stato letto», e porta a un'altra azione —
+  // rileggere il file, non archiviare la pratica.
+  'SCANNED_NO_TEXT',      // il testo estratto non è compatibile con il file
   'NOT_FINANCIAL',        // letto, ma non è un documento finanziario
   'AI_INVALID_OUTPUT',
+  'AI_OUTPUT_TRUNCATED',  // il modello è stato tagliato dal tetto di token nostro
   'AI_NOT_CONFIGURED',
   'RATE_LIMITED',
   'PROVIDER_ERROR',

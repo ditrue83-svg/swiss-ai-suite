@@ -159,6 +159,14 @@ export interface DocumentTextRow {
   extractionMethod: string | null;
   ocrConfidence: number | null;
   truncated: boolean;
+  /**
+   * ⚠️ LA FORMA DEL FILE DA CUI IL TESTO DICE DI VENIRE (§4). Serve a una cosa
+   * sola: chiedere a `looksLikeScan` se quel testo è compatibile con quel file.
+   * `pageCount` viene dall'estrazione, `fileSize` da `documents` — sono due
+   * tabelle, ed è la ragione per cui questa funzione fa due letture.
+   */
+  pageCount: number;
+  fileSize: number | null;
 }
 
 /**
@@ -175,7 +183,7 @@ export async function loadDocumentText(
   sb: ServerClient, companyId: string, documentId: string,
 ): Promise<DocumentTextRow | null> {
   const { data, error } = await sb.from('document_extractions')
-    .select('full_text, pages, extraction_method, ocr_confidence, truncated')
+    .select('full_text, pages, extraction_method, ocr_confidence, truncated, page_count')
     .eq('document_id', documentId)
     .eq('company_id', companyId)
     .maybeSingle();
@@ -188,9 +196,26 @@ export async function loadDocumentText(
     extraction_method: string | null;
     ocr_confidence: number | null;
     truncated: boolean | null;
+    page_count: number | null;
   };
   const fullText = typeof row.full_text === 'string' ? row.full_text : '';
   if (!fullText.trim()) return null;
+
+  // ⚠️ SECONDA LETTURA, e non un embed PostgREST. `file_size` vive su `documents`
+  // e non sull'estrazione; scriverlo come relazione annidata renderebbe questa
+  // funzione dipendente da come PostgREST risolve la chiave esterna — che è
+  // esattamente il PGRST200 già pagato dal Document Hub. Una `select` su una
+  // colonna non può fallire per quella ragione, e costa una richiesta a fronte
+  // di una chiamata al modello.
+  //
+  // ⚠️ Se la lettura non riesce, `fileSize` resta `null` e `looksLikeScan`
+  // risponde `false`: si perde la guardia, non si inventa un verdetto. La
+  // funzione è conservativa per costruzione e qui la si lascia esserlo.
+  const doc = await sb.from('documents')
+    .select('file_size').eq('id', documentId).eq('company_id', companyId).maybeSingle();
+  const fileSize = typeof (doc.data as { file_size?: unknown } | null)?.file_size === 'number'
+    ? (doc.data as { file_size: number }).file_size
+    : null;
 
   const pages = Array.isArray(row.pages)
     ? (row.pages as unknown[])
@@ -209,6 +234,14 @@ export async function loadDocumentText(
     extractionMethod: row.extraction_method,
     ocrConfidence: typeof row.ocr_confidence === 'number' ? row.ocr_confidence : null,
     truncated: row.truncated === true,
+    // ⚠️ `page_count` è la fonte, `pages.length` il ripiego, e l'ordine conta:
+    // di una scansione le pagine possono arrivare senza testo e venire scartate
+    // dal filtro qui sopra, lasciando un elenco vuoto su un documento di dieci
+    // pagine. Contarle da lì gonfierebbe la densità e assolverebbe proprio il
+    // caso che questa colonna serve a riconoscere. Il minimo è 1: dividere per
+    // zero pagine non è una domanda che abbia risposta.
+    pageCount: Math.max(1, row.page_count ?? pages.length),
+    fileSize,
   };
 }
 

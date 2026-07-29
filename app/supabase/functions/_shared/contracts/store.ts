@@ -142,6 +142,16 @@ export interface DocumentText {
   fullText: string;
   pages: { pageNumber: number; text: string }[];
   language: string | null;
+  /**
+   * ⚠️ LA FORMA DEL FILE DA CUI IL TESTO DICE DI VENIRE (§4), per `looksLikeScan`.
+   * ⚠️ `pageCount` NON si conta da `pages`: il filtro qui sotto scarta le pagine
+   * senza testo, che è precisamente ciò che una scansione produce. Contarle da
+   * lì darebbe una pagina sola a un documento di venti e la densità assolverebbe
+   * il caso che questi campi servono a riconoscere.
+   */
+  extractionMethod: string | null;
+  pageCount: number;
+  fileSize: number | null;
 }
 
 /**
@@ -160,15 +170,31 @@ export async function loadDocumentText(
 ): Promise<DocumentText | null> {
   const { data, error } = await sb
     .from('document_extractions')
-    .select('full_text, pages, created_at')
+    .select('full_text, pages, created_at, extraction_method, page_count')
     .eq('document_id', documentId)
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(1);
   if (error) fail('TEXT_READ_FAILED', error);
 
-  const row = (data as { full_text: string | null; pages: unknown }[] | null)?.[0];
+  const row = (data as {
+    full_text: string | null;
+    pages: unknown;
+    extraction_method: string | null;
+    page_count: number | null;
+  }[] | null)?.[0];
   if (!row) return null;
+
+  // ⚠️ SECONDA LETTURA, e non un embed PostgREST: `file_size` sta su `documents`.
+  // Una relazione annidata legherebbe questa funzione a come PostgREST risolve
+  // la chiave esterna — il PGRST200 già pagato dal Document Hub. Se la lettura
+  // non riesce, `fileSize` resta `null` e `looksLikeScan` risponde `false`: si
+  // perde la guardia, non si inventa un verdetto.
+  const doc = await sb.from('documents')
+    .select('file_size').eq('id', documentId).eq('company_id', companyId).maybeSingle();
+  const fileSize = typeof (doc.data as { file_size?: unknown } | null)?.file_size === 'number'
+    ? (doc.data as { file_size: number }).file_size
+    : null;
 
   // Le pagine sono un jsonb `[{ pageNumber, text, ocrConfidence }]` (0006). Si
   // usano per dire A CHE PAGINA sta una citazione: senza, «Mostra clausola»
@@ -185,7 +211,14 @@ export async function loadDocumentText(
   const fullText = row.full_text ?? pages.map((p) => p.text).join('\n\n');
   if (!fullText || !fullText.trim()) return null;
 
-  return { fullText, pages, language: null };
+  return {
+    fullText,
+    pages,
+    language: null,
+    extractionMethod: row.extraction_method,
+    pageCount: Math.max(1, row.page_count ?? pages.length),
+    fileSize,
+  };
 }
 
 /** Il nome dell'azienda: aiuta il modello a distinguere le due parti. */

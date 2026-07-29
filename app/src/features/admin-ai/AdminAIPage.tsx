@@ -13,14 +13,23 @@ import { sha256Hex } from '@/lib/hash';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT } from '@/i18n';
 import { formatBytes } from '@/lib/format';
-import { extractFromFile, fromPlainText, reconstructText, type ClientExtraction } from './pdf';
+import { extractFromFile, reconstructText, type ClientExtraction } from './pdf';
 import { analyzeStoredDocument } from './analyzeStored';
-import { SAMPLE_DOCUMENTS } from './engine';
 import { ResultView } from './ResultView';
 import type { DocumentAnalysis, DocumentRecord } from '@/types/models';
 
 interface FileState { name: string; size?: number; state: 'loading' | 'ok' | 'err'; msg?: string }
-interface RunSource { file?: File; text?: string; extraction: ClientExtraction | null }
+/**
+ * ⚠️ `file` È OBBLIGATORIO, e non lo era. Da questa schermata si analizza SOLO
+ * un file: il campo del testo incollato non c'è più, e i tre pulsanti «Prova con
+ * un esempio» — l'ultimo percorso che creava documenti `pasted_text` — sono stati
+ * tolti il 2026-07-29. Tenere `file` facoltativo avrebbe lasciato in piedi i
+ * rami che quel percorso serviva, cioè del codice che descrive una strada che
+ * non esiste più: chi lo legge fra un mese la crede percorribile.
+ * `pasted_text` resta un valore legittimo in archivio per i documenti già
+ * caricati così, e `documentService` continua a saperlo scrivere.
+ */
+interface RunSource { file: File; extraction: ClientExtraction | null }
 
 export function AdminAIPage() {
   const { activeCompany, activeCompanyId } = useCompany();
@@ -99,10 +108,8 @@ export function AdminAIPage() {
     setAnalyzing(true);
     setProgress(t('adminAi.progressPreparing'));
     try {
-      // §28/§29 — hash del CONTENUTO (byte del file o testo), per la deduplicazione.
-      const fileHash = src.file
-        ? await sha256Hex(await src.file.arrayBuffer())
-        : await sha256Hex(src.text ?? src.extraction?.fullText ?? '');
+      // §28/§29 — hash dei BYTE del file, per la deduplicazione.
+      const fileHash = await sha256Hex(await src.file.arrayBuffer());
 
       // Dedup: stesso contenuto GIÀ ANALIZZATO con successo → mostralo, non rianalizzare.
       // Un documento in stato 'failed' NON blocca: si riprova l'analisi (§53).
@@ -123,10 +130,9 @@ export function AdminAIPage() {
 
       const doc = existing ?? await documentService.create({
         companyId, userId: user.id,
-        title: docTitle || (src.file ? src.file.name.replace(/\.[^.]+$/, '') : 'Documento'),
-        sourceType: src.file ? 'upload' : 'pasted_text',
+        title: docTitle || src.file.name.replace(/\.[^.]+$/, ''),
+        sourceType: 'upload',
         file: src.file,
-        text: src.file ? undefined : (src.text ?? src.extraction?.fullText ?? ''),
         fileHash,
         pageCount: src.extraction?.pages.length ?? null,
       });
@@ -245,14 +251,6 @@ export function AdminAIPage() {
         <div className="field mt-16">
           <label htmlFor="doc-title">{t('adminAi.titleField')}</label>
           <input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('adminAi.titlePlaceholder')} />
-        </div>
-        <div className="row-wrap">
-          <span className="muted-sm">{t('adminAi.trySample')}</span>
-          <span className="row-wrap">
-            {SAMPLE_DOCUMENTS.map((s) => (
-              <button key={s.id} className="btn btn-sm" disabled={analyzing} onClick={() => { setTitle(s.title); void runAnalysis({ text: s.text, extraction: fromPlainText(s.text) }, s.title); }}>{s.label}</button>
-            ))}
-          </span>
         </div>
         {error && (
           <div className="info-box mt-12" role="alert">

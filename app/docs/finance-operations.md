@@ -782,12 +782,18 @@ vincolo**, e in questo modulo quel valore è un IBAN. Per questo `codeOf()` estr
 al massimo la prima parola, e solo se è un identificatore.
 
 Il rapporto restituito dalla Edge Function è fatto di conteggi e bandiere:
-`claimed`, `completed`, `failed`, `retryLater`, `noText`, `notFinancial`, `qrRead`,
-`aiCalls`, `pendingLeft`, `timeBudgetReached`. Niente che descriva un documento,
-un fornitore o un pagamento.
+`claimed`, `completed`, `failed`, `retryLater`, `noText`, `scannedNoText`,
+`notFinancial`, `outputTruncated`, `qrRead`, `aiCalls`, `pendingLeft`,
+`timeBudgetReached`. Niente che descriva un documento, un fornitore o un pagamento.
+
+⚠️ I quattro conteggi di fallimento non sono un dettaglio contabile: `failed` da
+solo non dice che cosa fare. «Non era una fattura» si archivia, «non sono riuscito
+a leggerlo» (`scannedNoText`) chiede di rileggere il file con l'OCR, e
+`outputTruncated` non riguarda affatto il documento — è il nostro tetto di token
+da rivedere. Tre azioni diverse dietro lo stesso numero.
 
 Anche verso il client escono **codici**, non messaggi grezzi: `FINANCE_ERROR_CODES`
-è un elenco chiuso di dieci chiavi, e la frase la scrive l'interfaccia nella lingua
+è un elenco chiuso di dodici chiavi, e la frase la scrive l'interfaccia nella lingua
 di chi legge. Un messaggio del database contiene nomi di tabelle, che a chi legge
 non dicono niente e a chi guarda dicono troppo.
 

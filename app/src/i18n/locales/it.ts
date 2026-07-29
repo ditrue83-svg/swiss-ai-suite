@@ -664,7 +664,6 @@ export const it = {
     titleField: 'Titolo (facoltativo)',
     titlePlaceholder: 'Es. Lettera cassa AVS agosto',
     analyzeAnother: 'Analizza un altro documento',
-    trySample: 'Prova con un esempio:',
     loadingAnalysis: 'Caricamento analisi…',
     noAnalysisYet: 'Questo documento non ha ancora un’analisi.',
     docNotFound: 'Documento non trovato.',
@@ -696,6 +695,7 @@ export const it = {
       // ⚠️ NON dice «riprova»: aspettare non ricarica un credito. Chi legge deve
       // capire che il problema non è il suo documento e non si risolve da solo.
       errorCreditExhausted: 'Il servizio di analisi non ha credito disponibile. Non dipende dal documento: serve un intervento di chi amministra l’applicazione.',
+      errorOutputTruncated: 'L’analisi si è interrotta prima della fine: il documento richiede una risposta più lunga di quella prevista. Non dipende dal documento — serve un intervento di chi amministra l’applicazione.',
       lastAttemptFailed: 'L’ultimo tentativo di rianalisi non è riuscito{reason} Qui sotto trovi l’analisi precedente, che resta valida.',
       needsReview: 'Da verificare',
       urgencyChip: 'urgenza {level}',

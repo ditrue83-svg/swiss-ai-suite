@@ -210,8 +210,16 @@ export type ComparedTermField = (typeof COMPARED_TERM_FIELDS)[number];
 /** I codici di errore del modulo. CHIAVI: la frase la scrive l'interfaccia. */
 export type ContractErrorCode =
   | 'NO_TEXT'                  // il documento non ha testo estratto
+  // ⚠️ DIVERSO da `NO_TEXT`, che è transitorio perché il testo può ancora
+  // arrivare. Qui il testo È arrivato ed è incompatibile con il file: qualche
+  // decina di caratteri residui di una scansione. Leggerli e concluderne
+  // «non è un contratto» sarebbe un'affermazione sul documento ricavata da
+  // qualcosa che nessuno ha letto — e manderebbe a cercare l'errore nel
+  // contratto invece che nel file.
+  | 'SCANNED_NO_TEXT'          // il testo estratto non è compatibile con il file
   | 'AI_UNAVAILABLE'           // nessuna chiave configurata
   | 'AI_REFUSED'               // il modello non ha restituito JSON leggibile
+  | 'AI_OUTPUT_TRUNCATED'      // tagliato dal tetto di token: è un limite NOSTRO
   | 'PROVIDER_RATE_LIMITED'    // quota esaurita: si ritenta, non è un fallimento
   | 'QUOTA_EXCEEDED'
   | 'NOT_A_CONTRACT'           // il documento non sembra un contratto
