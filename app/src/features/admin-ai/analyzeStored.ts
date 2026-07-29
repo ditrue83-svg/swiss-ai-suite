@@ -10,9 +10,18 @@
 // Non è un pulsante «rianalizza con l'AI» offerto senza motivo (§97): esiste
 // per riprendere un lavoro che non è arrivato in fondo, e le analisi restano
 // tutte, perché dalla 0010 lo snapshot è immutabile e si accumula.
+//
+// ⚠️ 2026-07-29 — RIUSARE IL TESTO SALVATO NON È SEMPRE GIUSTO.
+// Un documento può essere in archivio proprio PERCHÉ la sua estrazione è
+// marcia: la lettera della Commissione svizzera di maturità era una scansione
+// da 455 KB di cui pdf.js aveva letto 44 caratteri, e rispedire quei 44
+// caratteri avrebbe riprodotto la stessa analisi inutile consumando quota.
+// Qui si decide se fidarsi del testo salvato, con la stessa funzione che usano
+// il browser e la Edge Function al primo caricamento.
 // ============================================================================
 import { analysisService, type AnalyzeOutcome } from '@/services/analysisService';
 import { documentService } from '@/services/documentService';
+import { looksLikeScan } from '../../../supabase/functions/_shared/extractionQuality.ts';
 import type { ClientExtraction } from './pdf';
 import type { DocumentRecord } from '@/types/models';
 
@@ -22,13 +31,49 @@ export interface AnalyzeStoredInput {
   /** Lingua dell'interfaccia: i testi generati la seguono (§42). */
   outputLanguage: string;
   onProgress?: (step: string) => void;
+  /**
+   * Ignora il testo già estratto e rileggi il file con l'OCR.
+   *
+   * È il gesto esplicito di chi guarda l'analisi, vede che il documento non è
+   * stato letto, e lo dice. Senza questo, un documento la cui estrazione è
+   * andata male resta irrecuperabile: la rianalisi rimanderebbe per sempre lo
+   * stesso testo sbagliato.
+   */
+  forceOcr?: boolean;
 }
 
 export async function analyzeStoredDocument(input: AnalyzeStoredInput): Promise<AnalyzeOutcome> {
   const ext = await documentService.getExtraction(input.document.id);
-  const extraction: ClientExtraction | null = ext?.fullText
-    ? { fullText: ext.fullText, pages: ext.pages, extractionMethod: 'text' }
-    : null;
+  const stored = ext?.fullText?.trim() ? ext : null;
+
+  // Il testo salvato si butta in tre casi, e in tutti e tre il server rilegge
+  // il file con l'OCR:
+  //
+  //  1. lo chiede l'utente (`forceOcr`);
+  //  2. NON È PLAUSIBILE per la forma del file — è il caso della scansione con
+  //     lo strato di testo residuo;
+  //  3. veniva già dall'OCR. Qui il motivo è diverso e vale la pena dirlo: il
+  //     tipo `ClientExtraction` conosce solo `native_pdf` e `text`, quindi
+  //     rimandarlo indietro lo farebbe risalvare come `'text'` — e
+  //     `saveExtraction` fa upsert, cioè la provenienza VERA verrebbe
+  //     sovrascritta con una falsa. Rifare l'OCR costa una chiamata e tiene
+  //     onesto il verbale (§28).
+  const untrustworthy = !stored || !!input.forceOcr
+    || stored.extractionMethod === 'ocr'
+    || looksLikeScan({
+      chars: stored.fullText!.trim().length,
+      pages: stored.pages.length || 1,
+      bytes: input.document.fileSize,
+      extractionMethod: stored.extractionMethod === 'native_pdf' ? 'native_pdf' : 'text',
+    });
+
+  const extraction: ClientExtraction | null = untrustworthy || !stored ? null : {
+    fullText: stored.fullText!,
+    pages: stored.pages,
+    // La provenienza si riporta com'era, non appiattita su 'text'.
+    extractionMethod: stored.extractionMethod === 'native_pdf' ? 'native_pdf' : 'text',
+  };
+
   return await analysisService.analyzeAndPersist({
     document: input.document,
     extraction,

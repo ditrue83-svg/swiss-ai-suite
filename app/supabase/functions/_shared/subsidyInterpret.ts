@@ -8,6 +8,10 @@
 // La rilevanza/idoneità restano deterministiche e verificabili a valle.
 // ============================================================================
 
+// Stessa normalizzazione delle valute usata da Finanze e dall'analisi
+// documentale: `money.ts` non ha alcun import, si prende così com'è.
+import { normalizeCurrency } from './finance/money.ts';
+
 export const INTERPRET_MODEL = 'claude-opus-4-8';
 export const INTERPRET_EFFORT = 'medium';
 // 2026-07-25b: i testi generati seguono la lingua dell'interfaccia (it/de/fr).
@@ -145,7 +149,7 @@ export interface NormalizedInterpretation {
   summary: string;
   projectTypes: { type: ProjectType; confidence: number; evidence: Evidence | null }[];
   sector: { value: SubsidySector | null; confidence: number };
-  investment: { amount: number | null; currency: string; evidence: Evidence | null };
+  investment: { amount: number | null; currency: string | null; evidence: Evidence | null };
   timing: { alreadyStarted: boolean | null; evidence: Evidence | null };
   relevantAreas: { area: string; reason: string; evidence: Evidence | null }[];
   uncertainties: { field: string; description: string; severity: Severity }[];
@@ -197,7 +201,9 @@ export function validateInterpretation(ai: AiInterpretation, description: string
     summary: cleanStr(ai.summary) ?? '',
     projectTypes,
     sector: { value: oneOf<SubsidySector>(ai.sector?.value, SUBSIDY_SECTORS, null), confidence: clamp01(ai.sector?.confidence) },
-    investment: { amount, currency: (cleanStr(ai.investment?.currency) ?? 'CHF').toUpperCase(), evidence: amount != null ? ver(ai.investment?.evidence) : null },
+    // ⚠️ Nessun 'CHF' d'ufficio: stessa ragione di `validate.ts`. Un investimento
+    // dichiarato in un'altra valuta non diventa franchi perché l'app è svizzera.
+    investment: { amount, currency: normalizeCurrency(cleanStr(ai.investment?.currency)), evidence: amount != null ? ver(ai.investment?.evidence) : null },
     timing: { alreadyStarted, evidence: ver(ai.timing?.evidence) },
     relevantAreas: (Array.isArray(ai.relevantAreas) ? ai.relevantAreas : [])
       .map((a) => ({ area: cleanStr(a?.area) ?? '', reason: cleanStr(a?.reason) ?? '', evidence: ver(a?.evidence) }))

@@ -7,6 +7,7 @@ import { actionProgressService } from '@/services/actionProgressService';
 import { replyService } from '@/services/replyService';
 import { correctionService } from '@/services/correctionService';
 import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
+import { looksLikeScan } from '../../../supabase/functions/_shared/extractionQuality.ts';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
@@ -143,11 +144,19 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
   );
 }
 
-export function ResultView({ analysis, document, onRetry }: {
+export function ResultView({ analysis, document, onRetry, onForceOcr }: {
   analysis: DocumentAnalysis;
   document: DocumentRecord;
   /** §27 — rilancia l'analisi dello stesso documento (senza ricaricare il file). */
   onRetry?: () => void;
+  /**
+   * Butta il testo estratto e rilegge il FILE con l'OCR.
+   *
+   * ⚠️ Non è un «rianalizza» offerto a caso (§97): compare solo quando il testo
+   * su cui l'analisi è stata costruita è implausibile per la forma del file —
+   * cioè quando c'è motivo di credere che il documento non sia mai stato letto.
+   */
+  onForceOcr?: () => void;
 }) {
   const t = useT();
   const L = useLabels();
@@ -381,6 +390,20 @@ export function ResultView({ analysis, document, onRetry }: {
     );
   }
 
+  // ⚠️ §4 — L'analisi può essere impeccabile e inutile perché il documento non è
+  // mai stato letto: una scansione di cui pdf.js ha ricavato quattro numeri
+  // produce un verbale onesto che dice «non si capisce nulla». Chi guarda vede
+  // un'analisi, non un'estrazione fallita, e non ha modo di sapere perché.
+  // Qui la si nomina, e si offre l'unico gesto che la ripara.
+  const unreadFile = !!onForceOcr && !!document.storagePath && looksLikeScan({
+    chars: (analysis.originalText ?? '').trim().length,
+    pages: document.pageCount || 1,
+    bytes: document.fileSize,
+    // Si chiede «questo testo è plausibile per questo file?», non «come è stato
+    // ricavato»: la risposta è utile qualunque sia la provenienza registrata.
+    extractionMethod: 'native_pdf',
+  });
+
   return (
     <div>
       {/* Il tentativo più recente è fallito, ma resta valida un'analisi precedente. */}
@@ -388,6 +411,18 @@ export function ResultView({ analysis, document, onRetry }: {
         <div className="warn-box mb-14">
           <Icon name="alert" />
           <span>{t('adminAi.result.lastAttemptFailed', { reason: r.lastAttemptError ? `: ${r.lastAttemptError}` : '.' })}</span>
+        </div>
+      )}
+
+      {unreadFile && (
+        <div className="warn-box mb-14">
+          <Icon name="alert" />
+          <div>
+            <div>{t('adminAi.result.looksUnread')}</div>
+            <button className="btn btn-sm mt-12" onClick={() => onForceOcr?.()}>
+              <Icon name="fileSearch" className="ic-sm" /> {t('adminAi.result.forceOcr')}
+            </button>
+          </div>
         </div>
       )}
 

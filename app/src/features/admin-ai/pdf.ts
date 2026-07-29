@@ -5,6 +5,11 @@
 import * as pdfjsLib from 'pdfjs-dist';
 // Worker servito da Vite come URL (bundle self-contained).
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+// ⚠️ NON È UNA COPIA: è lo stesso modulo che usa la Edge Function per decidere
+// se fidarsi di questa estrazione. Due soglie «tenute allineate a mano»
+// divergono, e la divergenza si vedrebbe come un documento che il browser manda
+// avanti e il server rispedisce all'OCR (o viceversa).
+import { looksLikeScan, MIN_CHARS_ABSOLUTE } from '../../../supabase/functions/_shared/extractionQuality.ts';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -56,7 +61,18 @@ export async function extractFromFile(file: File): Promise<ExtractOutcome> {
   if (isPdf) {
     const pages = await extractPdfPages(await file.arrayBuffer());
     const fullText = pages.map((p) => p.text).join('\n').trim();
-    if (fullText.length < 40) return { kind: 'needs_ocr', reason: 'pdf_scan' };
+    // Pavimento assoluto: sotto questa soglia non c'è documento, punto.
+    if (fullText.length < MIN_CHARS_ABSOLUTE) return { kind: 'needs_ocr', reason: 'pdf_scan' };
+    // ⚠️ Il pavimento NON basta, e il 2026-07-29 lo ha dimostrato: un PDF di
+    // 455 KB su una pagina ha reso 44 caratteri — quattro in più della soglia —
+    // ed è finito al modello come «PDF con testo». Era una scansione. Qui si
+    // confronta il testo con la FORMA del file, non con una costante.
+    if (looksLikeScan({
+      chars: fullText.length, pages: pages.length,
+      bytes: file.size, extractionMethod: 'native_pdf',
+    })) {
+      return { kind: 'needs_ocr', reason: 'pdf_scan' };
+    }
     return { kind: 'extraction', extraction: { fullText, pages, extractionMethod: 'native_pdf' } };
   }
   if (file.type.startsWith('image/')) return { kind: 'needs_ocr', reason: 'image' };

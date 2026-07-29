@@ -97,7 +97,10 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     .map((a) => a as { amount?: unknown; currency?: unknown; type?: unknown; description?: unknown; evidence?: unknown })
     .filter((a) => typeof a.amount === 'number' && Number.isFinite(a.amount))
     .map((a) => {
-      const cur = typeof a.currency === 'string' ? a.currency : 'CHF';
+      // Nessun ripiego a 'CHF': la valuta assente resta assente fino a schermo
+      // (vedi `formatCurrency`). Inventarla qui rimetterebbe in circolo il dato
+      // falso appena tolto dal validatore.
+      const cur = typeof a.currency === 'string' ? a.currency : null;
       return {
         amount: a.amount as number, currency: cur,
         type: typeof a.type === 'string' ? a.type : 'other',
@@ -226,8 +229,15 @@ async function waitForCompletion(documentId: string, onProgress?: (s: string) =>
     const status = data?.status ?? null;
 
     if (status === 'failed') {
+      // ⚠️ `.order().limit(1)` e non `.maybeSingle()` da solo: da quando
+      // `saveAnalysis` non cancella più le analisi precedenti (per non portarsi
+      // via correzioni e spunte in cascata), un documento rianalizzato ha più
+      // righe. `maybeSingle()` su più righe non solleva qui — restituisce un
+      // errore che questa destrutturazione ignora — e l'utente riceverebbe il
+      // messaggio generico al posto della causa vera del fallimento.
       const { data: an } = await sb.from('document_analyses')
-        .select('error_message_safe').eq('document_id', documentId).maybeSingle();
+        .select('error_message_safe').eq('document_id', documentId)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
       throw new AppError(an?.error_message_safe ?? tr('errors.analysisFailed'));
     }
     if (status === 'completed' || status === 'needs_review' || status === 'analyzed') {

@@ -80,10 +80,15 @@ export const documentService = {
   },
 
   /** Estrazione salvata dalla pipeline: testo + pagine (§31), per il viewer (incluso OCR). */
-  async getExtraction(documentId: string): Promise<{ fullText: string | null; pages: { pageNumber: number; text: string }[] } | null> {
+  async getExtraction(documentId: string): Promise<{
+    fullText: string | null;
+    pages: { pageNumber: number; text: string }[];
+    /** Come è stato ricavato il testo. Serve a capire se ci si può fidare. */
+    extractionMethod: 'native_pdf' | 'text' | 'ocr' | null;
+  } | null> {
     const { data, error } = await requireSupabase()
       .from('document_extractions')
-      .select('full_text, pages')
+      .select('full_text, pages, extraction_method')
       .eq('document_id', documentId)
       .maybeSingle();
     if (error) throw new AppError(toUserMessage(error), error);
@@ -92,7 +97,12 @@ export const documentService = {
     const pages = rawPages
       .map((p) => p as { pageNumber?: unknown; text?: unknown })
       .map((p, i) => ({ pageNumber: typeof p.pageNumber === 'number' ? p.pageNumber : i + 1, text: typeof p.text === 'string' ? p.text : '' }));
-    return { fullText: (data.full_text as string | null) ?? null, pages };
+    const m = data.extraction_method as string | null;
+    return {
+      fullText: (data.full_text as string | null) ?? null,
+      pages,
+      extractionMethod: m === 'native_pdf' || m === 'text' || m === 'ocr' ? m : null,
+    };
   },
 
   /**

@@ -20,6 +20,7 @@ import { logAiRequest, reserveAiSlot, finalizeAiRequest } from '../_shared/persi
 // 2026-07-26 — la trascrizione è stata spostata in `_shared/extract.ts` perché
 // serve anche alla sincronizzazione dell'Inbox. Stesso codice, un solo posto.
 import { ocrExtract as sharedOcrExtract, MAX_FILE_BYTES as SHARED_MAX_FILE_BYTES } from '../_shared/extract.ts';
+import { looksLikeScan, MIN_CHARS_ABSOLUTE } from '../_shared/extractionQuality.ts';
 import type { CompanyContext } from '../_shared/prompt.ts';
 
 const CORS = {
@@ -121,7 +122,6 @@ Deno.serve(async (req: Request) => {
   if (hasClientExtraction) {
     const original: string = inExtraction.fullText;
     const fullText: string = original.slice(0, MAX_CHARS);
-    if (fullText.trim().length < 40) return fail('EMPTY_DOCUMENT', 422);
     // §28 — oltre il limite il modello vede solo l'inizio del documento: il
     // troncamento va DICHIARATO, altrimenti un'analisi parziale sembra completa
     // (una scadenza nell'ultima pagina sparirebbe senza lasciare traccia).
@@ -144,8 +144,35 @@ Deno.serve(async (req: Request) => {
         return out;
       })(),
     };
-  } else {
-    // Percorso OCR: quel che è verificabile senza lavoro AI lo si verifica ora.
+
+    // ⚠️⚠️ §4 — L'estrazione arrivata dal client è IMPLAUSIBILE per la forma del
+    // file? Non la si rifiuta: la si IGNORA e si rilegge il file con l'OCR.
+    //
+    // Il 422 sarebbe la risposta comoda e sbagliata: all'utente non lascia
+    // nessuna via d'uscita — il file È leggibile, semplicemente non da pdf.js.
+    // Su un falso positivo questo ripiego costa una chiamata OCR in più; il
+    // 422, su un falso negativo, costa un'analisi su 44 caratteri di rumore.
+    //
+    // `looksLikeScan` risponde `false` per ogni metodo diverso da `native_pdf`,
+    // quindi un testo incollato non può finire qui: è la stessa ragione per cui
+    // il controllo su `storage_path` che segue non lo manda a `ocrExtract` con
+    // un `text/plain`, che l'OCR tratterebbe come `image/png`.
+    if (looksLikeScan({
+      chars: fullText.trim().length,
+      pages: clientExtraction.pages.length,
+      bytes: (doc.file_size as number | null) ?? null,
+      extractionMethod: clientExtraction.extractionMethod,
+    }) && doc.storage_path && (doc.file_size ?? 0) <= MAX_FILE_BYTES) {
+      clientExtraction = null;
+      truncated = false;   // il testo del client si butta: anche il suo troncamento
+    } else if (fullText.trim().length < MIN_CHARS_ABSOLUTE) {
+      return fail('EMPTY_DOCUMENT', 422);
+    }
+  }
+
+  // ⚠️ Fuori dal ramo `else`: ora ci si arriva anche dal ripiego qui sopra, e
+  // saltare queste due guardie manderebbe `ocrExtract` su un percorso nullo.
+  if (!clientExtraction) {
     if (!doc.storage_path) return fail('EXTRACTION_FAILED', 422);
     if ((doc.file_size ?? 0) > MAX_FILE_BYTES) return fail('FILE_TOO_LARGE', 413);
   }

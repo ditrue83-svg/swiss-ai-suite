@@ -90,7 +90,12 @@ async function main() {
   console.log(`${B}Persistenza dopo re-login${X}`);
   const A2 = anonClient(); await A2.auth.signInWithPassword({ email: A.email, password: PW });
 
-  const { data: an } = await A2.from('document_analyses').select('*').eq('document_id', doc.id).maybeSingle();
+  // ⚠️ `.order().limit(1)` e non `.maybeSingle()` nudo: le analisi si accumulano
+  // (saveAnalysis non cancella più le precedenti, per non portarsi via le
+  // correzioni umane in cascata). Su più righe `maybeSingle()` non torna la più
+  // recente: torna un errore, e il test fallirebbe per il motivo sbagliato.
+  const { data: an } = await A2.from('document_analyses').select('*').eq('document_id', doc.id)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
   check('analisi persistita e leggibile', !!an);
   check('colonne ricche: provider/model/prompt_version', !!an?.provider && !!an?.model && !!an?.prompt_version);
   check('deadline_type persistito', an?.deadline_type === 'explicit', String(an?.deadline_type));

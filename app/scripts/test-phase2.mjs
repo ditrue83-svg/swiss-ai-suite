@@ -315,7 +315,9 @@ async function main() {
     // ---- Persistenza rileggibile dopo il round-trip HTTP ----
     console.log(`\n${B}Persistenza dopo il round-trip${X}`);
     const A2 = anonClient(); await A2.auth.signInWithPassword({ email: A.email, password: PW });
-    const { data: row } = await A2.from('document_analyses').select('*').eq('document_id', docA.id).maybeSingle();
+    // Le analisi si accumulano (saveAnalysis non cancella più): serve la più recente.
+    const { data: row } = await A2.from('document_analyses').select('*').eq('document_id', docA.id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
     check('analisi persistita e leggibile dal membro', !!row);
     check('provenienza ricca: provider/model/prompt_version', !!row?.provider && !!row?.model && !!row?.prompt_version,
       `provider ${row?.provider} · model ${row?.model} · prompt ${row?.prompt_version}`);

@@ -134,7 +134,8 @@ async function main() {
   console.log(`\n${B}Risultato persistito${X}`);
   const { data: an } = await admin.from('document_analyses')
     .select('language, sender, deadline, amounts, provider, model, analysis_status, actions')
-    .eq('document_id', doc.id).maybeSingle();
+    .eq('document_id', doc.id)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
   check('analisi salvata nel database', !!an);
   check('lingua riconosciuta (de)', an?.language === 'de', `language=${an?.language}`);
   check('mittente identificato', !!an?.sender, `${(an?.sender ?? '—').slice(0, 40)}`);

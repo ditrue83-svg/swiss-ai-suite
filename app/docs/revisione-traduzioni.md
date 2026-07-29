@@ -1405,19 +1405,6 @@ Correzione DE:
 Correzione FR:
 
 
-**`adminAi.analyze`**
-
-| | |
-|---|---|
-| IT | Analizza documento |
-| DE | Dokument analysieren |
-| FR | Analyser le document |
-
-Correzione DE:
-
-Correzione FR:
-
-
 **`adminAi.analyzeAnother`**
 
 | | |
@@ -1500,9 +1487,9 @@ Correzione FR:
 
 | | |
 |---|---|
-| IT | Carica un PDF, incolla un’email o una lettera: il sistema identifica ente, lingua, scadenze e prepara checklist e bozza di risposta. |
-| DE | Laden Sie ein PDF hoch oder fügen Sie eine E-Mail bzw. einen Brief ein: Das System erkennt Absender, Sprache und Fristen und bereitet Checkliste und Antwortentwurf vor. |
-| FR | Chargez un PDF ou collez un e-mail ou un courrier : le système identifie l’expéditeur, la langue et les délais, et prépare une checklist et un projet de réponse. |
+| IT | Carica un PDF, una scansione, un’email o un file di testo: il sistema identifica ente, lingua, scadenze e prepara checklist e bozza di risposta. |
+| DE | Laden Sie ein PDF, einen Scan, eine E-Mail oder eine Textdatei hoch: Das System erkennt Absender, Sprache und Fristen und bereitet Checkliste und Antwortentwurf vor. |
+| FR | Chargez un PDF, un scan, un e-mail ou un fichier texte : le système identifie l’expéditeur, la langue et les délais, et prépare une checklist et un projet de réponse. |
 
 Correzione DE:
 
@@ -1542,45 +1529,6 @@ Correzione FR:
 | IT | Scansioni e foto — riconoscimento del testo (OCR) lato server |
 | DE | Scans und Fotos — Texterkennung (OCR) auf dem Server |
 | FR | Scans et photos — reconnaissance de texte (OCR) côté serveur |
-
-Correzione DE:
-
-Correzione FR:
-
-
-**`adminAi.orPaste`**
-
-| | |
-|---|---|
-| IT | Oppure incolla il testo della comunicazione |
-| DE | Oder fügen Sie den Text des Schreibens ein |
-| FR | Ou collez le texte de la communication |
-
-Correzione DE:
-
-Correzione FR:
-
-
-**`adminAi.pastePlaceholder`**
-
-| | |
-|---|---|
-| IT | Incolla qui il contenuto della lettera o dell’email… |
-| DE | Fügen Sie hier den Inhalt des Briefes oder der E-Mail ein… |
-| FR | Collez ici le contenu du courrier ou de l’e-mail… |
-
-Correzione DE:
-
-Correzione FR:
-
-
-**`adminAi.pasteTooShort`**
-
-| | |
-|---|---|
-| IT | Inserisci il testo completo della comunicazione (almeno qualche riga). |
-| DE | Bitte fügen Sie den vollständigen Text ein (mindestens einige Zeilen). |
-| FR | Veuillez coller le texte complet de la communication (au moins quelques lignes). |
 
 Correzione DE:
 

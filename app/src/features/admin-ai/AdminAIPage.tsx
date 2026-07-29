@@ -34,7 +34,6 @@ export function AdminAIPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const docParam = searchParams.get('doc');
 
-  const [text, setText] = useState('');
   const [title, setTitle] = useState('');
   const [fileState, setFileState] = useState<FileState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -163,16 +162,16 @@ export function AdminAIPage() {
    * upload, nessuna nuova estrazione. Se l'estrazione non c'è (scansione mai
    * riuscita) si passa null e il server rifà l'OCR.
    */
-  async function retryStored() {
+  async function retryStored(forceOcr = false) {
     if (!document || analyzing) return;
     setAnalyzing(true);
     setError(null);
-    setProgress(t('adminAi.progressResuming'));
+    setProgress(t(forceOcr ? 'adminAi.progressOcr' : 'adminAi.progressResuming'));
     try {
       // Stessa funzione che usa il dettaglio di un documento nel Document Hub:
       // due orchestrazioni della stessa rianalisi finirebbero per divergere.
       const { analysis: an, status } = await analyzeStoredDocument({
-        document, companyName, outputLanguage: locale, onProgress: setProgress,
+        document, companyName, outputLanguage: locale, onProgress: setProgress, forceOcr,
       });
       setAnalysis(an);
       showToast(status === 'needs_review' ? t('adminAi.savedNeedsReview') : t('adminAi.analysisDone'));
@@ -188,32 +187,25 @@ export function AdminAIPage() {
     if (!file) return;
     setError(null);
     setFileState({ name: file.name, size: file.size, state: 'loading' });
-    const derivedTitle = file.name.replace(/\.[^.]+$/, '');
+    // ⚠️ Il titolo scritto a mano VINCE sul nome del file. È l'unico momento in
+    // cui si può dare un nome al documento: nell'archivio non si rinomina.
+    // Prima questo campo lo leggeva solo l'analisi del testo incollato; tolta
+    // quella, senza questa riga il campo resterebbe lì a non fare nulla.
+    const derivedTitle = title.trim() || file.name.replace(/\.[^.]+$/, '');
     try {
       const outcome = await extractFromFile(file);
       setTitle(derivedTitle);
       if (outcome.kind === 'extraction') {
-        setText(outcome.extraction.fullText);
         setFileState({ name: file.name, size: file.size, state: 'ok' });
         await runAnalysis({ file, extraction: outcome.extraction }, derivedTitle);
       } else {
         // scansione/immagine: niente testo estraibile lato client → OCR server-side (§4).
-        setText('');
         setFileState({ name: file.name, size: file.size, state: 'ok', msg: outcome.reason === 'image' ? t('adminAi.fileImageOcr') : t('adminAi.fileScanOcr') });
         await runAnalysis({ file, extraction: null }, derivedTitle);
       }
     } catch (err) {
       setFileState({ name: file.name, size: file.size, state: 'err', msg: (err as Error).message || t('adminAi.fileUnreadable') });
     }
-  }
-
-  function analyzePasted() {
-    setError(null);
-    if (text.trim().length < 40) {
-      setError(t('adminAi.pasteTooShort'));
-      return;
-    }
-    void runAnalysis({ text, extraction: fromPlainText(text) }, title);
   }
 
   const uploader = (
@@ -248,22 +240,17 @@ export function AdminAIPage() {
           </div>
         )}
 
+        {/* Il titolo si scrive PRIMA di scegliere il file: l'analisi parte da
+            sola appena il file è selezionato, quindi dopo non c'è più momento. */}
         <div className="field mt-16">
-          <label htmlFor="doc-text">{t('adminAi.orPaste')}</label>
-          <textarea id="doc-text" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('adminAi.pastePlaceholder')} />
-        </div>
-        <div className="field">
           <label htmlFor="doc-title">{t('adminAi.titleField')}</label>
           <input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('adminAi.titlePlaceholder')} />
         </div>
         <div className="row-wrap">
-          <button className="btn btn-primary btn-block-mobile" onClick={analyzePasted} disabled={analyzing} aria-busy={analyzing || undefined}>
-            {analyzing ? <span className="spinner" aria-hidden="true" /> : null} {t('adminAi.analyze')}
-          </button>
           <span className="muted-sm">{t('adminAi.trySample')}</span>
           <span className="row-wrap">
             {SAMPLE_DOCUMENTS.map((s) => (
-              <button key={s.id} className="btn btn-sm" disabled={analyzing} onClick={() => { setText(s.text); setTitle(s.title); void runAnalysis({ text: s.text, extraction: fromPlainText(s.text) }, s.title); }}>{s.label}</button>
+              <button key={s.id} className="btn btn-sm" disabled={analyzing} onClick={() => { setTitle(s.title); void runAnalysis({ text: s.text, extraction: fromPlainText(s.text) }, s.title); }}>{s.label}</button>
             ))}
           </span>
         </div>
@@ -290,7 +277,14 @@ export function AdminAIPage() {
         )}
         {loadingDoc && <div className="card mt-16"><span className="spinner" /> {t('adminAi.loadingAnalysis')}</div>}
         {!analyzing && !loadingDoc && analysis && document && (
-          <div className="mt-16"><ResultView analysis={analysis} document={document} onRetry={retryStored} /></div>
+          <div className="mt-16">
+            <ResultView
+              analysis={analysis}
+              document={document}
+              onRetry={() => void retryStored(false)}
+              onForceOcr={() => void retryStored(true)}
+            />
+          </div>
         )}
         {!analyzing && !loadingDoc && docParam && !analysis && !error && (
           <div className="card mt-16"><div className="muted-sm">{t('adminAi.noAnalysisYet')}</div></div>

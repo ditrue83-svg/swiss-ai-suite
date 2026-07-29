@@ -140,9 +140,29 @@ export function buildAnalysisRow(a: NormalizedAnalysis, ctx: SaveContext) {
   };
 }
 
-/** Salva (rimpiazzando) l'analisi del documento. Ritorna la riga inserita. */
+/**
+ * Salva l'analisi del documento (AGGIUNGENDOLA). Ritorna la riga inserita.
+ *
+ * ⚠️⚠️ QUI NON SI CANCELLA NULLA, ED È IL PUNTO DELLA FUNZIONE.
+ *
+ * Fino al 2026-07-29 questa riga faceva `delete().eq('document_id', …)` prima
+ * dell'insert. Sembrava innocuo — «rimpiazzo l'analisi» — ed era una perdita di
+ * dati silenziosa: `analysis_corrections` (0006:134) e `action_progress`
+ * (0010:58) puntano a `document_analyses.id` con `on delete cascade`. Ogni
+ * rianalisi portava via con sé le CORREZIONI SCRITTE DA UNA PERSONA e le
+ * spunte della checklist con la loro firma — cioè esattamente le due cose che
+ * la migrazione 0010 aveva estratto dallo snapshot per conservarle.
+ *
+ * Non serve alcun contatore di versione: le analisi si accumulano e vince la
+ * più recente. Tutti i lettori lo danno già per scontato e ordinano per
+ * `created_at desc` — `getForDocument`, `listForCompany`, il Document Hub, la
+ * bozza di risposta e i fatti delle automazioni.
+ *
+ * ⚠️ `analysis_version` NON è un contatore di revisione: è `default 2` accanto a
+ * `engine` e indica la GENERAZIONE DEL MOTORE. Usarlo per numerare i tentativi
+ * romperebbe lo storico esistente.
+ */
 export async function saveAnalysis(sb: SupabaseLike, a: NormalizedAnalysis, ctx: SaveContext) {
-  await sb.from('document_analyses').delete().eq('document_id', ctx.documentId);
   const row = buildAnalysisRow(a, ctx);
   const { data, error } = await sb.from('document_analyses').insert(row).select('*').single();
   if (error) throw new Error(`saveAnalysis: ${error.message}`);

@@ -12,6 +12,7 @@ import {
   classifyProviderError, ERROR_MESSAGES, validateAndNormalize, type ExtractionResult,
 } from '../supabase/functions/_shared/validate.ts';
 import { buildAnalysisRow, reviewStatus } from '../supabase/functions/_shared/persist.ts';
+import { looksLikeScan, MIN_CHARS_ABSOLUTE } from '../supabase/functions/_shared/extractionQuality.ts';
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, label: string, detail = '') => {
@@ -210,6 +211,58 @@ console.log('\n6) Valori fuori range e campi malformati (§19)');
   const r = validateAndNormalize({} as never, EXTRACTION);
   ok(!!r && typeof r.summary === 'string', 'output completamente vuoto non fa esplodere il validatore');
   ok(r.deadline.date === null && r.amounts.length === 0, 'e non produce dati dal nulla');
+}
+
+// ---------------------------------------------------------------------------
+// 7) La forma dell'estrazione: una scansione non deve passare per «PDF letto»
+//
+// ⚠️ Questo blocco esiste per un caso vero, non per completezza. Il 2026-07-29
+// un PDF di 455'452 byte su UNA pagina ha reso 44 caratteri ed è finito al
+// modello come `native_pdf`: la guardia di allora era `length < 40`, e 44 la
+// superava. L'analisi che ne è uscita aveva affidabilità 0.08 su una lettera
+// raccomandata con una scadenza di due anni.
+//
+// La riga che conta è la PRIMA: se qualcuno un giorno rialza la soglia invece
+// di guardare la densità, questo test lo ferma. La seconda è la controprova che
+// la ricevuta cortissima e leggera NON viene bocciata — senza di quella si
+// scambierebbe un difetto per un altro.
+// ---------------------------------------------------------------------------
+console.log('\n7) Forma dell\'estrazione: scansione o documento davvero letto (§4)');
+{
+  type Caso = { nome: string; chars: number; pages: number; bytes: number | null;
+    metodo: 'native_pdf' | 'text' | 'ocr'; atteso: boolean };
+  const casi: Caso[] = [
+    // Il caso reale che ha originato tutto.
+    { nome: 'il PDF del 2026-07-29 (scansione con testo residuo)',
+      chars: 44, pages: 1, bytes: 455452, metodo: 'native_pdf', atteso: true },
+    // ⚠️ La controprova: corta MA leggera → è un documento letto benissimo.
+    { nome: 'ricevuta legittima di due righe, file leggero',
+      chars: 80, pages: 1, bytes: 12288, metodo: 'native_pdf', atteso: false },
+    { nome: 'pagina di testo vero',
+      chars: 1800, pages: 1, bytes: 90000, metodo: 'native_pdf', atteso: false },
+    { nome: 'PDF nativo con logo pesante ma testo sufficiente',
+      chars: 300, pages: 1, bytes: 800000, metodo: 'native_pdf', atteso: false },
+    { nome: 'scansione di 10 pagine',
+      chars: 260, pages: 10, bytes: 3_500_000, metodo: 'native_pdf', atteso: true },
+    // Metodi che non possono mentire sulla propria forma: mai bocciati.
+    { nome: 'testo incollato cortissimo (pagine e byte non significano nulla)',
+      chars: 44, pages: 1, bytes: 455452, metodo: 'text', atteso: false },
+    { nome: 'OCR che ha reso poco (ha già fatto l\'unica cosa consigliabile)',
+      chars: 44, pages: 1, bytes: 455452, metodo: 'ocr', atteso: false },
+    // Senza la dimensione non si giudica: si lascia passare.
+    { nome: 'dimensione del file ignota',
+      chars: 44, pages: 1, bytes: null, metodo: 'native_pdf', atteso: false },
+    { nome: 'dimensione del file a zero',
+      chars: 44, pages: 1, bytes: 0, metodo: 'native_pdf', atteso: false },
+  ];
+  for (const c of casi) {
+    const r = looksLikeScan({ chars: c.chars, pages: c.pages, bytes: c.bytes, extractionMethod: c.metodo });
+    ok(r === c.atteso, c.nome,
+      `${c.chars} car. / ${c.pages} pag. / ${c.bytes ?? 'ignoti'} byte → ${r ? 'OCR' : 'si fida'}`);
+  }
+  // Il pavimento assoluto resta quello di prima: se cambia, il testo incollato
+  // e i .txt cambiano comportamento senza che nessuno se ne accorga.
+  ok(MIN_CHARS_ABSOLUTE === 40, 'il pavimento assoluto è ancora 40 caratteri', String(MIN_CHARS_ABSOLUTE));
 }
 
 console.log(`\n${pass} passati, ${fail} falliti\n`);

@@ -14,6 +14,11 @@ import type {
 import {
   AUTHORITY_TYPES, DEADLINE_TYPES, DOCUMENT_TYPES, LANGUAGES, SEVERITIES,
 } from './schema.ts';
+// ⚠️ Si IMPORTA la normalizzazione delle valute invece di riscriverla: è la
+// stessa domanda che si pone Finanze, e due risposte diverse alla stessa
+// domanda divergono. `money.ts` non ha alcun import — né Deno, né npm, né il
+// resto del progetto — quindi si può prendere così com'è.
+import { normalizeCurrency } from './finance/money.ts';
 
 // ---- Testo estratto (input della verifica) ----------------------------------
 export interface ExtractionPage { pageNumber: number; text: string }
@@ -60,7 +65,7 @@ export interface NormalizedAnalysis {
     evidence: Evidence | null;
     requiresVerification: boolean;
   };
-  amounts: { amount: number; currency: string; type: string; description: string; confidence: number; evidence: Evidence | null }[];
+  amounts: { amount: number; currency: string | null; type: string; description: string; confidence: number; evidence: Evidence | null }[];
   actions: NormAction[];
   primaryAction: NormAction | null;
   requestedDocuments: { name: string; required: boolean | null; confidence: number; evidence: Evidence | null }[];
@@ -223,17 +228,39 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
     return { text: cleanStr(r?.text) ?? '', sourceType, confidence: clamp01(r?.confidence), evidence: sourceType === 'explicit' ? evidence : null };
   }).filter((r) => r.text);
 
-  // §12 — importi: numeri finiti, currency non vuota (uppercase).
+  // §12 — importi: numeri finiti; la valuta si normalizza, NON si inventa.
+  //
+  // ⚠️⚠️ Fino al 2026-07-29 qui c'era `?? 'CHF'`. Sembrava un ripiego comodo su
+  // un'app svizzera, ed era una risposta inventata a una domanda non posta: una
+  // fattura tedesca da «4.500,00 EUR» in cui il modello non ripete la valuta
+  // usciva da qui come 4500 CHF. Peggio, disinnescava la guardia scritta apposta
+  // in `automation/conditions.ts` («CHF 5'000 non è EUR 5'000»), che di fronte a
+  // una valuta ASSENTE risponde «non lo so» e non fa scattare la regola — ma di
+  // fronte a un CHF inventato risponde «sì» e la fa scattare.
+  //
+  // L'importo si TIENE: buttarlo cambierebbe l'esito delle regole `exists` /
+  // `not_exists` già scritte dagli utenti. Sparisce solo la certezza falsa.
   const amounts = (Array.isArray(ai.amounts) ? ai.amounts : [])
     .filter((a) => typeof a?.amount === 'number' && Number.isFinite(a.amount))
     .map((a) => ({
       amount: a.amount,
-      currency: (cleanStr(a?.currency) ?? 'CHF').toUpperCase(),
+      currency: normalizeCurrency(cleanStr(a?.currency)),
       type: oneOf(a?.type, ['due', 'fine', 'fee', 'contribution', 'other'] as const, 'other'),
       description: cleanStr(a?.description) ?? '',
       confidence: clamp01(a?.confidence),
       evidence: ver(a?.evidence ?? null),
     }));
+
+  // ⚠️ Severità `medium` e non `high`: una `high` manderebbe l'intera analisi in
+  // `needs_review` (vedi `reviewStatus`), e un importo senza valuta dichiarata è
+  // un dettaglio da controllare, non un'analisi da rifare.
+  if (amounts.some((a) => a.currency === null) && !uncertainties.some((u) => u.field === 'amounts')) {
+    uncertainties.push({
+      field: 'amounts',
+      description: 'Valuta non indicata nel documento per almeno un importo: verificare prima di usarlo in un confronto',
+      severity: 'medium',
+    });
+  }
 
   const senderName = cleanStr(ai.sender?.name);
   const authorityType = oneOf<AuthorityType>(ai.sender?.authorityType, AUTHORITY_TYPES, 'unknown');

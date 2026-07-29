@@ -153,7 +153,8 @@ export interface DocumentRecord {
 /** Importo rilevato (§12): la pipeline può estrarne più di uno, con tipo e citazione. */
 export interface AnalysisAmount {
   amount: number;
-  currency: string;
+  /** `null` quando il documento non la dichiara: non si presume CHF (§49). */
+  currency: string | null;
   type: string;            // due | fine | fee | contribution | other
   description: string;
   display: string;         // già formattato per la UI
