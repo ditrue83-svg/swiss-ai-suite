@@ -269,33 +269,19 @@ un'offerta da agenzia digitale. Non è stato toccato.
 
 ---
 
-### Codice per rigenerare `static/og.png`
+### Rigenerare `static/og.png`
 
-Da incollare nella console del browser su una pagina del sito; scarica `og.png`.
+`dist/og.html` è il sorgente: stesso lockup, stesso claim, stessi colori della
+vetrina (il canvas che viveva qui è stato tolto il 2026-07-29 — disegnava
+ancora il vecchio marchio col «+», ed era una copia destinata a divergere).
+Si fotografa a 1200×630:
 
-```js
-const W=1200,H=630, c=document.createElement('canvas'); c.width=W; c.height=H;
-const x=c.getContext('2d'); x.fillStyle='hsl(207, 88%, 32%)'; x.fillRect(0,0,W,H);
-const FONT='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-x.fillStyle='rgba(255,255,255,0.16)';
-const r=16, mx=84, my=68, ms=68;
-x.beginPath(); x.moveTo(mx+r,my); x.arcTo(mx+ms,my,mx+ms,my+ms,r); x.arcTo(mx+ms,my+ms,mx,my+ms,r);
-x.arcTo(mx,my+ms,mx,my,r); x.arcTo(mx,my,mx+ms,my,r); x.closePath(); x.fill();
-x.strokeStyle='#fff'; x.lineWidth=5; x.lineCap='round';
-x.beginPath(); x.moveTo(mx+ms/2,my+18); x.lineTo(mx+ms/2,my+ms-18);
-x.moveTo(mx+18,my+ms/2); x.lineTo(mx+ms-18,my+ms/2); x.stroke();
-x.fillStyle='#fff'; x.font='800 40px '+FONT; x.fillText('AI-Swisse', mx+ms+18, my+34);
-x.fillStyle='rgba(255,255,255,0.82)'; x.font='400 22px '+FONT;
-x.fillText('per le PMI svizzere', mx+ms+18, my+64);
-x.fillStyle='#fff'; x.font='800 62px '+FONT;
-const words='La posta dell’amministrazione, tradotta in cose da fare.'.split(' ');
-let line='', y=300; const maxW=W-168, lines=[];
-for(const w of words){const t=line?line+' '+w:w; if(x.measureText(t).width>maxW&&line){lines.push(line);line=w;}else line=t;}
-lines.push(line); for(const l of lines){x.fillText(l,84,y); y+=70;}
-x.font='400 24px '+FONT; x.fillStyle='rgba(255,255,255,0.9)'; x.fillText('ai-swisse.com',84,H-62);
-x.font='400 20px '+FONT; x.fillStyle='rgba(255,255,255,0.8)';
-const langs='Italiano  ·  Deutsch  ·  Français';
-x.fillText(langs, W-84-x.measureText(langs).width, H-62);
-const a=document.createElement('a'); a.download='og.png'; a.href=c.toDataURL('image/png');
-document.body.appendChild(a); a.click(); a.remove();
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --disable-gpu --hide-scrollbars \
+  --virtual-time-budget=6000 --window-size=1200,630 \
+  --screenshot=static/og.png "http://localhost:8745/og.html"
 ```
+
+(oppure si apre `og.html` nel browser e si cattura l'area a 1200×630).
+Poi `node build.mjs` la copia in `dist/`.

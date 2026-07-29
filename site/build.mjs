@@ -103,7 +103,6 @@ const valorizzato = (v) => typeof v === 'string' && v.trim() !== '';
 // non è un sistema: è un riempitivo.
 // ---------------------------------------------------------------------------
 const ICONS = {
-  logo: '<path d="M12 3v18M3 12h18"/>',
   check: '<path d="M4.5 12.5 9 17l10.5-10.5"/>',
   arrow: '<path d="M5 12h13M12.5 6.5 19 12l-6.5 5.5"/>',
   // la freccia della trasformazione: dalla frase marcata all'azione che ne esce
@@ -185,6 +184,7 @@ function head(locale, { title, description, canonical, extraLd, legalKey }) {
          blu diverso, scritto a mano quando i token vivevano in due copie. -->
     <meta name="theme-color" content="#0b6bc0" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="${p}favicon.svg" />
     <link rel="preload" href="${p}fonts/inter-tight-var-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="${p}style.css" />${extraLd ? `\n    <script type="application/ld+json">${extraLd}</script>` : ''}`;
 }
@@ -196,10 +196,17 @@ function topbar(locale, c, { onLanding, legalKey }) {
   const home = onLanding ? '#main' : 'index.html';
   // La barra resta chiara anche in home: dà al campo blu il suo bordo
   // superiore e tiene il marchio identico a quello dell'applicazione.
+  //
+  // IL MARCHIO: quadrato «AI» + wordmark «Swisse» — il lockup del logo del
+  // titolare, riprodotto in HTML/CSS (niente raster) col blu DEI TOKEN.
+  // L'immagine originale usa hsl(199,100%,50%), cioè il vecchio accento che
+  // l'app ha abbandonato di proposito: stesso logo, colore del prodotto di
+  // oggi. Il quadrato dice «AI» e il nome accanto dice «Swisse»: insieme
+  // leggono AI-Swisse, e l'aria-label lo dice per intero a chi ascolta.
   return `    <header class="topbar">
-      <a class="brand" href="${home}">
-        <span class="brand-mark" aria-hidden="true">${icon('logo')}</span>
-        <span><span class="brand-name">AI-Swisse</span><span class="brand-sub">${esc(c.tagline)}</span></span>
+      <a class="brand" href="${home}" aria-label="AI-Swisse — ${esc(c.tagline)}">
+        <span class="brand-mark" aria-hidden="true">AI</span>
+        <span aria-hidden="true"><span class="brand-name">Swisse</span><span class="brand-sub">${esc(c.tagline)}</span></span>
       </a>${onLanding ? `
       <nav class="topnav" aria-label="${esc(c.mainNav)}">
         <a href="#how">${esc(c.nav.how)}</a>
@@ -687,11 +694,13 @@ function ogPage() {
         font-family: var(--ms-font);
       }
       .og-brand { display: flex; align-items: center; gap: 18px; }
+      /* Sul campo blu il quadrato del logo si inverte: bianco pieno, «AI»
+         nel blu del fondo — come i pulsanti del campo nella vetrina. */
       .og-mark {
-        width: 68px; height: 68px; border-radius: 16px; background: rgba(255,255,255,0.16);
-        display: grid; place-items: center;
+        width: 68px; height: 68px; border-radius: 6px; background: #ffffff;
+        color: hsl(207, 88%, 32%); display: grid; place-items: center;
+        font-size: 34px; font-weight: 600; letter-spacing: -0.01em; line-height: 1;
       }
-      .og-mark svg { width: 38px; height: 38px; stroke: #fff; fill: none; stroke-width: 2.25; stroke-linecap: round; }
       .og-name { font-size: 40px; font-weight: 800; letter-spacing: -0.5px; }
       .og-sub { font-size: 22px; opacity: 0.82; margin-top: 2px; }
       .og-claim { font-size: 62px; font-weight: 800; line-height: 1.1; letter-spacing: -1.6px; max-width: 15ch; }
@@ -702,9 +711,9 @@ function ogPage() {
   <body>
     <div class="og">
       <div class="og-brand">
-        <div class="og-mark"><svg viewBox="0 0 24 24">${ICONS.logo}</svg></div>
+        <div class="og-mark">AI</div>
         <div>
-          <div class="og-name">AI-Swisse</div>
+          <div class="og-name">Swisse</div>
           <div class="og-sub">${esc(c.tagline)}</div>
         </div>
       </div>
@@ -794,9 +803,10 @@ mkdirSync(ALONE, { recursive: true });
 for (const locale of LOCALES) {
   let html = page(locale)
     .replace(/<link rel="stylesheet" href="[^"]*" \/>/, `<style>\n${css}\n    </style>`)
-    // Niente preload dei caratteri: in un file aperto col doppio clic il
-    // percorso non risolve. Il testo usa il carattere di sistema.
-    .replace(/\s*<link rel="preload" href="[^"]*fonts\/[^"]*"[^>]*\/>/, '');
+    // Niente preload dei caratteri né favicon: in un file aperto col doppio
+    // clic i percorsi non risolvono. Il testo usa il carattere di sistema.
+    .replace(/\s*<link rel="preload" href="[^"]*fonts\/[^"]*"[^>]*\/>/, '')
+    .replace(/\s*<link rel="icon"[^>]*\/>/, '');
   // I collegamenti alle pagine legali sono relativi alla cartella della
   // lingua: in un file che vive da solo non risolverebbero. Qui diventano
   // assoluti verso il sito — funzioneranno quando sarà pubblicato, e nel

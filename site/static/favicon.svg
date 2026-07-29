@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Il quadrato «AI» del logo, nel blu dei token (accent, tema chiaro).
+       Colore fisso: una favicon non legge i CSS della pagina. -->
+  <rect width="64" height="64" rx="6" fill="#0C6CBB"/>
+  <text x="32" y="43.5" text-anchor="middle" font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="30" font-weight="700" fill="#ffffff" letter-spacing="-0.5">AI</text>
+</svg>
