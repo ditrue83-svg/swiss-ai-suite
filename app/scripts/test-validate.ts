@@ -21,6 +21,10 @@ import { runAnalysisPipeline, type ModelMessage } from '../supabase/functions/_s
 // costruzione invece che per merito della guardia.
 import { processFinanceItem } from '../supabase/functions/_shared/finance/process.ts';
 import { processContractDocument } from '../supabase/functions/_shared/contracts/process.ts';
+// Sezione 10: la provenienza di un dato — pagina, citazione, testo, lavoro appeso.
+import { aiFact } from '../supabase/functions/_shared/automation/facts.ts';
+import { evaluateCondition } from '../supabase/functions/_shared/automation/conditions.ts';
+import { recoverStuckAnalyses } from '../supabase/functions/_shared/recoverStuckAnalyses.ts';
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, label: string, detail = '') => {
@@ -274,6 +278,96 @@ console.log('\n7) Forma dell\'estrazione: scansione o documento davvero letto (�
 }
 
 // ---------------------------------------------------------------------------
+// Aiutanti condivisi dalle sezioni 8, 9 e 10.
+//
+// ⚠️ Un client Supabase finto che REGISTRA. Non simula il database: restituisce
+// le righe che gli si danno e annota ogni scrittura, perché ciò che qui va
+// dimostrato non è tanto che cosa viene salvato quanto che cosa NON viene
+// chiamato — uno slot di quota, una riscrittura, un modello.
+// ---------------------------------------------------------------------------
+type Riga = Record<string, unknown>;
+type Traccia = { tabella: string; azione: string; dati: Riga };
+
+/**
+ * Un client Supabase finto che REGISTRA. Non simula il database: restituisce
+ * le righe che gli si danno e annota ogni scrittura, perché ciò che qui va
+ * dimostrato non è che cosa viene salvato ma che cosa NON viene chiamato.
+ */
+function clientFinto(tabelle: Record<string, Riga[]>) {
+  const tracce: Traccia[] = [];
+  const from = (tabella: string) => {
+    let esito: { data: unknown; error: null } = { data: tabelle[tabella] ?? [], error: null };
+    const b: Record<string, unknown> = {
+      select: () => b,
+      eq: () => b, order: () => b, limit: () => b, lt: () => b, in: () => b,
+      delete: () => {
+        tracce.push({ tabella, azione: 'delete', dati: {} });
+        esito = { data: null, error: null }; return b;
+      },
+      insert: (dati: Riga) => {
+        tracce.push({ tabella, azione: 'insert', dati });
+        esito = { data: [{ id: `${tabella}-1` }], error: null }; return b;
+      },
+      update: (dati: Riga) => {
+        tracce.push({ tabella, azione: 'update', dati });
+        esito = { data: null, error: null }; return b;
+      },
+      upsert: (dati: Riga) => {
+        tracce.push({ tabella, azione: 'upsert', dati });
+        esito = { data: [{ id: `${tabella}-1` }], error: null }; return b;
+      },
+      maybeSingle: () => Promise.resolve({ data: (esito.data as Riga[] | null)?.[0] ?? null, error: null }),
+      single: () => Promise.resolve({ data: (esito.data as Riga[] | null)?.[0] ?? null, error: null }),
+      then: (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
+        Promise.resolve(esito).then(res, rej),
+    };
+    return b;
+  };
+  // ⚠️ La prenotazione dello slot passa da `rpc('try_consume_ai_quota_system')`.
+  // Registrarla qui è ciò che rende verificabile «PRIMA di prenotare lo slot»:
+  // senza, resterebbe un'affermazione nei commenti.
+  const rpc = (nome: string) => {
+    tracce.push({ tabella: `rpc:${nome}`, azione: 'rpc', dati: {} });
+    // Uno slot CONCESSO, non negato: con `null` i due worker si fermerebbero
+    // alla quota e il ramo del troncamento qui sotto non verrebbe mai raggiunto.
+    return Promise.resolve({ data: 'slot-1', error: null });
+  };
+  return { sb: { from, rpc } as never, tracce };
+}
+
+/**
+ * ⚠️ IL MODELLO FINTO ESISTE PER RENDERE VERE LE DUE ASSERZIONI SULLO SLOT.
+ * Con `createMessage: null` i due worker non prenotano nulla in nessun caso, e
+ * «nessuno slot AI prenotato» sarebbe rimasto verde anche a guardia spenta:
+ * un test inerte, cioè il genere di verde che questo progetto ha già pagato
+ * tre volte. Con una funzione VERA il percorso arriva davvero alla quota, e
+ * l'asserzione dice qualcosa.
+ */
+function modelloFinto(stopReason = 'end_turn', testo = '{}') {
+  const chiamate: number[] = [];
+  const createMessage = () => {
+    chiamate.push(1);
+    return Promise.resolve({
+      content: testo === null ? [] : [{ type: 'text', text: testo }],
+      usage: { input_tokens: 1, output_tokens: 1 },
+      stop_reason: stopReason,
+    });
+  };
+  return { createMessage: createMessage as never, chiamate };
+}
+
+// La scansione vera del 2026-07-29: 44 caratteri su 455 KB, una pagina.
+const SCANSIONE = {
+  full_text: '2.5 2.0   7.5  3.5   4   8.0  5.5   5   15.0',
+  pages: [{ pageNumber: 1, text: '2.5 2.0   7.5  3.5   4   8.0  5.5   5   15.0' }],
+  extraction_method: 'native_pdf', ocr_confidence: null, truncated: false, page_count: 1,
+};
+const FILE_PESANTE = [{ file_size: 455452 }];
+// La controprova: stesso testo cortissimo, ma file leggero → documento letto.
+const FILE_LEGGERO = [{ file_size: 12288 }];
+
+
+// ---------------------------------------------------------------------------
 // 8) Perché il modello ha smesso di scrivere (§28)
 //
 // ⚠️ QUI SI ESEGUE `runAnalysisPipeline` DAVVERO, non una sua imitazione. Il
@@ -386,83 +480,6 @@ console.log('\n8) Perché il modello ha smesso di scrivere (§28)');
 // ---------------------------------------------------------------------------
 console.log('\n9) La guardia §4 è COLLEGATA a Finanze e Contratti (§4)');
 {
-  type Riga = Record<string, unknown>;
-  type Traccia = { tabella: string; azione: string; dati: Riga };
-
-  /**
-   * Un client Supabase finto che REGISTRA. Non simula il database: restituisce
-   * le righe che gli si danno e annota ogni scrittura, perché ciò che qui va
-   * dimostrato non è che cosa viene salvato ma che cosa NON viene chiamato.
-   */
-  function clientFinto(tabelle: Record<string, Riga[]>) {
-    const tracce: Traccia[] = [];
-    const from = (tabella: string) => {
-      let esito: { data: unknown; error: null } = { data: tabelle[tabella] ?? [], error: null };
-      const b: Record<string, unknown> = {
-        select: () => b,
-        eq: () => b, order: () => b, limit: () => b, lt: () => b, in: () => b,
-        insert: (dati: Riga) => {
-          tracce.push({ tabella, azione: 'insert', dati });
-          esito = { data: [{ id: `${tabella}-1` }], error: null }; return b;
-        },
-        update: (dati: Riga) => {
-          tracce.push({ tabella, azione: 'update', dati });
-          esito = { data: null, error: null }; return b;
-        },
-        upsert: (dati: Riga) => {
-          tracce.push({ tabella, azione: 'upsert', dati });
-          esito = { data: [{ id: `${tabella}-1` }], error: null }; return b;
-        },
-        maybeSingle: () => Promise.resolve({ data: (esito.data as Riga[] | null)?.[0] ?? null, error: null }),
-        single: () => Promise.resolve({ data: (esito.data as Riga[] | null)?.[0] ?? null, error: null }),
-        then: (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) =>
-          Promise.resolve(esito).then(res, rej),
-      };
-      return b;
-    };
-    // ⚠️ La prenotazione dello slot passa da `rpc('try_consume_ai_quota_system')`.
-    // Registrarla qui è ciò che rende verificabile «PRIMA di prenotare lo slot»:
-    // senza, resterebbe un'affermazione nei commenti.
-    const rpc = (nome: string) => {
-      tracce.push({ tabella: `rpc:${nome}`, azione: 'rpc', dati: {} });
-      // Uno slot CONCESSO, non negato: con `null` i due worker si fermerebbero
-      // alla quota e il ramo del troncamento qui sotto non verrebbe mai raggiunto.
-      return Promise.resolve({ data: 'slot-1', error: null });
-    };
-    return { sb: { from, rpc } as never, tracce };
-  }
-
-  /**
-   * ⚠️ IL MODELLO FINTO ESISTE PER RENDERE VERE LE DUE ASSERZIONI SULLO SLOT.
-   * Con `createMessage: null` i due worker non prenotano nulla in nessun caso, e
-   * «nessuno slot AI prenotato» sarebbe rimasto verde anche a guardia spenta:
-   * un test inerte, cioè il genere di verde che questo progetto ha già pagato
-   * tre volte. Con una funzione VERA il percorso arriva davvero alla quota, e
-   * l'asserzione dice qualcosa.
-   */
-  function modelloFinto(stopReason = 'end_turn', testo = '{}') {
-    const chiamate: number[] = [];
-    const createMessage = () => {
-      chiamate.push(1);
-      return Promise.resolve({
-        content: testo === null ? [] : [{ type: 'text', text: testo }],
-        usage: { input_tokens: 1, output_tokens: 1 },
-        stop_reason: stopReason,
-      });
-    };
-    return { createMessage: createMessage as never, chiamate };
-  }
-
-  // La scansione vera del 2026-07-29: 44 caratteri su 455 KB, una pagina.
-  const SCANSIONE = {
-    full_text: '2.5 2.0   7.5  3.5   4   8.0  5.5   5   15.0',
-    pages: [{ pageNumber: 1, text: '2.5 2.0   7.5  3.5   4   8.0  5.5   5   15.0' }],
-    extraction_method: 'native_pdf', ocr_confidence: null, truncated: false, page_count: 1,
-  };
-  const FILE_PESANTE = [{ file_size: 455452 }];
-  // La controprova: stesso testo cortissimo, ma file leggero → documento letto.
-  const FILE_LEGGERO = [{ file_size: 12288 }];
-
   // ---- Finanze ------------------------------------------------------------
   {
     const { sb, tracce } = clientFinto({
@@ -564,6 +581,163 @@ console.log('\n9) La guardia §4 è COLLEGATA a Finanze e Contratti (§4)');
     );
     ok(esito.kind === 'failed' && esito.code === 'AI_OUTPUT_TRUNCATED',
       'Contratti: il troncamento non si traveste da AI_REFUSED', JSON.stringify(esito));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 10) La provenienza di un dato: pagina, citazione, testo riletto, lavoro appeso
+//
+// Quattro difetti diversi con la stessa forma: il prodotto affermava qualcosa
+// che non poteva sapere, e nessuno dei quattro produceva un errore.
+// ---------------------------------------------------------------------------
+console.log('\n10) Provenienza: pagina, citazione, testo riletto, lavoro appeso');
+{
+  // ---- (3) La pagina della citazione --------------------------------------
+  // ⚠️ `DocViewer` sceglie la pagina da evidenziare leggendo `pageNumber`.
+  // Senza, ripiega sulla PRIMA pagina che contiene quel testo: su un documento
+  // di più pagine evidenzia la pagina sbagliata, e lo fa in silenzio.
+  {
+    const riga = buildAnalysisRow(validateAndNormalize(base() as never, EXTRACTION), ctx);
+    const mitt = riga.sender_evidence as { pageNumber?: unknown } | null;
+    const scad = riga.deadline_evidence as { pageNumber?: unknown } | null;
+    ok(mitt?.pageNumber === 1, 'la citazione del mittente porta con sé la pagina', String(mitt?.pageNumber));
+    ok(scad?.pageNumber === 1, 'e così quella della scadenza', String(scad?.pageNumber));
+    // La controprova dell'asimmetria che si vedeva nella STESSA schermata:
+    // `amounts` finisce nella riga intero, quindi la pagina è sempre arrivata.
+    const a = (riga.amounts as { evidence?: { pageNumber?: unknown } }[])[0];
+    ok(a === undefined || a.evidence === null || typeof a.evidence?.pageNumber !== 'undefined',
+      'e gli importi, che passano da un\'altra strada, restano coerenti');
+  }
+
+  // ---- (5) L'importo che può far partire una regola ------------------------
+  {
+    const conCitazione = (quote: string | null, amount: number) => ({
+      amount, currency: 'CHF', type: 'due', description: '', confidence: 0.9,
+      evidence: quote === null ? null : { quote, pageNumber: 1 },
+    });
+    const ai = base();
+    // Il primo ha fiducia più alta ma una citazione INVENTATA; il secondo una
+    // citazione che si ritrova davvero nel testo.
+    ai.amounts = [
+      { ...conCitazione('mai scritto nel documento', 9999), confidence: 0.99 },
+      conCitazione("Der ausstehende Betrag von CHF 4'820.00", 4820),
+    ] as never;
+    const riga = buildAnalysisRow(validateAndNormalize(ai as never, EXTRACTION), ctx);
+    ok(riga.amount === 4820,
+      'fra due importi vince quello con la citazione VERIFICATA, non la fiducia più alta',
+      String(riga.amount));
+  }
+  {
+    // Nessuna citazione verificata: l'importo resta scritto — buttarlo
+    // cancellerebbe casi legittimi (§ prompt.ts:81) — ma non deve poter agire.
+    const ai = base();
+    ai.amounts = [{
+      amount: 5000, currency: 'CHF', type: 'due', description: '', confidence: 0.9,
+      evidence: { quote: 'frase mai scritta', pageNumber: 1 },
+    }] as never;
+    const riga = buildAnalysisRow(validateAndNormalize(ai as never, EXTRACTION), ctx);
+    ok(riga.amount === 5000, 'un importo senza citazione verificata NON viene cancellato', String(riga.amount));
+    ok(riga.amount_evidence === null, 'ma non porta con sé una citazione che non regge');
+
+    // ⚠️ È QUI che si chiude: il fatto diventa incerto e la regola non parte.
+    const fatto = aiFact({ value: 5000, currency: 'CHF', overallConfidence: 0.9, unverifiedQuote: true });
+    ok(fatto.known === false && fatto.reason === 'unverified_quote',
+      'il fatto è INCERTO, e per un motivo suo: non «fiducia bassa»', String(fatto.reason));
+
+    const maggiore = evaluateCondition(
+      { field: 'analysis.amount', operator: 'greater_than', value: 1000, currency: 'CHF' } as never,
+      { 'analysis.amount': fatto },
+    );
+    ok(maggiore.outcome === 'unknown', '«più di 1000 CHF» non è né vero né falso: non si esegue', maggiore.outcome);
+
+    // ⚠️ LA TRAPPOLA: `exists` calcola da `fact.known`, che per un fatto incerto
+    // è `false`. Senza il motivo nell'elenco, «esiste un importo?» risponderebbe
+    // NO su un documento che un importo ce l'ha — ribaltando le regole già scritte.
+    const esiste = evaluateCondition(
+      { field: 'analysis.amount', operator: 'exists' } as never,
+      { 'analysis.amount': fatto },
+    );
+    ok(esiste.outcome === 'unknown', '«esiste un importo?» resta un ignoto, non diventa un «no»', esiste.outcome);
+
+    // E la correzione a mano vince su tutto: la fonte è la persona.
+    const corretto = aiFact({ value: 5000, corrected: true, unverifiedQuote: true });
+    ok(corretto.known === true, 'un importo corretto a mano resta noto: la fonte è chi l\'ha scritto');
+  }
+
+  // ---- (4) Il testo riletto non si riscrive -------------------------------
+  // ⚠️ `saveExtraction` scrive `ocr_confidence: null`: un upsert con valori
+  // IDENTICI cancellerebbe comunque il punteggio di una trascrizione OCR.
+  {
+    const { sb, tracce } = clientFinto({});
+    try {
+      await runAnalysisPipeline(sb as never, () => Promise.resolve({
+        content: [], usage: {}, stop_reason: 'max_tokens',
+      }), {
+        documentId: 'doc-1', companyId: 'comp-1', userId: null,
+        extraction: EXTRACTION, extractionDurationMs: 1,
+        companyContext: {
+          legalName: 'Prova SA', canton: 'Ticino', municipality: 'Lugano',
+          legalForm: 'SA', sector: 'costruzioni',
+        },
+        todayIso: '2026-07-29', provider: 'anthropic',
+        reuseExtractionId: 'ext-esistente',
+      });
+    } catch { /* si ferma al troncamento: qui interessa solo che cosa ha scritto */ }
+    ok(!tracce.some((t) => t.tabella === 'document_extractions'),
+      'con un\'estrazione già salvata NON si riscrive la riga (né si azzera ocr_confidence)');
+    ok(tracce.some((t) => t.tabella === 'documents' && t.dati.status === 'analyzing'),
+      'ma il documento passa comunque in «analyzing»');
+  }
+  {
+    // La controprova: senza l'id, la riga si scrive come sempre.
+    const { sb, tracce } = clientFinto({});
+    try {
+      await runAnalysisPipeline(sb as never, () => Promise.resolve({
+        content: [], usage: {}, stop_reason: 'max_tokens',
+      }), {
+        documentId: 'doc-2', companyId: 'comp-1', userId: null,
+        extraction: EXTRACTION, extractionDurationMs: 1,
+        companyContext: {
+          legalName: 'Prova SA', canton: 'Ticino', municipality: 'Lugano',
+          legalForm: 'SA', sector: 'costruzioni',
+        },
+        todayIso: '2026-07-29', provider: 'anthropic',
+      });
+    } catch { /* idem */ }
+    ok(tracce.some((t) => t.tabella === 'document_extractions' && t.azione === 'upsert'),
+      'e senza id l\'estrazione si salva come sempre');
+  }
+
+  // ---- (6) Il documento rimasto appeso ------------------------------------
+  {
+    const APPESO = [{ id: 'doc-1', company_id: 'comp-1' }];
+    // Nessuna analisi: l'esecuzione è stata uccisa prima di produrre qualcosa.
+    const { sb, tracce } = clientFinto({ documents: APPESO, document_analyses: [] });
+    const r = await recoverStuckAnalyses(sb as never);
+
+    ok(r.recovered === 1, 'un documento appeso da troppo tempo viene chiuso', JSON.stringify(r));
+    ok(tracce.some((t) => t.tabella === 'documents' && t.dati.status === 'failed'),
+      'documents.status diventa failed');
+    // ⚠️⚠️ LA PARTE CHE NON SI PUÒ OMETTERE: `stateOf` decide da
+    // `document_analyses.analysis_status`. Senza questa riga il documento
+    // tornerebbe «non ancora analizzato» — un tentativo bruciato travestito da
+    // lavoro mai cominciato.
+    ok(tracce.some((t) => t.tabella === 'document_analyses' && t.azione === 'insert'
+      && t.dati.analysis_status === 'failed' && t.dati.error_code === 'INTERRUPTED'),
+      'e nasce la riga di analisi fallita, senza la quale stateOf direbbe «mai analizzato»');
+  }
+  {
+    // ⚠️ La finestra fra «analisi scritta» e «stato aggiornato»: qui il lavoro
+    // ERA finito. Scriverci sopra un fallimento cancellerebbe un risultato buono.
+    const { sb, tracce } = clientFinto({
+      documents: [{ id: 'doc-2', company_id: 'comp-1' }],
+      document_analyses: [{ analysis_status: 'completed' }],
+    });
+    const r = await recoverStuckAnalyses(sb as never);
+    ok(r.reconciled === 1 && r.recovered === 0,
+      'se l\'analisi c\'era già, si allinea lo stato e non si inventa un fallimento', JSON.stringify(r));
+    ok(!tracce.some((t) => t.tabella === 'document_analyses' && t.azione === 'insert'),
+      'e non si tocca l\'analisi buona');
   }
 }
 

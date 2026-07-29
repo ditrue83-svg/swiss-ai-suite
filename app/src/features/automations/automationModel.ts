@@ -119,6 +119,7 @@ export function conditionReasonKey(reason: WorkflowConditionResult['reason']): T
   switch (reason) {
     case 'missing': return 'automations.reason.missing';
     case 'low_confidence': return 'automations.reason.lowConfidence';
+    case 'unverified_quote': return 'automations.reason.unverifiedQuote';
     case 'currency_mismatch': return 'automations.reason.currencyMismatch';
     case 'unknown_field': return 'automations.reason.unknownField';
     default: return null;

@@ -12,9 +12,25 @@ import { SCHEMA_VERSION } from './schema.ts';
 export type SupabaseLike = { from: (table: string) => any };
 
 // Evidence legacy attesa dalla UI attuale: solo citazioni VERIFICATE, con offset.
-function legacyEvidence(e: Evidence | null): { quote: string; start: number; end: number } | null {
+//
+// ⚠️⚠️ `pageNumber` VIENE PROPAGATO, e fino al 2026-07-29 non lo era. `DocViewer`
+// decide in quale pagina evidenziare la citazione leggendo proprio quel campo
+// (`const target = highlight?.pageNumber ?? null`): senza, ripiega sulla PRIMA
+// pagina che contiene quel testo. Su un documento di più pagine è un errore
+// silenzioso e plausibile — un importo o un numero di riferimento che compare
+// anche in un'intestazione fa evidenziare la pagina sbagliata, e chi guarda
+// crede di aver visto la fonte.
+//
+// ⚠️ L'ASIMMETRIA SI VEDEVA NELLA STESSA SCHERMATA: `amounts`,
+// `reference_numbers` e `legal_references` finiscono nella riga INTERI, quindi
+// il loro `pageNumber` è sempre arrivato. Funzionava per quelli e non per
+// mittente, scadenza, importo principale, azioni e documenti richiesti — che
+// passano tutti di qui.
+function legacyEvidence(
+  e: Evidence | null,
+): { quote: string; start: number; end: number; pageNumber: number | null } | null {
   if (!e || !e.verified || e.start == null || e.end == null) return null;
-  return { quote: e.quote, start: e.start, end: e.end };
+  return { quote: e.quote, start: e.start, end: e.end, pageNumber: e.pageNumber ?? null };
 }
 
 function confidenceLabel(n: number): 'alta' | 'media' | 'bassa' {
@@ -24,10 +40,33 @@ function confidenceLabel(n: number): 'alta' | 'media' | 'bassa' {
 // §12 — l'importo "principale" è quello DOVUTO. Se il documento non ne contiene
 // uno, si ripiega sul più rilevante ma se ne conserva il TIPO, perché una multa
 // o una tassa non vanno mai presentate come "da versare" (la UI lo etichetta).
+//
+// ⚠️ A PARITÀ DI TIPO VINCE LA CITAZIONE VERIFICATA, non la fiducia più alta.
+// Questa colonna alimenta le automazioni (`analysis.amount` nel registro), cioè
+// è l'unico numero di tutta l'analisi che può far partire un'azione da solo. Un
+// importo con una citazione che si RITROVA nel testo e uno con una citazione
+// che non si ritrova non sono due gradi della stessa cosa: il secondo è una
+// cifra di cui non sappiamo da dove venga, e la fiducia dichiarata dal modello
+// non è un argomento — è la stessa fonte che ha prodotto la citazione falsa.
+//
+// ⚠️ NON si scarta l'importo non verificato, e non è timidezza: `prompt.ts:81`
+// dice al modello di usare `evidence: null` quando una citazione non ce l'ha,
+// quindi «senza citazione» comprende anche i casi onesti. Buttarli cancellerebbe
+// importi legittimi e cambierebbe l'esito delle regole `exists`/`not_exists` già
+// scritte dagli utenti. La difesa vera sta un piano più in là, in
+// `automation/store.ts`: l'importo senza citazione verificata diventa un fatto
+// `uncertain`, e sulla logica a tre valori un ignoto NON ESEGUE.
 function pickDueAmount(a: NormalizedAnalysis) {
   if (!a.amounts.length) return null;
-  const due = a.amounts.filter((m) => m.type === 'due').sort((x, y) => y.confidence - x.confidence);
-  return (due[0] ?? a.amounts[0]);
+  const verificato = (m: NormalizedAnalysis['amounts'][number]) => m.evidence?.verified === true;
+  const due = a.amounts
+    .filter((m) => m.type === 'due')
+    .sort((x, y) => (verificato(y) ? 1 : 0) - (verificato(x) ? 1 : 0) || y.confidence - x.confidence);
+  if (due.length) return due[0];
+  // ⚠️ Il ripiego resta l'ORDINE DEL MODELLO e non il più sicuro: cambiarlo
+  // sposterebbe quale importo compare come principale su documenti che oggi
+  // funzionano. Si preferisce solo, fra quelli, uno con la citazione verificata.
+  return a.amounts.find(verificato) ?? a.amounts[0];
 }
 
 // §25 — needs_review se poca fiducia o incertezza grave; altrimenti completed.

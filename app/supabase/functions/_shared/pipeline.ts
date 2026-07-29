@@ -30,6 +30,16 @@ export interface PipelineInput {
   truncated?: boolean;
   /** §50 — riga di log già PRENOTATA dalla quota: si completa invece di inserirne una nuova. */
   logId?: string | null;
+  /**
+   * §28 — l'estrazione ESISTE GIÀ ed è esattamente questa: non si riscrive.
+   *
+   * ⚠️ Serve al percorso «rianalizza il testo che hai già». `saveExtraction` fa
+   * un upsert che ricalcola `page_count`, `char_count` e soprattutto scrive
+   * `ocr_confidence: null`: riscrivere una riga con valori identici
+   * cancellerebbe comunque il punteggio di una trascrizione OCR. Quando l'id
+   * arriva di qui, la riga si lascia dov'è.
+   */
+  reuseExtractionId?: string | null;
   /** §42 — lingua in cui l'utente legge l'app: i testi generati la seguono. */
   outputLanguage?: OutputLanguage;
   companyContext: CompanyContext;
@@ -52,10 +62,14 @@ export async function runAnalysisPipeline(
   const startedAt = new Date().toISOString();
 
   // 1. Salva l'estrazione (separata dall'originale, §5) e passa in "analyzing".
-  const extractionId = await saveExtraction(sb, {
-    documentId: input.documentId, companyId: input.companyId,
-    extraction: input.extraction, durationMs: input.extractionDurationMs, truncated: input.truncated,
-  });
+  //    ⚠️ A meno che non esista già ed sia esattamente quella: vedi
+  //    `reuseExtractionId`. Un upsert «innocuo» con gli stessi valori non è
+  //    innocuo — riscrive `ocr_confidence` a `null`.
+  const extractionId = input.reuseExtractionId
+    ?? await saveExtraction(sb, {
+      documentId: input.documentId, companyId: input.companyId,
+      extraction: input.extraction, durationMs: input.extractionDurationMs, truncated: input.truncated,
+    });
   await sb.from('documents').update({ status: 'analyzing' }).eq('id', input.documentId);
 
   // 2. Chiama il modello (thinking + structured-by-prompt).

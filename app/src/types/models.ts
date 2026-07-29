@@ -860,7 +860,7 @@ export interface WorkflowConditionResult {
   expected: string | number | boolean | string[] | null;
   currency?: string | null;
   outcome: 'true' | 'false' | 'unknown';
-  reason?: 'missing' | 'low_confidence' | 'currency_mismatch' | 'unknown_field';
+  reason?: 'missing' | 'low_confidence' | 'unverified_quote' | 'currency_mismatch' | 'unknown_field';
 }
 
 export interface WorkflowActionRun {

@@ -59,7 +59,6 @@ export async function analyzeStoredDocument(input: AnalyzeStoredInput): Promise<
   //     sovrascritta con una falsa. Rifare l'OCR costa una chiamata e tiene
   //     onesto il verbale (§28).
   const untrustworthy = !stored || !!input.forceOcr
-    || stored.extractionMethod === 'ocr'
     || looksLikeScan({
       chars: stored.fullText!.trim().length,
       pages: stored.pages.length || 1,
@@ -67,16 +66,22 @@ export async function analyzeStoredDocument(input: AnalyzeStoredInput): Promise<
       extractionMethod: stored.extractionMethod === 'native_pdf' ? 'native_pdf' : 'text',
     });
 
-  const extraction: ClientExtraction | null = untrustworthy || !stored ? null : {
-    fullText: stored.fullText!,
-    pages: stored.pages,
-    // La provenienza si riporta com'era, non appiattita su 'text'.
-    extractionMethod: stored.extractionMethod === 'native_pdf' ? 'native_pdf' : 'text',
-  };
+  // ⚠️ 2026-07-29 — NON SI RIMANDA PIÙ INDIETRO IL TESTO SALVATO: si chiede al
+  // server di rileggere la PROPRIA riga (`reuseStoredExtraction`).
+  //
+  // Prima, un'estrazione nata da un OCR veniva trattata come inaffidabile e
+  // rifatta da capo — non perché fosse cattiva, ma perché rispedirla la avrebbe
+  // fatta risalvare come `'text'`: `ClientExtraction` non conosce `'ocr'`. Si
+  // pagava una trascrizione OCR intera per aggirare un difetto del trasporto.
+  // E su un testo già tagliato a `MAX_CHARS` il server ricalcolava `truncated`
+  // confrontando 120000 con 120000, cioè riportava a `false` un'analisi parziale.
+  // Nessuna delle due cose passa più dal corpo della richiesta.
+  const reuseStoredExtraction = !untrustworthy && !!stored;
 
   return await analysisService.analyzeAndPersist({
     document: input.document,
-    extraction,
+    extraction: null,
+    reuseStoredExtraction,
     companyName: input.companyName,
     outputLanguage: input.outputLanguage,
     onProgress: input.onProgress,

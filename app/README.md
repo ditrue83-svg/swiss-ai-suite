@@ -858,8 +858,15 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
   storico.
 - **Processing asincrono senza coda persistente**: la richiesta ritorna subito (202) e il lavoro
   prosegue sul server (background task del runtime Edge), con lo stato osservabile nel DB. Non c'è
-  però una *coda durevole*: se l'istanza muore a metà, il documento resta in `analyzing` finché non
-  si rilancia l'analisi. Per volumi elevati servirebbe una vera job queue (pg_cron / worker dedicato).
+  una *coda durevole*: se l'istanza muore a metà — il runtime Edge chiude la richiesta a 150 secondi
+  e il `finally` non gira — il lavoro **non riprende da solo**. Dal 2026-07-29 però non resta
+  nemmeno appeso: `recoverStuckAnalyses`, che gira nella manutenzione periodica, dopo venti minuti
+  chiude il documento come `failed` con codice `INTERRUPTED` **e scrive la riga di analisi
+  corrispondente** — senza quella la schermata direbbe «non ancora analizzato», cioè un tentativo
+  bruciato travestito da lavoro mai cominciato. Da lì c'è il pulsante «Riprova».
+  ⚠️ Non si ritenta da soli di proposito: un'analisi costa una chiamata al modello, e riprovare
+  senza sapere *perché* si è interrotta rischia di rifarlo all'infinito. Per volumi elevati
+  servirebbe comunque una vera job queue (pg_cron / worker dedicato).
 - **Viewer PDF senza highlighting a coordinate**: il PDF originale viene renderizzato e «Mostra nel
   documento» porta alla **pagina** della citazione, mostrando il passaggio accanto. L'evidenziazione
   esatta della riga esiste solo nella vista testo, dove la citazione è verificata carattere per carattere.

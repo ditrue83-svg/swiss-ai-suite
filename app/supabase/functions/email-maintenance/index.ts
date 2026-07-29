@@ -34,6 +34,15 @@ import {
 import { getConnection, newCounters, readSecrets, writeSecrets, type ServerClient } from '../_shared/email/store.ts';
 import { drainPendingAnalyses, getValidAccessToken, runSync, type SyncDeps } from '../_shared/email/sync.ts';
 import { EmailProviderError } from '../_shared/email/types.ts';
+// ⚠️ QUESTA FUNZIONE NON È PIÙ SOLO DELL'INBOX, e vale la pena dirlo qui.
+// `recoverStuckAnalyses` chiude i documenti di Admin AI rimasti «in
+// elaborazione» — compresi quelli caricati a mano, che con l'Inbox non hanno
+// niente a che vedere. Vive qui perché QUESTO è l'unico lavoro periodico già
+// acceso che guarda i `documents`, e aggiungere una Edge Function e un job
+// pg_cron per venticinque righe avrebbe chiesto una migrazione all'utente per
+// ottenere la stessa cosa cinque minuti prima. Se un giorno la manutenzione si
+// divide, questa chiamata si sposta con il suo modulo: sta tutta in `_shared`.
+import { recoverStuckAnalyses } from '../_shared/recoverStuckAnalyses.ts';
 
 /** Se una casella non si sincronizza da così tanto, qualcosa non ha funzionato. */
 const RECONCILE_IF_SILENT_HOURS = 6;
@@ -58,6 +67,9 @@ Deno.serve(async (req: Request) => {
   const report = {
     renewed: 0, renewFailed: 0, reconciled: 0, reconcileFailed: 0, analysed: 0,
     requeued: 0, interrupted: 0, runsClosed: 0, cleanedStates: 0, cleanedEvents: 0,
+    // Documenti di Admin AI rimasti appesi: dichiarati falliti, oppure solo
+    // riallineati quando l'analisi c'era già ed era lo stato a essere indietro.
+    stuckRecovered: 0, stuckReconciled: 0,
     // Dichiarato nella risposta: chi legge il report deve poter distinguere
     // «non c'era altro da fare» da «il tempo è finito prima del lavoro».
     timeBudgetReached: false,
@@ -84,6 +96,11 @@ Deno.serve(async (req: Request) => {
     // stato onesto, e quello che merita un ritentativo entra in coda in tempo per
     // lo smaltimento di questa stessa esecuzione.
     await recoverInterrupted(sb, report);
+    // Stesso principio un piano più in là: ciò che è rimasto appeso torna in
+    // uno stato onesto. Qui però non si ritenta — vedi il modulo.
+    const stuck = await recoverStuckAnalyses(sb);
+    report.stuckRecovered = stuck.recovered;
+    report.stuckReconciled = stuck.reconciled;
     await reconcile(deps, report, deadline);
     report.analysed = await drainAnalyses(deps, deadline);
     report.cleanedStates = await cleanupOauthStates(sb);

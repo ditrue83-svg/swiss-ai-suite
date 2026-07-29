@@ -2009,6 +2009,7 @@ export const de: Dictionary = {
     reason: {
       missing: 'Der Wert ist nicht verfügbar.',
       lowConfidence: 'Der Wert liegt vor, doch die Analyse war nicht sicher genug, und niemand hat ihn bestätigt.',
+      unverifiedQuote: 'Der Wert ist vorhanden, aber der Satz, aus dem er stammen sollte, findet sich im Dokument nicht: Die Regel läuft nicht auf einem Wert, dessen Herkunft unbekannt ist.',
       currencyMismatch: 'Die Währung ist eine andere: Beträge werden nicht umgerechnet.',
       unknownField: 'Das Feld gibt es für diesen Auslöser nicht mehr.',
     },

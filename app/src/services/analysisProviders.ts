@@ -37,11 +37,15 @@ async function readFunctionError(error: unknown): Promise<string> {
 export async function invokeAnalyze(
   documentId: string,
   extraction: ClientExtraction | null,
-  options: { async?: boolean; outputLanguage?: string } = {},
+  options: { async?: boolean; outputLanguage?: string; reuseStoredExtraction?: boolean } = {},
 ): Promise<{ status: string }> {
   const body: Record<string, unknown> = extraction
     ? { documentId, extraction: { fullText: extraction.fullText, pages: extraction.pages, extractionMethod: extraction.extractionMethod } }
     : { documentId };
+  // §28 — «rileggi la riga che hai già», invece di rimandartela io. Il testo
+  // salvato non passa più dal corpo della richiesta: il client non è la fonte
+  // della propria provenienza né del proprio troncamento.
+  if (options.reuseStoredExtraction && !extraction) body.reuseStoredExtraction = true;
   if (options.async) body.async = true;
   // §42 — i testi generati seguono la lingua dell'interfaccia.
   if (options.outputLanguage) body.outputLanguage = options.outputLanguage;

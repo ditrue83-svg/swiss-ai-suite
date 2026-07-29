@@ -25,10 +25,19 @@ export interface Fact {
   known: boolean;
   /**
    * Perché non è noto. `missing` = il dato non c'è; `low_confidence` = c'è ma
-   * l'analisi non era abbastanza sicura, e nessuno l'ha confermato a mano.
-   * Serve alla schermata dell'esecuzione, che deve poter dire QUALE delle due.
+   * l'analisi non era abbastanza sicura, e nessuno l'ha confermato a mano;
+   * `unverified_quote` = c'è, ma la frase da cui dovrebbe venire NON si ritrova
+   * nel documento. Serve alla schermata dell'esecuzione, che deve poter dire
+   * QUALE delle tre.
+   *
+   * ⚠️ `unverified_quote` NON è un grado di `low_confidence`, ed è la ragione
+   * per cui è un valore a sé. Una fiducia bassa è il modello che dichiara di non
+   * essere sicuro — un'informazione onesta. Una citazione che non si ritrova è
+   * il modello sicuro di una frase che nel documento non c'è: chi legge lo
+   * storico deve poterli distinguere, perché il primo si risolve rileggendo il
+   * documento e il secondo no.
    */
-  reason?: 'missing' | 'low_confidence';
+  reason?: 'missing' | 'low_confidence' | 'unverified_quote';
   /** Solo per gli importi. Non si convertono valute, mai (§27). */
   currency?: string | null;
 }
@@ -82,11 +91,23 @@ export function aiFact(input: {
   overallConfidence?: number | null;
   confidenceLabel?: string | null;
   currency?: string | null;
+  /**
+   * §20 — il valore c'è, ma la citazione da cui dovrebbe venire non si ritrova
+   * nel testo estratto. Vale più di qualunque punteggio di fiducia e viene
+   * PRIMA: un numero che non si sa da dove venga non fa scattare una regola.
+   */
+  unverifiedQuote?: boolean;
 }): Fact {
   const base = optional(input.value);
   if (!base.known) return input.currency !== undefined ? { ...base, currency: input.currency } : base;
 
+  // ⚠️ La correzione a mano vince su tutto, compresa la citazione mancante: se
+  // una persona ha scritto quel numero, la fonte è lei e non il modello.
   if (input.corrected) return known(base.value, input.currency);
+
+  if (input.unverifiedQuote) {
+    return { value: base.value, known: false, reason: 'unverified_quote', currency: input.currency ?? null };
+  }
 
   if (typeof input.overallConfidence === 'number' && Number.isFinite(input.overallConfidence)) {
     return input.overallConfidence < MIN_ANALYSIS_CONFIDENCE

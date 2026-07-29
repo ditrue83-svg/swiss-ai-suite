@@ -299,7 +299,7 @@ async function documentFacts(
 
   const { data: analyses } = await sb.from('document_analyses')
     .select('id, document_type, sender, sender_authority_type, deadline, amount, amount_currency, '
-      + 'confidence, overall_confidence, reply_needed, analysis_status, created_at')
+      + 'confidence, overall_confidence, reply_needed, analysis_status, created_at, amount_evidence')
     .eq('document_id', doc.id).eq('company_id', event.company_id)
     .neq('analysis_status', 'failed')
     .order('created_at', { ascending: false }).limit(1);
@@ -350,10 +350,20 @@ async function documentFacts(
     'analysis.deadline': aiFact({
       value: deadline, corrected: corrected.has('deadline'), ...conf,
     }),
+    // ⚠️ §20 — L'IMPORTO È L'UNICO NUMERO CHE PUÒ FAR PARTIRE UN'AZIONE DA SOLO,
+    // ed è quindi l'unico su cui vale la pena chiedersi da dove viene.
+    // `amount_evidence` è scritto da `legacyEvidence`, che restituisce `null`
+    // quando la citazione non si ritrova nel testo estratto — cioè quando quella
+    // cifra non ha una provenienza verificabile. In quel caso il fatto è
+    // INCERTO: sulla logica a tre valori la condizione diventa `unknown` e la
+    // regola NON SI ESEGUE, che è la stessa scelta già fatta per le valute
+    // diverse. L'importo resta scritto nell'analisi e visibile a schermo: non si
+    // cancella un dato, si toglie il permesso di agire da solo.
     'analysis.amount': aiFact({
       value: Number.isFinite(amount as number) ? (amount as number) : null,
       corrected: corrected.has('amount'), ...conf,
       currency: (analysis?.amount_currency as string | null) ?? null,
+      unverifiedQuote: !!analysis && amount !== null && !analysis.amount_evidence,
     }),
     'analysis.overall_confidence': optional((analysis?.overall_confidence as number | null) ?? null),
     'analysis.reply_needed': analysis?.reply_needed === null || analysis?.reply_needed === undefined

@@ -2016,6 +2016,7 @@ export const fr: Dictionary = {
     reason: {
       missing: 'La donnée n\u2019est pas disponible.',
       lowConfidence: 'La donnée existe mais l\u2019analyse n\u2019était pas assez sûre, et personne ne l\u2019a confirmée.',
+      unverifiedQuote: 'La donnée existe, mais la phrase dont elle devrait provenir ne se retrouve pas dans le document : la règle ne se déclenche pas sur une valeur dont on ignore la provenance.',
       currencyMismatch: 'La monnaie est différente : les montants ne sont pas convertis.',
       unknownField: 'Le champ n\u2019existe plus pour ce déclencheur.',
     },

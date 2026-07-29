@@ -2066,6 +2066,7 @@ export const it = {
     reason: {
       missing: 'Il dato non è disponibile.',
       lowConfidence: 'Il dato c\u2019è ma l\u2019analisi non era abbastanza sicura, e nessuno l\u2019ha confermato.',
+      unverifiedQuote: 'Il dato c’è, ma la frase da cui dovrebbe venire non si ritrova nel documento: la regola non parte su un valore di cui non si sa la provenienza.',
       currencyMismatch: 'La valuta è diversa: gli importi non si convertono.',
       unknownField: 'Il campo non esiste più per questo innesco.',
     },

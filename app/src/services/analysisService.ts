@@ -192,6 +192,14 @@ export interface AnalyzeInput {
   outputLanguage?: string;
   /** testo estratto lato client; null → il server fa l'OCR (solo modalità AI). */
   extraction: ClientExtraction | null;
+  /**
+   * §28 — il server rilegge la PROPRIA riga di estrazione invece di ricevere il
+   * testo dal client. Vale solo con `extraction: null`, e serve alla rianalisi
+   * di un documento già letto: rimandare indietro il testo salvato faceva
+   * riscrivere `extraction_method` (l'OCR tornava indietro come «testo del PDF»)
+   * e riportava `truncated` a `false` su un testo già tagliato.
+   */
+  reuseStoredExtraction?: boolean;
   companyName: string | null;
   /** §25 — avanzamento leggibile per la UI (stati reali, nessuna percentuale finta). */
   onProgress?: (step: string) => void;
@@ -294,7 +302,7 @@ export const analysisService = {
    * 'deterministic' (§60, motore locale esplicito) si esegue e persiste qui. La forma
    * del risultato è identica: la UI non deve distinguere i due percorsi.
    */
-  async analyzeAndPersist({ document, extraction, companyName, onProgress, outputLanguage }: AnalyzeInput): Promise<AnalyzeOutcome> {
+  async analyzeAndPersist({ document, extraction, reuseStoredExtraction, companyName, onProgress, outputLanguage }: AnalyzeInput): Promise<AnalyzeOutcome> {
     const sb = requireSupabase();
 
     if (ANALYSIS_PROVIDER === 'deterministic') {
@@ -321,7 +329,7 @@ export const analysisService = {
     // §26 — richiesta asincrona: auth/autorizzazione/validazione restano sincrone
     // (401/403/422/429 arrivano subito), poi si osserva lo stato reale sul DB.
     // Se il runtime non supporta il background, il server risponde già completo.
-    const invoked = await invokeAnalyze(document.id, extraction, { async: true, outputLanguage });
+    const invoked = await invokeAnalyze(document.id, extraction, { async: true, outputLanguage, reuseStoredExtraction });
     const status = invoked.status === 'processing'
       ? await waitForCompletion(document.id, onProgress)
       : invoked.status;

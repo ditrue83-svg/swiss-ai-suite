@@ -118,8 +118,64 @@ Deno.serve(async (req: Request) => {
   const hasClientExtraction = inExtraction && typeof inExtraction.fullText === 'string' && Array.isArray(inExtraction.pages);
   let clientExtraction: ExtractionResult | null = null;
   let truncated = false;   // §28 — il testo inviato al modello è stato tagliato?
+  let reuseExtractionId: string | null = null;
 
-  if (hasClientExtraction) {
+  // ---- §28 · «Rianalizza il testo che hai già» -----------------------------
+  //
+  // ⚠️⚠️ IL SERVER RILEGGE LA PROPRIA RIGA, NON SI FIDA DEL CORPO DELLA RICHIESTA.
+  // Rimandare indietro un'estrazione salvata e farla riscrivere produceva DUE
+  // affermazioni false, e nessuna delle due lasciava traccia:
+  //
+  //   1. `extraction_method`. `ClientExtraction` conosce solo `native_pdf` e
+  //      `text`: un'estrazione nata da un OCR tornava indietro come `'text'` e
+  //      `saveExtraction` fa UPSERT, quindi la provenienza vera veniva
+  //      sovrascritta con una falsa. La schermata diceva «testo del PDF» su un
+  //      documento che nessun PDF aveva mai avuto.
+  //   2. `truncated`, ed è la più grave. Il testo salvato È GIÀ tagliato a
+  //      `MAX_CHARS`, quindi al ritorno `original.length > MAX_CHARS` confronta
+  //      120000 con 120000 e risponde **falso**: la riga passava da `true` a
+  //      `false` e un'analisi PARZIALE si presentava come completa. È esattamente
+  //      la cosa che §28 esiste per impedire.
+  //
+  // ⚠️ ALTERNATIVA SCARTATA: allargare `ClientExtraction` per accettare `'ocr'`
+  // dal corpo. Sposta la bugia invece di toglierla — resterebbe il client a
+  // dichiarare la provenienza del proprio testo — e non tocca `truncated`.
+  //
+  // ⚠️ E NON SI RISALVA NULLA (`reuseExtractionId`): `saveExtraction` scrive
+  // `ocr_confidence: null`, quindi anche un upsert con valori identici
+  // cancellerebbe il punteggio di una trascrizione OCR.
+  if (body?.reuseStoredExtraction === true) {
+    const { data: stored } = await sb.from('document_extractions')
+      .select('id, full_text, pages, extraction_method, truncated')
+      .eq('document_id', documentId).eq('company_id', companyId).maybeSingle();
+    const row = stored as {
+      id: string; full_text: string | null; pages: unknown;
+      extraction_method: string | null; truncated: boolean | null;
+    } | null;
+    if (!row?.full_text?.trim()) return fail('EXTRACTION_FAILED', 422);
+
+    const original = row.full_text;
+    // ⚠️ Il troncamento si EREDITA e si somma: già tagliato prima, oppure
+    // tagliato adesso. Ricalcolarlo da capo è il difetto che questo ramo chiude.
+    truncated = row.truncated === true || original.length > MAX_CHARS;
+    reuseExtractionId = row.id;
+    clientExtraction = {
+      fullText: original.slice(0, MAX_CHARS),
+      // La provenienza si riporta com'era, `'ocr'` compreso: qui il tipo del
+      // server la conosce, ed è il motivo per cui la rilettura vive QUI.
+      extractionMethod: row.extraction_method === 'native_pdf' ? 'native_pdf'
+        : row.extraction_method === 'ocr' ? 'ocr' : 'text',
+      pages: Array.isArray(row.pages)
+        ? (row.pages as { pageNumber?: unknown; text?: unknown }[]).map((p, i) => ({
+            pageNumber: typeof p?.pageNumber === 'number' ? p.pageNumber : i + 1,
+            text: String(p?.text ?? ''),
+          }))
+        : [{ pageNumber: 1, text: original.slice(0, MAX_CHARS) }],
+    };
+    if (clientExtraction.fullText.trim().length < MIN_CHARS_ABSOLUTE) {
+      return fail('EMPTY_DOCUMENT', 422);
+    }
+  } else if (hasClientExtraction) {
     const original: string = inExtraction.fullText;
     const fullText: string = original.slice(0, MAX_CHARS);
     // §28 — oltre il limite il modello vede solo l'inizio del documento: il
@@ -202,6 +258,11 @@ Deno.serve(async (req: Request) => {
         documentId, companyId, userId,
         extraction, extractionDurationMs: Date.now() - extractStart, truncated, logId: slot.logId, outputLanguage,
         companyContext, todayIso: new Date().toISOString().slice(0, 10), provider: 'anthropic',
+        // ⚠️ Solo sul percorso di rilettura: l'estrazione è già quella salvata e
+        // riscriverla la peggiorerebbe (`ocr_confidence` azzerato). Se invece si
+        // è passati dall'OCR di ripiego, `clientExtraction` è stato messo a
+        // `null` e questo id non deve valere più — il testo nuovo va salvato.
+        reuseExtractionId: clientExtraction ? reuseExtractionId : null,
       });
     } catch (e) {
       const err = e as Error & { code?: string; status?: number };

@@ -40,7 +40,7 @@ export interface ConditionResult {
    * condizione che nomina un campo che non esiste — che il validatore avrebbe
    * dovuto fermare, e se arriva fin qui è un guasto, non un «no».
    */
-  reason?: 'missing' | 'low_confidence' | 'currency_mismatch' | 'unknown_field';
+  reason?: 'missing' | 'low_confidence' | 'unverified_quote' | 'currency_mismatch' | 'unknown_field';
 }
 
 export interface Evaluation {
@@ -102,8 +102,15 @@ export function evaluateCondition(
   }
 
   if (condition.operator === 'exists' || condition.operator === 'not_exists') {
-    if (fact.reason === 'low_confidence') {
-      return { ...base, outcome: 'unknown', reason: 'low_confidence' };
+    // ⚠️ QUI VANNO TUTTI I MOTIVI IN CUI IL VALORE C'È MA NON È AFFIDABILE, e
+    // aggiungerne uno senza metterlo in questo elenco è un errore silenzioso: la
+    // riga sotto calcola `present` da `fact.known`, che per un fatto incerto è
+    // `false`, quindi «esiste un importo?» risponderebbe **no** su un documento
+    // che un importo ce l'ha. Non è un ignoto: è una risposta, ed è sbagliata.
+    // La stessa cautela di §241 in `validate.ts`, dove l'importo si tiene proprio
+    // per non ribaltare le regole `exists`/`not_exists` già scritte.
+    if (fact.reason === 'low_confidence' || fact.reason === 'unverified_quote') {
+      return { ...base, outcome: 'unknown', reason: fact.reason };
     }
     const present = fact.known && fact.value !== null && fact.value !== '';
     const wanted = condition.operator === 'exists';
