@@ -188,18 +188,13 @@ p, li { text-wrap: pretty; }
   padding: var(--sp-4) var(--ms-gutter);
   border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; align-items: center; gap: 10px; color: inherit; }
+.brand { display: flex; align-items: center; gap: 12px; color: inherit; }
 .brand:hover { text-decoration: none; }
-/* Il quadrato «AI» del logo: spigoli quasi vivi come nell'originale, il blu
-   dei token (in scuro l'accento schiarisce e le lettere si scuriscono, come
-   ogni superficie d'accento dell'app). */
-.brand-mark {
-  width: 32px; height: 32px; border-radius: 3px; background: var(--accent);
-  color: var(--on-accent); display: grid; place-items: center; flex-shrink: 0;
-  font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1;
-}
-.brand-name { display: block; font-weight: 600; letter-spacing: -0.2px; color: var(--accent-text); }
-.brand-sub { display: block; font-size: var(--ms-fs-meta); color: var(--muted); margin-top: -2px; }
+/* Il logo del titolare, inline e con i SUOI colori (#00AEEF): è il marchio,
+   non un componente — non segue i token né il tema, come non li seguirebbe
+   un'immagine. I loghi sono esenti dai requisiti di contrasto (WCAG 1.4.3). */
+.brand-logo { height: 34px; width: auto; display: block; flex-shrink: 0; }
+.brand-sub { display: block; font-size: var(--ms-fs-meta); color: var(--muted); }
 
 .topnav { display: flex; gap: var(--sp-4); flex-wrap: wrap; margin-left: auto; }
 .topnav a { color: var(--ink-soft); font-weight: 500; padding: var(--sp-1) 0; }

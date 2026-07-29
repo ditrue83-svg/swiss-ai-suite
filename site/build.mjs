@@ -38,6 +38,23 @@ import {
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const OUT = join(ROOT, 'dist');
 
+// ---------------------------------------------------------------------------
+// IL LOGO DEL TITOLARE — l'immagine fornita il 2026-07-29, ricostruita in
+// vettoriale: blocco #00AEEF con «AI» bianco, wordmark «Swisse» in Poppins
+// (glifi convertiti in tracciati: nessun font a runtime). I COLORI SONO DEL
+// MARCHIO, non dei token: è l'eccezione decisa dal titolare, documentata nel
+// README. Si inlinea nelle pagine (così vive anche nelle autonome, dove i
+// percorsi esterni non risolvono); i file restano pubblici in /logo-*.svg.
+// La variante scura ha il wordmark bianco: serve sui fondi blu (anteprima
+// social), dove l'azzurro del testo non leggerebbe.
+// ---------------------------------------------------------------------------
+const logoInline = (file, className) => readFileSync(join(ROOT, 'static', file), 'utf8')
+  .replace('<svg ', `<svg class="${className}" aria-hidden="true" `)
+  .replace(' role="img" aria-label="AI-Swisse"', '')
+  .trim();
+const LOGO = logoInline('logo-ai-swisse.svg', 'brand-logo');
+const LOGO_SCURO = logoInline('logo-ai-swisse-scuro.svg', 'og-logo');
+
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /**
@@ -197,16 +214,12 @@ function topbar(locale, c, { onLanding, legalKey }) {
   // La barra resta chiara anche in home: dà al campo blu il suo bordo
   // superiore e tiene il marchio identico a quello dell'applicazione.
   //
-  // IL MARCHIO: quadrato «AI» + wordmark «Swisse» — il lockup del logo del
-  // titolare, riprodotto in HTML/CSS (niente raster) col blu DEI TOKEN.
-  // L'immagine originale usa hsl(199,100%,50%), cioè il vecchio accento che
-  // l'app ha abbandonato di proposito: stesso logo, colore del prodotto di
-  // oggi. Il quadrato dice «AI» e il nome accanto dice «Swisse»: insieme
-  // leggono AI-Swisse, e l'aria-label lo dice per intero a chi ascolta.
+  // Il logo del titolare, inline (vedi il commento su LOGO in testa al file);
+  // l'aria-label del collegamento dice il nome per intero a chi ascolta.
   return `    <header class="topbar">
       <a class="brand" href="${home}" aria-label="AI-Swisse — ${esc(c.tagline)}">
-        <span class="brand-mark" aria-hidden="true">AI</span>
-        <span aria-hidden="true"><span class="brand-name">Swisse</span><span class="brand-sub">${esc(c.tagline)}</span></span>
+        ${LOGO}
+        <span class="brand-sub" aria-hidden="true">${esc(c.tagline)}</span>
       </a>${onLanding ? `
       <nav class="topnav" aria-label="${esc(c.mainNav)}">
         <a href="#how">${esc(c.nav.how)}</a>
@@ -693,16 +706,11 @@ function ogPage() {
            disegno renderebbero comunque 600: l'asse è limitato. */
         font-family: var(--ms-font);
       }
-      .og-brand { display: flex; align-items: center; gap: 18px; }
-      /* Sul campo blu il quadrato del logo si inverte: bianco pieno, «AI»
-         nel blu del fondo — come i pulsanti del campo nella vetrina. */
-      .og-mark {
-        width: 68px; height: 68px; border-radius: 6px; background: #ffffff;
-        color: hsl(207, 88%, 32%); display: grid; place-items: center;
-        font-size: 34px; font-weight: 600; letter-spacing: -0.01em; line-height: 1;
-      }
-      .og-name { font-size: 40px; font-weight: 800; letter-spacing: -0.5px; }
-      .og-sub { font-size: 22px; opacity: 0.82; margin-top: 2px; }
+      .og-brand { display: flex; align-items: center; gap: 22px; }
+      /* Il logo del titolare nella variante per fondi blu: blocco identico,
+         wordmark bianco — l'azzurro del testo non leggerebbe sul campo. */
+      .og-logo { height: 84px; width: auto; display: block; }
+      .og-sub { font-size: 22px; opacity: 0.82; }
       .og-claim { font-size: 62px; font-weight: 800; line-height: 1.1; letter-spacing: -1.6px; max-width: 15ch; }
       .og-foot { display: flex; justify-content: space-between; align-items: flex-end; font-size: 24px; opacity: 0.9; }
       .og-langs { display: flex; gap: 12px; font-size: 20px; opacity: 0.8; }
@@ -711,11 +719,8 @@ function ogPage() {
   <body>
     <div class="og">
       <div class="og-brand">
-        <div class="og-mark">AI</div>
-        <div>
-          <div class="og-name">Swisse</div>
-          <div class="og-sub">${esc(c.tagline)}</div>
-        </div>
+        ${LOGO_SCURO}
+        <div class="og-sub">${esc(c.tagline)}</div>
       </div>
       <div class="og-claim">${esc(plain(c.heroTitle))}</div>
       <div class="og-foot">
