@@ -1267,6 +1267,8 @@ export const fr: Dictionary = {
   // il n’a délibérément PAS été corrigé ici, pour qu’une relecture de ce
   // module ne se noie pas dans un diff sans rapport.
   finance: {
+    queueStalled: 'Un document attend dans la file depuis plus de {minutes} minutes.',
+    queueStalledHint: 'La lecture automatique ne semble pas en fonction sur cette installation : les documents restent en attente. Voir docs/finance-operations.md, « Ce qu’il manque pour activer les Finances ».',
     title: 'Finances',
     subtitle: 'Factures et dépenses qui demandent votre attention.',
     tabs: {
@@ -1361,7 +1363,7 @@ export const fr: Dictionary = {
       reference: 'Référence',
       referenceType: 'Type de référence',
       noPaymentData: 'Le document ne contient pas de données de paiement.',
-      // ⚠️ Cette phrase est la limite du module. Elle ne s’adoucit pas : un IBAN
+      // ⚠️ Cette phrase est la limite du module. Elle ne s’adoucit pas : un IBAN
       // s’affiche, il ne devient jamais un bouton qui paie.
       paymentNotice: 'Ces données servent à préparer le paiement\u202f: AI-Swisse n’exécute aucun paiement.',
       correctedManually: 'Corrigé par une personne',

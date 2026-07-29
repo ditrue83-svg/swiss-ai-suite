@@ -88,6 +88,7 @@ import {
   isCorrected, isCorrectableField, isDueSoon, isOverdue, paramsFromFilters, readyBlockers,
   toListArgs, totalsByCurrency, withoutCurrency,
   type FinanceSummaryRow,
+  oldestPendingMinutes, queueLooksStalled, QUEUE_STALE_MINUTES,
 } from '../src/features/finance/financeModel';
 // L'originale del browser, per sorvegliare il doppione dichiarato in Deno.
 import { isValidUid } from '../src/lib/uid';
@@ -1015,5 +1016,39 @@ section('8 · Il registro delle automazioni: i due inneschi Finance');
 }
 
 // ===========================================================================
+// ===========================================================================
+section('La coda che accetta lavoro e non lo esegue');
+// ===========================================================================
+// ⚠️ Se il worker non gira — segreto mancante, cron non creato — un documento
+// entra in coda e resta `pending`. La schermata direbbe «Lettura in corso» per
+// sempre: un'attesa indefinita travestita da lavoro in corso, lo stesso schema
+// dei quattordici messaggi dell'Inbox. Queste asserzioni provano che il
+// prodotto sa accorgersene.
+{
+  const NOW = new Date('2026-07-29T12:00:00Z');
+  const at = (iso: string, status: 'pending' | 'processing' | 'completed' | 'failed') =>
+    ({ processingStatus: status, createdAt: iso });
+
+  ok(oldestPendingMinutes([], NOW) === null,
+    'coda vuota → nessuna attesa da misurare (non zero: non c\'è nulla che aspetti)');
+  ok(oldestPendingMinutes([at('2026-07-29T11:50:00Z', 'pending')], NOW) === 10,
+    'un documento in coda da dieci minuti → 10');
+  ok(oldestPendingMinutes([
+    at('2026-07-29T11:55:00Z', 'pending'), at('2026-07-29T10:00:00Z', 'processing'),
+  ], NOW) === 120, 'si misura il PIÙ VECCHIO, non il più recente');
+  ok(oldestPendingMinutes([at('2026-07-29T09:00:00Z', 'completed')], NOW) === null,
+    'ciò che è già stato letto non è in attesa');
+
+  ok(!queueLooksStalled([at('2026-07-29T11:50:00Z', 'pending')], NOW),
+    'dieci minuti NON sono un guasto: il worker gira ogni cinque');
+  ok(queueLooksStalled([at('2026-07-29T11:00:00Z', 'pending')], NOW),
+    'un\'ora di attesa sì, e il prodotto lo dice');
+  ok(!queueLooksStalled([], NOW), 'senza coda non si allarma nessuno');
+  // ⚠️ La soglia è nel modello, non sparsa nei componenti: il giorno in cui il
+  // cron cambiasse frequenza, si cambia in un posto solo.
+  ok(QUEUE_STALE_MINUTES >= 15,
+    'la soglia lascia margine ad almeno tre cicli dello scheduler');
+}
+
 console.log(`\n${B}Riepilogo${X}  ${G}${pass} superati${X}${fail ? `  ${R}${fail} falliti${X}` : ''}\n`);
 process.exit(fail ? 1 : 0);

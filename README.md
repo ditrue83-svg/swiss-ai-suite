@@ -20,9 +20,13 @@ francese, ne ricava scadenze, importi e cose da fare, e tiene insieme documenti 
 | **Attività** | Il lavoro che nasce da un documento o da una comunicazione: responsabile, stato, scadenza, storico. |
 | **Documenti** | La memoria documentale: dove ritrovare ciò che l'azienda ha ricevuto, con categoria, etichette, ricerca nel testo e provenienza. |
 | **Calendario e notifiche** | Quando il lavoro richiede attenzione, e che cosa non si può permettere di dimenticare. Il calendario è una proiezione delle Attività, non un secondo elenco; verso Google e Outlook la sincronizzazione va in una direzione sola. |
+| **Automazioni** | «Quando succede X, se valgono Y, allora Z». La configurazione è un dato, mai codice: una condizione può nominare solo campi dichiarati, un'azione solo una delle sei previste. In caso di ambiguità non si esegue. |
+| **Finanze** | Fatture fornitori, ricevute e note di credito: comprendere e preparare il denaro, non muoverlo. Nessun pagamento, nessun file di pagamento, nessuna scrittura contabile — un IBAN si mostra, non si esegue. |
+| **Contratti** | Con chi l'azienda è legata, fino a quando e a quali condizioni. Riporta che cosa il documento dice, non che cosa il diritto impone: ogni termine mostra la clausola da cui viene, e una data che non si può ricavare con certezza non viene inventata. |
 
 Inbox → Documenti → Analisi → Attività → Calendario → Notifica → Completamento, e all'indietro:
-sono un sistema solo, non sei strumenti affiancati.
+sono un sistema solo, non nove strumenti affiancati. Finanze e Contratti sono LETTURE dei documenti
+che l'archivio custodisce già, non un secondo posto dove scrivere.
 
 ## Cartelle
 
@@ -44,6 +48,8 @@ sono un sistema solo, non sei strumenti affiancati.
 | [`app/docs/document-hub.md`](app/docs/document-hub.md) | Documenti: modello dati, ricerca, categorie, provenienza, limiti della ricerca full-text. |
 | [`app/docs/calendar-notifications.md`](app/docs/calendar-notifications.md) | Calendario e notifiche: stato desiderato degli eventi, promemoria e fusi orari, sincronizzazione a senso unico, configurazione Google e Microsoft, email. |
 | [`app/docs/workflow-automation.md`](app/docs/workflow-automation.md) | Automazioni: outbox e catena causale, inneschi, condizioni a tre valori, azioni e loro limiti, idempotenza, protezione dei cicli, messa in opera. |
+| [`app/docs/finance-operations.md`](app/docs/finance-operations.md) | Finanze: QR-fattura svizzera, aliquote IVA con fonte, duplicato sospetto, correzioni umane, confine con la contabilità. |
+| [`app/docs/contract-manager.md`](app/docs/contract-manager.md) | Contratti: versioni dei termini, amendment che non sovrascrivono, date derivate e ciò che il prodotto **non** calcola, confine legal-safety. |
 | [`app/docs/design-system.md`](app/docs/design-system.md) | Scala tipografica, colori, contrasti, tema scuro, aree cliccabili. |
 | [`site/README.md`](site/README.md) | Vetrina: contenuti, build, pubblicazione. |
 
@@ -52,9 +58,9 @@ sono un sistema solo, non sei strumenti affiancati.
 **Online**, verificato il 2026-07-27: l'applicazione su `app.ai-swisse.com` (Cloudflare Pages) e
 la vetrina su `ai-swisse.com` (GitHub Pages).
 
-**In esercizio**: Admin AI, Subsidy AI, Attività, Documenti. L'**Inbox è attiva con Google** —
-una casella reale collegata, posta importata, classificata e analizzata, manutenzione periodica
-automatica.
+**In esercizio**: Admin AI, Subsidy AI, Attività, Documenti, Calendario e notifiche, Automazioni,
+Finanze, Contratti. L'**Inbox è attiva con Google** — una casella reale collegata, posta importata,
+classificata e analizzata, manutenzione periodica automatica.
 
 **Il limite che conta oggi**: lo scope Gmail è riservato, e fuori dalla modalità «Test» Google
 impone una verifica dell'app con valutazione di sicurezza di terzi. Finché non c'è, **un cliente
@@ -69,9 +75,13 @@ allineati alla documentazione ufficiale corrente, non a una risposta reale. Vedi
 [`app/docs/calendar-notifications.md`](app/docs/calendar-notifications.md).
 
 **Implementato ma non attivo**: le notifiche push dell'Inbox (rimandate per scelta motivata —
-vedi [`app/docs/ai-inbox.md`](app/docs/ai-inbox.md)); la ricerca nel Registro IDI (Zefix), in
-attesa delle credenziali — il codice è allineato alla specifica ufficiale ma **non ancora provato
-contro l'API viva**.
+vedi [`app/docs/ai-inbox.md`](app/docs/ai-inbox.md)).
+
+**Registro IDI (Zefix)**: **acceso e provato contro l'API viva** il 2026-07-28, con credenziali
+rilasciate dall'UFRC. Non più solo allineato alla specifica: la catena è stata verificata contro
+risposte reali, e le misure che ne sono uscite — l'API non pagina, il cantone non torna nella
+ricerca per nome, `activeOnly` non esclude le società in cancellazione — sono nel commento in testa
+a `supabase/functions/lookup-company/index.ts`.
 
 **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali, di cui 1 dichiarato
 sospeso. Copertura Confederazione + Ticino, non i 26 Cantoni. I contenuti delle schede sono
@@ -80,8 +90,7 @@ mostrati in italiano anche in tedesco e francese: vivono nel database, non nei d
 **Automazioni** (migrazione 0020): **in esercizio dal 2026-07-27**. 61 controlli sul database
 reale, 103 offline, Edge Function deployate e scheduler ogni 5 minuti; la catena — analisi →
 evento → cron → worker → attività — è stata provata **end-to-end in produzione** su un'azienda
-temporanea, poi rimossa. La **schermata** `/automazioni` esiste però solo in locale: non è ancora
-pubblicata su `app.ai-swisse.com`, quindi per ora le regole si creano solo via API. Le azioni disponibili sono sei e tutte reversibili:
+temporanea, poi rimossa. La **schermata** `/automazioni` è pubblicata su `app.ai-swisse.com`. Le azioni disponibili sono sei e tutte reversibili:
 creare un'attività, assegnarla, cambiarne la priorità, classificare un documento, aggiungere
 un'etichetta, notificare. Nessuna invia email, muove denaro o accetta impegni. Vedi
 [`app/docs/workflow-automation.md`](app/docs/workflow-automation.md).

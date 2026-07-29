@@ -31,8 +31,8 @@ import { useLabels } from '@/i18n/labels';
 import {
   DEFAULT_DUE_DAYS, DOCUMENT_SOURCES, EXPENSE_CATEGORIES, FINANCE_COMMON_CURRENCIES,
   FINANCE_PAGE_SIZE, PROCESSINGS, REVIEWS, SORTS, TABS,
-  filtersFromParams, financeState, formatDecimal, hasActiveFilters, paramsFromFilters,
-  withoutCurrency, type FinanceState, type FinanceTab,
+  filtersFromParams, financeState, formatDecimal, hasActiveFilters, oldestPendingMinutes,
+  paramsFromFilters, queueLooksStalled, withoutCurrency, type FinanceState, type FinanceTab,
 } from './financeModel';
 import type {
   DocumentHubItem, DocumentSourceType, FinanceExpenseCategory, FinanceFilters, FinanceItem,
@@ -514,6 +514,24 @@ export function FinancePage() {
                 }
               />
             )
+          )}
+
+          {/* ⚠️ LA CODA CHE ACCETTA LAVORO E NON LO ESEGUE.
+              Se un documento aspetta da troppo, il prodotto lo DICE: senza
+              questo avviso la riga continuerebbe a mostrare «Lettura in corso»
+              per sempre, e un'attesa indefinita travestita da lavoro in corso è
+              il guasto che questo progetto evita ovunque. Lo stato è CALCOLATO
+              in lettura, come il duplicato sospetto — nessuna tabella, nessun
+              registro, niente da tenere aggiornato. */}
+          {!list.loading && !list.error && queueLooksStalled(list.items) && (
+            <div className="info-box mb-12">
+              <strong>
+                {t('finance.queueStalled', {
+                  minutes: oldestPendingMinutes(list.items) ?? 0,
+                })}
+              </strong>
+              <div className="muted-sm">{t('finance.queueStalledHint')}</div>
+            </div>
           )}
 
           {!list.loading && !list.error && list.items.map((item) => (

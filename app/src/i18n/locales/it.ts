@@ -1274,6 +1274,8 @@ export const it = {
   // mai un giudizio: «il totale non coincide», non «la fattura non è valida».
   // Chi legge decide; AI-Swisse dice soltanto che cosa ha visto.
   finance: {
+    queueStalled: 'Un documento è in coda da oltre {minutes} minuti.',
+    queueStalledHint: 'La lettura automatica non risulta in funzione su questa installazione: i documenti restano in attesa. Vedi docs/finance-operations.md, «Che cosa manca per accendere Finanze».',
     title: 'Finanze',
     subtitle: 'Fatture e spese che richiedono attenzione.',
     tabs: {

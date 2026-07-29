@@ -314,6 +314,69 @@ function significantDigits(canonical: string): number {
 // ---------------------------------------------------------------------------
 
 /** I quattro secchielli di `finance_summary`. */
+/**
+ * ⚠️ LA CODA ACCETTA LAVORO E NON LO ESEGUE: chi se ne accorge?
+ *
+ * Il worker di Finanze gira su uno scheduler ogni cinque minuti. Se il segreto
+ * non è impostato o il job cron non è stato creato, un documento entra in coda,
+ * resta `pending` e la schermata continua a dire «Lettura in corso» — per
+ * sempre. Un'attesa indefinita che si presenta come lavoro in corso è
+ * esattamente il guasto che si maschera da normalità: lo stesso schema dei
+ * quattordici messaggi dell'Inbox che sarebbero passati a «fatto» senza essere
+ * stati letti, e del controllo i18n che dava verde su cento stringhe italiane.
+ *
+ * Qui NON si aggiunge un sistema di monitoraggio, né una tabella, né un
+ * registro: si CALCOLA in lettura, come il duplicato sospetto — che per la
+ * stessa ragione non è memorizzato. Se l'elemento più vecchio in coda aspetta
+ * da più di questa soglia, il prodotto lo DICE.
+ *
+ * ⚠️ LE DUE FRASI SONO DIVERSE PERCHÉ PORTANO A DUE AZIONI DIVERSE: «la tua
+ * fattura non è ancora stata letta» si risolve aspettando; «il servizio di
+ * lettura non risulta in funzione» si risolve configurando lo scheduler, e chi
+ * legge la schermata non può indovinare quale delle due sia.
+ */
+export const QUEUE_STALE_MINUTES = 30;
+
+/**
+ * Da quanti minuti aspetta l'elemento più vecchio ancora in coda.
+ * `null` quando non c'è niente in coda: nessuna attesa da misurare.
+ */
+export function oldestPendingMinutes(
+  items: readonly Pick<FinanceItem, 'processingStatus' | 'createdAt'>[],
+  now: Date = new Date(),
+): number | null {
+  const waiting = items.filter(
+    (i) => i.processingStatus === 'pending' || i.processingStatus === 'processing');
+  if (!waiting.length) return null;
+  // ⚠️ Il MASSIMO dei minuti di attesa, cioè il documento più VECCHIO. Con il
+  // minimo si guarderebbe il più recente, e una coda ferma da un'ora sembrerebbe
+  // sana solo perché qualcosa vi è entrato un istante fa — l'avviso non
+  // comparirebbe mai proprio quando serve. Trovato dal test, non rileggendo.
+  let waited = -Infinity;
+  for (const item of waiting) {
+    const t = Date.parse(item.createdAt);
+    if (Number.isNaN(t)) continue;
+    waited = Math.max(waited, (now.getTime() - t) / 60_000);
+  }
+  return Number.isFinite(waited) ? Math.floor(waited) : null;
+}
+
+/**
+ * La coda sembra ferma?
+ *
+ * ⚠️ «SEMBRA», e la parola è scelta: da qui non si può sapere se il worker sia
+ * spento, se lo scheduler non esista o se il provider AI sia irraggiungibile.
+ * Si sa una cosa sola — che qualcosa aspetta da troppo — e il messaggio dice
+ * quella, indicando dove guardare invece di diagnosticare a distanza.
+ */
+export function queueLooksStalled(
+  items: readonly Pick<FinanceItem, 'processingStatus' | 'createdAt'>[],
+  now: Date = new Date(),
+): boolean {
+  const minutes = oldestPendingMinutes(items, now);
+  return minutes !== null && minutes >= QUEUE_STALE_MINUTES;
+}
+
 export const BUCKETS = ['needs_review', 'due_soon', 'overdue', 'expenses_month'] as const;
 export type FinanceBucket = (typeof BUCKETS)[number];
 

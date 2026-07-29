@@ -1260,6 +1260,8 @@ export const de: Dictionary = {
   // ein Urteil: «das Total stimmt nicht überein», nicht «die Rechnung ist
   // ungültig». Entschieden wird von der Person, die liest.
   finance: {
+    queueStalled: 'Ein Dokument wartet seit über {minutes} Minuten in der Warteschlange.',
+    queueStalledHint: 'Die automatische Auswertung scheint auf dieser Installation nicht zu laufen: die Dokumente bleiben liegen. Siehe docs/finance-operations.md, «Was zum Aktivieren der Finanzen fehlt».',
     title: 'Finanzen',
     subtitle: 'Rechnungen und Ausgaben, die Aufmerksamkeit brauchen.',
     tabs: {

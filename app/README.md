@@ -26,13 +26,18 @@ supabase/
                 0012_program_translations · 0013_inbox · 0014_inbox_grants
                 0015_inbox_awaiting_analysis · 0016_work_hub · 0017_document_hub
                 0018_calendar_notifications · 0019_notifications_mark_read
-                0020_workflow_automation
+                0020_workflow_automation · 0021_finance_operations
+                0022_finance_event_kind_cast · 0023_finance_immutable_allows_cascade
+                0024_contract_manager · 0025_contract_fixes
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
                        + calendar/ (stato desiderato PURO, promemoria con fuso, adapter, invio email)
                        + automation/ (REGISTRO di inneschi e azioni, valutatore a tre valori,
                        modelli di testo, motore — tutti moduli portabili, provati in Node)
+                       + finance/ (QR-fattura, cifre di controllo, aritmetica esatta degli importi)
+                       + contracts/ (periodi e ancoraggi in quattro lingue, validazione con
+                       citazioni verificate, pipeline di lettura)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
     generate-reply     bozza di risposta on-demand
     interpret-project  interpretazione progetto per il Subsidy AI
@@ -48,6 +53,9 @@ supabase/
     calendar-sync         coda di sincronizzazione, «Sincronizza ora», riconciliazione
     calendar-disconnect   scollegamento, con scelta esplicita sugli eventi già scritti
     notifications-worker  promemoria e consegna delle email
+    finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
+    contract-worker       legge la coda dei documenti contrattuali e apre le finestre
+                          di attenzione delle date verificate (scheduler)
 src/
   lib/            supabase, env, errori, hash (SHA-256), uid (IDI), formattazione
   types/          database.ts (schema) · models.ts (dominio)
@@ -56,13 +64,16 @@ src/
                   calendar · calendarConnection · notification
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
   features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing
-                  inbox · calendar · notifications
+                  inbox · calendar · notifications · automations · finance · contracts
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
                   subsidy-translations (contenuti de/fr) · check-auth-config · bundle-migrations
+                  test-workflows · test-finance · test-contracts (+ le versioni -unit, offline)
+                  docs-check (la documentazione descrive il codice che c'è davvero?)
 docs/             design-system.md · revisione-traduzioni.md · ai-inbox.md · document-hub.md
-                  calendar-notifications.md
+                  calendar-notifications.md · workflow-automation.md · finance-operations.md
+                  contract-manager.md
 ```
 
 ## Setup
@@ -610,8 +621,14 @@ npm run test:workflows       # Automazioni su DB: esegue il MOTORE VERO — outb
 npm run test:finance-unit    # Finanze offline: importi esatti, date ambigue, cifre di controllo,
                              # QR-fattura, validazione dell'estrazione, contratto (202 test)
 npm run test:finance         # Finanze su DB: immutabilità del verbale, correzioni, proiezione,
-                             # duplicati, valute mai sommate (95 asserzioni nel file — richiede
-                             # la 0021 applicata; non ancora eseguito)
+                             # duplicati, valute mai sommate (95 test — richiede la 0021)
+npm run test:contracts-unit  # Contratti offline: periodi nelle quattro lingue, ancoraggi del
+                             # preavviso, derivabilità, date ambigue, citazioni, prompt injection,
+                             # coerenza fra gli elenchi dichiarati in TypeScript e in SQL (89 test)
+npm run test:contracts       # Contratti su DB: isolamento, cross-tenant su documenti e attività,
+                             # immutabilità della versione verificata, correzioni append-only,
+                             # aritmetica delle date sui casi limite, amendment che non sovrascrive
+                             # (66 test — richiede la 0024 e la 0025)
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
@@ -624,6 +641,13 @@ npm run inbox:diagnose  # «perché questa casella non si aggiorna»: stati, syn
                         # Solo metadati tecnici: mai oggetti, mittenti o contenuti
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
+npm run i18n:typography # spazi insecabili (U+202F) prima dei segni doppi francesi
+npm run i18n:typography -- --self-test
+npm run docs:check      # la documentazione descrive il codice che c'è davvero? Confronta i README
+                        # con il filesystem: moduli, migrazioni, documenti, comandi, Edge Function.
+                        # Esce 1 se divergono, e dice COSA manca e DOVE. ⚠️ Il controllo sui moduli
+                        # ha bisogno del README della radice: eseguilo dal monorepo
+npm run docs:check -- --self-test      # verifica che il CONTROLLO sappia fallire (12 casi)
 ```
 
 Gli script che toccano il DB o l'AI richiedono `.env.test` (copia da `.env.test.example`).
