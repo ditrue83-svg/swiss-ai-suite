@@ -692,6 +692,7 @@ export const fr: Dictionary = {
       changesSaved: 'Modifications enregistrées',
       draftCopied: 'Brouillon copié dans le presse-papiers',
       errorCodeNote: '(code : {code})',
+      errorCreditExhausted: 'Le service d’analyse ne dispose pas de crédit. Cela ne vient pas du document : une intervention de la personne qui administre l’application est nécessaire.',
       lastAttemptFailed: 'La dernière tentative d’analyse a échoué{reason} Vous trouverez ci-dessous l’analyse précédente, qui reste valable.',
       needsReview: 'À vérifier',
       urgencyChip: 'urgence {level}',

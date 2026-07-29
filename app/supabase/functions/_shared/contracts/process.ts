@@ -163,7 +163,12 @@ export async function processContractDocument(
   try {
     message = await deps.createMessage(request);
   } catch (error) {
-    const code = rateLimited(error) ? 'PROVIDER_RATE_LIMITED' : 'AI_REFUSED';
+    // ⚠️ Il credito esaurito è un guasto dell'AMBIENTE, non del documento:
+    // scriverne un verbale `failed` direbbe «questo contratto non si riesce a
+    // leggere», che è falso. Torna in coda e si ritenta, come per la quota.
+    const code: ContractErrorCode = creditExhausted(error)
+      ? 'QUOTA_EXCEEDED'
+      : rateLimited(error) ? 'PROVIDER_RATE_LIMITED' : 'AI_REFUSED';
     await finalizeContractAiSlot(deps.sb, logId, {
       status: 'error', errorCode: code, model: CONTRACT_MODEL,
       durationMs: now() - started,
@@ -372,6 +377,18 @@ async function writeFailure(
     errorCode: code,
     contentHash: hash,
   });
+}
+
+/**
+ * Il credito del fornitore è esaurito?
+ * ⚠️ Doppione DICHIARATO di `classifyProviderError` in `_shared/validate.ts`:
+ * quel modulo vive nei tipi dell'analisi amministrativa, e importarlo qui
+ * trascinerebbe `schema.ts` dentro un file che deve restare leggibile da solo.
+ * La condizione è la stessa e `test:contracts-unit` la confronta.
+ */
+function creditExhausted(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error ?? '')).toLowerCase();
+  return /credit balance|insufficient.{0,20}credit|billing|quota exceeded/.test(message);
 }
 
 function rateLimited(error: unknown): boolean {

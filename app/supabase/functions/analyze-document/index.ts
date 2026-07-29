@@ -14,7 +14,8 @@
 import Anthropic from 'npm:@anthropic-ai/sdk';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { runAnalysisPipeline, type CreateMessage, type ModelMessage } from '../_shared/pipeline.ts';
-import { ERROR_MESSAGES, type ErrorCode, type ExtractionResult } from '../_shared/validate.ts';
+import { classifyProviderError, ERROR_MESSAGES, type ErrorCode, type ExtractionResult,
+} from '../_shared/validate.ts';
 import { logAiRequest, reserveAiSlot, finalizeAiRequest } from '../_shared/persist.ts';
 // 2026-07-26 — la trascrizione è stata spostata in `_shared/extract.ts` perché
 // serve anche alla sincronizzazione dell'Inbox. Stesso codice, un solo posto.
@@ -177,7 +178,11 @@ Deno.serve(async (req: Request) => {
       });
     } catch (e) {
       const err = e as Error & { code?: string; status?: number };
-      const code: ErrorCode = (err.code as ErrorCode) ?? (err.status === 429 ? 'RATE_LIMITED' : err.name === 'AbortError' ? 'AI_TIMEOUT' : 'PROVIDER_ERROR');
+      // ⚠️ La classificazione sta in `_shared/validate.ts`, in un posto solo:
+      // qui c'era una catena scritta a mano che non distingueva il credito
+      // esaurito da un guasto qualunque, e diceva «riprova più tardi» a un
+      // problema che aspettare non risolve.
+      const code: ErrorCode = (err.code as ErrorCode) ?? classifyProviderError(err);
       console.error('analysis error:', err.name, err.message?.slice(0, 120));
       throw phased(code, 'analysis');
     }

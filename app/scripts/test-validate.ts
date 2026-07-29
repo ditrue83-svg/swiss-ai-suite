@@ -8,7 +8,9 @@
 // finisce in document_analyses, quindi va provato senza dipendere dall'umore
 // del modello.
 // ============================================================================
-import { validateAndNormalize, type ExtractionResult } from '../supabase/functions/_shared/validate.ts';
+import {
+  classifyProviderError, ERROR_MESSAGES, validateAndNormalize, type ExtractionResult,
+} from '../supabase/functions/_shared/validate.ts';
 import { buildAnalysisRow, reviewStatus } from '../supabase/functions/_shared/persist.ts';
 
 let pass = 0, fail = 0;
@@ -48,6 +50,35 @@ const ctx = {
   model: 'claude-opus-4-8', promptVersion: 'v', processingStartedAt: new Date(0).toISOString(),
   inputTokens: null, outputTokens: null,
 };
+
+// ===========================================================================
+console.log('\nIl credito esaurito NON è «riprova più tardi»');
+// ===========================================================================
+// ⚠️ Il 2026-07-29 il credito del progetto si è esaurito e Admin AI ha
+// risposto «Il servizio di analisi ha restituito un errore. Riprova più
+// tardi.» — una frase che manda nella direzione sbagliata, perché aspettare
+// non ricarica niente. Il messaggio qui sotto è quello VERO dell'API, copiato
+// dalla risposta ottenuta quel giorno: un test scritto su un messaggio
+// inventato proverebbe la fantasia di chi lo ha scritto.
+{
+  const REAL = 'Your credit balance is too low to access the Anthropic API. '
+    + 'Please go to Plans & Billing to upgrade or purchase credits.';
+
+  ok(classifyProviderError({ status: 400, message: REAL }) === 'AI_CREDIT_EXHAUSTED',
+    'il messaggio REALE dell\'API viene riconosciuto');
+  ok(classifyProviderError({ status: 429, message: 'rate limit' }) === 'RATE_LIMITED',
+    'il limite di frequenza resta distinto: quello sì che passa aspettando');
+  ok(classifyProviderError({ name: 'AbortError', message: 'aborted' }) === 'AI_TIMEOUT',
+    'il tempo scaduto resta distinto');
+  ok(classifyProviderError({ status: 500, message: 'internal' }) === 'PROVIDER_ERROR',
+    'un guasto qualunque resta PROVIDER_ERROR');
+  // ⚠️ Se un giorno il testo dell'API cambiasse, si ricade nel comportamento di
+  // PRIMA — non in uno peggiore. È la ragione per cui il confronto è largo.
+  ok(classifyProviderError({ status: 400, message: 'malformed request' }) === 'PROVIDER_ERROR',
+    'una richiesta malformata NON viene scambiata per credito esaurito');
+  ok(!ERROR_MESSAGES.AI_CREDIT_EXHAUSTED.toLowerCase().includes('riprova'),
+    'il messaggio NON invita a riprovare: sarebbe un consiglio sbagliato');
+}
 
 console.log('\nTest del validation layer — regole di governance\n');
 

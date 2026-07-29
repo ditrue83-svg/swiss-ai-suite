@@ -309,9 +309,36 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
 export const ERROR_CODES = [
   'UNSUPPORTED_FILE', 'FILE_TOO_LARGE', 'EMPTY_DOCUMENT', 'EXTRACTION_FAILED', 'OCR_FAILED',
   'AI_TIMEOUT', 'AI_INVALID_OUTPUT', 'EVIDENCE_VALIDATION_FAILED', 'RATE_LIMITED',
-  'PROVIDER_ERROR', 'AI_NOT_CONFIGURED', 'UNKNOWN_ERROR',
+  'PROVIDER_ERROR', 'AI_NOT_CONFIGURED', 'AI_CREDIT_EXHAUSTED', 'UNKNOWN_ERROR',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/**
+ * Che genere di guasto ha restituito il fornitore del modello?
+ *
+ * ⚠️ SI GUARDA IL MESSAGGIO, e non è una scelta elegante: l'API risponde
+ * `400 invalid_request_error` sia per un credito esaurito sia per una richiesta
+ * malformata, e il `type` non li distingue. L'unica differenza osservabile è
+ * nel testo. Verificato contro l'API vera il 2026-07-29, quando il credito del
+ * progetto si è esaurito e Admin AI ha cominciato a rispondere «riprova più
+ * tardi» a un problema che aspettare non risolve.
+ *
+ * ⚠️ IL CONFRONTO È LARGO DI PROPOSITO: se un giorno il testo cambiasse, il
+ * caso ricadrebbe in `PROVIDER_ERROR` — cioè nel comportamento di prima, non in
+ * uno peggiore. Un riconoscitore troppo stretto che smette di funzionare in
+ * silenzio è la trappola che questo progetto ha già pagato due volte.
+ */
+export function classifyProviderError(error: unknown): ErrorCode {
+  const err = error as { status?: number; name?: string; message?: string } | null;
+  const message = (err?.message ?? '').toLowerCase();
+
+  if (/credit balance|insufficient.{0,20}credit|billing|quota exceeded/.test(message)) {
+    return 'AI_CREDIT_EXHAUSTED';
+  }
+  if (err?.status === 429) return 'RATE_LIMITED';
+  if (err?.name === 'AbortError') return 'AI_TIMEOUT';
+  return 'PROVIDER_ERROR';
+}
 
 export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   UNSUPPORTED_FILE: 'Formato file non supportato.',
@@ -325,5 +352,12 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   RATE_LIMITED: 'Troppe analisi in poco tempo. Attendi qualche istante e riprova.',
   PROVIDER_ERROR: "Il servizio di analisi ha restituito un errore. Riprova più tardi.",
   AI_NOT_CONFIGURED: 'Servizio AI non configurato.',
+  // ⚠️ NON dice «riprova più tardi», e la differenza è tutto il punto: aspettare
+  // non risolve un credito esaurito. Un messaggio che manda nella direzione
+  // sbagliata è peggio di uno generico — chi legge riprova per mezz'ora prima
+  // di sospettare che il problema non sia suo.
+  AI_CREDIT_EXHAUSTED:
+    "Il servizio di analisi non ha credito disponibile. Non dipende dal documento: "
+    + "serve un intervento di chi amministra l'applicazione.",
   UNKNOWN_ERROR: 'Analisi non riuscita. Riprova tra poco.',
 };

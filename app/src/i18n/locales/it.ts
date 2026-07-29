@@ -697,6 +697,9 @@ export const it = {
       changesSaved: 'Modifiche salvate',
       draftCopied: 'Bozza copiata negli appunti',
       errorCodeNote: '(codice: {code})',
+      // ⚠️ NON dice «riprova»: aspettare non ricarica un credito. Chi legge deve
+      // capire che il problema non è il suo documento e non si risolve da solo.
+      errorCreditExhausted: 'Il servizio di analisi non ha credito disponibile. Non dipende dal documento: serve un intervento di chi amministra l’applicazione.',
       lastAttemptFailed: 'L’ultimo tentativo di rianalisi non è riuscito{reason} Qui sotto trovi l’analisi precedente, che resta valida.',
       needsReview: 'Da verificare',
       urgencyChip: 'urgenza {level}',

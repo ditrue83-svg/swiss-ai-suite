@@ -693,6 +693,7 @@ export const de: Dictionary = {
       changesSaved: 'Änderungen gespeichert',
       draftCopied: 'Entwurf in die Zwischenablage kopiert',
       errorCodeNote: '(Code: {code})',
+      errorCreditExhausted: 'Für den Auswertungsdienst ist kein Guthaben verfügbar. Es liegt nicht am Dokument: es braucht einen Eingriff der Person, die die Anwendung verwaltet.',
       lastAttemptFailed: 'Der letzte Analyseversuch ist fehlgeschlagen{reason} Unten finden Sie die frühere Analyse, die weiterhin gültig ist.',
       needsReview: 'Zu prüfen',
       urgencyChip: 'Dringlichkeit {level}',
