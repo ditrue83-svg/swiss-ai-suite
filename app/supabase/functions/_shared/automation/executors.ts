@@ -46,6 +46,9 @@ export interface ActionContext {
   documentId: string | null;
   emailMessageId: string | null;
   taskId: string | null;
+  /** 0024 — il contratto e la sua data, quando l'innesco ne parla. */
+  contractId: string | null;
+  contractMilestoneId: string | null;
   assigneeUserId: string | null;
   now: Date;
 }
@@ -164,6 +167,18 @@ function planCreateTask(ctx: ActionContext, config: CreateTaskConfig): ActionPla
     dueDate = value && config.dueDate === 'before_finance_due_date'
       ? addDays(value, -Math.abs(Number(config.dueDateDays ?? 0)))
       : value;
+  } else if (config.dueDate === 'from_milestone_date'
+             || config.dueDate === 'before_milestone_date') {
+    // 0024 — la data di una milestone del contratto. ⚠️ Il fatto esiste SOLO
+    // sugli inneschi che parlano di una data, e solo se quella data è stata
+    // VERIFICATA da una persona: il motore non riceve mai una candidata (§87).
+    // Se non c'è, l'attività nasce senza scadenza — è il fatto, non un ripiego.
+    const milestone = ctx.facts['milestone.date'];
+    const value = milestone && milestone.known && typeof milestone.value === 'string'
+      ? milestone.value : null;
+    dueDate = value && config.dueDate === 'before_milestone_date'
+      ? addDays(value, -Math.abs(Number(config.dueDateDays ?? 0)))
+      : value;
   }
 
   const linkEntity = config.linkEntity !== false;
@@ -192,6 +207,12 @@ function planCreateTask(ctx: ActionContext, config: CreateTaskConfig): ActionPla
         source: 'workflow',
         assignee_user_id: config.assigneeUserId ?? null,
         document_id: linkEntity ? ctx.documentId : null,
+        // §88 — il contratto è una CHIAVE ESTERNA, mai un identificativo scritto
+        // nella descrizione: un riferimento deve reggere una rinomina e una
+        // interrogazione. Il guardiano della 0024 verifica comunque che le
+        // aziende coincidano (§105).
+        contract_id: linkEntity ? ctx.contractId : null,
+        contract_milestone_id: linkEntity ? ctx.contractMilestoneId : null,
         // `created_by` resta NULL: nessuna persona ha creato questa attività, e
         // metterci l'autore della regola direbbe che l'ha scritta lui adesso.
         created_by: null,
@@ -395,6 +416,9 @@ export async function applyAction(
     }
 
     case 'notify': {
+      // 0024 — `contract` è ora fra i valori ammessi dal vincolo di
+      // `notifications` (la 0024 lo allarga): «il preavviso di X si avvicina»
+      // non ha altro referente sensato.
       const entityType = ctx.entityType === 'email_message' ? 'email_message' : ctx.entityType;
       const rows = write.userIds.map((userId) => ({
         company_id: ctx.companyId,

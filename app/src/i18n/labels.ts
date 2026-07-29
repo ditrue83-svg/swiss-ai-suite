@@ -47,6 +47,25 @@ export function useLabels() {
     confidence: (v: string | null | undefined) => pick('labels.confidence', v),
     deadlineLevel: (v: string | null | undefined) => pick('labels.deadlineLevels', v),
 
+    // ---- Contratti (0024) -----------------------------------------------
+    // ⚠️ Come per tutte le altre: un valore fuori elenco mostra il valore
+    // GREZZO, non un'etichetta inventata.
+    contractType: (v: string | null | undefined) => pick('labels.contractTypes', v),
+    contractReview: (v: string | null | undefined) => pick('labels.contractReview', v),
+    contractLifecycle: (v: string | null | undefined) => pick('labels.contractLifecycle', v),
+    /** ⚠️ «Non chiaro» è un valore pieno, non un'assenza: vedi la 0024. */
+    contractRenewal: (v: string | null | undefined) => pick('labels.contractRenewal', v),
+    contractFrequency: (v: string | null | undefined) => pick('labels.contractFrequency', v),
+    contractRelation: (v: string | null | undefined) => pick('labels.contractRelations', v),
+    contractUnit: (v: string | null | undefined) => pick('labels.contractUnits', v),
+    /** L'ancoraggio del preavviso: è ciò che decide se una data si può ricavare. */
+    contractAnchor: (v: string | null | undefined) => pick('labels.contractAnchors', v),
+    contractTermination: (v: string | null | undefined) => pick('labels.contractTermination', v),
+    milestoneKind: (v: string | null | undefined) => pick('labels.milestoneKinds', v),
+    milestoneSource: (v: string | null | undefined) => pick('labels.milestoneSources', v),
+    milestoneStatus: (v: string | null | undefined) => pick('labels.milestoneStatuses', v),
+    contractFlag: (v: string | null | undefined) => pick('labels.contractFlags', v),
+
     // ---- Finanze (0021) -------------------------------------------------
     /** Fattura fornitore, ricevuta, nota di credito. */
     financeType: (v: string | null | undefined) => pick('labels.financeTypes', v),

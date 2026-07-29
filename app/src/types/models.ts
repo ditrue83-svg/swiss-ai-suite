@@ -14,6 +14,12 @@ import type {
   FinanceItemType, FinanceProcessingStatus, FinanceReviewStatus, FinanceOrigin,
   FinanceFieldSource, FinanceReferenceType, FinanceExpenseCategory, FinancePaymentMethod,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
+  ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
+  ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
+  ContractEndKind, ContractAutoRenewal, ContractPeriodUnit, ContractNoticeAnchor,
+  ContractTerminationMethod, ContractCostFrequency, ContractMilestoneKind,
+  ContractMilestoneSource, ContractMilestoneStatus, ContractQualityFlag, ContractEventKind,
+  ContractAttentionClauseKind,
 } from './database';
 
 export type {
@@ -28,6 +34,12 @@ export type {
   FinanceItemType, FinanceProcessingStatus, FinanceReviewStatus, FinanceOrigin,
   FinanceFieldSource, FinanceReferenceType, FinanceExpenseCategory, FinancePaymentMethod,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
+  ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
+  ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
+  ContractEndKind, ContractAutoRenewal, ContractPeriodUnit, ContractNoticeAnchor,
+  ContractTerminationMethod, ContractCostFrequency, ContractMilestoneKind,
+  ContractMilestoneSource, ContractMilestoneStatus, ContractQualityFlag, ContractEventKind,
+  ContractAttentionClauseKind,
 };
 
 // ---- Utente / azienda -------------------------------------------------------
@@ -1099,4 +1111,338 @@ export interface FinanceDetail {
   document: DocumentRecord | null;
   emails: DocumentEmailSource[];
   tasks: DocumentLinkedTask[];
+}
+
+// ---------------------------------------------------------------------------
+// Contract Manager (0024)
+//
+// Il modulo RIPORTA che cosa il contratto dice: non dice che cosa il diritto
+// impone. In questi tipi non esiste nulla che descriva una disdetta inviata,
+// una firma, un rinnovo accettato o un parere — e non è una dimenticanza.
+//
+// ⚠️ LA DISTINZIONE CHE ATTRAVERSA TUTTI QUESTI TIPI: i termini mostrati sono
+// quelli di una VERSIONE, e `termsAreDraft` dice se quella versione è stata
+// verificata da una persona o è ancora una proposta del sistema. Senza quel
+// booleano l'interfaccia mostrerebbe «Preavviso: 3 mesi» con la stessa faccia
+// nei due casi, e la distinzione su cui è costruito il modulo sparirebbe
+// proprio nel punto in cui qualcuno guarda.
+// ---------------------------------------------------------------------------
+
+/** Una riga della lista Contratti, già composta dal database. */
+export interface ContractListItem {
+  id: string;
+  displayName: string;
+  contractType: ContractType;
+  counterpartyName: string | null;
+  ownerUserId: string | null;
+  reviewStatus: ContractReviewStatus;
+  lifecycleStatus: ContractLifecycleStatus;
+  origin: ContractOrigin;
+  /** Le ragioni per cui questo contratto va guardato. Chiavi, non frasi. */
+  qualityFlags: ContractQualityFlag[];
+  internalNote: string | null;
+  archivedAt: string | null;
+  verifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+
+  // ---- I termini effettivi, e la loro natura -------------------------------
+  termVersionId: string | null;
+  termVersion: number | null;
+  /** ⚠️ `true` = ciò che vedi è una PROPOSTA, non un termine verificato. */
+  termsAreDraft: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  endDateKind: ContractEndKind;
+  autoRenewal: ContractAutoRenewal;
+  renewalPeriodValue: number | null;
+  renewalPeriodUnit: ContractPeriodUnit | null;
+  noticePeriodValue: number | null;
+  noticePeriodUnit: ContractPeriodUnit | null;
+  noticeAnchor: ContractNoticeAnchor | null;
+  /** La clausola COME È SCRITTA: è ciò che si mostra quando non si può calcolare. */
+  noticeAnchorText: string | null;
+  terminationMethod: ContractTerminationMethod | null;
+  costAmount: number | null;
+  costCurrency: string | null;
+  costFrequency: ContractCostFrequency;
+  priceAdjustment: boolean;
+
+  // ---- Le prossime date, con il loro stato ---------------------------------
+  // ⚠️ Una data `candidate` NON è una scadenza: è una proposta. La schermata
+  // deve poterlo dire, e per questo lo stato viaggia accanto alla data.
+  nextRenewalDate: string | null;
+  nextRenewalStatus: ContractMilestoneStatus | null;
+  nextNoticeDate: string | null;
+  nextNoticeStatus: ContractMilestoneStatus | null;
+
+  /** C'è una bozza in attesa mentre i termini in vigore sono altri (§27). */
+  pendingDraftId: string | null;
+  documentCount: number;
+  amendmentCount: number;
+  openTaskCount: number;
+  processingPendingCount: number;
+  processingFailedCount: number;
+}
+
+export interface ContractPage {
+  items: ContractListItem[];
+  /** Quanti soddisfano il filtro, non quanti ne sono stati consegnati. */
+  total: number;
+}
+
+export type ContractView =
+  | 'all' | 'needs_review' | 'active' | 'renewals' | 'notices' | 'archived';
+export type ContractSort = 'default' | 'renewal' | 'notice' | 'name' | 'recent';
+
+export interface ContractFilters {
+  view?: ContractView | null;
+  query?: string | null;
+  type?: ContractType | null;
+  lifecycle?: ContractLifecycleStatus | null;
+  review?: ContractReviewStatus | null;
+  owner?: string | null;
+  autoRenewal?: ContractAutoRenewal | null;
+  withoutOwner?: boolean;
+  windowDays?: number | null;
+  archived?: boolean;
+  sort?: ContractSort;
+  limit?: number;
+  offset?: number;
+}
+
+/** §67 — pochi numeri, e ognuno porta a un'azione. */
+export interface ContractSummary {
+  needsReview: number;
+  renewalsSoon: number;
+  noticesSoon: number;
+  withoutOwner: number;
+  /** Non è un KPI: distingue «non c'è niente» da «non è ancora pronto». */
+  processing: number;
+}
+
+/** Citazione di un campo estratto: da dove viene, nel testo del documento. */
+export interface ContractEvidence {
+  quote: string;
+  start: number | null;
+  end: number | null;
+  page: number | null;
+}
+
+export interface ContractObligation {
+  party: 'company' | 'counterparty' | 'both' | 'unclear';
+  text: string;
+  cadence: string | null;
+  confidence: number;
+  evidence: ContractEvidence;
+}
+
+/** §60 — una RILEVAZIONE, non un giudizio: «è presente una clausola di esclusiva». */
+export interface ContractAttentionClause {
+  kind: ContractAttentionClauseKind;
+  text: string;
+  evidence: ContractEvidence;
+}
+
+export interface ContractPenalty {
+  text: string;
+  amount: string | null;
+  currency: string | null;
+  evidence: ContractEvidence;
+}
+
+export interface ContractReferencedAnnex {
+  text: string;
+  evidence: ContractEvidence;
+}
+
+/** Un documento collegato al contratto, con il ruolo che vi ha. */
+export interface ContractDocumentLink {
+  id: string;
+  documentId: string;
+  relation: ContractDocumentRelation;
+  origin: ContractOrigin;
+  processingStatus: ContractProcessingStatus;
+  extractionId: string | null;
+  extractionAttempts: number;
+  errorCode: string | null;
+  suggested: boolean;
+  addedAt: string;
+  addedBy: string | null;
+  title: string;
+  storagePath: string | null;
+  mimeType: string | null;
+  documentCreatedAt: string;
+}
+
+/** Il verbale immutabile della lettura contrattuale di UN documento. */
+export interface ContractExtraction {
+  id: string;
+  contractId: string;
+  documentId: string;
+  extractionVersion: number;
+  status: ContractExtractionStatus;
+  method: string;
+  model: string | null;
+  promptVersion: string | null;
+  detectedType: ContractType | null;
+  /** §3 — «sembra un contratto di lavoro»: si riporta, non si classifica. */
+  outOfScopeKind: string | null;
+  companyParty: string | null;
+  counterparty: string | null;
+  counterpartyAddress: string | null;
+  documentDate: string | null;
+  signatureDate: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  endDateKind: ContractEndKind;
+  minimumTermValue: number | null;
+  minimumTermUnit: ContractPeriodUnit | null;
+  autoRenewal: ContractAutoRenewal;
+  renewalPeriodValue: number | null;
+  renewalPeriodUnit: ContractPeriodUnit | null;
+  noticePeriodValue: number | null;
+  noticePeriodUnit: ContractPeriodUnit | null;
+  noticeAnchor: ContractNoticeAnchor | null;
+  noticeAnchorText: string | null;
+  terminationMethod: ContractTerminationMethod | null;
+  terminationAddress: string | null;
+  costAmount: number | null;
+  costCurrency: string | null;
+  costFrequency: ContractCostFrequency;
+  costVatIncluded: boolean | null;
+  priceAdjustment: boolean;
+  obligations: ContractObligation[];
+  attentionClauses: ContractAttentionClause[];
+  penalties: ContractPenalty[];
+  referencedAnnexes: ContractReferencedAnnex[];
+  governingLaw: string | null;
+  jurisdiction: string | null;
+  signed: boolean | null;
+  /** campo → citazione verificata contro il testo estratto (§17). */
+  evidence: Record<string, ContractEvidence>;
+  fieldConfidence: Record<string, number>;
+  uncertainties: { field: string; description: string; severity: 'low' | 'medium' | 'high' }[];
+  qualityFlags: ContractQualityFlag[];
+  documentLanguage: string | null;
+  /** §113 — il documento non ci stava per intero: una clausola può mancare. */
+  truncated: boolean;
+  errorCode: string | null;
+  createdAt: string;
+}
+
+/** §25 — una versione dei termini. Verificata = immutabile e in vigore. */
+export interface ContractTermVersion {
+  id: string;
+  contractId: string;
+  version: number;
+  status: ContractTermVersionStatus;
+  effectiveFrom: string | null;
+  counterpartyName: string | null;
+  companyParty: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  endDateKind: ContractEndKind;
+  minimumTermValue: number | null;
+  minimumTermUnit: ContractPeriodUnit | null;
+  autoRenewal: ContractAutoRenewal;
+  renewalPeriodValue: number | null;
+  renewalPeriodUnit: ContractPeriodUnit | null;
+  noticePeriodValue: number | null;
+  noticePeriodUnit: ContractPeriodUnit | null;
+  noticeAnchor: ContractNoticeAnchor | null;
+  noticeAnchorText: string | null;
+  terminationMethod: ContractTerminationMethod | null;
+  terminationAddress: string | null;
+  costAmount: number | null;
+  costCurrency: string | null;
+  costFrequency: ContractCostFrequency;
+  costVatIncluded: boolean | null;
+  priceAdjustment: boolean;
+  sourceExtractionIds: string[];
+  basedOnVersionId: string | null;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  supersededAt: string | null;
+  createdAt: string;
+}
+
+/** Una data del contratto. `candidate` non genera lavoro (§87). */
+export interface ContractMilestone {
+  id: string;
+  contractId: string;
+  termVersionId: string | null;
+  kind: ContractMilestoneKind;
+  dueDate: string;
+  source: ContractMilestoneSource;
+  status: ContractMilestoneStatus;
+  /** §42 — da quale calcolo viene, se è stata calcolata. */
+  calculation: string | null;
+  calculationVersion: number | null;
+  calculationInputs: Record<string, unknown>;
+  label: string | null;
+  windowOpenedAt: string | null;
+  verifiedAt: string | null;
+  verifiedBy: string | null;
+  dismissedAt: string | null;
+  dismissedBy: string | null;
+  createdAt: string;
+  /** Le attività già nate da questa data: serve alla dedup della Home (§93). */
+  taskCount: number;
+}
+
+export interface ContractCorrection {
+  id: string;
+  contractId: string;
+  termVersionId: string;
+  field: string;
+  originalValue: unknown;
+  correctedValue: unknown;
+  correctedBy: string | null;
+  correctedAt: string;
+}
+
+export interface ContractEvent {
+  id: string;
+  contractId: string;
+  actorUserId: string | null;
+  kind: ContractEventKind;
+  detail: Record<string, unknown>;
+  createdAt: string;
+}
+
+/** Un documento che POTREBBE appartenere al contratto (§77). Si suggerisce. */
+export interface ContractDocumentSuggestion {
+  documentId: string;
+  title: string;
+  createdAt: string;
+  category: DocumentCategory | null;
+  reason: 'counterparty_in_title' | 'contract_category';
+}
+
+/** Un'attività collegata al contratto o a una sua data (§89/§90). */
+export interface ContractLinkedTask {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string | null;
+  assigneeUserId: string | null;
+  milestoneId: string | null;
+}
+
+export interface ContractDetail {
+  contract: ContractListItem;
+  /** I termini in vigore (o la bozza, se nessuno ha ancora verificato). */
+  terms: ContractTermVersion | null;
+  /** La bozza in attesa, quando i termini in vigore sono un'altra versione. */
+  draft: ContractTermVersion | null;
+  /** Le versioni precedenti: una verificata non si corregge, si affianca. */
+  versionHistory: ContractTermVersion[];
+  documents: ContractDocumentLink[];
+  extractions: ContractExtraction[];
+  milestones: ContractMilestone[];
+  corrections: ContractCorrection[];
+  events: ContractEvent[];
+  tasks: ContractLinkedTask[];
 }

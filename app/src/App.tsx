@@ -23,6 +23,9 @@ import { DocumentsPage } from '@/features/documents/DocumentsPage';
 import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
 import { FinancePage } from '@/features/finance/FinancePage';
 import { FinanceDetailPage } from '@/features/finance/FinanceDetailPage';
+import { ContractsPage } from '@/features/contracts/ContractsPage';
+import { ContractDetailPage } from '@/features/contracts/ContractDetailPage';
+import { ContractCreatePage } from '@/features/contracts/ContractCreatePage';
 import { AutomationsPage } from '@/features/automations/AutomationsPage';
 import { AutomationBuilderPage } from '@/features/automations/AutomationBuilderPage';
 import { AutomationDetailPage } from '@/features/automations/AutomationDetailPage';
@@ -119,6 +122,14 @@ export default function App() {
                 percorso: `/finanze/spese` colliderebbe con `/finanze/:id`. */}
             <Route path="/finanze" element={<FinancePage />} />
             <Route path="/finanze/:id" element={<FinanceDetailPage />} />
+            {/* I Contratti stanno dopo le Finanze perché ne condividono la
+                natura: leggono documenti che il Document Hub custodisce già.
+                ⚠️ `nuovo` PRIMA di `:id`, altrimenti react-router leggerebbe
+                «nuovo» come un identificativo e la pagina di creazione non
+                sarebbe raggiungibile. */}
+            <Route path="/contratti" element={<ContractsPage />} />
+            <Route path="/contratti/nuovo" element={<ContractCreatePage />} />
+            <Route path="/contratti/:id" element={<ContractDetailPage />} />
             {/* Automazioni (0020). Il generatore è la STESSA pagina per creare
                 e per modificare: due moduli avrebbero significato due posti in
                 cui ricordarsi della validazione e della frase riassuntiva. */}

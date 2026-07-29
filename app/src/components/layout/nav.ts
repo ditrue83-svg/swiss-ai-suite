@@ -34,6 +34,12 @@ export const NAV: NavEntry[] = [
   // avrebbero niente da mostrare. Il modulo comprende e prepara il denaro, non
   // lo muove: nel menu non c'è e non deve comparire nessuna voce «Pagamenti».
   { id: 'finance', labelKey: 'nav.finance', icon: 'receipt', path: '/finanze' },
+  // I Contratti stanno dopo le Finanze e per la stessa ragione per cui le
+  // Finanze stanno dopo i Documenti: sono una LETTURA di documenti che il
+  // Document Hub custodisce già. Il modulo riporta che cosa il contratto dice
+  // e ne ricava le date: nel menu non c'è e non deve comparire nessuna voce
+  // «Disdette» o «Rinnovi».
+  { id: 'contracts', labelKey: 'nav.contracts', icon: 'fileSignature', path: '/contratti' },
   // L'Automazione è una sezione a sé e non una voce fra i moduli: i moduli
   // sono i posti in cui il lavoro sta, questa è la regola che lo muove. Sta
   // dopo tutti, perché è l'ultimo strato — si automatizza ciò che si è già

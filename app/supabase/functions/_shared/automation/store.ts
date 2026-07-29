@@ -148,6 +148,9 @@ export interface EntityFacts {
   documentId: string | null;
   emailMessageId: string | null;
   taskId: string | null;
+  /** 0024 — il contratto e la sua data, quando l'innesco ne parla. */
+  contractId: string | null;
+  contractMilestoneId: string | null;
   /** Il responsabile dell'attività, quando l'innesco parla di un'attività. */
   assigneeUserId: string | null;
 }
@@ -169,7 +172,108 @@ export async function loadFacts(
   if (event.entity_type === 'document') return await documentFacts(sb, event, now);
   if (event.entity_type === 'email_message') return await emailFacts(sb, event);
   if (event.entity_type === 'task') return await taskFacts(sb, event);
+  if (event.entity_type === 'contract') return await contractFacts(sb, event);
   return null;
+}
+
+/**
+ * I fatti di un CONTRATTO (0024).
+ *
+ * ⚠️⚠️ I TERMINI SONO QUELLI IN VIGORE, E LO STATO DELLA VERSIONE È UN FATTO.
+ * Si legge la versione VERIFICATA se esiste, altrimenti la bozza — e
+ * `contract.terms_are_draft` dice quale delle due, perché una regola deve poter
+ * dire «agisci solo su termini che una persona ha verificato». Senza quel fatto,
+ * una regola agirebbe su una proposta della macchina credendola una decisione
+ * dell'azienda.
+ *
+ * ⚠️ LE DATE DEL CONTRATTO NON SONO FATTI DEL CONTRATTO. Una data è una
+ * milestone e ha un proprio stato (proposta o verificata): i fatti
+ * `milestone.*` esistono SOLO quando l'evento ne porta una, e l'evento la porta
+ * solo quando una persona l'ha verificata o quando la sua finestra si è aperta.
+ * Un campo piatto `contract.notice_date` avrebbe permesso a una regola di
+ * decidere su una data che il prodotto ha calcolato e nessuno ha guardato.
+ */
+async function contractFacts(
+  sb: ServerClient, event: ClaimedEvent,
+): Promise<EntityFacts | null> {
+  const { data: contract } = await sb.from('contracts')
+    .select('id, company_id, display_name, contract_type, counterparty_name, owner_user_id, '
+      + 'lifecycle_status, review_status, quality_flags, current_term_version_id')
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
+  if (!contract) return null;
+  const c = contract as Record<string, unknown>;
+
+  // I termini in vigore; in mancanza, la bozza — dichiarata come tale.
+  const { data: versions } = await sb.from('contract_term_versions')
+    .select('id, status, auto_renewal, cost_amount, cost_currency, cost_frequency, '
+      + 'counterparty_name')
+    .eq('contract_id', c.id).eq('company_id', event.company_id)
+    .in('status', ['verified', 'draft'])
+    .order('version', { ascending: false });
+  const rows = ((versions ?? []) as Record<string, unknown>[]);
+  const current = c.current_term_version_id
+    ? rows.find((v) => v.id === c.current_term_version_id) ?? null
+    : rows.find((v) => v.status === 'draft') ?? null;
+
+  const { data: docs } = await sb.from('contract_documents')
+    .select('id').eq('contract_id', c.id).eq('company_id', event.company_id);
+  const documentCount = ((docs ?? []) as unknown[]).length;
+
+  const flags = (c.quality_flags as string[] | null) ?? [];
+  const currency = (current?.cost_currency as string | null) ?? null;
+  const costAmount = current?.cost_amount === null || current?.cost_amount === undefined
+    ? null : Number(current.cost_amount);
+
+  const facts: Facts = {
+    'contract.type': known(c.contract_type as string),
+    'contract.name': optional(c.display_name as string | null),
+    'contract.counterparty': optional(
+      (current?.counterparty_name as string | null) ?? (c.counterparty_name as string | null)),
+    'contract.owner': optional(c.owner_user_id as string | null),
+    'contract.lifecycle_status': known(c.lifecycle_status as string),
+    // ⚠️ `unclear` è un valore NOTO, non un fatto mancante: «il documento non
+    // chiarisce il rinnovo» è un'informazione su cui una regola può decidere —
+    // ed è anzi la regola più utile che si possa scrivere su un contratto.
+    'contract.auto_renewal': known((current?.auto_renewal as string | null) ?? 'unclear'),
+    'contract.cost_amount': costAmount === null ? missing() : known(costAmount, currency),
+    'contract.cost_currency': optional(currency),
+    'contract.cost_frequency': known((current?.cost_frequency as string | null) ?? 'unknown'),
+    'contract.terms_are_draft': known(current ? current.status === 'draft' : true),
+    'contract.has_quality_flags': known(flags.length > 0),
+    'contract.document_count': known(documentCount),
+  };
+
+  // I fatti della DATA, solo se l'evento ne porta una.
+  const milestoneId = (event.payload.milestoneId as string | null) ?? null;
+  if (milestoneId) {
+    const { data: ms } = await sb.from('contract_milestones')
+      .select('id, kind, due_date, source, status')
+      .eq('id', milestoneId).eq('company_id', event.company_id).maybeSingle();
+    const m = ms as Record<string, unknown> | null;
+    // ⚠️ Si RILEGGE lo stato invece di fidarsi del payload: fra l'emissione e
+    // adesso una persona può aver scartato quella data, e far nascere
+    // un'attività su una data scartata sarebbe creare lavoro su una decisione
+    // già presa in senso contrario.
+    if (m && (m.status === 'verified')) {
+      facts['milestone.type'] = known(m.kind as string);
+      facts['milestone.date'] = known(m.due_date as string);
+      facts['milestone.source'] = known(m.source as string);
+    } else {
+      facts['milestone.type'] = missing();
+      facts['milestone.date'] = missing();
+      facts['milestone.source'] = missing();
+    }
+  }
+
+  return {
+    facts,
+    documentId: null,
+    emailMessageId: null,
+    taskId: null,
+    contractId: c.id as string,
+    contractMilestoneId: milestoneId,
+    assigneeUserId: (c.owner_user_id as string | null) ?? null,
+  };
 }
 
 /**
@@ -279,7 +383,10 @@ async function documentFacts(
   // la schermata mostra sulla stessa fattura.
   await addFinanceFacts(sb, facts, String(doc.id), event.company_id);
 
-  return { facts, documentId: String(doc.id), emailMessageId: null, taskId: null, assigneeUserId: null };
+  return {
+    facts, documentId: String(doc.id), emailMessageId: null, taskId: null,
+    contractId: null, contractMilestoneId: null, assigneeUserId: null,
+  };
 }
 
 /**
@@ -371,7 +478,10 @@ async function emailFacts(sb: ServerClient, event: ClaimedEvent): Promise<Entity
   const body = rows.find((r) => r.relation === 'body');
   const documentId = body?.document_id ?? rows[0]?.document_id ?? null;
 
-  return { facts, documentId, emailMessageId: String(msg.id), taskId: null, assigneeUserId: null };
+  return {
+    facts, documentId, emailMessageId: String(msg.id), taskId: null,
+    contractId: null, contractMilestoneId: null, assigneeUserId: null,
+  };
 }
 
 async function taskFacts(sb: ServerClient, event: ClaimedEvent): Promise<EntityFacts | null> {
@@ -398,6 +508,8 @@ async function taskFacts(sb: ServerClient, event: ClaimedEvent): Promise<EntityF
     documentId: (task.document_id as string | null) ?? null,
     emailMessageId: null,
     taskId: String(task.id),
+    contractId: null,
+    contractMilestoneId: null,
     assigneeUserId: (task.assignee_user_id as string | null) ?? null,
   };
 }

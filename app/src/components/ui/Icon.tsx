@@ -34,6 +34,10 @@ const ICONS = {
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  // Contratti (0024): un foglio con una riga di firma. ⚠️ NON un martelletto da
+  // giudice né una bilancia: il modulo legge contratti, non amministra
+  // giustizia, e l'icona non deve promettere una competenza che non c'è.
+  fileSignature: '<path d="M14 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5V7.5Z"/><path d="M14 3v4.5h4.5"/><path d="M8.5 16.5c1.2-1.6 2-2.4 2.6-2.4.8 0 .5 1.9 1.3 1.9.6 0 1-1 1.7-1 .6 0 .8.7 1.4.7"/>',
   download: '<path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 19h14"/>',
   external: '<path d="M14 5h5v5"/><path d="M19 5 11 13"/><path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"/>',
   refresh: '<path d="M4 12a8 8 0 0 1 13.5-5.8L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.5 5.8L4 16"/><path d="M4 20v-4h4"/>',

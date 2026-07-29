@@ -37,10 +37,26 @@ export const AUTOMATION_EVENT_TYPES = [
   // per questo `automation_events.entity_type` non ha dovuto cambiare.
   'finance_item_needs_review',
   'finance_item_ready',
+  // 0024 — i quattro inneschi dei Contratti. ⚠️ NESSUNO DI ESSI NASCE DA UNA
+  // PROPOSTA: si emettono quando una PERSONA ha verificato (§87). Una data
+  // calcolata dal prodotto che facesse scattare una regola trasformerebbe un
+  // calcolo in un'attività, ed è esattamente ciò che il modulo non deve fare.
+  'contract_verified',
+  'contract_review_required',
+  'contract_milestone_verified',
+  'contract_milestone_window_opened',
 ] as const;
 export type AutomationEventType = (typeof AUTOMATION_EVENT_TYPES)[number];
 
-export type AutomationEntityType = 'document' | 'email_message' | 'task';
+/**
+ * ⚠️ `contract` È UN'ENTITÀ NUOVA, e la 0021 aveva scelto di NON aggiungerne una.
+ * La differenza è nel merito: una fattura È la lettura di un documento, e una
+ * regola che ne parla vuole poter guardare anche la categoria e il mittente di
+ * quel documento. Un contratto ha PIÙ documenti, può non averne nessuno, e le
+ * sue date non appartengono ad alcuno di essi: agganciare l'evento all'accordo
+ * principale direbbe una cosa falsa nel campo che serve a ritrovare l'entità.
+ */
+export type AutomationEntityType = 'document' | 'email_message' | 'task' | 'contract';
 
 export type FieldType = 'string' | 'number' | 'enum' | 'date' | 'boolean' | 'user';
 
@@ -254,6 +270,70 @@ const TASK_FIELDS: readonly TriggerField[] = [
 
 const TASK_TEMPLATES = ['{{task.title}}', '{{task.due_date}}', '{{task.authority}}'] as const;
 
+/**
+ * I campi di un contratto (0024).
+ *
+ * ⚠️ SONO I TERMINI IN VIGORE — quelli di una versione VERIFICATA da una
+ * persona, o della bozza se nessuno ha ancora verificato. `contract.terms_are_draft`
+ * dice quale dei due casi, e permette di scrivere la regola più importante di
+ * tutte: «agisci solo su termini verificati».
+ *
+ * ⚠️ `contract.notice_date` e `contract.renewal_date` NON compaiono come campi
+ * del contratto, e non è una dimenticanza: una data del contratto è una
+ * MILESTONE, che ha un proprio stato (proposta o verificata). Offrirla come
+ * campo piatto significherebbe permettere a una regola di decidere su una data
+ * che il prodotto ha calcolato e nessuno ha guardato. Le date si usano
+ * attraverso gli inneschi delle milestone, dove lo stato viaggia con esse.
+ */
+const CONTRACT_FIELDS: readonly TriggerField[] = [
+  { path: 'contract.type', type: 'enum', labelKey: 'automations.fields.contractType',
+    options: ['insurance', 'leasing', 'rent', 'telecom', 'software_subscription',
+      'supplier', 'maintenance', 'service', 'licensing', 'nda', 'other'] as const,
+    optionsLabelPath: 'labels.contractTypes' },
+  { path: 'contract.name', type: 'string', labelKey: 'automations.fields.contractName' },
+  { path: 'contract.counterparty', type: 'string', labelKey: 'automations.fields.contractCounterparty' },
+  { path: 'contract.owner', type: 'user', labelKey: 'automations.fields.contractOwner' },
+  { path: 'contract.lifecycle_status', type: 'enum', labelKey: 'automations.fields.contractLifecycle',
+    options: ['unknown', 'upcoming', 'active', 'ended', 'terminated'] as const,
+    optionsLabelPath: 'labels.contractLifecycle' },
+  { path: 'contract.auto_renewal', type: 'enum', labelKey: 'automations.fields.contractAutoRenewal',
+    options: ['yes', 'no', 'unclear'] as const, optionsLabelPath: 'labels.contractRenewal' },
+  { path: 'contract.cost_amount', type: 'number', labelKey: 'automations.fields.contractCost',
+    aiDerived: true, hasCurrency: true },
+  { path: 'contract.cost_currency', type: 'string', labelKey: 'automations.fields.contractCurrency' },
+  { path: 'contract.cost_frequency', type: 'enum', labelKey: 'automations.fields.contractFrequency',
+    options: ['one_time', 'monthly', 'quarterly', 'yearly', 'other', 'unknown'] as const,
+    optionsLabelPath: 'labels.contractFrequency' },
+  { path: 'contract.terms_are_draft', type: 'boolean', labelKey: 'automations.fields.contractTermsDraft' },
+  { path: 'contract.has_quality_flags', type: 'boolean', labelKey: 'automations.fields.contractFlagged' },
+  { path: 'contract.document_count', type: 'number', labelKey: 'automations.fields.contractDocuments' },
+];
+
+/** I campi di una DATA del contratto: presenti solo sugli inneschi che ne parlano. */
+const MILESTONE_FIELDS: readonly TriggerField[] = [
+  { path: 'milestone.type', type: 'enum', labelKey: 'automations.fields.milestoneType',
+    options: ['contract_start', 'contract_end', 'renewal_date', 'notice_deadline',
+      'review_date', 'other'] as const, optionsLabelPath: 'labels.milestoneKinds' },
+  { path: 'milestone.date', type: 'date', labelKey: 'automations.fields.milestoneDate' },
+  // ⚠️ La PROVENIENZA della data è un campo a sé, e serve: una regola può
+  // volersi limitare alle date LETTE nel contratto e non a quelle calcolate.
+  { path: 'milestone.source', type: 'enum', labelKey: 'automations.fields.milestoneSource',
+    options: ['explicit', 'derived', 'manual'] as const,
+    optionsLabelPath: 'labels.milestoneSources' },
+];
+
+/**
+ * ⚠️ SOLO VALORI CHE NON HANNO BISOGNO DI ESSERE TRADOTTI, come per documenti e
+ * fatture: un nome, una controparte e una data si scrivono uguali nelle tre
+ * lingue. Il TIPO di contratto no — nel database vive `software_subscription` —
+ * e offrirlo come segnaposto richiederebbe un dizionario lato server, cioè una
+ * quarta copia delle etichette destinata a divergere.
+ */
+const CONTRACT_TEMPLATES = [
+  '{{contract.name}}', '{{contract.counterparty}}', '{{contract.cost_amount}}',
+] as const;
+const MILESTONE_TEMPLATES = [...CONTRACT_TEMPLATES, '{{milestone.date}}'] as const;
+
 export const TRIGGERS: readonly TriggerDef[] = [
   {
     key: 'document_analysis_completed',
@@ -321,6 +401,42 @@ export const TRIGGERS: readonly TriggerDef[] = [
     descriptionKey: 'automations.triggers.financeReadyDesc',
     fields: [...DOCUMENT_FIELDS, ...FINANCE_FIELDS],
     templates: [...DOCUMENT_TEMPLATES, ...FINANCE_TEMPLATES],
+  },
+  {
+    key: 'contract_verified',
+    entityType: 'contract',
+    version: 1,
+    labelKey: 'automations.triggers.contractVerified',
+    descriptionKey: 'automations.triggers.contractVerifiedDesc',
+    fields: CONTRACT_FIELDS,
+    templates: CONTRACT_TEMPLATES,
+  },
+  {
+    key: 'contract_review_required',
+    entityType: 'contract',
+    version: 1,
+    labelKey: 'automations.triggers.contractReviewRequired',
+    descriptionKey: 'automations.triggers.contractReviewRequiredDesc',
+    fields: CONTRACT_FIELDS,
+    templates: CONTRACT_TEMPLATES,
+  },
+  {
+    key: 'contract_milestone_verified',
+    entityType: 'contract',
+    version: 1,
+    labelKey: 'automations.triggers.contractMilestoneVerified',
+    descriptionKey: 'automations.triggers.contractMilestoneVerifiedDesc',
+    fields: [...CONTRACT_FIELDS, ...MILESTONE_FIELDS],
+    templates: MILESTONE_TEMPLATES,
+  },
+  {
+    key: 'contract_milestone_window_opened',
+    entityType: 'contract',
+    version: 1,
+    labelKey: 'automations.triggers.contractWindowOpened',
+    descriptionKey: 'automations.triggers.contractWindowOpenedDesc',
+    fields: [...CONTRACT_FIELDS, ...MILESTONE_FIELDS],
+    templates: MILESTONE_TEMPLATES,
   },
   {
     key: 'task_created',
@@ -405,7 +521,10 @@ export const ACTIONS: readonly ActionDef[] = [
     labelKey: 'automations.actions.createTask',
     descriptionKey: 'automations.actions.createTaskDesc',
     riskLevel: 'low',
-    entityTypes: ['document', 'email_message', 'task'],
+    // 0024 — vale anche sui contratti: è il modo in cui una data verificata
+    // diventa lavoro concreto (§86). ⚠️ NON esiste, e non deve esistere,
+    // un'azione «disdici» o «accetta rinnovo» (§101).
+    entityTypes: ['document', 'email_message', 'task', 'contract'],
     outputEntityType: 'task',
   },
   {
@@ -448,7 +567,7 @@ export const ACTIONS: readonly ActionDef[] = [
     labelKey: 'automations.actions.createNotification',
     descriptionKey: 'automations.actions.createNotificationDesc',
     riskLevel: 'low',
-    entityTypes: ['document', 'email_message', 'task'],
+    entityTypes: ['document', 'email_message', 'task', 'contract'],
     outputEntityType: 'notification',
   },
 ];
@@ -491,7 +610,17 @@ export function isAutoExecutable(action: ActionDef): boolean {
  */
 export type DueDateMode =
   | 'none' | 'from_deadline' | 'before_deadline' | 'in_days'
-  | 'from_finance_due_date' | 'before_finance_due_date';
+  | 'from_finance_due_date' | 'before_finance_due_date'
+  // 0024 — la data di una MILESTONE del contratto. ⚠️ Separata dalle altre per
+  // la stessa ragione per cui `from_finance_due_date` è separata da
+  // `from_deadline`: il termine di una comunicazione amministrativa, la
+  // scadenza di pagamento di una fattura e il termine ultimo di disdetta di un
+  // contratto sono tre date diverse, e sovrascriverne una con l'altra
+  // significherebbe far agire una regola sul giorno sbagliato.
+  // `before_milestone_date` esiste perché §86 chiede espressamente di poter
+  // creare l'attività PRIMA del termine: arrivare il giorno della scadenza di
+  // disdetta significa arrivare tardi.
+  | 'from_milestone_date' | 'before_milestone_date';
 /** Come si ricava la priorità. `from_urgency` solo dove l'urgenza esiste. */
 export type PriorityMode = 'low' | 'medium' | 'high' | 'from_urgency';
 

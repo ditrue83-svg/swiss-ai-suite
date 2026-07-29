@@ -594,7 +594,8 @@ section('12 · La prova a vuoto non scrive: lo dice il tipo, non la buona fede')
     companyId: 'c', runId: null, workflowId: 'w', workflowName: 'Prova',
     facts: { 'document.title': known('Sollecito IVA'), 'analysis.urgency': known('alta') },
     entityType: 'document', entityId: 'd', documentId: 'd',
-    emailMessageId: null, taskId: null, assigneeUserId: null, now: NOW,
+    emailMessageId: null, taskId: null, contractId: null, contractMilestoneId: null,
+    assigneeUserId: null, now: NOW,
   };
 
   const plan = await planAction(sb as never, ctx, {

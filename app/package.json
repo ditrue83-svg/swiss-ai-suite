@@ -36,6 +36,8 @@
     "test:workflows-unit": "node --import tsx scripts/test-workflows-unit.ts",
     "test:workflows": "node --env-file=.env.test --import tsx scripts/test-workflows.ts",
     "test:finance-unit": "node --import tsx scripts/test-finance-unit.ts",
+    "test:contracts-unit": "node --import tsx scripts/test-contracts-unit.ts",
+    "test:contracts": "node --env-file=.env.test --import tsx scripts/test-contracts.ts",
     "test:finance": "node --env-file=.env.test --import tsx scripts/test-finance.ts"
   },
   "dependencies": {

@@ -103,7 +103,13 @@ export type AutomationEventType =
   | 'task_created' | 'task_status_changed' | 'task_became_overdue'
   // 0021 — i due inneschi di Finance. L'entità resta il DOCUMENTO: vedi il
   // registro, dove è spiegato perché non è stata introdotta un'entità nuova.
-  | 'finance_item_needs_review' | 'finance_item_ready';
+  | 'finance_item_needs_review' | 'finance_item_ready'
+  // 0024 — i quattro inneschi dei Contratti. Qui l'entità è il CONTRATTO, e la
+  // differenza con Finance è sostanziale: una fattura È la lettura di un
+  // documento, un contratto ha PIÙ documenti e milestone che non appartengono a
+  // nessuno di essi.
+  | 'contract_verified' | 'contract_review_required'
+  | 'contract_milestone_verified' | 'contract_milestone_window_opened';
 export type AutomationEventStatus = 'pending' | 'processing' | 'done' | 'failed' | 'dead_letter';
 /**
  * Stato di una regola. L'archiviazione è uno STATO — non una data come per le
@@ -155,6 +161,92 @@ export type FinanceEventKind =
   | 'created' | 'extraction_completed' | 'extraction_failed' | 'corrected'
   | 'reviewed' | 'reopened' | 'archived' | 'restored' | 'type_changed'
   | 'category_changed' | 'retry_requested';
+
+// ---- Contract Manager (0024) -----------------------------------------------
+// Contratti e accordi. Il modulo RIPORTA che cosa il documento dice: non dice
+// che cosa il diritto impone. In questi tipi non esiste nulla che descriva una
+// disdetta inviata, una firma, un rinnovo accettato o un parere legale — e non è
+// una dimenticanza, è il confine del prodotto.
+export type ContractType =
+  | 'insurance' | 'leasing' | 'rent' | 'telecom' | 'software_subscription'
+  | 'supplier' | 'maintenance' | 'service' | 'licensing' | 'nda' | 'other';
+/**
+ * Che cosa deve fare una PERSONA. ⚠️ `review_required_again` non è «da
+ * verificare»: è «era verificato, poi è arrivato un documento che sembra
+ * cambiare i termini». Fonderli farebbe sparire l'informazione per cui esiste
+ * la gestione degli amendment (§9/§84).
+ */
+export type ContractReviewStatus = 'needs_review' | 'verified' | 'review_required_again';
+/**
+ * Lo stato operativo del rapporto. ⚠️ NON si deriva da una data passata (§118):
+ * un contratto con rinnovo tacito e scadenza superata non è finito, e
+ * dichiararlo tale spegnerebbe la sorveglianza su un impegno ancora in vigore.
+ */
+export type ContractLifecycleStatus = 'unknown' | 'upcoming' | 'active' | 'ended' | 'terminated';
+/** Che ruolo ha un documento dentro il contratto (§5). */
+export type ContractDocumentRelation =
+  | 'main_agreement' | 'amendment' | 'annex' | 'renewal' | 'termination_notice' | 'other';
+export type ContractOrigin = 'manual' | 'rule' | 'workflow';
+export type ContractProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ContractExtractionStatus = 'completed' | 'failed';
+/** §25 — una bozza si ricalcola; una versione verificata è immutabile. */
+export type ContractTermVersionStatus = 'draft' | 'verified' | 'superseded';
+/**
+ * §33 — ⚠️ `none` («il contratto è a tempo indeterminato») e `unknown` («non
+ * l'ho trovata») sono due affermazioni diverse: confonderle trasformerebbe
+ * un'ignoranza in una dichiarazione.
+ */
+export type ContractEndKind = 'explicit' | 'none' | 'unknown';
+/**
+ * §35 — TRE valori e mai un booleano: un documento che non parla di rinnovo non
+ * dice «no», dice niente. Un `false` al posto di `unclear` è la bugia più
+ * costosa che questo modulo possa raccontare.
+ */
+export type ContractAutoRenewal = 'yes' | 'no' | 'unclear';
+export type ContractPeriodUnit = 'days' | 'weeks' | 'months' | 'years';
+/**
+ * §38 — l'ancoraggio del preavviso. «Tre mesi» non è un termine: è un numero in
+ * cerca di una data. Solo i primi due producono un calcolo di cui il prodotto
+ * risponde; gli altri esistono per poter dire «non è possibile derivare una
+ * data» invece di tacere o, peggio, di calcolare.
+ */
+export type ContractNoticeAnchor =
+  | 'before_fixed_end' | 'before_renewal_date'
+  | 'to_month_end' | 'to_quarter_end' | 'to_year_end'
+  | 'anytime' | 'other' | 'unclear';
+export type ContractTerminationMethod =
+  | 'written_notice' | 'email' | 'registered_mail' | 'portal' | 'other';
+export type ContractCostFrequency =
+  | 'one_time' | 'monthly' | 'quarterly' | 'yearly' | 'other' | 'unknown';
+export type ContractMilestoneKind =
+  | 'contract_start' | 'contract_end' | 'renewal_date' | 'notice_deadline'
+  | 'review_date' | 'other';
+/** §41 — `explicit` è letta nel contratto, `derived` calcolata, `manual` decisa. */
+export type ContractMilestoneSource = 'explicit' | 'derived' | 'manual';
+/**
+ * ⚠️ §43/§44 — LA DISTINZIONE FONDAMENTALE. `candidate` è una proposta del
+ * sistema e NON può generare lavoro; `verified` è una data che una persona ha
+ * confermato. `dismissed` è un giudizio umano, `superseded` un fatto.
+ */
+export type ContractMilestoneStatus = 'candidate' | 'verified' | 'dismissed' | 'superseded';
+/** Che cosa va guardato. Chiavi, non frasi: la frase la scrive l'interfaccia. */
+export type ContractQualityFlag =
+  | 'missing_counterparty' | 'ambiguous_start_date' | 'ambiguous_end_date'
+  | 'renewal_unclear' | 'notice_anchor_unclear' | 'notice_not_derivable'
+  | 'conflicting_terms' | 'missing_referenced_annex' | 'low_extraction_confidence'
+  | 'amendment_requires_review' | 'partially_analysed' | 'out_of_scope_contract_kind'
+  | 'cost_unclear' | 'multiple_currencies';
+export type ContractEventKind =
+  | 'created' | 'document_added' | 'document_removed' | 'extraction_completed'
+  | 'extraction_failed' | 'corrected' | 'verified' | 'review_reopened'
+  | 'owner_changed' | 'term_version_verified' | 'milestone_verified'
+  | 'milestone_dismissed' | 'milestone_added' | 'amendment_added'
+  | 'archived' | 'restored' | 'lifecycle_changed' | 'retry_requested';
+/** Le clausole che si RILEVANO, senza giudicarle (§59/§60). */
+export type ContractAttentionClauseKind =
+  | 'automatic_renewal' | 'minimum_duration' | 'termination_fee' | 'exclusivity'
+  | 'price_adjustment' | 'notice_requirement' | 'confidentiality' | 'data_processing'
+  | 'minimum_purchase_commitment' | 'liability_limitation' | 'other';
 
 export interface Database {
   public: {
@@ -339,13 +431,13 @@ export interface Database {
         Relationships: [];
       };
       tasks: {
-        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null };
-        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null };
+        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null; contract_id: string | null; contract_milestone_id: string | null;};
+        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null; contract_id?: string | null; contract_milestone_id?: string | null };
         // `completed_at`, `completed_by`, `archived_by` non compaiono in Update:
         // li scrive il trigger `tasks_guard`, e un client che li mandasse li
         // vedrebbe comunque sovrascritti. `archived_at` c'è perché è il modo in
         // cui si DICHIARA di voler archiviare; il valore vero lo mette il server.
-        Update: { title?: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; assignee_user_id?: string | null; archived_at?: string | null };
+        Update: { title?: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; assignee_user_id?: string | null; archived_at?: string | null; contract_id?: string | null; contract_milestone_id?: string | null };
         Relationships: [];
       };
       task_checklist_items: {
@@ -617,6 +709,163 @@ export interface Database {
       // PROIEZIONE che il trigger ricalcola da estrazione più correzioni, e il
       // client non ha alcun permesso di scrittura su di esse. Un tipo che le
       // rendesse scrivibili prometterebbe qualcosa che il database rifiuta.
+      // ---- Contract Manager (0024) ----------------------------------------
+      // ⚠️ Ciò che il client PUÒ scrivere è molto meno di ciò che legge: i
+      // verbali e i termini si leggono e basta, lo stato di verifica passa da
+      // `contract_verify_terms`. `Insert`/`Update` qui descrivono esattamente i
+      // permessi di colonna concessi dalla 0024 — dichiararne di più
+      // significherebbe promettere al codice una scrittura che il database
+      // rifiuta.
+      contracts: {
+        Row: {
+          id: string; company_id: string; display_name: string;
+          contract_type: ContractType; counterparty_name: string | null;
+          owner_user_id: string | null;
+          review_status: ContractReviewStatus; lifecycle_status: ContractLifecycleStatus;
+          origin: ContractOrigin; current_term_version_id: string | null;
+          quality_flags: ContractQualityFlag[]; internal_note: string | null;
+          verified_at: string | null; verified_by: string | null;
+          archived_at: string | null; archived_by: string | null;
+          created_by: string | null; workflow_run_id: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          company_id: string; display_name: string; contract_type?: ContractType;
+          counterparty_name?: string | null; owner_user_id?: string | null;
+        };
+        Update: {
+          display_name?: string; contract_type?: ContractType;
+          counterparty_name?: string | null; owner_user_id?: string | null;
+          lifecycle_status?: ContractLifecycleStatus; internal_note?: string | null;
+          archived_at?: string | null;
+        };
+        Relationships: [];
+      };
+      contract_documents: {
+        Row: {
+          id: string; company_id: string; contract_id: string; document_id: string;
+          relation: ContractDocumentRelation; origin: ContractOrigin;
+          processing_status: ContractProcessingStatus;
+          current_extraction_id: string | null; extraction_attempts: number;
+          error_code: string | null; suggested: boolean;
+          added_by: string | null; added_at: string;
+        };
+        Insert: {
+          company_id: string; contract_id: string; document_id: string;
+          relation?: ContractDocumentRelation; suggested?: boolean;
+        };
+        Update: {
+          relation?: ContractDocumentRelation;
+          processing_status?: ContractProcessingStatus;
+        };
+        Relationships: [];
+      };
+      contract_extractions: {
+        Row: {
+          id: string; company_id: string; contract_id: string; document_id: string;
+          extraction_version: number; status: ContractExtractionStatus;
+          method: string; provider: string | null; model: string | null;
+          prompt_version: string | null; schema_version: number;
+          detected_type: ContractType | null; out_of_scope_kind: string | null;
+          company_party: string | null; counterparty: string | null;
+          counterparty_address: string | null;
+          document_date: string | null; signature_date: string | null;
+          start_date: string | null; end_date: string | null;
+          end_date_kind: ContractEndKind;
+          minimum_term_value: number | null; minimum_term_unit: ContractPeriodUnit | null;
+          auto_renewal: ContractAutoRenewal;
+          renewal_period_value: number | null; renewal_period_unit: ContractPeriodUnit | null;
+          notice_period_value: number | null; notice_period_unit: ContractPeriodUnit | null;
+          notice_anchor: ContractNoticeAnchor | null; notice_anchor_text: string | null;
+          termination_method: ContractTerminationMethod | null;
+          termination_address: string | null;
+          cost_amount: number | null; cost_currency: string | null;
+          cost_frequency: ContractCostFrequency; cost_vat_included: boolean | null;
+          price_adjustment: boolean;
+          obligations: Json; attention_clauses: Json; penalties: Json;
+          referenced_annexes: Json;
+          governing_law: string | null; jurisdiction: string | null; signed: boolean | null;
+          field_sources: Json; field_confidence: Json; evidence: Json; uncertainties: Json;
+          quality_flags: ContractQualityFlag[]; document_language: string | null;
+          truncated: boolean; content_hash: string | null; error_code: string | null;
+          input_tokens: number | null; output_tokens: number | null;
+          duration_ms: number | null; created_at: string;
+        };
+        // ⚠️ Nessun Insert e nessun Update: un verbale lo scrive il worker con il
+        // service role, e i trigger della 0024 rifiutano ogni modifica.
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      contract_term_versions: {
+        Row: {
+          id: string; company_id: string; contract_id: string; version: number;
+          status: ContractTermVersionStatus; effective_from: string | null;
+          counterparty_name: string | null; company_party: string | null;
+          start_date: string | null; end_date: string | null; end_date_kind: ContractEndKind;
+          minimum_term_value: number | null; minimum_term_unit: ContractPeriodUnit | null;
+          auto_renewal: ContractAutoRenewal;
+          renewal_period_value: number | null; renewal_period_unit: ContractPeriodUnit | null;
+          notice_period_value: number | null; notice_period_unit: ContractPeriodUnit | null;
+          notice_anchor: ContractNoticeAnchor | null; notice_anchor_text: string | null;
+          termination_method: ContractTerminationMethod | null;
+          termination_address: string | null;
+          cost_amount: number | null; cost_currency: string | null;
+          cost_frequency: ContractCostFrequency; cost_vat_included: boolean | null;
+          price_adjustment: boolean;
+          source_extraction_ids: string[]; based_on_version_id: string | null;
+          verified_at: string | null; verified_by: string | null;
+          superseded_at: string | null; created_at: string; updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      contract_corrections: {
+        Row: {
+          id: string; company_id: string; contract_id: string; term_version_id: string;
+          extraction_id: string | null; field: string;
+          original_value: Json; corrected_value: Json;
+          corrected_by: string | null; corrected_at: string;
+        };
+        Insert: {
+          company_id: string; contract_id: string; term_version_id: string;
+          field: string; original_value?: Json; corrected_value?: Json;
+        };
+        // Append-only: un trigger rifiuta update e delete.
+        Update: never;
+        Relationships: [];
+      };
+      contract_milestones: {
+        Row: {
+          id: string; company_id: string; contract_id: string;
+          term_version_id: string | null;
+          kind: ContractMilestoneKind; due_date: string;
+          source: ContractMilestoneSource; status: ContractMilestoneStatus;
+          calculation: string | null; calculation_version: number | null;
+          calculation_inputs: Json; label: string | null;
+          window_opened_at: string | null;
+          verified_at: string | null; verified_by: string | null;
+          dismissed_at: string | null; dismissed_by: string | null;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          company_id: string; contract_id: string;
+          kind: ContractMilestoneKind; due_date: string; label?: string | null;
+        };
+        Update: { status?: ContractMilestoneStatus; label?: string | null };
+        Relationships: [];
+      };
+      contract_events: {
+        Row: {
+          id: string; company_id: string; contract_id: string;
+          actor_user_id: string | null; kind: ContractEventKind;
+          detail: Json; created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       finance_items: {
         Row: {
           id: string; company_id: string; document_id: string;
@@ -924,6 +1173,50 @@ export interface Database {
           review_status: FinanceReviewStatus; created_at: string;
         }[];
       };
+      // ---- Contract Manager (0024) ----------------------------------------
+      list_contracts: {
+        Args: {
+          p_company_id: string; p_view?: string | null; p_query?: string | null;
+          p_type?: ContractType | null; p_lifecycle?: ContractLifecycleStatus | null;
+          p_review?: ContractReviewStatus | null; p_owner?: string | null;
+          p_auto_renewal?: ContractAutoRenewal | null; p_without_owner?: boolean;
+          p_window_days?: number; p_archived?: boolean; p_sort?: string;
+          p_limit?: number; p_offset?: number; p_contract_id?: string | null;
+        };
+        Returns: Record<string, unknown>[];
+      };
+      contract_summary: {
+        Args: { p_company_id: string; p_window_days?: number };
+        Returns: {
+          needs_review: number; renewals_soon: number; notices_soon: number;
+          without_owner: number; processing: number;
+        }[];
+      };
+      /**
+       * ⚠️ L'UNICO percorso che rende un termine «in vigore». Cinque cose
+       * accadono insieme o non accadono affatto: senza questa funzione, una
+       * schermata interrotta a metà lascerebbe un contratto «verificato» senza
+       * termini verificati.
+       */
+      contract_verify_terms: { Args: { p_version_id: string }; Returns: string };
+      /** Riapre una bozza: una versione verificata è immutabile. */
+      contract_open_draft: { Args: { p_contract_id: string }; Returns: string | null };
+      /** I documenti che POTREBBERO appartenere al contratto: si suggerisce (§77). */
+      contract_document_suggestions: {
+        Args: { p_contract_id: string; p_limit?: number };
+        Returns: {
+          document_id: string; title: string; created_at: string;
+          category: DocumentCategory | null; reason: string;
+        }[];
+      };
+      /** Serve all'interfaccia per SPIEGARE una data derivata, non per calcolarla. */
+      contract_notice_deadline: {
+        Args: {
+          p_notice_value: number | null; p_notice_unit: ContractPeriodUnit | null;
+          p_anchor: ContractNoticeAnchor | null; p_reference_date: string | null;
+        };
+        Returns: string | null;
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -971,6 +1264,25 @@ export interface Database {
       finance_extraction_status: FinanceExtractionStatus;
       finance_quality_flag: FinanceQualityFlag;
       finance_event_kind: FinanceEventKind;
+      contract_type: ContractType;
+      contract_review_status: ContractReviewStatus;
+      contract_lifecycle_status: ContractLifecycleStatus;
+      contract_document_relation: ContractDocumentRelation;
+      contract_origin: ContractOrigin;
+      contract_processing_status: ContractProcessingStatus;
+      contract_extraction_status: ContractExtractionStatus;
+      contract_term_version_status: ContractTermVersionStatus;
+      contract_end_kind: ContractEndKind;
+      contract_auto_renewal: ContractAutoRenewal;
+      contract_period_unit: ContractPeriodUnit;
+      contract_notice_anchor: ContractNoticeAnchor;
+      contract_termination_method: ContractTerminationMethod;
+      contract_cost_frequency: ContractCostFrequency;
+      contract_milestone_kind: ContractMilestoneKind;
+      contract_milestone_source: ContractMilestoneSource;
+      contract_milestone_status: ContractMilestoneStatus;
+      contract_quality_flag: ContractQualityFlag;
+      contract_event_kind: ContractEventKind;
     };
     CompositeTypes: Record<string, never>;
   };

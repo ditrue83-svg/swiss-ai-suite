@@ -462,6 +462,15 @@ export function DocumentDetailPage() {
         <button className="btn btn-sm mt-10" onClick={() => void createTask()} disabled={busy}>
           <Icon name="calendar" className="ic-sm" /> {t('documents.createTask')}
         </button>
+        {/* §79 — da un documento di categoria «contratti» si arriva ai Contratti.
+            ⚠️ NON si crea niente da soli: il pulsante porta al modulo di
+            creazione con il documento già scelto, e a decidere è una persona
+            (§80: un candidato non si dichiara attivo da sé). */}
+        {doc.category === 'contracts' && (
+          <Link className="btn btn-sm mt-10" to={`/contratti/nuovo?documento=${doc.id}`}>
+            <Icon name="fileSignature" className="ic-sm" /> {t('contracts.create.fromDocument')}
+          </Link>
+        )}
       </div>
 
       {/* ---- Organizzazione ---------------------------------------------- */}

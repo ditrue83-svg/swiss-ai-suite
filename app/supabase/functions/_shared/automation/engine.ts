@@ -88,6 +88,8 @@ function contextFor(
     documentId: entity.documentId,
     emailMessageId: entity.emailMessageId,
     taskId: entity.taskId,
+    contractId: entity.contractId,
+    contractMilestoneId: entity.contractMilestoneId,
     assigneeUserId: entity.assigneeUserId,
     now,
   };
@@ -375,7 +377,8 @@ export async function simulateRecent(
   const since = new Date(now.getTime() - days * 86_400_000).toISOString();
 
   const table = input.entityType === 'document' ? 'documents'
-    : input.entityType === 'email_message' ? 'email_messages' : 'tasks';
+    : input.entityType === 'email_message' ? 'email_messages'
+    : input.entityType === 'contract' ? 'contracts' : 'tasks';
   const timeColumn = input.entityType === 'email_message' ? 'received_at' : 'created_at';
 
   const { data } = await sb.from(table)
