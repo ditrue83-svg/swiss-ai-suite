@@ -56,6 +56,8 @@ che l'archivio custodisce già, non un secondo posto dove scrivere.
 | [`app/docs/company-assistant.md`](app/docs/company-assistant.md) | Chiedi ad AI-Swisse: che cosa l'assistente interroga, come cita le fonti, che cosa NON conserva, messa in opera. |
 | [`app/docs/company-assistant-search-eval.md`](app/docs/company-assistant-search-eval.md) | La valutazione della ricerca semantica e la decisione di non implementarla: il cancello non è stato superato perché su quel corpus non è misurabile. |
 | [`app/docs/crm-light.md`](app/docs/crm-light.md) | Clienti: identità di organizzazioni e persone, ruoli multipli, abbinamento prudente e perché l'abbinamento automatico è quasi sempre sbagliato, duplicati senza fusione automatica, opportunità, privacy. |
+| [`app/docs/product-status.md`](app/docs/product-status.md) | **Lo stato di ogni modulo, e l'unico posto dove è dichiarato.** Sei colonne distinte: implementato, deployato, configurato, testato, provato contro il servizio reale, disponibile a clienti esterni. |
+| [`app/CLAUDE.md`](app/CLAUDE.md) | Le regole di lavoro sul repository: branch, consolidamento, verità, sicurezza, interfaccia. Sta in `app/` perché è lì che si lavora. |
 | [`app/docs/incentivi.md`](app/docs/incentivi.md) | Incentivi (Subsidy AI 2.0): perché sei misure separate e non un punteggio, le quattro schede, la convivenza con Subsidy AI 1.0, lo scheduler, e il limite che conta — nessuna suite d'integrazione su database. |
 | [`app/docs/design-system.md`](app/docs/design-system.md) | Scala tipografica, colori, contrasti, tema scuro, aree cliccabili. |
 | [`site/README.md`](site/README.md) | Vetrina: contenuti, build, pubblicazione. |
