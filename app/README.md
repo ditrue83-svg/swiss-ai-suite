@@ -31,7 +31,7 @@ supabase/
                 0024_contract_manager · 0025_contract_fixes
                 0026_crm_light · 0027_company_assistant · 0028_crm_cascade_history
                 0029_assistant_purge_lockdown · 0030_crm_link_candidate
-                0031_assistant_purge_schedule
+                0031_assistant_purge_schedule · 0032_subsidy_ai_2
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -62,6 +62,12 @@ supabase/
     finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
     contract-worker       legge la coda dei documenti contrattuali e apre le finestre
                           di attenzione delle date verificate (scheduler)
+    subsidy-worker        Incentivi: rivaluta le opportunità dei progetti attivi contro le
+                          versioni PUBBLICATE del catalogo, controlla le fonti ufficiali
+                          scadute e apre le revisioni. ⚠️ NON aggiorna mai il catalogo da
+                          sé: un cambiamento critico diventa una voce da revisionare, e la
+                          versione pubblicata resta quella finché una persona non decide.
+                          Non presenta domande e non parla con nessuna autorità (scheduler)
     company-assistant     «Chiedi ad AI-Swisse»: una domanda, un ciclo LIMITATO di strumenti
                           tipizzati, una risposta con le sue fonti. Risponde IN FLUSSO
                           (text/event-stream) — l'unica del prodotto — perché §112 chiede di
@@ -719,6 +725,16 @@ npm run test:crm-unit        # CRM offline: la copia SQL↔TypeScript dei domini
                              #   candidato scritta due volte, nessuna somma fra valute (132 casi)
                              # aritmetica delle date sui casi limite, amendment che non sovrascrive
                              # (66 test — richiede la 0024 e la 0025)
+npm run test:subsidy-unit    # Incentivi offline: gli operatori dei criteri e soprattutto QUANDO
+                             #   non rispondono (un confronto impossibile vale `null`, mai `false`:
+                             #   `false` su un obbligatorio dichiara non idonea un'impresa che lo è),
+                             #   l'esclusione non attivata che NON è un requisito fallito, il
+                             #   progetto avviato che si segnala invece di sparire, l'urgenza che
+                             #   non nasce da testo libero, la guardia SSRF sulle fonti, e gli
+                             #   elenchi scritti due volte in TS e in SQL (176 casi)
+npm run subsidy:seed-catalog # scrive il CATALOGO 2.0: fonti ufficiali, versioni immutabili,
+                             #   criteri tipizzati e call. Dry-run senza `-- --write`. ⚠️ Non
+                             #   sostituisce `subsidy:seed`, che scrive l'identità dei programmi
 npm run test:assistant-unit  # Chiedi ad AI-Swisse offline: il PERIMETRO degli strumenti (nessuna
                              #   query generica, nessun companyId accettato dal modello, nessun
                              #   segreto), l'aritmetica delle date con ora legale e mezzanotte

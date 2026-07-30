@@ -44,7 +44,9 @@
     "test:assistant-unit": "node --import tsx scripts/test-assistant-unit.ts",
     "test:assistant": "node --env-file=.env.test --import tsx scripts/test-assistant.ts",
     "eval:assistant": "node --env-file=.env.test --import tsx scripts/eval-assistant.ts",
-    "test:crm": "node --env-file=.env.test --import tsx scripts/test-crm.ts"
+    "test:crm": "node --env-file=.env.test --import tsx scripts/test-crm.ts",
+    "test:subsidy-unit": "node --import tsx scripts/test-subsidy-unit.ts",
+    "subsidy:seed-catalog": "node --env-file=.env.test scripts/seed-subsidy-catalog.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
