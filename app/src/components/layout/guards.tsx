@@ -1,9 +1,16 @@
 // Guardie di rotta: gli utenti non autenticati non accedono all'app interna;
 // gli autenticati senza azienda vanno all'onboarding.
+//
+// ⚠️ LA DECISIONE NON È QUI: è in `routeGate.ts`, una funzione pura provata
+//    offline. Questi componenti la RENDONO. Una guardia si sbaglia in silenzio
+//    — non lancia, non colora niente di rosso, manda solo nel posto sbagliato —
+//    ed è così che un indirizzo profondo aperto a freddo finiva sulla
+//    Panoramica, passando per l'onboarding di chi un'azienda ce l'aveva già.
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { FullScreenLoader, ErrorState } from '@/components/ui/states';
+import { routeGate } from './routeGate';
 import { useT } from '@/i18n';
 
 export function RequireAuth() {
@@ -17,24 +24,27 @@ export function RequireAuth() {
 
 export function RequireCompany() {
   const t = useT();
-  const { loading, error, hasCompany, refresh } = useCompany();
-  // ⚠️ Il loader a pagina intera SOLO quando non c'è ancora un'azienda da
-  // mostrare. Su `loading` e basta, ogni `refresh()` del contesto smontava
-  // l'intera app — sidebar compresa — e la rimontava: qualunque schermata
-  // perdeva il proprio stato locale. Visto il 2026-07-28 nelle impostazioni
-  // azienda, dove dopo un salvataggio il campo di ricerca si svuotava e gli
-  // avvisi sull'origine dei dati sparivano, cioè proprio le due cose che si
-  // stavano guardando. Prima non si notava perché l'unico a chiamare
-  // `refresh()` era l'onboarding, che subito dopo cambia pagina.
-  if (loading && !hasCompany) return <FullScreenLoader label={t('states.loadingCompany')} />;
-  if (error) {
+  const { loading, ready, error, hasCompany, refresh } = useCompany();
+  const { loading: authLoading, session } = useAuth();
+
+  const gate = routeGate({
+    authLoading, hasSession: session !== null,
+    companyReady: ready, companyLoading: loading,
+    hasCompany, companyError: error,
+  });
+
+  if (gate === 'loading') return <FullScreenLoader label={t('states.loadingCompany')} />;
+  if (gate === 'error') {
     return (
       <div className="centered-screen">
-        <div className="auth-card"><ErrorState message={error} onRetry={refresh} /></div>
+        <div className="auth-card"><ErrorState message={error ?? t('common.error')} onRetry={refresh} /></div>
       </div>
     );
   }
-  if (!hasCompany) return <Navigate to="/onboarding" replace />;
+  // ⚠️ All'onboarding si va solo quando SAPPIAMO che non c'è un'azienda, mai
+  //    «per intanto»: un reindirizzamento è irreversibile per l'indirizzo, e la
+  //    rotta profonda con la sua query non torna più.
+  if (gate === 'onboarding') return <Navigate to="/onboarding" replace />;
   return <Outlet />;
 }
 

@@ -20,6 +20,13 @@ interface CompanyContextValue {
   role: MemberRole | null;
   companyProfile: CompanyProfile | null;
   hasCompany: boolean;
+  /**
+   * ⚠️ «Abbiamo letto le aziende di QUESTO utente», che NON è `!loading`:
+   * prima che la sessione arrivi non si sta caricando nulla e non si sa nulla.
+   * La coppia di guardie decide su questo campo, non su `loading`. Vedi
+   * `components/layout/routeGate.ts`.
+   */
+  ready: boolean;
   isAdmin: boolean;
   setActiveCompany: (id: string) => void;
   refresh: () => Promise<void>;
@@ -42,13 +49,25 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [memberships, setMemberships] = useState<CompanyMembership[]>([]);
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(readStored());
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  /**
+   * ⚠️ PER CHI abbiamo letto le aziende. È il campo che mancava, e la sua
+   * assenza mandava all'onboarding — e da lì alla Panoramica — chiunque
+   * aprisse un indirizzo profondo a freddo.
+   *
+   * `loading: false` non significa «ho guardato»: significa «non sto guardando
+   * adesso», ed è vero anche prima che la sessione esista. Le due cose sono
+   * diverse, e la guardia ha bisogno della prima. Stessa forma del `loadedFor`
+   * che `AuthContext` usa per il profilo e le schermate per la propria azienda.
+   */
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   const loadMemberships = useCallback(async () => {
     if (!user) return;
+    const forUser = user.id;
     setLoading(true);
     setError(null);
     try {
-      const list = await companyService.listMemberships(user.id);
+      const list = await companyService.listMemberships(forUser);
       setMemberships(list);
       setActiveCompanyId((prev) => {
         if (prev && list.some((m) => m.company.id === prev)) return prev;
@@ -58,6 +77,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       setError(toUserMessage(e));
       setMemberships([]);
     } finally {
+      // ⚠️ Anche in caso di ERRORE: abbiamo guardato, e il risultato è un
+      //    guasto. Lasciarlo a `null` terrebbe la schermata su un caricamento
+      //    infinito invece di mostrare l'errore — un guasto travestito da
+      //    attesa, che è peggio del guasto.
+      setLoadedFor(forUser);
       setLoading(false);
     }
   }, [user]);
@@ -68,6 +92,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       setMemberships([]);
       setActiveCompanyId(null);
       setCompanyProfile(null);
+      // ⚠️ `loadedFor` torna a `null` e NON diventa «letto»: senza utente non
+      //    abbiamo guardato niente, e dirlo è tutto il punto di questo campo.
+      setLoadedFor(null);
       setLoading(false);
       return;
     }
@@ -107,12 +134,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       role: active?.role ?? null,
       companyProfile,
       hasCompany: memberships.length > 0,
+      /** Le aziende sono state lette per l'utente ATTUALE. Vedi `routeGate`. */
+      ready: user !== null && loadedFor === user.id,
       isAdmin: active?.role === 'owner' || active?.role === 'admin',
       setActiveCompany: (id: string) => setActiveCompanyId(id),
       refresh: loadMemberships,
       refreshProfile: loadProfile,
     }),
-    [loading, error, memberships, active, activeCompanyId, companyProfile, loadMemberships, loadProfile],
+    [loading, error, memberships, active, activeCompanyId, companyProfile, loadMemberships, loadProfile, user, loadedFor],
   );
 
   return <CompanyContext.Provider value={value}>{children}</CompanyContext.Provider>;

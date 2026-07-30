@@ -701,6 +701,11 @@ npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:subsidy    # eval interpretazione progetto (14 test)
 npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
+npm run test:routing    21  NUOVO il 2026-07-30. Le guardie di rotta come funzione PURA
+                        (`components/layout/routeGate.ts`). Chiude il difetto per cui un
+                        indirizzo profondo aperto A FREDDO finiva sulla Panoramica passando
+                        per l'onboarding: `loading: false` non significa «ho guardato», e la
+                        guardia leggeva quel falso come una risposta. 64 combinazioni.
 npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto, ripresa (151 test)
 npm run test:tasks-unit # Attività offline: scadenze, ritardo, ordinamento, etichette (35 test)
 npm run test:tasks      # Attività su DB: isolamento, assegnazione, autore, completamento

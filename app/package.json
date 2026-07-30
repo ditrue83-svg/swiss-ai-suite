@@ -23,6 +23,7 @@
     "docs:check": "node scripts/docs-check.mjs",
     "i18n:typography": "node scripts/i18n-typography.mjs",
     "test:uid": "node --import tsx scripts/test-uid.ts",
+    "test:routing": "node --import tsx scripts/test-routing.ts",
     "test:validate": "node --import tsx scripts/test-validate.ts",
     "test:pipeline": "node --env-file=.env.test --import tsx scripts/test-pipeline.ts",
     "test:inbox-unit": "node --import tsx scripts/test-inbox-unit.ts",
