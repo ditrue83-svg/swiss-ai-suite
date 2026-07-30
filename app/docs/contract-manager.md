@@ -219,7 +219,33 @@ derivate, verifica, attività generata.
 2. secret `CONTRACT_WORKER_SECRET`;
 3. `npx supabase functions deploy contract-worker --project-ref <ref> --no-verify-jwt`
    (prima: `export SUPABASE_ACCESS_TOKEN=$(security find-generic-password -s "Supabase CLI" -w)`);
-4. job pg_cron ogni 5 minuti con `timeout_milliseconds := 150000`.
+4. il job pg_cron. ⚠️ **Fino al 2026-07-31 questo passaggio era una riga di prosa**
+   («job pg_cron ogni 5 minuti») e non un comando: il job esisteva nel progetto
+   Supabase e in nessun file del repository, quindi rifacendo il database non
+   sarebbe tornato, e `contract-worker` risultava una funzione che nessuno chiama.
+   Il blocco qui sotto è quello **in esercizio**, riletto da `cron.job`:
+
+```sql
+select vault.create_secret('<CONTRACT_WORKER_SECRET>', 'contract_worker_secret');
+
+select cron.schedule(
+  'contract-worker',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url     := 'https://<ref>.supabase.co/functions/v1/contract-worker',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-contract-worker-secret',
+      (select decrypted_secret from vault.decrypted_secrets where name = 'contract_worker_secret')
+    ),
+    body    := '{}'::jsonb,
+    -- La trappola dei 5 secondi di pg_net: senza, ogni esecuzione fallisce.
+    timeout_milliseconds := 150000
+  );
+  $$
+);
+```
 
 ---
 

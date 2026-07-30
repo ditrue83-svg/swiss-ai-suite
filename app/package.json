@@ -47,6 +47,8 @@
     "eval:assistant": "node --env-file=.env.test --import tsx scripts/eval-assistant.ts",
     "test:crm": "node --env-file=.env.test --import tsx scripts/test-crm.ts",
     "test:subsidy-unit": "node --import tsx scripts/test-subsidy-unit.ts",
+    "test:operations": "node scripts/test-operations.mjs",
+    "verify:deploy": "node scripts/verify-deploy.mjs",
     "subsidy:seed-catalog": "node --env-file=.env.test scripts/seed-subsidy-catalog.mjs",
     "suite": "node scripts/run-test-suite.mjs",
     "test:quality": "node scripts/run-test-suite.mjs quality",

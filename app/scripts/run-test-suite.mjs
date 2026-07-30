@@ -112,6 +112,7 @@ const GROUPS = {
       { script: 'test:uid' },
       { script: 'test:routing' },
       { script: 'test:validate' },
+      { script: 'test:operations' },
       { script: 'test:inbox-unit' },
       { script: 'test:tasks-unit' },
       { script: 'test:documents-unit' },
