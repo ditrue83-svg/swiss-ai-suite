@@ -263,8 +263,10 @@ finanziaria di un leasing, chat legale sul contratto.
 
 - il **worker non è ancora stato eseguito su un contratto vero**: il prompt è allineato a un
   ragionamento, non a una risposta reale;
-- **nessun test d'integrazione `test:contracts` su database** (RLS, cross-tenant, immutabilità sono
-  verificati dal blocco di autoverifica della migrazione e provati a mano, non da una suite);
+- ⚠️ **`test:contracts` ESISTE** e chiude **66 asserzioni** su database reale (RLS, cross-tenant,
+  immutabilità). Fino al 2026-07-31 questa riga dichiarava che la suite non esistesse: era vera
+  quando è stata scritta e non lo era più, e nessun controllo poteva vederlo perché `docs:check`
+  verificava che i comandi documentati esistessero, non che le frasi sui comandi fossero vere;
 - documenti oltre `CONTRACT_MAX_CHARS` vengono **troncati** — dichiarato con `partially_analysed`,
   e le clausole di disdetta stanno spesso in fondo;
 - il costo ricorrente **non viene annualizzato** (§54) e le valute **non si sommano** (§55);
