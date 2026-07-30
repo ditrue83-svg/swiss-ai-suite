@@ -37,7 +37,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Inbox | `/inbox` | sì | sì | sì | sì | sì | **no** | Google Gmail API | scope riservato: fuori dalla modalità Test Google impone la verifica CASA, quindi **un cliente reale non può collegare la propria casella**. Microsoft implementato e non configurato. 11 messaggi su 124 fermi in `failed` senza ritentativo |
 | Attività | `/attivita` | sì | — | sì | sì | — | sì | — | nessuna |
 | Documenti | `/documenti` | sì | — | sì | sì | — | sì | — | nessuna politica di conservazione delle analisi |
-| Calendario e notifiche | `/calendario` | sì | sì | **no** | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i due scheduler non esistono nel progetto e i loro secret non sono impostati**: nessun promemoria è mai stato generato e nessuna email è mai stata consegnata. `notifications` è a zero righe. Vedi `verify:deploy` |
+| Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Restano due cose: **nessuna email può partire** (`NOTIFICATION_EMAIL_API_KEY`/`_FROM` non configurati, `deliverEmails` esce subito) e **nessuna connessione OAuth reale è mai stata stabilita** |
 | Automazioni | `/automazioni` | sì | sì | sì | sì | sì | sì | — | nessuna approvazione umana: solo azioni a rischio basso, e per questo non esiste nessuna azione che ne avrebbe bisogno. Le esecuzioni che non corrispondono non lasciano traccia |
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
 | Contratti | `/contratti` | sì | sì | sì | sì | **no** | parziale | — | ⚠️ **il worker non ha mai prodotto un'estrazione su un contratto vero**: `contract_extractions` è a zero. Il prompt è allineato a un ragionamento, non a una risposta reale |
@@ -54,8 +54,24 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Google Gmail | in esercizio, una casella reale collegata | **verifica CASA**: oggi solo gli utenti di prova |
 | Google Pub/Sub | implementato, **non attivato per scelta** | un account di fatturazione. Il cron a 15 minuti lo sostituisce |
 | Microsoft Graph (posta) | implementato, non configurato | credenziali Entra. L'app lo **dichiara** invece di fallire |
-| Google/Microsoft Calendar | implementato, **mai provato contro le API vive** | `GOOGLE_CALENDAR_CLIENT_ID`/`SECRET` espliciti, e i due scheduler |
-| Provider email (Resend) | implementato, **non configurato** | `NOTIFICATION_EMAIL_API_KEY` e `NOTIFICATION_EMAIL_FROM` |
+| Google/Microsoft Calendar | implementato, **mai provato contro le API vive** | `GOOGLE_CALENDAR_CLIENT_ID`/`SECRET` espliciti |
+| Provider email (Resend) | implementato, **non configurato** | `NOTIFICATION_EMAIL_API_KEY` e `NOTIFICATION_EMAIL_FROM`. Finché mancano, `deliverEmails` esce subito e **nessuna email può partire**: è una garanzia, non una svista |
+
+## ⚠️ `calendar-sync` era deployata con `verify_jwt=true`, e lo scheduler non poteva funzionare
+
+Trovato accendendo gli scheduler il 2026-07-31, provando il segreto **prima** di
+creare il job: `calendar-sync` rispondeva **401 anche al segreto giusto**, perché
+il gate della piattaforma la fermava prima che il codice la vedesse. Lo
+`cron.schedule` documentato in `calendar-notifications.md` avrebbe preso 401 a
+ogni esecuzione, per sempre, senza che niente diventasse rosso — la stessa
+trappola già pagata con `email-webhook`.
+
+La funzione ha **tre chiamanti con tre autenticazioni diverse, tutte nel codice**
+(`drain` e `reconcile` con segreto a tempo costante, `sync` con JWT + proprietà
+della connessione + `assertMember`), quindi `--no-verify-jwt` è il deploy
+corretto — ed è come sono deployate le altre cinque worker. Rideployata (v12) e
+verificata con test negativi: `drain` 403/403/200, e **`sync` senza JWT resta
+401**, anche presentando il segreto del worker.
 
 ## Come si rimisura questa tabella
 
