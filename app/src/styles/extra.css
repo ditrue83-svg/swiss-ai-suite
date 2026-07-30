@@ -545,9 +545,15 @@
 
 /* Le colonne laterali non hanno più bisogno di `sticky`: la griglia che le
    contiene è già alta quanto lo schermo, e ciascuna scorre per conto suo. */
+/* ⚠️ `hidden auto` e non `auto`: dichiarando il solo asse verticale, il browser
+   risolve ANCHE l'orizzontale a `auto`, e quando compare la barra verticale
+   toglie 16px di larghezza — comparivano puntualmente 16px di sfondamento
+   orizzontale nel pannello delle fonti, cioè una seconda barra sotto la prima
+   (misurato il 2026-07-30: scrollWidth 299 su clientWidth 283). Niente viene
+   tagliato: i titoli lunghi vanno a capo con `overflow-wrap: anywhere`. */
 .as-side { border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--card); padding: var(--sp-3);
-  height: 100%; min-height: 0; overflow-y: auto; }
+  height: 100%; min-height: 0; overflow: hidden auto; }
 /* ⚠️ `wrap` E il pulsante che non si stringe. In francese «Nouvelle» è più
    lungo di «Nuova» e di «Neu», e in una colonna da 232px usciva dal pannello:
    15px oltre il bordo della scheda, misurati il 2026-07-30. Con l'a capo la
@@ -669,6 +675,12 @@
   gap: var(--sp-1); margin-bottom: var(--sp-1); }
 .as-source-type { font-size: var(--fs-label); color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; }
+/* ⚠️ Qui il livello di verifica è una FRASE, non una sigla — «Proposto dal
+   sistema, non ancora verificato» — e `.origin-badge` nasce `white-space:
+   nowrap` perché altrove è corto. In una colonna da 300px sfondava di 41px:
+   misurato il 2026-07-30, con il pannello che si guadagnava una barra
+   orizzontale sotto quella verticale. Qui la pastiglia va a capo. */
+.as-source-head .origin-badge { max-width: 100%; white-space: normal; }
 /* ⚠️ `color` riportato: la regola globale `a { color: var(--accent-text) }`
    tingerebbe di blu un titolo che qui deve leggersi come testo. */
 .as-source-title { display: block; font-size: var(--fs-meta); color: var(--ink);
