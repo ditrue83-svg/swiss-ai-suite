@@ -1,9 +1,20 @@
 // Logica condivisa Panoramica/Dashboard: profilo di matching + "Priorità di oggi".
-import type { Company, CompanyProfile, DocumentAnalysis, DocumentHubItem, SubsidyCase, TaskWithPeople } from '@/types/models';
-import type { MatchProfile, MatchResult } from '@/features/subsidy-ai/engine';
+//
+// ⚠️ GLI INCENTIVI DELLA HOME LEGGONO IL MOTORE 2.0 (0032), non più il matcher
+//    1.0 che girava nel browser. Fino al 2026-07-30 la Panoramica diceva
+//    «6 incentivi rilevanti» mentre la schermata Incentivi diceva «nessun
+//    progetto, 0 opportunità»: due motori, due risposte, sullo stesso
+//    argomento. Per chi legge erano due verità — precisamente ciò che questo
+//    prodotto evita ovunque. La Home ora legge le stesse righe della schermata.
+import type { Company, CompanyProfile, DocumentAnalysis, DocumentHubItem, TaskWithPeople } from '@/types/models';
+import type { IncentiveCase, IncentiveOpportunity } from '@/types/models';
+import type { MatchProfile } from '@/features/subsidy-ai/engine';
 import type { IconName } from '@/components/ui/Icon';
 import { daysUntil } from '@/lib/format';
 import { translate as tr } from '@/i18n';
+import {
+  caseDeadline, nextStep, NEXT_STEP_KEY, type NextStep,
+} from '@/features/incentives/incentivesModel';
 
 export function buildMatchProfile(company: Company | null, profile: CompanyProfile | null): MatchProfile {
   return {
@@ -37,7 +48,17 @@ export interface OverviewInput {
    * risponde a «cosa richiede attenzione», e la risposta non è «tutto».
    */
   attention: DocumentHubItem[];
-  matches: MatchResult[];
+  /**
+   * Le opportunità del motore 2.0, già ordinate dal database per rilevanza.
+   * ⚠️ Quelle MESSE DA PARTE non arrivano qui: `list_subsidy_opportunities` le
+   *    esclude dalla vista predefinita, e riproporle in Home sarebbe ignorare
+   *    una decisione che qualcuno ha già preso.
+   */
+  opportunities: IncentiveOpportunity[];
+  /** Le pratiche non archiviate. */
+  cases: IncentiveCase[];
+  /** Oggi in `YYYY-MM-DD`: parametro e non `new Date()`, così è provabile. */
+  today: string;
 }
 
 const rank: Record<PriorityItem['priority'], number> = { alta: 0, media: 1, bassa: 2 };
@@ -52,7 +73,7 @@ const rank: Record<PriorityItem['priority'], number> = { alta: 0, media: 1, bass
  * vince perché dice cosa fare, chi lo fa ed entro quando; il documento è la
  * fonte, e si raggiunge dall'attività.
  */
-export function collectPriorities({ tasks, attention, matches }: OverviewInput): PriorityItem[] {
+export function collectPriorities({ tasks, attention, opportunities, cases, today }: OverviewInput): PriorityItem[] {
   const items: PriorityItem[] = [];
 
   // Documenti che hanno già un'attività aperta: non si ripetono più sotto.
@@ -118,22 +139,96 @@ export function collectPriorities({ tasks, attention, matches }: OverviewInput):
       });
     });
 
-  // 3) incentivi con domanda da presentare prima di iniziare
-  // 0011 — esclusi i sospesi: «Priorità di oggi» invita ad agire subito, e un
-  // programma che oggi non viene concesso non è un'azione da fare. Resta
-  // visibile in Subsidy AI, dove il motivo della sospensione è dichiarato.
-  matches.filter((m) => m.program.mustApplyBeforeStart && m.program.availability !== 'suspended').slice(0, 3).forEach((m) => {
+  // 3) LE PRATICHE con una scadenza che si avvicina o già passata.
+  //
+  //    ⚠️ VENGONO PRIMA DELLE OPPORTUNITÀ, e non è un dettaglio d'ordine: una
+  //    pratica è lavoro già cominciato con una scadenza vera, un'opportunità è
+  //    una possibilità. §118 — si dichiara SEMPRE quale delle due scadenze è,
+  //    perché «fra 5 giorni» senza dire «interna» farebbe credere che
+  //    l'autorità chiuda fra cinque giorni.
+  const casesByOpportunity = new Set(
+    cases.filter((k) => k.opportunityId).map((k) => k.opportunityId as string),
+  );
+
+  cases.forEach((k) => {
+    if (k.status === 'closed' || k.status === 'submitted') return;
+    const due = caseDeadline(k, today);
+    if (!due) return;
+    if (!due.expired && due.daysLeft > INCENTIVE_DEADLINE_DAYS) return;
     items.push({
-      priority: 'media', icon: 'banknote', order: 40,
-      title: m.program.name,
-      sub: tr('home.prioApplyBefore') + ' · ' + m.program.authority,
-      to: '/subsidy', cta: tr('home.ctaSubsidies'),
+      priority: due.expired || due.daysLeft <= 7 ? 'alta' : 'media',
+      icon: 'banknote',
+      order: due.daysLeft,
+      title: k.programName ?? k.programId,
+      sub: (due.kind === 'official' ? tr('home.prioCaseOfficial') : tr('home.prioCaseInternal'))
+        + ' · ' + (due.expired
+          ? tr('home.prioOverdue', { n: Math.abs(due.daysLeft) })
+          : due.daysLeft === 0 ? tr('home.prioToday') : tr('home.prioInDays', { n: due.daysLeft })),
+      to: '/incentivi?scheda=pratiche', cta: tr('home.ctaSubsidies'),
     });
   });
+
+  // 4) LE OPPORTUNITÀ su cui c'è un gesto da fare.
+  //
+  //    ⚠️ REGOLA DI NON DUPLICAZIONE, la stessa dei documenti (0016) e §133:
+  //    un'opportunità da cui è già nata una pratica NON compare — comparirebbe
+  //    la stessa cosa due volte, una come possibilità e una come lavoro. Vince
+  //    la pratica, che è il punto 3.
+  //
+  //    ⚠️ E LA REGOLA CHE NE DERIVA, pagata sul campo con lo scadenziario: chi
+  //    deduplica deve verificare che il SOSTITUTO compaia davvero. Qui la
+  //    pratica compare solo se ha una scadenza vicina, quindi una pratica
+  //    tranquilla toglie di mezzo la sua opportunità senza rimpiazzarla — ed è
+  //    corretto: il lavoro è cominciato, non richiede attenzione oggi.
+  //
+  //    ⚠️ 0011 — i programmi sospesi e i ritirati non compaiono, e le pratiche
+  //    già aperte nemmeno: MA NON SI FILTRANO QUI. Lo decide `nextStep()`, che
+  //    li risolve in `suspended`, `retired` e `inCase` — nessuno dei tre è un
+  //    gesto da fare. Un secondo filtro con la stessa regola l'ha avuta scritta
+  //    per un'ora, e la controprova ha mostrato che era decorativo: toglierlo
+  //    non faceva fallire nulla, perché `nextStep` aveva già escluso tutto.
+  //    Due copie della stessa decisione divergono, e quella morta sembra la
+  //    garanzia senza esserlo. La regola sta in un posto solo, ed è provata.
+  //
+  //    ⚠️ `casesByOpportunity` invece NON è ridondante e un test lo dimostra:
+  //    `nextStep` guarda `o.caseId`, che arriva dall'elenco delle opportunità;
+  //    questo insieme arriva dall'elenco delle pratiche. Sono due letture
+  //    diverse, e quando divergono vince «esiste una pratica».
+  opportunities
+    .filter((o) => !casesByOpportunity.has(o.id))
+    .filter((o) => ACTIONABLE_STEPS.has(nextStep(o, today)))
+    .slice(0, 3)
+    .forEach((o) => {
+      items.push({
+        priority: 'media', icon: 'banknote', order: 40,
+        title: o.programName,
+        // La frase è quella della schermata Incentivi: la Home non inventa un
+        // secondo modo di dire la stessa cosa.
+        sub: tr(NEXT_STEP_KEY[nextStep(o, today)]) + ' · ' + o.authority,
+        to: '/incentivi', cta: tr('home.ctaSubsidies'),
+      });
+    });
 
   return items.sort((a, b) => (rank[a.priority] - rank[b.priority]) || (a.order - b.order));
 }
 
-export function activeCasesCount(cases: SubsidyCase[]): number {
-  return cases.filter((c) => c.status !== 'closed').length;
-}
+/**
+ * Entro quanti giorni la scadenza di una pratica diventa una priorità della
+ * Home. ⚠️ Più stretta della finestra del modulo (60 giorni): la Panoramica
+ * risponde a «cosa richiede attenzione ADESSO», e a sessanta giorni la risposta
+ * è no.
+ */
+export const INCENTIVE_DEADLINE_DAYS = 30;
+
+/**
+ * I passi successivi che meritano un posto in Panoramica.
+ *
+ * ⚠️ NON CI SONO `watch`, `closed`, `ineligible`, `suspended`, `retired` né
+ *    `inCase`: sono stati in cui non c'è niente da fare, e riempire la
+ *    «Priorità di oggi» con righe su cui non si agisce è il modo di far
+ *    smettere di leggerla. `verifySource` c'è perché controllare la pagina
+ *    ufficiale È un gesto.
+ */
+const ACTIONABLE_STEPS: ReadonlySet<NextStep> = new Set<NextStep>([
+  'answer', 'complete', 'verifySource', 'openCase', 'stale',
+]);

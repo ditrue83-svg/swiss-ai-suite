@@ -4,14 +4,23 @@ import { useAsync } from '@/hooks/useAsync';
 import { taskService } from '@/services/taskService';
 import { documentHubService } from '@/services/documentHubService';
 import { analysisService } from '@/services/analysisService';
-import { subsidyService } from '@/services/subsidyService';
-import { programService } from '@/services/programService';
-import { matchPrograms, type MatchResult } from '@/features/subsidy-ai/engine';
-import { buildMatchProfile } from './overview';
-import type { DocumentAnalysis, DocumentHubItem, SubsidyCase, TaskWithPeople } from '@/types/models';
+import { incentivesService } from '@/services/incentivesService';
+import { todayISO } from '@/features/incentives/incentivesModel';
+import type {
+  DocumentAnalysis, DocumentHubItem, IncentiveCase, IncentiveOpportunity,
+  IncentiveSummary, TaskWithPeople,
+} from '@/types/models';
 
 /** Quante attività servono davvero alla Home: le prime, già ordinate dal database. */
 const HOME_TASKS = 20;
+
+/**
+ * La finestra dei numeri degli incentivi in Panoramica, in giorni.
+ * ⚠️ Dichiarata qui e usata sia dalla funzione SQL sia dall'etichetta del KPI:
+ * un riquadro che dice «entro 30 giorni» mentre il database ne conta 60 è la
+ * classe di bugia che questo progetto insegue da mesi.
+ */
+export const INCENTIVE_DAYS = 30;
 
 interface BaseData {
   tasks: TaskWithPeople[];
@@ -24,7 +33,20 @@ interface BaseData {
   /** I documenti che richiedono attenzione, non tutti i documenti (§61). */
   attention: DocumentHubItem[];
   documentCount: number;
-  matches: MatchResult[];
+  /**
+   * ⚠️ I NUMERI DEGLI INCENTIVI VENGONO DAL DATABASE (`subsidy_home_summary`),
+   * non da un conteggio fatto qui su un elenco troncato. È la stessa disciplina
+   * di `counts`: un KPI che dice «3» perché ne ha caricate 3 mente.
+   *
+   * ⚠️ `null` quando la funzione non risponde con un oggetto, e chi legge deve
+   * trattarlo come «non lo sappiamo» — non come sette zeri. Mostrare zeri a chi
+   * non ha accesso sarebbe un guasto travestito da stato legittimo.
+   */
+  incentives: IncentiveSummary | null;
+  opportunities: IncentiveOpportunity[];
+  cases: IncentiveCase[];
+  /** Letto una volta sola al caricamento: le funzioni pure lo ricevono. */
+  today: string;
 }
 
 export interface OverviewData extends BaseData {
@@ -38,17 +60,16 @@ export interface OverviewData extends BaseData {
    * le pagine, è rimasto un caricatore solo.
    */
   analyses: DocumentAnalysis[];
-  cases: SubsidyCase[];
 }
 
 /** Tutto ciò che la Panoramica mostra: attività, documenti, incentivi, statistiche. */
 export function useOverview() {
-  const { activeCompanyId, activeCompany, companyProfile } = useCompany();
+  const { activeCompanyId } = useCompany();
   const companyId = activeCompanyId as string;
-  const { locale } = useI18n();
 
   return useAsync<OverviewData>(async () => {
-    const [todo, overdue, inProgress, completed, attention, documentCount, analyses, cases, programs] =
+    const [todo, overdue, inProgress, completed, attention, documentCount, analyses,
+      incentives, opportunities, cases] =
       await Promise.all([
         taskService.list(companyId, { view: 'todo', limit: HOME_TASKS }),
         taskService.list(companyId, { view: 'overdue', limit: 1 }),
@@ -57,17 +78,21 @@ export function useOverview() {
         documentHubService.attention(companyId, 6),
         documentHubService.activeCount(companyId),
         analysisService.listForCompany(companyId),
-        subsidyService.listCases(companyId),
-        programService.listActive(locale),
+        incentivesService.summary(companyId, INCENTIVE_DAYS),
+        // Già ordinate dal database per rilevanza, e senza quelle messe da
+        // parte: la vista predefinita le esclude.
+        incentivesService.opportunities(companyId, { view: 'all' }),
+        incentivesService.cases(companyId),
       ]);
-    const matches = matchPrograms(buildMatchProfile(activeCompany, companyProfile), programs);
     return {
       tasks: todo.items,
       counts: {
         open: todo.total, overdue: overdue.total,
         inProgress: inProgress.total, completed: completed.total,
       },
-      attention, documentCount, analyses, cases, matches,
+      attention, documentCount, analyses,
+      incentives, opportunities: opportunities.items, cases,
+      today: todayISO(),
     };
-  }, [companyId, activeCompany?.id, companyProfile, locale]);
+  }, [companyId]);
 }

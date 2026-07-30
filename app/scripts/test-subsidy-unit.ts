@@ -24,6 +24,7 @@
 //  13. Denaro — nessuna conversione, nessun CHF d'ufficio.
 //  14. L'interfaccia a quattro schede — ciò che la schermata DICE.
 //  15. I trigger devono SOPRAVVIVERE ALLA CASCATA.
+//  16. La Panoramica legge il motore 2.0 — e non raddoppia il lavoro.
 // ============================================================================
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -75,8 +76,17 @@ import {
   checklistProgress, canMarkReady, nextStatuses, validateProject, plural,
   subsidyErrorKey, summaryNotices, daysBetweenDates, todayISO,
   DEADLINE_SOON_DAYS as UI_DEADLINE_SOON_DAYS,
+  DEADLINE_SOON_DAYS as DEADLINE_SOON_DAYS_UI,
 } from '../src/features/incentives/incentivesModel.ts';
 import type { IncentiveCase, IncentiveOpportunity } from '../src/types/models.ts';
+/**
+ * ⚠️ La Panoramica entra in QUESTA suite e non in una sua, perché ciò che si
+ * può sbagliare è una regola degli incentivi: quali opportunità meritano un
+ * posto in «Priorità di oggi» e quali no. `collectPriorities` è pura.
+ */
+import {
+  collectPriorities, INCENTIVE_DEADLINE_DAYS,
+} from '../src/features/dashboard/overview.ts';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -964,6 +974,97 @@ check('la 0034 si autoverifica su tutti e tre i lati',
   ANSWERS_GUARD.includes('è stato smontato')
   && ANSWERS_GUARD.includes('ancora indistruttibile')
   && ANSWERS_GUARD.includes('la 0033 si è rotta'));
+
+// ===========================================================================
+section('16. La Panoramica legge il motore 2.0 — e non raddoppia il lavoro');
+// ⚠️ IL DIFETTO CHE QUESTA SEZIONE CHIUDE, visto in produzione il 2026-07-30:
+//    la Home diceva «6 incentivi rilevanti» e `/incentivi` diceva «nessun
+//    progetto, 0 opportunità». Due motori, la stessa domanda, due risposte.
+//    Ora la Home legge le stesse righe della schermata.
+//
+// ⚠️ E la regola pagata sul campo con lo scadenziario: QUANDO SI DEDUPLICA,
+//    VERIFICARE CHE IL SOSTITUTO COMPAIA DAVVERO. Due regole ragionevoli
+//    separatamente — «l'opportunità sparisce se ha una pratica», «la pratica
+//    compare se scade presto» — insieme facevano sparire il lavoro.
+
+const homeInput = (o: Partial<Parameters<typeof collectPriorities>[0]> = {}) => ({
+  tasks: [], attention: [], opportunities: [], cases: [], today: TODAY, ...o,
+});
+
+check('senza niente non c\'è nessuna priorità', collectPriorities(homeInput()).length === 0);
+
+// ---- L'opportunità su cui c'è un gesto ----
+const oppAnswer = opp({ openCriteriaCount: 2 });
+check('un\'opportunità con criteri aperti diventa una priorità',
+  collectPriorities(homeInput({ opportunities: [oppAnswer] })).length === 1);
+check('e porta alla schermata Incentivi, non alla vecchia',
+  collectPriorities(homeInput({ opportunities: [oppAnswer] }))[0]!.to === '/incentivi');
+// ⚠️ 0011 — un programma che oggi non viene concesso non è un'azione da fare.
+check('un programma sospeso NON entra fra le priorità',
+  collectPriorities(homeInput({
+    opportunities: [opp({ openCriteriaCount: 2, programAvailability: 'suspended' })],
+  })).length === 0);
+check('nemmeno uno strumento ritirato',
+  collectPriorities(homeInput({
+    opportunities: [opp({ openCriteriaCount: 2, programLifecycle: 'retired' })],
+  })).length === 0);
+// ⚠️ «Niente da fare adesso» non è una priorità: riempire l'elenco di righe su
+//    cui non si agisce è il modo di far smettere di leggerlo.
+check('un\'opportunità senza gesti da fare non entra',
+  collectPriorities(homeInput({
+    opportunities: [opp({ eligibilityStatus: 'likely_ineligible', timing: 'unknown' })],
+  })).length === 0);
+check('una finestra chiusa nemmeno',
+  collectPriorities(homeInput({ opportunities: [opp({ timing: 'closed' })] })).length === 0);
+check('al massimo tre opportunità: la Panoramica non è l\'elenco',
+  collectPriorities(homeInput({
+    opportunities: [1, 2, 3, 4, 5].map((n) => opp({ id: `o${n}`, openCriteriaCount: 1 })),
+  })).length === 3);
+
+// ---- LA DEDUP ----
+const oppWithCase = opp({ openCriteriaCount: 2, caseId: 'k1', caseStatus: 'draft' });
+check('un\'opportunità da cui è già nata una pratica NON compare due volte',
+  collectPriorities(homeInput({ opportunities: [oppWithCase] })).length === 0);
+// ⚠️ E il legame vale anche al contrario: la pratica dichiara la sua origine.
+check('e nemmeno se il legame arriva dalla pratica',
+  collectPriorities(homeInput({
+    opportunities: [opp({ openCriteriaCount: 2 })],
+    cases: [kase({ opportunityId: 'o1', officialDeadline: null, internalDeadline: null })],
+  })).length === 0);
+// ⚠️ IL CONTROLLO CHE IL DIFETTO DELLO SCADENZIARIO AVREBBE RICHIESTO: il
+//    sostituto compare davvero quando ha una scadenza vicina.
+check('la pratica che sostituisce l\'opportunità compare, se scade presto',
+  collectPriorities(homeInput({
+    opportunities: [opp({ openCriteriaCount: 2 })],
+    cases: [kase({ opportunityId: 'o1', officialDeadline: '2026-08-05' })],
+  })).length === 1);
+
+// ---- Le scadenze delle pratiche ----
+check('una pratica con termine oltre la finestra della Home non compare',
+  collectPriorities(homeInput({
+    cases: [kase({ officialDeadline: '2026-12-31' })],
+  })).length === 0);
+check('una che scade dentro la finestra sì',
+  collectPriorities(homeInput({ cases: [kase({ officialDeadline: '2026-08-20' })] })).length === 1);
+check('una scaduta è ad alta priorità',
+  collectPriorities(homeInput({ cases: [kase({ officialDeadline: '2026-07-01' })] }))[0]!.priority === 'alta');
+// ⚠️ §118 — si dichiara SEMPRE quale delle due scadenze è: «fra 5 giorni» senza
+//    dire «interna» farebbe credere che l'autorità chiuda fra cinque giorni.
+check('la riga dichiara se il termine è dell\'ente o interno',
+  collectPriorities(homeInput({ cases: [kase({ officialDeadline: '2026-08-05' })] }))[0]!.sub
+    !== collectPriorities(homeInput({ cases: [kase({ internalDeadline: '2026-08-05' })] }))[0]!.sub);
+// ⚠️ Una pratica già inviata non è lavoro da fare oggi: l'attesa è dell'ente.
+check('una pratica già inviata non compare',
+  collectPriorities(homeInput({
+    cases: [kase({ status: 'submitted', officialDeadline: '2026-08-05' })],
+  })).length === 0);
+check('nemmeno una chiusa',
+  collectPriorities(homeInput({
+    cases: [kase({ status: 'closed', officialDeadline: '2026-08-05' })],
+  })).length === 0);
+// La finestra della Home è più stretta di quella del modulo, ed è dichiarata.
+check('la finestra della Panoramica è più stretta di quella del modulo',
+  INCENTIVE_DEADLINE_DAYS < DEADLINE_SOON_DAYS_UI);
 
 // ===========================================================================
 console.log(`\n${B}Risultato:${X} ${G}${pass} passati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);

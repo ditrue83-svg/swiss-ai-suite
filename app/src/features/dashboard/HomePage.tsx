@@ -23,7 +23,10 @@ import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard, SkeletonKpiGrid } from '@/components/ui/states';
 import { useOverview, type OverviewData } from './useOverview';
-import { activeCasesCount, collectPriorities, type PriorityItem } from './overview';
+import { collectPriorities, type PriorityItem } from './overview';
+import {
+  ELIGIBILITY_KEY, ELIGIBILITY_TONE, RELEVANCE_KEY,
+} from '@/features/incentives/incentivesModel';
 import { daysUntil } from '@/lib/format';
 // ⚠️ I giorni di CALENDARIO, non i millisecondi: alle 23:30 una scadenza di
 // domani non deve contare come «oggi». È la stessa funzione usata da Attività e
@@ -91,7 +94,7 @@ function PriorityRow({ it }: { it: PriorityItem }) {
 function OverviewBody({ data }: { data: OverviewData }) {
   const t = useT();
   const L = useLabels();
-  const { tasks, counts, analyses, matches, cases } = data;
+  const { tasks, counts, analyses, incentives } = data;
   // `tasks` sono le attività aperte più urgenti (le prime della lista ordinata
   // dal database), non tutte: per i CONTEGGI si usa `counts`, che il database
   // calcola prima di paginare. Un numero preso dalla lunghezza di un elenco
@@ -102,11 +105,18 @@ function OverviewBody({ data }: { data: OverviewData }) {
   analyses.forEach((a) => { openActions += a.actions.filter((c) => !c.done).length; });
   const docsWithOpen = analyses.filter((a) => a.actions.some((c) => !c.done)).length;
   const toVerify = analyses.filter((a) => a.confidence !== 'alta' || a.senderUncertain);
-  const relevantCount = matches.length;
-  // 0011 — «idoneità da verificare» conta solo ciò che si può davvero ottenere:
-  // per un programma sospeso non c'è nessuna idoneità da verificare.
-  const verifiableCount = matches.filter((m) => m.program.availability !== 'suspended').length;
-  const activeCases = activeCasesCount(cases);
+  // ⚠️ I NUMERI DEGLI INCENTIVI VENGONO DAL MOTORE 2.0 (`subsidy_home_summary`),
+  // non più dal matcher 1.0 che girava nel browser. Fino al 2026-07-30 questa
+  // schermata diceva «6 incentivi rilevanti» mentre `/incentivi` diceva
+  // «nessun progetto, 0 opportunità»: la stessa domanda, due risposte.
+  //
+  // ⚠️ `incentives` è `null` quando la funzione non risponde, e `null` NON è
+  // zero: si mostra «—», perché «non lo sappiamo» e «non ce ne sono» portano a
+  // due gesti diversi.
+  const highRelevance = incentives?.highRelevance ?? null;
+  const newOpportunities = incentives?.newOpportunities ?? null;
+  const activeCases = incentives?.openCases ?? null;
+  const activeProjects = incentives?.activeProjects ?? null;
 
   let totChecks = 0, doneChecks = 0;
   analyses.forEach((a) => a.actions.forEach((c) => { totChecks++; if (c.done) doneChecks++; }));
@@ -186,8 +196,19 @@ function OverviewBody({ data }: { data: OverviewData }) {
         <div className="kpi">
           <div className="kpi-ico"><Icon name="star" className="ic-sm" /></div>
           <div className="kpi-label">{t('dashboard.kpiSubsidies')}</div>
-          <div className="kpi-value">{relevantCount}</div>
-          <div className="kpi-sub">{relevantCount ? t('dashboard.kpiSubsidiesSub') : t('dashboard.kpiSubsidiesNone')}</div>
+          <div className="kpi-value">{highRelevance ?? '—'}</div>
+          {/* ⚠️ TRE frasi e non due, perché le situazioni sono tre e portano a
+              gesti diversi: non lo sappiamo · non c'è ancora un progetto (e
+              senza progetto il motore non ha una domanda a cui rispondere) ·
+              ci sono opportunità. Un «completa il profilo» indistinto le
+              confondeva tutte. */}
+          <div className="kpi-sub">
+            {highRelevance === null
+              ? t('dashboard.kpiSubsidiesUnknown')
+              : activeProjects === 0
+                ? t('dashboard.kpiSubsidiesNoProject')
+                : t('dashboard.kpiSubsidiesSub')}
+          </div>
         </div>
       </div>
 
@@ -221,35 +242,34 @@ function OverviewBody({ data }: { data: OverviewData }) {
         </div>
       </div>
 
-      {relevantCount > 0 && (
+      {incentives !== null && (highRelevance ?? 0) + (activeCases ?? 0) > 0 && (
         <div className="card mt-16"><div className="card-title">{t('dashboard.subsidiesAndCases')}</div>
           <div className="dash-inc-stats">
-            <span className="lang-chip">{relevantCount} <b>{t('dashboard.statRelevant')}</b></span>
-            <span className="lang-chip">{verifiableCount} <b>{t('dashboard.statEligibility')}</b></span>
+            <span className="lang-chip">{highRelevance} <b>{t('dashboard.statRelevant')}</b></span>
+            <span className="lang-chip">{newOpportunities} <b>{t('dashboard.statNew')}</b></span>
             <span className="lang-chip">{activeCases} <b>{t('dashboard.statActiveCases')}</b></span>
           </div>
-          {matches.slice(0, 3).map((m) => {
-            // 0011 — su un programma sospeso non si mostra né «prima di agire»
-            // né «idoneità da verificare»: sarebbero due inviti ad agire su
-            // qualcosa che oggi non viene concesso.
-            const suspended = m.program.availability === 'suspended';
-            return (
-              // Due pastiglie al massimo, e un solo colore forte per riga: la
-              // rilevanza è un numero informativo, non uno stato, e stava a
-              // fianco di due avvisi con lo stesso peso visivo.
-              <div className="list-row" key={m.program.id}>
-                <div className="list-main">
-                  <div className="list-title">{m.program.name}</div>
-                  <div className="list-sub">{m.program.authority} · {t('dashboard.relevance', { n: m.relevanceScore })}</div>
+          {data.opportunities.slice(0, 3).map((o) => (
+            // ⚠️ NIENTE PUNTEGGIO: la rilevanza è una FASCIA. «82/100» letto da
+            // un imprenditore diventa «82% di possibilità di ottenerlo», che è
+            // una cosa che questo prodotto non sa — ed è esattamente ciò che
+            // questa riga mostrava fino al 2026-07-30.
+            // Un solo colore forte per riga: lo prende l'idoneità.
+            <div className="list-row" key={o.id}>
+              <div className="list-main">
+                <div className="list-title">{o.programName}</div>
+                <div className="list-sub">
+                  {o.authority} · {t(RELEVANCE_KEY[o.relevanceLevel])}
                 </div>
-                {!suspended && m.program.mustApplyBeforeStart && <span className="badge badge-media">{t('dashboard.applyBefore')}</span>}
-                {suspended
-                  ? <span className="badge badge-alta">{t('subsidy.results.suspended')}</span>
-                  : <span className="badge badge-neutral">{t('dashboard.eligibilityToVerify')}</span>}
               </div>
-            );
-          })}
-          <Link className="btn btn-sm mt-10" to="/subsidy">{t('dashboard.allSubsidies')} <Icon name="arrowRight" className="ic-sm" /></Link>
+              {o.programAvailability === 'suspended'
+                ? <span className="badge badge-media">{t('incentives.catalog.suspended')}</span>
+                : <span className={`badge ${ELIGIBILITY_TONE[o.eligibilityStatus]}`}>
+                  {t(ELIGIBILITY_KEY[o.eligibilityStatus])}
+                </span>}
+            </div>
+          ))}
+          <Link className="btn btn-sm mt-10" to="/incentivi">{t('dashboard.allSubsidies')} <Icon name="arrowRight" className="ic-sm" /></Link>
         </div>
       )}
 
@@ -292,7 +312,7 @@ export function HomePage() {
 
       <div className="row-wrap">
         <Link className="btn btn-primary btn-block-mobile" to="/admin"><Icon name="document" className="ic-sm" /> {t('home.analyzeDoc')}</Link>
-        <Link className="btn" to="/subsidy"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
+        <Link className="btn" to="/incentivi"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
         <Link className="btn btn-ghost" to="/attivita"><Icon name="calendar" className="ic-sm" /> {t('nav.tasks')}</Link>
         <Link className="btn btn-ghost" to="/documenti"><Icon name="archive" className="ic-sm" /> {t('nav.documents')}</Link>
         <Link className="btn btn-ghost" to="/finanze"><Icon name="receipt" className="ic-sm" /> {t('nav.finance')}</Link>
