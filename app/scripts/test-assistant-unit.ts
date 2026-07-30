@@ -37,6 +37,7 @@ import {
   citationLabel, dedupeCitations,
 } from '../src/features/assistant/assistantModel.ts';
 import type { AssistantCitation } from '../src/types/models.ts';
+import { valoriNonAncorati } from './eval-grounding.ts';
 import {
   buildFactSet, checkGrounding, finalizeAnswer, isHighRisk, resolveCitations, validateAnswerShape,
 } from '../supabase/functions/_shared/assistant/answer.ts';
@@ -632,6 +633,62 @@ check('due schede singole di record diversi NON si accorpano',
     declared.length > 1 && titles.every(Boolean) && new Set(titles).size === titles.length,
     `${declared.join(', ')} → ${titles.join(' | ')}`);
 }
+
+section('13. La regola di ancoraggio della VALUTAZIONE (eval-grounding)');
+
+// ⚠️ PERCHÉ QUESTA SEZIONE ESISTE. `eval:assistant` chiudeva 15/16 fallendo un
+// caso diverso a ogni esecuzione, e una delle due cause era proprio questa
+// regola: trattava importi e date allo stesso modo, quindi bocciava una
+// risposta CORRETTA che ridichiarava la finestra chiesta dalla domanda
+// («nessun rinnovo nei prossimi 90 giorni — finestra dal 30.07.2026»).
+// La regola viveva in linea dentro uno script che costa denaro a ogni giro:
+// per provarla bisognava spendere, e infatti non era provata. Ora è una
+// funzione pura e questi casi girano offline.
+const D = (over: Partial<{ ok: boolean; unsupportedAmounts: string[]; unsupportedDates: string[] }> = {}) => ({
+  ok: false, unsupportedAmounts: [], unsupportedDates: [], ...over,
+});
+
+check('un IMPORTO non ancorato è un difetto',
+  valoriNonAncorati(D({ unsupportedAmounts: ['4820.00'] })).length === 1);
+
+// ⚠️ IL CASO CHE PROTEGGE DAL FUTURO: l'esenzione vale per le DATE e basta.
+// Se un domani qualcuno la allargasse agli importi, questo controllo diventa
+// rosso — ed è l'unica cosa che impedisce a un importo inventato di passare.
+check('un importo NON è mai esentato, nemmeno con allowDerivedDates',
+  valoriNonAncorati(D({ unsupportedAmounts: ['4820.00'] }), { allowDerivedDates: true })
+    .length === 1);
+
+check('una DATA non ancorata è un difetto quando la domanda non nomina una finestra',
+  valoriNonAncorati(D({ unsupportedDates: ['2026-07-30'] })).length === 1);
+
+check('la stessa data NON è un difetto quando la domanda nomina una finestra',
+  valoriNonAncorati(D({ unsupportedDates: ['2026-07-30'] }), { allowDerivedDates: true })
+    .length === 0);
+
+check('con entrambi, l\'esenzione toglie solo la data e lascia l\'importo',
+  JSON.stringify(valoriNonAncorati(
+    D({ unsupportedAmounts: ['4820.00'], unsupportedDates: ['2026-07-30'] }),
+    { allowDerivedDates: true },
+  )) === JSON.stringify(['4820.00']));
+
+check('gli importi si elencano prima delle date',
+  JSON.stringify(valoriNonAncorati(
+    D({ unsupportedAmounts: ['1400.00'], unsupportedDates: ['2026-08-04'] }),
+  )) === JSON.stringify(['1400.00', '2026-08-04']));
+
+// ⚠️ REGOLA 1: se il PRODOTTO dice che va bene, la valutazione non lo
+// contraddice. Oggi `ok` è derivato dai due elenchi, quindi il caso qui sotto
+// è artificiale — ma è ciò che impedisce alla prova di tornare più severa del
+// prodotto se un domani `ok` guadagnasse una tolleranza. È esattamente
+// l'errore che questa sezione è nata per chiudere.
+check('se il prodotto dichiara ok, la valutazione non contesta nulla',
+  valoriNonAncorati(D({ ok: true, unsupportedAmounts: ['4820.00'] })).length === 0);
+
+check('nessuna diagnostica → nessun problema', valoriNonAncorati(null).length === 0);
+check('diagnostica assente (undefined) → nessun problema',
+  valoriNonAncorati(undefined).length === 0);
+check('diagnostica pulita → nessun problema',
+  valoriNonAncorati(D({ ok: true })).length === 0);
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);

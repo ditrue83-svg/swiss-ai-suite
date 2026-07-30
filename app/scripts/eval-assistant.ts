@@ -26,6 +26,7 @@ import { answerQuestion, type AssistantCreateMessage, type AssistantModelMessage
 import type { DbLike } from '../supabase/functions/_shared/assistant/executors.ts';
 import type { AssistantContext } from '../supabase/functions/_shared/assistant/contract.ts';
 import { DEFAULT_TIME_ZONE } from '../supabase/functions/_shared/assistant/dates.ts';
+import { valoriNonAncorati } from './eval-grounding.ts';
 
 if (!globalThis.WebSocket) (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
 
@@ -487,29 +488,15 @@ async function main() {
       if (a.diagnostics.invalidRefs.length) {
         problems.push(`riferimenti inventati: ${a.diagnostics.invalidRefs.join(', ')}`);
       }
-      // ⚠️ IMPORTI e DATE non hanno lo stesso peso, e trattarli uguali rendeva
-      // questa valutazione instabile.
-      //
-      // Un IMPORTO non ancorato è sempre un difetto: è denaro che l'utente non
-      // può risalire a nessuna fonte. Resta severo, per ogni caso.
-      //
-      // Una DATA non ancorata a volte è la RIDICHIARAZIONE DELLA DOMANDA: a
-      // «quali contratti si rinnovano nei prossimi 90 giorni?» l'assistente può
-      // rispondere «nessuno (finestra dal 30.07.2026)», e quella data non sta in
-      // nessuna fonte perché è il bordo della finestra chiesta — non un fatto
-      // inventato. Il prodotto lo sa già e la tratta come tale (§138: declassa
-      // `answered` a `partial` solo sulle risposte ad alto rischio); questa
-      // valutazione era più severa del prodotto che valuta.
-      //
-      // `allowDerivedDates` NON è un'esenzione generica: si dichiara sul singolo
-      // caso, e solo dove è la DOMANDA a nominare una finestra. Gli importi non
-      // sono mai esentati, e l'esito atteso continua a essere verificato — se il
-      // prodotto declassa, `expectStatus` deve prevederlo.
-      const g = a.diagnostics.grounding;
-      const dateNonAncorate = c.allowDerivedDates ? [] : g?.unsupportedDates ?? [];
-      const importiNonAncorati = g?.unsupportedAmounts ?? [];
-      if (g && !g.ok && (importiNonAncorati.length || dateNonAncorate.length)) {
-        problems.push(`valori non ancorati: ${[...importiNonAncorati, ...dateNonAncorate].join(', ')}`);
+      // La regola sta in `eval-grounding.ts`, funzione pura con i suoi casi in
+      // `test:assistant-unit`: decide se una risposta è un fallimento, e una
+      // regola del genere non può vivere in linea dentro uno script che costa
+      // denaro a ogni esecuzione — non sarebbe mai provata.
+      const nonAncorati = valoriNonAncorati(a.diagnostics.grounding, {
+        allowDerivedDates: c.allowDerivedDates,
+      });
+      if (nonAncorati.length) {
+        problems.push(`valori non ancorati: ${nonAncorati.join(', ')}`);
       }
     }
 
