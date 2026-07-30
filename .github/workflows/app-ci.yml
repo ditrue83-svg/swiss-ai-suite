@@ -1,0 +1,234 @@
+# ============================================================================
+# CI dell'APPLICAZIONE (app/) — il cancello che finora non esisteva.
+#
+# ⚠️ PERCHÉ ESISTE. Fino a oggi l'unico workflow di questo repository era
+# `site.yml`, che pubblica la vetrina. Trenta comandi di test, il typecheck, la
+# build e i quattro controlli di governance non venivano eseguiti da nessuna
+# macchina, mai. La prova che non è un problema teorico: un controllo di qualità
+# è rimasto ROSSO su `main` senza che nessuno lo sapesse, perché nulla lo
+# eseguiva.
+#
+# LA STRUTTURA, e le ragioni delle tre separazioni:
+#
+#   1. `quality-and-unit` — gira SEMPRE, su ogni pull request, anche da un fork
+#      e anche senza alcun segreto. Sono 1500+ asserzioni che non toccano né
+#      rete né credenziali: se non passano, non si unisce.
+#
+#   2. `database` — gira SOLO a comando (`workflow_dispatch`) e SOLO se i
+#      segreti esistono. ⚠️ Il motivo per cui NON è automatico è che
+#      `.env.test` punta al progetto Supabase di PRODUZIONE: quelle suite
+#      creano aziende usa-e-getta e le rimuovono, ma farlo a ogni push
+#      significherebbe far scrivere la CI in produzione, e due esecuzioni
+#      sovrapposte potrebbero lasciare residui. Se un giorno esisterà un
+#      progetto Supabase separato per i test, questo job può diventare
+#      automatico cambiando soltanto la riga `if:`.
+#
+#   3. `ai-evaluations` — gira solo a comando e solo se chiesto esplicitamente.
+#      Consuma credito Anthropic vero. Non deve poter partire per sbaglio.
+#
+# ⚠️ Un job saltato per mancanza di segreti NON deve somigliare a un job
+# superato: il job `preflight` lo dichiara con una annotazione visibile nel
+# riepilogo dell'esecuzione, e il job database resta «skipped» nell'interfaccia.
+# ============================================================================
+name: App → qualità e test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-ci.yml'
+  workflow_dispatch:
+    inputs:
+      run_database:
+        description: 'Esegui le suite su database (scrivono nel progetto Supabase reale)'
+        type: boolean
+        default: false
+      run_evaluations:
+        description: 'Esegui le valutazioni AI (CONSUMANO credito Anthropic)'
+        type: boolean
+        default: false
+
+# Il minimo indispensabile: questo workflow legge il codice e non pubblica nulla.
+permissions:
+  contents: read
+
+# Una esecuzione per branch. ⚠️ `cancel-in-progress` è attivo solo per gli
+# eventi automatici: interrompere a metà un'esecuzione manuale che sta scrivendo
+# nel database reale lascerebbe dati di prova in produzione, che è esattamente
+# il difetto che `cleanup()` di test-inbox aveva già prodotto una volta.
+concurrency:
+  group: app-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  # -------------------------------------------------------------------------
+  # 1. Il cancello vero. Nessun segreto, nessuna rete, nessuna spesa.
+  # -------------------------------------------------------------------------
+  quality-and-unit:
+    name: Qualità e unità (senza segreti)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Installazione riproducibile
+        run: npm ci
+
+      # `ci` = quality + unit. Il runner si ferma al primo rosso (è il
+      # comportamento predefinito) e propaga l'exit code.
+      - name: Suite senza credenziali
+        run: npm run ci
+
+  # -------------------------------------------------------------------------
+  # 2. I segreti ci sono? Si risponde SÌ o NO senza mai stampare un valore:
+  #    `-n` verifica che la stringa non sia vuota e non la mostra.
+  # -------------------------------------------------------------------------
+  preflight:
+    name: Segreti disponibili?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # ⚠️ Questo job non fa checkout, quindi la cartella `app/` non esiste sul
+    # runner: senza questo override il `working-directory` ereditato dai
+    # `defaults` farebbe fallire il passo con «no such directory».
+    defaults:
+      run:
+        working-directory: .
+    outputs:
+      has_database: ${{ steps.probe.outputs.has_database }}
+      has_anthropic: ${{ steps.probe.outputs.has_anthropic }}
+    steps:
+      - id: probe
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "has_database=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_database=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Suite database non eseguibili::I segreti SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY non sono configurati in questo repository. Le 13 suite su database NON sono state eseguite: non sono verdi, sono saltate."
+          fi
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "has_anthropic=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_anthropic=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Valutazioni AI non eseguibili::Il segreto ANTHROPIC_API_KEY non è configurato. Le valutazioni NON sono state eseguite: non sono verdi, sono saltate."
+          fi
+
+  # -------------------------------------------------------------------------
+  # 3. Le suite su database. Manuali di proposito (vedi l'intestazione).
+  # -------------------------------------------------------------------------
+  database:
+    name: Suite su database (manuale)
+    needs: [preflight, quality-and-unit]
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.run_database
+      && needs.preflight.outputs.has_database == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      # I test leggono le credenziali da `.env.test` (`node --env-file`).
+      # `umask 077` prima di scrivere; nessun `set -x`; i valori non vengono
+      # mai stampati e GitHub li maschera comunque nei log.
+      - name: Comporre .env.test dai segreti del repository
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          umask 077
+          {
+            printf 'SUPABASE_URL=%s\n'               "$SUPABASE_URL"
+            printf 'SUPABASE_ANON_KEY=%s\n'          "$SUPABASE_ANON_KEY"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n'  "$SUPABASE_SERVICE_ROLE_KEY"
+            printf 'ANTHROPIC_API_KEY=%s\n'          "$ANTHROPIC_API_KEY"
+          } > .env.test
+
+      # `--no-skip`: qui l'ambiente DEVE essere completo. Se `.env.test` non
+      # fosse valido, un «saltato» silenzioso sarebbe la bugia peggiore —
+      # il job risulterebbe verde senza aver provato niente.
+      - name: Suite su database
+        run: npm run test:db -- --no-skip
+
+      - name: Rimuovere le credenziali dal runner
+        if: always()
+        run: rm -f .env.test
+
+  # -------------------------------------------------------------------------
+  # 4. Le valutazioni AI. Mai automatiche: spendono denaro vero.
+  # -------------------------------------------------------------------------
+  ai-evaluations:
+    name: Valutazioni AI (manuale, a consumo)
+    needs: [preflight, quality-and-unit]
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.run_evaluations
+      && needs.preflight.outputs.has_database == 'true'
+      && needs.preflight.outputs.has_anthropic == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - name: Comporre .env.test dai segreti del repository
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          umask 077
+          {
+            printf 'SUPABASE_URL=%s\n'               "$SUPABASE_URL"
+            printf 'SUPABASE_ANON_KEY=%s\n'          "$SUPABASE_ANON_KEY"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n'  "$SUPABASE_SERVICE_ROLE_KEY"
+            printf 'ANTHROPIC_API_KEY=%s\n'          "$ANTHROPIC_API_KEY"
+          } > .env.test
+
+      # ⚠️ `eval:assistant` interroga il database reale e oggi NON è
+      # deterministico: due esecuzioni consecutive hanno fallito due casi
+      # diversi. Finché non è stato reso indipendente dai dati, questo job
+      # va letto come una misura, non come un cancello.
+      - name: Valutazioni
+        run: npm run test:eval -- --allow-ai --no-skip --continue-on-error
+
+      - name: Rimuovere le credenziali dal runner
+        if: always()
+        run: rm -f .env.test
