@@ -71,6 +71,9 @@ export function sourceLabelKey(source: Task['source']): TKey {
     // 0020 — creata da una regola aziendale. Non è «a mano» e non viene da un
     // modulo: chi la riceve ha diritto di sapere che non l'ha scritta nessuno.
     case 'workflow': return 'tasks.sourceWorkflow';
+    // 0026 — nata da una controparte o da una trattativa: il «prossimo passo»
+    // di un'opportunità che è diventato lavoro assegnabile (§50).
+    case 'crm': return 'tasks.sourceCrm';
   }
 }
 

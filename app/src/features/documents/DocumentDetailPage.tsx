@@ -21,6 +21,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { CrmLinkPicker } from '@/features/crm/CrmLinkPicker';
+import { useCrmLink } from '@/features/crm/useCrmLink';
 import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
@@ -36,6 +38,7 @@ import { useI18n, useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { CATEGORIES } from './documentModel';
 import type { AnalysisCorrection, DocumentCategory, DocumentDetail, DocumentTag } from '@/types/models';
+import { AskAbout } from '@/features/assistant/AskAbout';
 
 const TECH_METHOD_KEY: Record<string, TKey> = {
   native_pdf: 'documents.techMethods.native_pdf',
@@ -59,6 +62,8 @@ export function DocumentDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { activeCompanyId, activeCompany, isAdmin } = useCompany();
+  // 0026 — la controparte di cui questo documento parla.
+  const crmLink = useCrmLink('document', activeCompanyId, id);
   const { user } = useAuth();
   const { showToast } = useToast();
   const companyId = activeCompanyId as string;
@@ -286,6 +291,10 @@ export function DocumentDetailPage() {
             ].filter(Boolean).join(' · ');
           })()}
         </div>
+        <div className="row-wrap mt-12">
+          {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
+          <AskAbout type="document" id={doc.id} label={doc.title} />
+        </div>
       </div>
 
       {archived && (
@@ -472,6 +481,18 @@ export function DocumentDetailPage() {
           </Link>
         )}
       </div>
+
+      {/* §75 e §146 — i Documenti restano la memoria documentale; il CRM
+          aggiunge di CHI parla quel documento. Il mittente effettivo — analisi
+          più correzioni — resta del Document Hub e si mostra accanto. */}
+      <CrmLinkPicker
+        linkedId={crmLink.linked?.id ?? null}
+        linkedName={crmLink.linked?.displayName ?? null}
+        extractedName={item.sender}
+        onLink={crmLink.link}
+        onUnlink={crmLink.unlink}
+        disabled={busy}
+      />
 
       {/* ---- Organizzazione ---------------------------------------------- */}
       <div className="card mt-16">

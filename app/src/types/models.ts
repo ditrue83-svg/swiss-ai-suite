@@ -13,6 +13,9 @@ import type {
   AutomationEventType, WorkflowStatus, WorkflowRunStatus, WorkflowActionStatus, WorkflowAuditKind,
   FinanceItemType, FinanceProcessingStatus, FinanceReviewStatus, FinanceOrigin,
   FinanceFieldSource, FinanceReferenceType, FinanceExpenseCategory, FinancePaymentMethod,
+  CrmOrganizationRole, CrmRelationshipStatus, CrmSource, CrmContactMethodType,
+  CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
+  CrmLinkStatus, CrmEventKind, CrmLinkedEntity,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
   ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
@@ -33,6 +36,9 @@ export type {
   AutomationEventType, WorkflowStatus, WorkflowRunStatus, WorkflowActionStatus, WorkflowAuditKind,
   FinanceItemType, FinanceProcessingStatus, FinanceReviewStatus, FinanceOrigin,
   FinanceFieldSource, FinanceReferenceType, FinanceExpenseCategory, FinancePaymentMethod,
+  CrmOrganizationRole, CrmRelationshipStatus, CrmSource, CrmContactMethodType,
+  CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
+  CrmLinkStatus, CrmEventKind, CrmLinkedEntity,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
   ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
@@ -564,6 +570,14 @@ export interface AppNotification {
      * l'azienda ha composto nella propria lingua, e tradurla la falserebbe.
      */
     text?: string; workflowName?: string; workflowId?: string;
+    /**
+     * 0026 — l'organizzazione di un'opportunità. Serve a `notificationLink`
+     * per comporre `/clienti/:org/opportunita/:id`: senza, la campanella
+     * porterebbe alla panoramica in silenzio. `stage` è la fase al momento
+     * dell'assegnazione, e non si rilegge dopo: la notifica racconta un
+     * istante, non lo stato di adesso.
+     */
+    organizationId?: string; stage?: string;
   };
   readAt: string | null;
   createdAt: string;
@@ -1446,4 +1460,438 @@ export interface ContractDetail {
   corrections: ContractCorrection[];
   events: ContractEvent[];
   tasks: ContractLinkedTask[];
+}
+
+// ============================================================================
+// CRM Light (0026) — «con chi stiamo lavorando»
+//
+// ⚠️ Nessuno di questi tipi contiene una COPIA di un fatto di un altro modulo.
+// `ContractOfOrganization.counterpartyName` è il nome che i Contratti hanno
+// letto, letto DA LORO al momento della lettura; `FinanceOfOrganization.
+// supplierName` è quello di Finanze. Il CRM li mostra accanto alla propria
+// identità perché la differenza sia visibile — «il documento dice Swisscom
+// (Svizzera) SA, e noi lo chiamiamo Swisscom» — non per sostituirli.
+// ============================================================================
+
+/**
+ * Una controparte, come la vede una lista o una scheda. È il risultato di
+ * `list_crm_organizations`: i conteggi arrivano già calcolati dal database.
+ *
+ * `primaryEmail` e `primaryPhone` sono COMPOSTI IN LETTURA da
+ * `crm_contact_methods`, non colonne: due verità sullo stesso recapito
+ * finirebbero per divergere.
+ */
+export interface CrmOrganization {
+  id: string;
+  displayName: string;
+  /** La ragione sociale, quando è diversa da come la chiamiamo noi. */
+  legalName: string | null;
+  uidChe: string | null;
+  vatNumber: string | null;
+  website: string | null;
+  websiteDomain: string | null;
+  street: string | null;
+  postalCode: string | null;
+  city: string | null;
+  /** Sigla a due lettere. `null` quando non si sa — il registro non la dà nella ricerca per nome. */
+  canton: string | null;
+  countryCode: string | null;
+  relationshipStatus: CrmRelationshipStatus;
+  accountOwnerUserId: string | null;
+  source: CrmSource;
+  sourceDetail: string | null;
+  notes: string | null;
+  /**
+   * Calcolato dal database dal massimo fra email collegate e interazioni di
+   * tipo telefonata/incontro. `null` = mai contattata, che NON è come
+   * «contattata molto tempo fa»: è il caso più urgente, non il meno.
+   */
+  lastContactAt: string | null;
+  archivedAt: string | null;
+  /** Se questa scheda è stata unita a un'altra, quale. Il rimando resta. */
+  mergedIntoId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  roles: CrmOrganizationRole[];
+  primaryContactId: string | null;
+  primaryContactName: string | null;
+  primaryEmail: string | null;
+  primaryPhone: string | null;
+  contactCount: number;
+  openTaskCount: number;
+  overdueTaskCount: number;
+  openOpportunityCount: number;
+  wonOpportunityCount: number;
+  contractCount: number;
+  documentCount: number;
+  emailCount: number;
+  financeCount: number;
+}
+
+export interface CrmContact {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string;
+  preferredLanguage: 'it' | 'de' | 'fr' | null;
+  notes: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrmContactMethod {
+  id: string;
+  contactId: string | null;
+  organizationId: string | null;
+  type: CrmContactMethodType;
+  /** Il valore come l'ha scritto una persona. Non si riscrive mai. */
+  value: string;
+  /** La forma di confronto, scritta dal database. Per le email: minuscolo e spazi tolti, nient'altro. */
+  normalizedValue: string | null;
+  label: string | null;
+  isPrimary: boolean;
+}
+
+/** Dove lavora, e dove lavorava: `activeUntil` valorizzato è un rapporto concluso, non cancellato. */
+export interface CrmContactOrganization {
+  id: string;
+  contactId: string;
+  organizationId: string;
+  organizationName: string | null;
+  jobTitle: string | null;
+  department: string | null;
+  isPrimary: boolean;
+  activeFrom: string | null;
+  activeUntil: string | null;
+}
+
+/** Una persona con i suoi recapiti e il suo ruolo dentro un'organizzazione. */
+export interface CrmPerson {
+  contact: CrmContact;
+  methods: CrmContactMethod[];
+  organizations: CrmContactOrganization[];
+}
+
+/**
+ * Una trattativa.
+ *
+ * ⚠️ Non c'è `probability`, e non è una dimenticanza: «Offerta = 50%» ha
+ * l'aria di una misura e non deriva da niente (§44). `valueAmount` porta
+ * SEMPRE la sua valuta e non si somma con le altre (§45).
+ */
+export interface CrmOpportunity {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  primaryContactId: string | null;
+  primaryContactName: string | null;
+  title: string;
+  stage: CrmOpportunityStage;
+  ownerUserId: string | null;
+  valueAmount: number | null;
+  valueCurrency: string | null;
+  expectedCloseDate: string | null;
+  /** La sintesi commerciale. Il lavoro è un'attività, e si collega (§50). */
+  nextStep: string | null;
+  nextStepDueDate: string | null;
+  lostReason: string | null;
+  wonAt: string | null;
+  lostAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  openTaskCount: number;
+  overdueTaskCount: number;
+  documentCount: number;
+}
+
+export interface CrmInteraction {
+  id: string;
+  organizationId: string;
+  contactId: string | null;
+  opportunityId: string | null;
+  type: CrmInteractionType;
+  occurredAt: string;
+  subject: string | null;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrmEvent {
+  id: string;
+  organizationId: string | null;
+  contactId: string | null;
+  opportunityId: string | null;
+  kind: CrmEventKind;
+  detail: Record<string, unknown>;
+  actorUserId: string | null;
+  occurredAt: string;
+}
+
+/**
+ * Una riga di timeline. COMPONE riferimenti: `title` è un oggetto o un titolo,
+ * mai il corpo di una email o il testo di un documento (§61). Per leggere la
+ * cosa vera si apre `entityType`/`entityId`.
+ */
+export interface CrmTimelineEntry {
+  id: string;
+  kind: 'email' | 'interaction' | 'event' | 'task_created' | 'task_completed' | 'contract';
+  occurredAt: string;
+  title: string | null;
+  detail: Record<string, unknown>;
+  entityType: string;
+  entityId: string;
+  actorUserId: string | null;
+  contactId: string | null;
+  opportunityId: string | null;
+  /**
+   * L'identificativo di conversazione del provider, quando c'è. Il
+   * raggruppamento («Conversazione email — 4 messaggi») lo fa la schermata: nel
+   * dato sarebbe una scelta che vincola anche i messaggi non ancora arrivati.
+   */
+  threadKey: string | null;
+}
+
+/** Un sospetto, non un cliente. Nasce dal codice server-side e attende un sì. */
+export interface CrmLinkSuggestion {
+  id: string;
+  sourceEntityType: CrmLinkedEntity;
+  sourceEntityId: string;
+  suggestedOrganizationId: string | null;
+  suggestedContactId: string | null;
+  suggestedName: string | null;
+  suggestedEmail: string | null;
+  reason: CrmMatchReason;
+  /** Il perché in chiaro, non un punteggio: «il dominio coincide con il sito». */
+  reasonDetail: string | null;
+  status: CrmLinkStatus;
+  createdAt: string;
+}
+
+export interface CrmDuplicateCandidate {
+  organizationId: string;
+  displayName: string;
+  duplicateId: string;
+  duplicateName: string;
+  reason: CrmMatchReason;
+  reasonDetail: string | null;
+}
+
+export interface CrmEmailMatch {
+  organizationId: string | null;
+  organizationName: string | null;
+  contactId: string | null;
+  contactName: string | null;
+  reason: CrmMatchReason;
+  reasonDetail: string | null;
+}
+
+export interface CrmOrganizationOption {
+  id: string;
+  displayName: string;
+  city: string | null;
+  roles: CrmOrganizationRole[];
+}
+
+/** Le quattro misure della pagina iniziale, e nessuna quinta (§100, §101). */
+export interface CrmHomeSummary {
+  openOpportunities: number;
+  withoutNextStep: number;
+  overdueFollowUps: number;
+  staleRelationships: number;
+  pendingSuggestions: number;
+}
+
+/** Un totale PER VALUTA. Non esiste un totale unico (§45). */
+export interface CrmPipelineCell {
+  stage: CrmOpportunityStage;
+  currency: string | null;
+  opportunityCount: number;
+  totalAmount: number | null;
+}
+
+/** Un documento collegato alla controparte, con il ruolo che ha nel rapporto. */
+export interface CrmDocumentLink {
+  id: string;
+  documentId: string;
+  title: string | null;
+  category: DocumentCategory | null;
+  /**
+   * ⚠️ Quando il documento è stato CARICATO, non la data che porta stampata:
+   * `documents` non ha una colonna di data, e la data del documento è un valore
+   * EFFETTIVO che vive in `document_analyses` più le correzioni. Comporla qui
+   * richiederebbe `list_documents`; chiamare `created_at` «data del documento»
+   * sarebbe più comodo e falso. Chi vuole la data vera apre il documento.
+   */
+  uploadedAt: string | null;
+  relation: CrmDocumentRelation;
+  matchReason: CrmMatchReason;
+  createdAt: string;
+}
+
+/** Una comunicazione collegata: solo metadati, mai il corpo. */
+export interface CrmEmailLink {
+  id: string;
+  emailMessageId: string;
+  subject: string | null;
+  senderName: string | null;
+  senderEmail: string | null;
+  receivedAt: string | null;
+  threadKey: string | null;
+  matchReason: CrmMatchReason;
+}
+
+/**
+ * Un contratto con questa controparte. `counterpartyName` è il nome che i
+ * Contratti hanno letto: si mostra accanto, non al posto dell'identità CRM.
+ */
+export interface CrmContractLink {
+  id: string;
+  displayName: string;
+  contractType: string;
+  lifecycleStatus: string;
+  reviewStatus: string;
+  counterpartyName: string | null;
+  ownerUserId: string | null;
+}
+
+/**
+ * Una fattura fornitore collegata. `supplierName` resta quello estratto dal
+ * documento.
+ *
+ * ⚠️ Non esiste il corrispettivo «fatture cliente»: Finanze gestisce fatture
+ * fornitore e spese. Il CRM non mostra ricavi, perché non ne ha (§77).
+ */
+export interface CrmFinanceLink {
+  id: string;
+  documentId: string;
+  type: string;
+  supplierName: string | null;
+  grossAmount: number | null;
+  currency: string | null;
+  dueDate: string | null;
+  reviewStatus: string;
+}
+
+export interface CrmOrganizationDetail {
+  organization: CrmOrganization;
+  people: CrmPerson[];
+  methods: CrmContactMethod[];
+  opportunities: CrmOpportunity[];
+  interactions: CrmInteraction[];
+  documents: CrmDocumentLink[];
+  emails: CrmEmailLink[];
+  contracts: CrmContractLink[];
+  finance: CrmFinanceLink[];
+  duplicates: CrmDuplicateCandidate[];
+}
+
+// ============================================================================
+// COMPANY ASSISTANT (0027) — «Chiedi ad AI-Swisse»
+//
+// ⚠️ Nessun tipo qui dentro contiene un dato aziendale copiato. Una citazione è
+// un RIFERIMENTO: tipo di fonte, identificativo, rotta interna, titolo, e al
+// massimo l'istantanea minima del valore su cui la risposta si basava (§92).
+// ============================================================================
+
+export type AssistantAnswerStatus =
+  | 'answered'
+  | 'partial'
+  | 'insufficient_evidence'
+  | 'needs_disambiguation'
+  | 'out_of_scope';
+
+export type AssistantSourceType =
+  | 'document' | 'document_evidence' | 'email_message' | 'task' | 'finance_item'
+  | 'contract' | 'contract_milestone' | 'contract_term' | 'crm_organization'
+  | 'crm_opportunity' | 'workflow_run' | 'workflow_definition' | 'company_overview';
+
+/**
+ * §24 — quanto è affidabile una fonte, in ordine di precedenza.
+ *
+ * ⚠️ È `null` quando non si può dedurre dall'istantanea conservata: la 0027 non
+ * memorizza il livello, perché è una proprietà della LETTURA e non della fonte.
+ * Un contratto in bozza oggi può essere verificato domani, e mostrare un
+ * giudizio vecchio di un mese sarebbe peggio che non mostrarne nessuno.
+ */
+export type AssistantVerification =
+  | 'human_verified' | 'deterministic' | 'ai_with_evidence' | 'ai_unverified';
+
+export type AssistantFeedbackReason = 'wrong_data' | 'wrong_source' | 'incomplete' | 'misunderstood';
+
+export interface AssistantThread {
+  id: string;
+  title: string;
+  locale: 'it' | 'de' | 'fr';
+  status: 'active' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssistantCitation {
+  index: number;
+  sourceType: AssistantSourceType;
+  /** Nullo per una citazione aggregata: là contano `groupSize` e la rotta. */
+  sourceId: string | null;
+  groupSize: number | null;
+  /** Rotta INTERNA dell'applicazione. Mai un indirizzo esterno (§106). */
+  route: string;
+  title: string;
+  subtitle: string | null;
+  pageNumber: number | null;
+  fieldName: string | null;
+  /** Testo preso dalla fonte, già verificato a monte (§62). */
+  citedText: string | null;
+  valueSnapshot: Record<string, unknown> | null;
+  sourceVersion: string | null;
+  verification: AssistantVerification | null;
+}
+
+export interface AssistantMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  answerStatus: AssistantAnswerStatus | null;
+  uncertainty: string | null;
+  followUps: string[];
+  createdAt: string;
+  citations: AssistantCitation[];
+}
+
+/**
+ * Gli eventi del flusso (§112).
+ *
+ * ⚠️ Nessuno di questi trasporta il ragionamento del modello: dicono che cosa
+ * il SISTEMA sta facendo. La differenza fra «cerco nelle attività» e «sto
+ * ragionando passo per passo» è §113, ed è nel tipo prima che nella copy.
+ */
+export type AssistantStreamEvent =
+  | { type: 'run_started'; runId: string; threadId: string }
+  | { type: 'tool_started'; toolKey: string; module: string; seq: number }
+  | { type: 'tool_finished'; toolKey: string; module: string; seq: number; status: string; resultCount: number }
+  | { type: 'composing' }
+  | { type: 'answer'; messageId: string; answer: AssistantPublicAnswer }
+  | { type: 'error'; code: string; message: string }
+  | { type: 'done' };
+
+export interface AssistantPublicAnswer {
+  status: AssistantAnswerStatus;
+  text: string;
+  uncertainty: string | null;
+  followUps: string[];
+  citations: AssistantCitation[];
+  /** §30 — le entità fra cui l'utente deve scegliere, già cliccabili. */
+  disambiguation: { label: string; hint: string | null; route: string }[];
+  /** §144 — gli strumenti che non hanno risposto: la risposta lo dichiara. */
+  degraded: string[];
+}
+
+/** §120 — da quale scheda è partita la domanda. Il server la verifica (§122). */
+export interface AssistantEntityContext {
+  type: 'contract' | 'crm_organization' | 'finance_item' | 'document' | 'task';
+  id: string;
+  label: string;
 }

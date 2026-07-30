@@ -307,6 +307,16 @@ export function entityLink(
   // Le comunicazioni non hanno una pagina propria con indirizzo: si aprono
   // dalla lista. Portare a `/inbox` è la verità; inventare `/inbox/<id>` no.
   if (entityType === 'email_message') return '/inbox';
+  // 0026 — le entità del CRM. ⚠️ `crm_opportunity` non ha un indirizzo che si
+  // possa comporre dal solo id: la scheda vive sotto la sua organizzazione
+  // (`/clienti/:org/opportunita/:id`) e quell'id non è in `entity_id`. Portare
+  // all'elenco è la verità; comporre un percorso con un'organizzazione
+  // indovinata sarebbe un collegamento rotto travestito da collegamento.
+  if (entityType === 'crm_organization') return `/clienti/${entityId}`;
+  if (entityType === 'crm_opportunity') return '/clienti?vista=pipeline';
+  // ⚠️ `contract` manca ancora, ed è un difetto di questo file annotato e non
+  // corretto qui: cambiare il comportamento dei Contratti mentre si costruisce
+  // il CRM sarebbe una modifica di straforo a un altro modulo.
   return null;
 }
 

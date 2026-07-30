@@ -173,7 +173,181 @@ export async function loadFacts(
   if (event.entity_type === 'email_message') return await emailFacts(sb, event);
   if (event.entity_type === 'task') return await taskFacts(sb, event);
   if (event.entity_type === 'contract') return await contractFacts(sb, event);
+  // 0026 — le due entità del CRM. `crm_organization` e `crm_opportunity` sono
+  // separate per la stessa ragione per cui contratto e documento lo sono: una
+  // trattativa è UNA fra le tante con la stessa controparte, e agganciare il suo
+  // evento all'organizzazione renderebbe impossibile ritrovare quale.
+  if (event.entity_type === 'crm_organization') return await crmOrganizationFacts(sb, event);
+  if (event.entity_type === 'crm_opportunity') return await crmOpportunityFacts(sb, event);
   return null;
+}
+
+/**
+ * I fatti di un'ORGANIZZAZIONE del CRM (0026).
+ *
+ * ⚠️⚠️ I RUOLI SONO BOOLEANI, UNO PER RUOLO, e non un elenco. L'operatore
+ * `contains` di questo motore confronta SOTTOSTRINGHE (`conditions.ts`): su un
+ * elenco unito con le virgole, «il ruolo contiene customer» risponderebbe SÌ
+ * anche a `former_customer`, cioè a un ex cliente. Una regola «avvisa per i
+ * clienti» sarebbe scattata sui clienti persi e nessuno avrebbe capito perché.
+ *
+ * ⚠️ `organization.role` — al SINGOLARE — esiste solo quando l'evento è
+ * «ruolo aggiunto», e in quel caso il valore sta nel PAYLOAD dell'evento: là è
+ * un dato, non una deduzione. Su ogni altro innesco resta `missing()`, cioè
+ * `unknown`, cioè la regola NON esegue: la logica a tre valori fa il suo lavoro.
+ *
+ * ⚠️ OGNI select porta `.eq('company_id', event.company_id)`. Qui la RLS non
+ * c'è — questo codice gira con il service role — e dimenticare quel filtro
+ * perderebbe l'isolamento fra aziende senza alcun sintomo.
+ */
+async function crmOrganizationFacts(
+  sb: ServerClient, event: ClaimedEvent,
+): Promise<EntityFacts | null> {
+  const { data: org } = await sb.from('crm_organizations')
+    .select('id, company_id, display_name, account_owner_user_id, relationship_status, '
+      + 'canton, city, source, last_contact_at')
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
+  if (!org) return null;
+  const o = org as Record<string, unknown>;
+
+  const { data: roleRows } = await sb.from('crm_organization_roles')
+    .select('role').eq('organization_id', o.id).eq('company_id', event.company_id);
+  const roles = new Set(((roleRows ?? []) as Record<string, unknown>[]).map((r) => r.role as string));
+
+  const { data: opps } = await sb.from('crm_opportunities')
+    .select('id, stage').eq('organization_id', o.id).eq('company_id', event.company_id)
+    .is('archived_at', null);
+  const openOpportunities = ((opps ?? []) as Record<string, unknown>[])
+    .filter((p) => p.stage !== 'won' && p.stage !== 'lost').length;
+
+  const { data: tasks } = await sb.from('tasks')
+    .select('id, status').eq('crm_organization_id', o.id).eq('company_id', event.company_id)
+    .is('archived_at', null);
+  const openTasks = ((tasks ?? []) as Record<string, unknown>[])
+    .filter((k) => k.status !== 'completed').length;
+
+  const payloadRole = (event.payload as Record<string, unknown> | null)?.role;
+
+  return {
+    facts: {
+      ...crmOrganizationFactMap(o, roles, openOpportunities, openTasks),
+      'organization.role': typeof payloadRole === 'string' ? known(payloadRole) : missing(),
+    },
+    documentId: null,
+    emailMessageId: null,
+    taskId: null,
+    contractId: null,
+    contractMilestoneId: null,
+    // ⚠️ Il destinatario «assegnatario» punta al RESPONSABILE DELLA RELAZIONE:
+    // è la persona che una notifica su questa controparte deve raggiungere.
+    assigneeUserId: (o.account_owner_user_id as string | null) ?? null,
+  };
+}
+
+/** I fatti condivisi fra i due inneschi: l'organizzazione compare in entrambi. */
+function crmOrganizationFactMap(
+  o: Record<string, unknown>,
+  roles: Set<string>,
+  openOpportunities: number,
+  openTasks: number,
+): Facts {
+  return {
+    'organization.name': optional(o.display_name as string | null),
+    'organization.owner': optional(o.account_owner_user_id as string | null),
+    'organization.status': known(o.relationship_status as string),
+    'organization.canton': optional(o.canton as string | null),
+    'organization.city': optional(o.city as string | null),
+    'organization.source': known(o.source as string),
+    // §67 — «mai contattata» è un fatto ASSENTE, non una data lontanissima:
+    // `within_days` su un `missing()` dà `unknown` e la regola non esegue, che
+    // è il comportamento giusto — una soglia non si applica a ciò che non è
+    // mai cominciato.
+    'organization.last_contact_at': optional(o.last_contact_at as string | null),
+    'organization.role_customer': known(roles.has('customer')),
+    'organization.role_prospect': known(roles.has('prospect')),
+    'organization.role_supplier': known(roles.has('supplier')),
+    'organization.role_partner': known(roles.has('partner')),
+    'organization.open_opportunity_count': known(openOpportunities),
+    'organization.open_task_count': known(openTasks),
+  };
+}
+
+/**
+ * I fatti di un'OPPORTUNITÀ (0026), che portano con sé quelli della sua
+ * organizzazione: una regola su una trattativa vuole poter dire «solo per i
+ * clienti» o «solo se non li sentiamo da un mese».
+ *
+ * ⚠️ `opportunity.previous_stage` viene dal PAYLOAD dell'evento e non dalla
+ * riga: la riga ha già la fase NUOVA, e leggerla da lì darebbe due volte lo
+ * stesso valore — una regola «da negoziazione a persa» non scatterebbe mai.
+ *
+ * ⚠️ `opportunity.value_amount` porta la VALUTA (`known(n, currency)`): senza,
+ * una condizione «valore maggiore di 10'000» confronterebbe franchi con euro.
+ */
+async function crmOpportunityFacts(
+  sb: ServerClient, event: ClaimedEvent,
+): Promise<EntityFacts | null> {
+  const { data: opp } = await sb.from('crm_opportunities')
+    .select('id, company_id, organization_id, title, stage, owner_user_id, value_amount, '
+      + 'value_currency, expected_close_date, next_step, next_step_due_date')
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
+  if (!opp) return null;
+  const p = opp as Record<string, unknown>;
+
+  const { data: org } = await sb.from('crm_organizations')
+    .select('id, company_id, display_name, account_owner_user_id, relationship_status, '
+      + 'canton, city, source, last_contact_at')
+    .eq('id', p.organization_id).eq('company_id', event.company_id).maybeSingle();
+  if (!org) return null;
+  const o = org as Record<string, unknown>;
+
+  const { data: roleRows } = await sb.from('crm_organization_roles')
+    .select('role').eq('organization_id', o.id).eq('company_id', event.company_id);
+  const roles = new Set(((roleRows ?? []) as Record<string, unknown>[]).map((r) => r.role as string));
+
+  const { data: opps } = await sb.from('crm_opportunities')
+    .select('id, stage').eq('organization_id', o.id).eq('company_id', event.company_id)
+    .is('archived_at', null);
+  const openOpportunities = ((opps ?? []) as Record<string, unknown>[])
+    .filter((x) => x.stage !== 'won' && x.stage !== 'lost').length;
+
+  const { data: tasks } = await sb.from('tasks')
+    .select('id, status').eq('crm_organization_id', o.id).eq('company_id', event.company_id)
+    .is('archived_at', null);
+  const openTasks = ((tasks ?? []) as Record<string, unknown>[])
+    .filter((k) => k.status !== 'completed').length;
+
+  const currency = (p.value_currency as string | null) ?? null;
+  const amount = p.value_amount === null || p.value_amount === undefined
+    ? null : Number(p.value_amount);
+  const previous = (event.payload as Record<string, unknown> | null)?.from;
+
+  return {
+    facts: {
+      ...crmOrganizationFactMap(o, roles, openOpportunities, openTasks),
+      'opportunity.title': optional(p.title as string | null),
+      'opportunity.stage': known(p.stage as string),
+      'opportunity.owner': optional(p.owner_user_id as string | null),
+      'opportunity.value_amount': amount === null ? missing() : known(amount, currency),
+      'opportunity.value_currency': optional(currency),
+      'opportunity.expected_close_date': optional(p.expected_close_date as string | null),
+      // §99 — «senza prossimo passo» si esprime con `not_exists` su questo
+      // fatto: una trattativa aperta che nessuno sa come proseguire è ferma.
+      'opportunity.next_step': optional(p.next_step as string | null),
+      'opportunity.next_step_due_date': optional(p.next_step_due_date as string | null),
+      'opportunity.previous_stage': typeof previous === 'string' ? known(previous) : missing(),
+    },
+    documentId: null,
+    emailMessageId: null,
+    taskId: null,
+    contractId: null,
+    contractMilestoneId: null,
+    // §84 e §136 — l'avviso e l'attività vanno al responsabile della TRATTATIVA;
+    // se non c'è, al responsabile della relazione. Senza nessuno dei due resta
+    // null, e l'azione «assegna» viene saltata dichiarandolo.
+    assigneeUserId: (p.owner_user_id as string | null)
+      ?? (o.account_owner_user_id as string | null) ?? null,
+  };
 }
 
 /**

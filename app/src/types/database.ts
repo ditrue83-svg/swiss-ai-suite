@@ -56,7 +56,12 @@ export type TaskEventKind =
  * un modulo, e chi la riceve ha diritto di saperlo. Quale regola lo dice
  * `tasks.workflow_run_id`.
  */
-export type TaskSource = 'admin_ai' | 'subsidy_ai' | 'manual' | 'workflow';
+/**
+ * Da dove nasce il lavoro. `crm` (0026) è l'attività nata da una controparte o
+ * da una trattativa — il «prossimo passo» che diventa lavoro assegnabile.
+ * Quale controparte lo dicono `tasks.crm_organization_id` e `crm_opportunity_id`.
+ */
+export type TaskSource = 'admin_ai' | 'subsidy_ai' | 'manual' | 'workflow' | 'crm';
 export type EligibilityStatus = 'unknown' | 'likely' | 'unlikely' | 'ineligible';
 export type SubsidyCaseStatus = 'draft' | 'collecting_documents' | 'ready' | 'submitted' | 'closed';
 
@@ -91,7 +96,69 @@ export type NotificationType =
   | 'unassigned_task_due_soon' | 'calendar_sync_failed' | 'calendar_reauth_required'
   // 0020 — l'avviso prodotto da una regola aziendale. Il TESTO lo scrive
   // l'azienda dentro la regola: non è traducibile, ed è dichiarato come tale.
-  | 'workflow_alert';
+  | 'workflow_alert'
+  // 0026 — la trattativa affidata a qualcuno. Non c'è una notifica «cliente
+  // inattivo»: l'inattività è un giudizio con una soglia, e diventa lavoro
+  // passando da una regola di automazione, non da una campanella automatica.
+  | 'crm_opportunity_assigned';
+
+// ---- CRM Light (0026) ------------------------------------------------------
+// «Con chi stiamo lavorando». Il modulo COLLEGA le entità degli altri moduli
+// senza copiarle: il nome del fornitore letto su una fattura resta in Finanze,
+// la controparte letta su un contratto resta nei Contratti, il mittente di una
+// email resta nell'Inbox. Qui si aggiunge un'identità, non si riscrive un fatto.
+
+/**
+ * Che rapporto abbiamo. Sono RUOLI e sono MULTIPLI: la stessa impresa può
+ * essere insieme cliente, fornitore e partner — il caso che un campo unico
+ * `type` rendeva inesprimibile. Da non confondere con `CrmOpportunityStage`,
+ * che descrive una singola trattativa e non un rapporto.
+ */
+export type CrmOrganizationRole =
+  | 'lead' | 'prospect' | 'customer' | 'former_customer'
+  | 'supplier' | 'partner' | 'authority' | 'other';
+/**
+ * Lo stato del rapporto. DUE valori, non tre: «archiviata» non è uno stato ma
+ * un `archived_at`, come in documents, tasks, contracts e finance_items. Uno
+ * stato che duplica un timestamp finisce per divergere dal timestamp.
+ */
+export type CrmRelationshipStatus = 'active' | 'inactive';
+/**
+ * Come è nata questa riga. NON è una verifica d'identità: una controparte
+ * suggerita da una fattura resta una proposta finché una persona non conferma.
+ * Dal browser si possono dichiarare solo `manual`, `registry` e `import`.
+ */
+export type CrmSource =
+  | 'manual' | 'email' | 'document' | 'contract' | 'finance' | 'registry' | 'import';
+export type CrmContactMethodType = 'email' | 'phone' | 'mobile' | 'website' | 'other';
+/** La fase di una TRATTATIVA, non il ruolo della controparte. */
+export type CrmOpportunityStage =
+  | 'lead' | 'contacted' | 'proposal' | 'negotiation' | 'won' | 'lost';
+/** Le email non sono interazioni manuali: restano in `email_messages` e si collegano. */
+export type CrmInteractionType = 'note' | 'call' | 'meeting' | 'other';
+export type CrmDocumentRelation =
+  | 'sender' | 'recipient' | 'counterparty' | 'customer' | 'supplier' | 'other';
+/**
+ * Perché due cose sono state avvicinate, e non è decorativo: decide se il
+ * collegamento può avvenire da solo. `uid_exact` ed `email_exact` sono
+ * identità; `domain_match` e `name_normalized` sono sospetti e restano
+ * suggerimenti da confermare.
+ */
+export type CrmMatchReason =
+  | 'uid_exact' | 'email_exact' | 'domain_match' | 'name_normalized' | 'manual';
+/** `ignored` non è `rejected`: «non ora» e «no» sono risposte diverse. */
+export type CrmLinkStatus = 'pending' | 'accepted' | 'rejected' | 'ignored';
+export type CrmEventKind =
+  | 'organization_created' | 'organization_updated'
+  | 'role_added' | 'role_removed' | 'owner_changed'
+  | 'contact_added' | 'contact_linked' | 'contact_unlinked'
+  | 'opportunity_created' | 'opportunity_stage_changed'
+  | 'opportunity_won' | 'opportunity_lost'
+  | 'interaction_created' | 'entity_linked' | 'entity_unlinked'
+  | 'archived' | 'restored' | 'merged';
+export type CrmLinkedEntity =
+  | 'document' | 'email_message' | 'task' | 'contract' | 'finance_item' | 'opportunity';
+
 /** L'in-app non è un canale: l'in-app È la notifica. Vedi 0018. */
 export type NotificationChannel = 'email';
 
@@ -109,7 +176,13 @@ export type AutomationEventType =
   // documento, un contratto ha PIÙ documenti e milestone che non appartengono a
   // nessuno di essi.
   | 'contract_verified' | 'contract_review_required'
-  | 'contract_milestone_verified' | 'contract_milestone_window_opened';
+  | 'contract_milestone_verified' | 'contract_milestone_window_opened'
+  // 0026 — i sei inneschi del CRM. `crm_follow_up_due` non ha un trigger
+  // proprio: lo emette la scansione periodica `crm_emit_follow_up_due`, che
+  // gira dentro il worker delle automazioni già acceso. Nessun cron nuovo.
+  | 'crm_organization_created' | 'crm_role_added'
+  | 'crm_opportunity_created' | 'crm_opportunity_stage_changed'
+  | 'crm_opportunity_won' | 'crm_follow_up_due';
 export type AutomationEventStatus = 'pending' | 'processing' | 'done' | 'failed' | 'dead_letter';
 /**
  * Stato di una regola. L'archiviazione è uno STATO — non una data come per le
@@ -247,6 +320,28 @@ export type ContractAttentionClauseKind =
   | 'automatic_renewal' | 'minimum_duration' | 'termination_fee' | 'exclusivity'
   | 'price_adjustment' | 'notice_requirement' | 'confidentiality' | 'data_processing'
   | 'minimum_purchase_commitment' | 'liability_limitation' | 'other';
+
+
+// ---------------------------------------------------------------------------
+// Company Assistant (0027) — «Chiedi ad AI-Swisse»
+//
+// ⚠️ Nessuna di queste tabelle contiene dati aziendali: domande, risposte e
+// RIFERIMENTI. `assistant_citations.value_snapshot` porta l'istantanea minima
+// che serve a sapere su quale stato della fonte la risposta si basava (§92),
+// non una copia della fonte.
+// ---------------------------------------------------------------------------
+export type AssistantThreadStatus = 'active' | 'archived';
+export type AssistantMessageRole = 'user' | 'assistant';
+export type AssistantRunStatus = 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type AssistantAnswerStatusDb =
+  | 'answered' | 'partial' | 'insufficient_evidence' | 'needs_disambiguation' | 'out_of_scope';
+export type AssistantToolStatus = 'ok' | 'empty' | 'denied' | 'error' | 'timeout';
+export type AssistantSourceTypeDb =
+  | 'document' | 'document_evidence' | 'email_message' | 'task' | 'finance_item'
+  | 'contract' | 'contract_milestone' | 'contract_term' | 'crm_organization'
+  | 'crm_opportunity' | 'workflow_run' | 'workflow_definition' | 'company_overview';
+export type AssistantFeedbackRating = 'helpful' | 'not_helpful';
+export type AssistantFeedbackReasonDb = 'wrong_data' | 'wrong_source' | 'incomplete' | 'misunderstood';
 
 export interface Database {
   public: {
@@ -431,13 +526,13 @@ export interface Database {
         Relationships: [];
       };
       tasks: {
-        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null; contract_id: string | null; contract_milestone_id: string | null;};
-        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null; contract_id?: string | null; contract_milestone_id?: string | null };
+        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null; contract_id: string | null; contract_milestone_id: string | null; crm_organization_id: string | null; crm_opportunity_id: string | null;};
+        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null; contract_id?: string | null; contract_milestone_id?: string | null; crm_organization_id?: string | null; crm_opportunity_id?: string | null };
         // `completed_at`, `completed_by`, `archived_by` non compaiono in Update:
         // li scrive il trigger `tasks_guard`, e un client che li mandasse li
         // vedrebbe comunque sovrascritti. `archived_at` c'è perché è il modo in
         // cui si DICHIARA di voler archiviare; il valore vero lo mette il server.
-        Update: { title?: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; assignee_user_id?: string | null; archived_at?: string | null; contract_id?: string | null; contract_milestone_id?: string | null };
+        Update: { title?: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; assignee_user_id?: string | null; archived_at?: string | null; contract_id?: string | null; contract_milestone_id?: string | null; crm_organization_id?: string | null; crm_opportunity_id?: string | null };
         Relationships: [];
       };
       task_checklist_items: {
@@ -727,17 +822,22 @@ export interface Database {
           verified_at: string | null; verified_by: string | null;
           archived_at: string | null; archived_by: string | null;
           created_by: string | null; workflow_run_id: string | null;
+          // 0026 — il collegamento FACOLTATIVO alla controparte nel CRM.
+          // `counterparty_name` resta l'etichetta e `contract_extractions.
+          // counterparty` resta il nome letto: qui si aggiunge un riferimento.
+          counterparty_organization_id: string | null;
           created_at: string; updated_at: string;
         };
         Insert: {
           company_id: string; display_name: string; contract_type?: ContractType;
           counterparty_name?: string | null; owner_user_id?: string | null;
+          counterparty_organization_id?: string | null;
         };
         Update: {
           display_name?: string; contract_type?: ContractType;
           counterparty_name?: string | null; owner_user_id?: string | null;
           lifecycle_status?: ContractLifecycleStatus; internal_note?: string | null;
-          archived_at?: string | null;
+          archived_at?: string | null; counterparty_organization_id?: string | null;
         };
         Relationships: [];
       };
@@ -891,6 +991,12 @@ export interface Database {
           eff_payment_reference: string | null;
           eff_merchant: string | null; eff_expense_date: string | null;
           dup_key: string | null;
+          // 0026 — il fornitore collegato al CRM, con i due timbri scritti dal
+          // database sul modello di `expense_category_set_by/_at`.
+          // `eff_supplier_name` resta intatto.
+          supplier_organization_id: string | null;
+          supplier_organization_set_by: string | null;
+          supplier_organization_set_at: string | null;
           created_at: string; updated_at: string;
         };
         // Il grant di colonna della 0021 concede solo queste tre: il resto lo
@@ -905,6 +1011,10 @@ export interface Database {
           expense_category?: FinanceExpenseCategory | null;
           payment_method?: FinancePaymentMethod | null;
           processing_status?: FinanceProcessingStatus;
+          // 0026 — il collegamento al CRM. I due timbri (`_set_by`, `_set_at`)
+          // NON sono qui: li scrive il guardiano, e un client che li mandasse
+          // riceverebbe un errore di permesso invece di essere ignorato.
+          supplier_organization_id?: string | null;
         };
         Relationships: [];
       };
@@ -986,9 +1096,436 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      // ---- CRM Light (0026) ------------------------------------------------
+      // `Insert` e `Update` sono ristretti alle SOLE colonne che i grant della
+      // 0026 concedono. Non è una comodità: le colonne timbrate dal database
+      // (created_by, uid_norm, website_domain, last_contact_at, normalized_value,
+      // won_at, lost_at, merged_into_id) non sono scrivibili, e un tentativo
+      // FALLISCE invece di essere ignorato in silenzio. Il tipo lo rispecchia
+      // perché l'errore si veda alla compilazione e non a runtime.
+      crm_organizations: {
+        Row: {
+          id: string; company_id: string;
+          display_name: string; legal_name: string | null;
+          uid_che: string | null; uid_norm: string | null; vat_number: string | null;
+          website: string | null; website_domain: string | null;
+          street: string | null; postal_code: string | null; city: string | null;
+          canton: string | null; country_code: string | null;
+          relationship_status: CrmRelationshipStatus;
+          account_owner_user_id: string | null;
+          source: CrmSource; source_detail: string | null;
+          notes: string | null;
+          last_contact_at: string | null;
+          archived_at: string | null; archived_by: string | null;
+          merged_into_id: string | null; workflow_run_id: string | null;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          company_id: string; display_name: string; legal_name?: string | null;
+          uid_che?: string | null; vat_number?: string | null; website?: string | null;
+          street?: string | null; postal_code?: string | null; city?: string | null;
+          canton?: string | null; country_code?: string | null;
+          relationship_status?: CrmRelationshipStatus;
+          account_owner_user_id?: string | null;
+          // Dal browser il guardiano ammette solo manual | registry | import:
+          // «nata da una email» la può affermare solo il codice server-side.
+          source?: Extract<CrmSource, 'manual' | 'registry' | 'import'>;
+          source_detail?: string | null; notes?: string | null;
+          archived_at?: string | null;
+        };
+        Update: {
+          display_name?: string; legal_name?: string | null;
+          uid_che?: string | null; vat_number?: string | null; website?: string | null;
+          street?: string | null; postal_code?: string | null; city?: string | null;
+          canton?: string | null; country_code?: string | null;
+          relationship_status?: CrmRelationshipStatus;
+          account_owner_user_id?: string | null;
+          source_detail?: string | null; notes?: string | null;
+          archived_at?: string | null;
+        };
+        Relationships: [];
+      };
+      crm_organization_roles: {
+        Row: {
+          id: string; company_id: string; organization_id: string;
+          role: CrmOrganizationRole; created_by: string | null; created_at: string;
+        };
+        Insert: { company_id: string; organization_id: string; role: CrmOrganizationRole };
+        // Un ruolo non si modifica: si aggiunge o si toglie.
+        Update: never;
+        Relationships: [];
+      };
+      crm_contacts: {
+        Row: {
+          id: string; company_id: string;
+          first_name: string | null; last_name: string | null; display_name: string;
+          preferred_language: 'it' | 'de' | 'fr' | null;
+          notes: string | null;
+          archived_at: string | null; archived_by: string | null;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          company_id: string; display_name: string;
+          first_name?: string | null; last_name?: string | null;
+          preferred_language?: 'it' | 'de' | 'fr' | null;
+          notes?: string | null; archived_at?: string | null;
+        };
+        Update: {
+          display_name?: string; first_name?: string | null; last_name?: string | null;
+          preferred_language?: 'it' | 'de' | 'fr' | null;
+          notes?: string | null; archived_at?: string | null;
+        };
+        Relationships: [];
+      };
+      crm_contact_methods: {
+        Row: {
+          id: string; company_id: string;
+          contact_id: string | null; organization_id: string | null;
+          type: CrmContactMethodType; value: string; normalized_value: string | null;
+          label: string | null; is_primary: boolean;
+          created_by: string | null; created_at: string;
+        };
+        Insert: {
+          company_id: string; type: CrmContactMethodType; value: string;
+          contact_id?: string | null; organization_id?: string | null;
+          label?: string | null; is_primary?: boolean;
+        };
+        Update: {
+          type?: CrmContactMethodType; value?: string;
+          label?: string | null; is_primary?: boolean;
+        };
+        Relationships: [];
+      };
+      crm_contact_organizations: {
+        Row: {
+          id: string; company_id: string; contact_id: string; organization_id: string;
+          job_title: string | null; department: string | null; is_primary: boolean;
+          active_from: string | null; active_until: string | null;
+          created_by: string | null; created_at: string;
+        };
+        Insert: {
+          company_id: string; contact_id: string; organization_id: string;
+          job_title?: string | null; department?: string | null; is_primary?: boolean;
+          active_from?: string | null; active_until?: string | null;
+        };
+        Update: {
+          job_title?: string | null; department?: string | null; is_primary?: boolean;
+          active_from?: string | null; active_until?: string | null;
+        };
+        Relationships: [];
+      };
+      crm_opportunities: {
+        Row: {
+          id: string; company_id: string; organization_id: string;
+          primary_contact_id: string | null;
+          title: string; stage: CrmOpportunityStage; owner_user_id: string | null;
+          value_amount: number | null; value_currency: string | null;
+          expected_close_date: string | null;
+          next_step: string | null; next_step_due_date: string | null;
+          lost_reason: string | null;
+          won_at: string | null; lost_at: string | null;
+          archived_at: string | null; archived_by: string | null;
+          workflow_run_id: string | null;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          company_id: string; organization_id: string; title: string;
+          primary_contact_id?: string | null;
+          stage?: CrmOpportunityStage; owner_user_id?: string | null;
+          value_amount?: number | null; value_currency?: string | null;
+          expected_close_date?: string | null;
+          next_step?: string | null; next_step_due_date?: string | null;
+          lost_reason?: string | null; archived_at?: string | null;
+        };
+        // `company_id` e `organization_id` NON ci sono: spostare una trattativa
+        // su un'altra controparte riscriverebbe la storia di due relazioni.
+        Update: {
+          title?: string; primary_contact_id?: string | null;
+          stage?: CrmOpportunityStage; owner_user_id?: string | null;
+          value_amount?: number | null; value_currency?: string | null;
+          expected_close_date?: string | null;
+          next_step?: string | null; next_step_due_date?: string | null;
+          lost_reason?: string | null; archived_at?: string | null;
+        };
+        Relationships: [];
+      };
+      crm_interactions: {
+        Row: {
+          id: string; company_id: string; organization_id: string;
+          contact_id: string | null; opportunity_id: string | null;
+          type: CrmInteractionType; occurred_at: string;
+          subject: string | null; notes: string | null;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          company_id: string; organization_id: string; type: CrmInteractionType;
+          contact_id?: string | null; opportunity_id?: string | null;
+          occurred_at?: string; subject?: string | null; notes?: string | null;
+        };
+        Update: {
+          type?: CrmInteractionType; occurred_at?: string;
+          subject?: string | null; notes?: string | null;
+        };
+        Relationships: [];
+      };
+      // Lo storico: si legge e basta. Lo scrivono i trigger.
+      crm_events: {
+        Row: {
+          id: string; company_id: string;
+          organization_id: string | null; contact_id: string | null;
+          opportunity_id: string | null;
+          kind: CrmEventKind; detail: Json;
+          actor_user_id: string | null; occurred_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      crm_organization_documents: {
+        Row: {
+          id: string; company_id: string; organization_id: string; document_id: string;
+          relation: CrmDocumentRelation; match_reason: CrmMatchReason;
+          confirmed_by: string | null; created_at: string;
+        };
+        Insert: {
+          company_id: string; organization_id: string; document_id: string;
+          relation?: CrmDocumentRelation;
+        };
+        Update: { relation?: CrmDocumentRelation };
+        Relationships: [];
+      };
+      crm_organization_emails: {
+        Row: {
+          id: string; company_id: string; organization_id: string; email_message_id: string;
+          match_reason: CrmMatchReason; confirmed_by: string | null; created_at: string;
+        };
+        Insert: { company_id: string; organization_id: string; email_message_id: string };
+        Update: never;
+        Relationships: [];
+      };
+      crm_contact_emails: {
+        Row: {
+          id: string; company_id: string; contact_id: string; email_message_id: string;
+          match_reason: CrmMatchReason; confirmed_by: string | null; created_at: string;
+        };
+        Insert: { company_id: string; contact_id: string; email_message_id: string };
+        Update: never;
+        Relationships: [];
+      };
+      crm_opportunity_documents: {
+        Row: {
+          id: string; company_id: string; opportunity_id: string; document_id: string;
+          added_by: string | null; created_at: string;
+        };
+        Insert: { company_id: string; opportunity_id: string; document_id: string };
+        Update: never;
+        Relationships: [];
+      };
+      // Un suggerimento si LEGGE e si RISOLVE. Il contenuto lo produce il
+      // codice server-side: dal client non si inserisce.
+      crm_link_suggestions: {
+        Row: {
+          id: string; company_id: string;
+          source_entity_type: CrmLinkedEntity; source_entity_id: string;
+          suggested_organization_id: string | null; suggested_contact_id: string | null;
+          suggested_name: string | null; suggested_email: string | null;
+          reason: CrmMatchReason; reason_detail: string | null;
+          status: CrmLinkStatus;
+          resolved_at: string | null; resolved_by: string | null;
+          created_at: string; dedupe_key: string;
+        };
+        Insert: never;
+        Update: { status?: CrmLinkStatus };
+        Relationships: [];
+      };
+      // ---- Company Assistant (0027) ----------------------------------------
+      assistant_threads: {
+        Row: {
+          id: string; company_id: string; created_by: string;
+          title: string; locale: string; status: AssistantThreadStatus;
+          created_at: string; updated_at: string; archived_at: string | null;
+        };
+        Insert: {
+          company_id: string; created_by: string;
+          title?: string; locale?: string;
+        };
+        Update: {
+          title?: string; status?: AssistantThreadStatus; archived_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      assistant_messages: {
+        Row: {
+          id: string; thread_id: string; company_id: string;
+          role: AssistantMessageRole; content: string; created_by: string | null;
+          answer_status: AssistantAnswerStatusDb | null; uncertainty: string | null;
+          follow_ups: string[]; model: string | null; prompt_version: string | null;
+          run_id: string | null; created_at: string;
+        };
+        // ⚠️ Solo il messaggio dell'UTENTE: la risposta la scrive il servizio.
+        // Una policy della 0027 rifiuta un insert con ruolo `assistant` dal
+        // client, e il tipo lo rende anche impossibile da scrivere per sbaglio.
+        Insert: {
+          thread_id: string; company_id: string;
+          role: 'user'; content: string; created_by: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      assistant_runs: {
+        Row: {
+          id: string; thread_id: string; company_id: string; user_id: string | null;
+          status: AssistantRunStatus; model: string; prompt_version: string;
+          tool_registry_version: string; retrieval_version: string; citation_strategy: string;
+          started_at: string; completed_at: string | null;
+          input_tokens: number | null; output_tokens: number | null;
+          cache_read_tokens: number | null; cache_write_tokens: number | null;
+          tool_call_count: number; error_code: string | null; duration_ms: number | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      assistant_tool_calls: {
+        Row: {
+          id: string; run_id: string; company_id: string; seq: number;
+          tool_key: string; sanitized_input: Json; result_count: number | null;
+          status: AssistantToolStatus; duration_ms: number | null;
+          error_code: string | null; created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      assistant_citations: {
+        Row: {
+          id: string; message_id: string; company_id: string; citation_index: number;
+          source_type: AssistantSourceTypeDb; source_id: string | null;
+          source_ids: string[] | null; group_size: number | null;
+          route: string; title: string; subtitle: string | null;
+          evidence_id: string | null; page_number: number | null; field_name: string | null;
+          cited_text: string | null; value_snapshot: Json; source_version: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      assistant_feedback: {
+        Row: {
+          id: string; message_id: string; run_id: string | null; company_id: string;
+          user_id: string; rating: AssistantFeedbackRating;
+          reason: AssistantFeedbackReasonDb | null; prompt_version: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          message_id: string; company_id: string; user_id: string;
+          rating: AssistantFeedbackRating; reason?: AssistantFeedbackReasonDb | null;
+        };
+        Update: { rating?: AssistantFeedbackRating; reason?: AssistantFeedbackReasonDb | null };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
+      // ---- CRM Light (0026) ------------------------------------------------
+      // ⚠️ `Returns: Record<string, unknown>[]` è la stessa scelta di
+      // `list_contracts` e `list_documents`: le funzioni di lista tornano righe
+      // snake_case con colonne composte, e il tipo preciso vive nel service
+      // layer (`toOrganization`, `toOpportunity`). Dichiararlo qui a mano
+      // produrrebbe una quarta copia dell'elenco delle colonne — e il repository
+      // ha già pagato una dichiarazione FALSA di questo tipo su `list_tasks`,
+      // dove `Returns` promette colonne che la funzione SQL non restituisce.
+      list_crm_organizations: {
+        Args: {
+          p_company_id: string; p_query?: string | null;
+          p_role?: CrmOrganizationRole | null; p_owner_user_id?: string | null;
+          p_status?: CrmRelationshipStatus | null; p_stage?: CrmOpportunityStage | null;
+          p_stale_days?: number | null; p_only_overdue_tasks?: boolean;
+          p_no_open_opportunity?: boolean; p_archived?: boolean;
+          p_sort?: string; p_limit?: number; p_offset?: number;
+          p_organization_id?: string | null;
+        };
+        Returns: Record<string, unknown>[];
+      };
+      list_crm_opportunities: {
+        Args: {
+          p_company_id: string; p_query?: string | null;
+          p_stage?: CrmOpportunityStage | null; p_owner_user_id?: string | null;
+          p_organization_id?: string | null;
+          p_only_overdue_next_step?: boolean; p_only_without_next_step?: boolean;
+          p_archived?: boolean; p_sort?: string;
+          p_limit?: number; p_offset?: number; p_opportunity_id?: string | null;
+        };
+        Returns: Record<string, unknown>[];
+      };
+      // §45 — una riga per valuta. Non esiste un totale unico, e non è una
+      // mancanza: CHF ed EUR sommati darebbero un numero che non esiste.
+      crm_pipeline_summary: {
+        Args: { p_company_id: string };
+        Returns: {
+          stage: CrmOpportunityStage; currency: string | null;
+          opportunity_count: number; total_amount: number | null;
+        }[];
+      };
+      /**
+       * ⚠️ Torna ZERO righe a chi non è membro dell'azienda, non una riga di
+       * zeri. Il servizio deve distinguere i due casi: «il CRM è vuoto» e «non
+       * hai accesso» portano ad azioni diverse, e mostrare zeri al secondo
+       * sarebbe un guasto travestito da stato legittimo — la stessa trappola
+       * dell'Inbox che diceva «collega la posta» invece dell'errore.
+       */
+      crm_home_summary: {
+        Args: { p_company_id: string; p_stale_days?: number };
+        Returns: {
+          open_opportunities: number; without_next_step: number;
+          overdue_follow_ups: number; stale_relationships: number;
+          pending_suggestions: number;
+        }[];
+      };
+      crm_timeline: {
+        Args: {
+          p_company_id: string; p_organization_id: string;
+          p_limit?: number; p_offset?: number;
+        };
+        Returns: Record<string, unknown>[];
+      };
+      crm_duplicate_candidates: {
+        Args: { p_company_id: string; p_organization_id?: string | null; p_limit?: number };
+        Returns: {
+          organization_id: string; display_name: string;
+          duplicate_id: string; duplicate_name: string;
+          reason: CrmMatchReason; reason_detail: string | null;
+        }[];
+      };
+      /**
+       * Chi è questo indirizzo, DENTRO questa azienda. `email_exact` è
+       * un'identità e autorizza il collegamento automatico; `domain_match` è un
+       * sospetto e resta un suggerimento (§22-§24).
+       */
+      crm_match_email: {
+        Args: { p_company_id: string; p_email: string };
+        Returns: {
+          organization_id: string | null; organization_name: string | null;
+          contact_id: string | null; contact_name: string | null;
+          reason: CrmMatchReason; reason_detail: string | null;
+        }[];
+      };
+      crm_organization_options: {
+        Args: { p_company_id: string; p_query?: string | null; p_limit?: number };
+        Returns: { id: string; display_name: string; city: string | null; roles: string[] }[];
+      };
+      /** Solo amministratori, transazionale, nessuna fusione automatica (§30, §31). */
+      crm_merge_organizations: {
+        Args: { p_target_id: string; p_source_id: string };
+        Returns: undefined;
+      };
+      crm_norm_uid: { Args: { p_value: string | null }; Returns: string | null };
+      crm_norm_email: { Args: { p_value: string | null }; Returns: string | null };
+      crm_norm_domain: { Args: { p_value: string | null }; Returns: string | null };
+      crm_norm_phone: { Args: { p_value: string | null }; Returns: string | null };
+      crm_is_public_domain: { Args: { p_domain: string | null }; Returns: boolean };
       is_company_member: { Args: { p_company_id: string }; Returns: boolean };
       is_company_admin: { Args: { p_company_id: string }; Returns: boolean };
       is_case_member: { Args: { p_case_id: string }; Returns: boolean };
@@ -1217,6 +1754,13 @@ export interface Database {
         };
         Returns: string | null;
       };
+      assistant_reserve_slot: {
+        Args: {
+          p_company_id: string; p_company_limit?: number; p_user_limit?: number;
+          p_provider?: string | null; p_model?: string | null;
+        };
+        Returns: string | null;
+      };
     };
     Enums: {
       member_role: MemberRole;
@@ -1283,6 +1827,25 @@ export interface Database {
       contract_milestone_status: ContractMilestoneStatus;
       contract_quality_flag: ContractQualityFlag;
       contract_event_kind: ContractEventKind;
+      crm_organization_role: CrmOrganizationRole;
+      crm_relationship_status: CrmRelationshipStatus;
+      crm_source: CrmSource;
+      crm_contact_method_type: CrmContactMethodType;
+      crm_opportunity_stage: CrmOpportunityStage;
+      crm_interaction_type: CrmInteractionType;
+      crm_document_relation: CrmDocumentRelation;
+      crm_match_reason: CrmMatchReason;
+      crm_link_status: CrmLinkStatus;
+      crm_event_kind: CrmEventKind;
+      crm_linked_entity: CrmLinkedEntity;
+      assistant_thread_status: AssistantThreadStatus;
+      assistant_message_role: AssistantMessageRole;
+      assistant_run_status: AssistantRunStatus;
+      assistant_answer_status: AssistantAnswerStatusDb;
+      assistant_tool_status: AssistantToolStatus;
+      assistant_source_type: AssistantSourceTypeDb;
+      assistant_feedback_rating: AssistantFeedbackRating;
+      assistant_feedback_reason: AssistantFeedbackReasonDb;
     };
     CompositeTypes: Record<string, never>;
   };

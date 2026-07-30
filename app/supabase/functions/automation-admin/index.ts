@@ -238,6 +238,26 @@ async function handleSamples(
       .order('received_at', { ascending: false }).limit(15);
     return json({ status: 'ok', samples: (data ?? []).map(labelled('subject')) });
   }
+  // 0026 — le due entità del CRM.
+  // ⚠️ Senza questi due rami la prova a vuoto di un innesco CRM sarebbe caduta
+  // sul ramo `tasks` qui sotto, proponendo identificativi di ATTIVITÀ per un
+  // innesco che parla di clienti: un menu che offre la cosa sbagliata senza
+  // dire niente. È lo stesso difetto che il ramo `contract` ha ancora, e che
+  // qui non si ripete.
+  if (trigger.entityType === 'crm_organization') {
+    const { data } = await sbUser.from('crm_organizations')
+      .select('id, display_name, updated_at').eq('company_id', companyId)
+      .is('archived_at', null)
+      .order('updated_at', { ascending: false }).limit(15);
+    return json({ status: 'ok', samples: (data ?? []).map(labelled('display_name')) });
+  }
+  if (trigger.entityType === 'crm_opportunity') {
+    const { data } = await sbUser.from('crm_opportunities')
+      .select('id, title, updated_at').eq('company_id', companyId)
+      .is('archived_at', null)
+      .order('updated_at', { ascending: false }).limit(15);
+    return json({ status: 'ok', samples: (data ?? []).map(labelled('title')) });
+  }
   const { data } = await sbUser.from('tasks')
     .select('id, title, created_at').eq('company_id', companyId)
     .order('created_at', { ascending: false }).limit(15);

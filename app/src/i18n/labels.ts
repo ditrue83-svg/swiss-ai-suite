@@ -30,6 +30,19 @@ export function useLabels() {
   return {
     /** Tipo di documento (tassonomia AI §8 e chiavi storiche del motore locale). */
     docType: (v: string | null | undefined) => pick('labels.docTypes', v),
+    // ---- CRM Light (0026) --------------------------------------------------
+    // ⚠️ `crmRole` NON è `crmStage`, e la distinzione è di dominio: il ruolo
+    // descrive il RAPPORTO («cliente»), la fase descrive UNA TRATTATIVA
+    // («negoziazione»). Un'unica funzione per entrambi avrebbe reso possibile
+    // stampare «negoziazione» come ruolo di un'impresa.
+    crmRole: (v: string | null | undefined) => pick('labels.crmRoles', v),
+    crmStage: (v: string | null | undefined) => pick('labels.crmStages', v),
+    crmStatus: (v: string | null | undefined) => pick('labels.crmStatus', v),
+    crmSource: (v: string | null | undefined) => pick('labels.crmSources', v),
+    crmInteraction: (v: string | null | undefined) => pick('labels.crmInteractions', v),
+    crmRelation: (v: string | null | undefined) => pick('labels.crmRelations', v),
+    /** Perché due cose sono state avvicinate. Decide se il collegamento è automatico. */
+    crmReason: (v: string | null | undefined) => pick('labels.crmReasons', v),
     /** Tipo di autorità mittente (§47). */
     authorityType: (v: string | null | undefined) => pick('labels.authorityTypes', v),
     /**

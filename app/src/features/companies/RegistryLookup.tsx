@@ -13,10 +13,19 @@
 // nel dettaglio per IDI). Non si deduce dal comune e non si lascia il default
 // del modulo spacciandolo per importato: si CHIEDE al registro, e se non si
 // ottiene lo si dichiara.
+//
+// ⚠️ DAL 2026-07-30 LO USA ANCHE IL CRM («Nuovo cliente»), e questo ha reso
+// necessaria la prop `messages`. Il motivo non è cosmetico: i testi cablati
+// parlano dell'azienda DELL'UTENTE — «Verifica e completa forma giuridica,
+// settore e numero di dipendenti» — e su una scheda cliente quelle frasi non
+// hanno senso. Si sovrascrivono SOLO le tre frasi che descrivono il modulo che
+// sta intorno; i DUE DISCLAIMER (`registrySource` e `registryModified`) NON
+// sono sovrascrivibili, perché sono condizioni d'uso dell'API Zefix e devono
+// dire la stessa cosa in ogni schermata.
 // ============================================================================
 import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
-import { useT } from '@/i18n';
+import { useT, type TKey } from '@/i18n';
 import { toUserMessage } from '@/lib/errors';
 import { companyLookupService, LookupError, type CompanyCandidate } from '@/services/companyLookupService';
 import { CANTONI } from '@/features/subsidy-ai/programs';
@@ -30,17 +39,41 @@ export interface RegistryFields {
   municipality: string;
 }
 
+/**
+ * Le frasi che descrivono il modulo intorno alla ricerca, e che cambiano da
+ * schermata a schermata. NON comprendono i due disclaimer di Zefix: quelli sono
+ * condizioni d'uso e restano uguali per tutti.
+ */
+export interface RegistryMessages {
+  search: TKey;
+  hint: TKey;
+  imported: TKey;
+  importedFrom: TKey;
+  importedNoCanton: TKey;
+}
+
+const ONBOARDING_MESSAGES: RegistryMessages = {
+  search: 'onboarding.registrySearch',
+  hint: 'onboarding.registryHint',
+  imported: 'onboarding.registryImported',
+  importedFrom: 'onboarding.registryImportedFrom',
+  importedNoCanton: 'onboarding.registryImportedNoCanton',
+};
+
 interface Props {
   /** Valori mostrati adesso nel modulo, per riconoscere le modifiche a mano. */
   current: { legalName: string; uidChe: string; canton: string; municipality: string };
   /** Chiamata quando si sceglie un candidato: i campi da applicare al modulo. */
   onApply: (fields: RegistryFields) => void;
-  /** Identificativo per gli attributi `id`/`htmlFor` (due schermate, un componente). */
+  /** Identificativo per gli attributi `id`/`htmlFor` (tre schermate, un componente). */
   idPrefix: string;
   disabled?: boolean;
+  /** Le frasi del modulo intorno. Senza, valgono quelle dell'onboarding. */
+  messages?: RegistryMessages;
 }
 
-export function RegistryLookup({ current, onApply, idPrefix, disabled }: Props) {
+export function RegistryLookup({ current, onApply, idPrefix, disabled, messages }: Props) {
+  const M = messages ?? ONBOARDING_MESSAGES;
   const t = useT();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -93,8 +126,8 @@ export function RegistryLookup({ current, onApply, idPrefix, disabled }: Props) 
     setCandidates([]);
     setMessage(
       c.name
-        ? t(fields.canton ? 'onboarding.registryImportedFrom' : 'onboarding.registryImportedNoCanton', { name: c.name })
-        : t('onboarding.registryImported'),
+        ? t(fields.canton ? M.importedFrom : M.importedNoCanton, { name: c.name })
+        : t(M.imported),
     );
   }
 
@@ -110,7 +143,7 @@ export function RegistryLookup({ current, onApply, idPrefix, disabled }: Props) 
 
   return (
     <div className="field">
-      <label htmlFor={`${idPrefix}-lookup`}>{t('onboarding.registrySearch')}</label>
+      <label htmlFor={`${idPrefix}-lookup`}>{t(M.search)}</label>
       <div className="row-wrap">
         <input id={`${idPrefix}-lookup`} value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void search(); } }}
@@ -121,7 +154,7 @@ export function RegistryLookup({ current, onApply, idPrefix, disabled }: Props) 
           {searching ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} {t('common.search')}
         </button>
       </div>
-      <div className="muted-sm" style={{ marginTop: 4 }}>{t('onboarding.registryHint')}</div>
+      <div className="muted-sm" style={{ marginTop: 4 }}>{t(M.hint)}</div>
 
       {message && <div className="hint-accent" role="status" style={{ marginTop: 8 }}>{message}</div>}
 

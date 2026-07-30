@@ -27,6 +27,8 @@ import { Link, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { CrmLinkPicker } from '@/features/crm/CrmLinkPicker';
+import { useCrmLink } from '@/features/crm/useCrmLink';
 import { useToast } from '@/components/ui/Toast';
 import { ErrorState, FullScreenLoader } from '@/components/ui/states';
 import { contractService } from '@/services/contractService';
@@ -36,6 +38,7 @@ import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { AskAbout } from '@/features/assistant/AskAbout';
 import {
   canCreateTask, compareTerms, daysUntil, noticeUnavailableReason, openMilestones,
 } from './contractModel';
@@ -57,6 +60,11 @@ const REASON_KEY = {
 export function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { activeCompany: company } = useCompany();
+  // 0026 — la controparte nel CRM. ⚠️ Si legge con un select su una riga e NON
+  // da `list_contracts`: aggiungere una colonna a quel `returns table`
+  // richiederebbe `drop function` con la firma a 15 argomenti, e per un dato che
+  // serve solo qui quel rischio non si paga.
+  const crmLink = useCrmLink('contract', company?.id, id);
   const { user } = useAuth();
   const t = useT();
   const L = useLabels();
@@ -140,6 +148,8 @@ export function ContractDetailPage() {
           </p>
         </div>
         <div className="row-wrap">
+          {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
+          <AskAbout type="contract" id={c.id} label={c.displayName} />
           {mainDocument && (
             <Link className="btn" to={`/documenti/${mainDocument.documentId}`}>
               <Icon name="document" className="ic-sm" /> {t('contracts.detail.openSource')}
@@ -249,6 +259,23 @@ export function ContractDetailPage() {
 
       <div className="grid-2">
         {/* ---- Date importanti ------------------------------------------- */}
+
+      {/* §26, §36, §80 — il collegamento è FACOLTATIVO e sta ACCANTO al nome.
+          `counterparty_name` resta l'etichetta del contratto e
+          `contract_extractions.counterparty` resta il nome letto e immutabile:
+          scollegare non cancella nessuno dei due. La 0024 dichiarava che una
+          tabella di controparti «non esiste»; ora esiste, e il modo in cui
+          quella scelta viene superata è proprio questo — un riferimento in più,
+          non un nome riscritto. */}
+      <CrmLinkPicker
+        linkedId={crmLink.linked?.id ?? null}
+        linkedName={crmLink.linked?.displayName ?? null}
+        extractedName={c.counterpartyName}
+        onLink={crmLink.link}
+        onUnlink={crmLink.unlink}
+        disabled={busy}
+      />
+
         <section className="card">
           <div className="card-title">{t('contracts.detail.sections.dates')}</div>
           <Field label={t('contracts.detail.fields.start')}>

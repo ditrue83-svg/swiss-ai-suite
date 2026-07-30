@@ -43,6 +43,13 @@ const ICONS = {
   refresh: '<path d="M4 12a8 8 0 0 1 13.5-5.8L20 8"/><path d="M20 4v4h-4"/><path d="M20 12a8 8 0 0 1-13.5 5.8L4 16"/><path d="M4 20v-4h4"/>',
   bell: '<path d="M6 9.5a6 6 0 0 1 12 0c0 3.2.7 4.9 1.6 6.1a.6.6 0 0 1-.5 1H4.9a.6.6 0 0 1-.5-1C5.3 14.4 6 12.7 6 9.5Z"/><path d="M9.8 19.5a2.4 2.4 0 0 0 4.4 0"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M4.9 7.8l1.7 1M17.4 15.2l1.7 1M4.9 16.2l1.7-1M17.4 8.8l1.7-1"/>',
+  // Chiedi ad AI-Swisse (0027): un fumetto con un punto interrogativo.
+  // ⚠️ NON una scintilla, una bacchetta magica o una testa di robot: quelle
+  // icone promettono un'intelligenza che decide, e questo modulo non decide —
+  // risponde a una domanda con le fonti accanto. ⚠️ Nemmeno una lente: `fileSearch`
+  // ce l'ha già, e due voci di menu con la stessa forma si confondono a colpo
+  // d'occhio (la regola che ha dato `receipt` a Finanze e `user` a Clienti).
+  askAi: '<path d="M20.5 12.2a7.6 7.6 0 0 1-7.7 7.5 8.3 8.3 0 0 1-3.2-.6L4.5 20.5l1.4-4.4a7.3 7.3 0 0 1-1.4-4.3A7.6 7.6 0 0 1 12.4 4a7.7 7.7 0 0 1 8.1 8.2Z"/><path d="M10.3 9.6a2.2 2.2 0 0 1 4.2.7c0 1.5-2.1 1.9-2.1 3.1M12.4 16h.01"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;

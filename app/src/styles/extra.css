@@ -422,3 +422,269 @@
 /* «Aggiungi alle finanze» — il conteggio accanto al titolo dell'elenco: dice
    che un elenco c'è, prima ancora di leggerlo. */
 .fin-add-count { color: var(--muted); font-weight: 500; margin-left: var(--sp-2); }
+
+/* ===========================================================================
+   CRM Light (0026) — «Clienti»
+   Le classi stanno qui e non in app.css perché è dove sono finite tutte le
+   aggiunte dopo la 0017: app.css è il sistema, extra.css sono i moduli.
+   ⚠️ `.crm-list` DICHIARA `list-style: none`. La classe `.list` usata dai
+   Contratti non esiste: funziona solo per via del reset globale, e un elenco
+   che dipende dal reset si rompe il giorno in cui il reset cambia.
+   =========================================================================== */
+.crm-list { list-style: none; margin: 0; padding: 0; }
+
+/* ⚠️ `flex-direction: row` DICHIARATO, e non è ridondante: `.field` imposta
+   `flex-direction: column` (app.css:295) e `.ct-search` non lo sovrascrive, così
+   nei Contratti il pulsante «Cerca» finisce SOTTO il campo a piena larghezza.
+   Si vede solo aprendo la schermata — il typecheck non guarda il CSS. */
+.crm-search { flex: 1 1 260px; display: flex; flex-direction: row; gap: var(--sp-2);
+  align-items: stretch; margin-bottom: 0; }
+.crm-search input { flex: 1; min-width: 0; }
+.crm-search .btn { flex: 0 0 auto; }
+.crm-row-link { display: block; color: var(--ink); text-decoration: none; padding: var(--sp-3) 0; }
+.crm-row-link:hover .list-title { color: var(--accent-text); }
+.crm-roles { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+
+/* La board della pipeline. §54 — colonne semplici, nessun trascinamento:
+   il cambio di fase avviene da una tendina, che è accessibile da tastiera
+   senza alcun lavoro in più. */
+.crm-board { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: var(--sp-3); overflow-x: auto; padding-bottom: var(--sp-2); }
+.crm-col { background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: var(--sp-3); min-width: 180px; }
+.crm-col-head { display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.crm-col-title { font-size: var(--fs-label); font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .03em;
+  /* ⚠️ Altezza minima: in tedesco «Offene Verkaufschancen» va a capo e
+     disallineerebbe la fila. Regola 6 del sistema di design. */
+  min-height: 2.4em; }
+.crm-col-n { font-size: var(--fs-meta); color: var(--muted); }
+.crm-card { display: block; background: var(--card); border: 1px solid var(--line);
+  border-radius: 8px; padding: var(--sp-3); margin-bottom: var(--sp-2);
+  color: var(--ink); text-decoration: none; }
+.crm-card:hover { border-color: var(--accent); }
+.crm-card-title { font-weight: 600; font-size: var(--fs-body); }
+.crm-card-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
+.crm-col-empty { font-size: var(--fs-meta); color: var(--muted); padding: var(--sp-2) 0; }
+
+/* Il dettaglio */
+.crm-narrow { max-width: 660px; }
+.crm-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px var(--sp-4); margin: 0; }
+.crm-kv dt { font-size: var(--fs-label); color: var(--muted); }
+.crm-kv dd { font-size: var(--fs-body); color: var(--ink); margin: 0; min-width: 0;
+  overflow-wrap: anywhere; }
+.crm-sec { margin-top: var(--sp-5); }
+.crm-sec-head { display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+
+/* La timeline. §61 — righe di riferimento, non contenuti. */
+.crm-tl { list-style: none; margin: var(--sp-3) 0 0; padding: 0; }
+.crm-tl > li { position: relative; padding: 0 0 var(--sp-4) var(--sp-5);
+  border-left: 1px solid var(--line); }
+.crm-tl > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.crm-tl > li::before { content: ''; position: absolute; left: -4px; top: 6px;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.crm-tl-when { font-size: var(--fs-label); color: var(--muted); }
+.crm-tl-what { font-size: var(--fs-body); }
+.crm-tl-sub { font-size: var(--fs-meta); color: var(--muted); }
+
+/* Suggerimenti e duplicati: due riquadri che chiedono una decisione. */
+.crm-ask { border: 1px solid var(--line); border-radius: 10px; padding: var(--sp-3);
+  background: var(--surface-2); margin-top: var(--sp-4); }
+.crm-ask-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
+.crm-ask-row:first-of-type { border-top: none; }
+.crm-ask-main { flex: 1 1 220px; min-width: 0; }
+
+@media (max-width: 720px) {
+  .crm-board { grid-template-columns: repeat(5, minmax(70vw, 1fr)); }
+  .crm-kv { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .crm-kv dd { margin-bottom: var(--sp-2); }
+}
+
+/* ==========================================================================
+   CHIEDI AD AI-SWISSE (0027)
+   Prefisso `as-`. Tre colonne su schermo largo, una su telefono con due
+   pannelli che si aprono.
+
+   ⚠️ NON si riusano `.drawer` / `.drawer-overlay`: appartengono al menu
+   dell'AppShell, esistono solo sotto 900px e stanno a sinistra a z-index 60.
+   Qui servono due pannelli, uno per lato, e riusare quelle classi li farebbe
+   collidere con il menu. La MECCANICA è la stessa (translateX + overlay), i
+   nomi no.
+
+   ⚠️ Ogni colonna della griglia è `minmax(0, …)` e non `1fr` secco: con `1fr`
+   una riga lunga — il testo di una citazione, il nome di un fornitore — allarga
+   la colonna e fa comparire lo scorrimento orizzontale della pagina.
+   ========================================================================== */
+.as-page { display: flex; flex-direction: column; }
+
+.as-layout { display: grid; align-items: start; gap: var(--sp-4);
+  grid-template-columns: minmax(0, 232px) minmax(0, 1fr) minmax(0, 300px); }
+
+/* Il pulsante che apre l'elenco esiste solo dove le colonne spariscono. */
+.as-only-narrow { display: none; }
+
+.as-side { border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card); padding: var(--sp-3); position: sticky; top: var(--sp-4);
+  max-height: calc(100vh - var(--sp-8)); overflow-y: auto; }
+.as-col-head { display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.as-col-empty { display: flex; justify-content: center; padding: var(--sp-4); }
+
+/* ---- Conversazioni ------------------------------------------------------ */
+.as-threads { margin: var(--sp-2) 0 0; padding: 0; }
+.as-thread { display: flex; align-items: stretch; gap: var(--sp-1);
+  border-radius: var(--radius-sm); }
+.as-thread + .as-thread { margin-top: 2px; }
+.as-thread.is-active { background: var(--accent-soft); }
+.as-thread-open { flex: 1 1 auto; min-width: 0; text-align: left;
+  background: transparent; color: var(--ink); border: 0; cursor: pointer;
+  padding: var(--sp-2); border-radius: var(--radius-sm); min-height: 26px; }
+.as-thread-open:hover { background: var(--surface-2); }
+.as-thread.is-active .as-thread-open:hover { background: var(--accent-soft); }
+.as-thread-title { display: block; font-size: var(--fs-meta); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-thread-meta { display: block; font-size: var(--fs-label); color: var(--muted); }
+.as-thread-actions { display: flex; align-items: center; gap: 2px; }
+/* ⚠️ `background` e `color` DICHIARATI: senza, il browser applica `buttonface`
+   e in tema scuro il testo diventa illeggibile (lezione di `.ct-kpi`). */
+.as-icon-btn { background: transparent; color: var(--muted); border: 0;
+  cursor: pointer; padding: var(--sp-1); border-radius: var(--radius-sm);
+  min-width: 26px; min-height: 26px; }
+.as-icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+/* ---- La conversazione --------------------------------------------------- */
+.as-main { display: flex; flex-direction: column; min-width: 0; }
+.as-stream { display: flex; flex-direction: column; gap: var(--sp-3);
+  min-height: 320px; }
+
+.as-context { display: inline-flex; align-items: center; gap: var(--sp-2);
+  align-self: flex-start; border: 1px solid var(--accent-line);
+  background: var(--accent-soft); color: var(--accent-text);
+  border-radius: 99px; padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-meta); margin-bottom: var(--sp-3); max-width: 100%; }
+.as-context > span { min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.as-context-x { background: transparent; color: var(--accent-text); border: 0;
+  cursor: pointer; min-width: 26px; min-height: 26px; padding: 0; }
+
+/* La domanda: allineata a destra, come in ogni conversazione. */
+.as-q { align-self: flex-end; max-width: 88%; }
+.as-q-text { background: var(--accent); color: var(--on-accent);
+  border-radius: var(--radius); padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+.as-a { border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card); padding: var(--sp-3); min-width: 0; }
+.as-a.is-selected { border-color: var(--accent-line); }
+.as-a-head { margin-bottom: var(--sp-2); }
+.as-a-hint { font-size: var(--fs-meta); color: var(--muted); margin: 0 0 var(--sp-2); }
+/* `pre-wrap`: il modello scrive elenchi con trattini e a capo, non markdown. */
+.as-a-text { font-size: var(--fs-body); color: var(--ink); white-space: pre-wrap;
+  overflow-wrap: anywhere; }
+.as-a-foot { display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-3);
+  padding-top: var(--sp-2); border-top: 1px solid var(--line); }
+.as-feedback { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.as-why { margin-top: var(--sp-2); }
+
+/* Le pastiglie delle fonti. */
+.as-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.as-chip { display: inline-flex; align-items: center; gap: var(--sp-1);
+  border: 1px solid var(--line); border-radius: 99px;
+  padding: var(--sp-1) var(--sp-3); font-size: var(--fs-meta);
+  background: var(--surface-2); color: var(--ink); text-decoration: none;
+  min-height: 26px; max-width: 100%; cursor: pointer; }
+.as-chip:hover { border-color: var(--accent-line); }
+.as-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.as-chip-more { background: transparent; }
+
+.as-follow { margin-top: var(--sp-3); }
+.as-follow-title { font-size: var(--fs-label); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: var(--sp-2); }
+
+.as-suggestions { display: flex; flex-wrap: wrap; gap: var(--sp-2);
+  justify-content: center; margin-top: var(--sp-3); }
+.as-suggestion { border: 1px solid var(--line); border-radius: 99px;
+  background: var(--card); color: var(--ink); cursor: pointer;
+  padding: var(--sp-2) var(--sp-3); font-size: var(--fs-meta); min-height: 26px; }
+.as-suggestion:hover { border-color: var(--accent-line); background: var(--accent-soft);
+  color: var(--accent-text); }
+
+.as-progress { display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-meta); color: var(--muted); padding: var(--sp-2) 0; }
+.as-error { display: flex; align-items: center; gap: var(--sp-2);
+  border: 1px solid var(--red-line); background: var(--red-soft);
+  color: var(--red-dark); border-radius: var(--radius-sm);
+  padding: var(--sp-2) var(--sp-3); font-size: var(--fs-meta); }
+
+/* ---- Il composer -------------------------------------------------------- */
+.as-composer { margin-top: var(--sp-4); border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--card); padding: var(--sp-3); }
+.as-input { width: 100%; resize: vertical; min-height: 64px;
+  font-size: var(--fs-body); font-family: inherit; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: var(--sp-2) var(--sp-3); }
+.as-composer-actions { display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-2); }
+.as-hint { min-width: 0; }
+.as-note { margin-top: var(--sp-2); }
+
+/* ---- Le fonti ----------------------------------------------------------- */
+.as-sources { margin: var(--sp-3) 0 0; padding: 0; }
+.as-source { border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: var(--sp-3); min-width: 0; }
+.as-source + .as-source { margin-top: var(--sp-2); }
+.as-source-head { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-1); margin-bottom: var(--sp-1); }
+.as-source-type { font-size: var(--fs-label); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; }
+/* ⚠️ `color` riportato: la regola globale `a { color: var(--accent-text) }`
+   tingerebbe di blu un titolo che qui deve leggersi come testo. */
+.as-source-title { display: block; font-size: var(--fs-meta); color: var(--ink);
+  text-decoration: none; overflow-wrap: anywhere; }
+.as-source-title:hover { color: var(--accent-text); }
+.as-source-quote-label { font-size: var(--fs-label); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; margin-top: var(--sp-2); }
+.as-quote { margin: var(--sp-1) 0; font-size: var(--fs-meta);
+  overflow-wrap: anywhere; }
+.as-group { list-style: none; margin: var(--sp-2) 0 0; padding: 0;
+  font-size: var(--fs-meta); }
+.as-group > li { padding: 2px 0; overflow-wrap: anywhere; }
+
+/* ---- I pannelli su telefono --------------------------------------------- */
+.as-overlay, .as-drawer { display: none; }
+
+@media (max-width: 900px) {
+  /* Una colonna: le due laterali diventano pannelli. */
+  .as-layout { grid-template-columns: minmax(0, 1fr); }
+  .as-side { display: none; }
+  .as-only-narrow { display: inline-flex; align-self: flex-start; }
+
+  .as-overlay { display: block; position: fixed; inset: 0; z-index: 45;
+    background: rgba(0, 0, 0, .35); opacity: 0; pointer-events: none;
+    transition: opacity .18s ease; }
+  .as-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .as-drawer { display: block; position: fixed; top: 0; bottom: 0; z-index: 50;
+    width: 300px; max-width: 84vw; background: var(--card);
+    border: 1px solid var(--line); padding: var(--sp-4) var(--sp-3);
+    overflow-y: auto; transition: transform .2s ease; }
+  .as-drawer-left { left: 0; transform: translateX(-100%); }
+  .as-drawer-right { right: 0; transform: translateX(100%); }
+  .as-drawer.open { transform: translateX(0); }
+  .as-drawer-close { position: absolute; top: var(--sp-2); right: var(--sp-2);
+    background: transparent; color: var(--ink); border: 0; cursor: pointer;
+    min-width: 26px; min-height: 26px; }
+
+  .as-q { max-width: 100%; }
+}
+
+/* Chi ha chiesto meno movimento non deve vedere i pannelli scorrere. */
+@media (prefers-reduced-motion: reduce) {
+  .as-drawer, .as-overlay { transition: none; }
+}

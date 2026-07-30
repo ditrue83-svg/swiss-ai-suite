@@ -11,6 +11,7 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { OnboardingPage } from '@/features/companies/OnboardingPage';
 import { CompanySettingsPage } from '@/features/companies/CompanySettingsPage';
 import { HomePage } from '@/features/dashboard/HomePage';
+import { AssistantPage } from '@/features/assistant/AssistantPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
@@ -24,6 +25,10 @@ import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
 import { FinancePage } from '@/features/finance/FinancePage';
 import { FinanceDetailPage } from '@/features/finance/FinanceDetailPage';
 import { ContractsPage } from '@/features/contracts/ContractsPage';
+import { ClientsPage } from '@/features/crm/ClientsPage';
+import { ClientCreatePage } from '@/features/crm/ClientCreatePage';
+import { ClientDetailPage } from '@/features/crm/ClientDetailPage';
+import { OpportunityCreatePage, OpportunityDetailPage } from '@/features/crm/OpportunityPages';
 import { ContractDetailPage } from '@/features/contracts/ContractDetailPage';
 import { ContractCreatePage } from '@/features/contracts/ContractCreatePage';
 import { AutomationsPage } from '@/features/automations/AutomationsPage';
@@ -98,6 +103,11 @@ export default function App() {
                 negli appunti delle persone — stessa scelta di /scadenziario e
                 /archivio. */}
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
+            {/* Chiedi ad AI-Swisse (0027). Sta accanto alla Panoramica e non
+                fra i moduli: non è un decimo posto in cui il lavoro sta, è il
+                modo di interrogare gli altri nove. Il contesto di una scheda
+                arriva in `?su=tipo:id`, e il server lo verifica prima di usarlo. */}
+            <Route path="/assistente" element={<AssistantPage />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/inbox/account" element={<EmailAccountsPage />} />
             <Route path="/attivita" element={<TasksPage />} />
@@ -130,6 +140,19 @@ export default function App() {
             <Route path="/contratti" element={<ContractsPage />} />
             <Route path="/contratti/nuovo" element={<ContractCreatePage />} />
             <Route path="/contratti/:id" element={<ContractDetailPage />} />
+            {/* Clienti (0026). Il CRM viene DOPO Contratti e Finanze perché
+                collega ciò che quelle letture già nominano: la controparte di un
+                contratto, il fornitore di una fattura, il mittente di un
+                documento.
+                ⚠️ `nuovo` PRIMA di `:id`, e `opportunita/nuova` PRIMA di
+                `opportunita/:opportunityId`: con l'ordine inverso react-router
+                leggerebbe «nuovo» come un identificativo e la pagina di
+                creazione non sarebbe raggiungibile — senza dare errore. */}
+            <Route path="/clienti" element={<ClientsPage />} />
+            <Route path="/clienti/nuovo" element={<ClientCreatePage />} />
+            <Route path="/clienti/:id/opportunita/nuova" element={<OpportunityCreatePage />} />
+            <Route path="/clienti/:id/opportunita/:opportunityId" element={<OpportunityDetailPage />} />
+            <Route path="/clienti/:id" element={<ClientDetailPage />} />
             {/* Automazioni (0020). Il generatore è la STESSA pagina per creare
                 e per modificare: due moduli avrebbero significato due posti in
                 cui ricordarsi della validazione e della frase riassuntiva. */}

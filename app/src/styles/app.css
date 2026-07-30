@@ -788,7 +788,15 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    24px sul bersaglio e la label ne misurava 23 — un pixel sotto è comunque
    sotto. La casella passa da 13 a 18px e prende il colore dell'accento, invece
    del blu di sistema che in tema scuro stona. */
-.task-check { min-height: 26px; }
+/* ⚠️ IL LAYOUT STA QUI, e prima non c'era: la classe imponeva solo l'altezza e
+   la dimensione della casella, mentre l'allineamento e lo spazio erano uno
+   `style` inline in UNA sola schermata (TaskDetailPage). Nelle altre tre che la
+   usano — Calendario, Documenti e Clienti — la casella risultava INCOLLATA alla
+   sua etichetta. Trovato aprendo la schermata dei Clienti, non rileggendo il
+   CSS: una classe che promette «casella con etichetta» e non dà il layout è la
+   stessa trappola dei campi senza `.field`. Lo `style` inline che resta in
+   TaskDetailPage ora è ridondante, non contraddittorio. */
+.task-check { min-height: 26px; display: flex; align-items: center; gap: 8px; }
 .task-check input[type="checkbox"] {
   width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer;
 }

@@ -197,7 +197,7 @@ export function ContractsPage() {
         {VIEWS.map((v) => (
           <button
             key={v} type="button"
-            className={`tab ${filters.view === v ? 'is-active' : ''}`}
+            className={`tab ${filters.view === v ? 'active' : ''}`}
             aria-current={filters.view === v ? 'page' : undefined}
             onClick={() => update({ view: v })}
           >

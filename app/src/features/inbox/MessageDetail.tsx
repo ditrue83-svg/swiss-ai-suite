@@ -18,6 +18,9 @@ import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, ErrorState, SkeletonLine } from '@/components/ui/states';
+import { useCompany } from '@/contexts/CompanyContext';
+import { CrmLinkPicker } from '@/features/crm/CrmLinkPicker';
+import { useCrmLink } from '@/features/crm/useCrmLink';
 import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { useI18n, useT } from '@/i18n';
@@ -39,6 +42,11 @@ interface Props {
 
 export function MessageDetail({ messageId, onBack, onChanged }: Props) {
   const t = useT();
+  const { activeCompany } = useCompany();
+  // 0026 — il collegamento alla controparte. L'hook rilegge dopo ogni scrittura:
+  // i guardiani possono rifiutare, e lo stato locale non deve raccontare un
+  // collegamento che il database non ha.
+  const crmLink = useCrmLink('email', activeCompany?.id, messageId);
   const L = useLabels();
   const { locale, localeTag } = useI18n();
   const { showToast } = useToast();
@@ -170,6 +178,24 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
             <Button variant="primary" icon="fileSearch" loading={busy} onClick={analyze}>{t('inbox.detail.analyze')}</Button>
           )}
         </div>
+
+        {/* §71 e §145 — l'Inbox rappresenta la COMUNICAZIONE, il CRM la
+            RELAZIONE. Da qui si collega, non si copia: il mittente resta in
+            `email_messages.sender_email` e il collegamento vive in una tabella
+            propria, perché su `email_messages` il client può scrivere soltanto
+            `seen_at` e `attention_status`.
+            ⚠️ `senderEmail` alimenta il suggerimento: il riquadro chiede al
+            database chi è quell'indirizzo e mostra il MOTIVO — un'identità o un
+            sospetto — senza collegare da sé. */}
+        <CrmLinkPicker
+          linkedId={crmLink.linked?.id ?? null}
+          linkedName={crmLink.linked?.displayName ?? null}
+          extractedName={message.senderName ?? message.senderEmail}
+          senderEmail={message.senderEmail}
+          onLink={crmLink.link}
+          onUnlink={crmLink.unlink}
+          disabled={busy}
+        />
         <p className="muted-sm">{t('inbox.detail.archiveNotice')}</p>
       </div>
 

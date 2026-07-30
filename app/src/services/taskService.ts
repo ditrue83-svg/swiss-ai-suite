@@ -90,6 +90,17 @@ export interface CreateTaskInput {
   documentId?: string | null;
   subsidyCaseId?: string | null;
   assigneeUserId?: string | null;
+  /**
+   * 0026 — la controparte e la trattativa a cui l'attività si riferisce.
+   * Facoltative: un'attività interna non ne ha nessuna.
+   *
+   * ⚠️ Il guardiano `tasks_crm_guard` verifica che appartengano alla stessa
+   * azienda e, se si passa la sola opportunità, RICAVA l'organizzazione da
+   * essa. Passarle entrambe incoerenti viene RIFIUTATO, non corretto in
+   * silenzio: due valori che dicono cose diverse sulla stessa riga.
+   */
+  crmOrganizationId?: string | null;
+  crmOpportunityId?: string | null;
 }
 
 export interface UpdateTaskInput {
@@ -129,6 +140,17 @@ export function taskErrorMessage(error: unknown): string {
   if (text.includes('assignee_not_member')) return tr('tasks.errors.assigneeNotMember');
   if (text.includes('checklist_company_mismatch') || text.includes('comment_company_mismatch')) {
     return tr('tasks.errors.wrongCompany');
+  }
+  // 0026 — le guardie del collegamento al CRM. `task_crm_opportunity_organization_mismatch`
+  // ha un messaggio PROPRIO perché la causa è diversa da un problema di azienda:
+  // l'opportunità scelta appartiene a un'altra controparte, e chi lo legge deve
+  // sapere che il rimedio è cambiare la scelta, non i permessi.
+  if (text.includes('task_crm_opportunity_organization_mismatch')) {
+    return tr('crm.errors.organizationMismatch');
+  }
+  if (text.includes('task_crm_company_mismatch')
+    || text.includes('task_crm_opportunity_company_mismatch')) {
+    return tr('crm.errors.companyMismatch');
   }
   return toUserMessage(error);
 }
@@ -180,6 +202,8 @@ export const taskService = {
       document_id: input.documentId ?? null,
       subsidy_case_id: input.subsidyCaseId ?? null,
       assignee_user_id: input.assigneeUserId ?? null,
+      crm_organization_id: input.crmOrganizationId ?? null,
+      crm_opportunity_id: input.crmOpportunityId ?? null,
     };
     const { data, error } = await requireSupabase().from('tasks').insert(payload).select('*').single();
     if (error || !data) throw new AppError(taskErrorMessage(error), error);

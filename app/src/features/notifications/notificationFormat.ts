@@ -31,6 +31,8 @@ export function notificationTitleKey(n: Pick<AppNotification, 'type' | 'payload'
     // dentro la regola e non è traducibile: questa chiave è solo l'intestazione
     // («Automazione»), il testo sta nel payload e si mostra così com'è.
     case 'workflow_alert': return 'notifications.typeWorkflow';
+    // 0026 — la trattativa affidata a qualcuno.
+    case 'crm_opportunity_assigned': return 'notifications.typeCrmOpportunity';
   }
 }
 
@@ -42,7 +44,17 @@ export function notificationTitleKey(n: Pick<AppNotification, 'type' | 'payload'
  * dominio che nel frattempo può essere cambiato, e sarebbe l'unico posto del
  * prodotto in cui un indirizzo vive fuori dal codice che lo genera.
  */
-export function notificationLink(n: Pick<AppNotification, 'entityType' | 'entityId'>): string {
+/**
+ * ⚠️ Legge anche il `payload`, e non per comodità: la scheda di un'opportunità
+ * vive sotto la sua organizzazione (`/clienti/:org/opportunita/:id`), e
+ * l'`entityId` da solo non basta a comporre quel percorso. Il produttore della
+ * notifica ci mette dentro `organizationId` proprio per questo; se manca si
+ * porta all'elenco dei clienti, che è vero, invece di comporre un indirizzo
+ * inventato.
+ */
+export function notificationLink(
+  n: Pick<AppNotification, 'entityType' | 'entityId'> & { payload?: AppNotification['payload'] },
+): string {
   if (n.entityType === 'task') return `/attivita/${n.entityId}`;
   if (n.entityType === 'calendar_connection') return '/calendario/impostazioni';
   // 0020 — un avviso di regola può riferirsi a un documento o a una
@@ -50,6 +62,11 @@ export function notificationLink(n: Pick<AppNotification, 'entityType' | 'entity
   // dalla lista, e portare lì è la verità.
   if (n.entityType === 'document') return `/documenti/${n.entityId}`;
   if (n.entityType === 'email_message') return '/inbox';
+  if (n.entityType === 'crm_organization') return `/clienti/${n.entityId}`;
+  if (n.entityType === 'crm_opportunity') {
+    const org = typeof n.payload?.organizationId === 'string' ? n.payload.organizationId : null;
+    return org ? `/clienti/${org}/opportunita/${n.entityId}` : '/clienti';
+  }
   // Un tipo di entità che non conosciamo non diventa un collegamento inventato:
   // porta alla panoramica, che esiste sempre.
   return '/';

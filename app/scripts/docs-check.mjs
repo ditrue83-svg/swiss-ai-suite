@@ -68,6 +68,8 @@ const FEATURES = {
   'automations': { moduleName: 'Automazioni' },
   'finance':     { moduleName: 'Finanze' },
   'contracts':   { moduleName: 'Contratti' },
+  'crm':         { moduleName: 'Clienti' },
+  'assistant':   { moduleName: 'Chiedi ad AI-Swisse' },
 
   // Non sono moduli: sono parti dell'impalcatura, e nessun cliente le sceglie.
   'auth':          { moduleName: null, why: 'accesso e registrazione, non un modulo' },

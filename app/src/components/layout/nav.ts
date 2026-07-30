@@ -14,6 +14,12 @@ export const NAV: NavEntry[] = [
   // grafico in più. Due voci per due viste dello stesso fatto obbligano a
   // scegliere ogni volta quale aprire, e la risposta era «tutte e due».
   { id: 'home', labelKey: 'nav.home', icon: 'home', path: '/' },
+  // «Chiedi ad AI-Swisse» sta SUBITO DOPO la Panoramica e prima di tutto il
+  // resto, ed è la posizione che il modulo descrive: la Panoramica dice che cosa
+  // richiede attenzione, questa voce permette di chiederlo a parole. Metterla
+  // fra i moduli l'avrebbe fatta sembrare un decimo modulo accanto agli altri,
+  // mentre è il modo di interrogarli tutti (§117).
+  { id: 'assistant', labelKey: 'nav.assistant', icon: 'askAi', path: '/assistente' },
   // Inbox sta subito dopo la panoramica: è il punto d'ingresso di ciò che
   // arriva, e viene prima delle scadenze, che sono ciò che ne deriva.
   { id: 'inbox', labelKey: 'nav.inbox', icon: 'inbox', path: '/inbox' },
@@ -40,6 +46,17 @@ export const NAV: NavEntry[] = [
   // e ne ricava le date: nel menu non c'è e non deve comparire nessuna voce
   // «Disdette» o «Rinnovi».
   { id: 'contracts', labelKey: 'nav.contracts', icon: 'fileSignature', path: '/contratti' },
+  // I Clienti stanno per ULTIMI fra i moduli, e la ragione è la stessa catena
+  // che ha deciso l'ordine finora: i Documenti sono la memoria, le Finanze e i
+  // Contratti ne sono due letture, e il CRM è il livello che COLLEGA ciò che
+  // quelle letture già nominano — la controparte di un contratto, il mittente
+  // di un documento, il fornitore di una fattura. Viene dopo perché senza di
+  // loro non avrebbe niente da collegare.
+  // ⚠️ L'icona è `user` e non `building`: `building` è già «Impostazioni
+  // azienda» nel menu, e due voci con la stessa icona si confondono a colpo
+  // d'occhio — la regola scritta in Icon.tsx, per cui Finanze ha ricevuto
+  // `receipt` invece di `banknote`.
+  { id: 'clients', labelKey: 'nav.clients', icon: 'user', path: '/clienti' },
   // L'Automazione è una sezione a sé e non una voce fra i moduli: i moduli
   // sono i posti in cui il lavoro sta, questa è la regola che lo muove. Sta
   // dopo tutti, perché è l'ultimo strato — si automatizza ciò che si è già

@@ -23,6 +23,8 @@ francese, ne ricava scadenze, importi e cose da fare, e tiene insieme documenti 
 | **Automazioni** | «Quando succede X, se valgono Y, allora Z». La configurazione è un dato, mai codice: una condizione può nominare solo campi dichiarati, un'azione solo una delle sei previste. In caso di ambiguità non si esegue. |
 | **Finanze** | Fatture fornitori, ricevute e note di credito: comprendere e preparare il denaro, non muoverlo. Nessun pagamento, nessun file di pagamento, nessuna scrittura contabile — un IBAN si mostra, non si esegue. |
 | **Contratti** | Con chi l'azienda è legata, fino a quando e a quali condizioni. Riporta che cosa il documento dice, non che cosa il diritto impone: ogni termine mostra la clausola da cui viene, e una data che non si può ricavare con certezza non viene inventata. |
+| **Chiedi ad AI-Swisse** | Una domanda a parole al posto di nove schermate da aprire: l'assistente interroga i moduli e risponde citando la fonte. Non contiene dati aziendali — conserva domande, risposte e riferimenti. La ricerca semantica è stata valutata e **non** implementata, con i dati della valutazione scritti accanto alla decisione. |
+| **Clienti** | Con chi l'azienda sta lavorando: clienti, prospect, fornitori, partner, enti — e tutto il lavoro collegato attorno a ognuno. Collega, non copia: il nome del fornitore letto su una fattura resta di Finanze, la controparte letta su un contratto resta dei Contratti, il mittente resta dell'Inbox. Nessuna anagrafica nasce da sola: le corrispondenze si propongono, non si applicano. |
 
 Inbox → Documenti → Analisi → Attività → Calendario → Notifica → Completamento, e all'indietro:
 sono un sistema solo, non nove strumenti affiancati. Finanze e Contratti sono LETTURE dei documenti
@@ -50,6 +52,9 @@ che l'archivio custodisce già, non un secondo posto dove scrivere.
 | [`app/docs/workflow-automation.md`](app/docs/workflow-automation.md) | Automazioni: outbox e catena causale, inneschi, condizioni a tre valori, azioni e loro limiti, idempotenza, protezione dei cicli, messa in opera. |
 | [`app/docs/finance-operations.md`](app/docs/finance-operations.md) | Finanze: QR-fattura svizzera, aliquote IVA con fonte, duplicato sospetto, correzioni umane, confine con la contabilità. |
 | [`app/docs/contract-manager.md`](app/docs/contract-manager.md) | Contratti: versioni dei termini, amendment che non sovrascrivono, date derivate e ciò che il prodotto **non** calcola, confine legal-safety. |
+| [`app/docs/company-assistant.md`](app/docs/company-assistant.md) | Chiedi ad AI-Swisse: che cosa l'assistente interroga, come cita le fonti, che cosa NON conserva, messa in opera. |
+| [`app/docs/company-assistant-search-eval.md`](app/docs/company-assistant-search-eval.md) | La valutazione della ricerca semantica e la decisione di non implementarla: il cancello non è stato superato perché su quel corpus non è misurabile. |
+| [`app/docs/crm-light.md`](app/docs/crm-light.md) | Clienti: identità di organizzazioni e persone, ruoli multipli, abbinamento prudente e perché l'abbinamento automatico è quasi sempre sbagliato, duplicati senza fusione automatica, opportunità, privacy. |
 | [`app/docs/design-system.md`](app/docs/design-system.md) | Scala tipografica, colori, contrasti, tema scuro, aree cliccabili. |
 | [`site/README.md`](site/README.md) | Vetrina: contenuti, build, pubblicazione. |
 

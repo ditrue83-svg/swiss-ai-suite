@@ -45,6 +45,20 @@ export const AUTOMATION_EVENT_TYPES = [
   'contract_review_required',
   'contract_milestone_verified',
   'contract_milestone_window_opened',
+  // 0026 — i sei inneschi del CRM. Cinque nascono da un trigger sulla tabella;
+  // `crm_follow_up_due` lo emette la scansione `crm_emit_follow_up_due`, che
+  // gira dentro QUESTO worker a ogni giro, accanto ad `automation_emit_overdue`.
+  // Nessun cron nuovo: è la regola scritta nella 0024 riga 2553.
+  // ⚠️ NESSUN INNESCO SU «email arrivata da un cliente»: l'abbinamento fra una
+  // email e una controparte è un SUGGERIMENTO da confermare (§21), e far
+  // scattare una regola su un sospetto significherebbe creare lavoro a partire
+  // da un'ipotesi.
+  'crm_organization_created',
+  'crm_role_added',
+  'crm_opportunity_created',
+  'crm_opportunity_stage_changed',
+  'crm_opportunity_won',
+  'crm_follow_up_due',
 ] as const;
 export type AutomationEventType = (typeof AUTOMATION_EVENT_TYPES)[number];
 
@@ -56,7 +70,14 @@ export type AutomationEventType = (typeof AUTOMATION_EVENT_TYPES)[number];
  * sue date non appartengono ad alcuno di essi: agganciare l'evento all'accordo
  * principale direbbe una cosa falsa nel campo che serve a ritrovare l'entità.
  */
-export type AutomationEntityType = 'document' | 'email_message' | 'task' | 'contract';
+export type AutomationEntityType =
+  | 'document' | 'email_message' | 'task' | 'contract'
+  // 0026 — DUE entità nuove, e la distinzione è la stessa che vale fra
+  // contratto e documento: un'organizzazione è la controparte, un'opportunità è
+  // una singola trattativa con quella controparte. Agganciare l'evento di una
+  // trattativa all'organizzazione renderebbe impossibile ritrovare DI QUALE
+  // trattativa si parla — e sono spesso più di una.
+  | 'crm_organization' | 'crm_opportunity';
 
 export type FieldType = 'string' | 'number' | 'enum' | 'date' | 'boolean' | 'user';
 
@@ -334,6 +355,77 @@ const CONTRACT_TEMPLATES = [
 ] as const;
 const MILESTONE_TEMPLATES = [...CONTRACT_TEMPLATES, '{{milestone.date}}'] as const;
 
+// ---------------------------------------------------------------------------
+// I campi del CRM (0026)
+//
+// ⚠️ PERCHÉ I RUOLI SONO BOOLEANI E NON UN ELENCO.
+// I ruoli di un'organizzazione sono MULTIPLI, ma l'operatore `contains` di
+// questo motore confronta SOTTOSTRINGHE (`conditions.ts`): su un elenco unito
+// con le virgole, «il ruolo contiene customer» risponderebbe SÌ anche a
+// `former_customer`, cioè a un ex cliente. Una regola «avvisa per i clienti»
+// scatterebbe sui clienti persi, e nessuno capirebbe perché.
+// Un booleano per ruolo è più prolisso e non è ambiguo. `organization.role`
+// esiste solo sull'innesco «ruolo aggiunto», dove il ruolo è UNO e sta nel
+// payload dell'evento: là è un dato, non una deduzione.
+// ---------------------------------------------------------------------------
+
+export const CRM_RELATIONSHIP_STATUSES = ['active', 'inactive'] as const;
+export const CRM_ORGANIZATION_ROLES = [
+  'lead', 'prospect', 'customer', 'former_customer',
+  'supplier', 'partner', 'authority', 'other',
+] as const;
+export const CRM_OPPORTUNITY_STAGES = [
+  'lead', 'contacted', 'proposal', 'negotiation', 'won', 'lost',
+] as const;
+export const CRM_SOURCES = [
+  'manual', 'email', 'document', 'contract', 'finance', 'registry', 'import',
+] as const;
+
+const ORGANIZATION_FIELDS: readonly TriggerField[] = [
+  { path: 'organization.name', type: 'string', labelKey: 'automations.fields.orgName' },
+  { path: 'organization.owner', type: 'user', labelKey: 'automations.fields.orgOwner' },
+  { path: 'organization.status', type: 'enum', labelKey: 'automations.fields.orgStatus',
+    options: CRM_RELATIONSHIP_STATUSES, optionsLabelPath: 'labels.crmStatus' },
+  { path: 'organization.canton', type: 'string', labelKey: 'automations.fields.orgCanton' },
+  { path: 'organization.city', type: 'string', labelKey: 'automations.fields.orgCity' },
+  { path: 'organization.source', type: 'enum', labelKey: 'automations.fields.orgSource',
+    options: CRM_SOURCES, optionsLabelPath: 'labels.crmSources' },
+  // §69 — «da quanto non li sentiamo». `within_days` è l'unico confronto che le
+  // date accettano in questo motore, ed è esattamente quello che serve.
+  { path: 'organization.last_contact_at', type: 'date', labelKey: 'automations.fields.orgLastContact' },
+  { path: 'organization.role_customer', type: 'boolean', labelKey: 'automations.fields.orgIsCustomer' },
+  { path: 'organization.role_prospect', type: 'boolean', labelKey: 'automations.fields.orgIsProspect' },
+  { path: 'organization.role_supplier', type: 'boolean', labelKey: 'automations.fields.orgIsSupplier' },
+  { path: 'organization.role_partner', type: 'boolean', labelKey: 'automations.fields.orgIsPartner' },
+  { path: 'organization.open_opportunity_count', type: 'number', labelKey: 'automations.fields.orgOpenOpportunities' },
+  { path: 'organization.open_task_count', type: 'number', labelKey: 'automations.fields.orgOpenTasks' },
+];
+
+const OPPORTUNITY_FIELDS: readonly TriggerField[] = [
+  { path: 'opportunity.title', type: 'string', labelKey: 'automations.fields.oppTitle' },
+  { path: 'opportunity.stage', type: 'enum', labelKey: 'automations.fields.oppStage',
+    options: CRM_OPPORTUNITY_STAGES, optionsLabelPath: 'labels.crmStages' },
+  { path: 'opportunity.owner', type: 'user', labelKey: 'automations.fields.oppOwner' },
+  // §45 — l'importo porta la sua valuta, e `hasCurrency` è ciò che impedisce a
+  // una condizione «valore > 10000» di confrontare franchi con euro.
+  { path: 'opportunity.value_amount', type: 'number', labelKey: 'automations.fields.oppValue',
+    hasCurrency: true },
+  { path: 'opportunity.value_currency', type: 'string', labelKey: 'automations.fields.oppCurrency' },
+  { path: 'opportunity.expected_close_date', type: 'date', labelKey: 'automations.fields.oppCloseDate' },
+  // §99 — «senza prossimo passo» si esprime con `not_exists` su questo campo:
+  // una trattativa aperta che nessuno sa come proseguire è ferma anche se
+  // sembra viva.
+  { path: 'opportunity.next_step', type: 'string', labelKey: 'automations.fields.oppNextStep' },
+  { path: 'opportunity.next_step_due_date', type: 'date', labelKey: 'automations.fields.oppNextStepDue' },
+];
+
+// §30 — solo valori NON traducibili: un nome, un titolo, un importo, una data.
+const CRM_ORG_TEMPLATES = ['{{organization.name}}'] as const;
+const CRM_OPP_TEMPLATES = [
+  '{{organization.name}}', '{{opportunity.title}}',
+  '{{opportunity.value_amount}}', '{{opportunity.next_step}}',
+] as const;
+
 export const TRIGGERS: readonly TriggerDef[] = [
   {
     key: 'document_analysis_completed',
@@ -439,6 +531,70 @@ export const TRIGGERS: readonly TriggerDef[] = [
     templates: MILESTONE_TEMPLATES,
   },
   {
+    key: 'crm_organization_created',
+    entityType: 'crm_organization',
+    version: 1,
+    labelKey: 'automations.triggers.crmOrgCreated',
+    descriptionKey: 'automations.triggers.crmOrgCreatedDesc',
+    fields: ORGANIZATION_FIELDS,
+    templates: CRM_ORG_TEMPLATES,
+  },
+  {
+    key: 'crm_role_added',
+    entityType: 'crm_organization',
+    version: 1,
+    labelKey: 'automations.triggers.crmRoleAdded',
+    descriptionKey: 'automations.triggers.crmRoleAddedDesc',
+    fields: [
+      ...ORGANIZATION_FIELDS,
+      // Qui il ruolo è UNO e arriva dal payload dell'evento: è il ruolo appena
+      // aggiunto, non una sintesi di quelli che l'organizzazione ha.
+      { path: 'organization.role', type: 'enum', labelKey: 'automations.fields.orgRoleAdded',
+        options: CRM_ORGANIZATION_ROLES, optionsLabelPath: 'labels.crmRoles' },
+    ],
+    templates: CRM_ORG_TEMPLATES,
+  },
+  {
+    key: 'crm_opportunity_created',
+    entityType: 'crm_opportunity',
+    version: 1,
+    labelKey: 'automations.triggers.crmOppCreated',
+    descriptionKey: 'automations.triggers.crmOppCreatedDesc',
+    fields: [...ORGANIZATION_FIELDS, ...OPPORTUNITY_FIELDS],
+    templates: CRM_OPP_TEMPLATES,
+  },
+  {
+    key: 'crm_opportunity_stage_changed',
+    entityType: 'crm_opportunity',
+    version: 1,
+    labelKey: 'automations.triggers.crmOppStageChanged',
+    descriptionKey: 'automations.triggers.crmOppStageChangedDesc',
+    fields: [
+      ...ORGANIZATION_FIELDS, ...OPPORTUNITY_FIELDS,
+      { path: 'opportunity.previous_stage', type: 'enum', labelKey: 'automations.fields.oppPreviousStage',
+        options: CRM_OPPORTUNITY_STAGES, optionsLabelPath: 'labels.crmStages' },
+    ],
+    templates: CRM_OPP_TEMPLATES,
+  },
+  {
+    key: 'crm_opportunity_won',
+    entityType: 'crm_opportunity',
+    version: 1,
+    labelKey: 'automations.triggers.crmOppWon',
+    descriptionKey: 'automations.triggers.crmOppWonDesc',
+    fields: [...ORGANIZATION_FIELDS, ...OPPORTUNITY_FIELDS],
+    templates: CRM_OPP_TEMPLATES,
+  },
+  {
+    key: 'crm_follow_up_due',
+    entityType: 'crm_opportunity',
+    version: 1,
+    labelKey: 'automations.triggers.crmFollowUpDue',
+    descriptionKey: 'automations.triggers.crmFollowUpDueDesc',
+    fields: [...ORGANIZATION_FIELDS, ...OPPORTUNITY_FIELDS],
+    templates: CRM_OPP_TEMPLATES,
+  },
+  {
     key: 'task_created',
     entityType: 'task',
     version: 1,
@@ -524,7 +680,11 @@ export const ACTIONS: readonly ActionDef[] = [
     // 0024 — vale anche sui contratti: è il modo in cui una data verificata
     // diventa lavoro concreto (§86). ⚠️ NON esiste, e non deve esistere,
     // un'azione «disdici» o «accetta rinnovo» (§101).
-    entityTypes: ['document', 'email_message', 'task', 'contract'],
+    // 0026 — vale anche sul CRM: è il modo in cui un «prossimo passo» diventa
+    // lavoro assegnabile e tracciabile (§50). ⚠️ NON esiste, e non deve
+    // esistere, un'azione che scriva a un cliente (§135).
+    entityTypes: ['document', 'email_message', 'task', 'contract',
+                  'crm_organization', 'crm_opportunity'],
     outputEntityType: 'task',
   },
   {
@@ -567,7 +727,12 @@ export const ACTIONS: readonly ActionDef[] = [
     labelKey: 'automations.actions.createNotification',
     descriptionKey: 'automations.actions.createNotificationDesc',
     riskLevel: 'low',
-    entityTypes: ['document', 'email_message', 'task', 'contract'],
+    // 0026 — §137: «opportunità senza responsabile» avvisa gli amministratori.
+    // ⚠️ La notifica arriva a una persona DELL'AZIENDA, mai alla controparte:
+    // il motore non ha alcun modo di scrivere a un indirizzo esterno, e questa
+    // assenza è il vincolo (§135).
+    entityTypes: ['document', 'email_message', 'task', 'contract',
+                  'crm_organization', 'crm_opportunity'],
     outputEntityType: 'notification',
   },
 ];

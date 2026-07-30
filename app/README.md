@@ -29,6 +29,8 @@ supabase/
                 0020_workflow_automation · 0021_finance_operations
                 0022_finance_event_kind_cast · 0023_finance_immutable_allows_cascade
                 0024_contract_manager · 0025_contract_fixes
+                0026_crm_light · 0027_company_assistant · 0028_crm_cascade_history
+                0029_assistant_purge_lockdown
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -38,6 +40,9 @@ supabase/
                        + finance/ (QR-fattura, cifre di controllo, aritmetica esatta degli importi)
                        + contracts/ (periodi e ancoraggi in quattro lingue, validazione con
                        citazioni verificate, pipeline di lettura)
+                       + assistant/ (REGISTRO degli strumenti — il perimetro —, esecutori con
+                       proiezioni esplicite, aritmetica delle date nel fuso dell'utente,
+                       validazione delle citazioni e ancoraggio ai dati, ciclo con i suoi limiti)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
     generate-reply     bozza di risposta on-demand
     interpret-project  interpretazione progetto per il Subsidy AI
@@ -56,24 +61,32 @@ supabase/
     finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
     contract-worker       legge la coda dei documenti contrattuali e apre le finestre
                           di attenzione delle date verificate (scheduler)
+    company-assistant     «Chiedi ad AI-Swisse»: una domanda, un ciclo LIMITATO di strumenti
+                          tipizzati, una risposta con le sue fonti. Risponde IN FLUSSO
+                          (text/event-stream) — l'unica del prodotto — perché §112 chiede di
+                          mostrare che cosa sta succedendo e §114 di poterlo interrompere.
+                          ⚠️ Si pubblica SENZA --no-verify-jwt: la chiama sempre una persona
 src/
   lib/            supabase, env, errori, hash (SHA-256), uid (IDI), formattazione
   types/          database.ts (schema) · models.ts (dominio)
   services/       auth · company · document · documentHub · analysis · task · subsidy · reply
                   correction · program · interpret · companyLookup · emailConnection · inbox
-                  calendar · calendarConnection · notification
+                  calendar · calendarConnection · notification · assistant
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
   features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing
-                  inbox · calendar · notifications · automations · finance · contracts
+                  inbox · calendar · notifications · automations · finance · contracts · crm
+                  assistant (Chiedi ad AI-Swisse)
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
                   subsidy-translations (contenuti de/fr) · check-auth-config · bundle-migrations
-                  test-workflows · test-finance · test-contracts (+ le versioni -unit, offline)
+                  test-workflows · test-finance · test-contracts · test-assistant
+                  (+ le versioni -unit, offline) · eval-assistant
                   docs-check (la documentazione descrive il codice che c'è davvero?)
 docs/             design-system.md · revisione-traduzioni.md · ai-inbox.md · document-hub.md
                   calendar-notifications.md · workflow-automation.md · finance-operations.md
-                  contract-manager.md
+                  contract-manager.md · crm-light.md · company-assistant.md
+                  company-assistant-search-eval.md
 ```
 
 ## Setup
@@ -590,6 +603,52 @@ letta e gli elementi restano `pending` per sempre.
 
 Documento completo: **`docs/finance-operations.md`**.
 
+### Chiedi ad AI-Swisse (Company Assistant) — migrazioni 0027 e 0029
+
+> **In esercizio dal 2026-07-30.** Migrazioni `0027` e `0029` applicate, Edge
+> Function pubblicata e verificata end-to-end. Alla prima valutazione con verità
+> di riferimento: **16 domande su 16**, 2,3 strumenti e 2,1 fonti per domanda.
+
+Una domanda sola invece di cinque schermate: «quali fatture scadono nei prossimi
+dieci giorni?», «da quale email è arrivata questa fattura?», «qual è il preavviso
+del contratto Swisscom, e la data è verificata?».
+
+La regola che governa il modulo è una: **nessuna risposta aziendale senza dati
+accessibili e citabili**. Da lì discende tutto il resto.
+
+- **Sola lettura.** Non esiste uno strumento di scrittura nel registro, quindi
+  non esiste una domanda che ne provochi una. Niente «Crea attività», niente
+  «Disdici», niente «Paga» — la stessa regola per cui i Contratti non disdicono
+  e le Finanze non pagano.
+- **Nessuno strumento generico.** Niente `query_database`, niente SQL generato
+  dal modello. Ventiquattro strumenti tipizzati, uno per dominio, con schema
+  d'ingresso chiuso. **Nessuno accetta `companyId` o `userId`**: sono i due
+  parametri che deciderebbero *di chi* sono i dati, e li deriva il server dalla
+  sessione.
+- **I permessi non si applicano: non si possono aggirare.** Le letture passano
+  dalle RPC del prodotto, che sono `SECURITY INVOKER`, **con il client
+  dell'utente**. Il ruolo di servizio scrive la risposta e non legge mai un dato
+  aziendale.
+- **Le citazioni non si inventano.** Ogni riga letta riceve un riferimento opaco
+  (`f1`, `f2`…) e il modello vede solo quello: gli identificativi restano nel
+  server. Un riferimento che nessuno strumento ha prodotto viene scartato.
+- **Gli importi e le date si verificano.** Per le risposte che toccano denaro o
+  scadenze, un controllo deterministico confronta ogni valore scritto con quelli
+  realmente letti; se non tornano, la risposta viene declassata a parziale e lo
+  dichiara.
+- **Nessuna ricerca semantica**, e la decisione è misurata, non supposta: al
+  2026-07-30 il corpus è di 18 documenti tutti in italiano, e `pgvector` non è
+  installata. Il confronto a tre vie e le condizioni per rifarlo stanno in
+  [`docs/company-assistant-search-eval.md`](docs/company-assistant-search-eval.md).
+- **Nessun ragionamento del modello viene memorizzato**, e nessuna delle sei
+  tabelle nuove contiene un dato aziendale: domande, risposte e riferimenti.
+
+⚠️ È il primo punto del prodotto che risponde **in flusso** (`text/event-stream`):
+una domanda che attraversa più moduli impiega secondi, e in quei secondi
+l'utente deve vedere che cosa sta succedendo e poter interrompere.
+
+Documento completo: [`docs/company-assistant.md`](docs/company-assistant.md).
+
 ## Comandi
 
 ```bash
@@ -627,8 +686,22 @@ npm run test:contracts-unit  # Contratti offline: periodi nelle quattro lingue, 
                              # coerenza fra gli elenchi dichiarati in TypeScript e in SQL (89 test)
 npm run test:contracts       # Contratti su DB: isolamento, cross-tenant su documenti e attività,
                              # immutabilità della versione verificata, correzioni append-only,
+npm run test:crm-unit        # CRM offline: la copia SQL↔TypeScript dei domini pubblici, la cifra
+                             #   di controllo dell'IDI, il filtro anti-rumore dei mittenti, i
+                             #   pareggi dell'abbinamento, nessuna somma fra valute (122 casi)
                              # aritmetica delle date sui casi limite, amendment che non sovrascrive
                              # (66 test — richiede la 0024 e la 0025)
+npm run test:assistant-unit  # Chiedi ad AI-Swisse offline: il PERIMETRO degli strumenti (nessuna
+                             #   query generica, nessun companyId accettato dal modello, nessun
+                             #   segreto), l'aritmetica delle date con ora legale e mezzanotte
+                             #   svizzera, le citazioni che non si possono inventare, l'ancoraggio
+                             #   di importi e date, ciò che NON esce dagli esecutori (122 casi)
+npm run test:assistant       # Chiedi ad AI-Swisse su DB: isolamento fra aziende, privatezza della
+                             #   conversazione anche fra colleghi, revoca dell'accesso, nessuna
+                             #   risposta fabbricata dal client, messaggi immutabili, quota per
+                             #   persona (richiede la 0027)
+npm run eval:assistant       # valutazione con VERITÀ DI RIFERIMENTO: 16 domande su dati noti,
+                             #   esito atteso, fonti attese, frasi vietate. Costa denaro vero
 npm run subsidy:health  # integrità e freschezza del catalogo incentivi
 npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
@@ -690,6 +763,13 @@ Creano dati reali e li rimuovono alla fine.
   amministrativo NON viene fermata); prompt injection nel corpo che non altera l'esito; adapter Google e
   Microsoft che da payload diversi producono lo **stesso** modello; cifratura dei token con AAD, IV
   irripetuto e rilevamento delle manomissioni.
+- **`test:crm-unit` (122)** — le decisioni del CRM che si sbagliano in silenzio. La più
+  importante: legge la migrazione 0026 ed estrae l'elenco dei domini pubblici di
+  `crm_is_public_domain`, confrontandolo con la costante TypeScript — due copie della stessa
+  regola divergono, e il typecheck non guarda dentro l'SQL. Sorveglia anche che il file non
+  contraddica se stesso (nessuna colonna insieme «timbrata dal database» e concessa al client),
+  che i punti di Gmail e il `+tag` NON vengano rimossi da un indirizzo, che un IDI con la cifra
+  di controllo errata non identifichi nessuno, e che i valori di valute diverse non si sommino.
 - **`test:finance-unit` (202)** — le decisioni finanziarie che si sbagliano in silenzio, provate
   **offline**: le quattro convenzioni di importo che convivono su una scrivania svizzera lette con
   aritmetica **esatta** (`0.10 + 0.20` fa `0.30`), due valute che non si sommano mai e un importo senza

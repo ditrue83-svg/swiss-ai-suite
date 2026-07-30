@@ -25,6 +25,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
+import { CrmLinkPicker } from '@/features/crm/CrmLinkPicker';
+import { useCrmLink } from '@/features/crm/useCrmLink';
 import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
@@ -36,6 +38,7 @@ import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { AskAbout } from '@/features/assistant/AskAbout';
 import {
   FINANCE_HIGH_RISK_FIELDS, financeState, formatDecimal, isCorrectableField, readyBlockers,
   type FinanceCorrectableField, type FinanceReadyBlocker,
@@ -192,6 +195,8 @@ export function FinanceDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { activeCompanyId } = useCompany();
+  // 0026 — il fornitore collegato al CRM.
+  const crmLink = useCrmLink('finance', activeCompanyId, id);
   const { user } = useAuth();
   const { showToast } = useToast();
   const companyId = activeCompanyId as string;
@@ -322,6 +327,8 @@ export function FinanceDetailPage() {
 
       {/* ---- Azioni ------------------------------------------------------ */}
       <div className="row-wrap mt-12">
+        {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
+        <AskAbout type="finance_item" id={item.id} label={who} />
         {/* Un solo visualizzatore in tutto il prodotto: il file è del Document
             Hub e si apre là. Un secondo qui vorrebbe dire due posti in cui
             ricordarsi degli URL firmati e della loro scadenza. */}
@@ -371,6 +378,21 @@ export function FinanceDetailPage() {
         <div className="muted-sm mt-8">{t('finance.detail.markReviewedHint')}</div>
       )}
       {!canRetry && <div className="muted-sm mt-8">{t('finance.errors.cannotRetry')}</div>}
+
+      {/* §37, §148 — il FORNITORE nel CRM. `eff_supplier_name` resta il nome
+          letto sulla fattura e non viene mai riscritto: il collegamento aggiunge
+          un'identità, e scollegare non cancella il dato estratto.
+          ⚠️ I due timbri (chi ha collegato, quando) li scrive il guardiano da
+          `auth.uid()`/`now()`, come già fa per la categoria di spesa: una
+          decisione umana registrata dal browser non è una decisione registrata. */}
+      <CrmLinkPicker
+        linkedId={crmLink.linked?.id ?? null}
+        linkedName={crmLink.linked?.displayName ?? null}
+        extractedName={item.supplierName ?? item.merchant}
+        onLink={crmLink.link}
+        onUnlink={crmLink.unlink}
+        disabled={busy}
+      />
 
       {/* ---- Da verificare: le bandiere, in parole (§151) ----------------- */}
       {item.qualityFlags.length > 0 && (
