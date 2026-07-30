@@ -70,6 +70,11 @@ const FEATURES = {
   'contracts':   { moduleName: 'Contratti' },
   'crm':         { moduleName: 'Clienti' },
   'assistant':   { moduleName: 'Chiedi ad AI-Swisse' },
+  // ⚠️ «Incentivi» è il modulo 2.0 (0032) e `subsidy-ai` è il 1.0, ancora in
+  //    esercizio: due cartelle, due schermate, un modulo solo nel menu. Finché
+  //    la vecchia resta raggiungibile su `/subsidy` la mappa le dichiara
+  //    entrambe — toglierla qui renderebbe invisibile del codice vivo.
+  'incentives':  { moduleName: 'Incentivi' },
 
   // Non sono moduli: sono parti dell'impalcatura, e nessun cliente le sceglie.
   'auth':          { moduleName: null, why: 'accesso e registrazione, non un modulo' },

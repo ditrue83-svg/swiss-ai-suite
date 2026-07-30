@@ -32,6 +32,7 @@ supabase/
                 0026_crm_light · 0027_company_assistant · 0028_crm_cascade_history
                 0029_assistant_purge_lockdown · 0030_crm_link_candidate
                 0031_assistant_purge_schedule · 0032_subsidy_ai_2
+                0033_subsidy_answers_cascade · 0034_subsidy_answers_project_cascade
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -82,7 +83,7 @@ src/
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
   features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing
                   inbox · calendar · notifications · automations · finance · contracts · crm
-                  assistant (Chiedi ad AI-Swisse)
+                  assistant (Chiedi ad AI-Swisse) · incentives (Incentivi, Subsidy AI 2.0)
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
@@ -399,6 +400,9 @@ Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estr
 | `workflow_runs` | un'esecuzione, con la **configurazione usata** e l'esito di ogni condizione. `unique (workflow_id, trigger_event_id)`: lo stesso evento due volte non produce due esecuzioni |
 | `workflow_action_runs` | ogni azione con la propria **chiave di idempotenza** — l'unicità la impone il database, non un controllo applicativo |
 | `workflow_events` | chi ha creato, attivato, messo in pausa, archiviato una regola. Solo amministratori |
+| `subsidy_projects`, `subsidy_opportunities`, `subsidy_assessments`, `subsidy_criterion_results` | **Incentivi** (0032): il progetto dell'impresa, il suo incontro con una versione di programma, e la storia append-only delle valutazioni criterio per criterio. Le sei misure — rilevanza, idoneità, completezza, tempistica, freschezza, prontezza — sono sei colonne separate e nessuna è una probabilità: il client può scrivere solo `saved_at`, `dismissed_reason` e `dismissed_note` |
+| `subsidy_answers` | risposte ai criteri, **append-only**: rispondere di nuovo scrive una riga nuova. ⚠️ Dalla **0033** (azienda) e dalla **0034** (progetto) la cancellazione diretta resta vietata ma la CASCATA di un genitore già cancellato passa — prima il guardiano sollevava anche lì, e una sola risposta rendeva l'azienda indistruttibile (stessa classe di 0023, 0025, 0028; riprodotto su un'azienda usa-e-getta prima di correggerlo) |
+| `subsidy_sources`, `subsidy_program_versions`, `subsidy_program_rules`, `subsidy_calls` | il catalogo **condiviso e in sola lettura** per il client: da dove viene ogni requisito, in quale versione, con quale finestra e quando la fonte è stata controllata con successo l'ultima volta |
 | `finance_items` | **Finanze** (0021): lo stato operativo di un documento finanziario — tipo, verifica, archiviazione, categoria di spesa. Le colonne `eff_*` sono una **proiezione** ricalcolata dal trigger, non una seconda verità; il client non ha alcun permesso di scrittura su di esse |
 | `finance_extractions` | il **verbale** della lettura finanziaria: **immutabile e versionato** come `document_analyses`. Un secondo tentativo produce la versione 2 e la 1 resta leggibile. Porta la provenienza **campo per campo** (`qr` · `deterministic` · `ai`), la fiducia, le citazioni e le incertezze |
 | `finance_corrections` | correzioni umane **append-only**, con un elenco **chiuso** di campi correggibili. Non riusa `analysis_corrections`: là il campo «amount» descrive l'analisi amministrativa, e scriverci un importo di fattura cambierebbe ciò che il Document Hub mostra |

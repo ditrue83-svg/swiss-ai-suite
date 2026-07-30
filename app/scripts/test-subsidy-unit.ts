@@ -22,6 +22,8 @@
 //  11. Il rilevamento del cambiamento — niente entra da solo.
 //  12. Provenienza dei fatti — chi vince e quando è conflitto.
 //  13. Denaro — nessuna conversione, nessun CHF d'ufficio.
+//  14. L'interfaccia a quattro schede — ciò che la schermata DICE.
+//  15. I trigger devono SOPRAVVIVERE ALLA CASCATA.
 // ============================================================================
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -64,6 +66,17 @@ import {
   HTML_ADAPTER, ADAPTERS,
 } from '../supabase/functions/_shared/subsidy/adapters.ts';
 import { normalizeForHash } from '../supabase/functions/_shared/subsidy/hash.ts';
+// ⚠️ IL MODELLO DELL'INTERFACCIA È CODICE PURO ed entra in questa suite come
+//    tutto il resto: le sue funzioni decidono che cosa una persona LEGGE, e un
+//    errore lì non rompe niente — dice una cosa falsa con l'aria di un dato.
+import {
+  OPPORTUNITY_VIEWS, INCENTIVE_TABS, TAB_PARAM, tabFromParam,
+  filtersFromParams, paramsFromFilters, deadlineNotice, nextStep, caseDeadline,
+  checklistProgress, canMarkReady, nextStatuses, validateProject, plural,
+  subsidyErrorKey, summaryNotices, daysBetweenDates, todayISO,
+  DEADLINE_SOON_DAYS as UI_DEADLINE_SOON_DAYS,
+} from '../src/features/incentives/incentivesModel.ts';
+import type { IncentiveCase, IncentiveOpportunity } from '../src/types/models.ts';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -76,6 +89,22 @@ const section = (title: string) => console.log(`\n${B}${title}${X}`);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MIGRATION = readFileSync(
   join(HERE, '..', 'supabase', 'migrations', '0032_subsidy_ai_2.sql'), 'utf8');
+/**
+ * ⚠️ LA GUARDIA DELLE RISPOSTE VIVE NELLA 0034, non nella 0032, e leggere solo
+ * la 0032 direbbe che il difetto c'è ancora. Un controllo che guarda il file
+ * sbagliato è un controllo che dà un verde falso — due versioni di
+ * `i18n:coverage` sono già cadute così.
+ */
+const ANSWERS_GUARD = readFileSync(
+  join(HERE, '..', 'supabase', 'migrations', '0034_subsidy_answers_project_cascade.sql'), 'utf8');
+/**
+ * ⚠️ Il TRIGGER è dichiarato dalla 0033 e il CORPO della funzione dalla 0034,
+ * che fa solo `create or replace`. Cercare il trigger nel file sbagliato dava
+ * un rosso su una garanzia che c'è: il controllo è stato corretto dopo averlo
+ * eseguito, non dopo averlo riletto.
+ */
+const ANSWERS_TRIGGER = readFileSync(
+  join(HERE, '..', 'supabase', 'migrations', '0033_subsidy_answers_cascade.sql'), 'utf8');
 
 /** Estrae i valori di un enum dichiarato con `create type … as enum (…)`. */
 function sqlEnumValues(name: string): string[] {
@@ -648,6 +677,293 @@ check('la migrazione impone la valuta accanto all\'importo',
 // §70 — nessun calcolatore di contributo.
 check('nessuna funzione calcola un importo ottenibile',
   !MIGRATION.includes('estimated_award') && !MIGRATION.includes('expected_amount'));
+
+// ===========================================================================
+section('14. L\'interfaccia a quattro schede — ciò che la schermata DICE');
+
+// ---- 14a. Le viste esistono davvero nella funzione SQL --------------------
+// ⚠️ È IL CONTROLLO PIÙ IMPORTANTE DELLA SEZIONE, ed è la stessa forma del
+//    controllo 1: `list_subsidy_opportunities` non rifiuta un `p_view`
+//    sconosciuto, lo fa cadere nel ramo `else` — cioè «tutte». Un'etichetta di
+//    troppo nell'interfaccia mostrerebbe quindi l'elenco INTERO sotto la
+//    promessa di un filtro, e nessun typecheck potrebbe vederlo.
+const VIEW_BRANCHES = (() => {
+  const m = MIGRATION.match(/case p_view([\s\S]*?)else o\.dismissed_at is null/i);
+  if (!m) return [];
+  return [...m[1].matchAll(/when '([a-z_]+)'/g)].map((x) => x[1]);
+})();
+check('la funzione SQL dichiara sei rami `when` + `else`', VIEW_BRANCHES.length === 6,
+  VIEW_BRANCHES.join(', '));
+check('ogni vista dell\'interfaccia ha un ramo nell\'SQL (a parte «all», che è l\'else)',
+  OPPORTUNITY_VIEWS.filter((v) => v !== 'all').every((v) => VIEW_BRANCHES.includes(v)),
+  `UI: ${OPPORTUNITY_VIEWS.join(', ')} · SQL: ${VIEW_BRANCHES.join(', ')}`);
+check('e nessun ramo dell\'SQL è rimasto senza etichetta',
+  VIEW_BRANCHES.every((v) => (OPPORTUNITY_VIEWS as readonly string[]).includes(v)));
+// ⚠️ L'interfaccia DICHIARA una finestra («scadenze entro N giorni») e l'SQL la
+//    APPLICA: se le due divergono, la vista promette un elenco e ne mostra un
+//    altro. Il numero vive nel contratto del motore, e qui si verifica che sia
+//    lo stesso che la funzione SQL scrive nel proprio `where`.
+check('la finestra delle scadenze dichiarata dall\'interfaccia è quella dell\'SQL',
+  MIGRATION.includes(`current_date + ${UI_DEADLINE_SOON_DAYS}`),
+  `interfaccia: ${UI_DEADLINE_SOON_DAYS} giorni`);
+
+// ---- 14b. Le quattro schede e l'indirizzo --------------------------------
+check('le schede sono QUATTRO', INCENTIVE_TABS.length === 4);
+check('un valore sconosciuto nell\'indirizzo apre le Opportunità, non una scheda vuota',
+  tabFromParam('pippo') === 'opportunities' && tabFromParam(null) === 'opportunities');
+check('ogni scheda ha un nome italiano nell\'indirizzo, come negli altri moduli',
+  INCENTIVE_TABS.every((t) => /^[a-z]+$/.test(TAB_PARAM[t])));
+check('la scheda predefinita NON compare nell\'indirizzo',
+  paramsFromFilters({ tab: 'opportunities', view: 'all', projectId: null, archived: false, offset: 0 })
+    .toString() === '');
+check('le altre schede sì', paramsFromFilters({
+  tab: 'cases', view: 'all', projectId: null, archived: false, offset: 0,
+}).get('scheda') === 'pratiche');
+// ⚠️ `?vista=pippo` NON deve diventare un filtro qualsiasi: diventa «tutte».
+check('una vista sconosciuta nell\'indirizzo diventa «tutte»',
+  filtersFromParams(new URLSearchParams('vista=pippo')).view === 'all');
+check('una pagina non numerica diventa la PRIMA, non una pagina a caso',
+  filtersFromParams(new URLSearchParams('da=pippo')).offset === 0
+  && filtersFromParams(new URLSearchParams('da=-4')).offset === 0);
+check('e una pagina valida si conserva',
+  filtersFromParams(new URLSearchParams('da=50')).offset === 50);
+
+// ---- 14c. La scadenza: nessuna urgenza inventata --------------------------
+const opp = (o: Partial<IncentiveOpportunity> = {}): IncentiveOpportunity => ({
+  id: 'o1', projectId: 'p1', projectTitle: 'Progetto', kind: 'project',
+  programId: 'innosuisse', programName: 'Innosuisse', authority: 'Confederazione',
+  supportType: 'grant', programAvailability: 'available', programLifecycle: 'active',
+  officialSourceUrl: 'https://example.ch', programVersionId: 'v1', versionNumber: 1,
+  versionEffectiveFrom: null, callId: 'c1', callTitle: null, callStatus: 'open',
+  callDeadlineOn: '2026-08-20', callDeadlineAt: null, callContinuous: false,
+  relevanceLevel: 'high', relevanceScore: 80, eligibilityStatus: 'potentially_eligible',
+  completeness: 'complete', timing: 'open', sourceFreshness: 'fresh',
+  readiness: 'not_started', missingFactCount: 0, openCriteriaCount: 0,
+  assessmentStale: false, savedAt: null, dismissedAt: null, dismissedReason: null,
+  reopenSuggestedAt: null, lastAssessedAt: TODAY, firstMatchedAt: TODAY,
+  caseId: null, caseStatus: null, relevanceReasons: [], currentAssessmentId: null,
+  ...o,
+});
+
+check('con call aperta, scadenza vicina e fonte fresca l\'urgenza c\'è',
+  deadlineNotice(opp(), TODAY).urgent === true);
+// ⚠️ §26 — con una fonte vecchia NON si crea urgenza: si dice di verificare
+//    sulla pagina ufficiale. Un promemoria su una data che non controlliamo da
+//    mesi è peggio di nessun promemoria.
+check('con fonte vecchia l\'urgenza sparisce e compare «verifica sulla fonte»',
+  deadlineNotice(opp({ sourceFreshness: 'stale' }), TODAY).urgent === false
+  && deadlineNotice(opp({ sourceFreshness: 'stale' }), TODAY).verifyOnSource === true);
+check('con fonte MAI verificata idem',
+  deadlineNotice(opp({ sourceFreshness: 'unverified' }), TODAY).verifyOnSource === true);
+check('senza scadenza strutturata non si scrive nessun conto alla rovescia',
+  deadlineNotice(opp({ callDeadlineOn: null }), TODAY).daysLeft === null);
+check('una scadenza passata è «scaduta», non «fra -3 giorni» urgenti',
+  deadlineNotice(opp({ callDeadlineOn: '2026-07-27' }), TODAY).expired === true
+  && deadlineNotice(opp({ callDeadlineOn: '2026-07-27' }), TODAY).urgent === false);
+check('l\'ora esatta si dichiara solo se la fonte la dà',
+  deadlineNotice(opp(), TODAY).hasExactTime === false
+  && deadlineNotice(opp({ callDeadlineAt: '2026-08-20T12:00:00Z' }), TODAY).hasExactTime === true);
+// §72 — un'opportunità messa da parte o una pratica già inviata non urgono.
+check('un\'opportunità messa da parte non urge',
+  deadlineNotice(opp({ dismissedAt: TODAY }), TODAY).urgent === false);
+check('una candidatura già inviata non urge',
+  deadlineNotice(opp({ readiness: 'submitted' }), TODAY).urgent === false);
+
+// ---- 14d. «Che cosa devo fare adesso» ------------------------------------
+// ⚠️ L'ordine è una GERARCHIA DI CAUSE: si dice la cosa che, se ignorata,
+//    rende false tutte le altre.
+check('un programma sospeso lo dice prima di ogni altra cosa',
+  nextStep(opp({ programAvailability: 'suspended', openCriteriaCount: 3 }), TODAY) === 'suspended');
+check('uno strumento ritirato viene subito dopo',
+  nextStep(opp({ programLifecycle: 'retired' }), TODAY) === 'retired');
+check('una pratica già aperta vince sui criteri aperti',
+  nextStep(opp({ caseId: 'k1', openCriteriaCount: 2 }), TODAY) === 'inCase');
+check('l\'esclusione si dice anche a finestra aperta',
+  nextStep(opp({ eligibilityStatus: 'ineligible' }), TODAY) === 'ineligible');
+check('a finestra chiusa non si chiede di rispondere a niente',
+  nextStep(opp({ timing: 'closed', openCriteriaCount: 4 }), TODAY) === 'closed');
+check('una valutazione da aggiornare precede i criteri',
+  nextStep(opp({ assessmentStale: true, openCriteriaCount: 2 }), TODAY) === 'stale');
+check('con criteri aperti si chiede di rispondere',
+  nextStep(opp({ openCriteriaCount: 2 }), TODAY) === 'answer');
+check('senza criteri aperti ma con dati mancanti si chiede di completare',
+  nextStep(opp({ missingFactCount: 3 }), TODAY) === 'complete');
+check('con tutto a posto si propone di aprire una pratica',
+  nextStep(opp(), TODAY) === 'openCase');
+// ⚠️ Il ramo che NON deve esistere: nessuno stato porta a «candidati».
+check('nessun passo successivo propone di inviare la domanda',
+  !Object.values({ a: nextStep(opp(), TODAY) }).includes('submit' as never));
+
+// ---- 14e. La checklist e la prontezza ------------------------------------
+const kase = (o: Partial<IncentiveCase> = {}): IncentiveCase => ({
+  id: 'k1', opportunityId: 'o1', projectId: 'p1', projectTitle: 'Progetto',
+  programId: 'innosuisse', programName: 'Innosuisse', authority: 'Confederazione',
+  status: 'collecting_documents', ownerUserId: null,
+  officialDeadline: null, officialDeadlineAt: null, internalDeadline: null,
+  amountRequested: null, amountAwarded: null, currency: null, outcome: 'unknown',
+  submittedAt: null, decisionAt: null, legacySnapshot: false, sourceChangedAt: null,
+  archivedAt: null, createdAt: TODAY,
+  itemsTotal: 4, itemsDone: 2, itemsRequiredOpen: 1, documentCount: 0,
+  ...o,
+});
+
+// ⚠️ A zero passi la percentuale è `null`, NON 0 e NON 100: una checklist vuota
+//    non è un lavoro appena cominciato, ed è la regola grafica «se non si sa,
+//    non si mostra» applicata a un numero.
+check('a zero passi la percentuale è nulla, non zero',
+  checklistProgress(kase({ itemsTotal: 0, itemsDone: 0 })).percent === null);
+check('la percentuale è intera e sul totale', checklistProgress(kase()).percent === 50);
+check('più spuntati del totale non produce oltre il 100%',
+  checklistProgress(kase({ itemsTotal: 3, itemsDone: 9 })).percent === 100);
+// ⚠️ «Pronta» NON è «tutti i passi spuntati»: è «nessun passo OBBLIGATORIO
+//    aperto». E una checklist VUOTA non rende pronta una pratica.
+check('con un passo obbligatorio aperto non si è pronti', canMarkReady(kase()) === false);
+check('senza passi obbligatori aperti si è pronti',
+  canMarkReady(kase({ itemsRequiredOpen: 0 })) === true);
+check('una checklist vuota NON rende pronta la pratica',
+  canMarkReady(kase({ itemsTotal: 0, itemsDone: 0, itemsRequiredOpen: 0 })) === false);
+check('e «pronta» non compare fra le transizioni offerte',
+  !nextStatuses(kase()).includes('ready'));
+check('compare quando i passi obbligatori sono chiusi',
+  nextStatuses(kase({ itemsRequiredOpen: 0 })).includes('ready'));
+
+// ---- 14f. Gli stati della pratica ----------------------------------------
+// ⚠️ Da «inviata» NON si torna in bozza: l'invio è un fatto registrato con data
+//    e persona, e cancellarlo riscriverebbe la storia. Si ritira.
+check('da «inviata» non si torna in bozza',
+  !nextStatuses(kase({ status: 'submitted' })).includes('draft'));
+check('da «inviata» si può ritirare',
+  nextStatuses(kase({ status: 'submitted' })).includes('withdrawn'));
+// ⚠️ Un esito richiede una pratica inviata: lo impone anche il trigger, e
+//    offrirlo prima produrrebbe un errore del database invece di un'azione
+//    impossibile.
+check('un esito non si offre su una bozza',
+  !nextStatuses(kase({ status: 'draft' })).includes('approved')
+  && !nextStatuses(kase({ status: 'collecting_documents' })).includes('rejected'));
+check('una pratica chiusa non offre altri passaggi',
+  nextStatuses(kase({ status: 'closed' })).length === 0);
+
+// ---- 14g. Le due scadenze della pratica ----------------------------------
+// §118 — si dichiara SEMPRE quale delle due è: dire «fra 5 giorni» senza dire
+//        «interna» farebbe credere che l'autorità chiuda fra cinque giorni.
+check('senza date non c\'è nessuna scadenza da mostrare',
+  caseDeadline(kase(), TODAY) === null);
+check('con entrambe vince la più vicina, dichiarata per quello che è',
+  caseDeadline(kase({ officialDeadline: '2026-09-30', internalDeadline: '2026-08-10' }), TODAY)?.kind === 'internal');
+// ⚠️ Una scadenza già passata vince su una futura: è quella su cui bisogna fare
+//    qualcosa. Ordinare solo per «più vicina» nasconderebbe il termine mancato.
+check('un termine già scaduto viene prima di uno futuro',
+  caseDeadline(kase({ officialDeadline: '2026-07-01', internalDeadline: '2026-08-10' }), TODAY)?.kind === 'official');
+check('e si dichiara scaduto',
+  caseDeadline(kase({ officialDeadline: '2026-07-01' }), TODAY)?.expired === true);
+check('i giorni sono di CALENDARIO, non millisecondi diviso 86400000',
+  daysBetweenDates('2026-03-28', '2026-03-30') === 2);
+
+// ---- 14h. Le validazioni del progetto ------------------------------------
+const draft = (o: Partial<Parameters<typeof validateProject>[0]> = {}) => ({
+  title: 'Fotovoltaico sul capannone', budgetAmount: null, budgetCurrency: null,
+  estimatedStartDate: null, estimatedEndDate: null, ...o,
+});
+check('un progetto minimo è valido', validateProject(draft()) === null);
+check('senza titolo non lo è', validateProject(draft({ title: '   ' })) !== null);
+// §67 — nessun CHF d'ufficio, e l'interfaccia lo dice PRIMA del database.
+check('un importo senza valuta viene fermato qui, non dal codice 23514',
+  validateProject(draft({ budgetAmount: 180000 })) === 'incentives.errors.currencyRequired');
+check('con la valuta passa',
+  validateProject(draft({ budgetAmount: 180000, budgetCurrency: 'CHF' })) === null);
+check('una fine prima dell\'inizio viene fermata',
+  validateProject(draft({ estimatedStartDate: '2026-09-01', estimatedEndDate: '2026-08-01' }))
+    === 'incentives.errors.datesInverted');
+
+// ---- 14i. I codici delle guardie diventano frasi -------------------------
+// ⚠️ Senza questa mappatura `subsidy_project_currency_required` arriverebbe a
+//    schermo così com'è: in italiano, dentro un'interfaccia tedesca.
+check('il codice della valuta diventa una chiave di traduzione',
+  subsidyErrorKey({ message: 'subsidy_project_currency_required: …' })
+    === 'incentives.errors.currencyRequired');
+check('anche quello del responsabile',
+  subsidyErrorKey({ message: 'subsidy_case_owner_not_member: …' })
+    === 'incentives.errors.ownerNotMember');
+// ⚠️ Un codice sconosciuto torna `null` e il chiamante mostra il messaggio del
+//    server: il valore GREZZO, non una categoria inventata.
+check('un codice sconosciuto NON diventa una frase plausibile',
+  subsidyErrorKey({ message: 'qualcosa che non conosciamo' }) === null);
+// I codici mappati devono esistere davvero nella migrazione.
+for (const code of [
+  'subsidy_project_owner_not_member', 'subsidy_case_owner_not_member',
+  'subsidy_project_dates_inverted', 'subsidy_project_currency_required',
+  'subsidy_case_currency_required', 'subsidy_case_outcome_without_submission',
+  'subsidy_project_cross_tenant', 'subsidy_opportunity_cross_tenant',
+  'subsidy_link_cross_tenant', 'subsidy_case_missing',
+]) {
+  check(`il codice ${code} esiste nella 0032`, MIGRATION.includes(code));
+}
+
+// ---- 14l. Gli avvisi del riassunto ---------------------------------------
+// ⚠️ L'elenco è VUOTO quando non c'è niente da dire: un riquadro «tutto in
+//    ordine» sempre presente si smette di leggere, e il giorno in cui dice
+//    qualcosa non lo nota nessuno.
+check('nessun avviso quando non c\'è niente da dire',
+  summaryNotices({ staleAssessments: 0, casesWithSourceChange: 0 }).length === 0);
+check('un avviso per le valutazioni da aggiornare',
+  summaryNotices({ staleAssessments: 3, casesWithSourceChange: 0 }).length === 1);
+check('due quando anche il catalogo è cambiato sotto una pratica',
+  summaryNotices({ staleAssessments: 3, casesWithSourceChange: 1 }).length === 2);
+// ⚠️ «fra 1 giorni» è il difetto che ha portato qui, ed è comparso a schermo su
+//    una pratica con il termine il giorno dopo. Nessuna desinenza si compone a
+//    pezzi: si sceglie la CHIAVE, perché in italiano funzionerebbe e in tedesco
+//    no («1 Gelegenheiten»).
+check('un giorno solo prende la chiave singolare',
+  plural(1, 'incentives.deadlineInOne', 'incentives.deadlineIn') === 'incentives.deadlineInOne');
+check('e zero o molti prendono il plurale',
+  plural(0, 'incentives.deadlineInOne', 'incentives.deadlineIn') === 'incentives.deadlineIn'
+  && plural(5, 'incentives.deadlineInOne', 'incentives.deadlineIn') === 'incentives.deadlineIn');
+check('anche «un giorno fa» è singolare: conta il valore assoluto',
+  plural(-1, 'incentives.deadlineInOne', 'incentives.deadlineIn') === 'incentives.deadlineInOne');
+
+check('«oggi» si scrive in ISO ed è una data di calendario',
+  /^\d{4}-\d{2}-\d{2}$/.test(todayISO(new Date('2026-03-09T23:30:00'))));
+
+// ===========================================================================
+section('15. I trigger devono SOPRAVVIVERE ALLA CASCATA');
+// ⚠️ IL DIFETTO CHE QUESTA SEZIONE IMPEDISCE DI RIPETERE, riprodotto sul
+//    database vero il 2026-07-30: `subsidy_answers_guard` sollevava su
+//    `tg_op <> 'INSERT'` e il suo trigger copriva anche il DELETE, quindi
+//    un'azienda con UNA sola risposta non si cancellava più — 23514, e
+//    l'azienda restava in produzione. È la classe di difetto della 0023, della
+//    0025 e della 0028, e la 0032 la dichiara nella propria intestazione senza
+//    applicarla a questa tabella. Chiusa da 0033 (azienda) e 0034 (progetto).
+//
+// Nessun typecheck può vedere una cosa del genere: si legge l'SQL.
+
+check('il guardiano delle risposte copre il DELETE',
+  /before insert or update or delete on public\.subsidy_answers/i.test(ANSWERS_TRIGGER));
+// ⚠️ Il ramo che salva la cascata: si guarda se il GENITORE esiste ancora.
+check('e sul DELETE controlla se l\'AZIENDA esiste ancora',
+  /not exists \(select 1 from public\.companies/i.test(ANSWERS_GUARD));
+check('e se il PROGETTO esiste ancora',
+  /not exists \(select 1 from public\.subsidy_projects/i.test(ANSWERS_GUARD));
+check('dentro la cascata restituisce `old` invece di sollevare',
+  /if v_cascade then\s*\n\s*return old;/i.test(ANSWERS_GUARD));
+// ⚠️ E l'append-only NON dev'essere stato smontato per farlo: la cancellazione
+//    DIRETTA di una risposta resta un errore.
+check('ma la cancellazione diretta resta respinta',
+  /raise exception 'subsidy_answers_append_only: una risposta non si cancella/.test(ANSWERS_GUARD));
+check('e l\'update pure', /una risposta non si modifica/.test(ANSWERS_GUARD));
+// ⚠️ Un controllo va provato su un caso che DEVE farlo fallire: la versione
+//    ROTTA è ancora nella 0032, e su quella gli stessi controlli non passano.
+check('controprova: la versione originale della 0032 NON supera questi controlli',
+  /tg_op <> 'INSERT'/.test(MIGRATION)
+  && !/not exists \(select 1 from public\.companies/i.test(
+    MIGRATION.slice(MIGRATION.indexOf('subsidy_answers_guard'),
+      MIGRATION.indexOf('subsidy_opportunity_guard'))));
+// L'autoverifica delle due migrazioni prova entrambi i lati, non solo quello
+// comodo: un controllo che provasse solo la cascata non vedrebbe un
+// append-only smontato per sbaglio.
+check('la 0034 si autoverifica su tutti e tre i lati',
+  ANSWERS_GUARD.includes('è stato smontato')
+  && ANSWERS_GUARD.includes('ancora indistruttibile')
+  && ANSWERS_GUARD.includes('la 0033 si è rotta'));
 
 // ===========================================================================
 console.log(`\n${B}Risultato:${X} ${G}${pass} passati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);

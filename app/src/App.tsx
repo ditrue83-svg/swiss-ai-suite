@@ -20,6 +20,7 @@ import { InboxPage } from '@/features/inbox/InboxPage';
 import { EmailAccountsPage } from '@/features/inbox/EmailAccountsPage';
 import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
 import { SubsidyPage } from '@/features/subsidy-ai/SubsidyPage';
+import { IncentivesPage } from '@/features/incentives/IncentivesPage';
 import { DocumentsPage } from '@/features/documents/DocumentsPage';
 import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
 import { FinancePage } from '@/features/finance/FinancePage';
@@ -119,6 +120,18 @@ export default function App() {
             <Route path="/calendario" element={<CalendarPage />} />
             <Route path="/calendario/impostazioni" element={<CalendarSettingsPage />} />
             <Route path="/admin" element={<AdminAIPage />} />
+            {/* INCENTIVI (Subsidy AI 2.0, 0032). Quattro schede, e la scheda
+                viaggia in `?scheda=`: `/incentivi/pratiche` colliderebbe con
+                un futuro `/incentivi/:id`, ed è la stessa scelta già fatta
+                per la sezione delle Finanze. */}
+            <Route path="/incentivi" element={<IncentivesPage />} />
+            {/* ⚠️ La schermata 1.0 RESTA raggiungibile e non reindirizza, a
+                differenza di `/scadenziario` e `/archivio`. La ragione è di
+                merito: il 2.0 non copre ancora il profilo incentivi e
+                l'interpretazione AI della descrizione, che vivono solo là.
+                Reindirizzare porterebbe via una funzione senza sostituirla —
+                e togliere prima di aver dato è il modo di far sparire lavoro
+                senza accorgersene. La voce di menu punta al 2.0. */}
             <Route path="/subsidy" element={<SubsidyPage />} />
             <Route path="/documenti" element={<DocumentsPage />} />
             <Route path="/documenti/:id" element={<DocumentDetailPage />} />

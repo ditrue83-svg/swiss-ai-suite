@@ -738,3 +738,83 @@
 @media (prefers-reduced-motion: reduce) {
   .as-drawer, .as-overlay { transition: none; }
 }
+
+/* ===========================================================================
+   INCENTIVI (Subsidy AI 2.0)
+   ---------------------------------------------------------------------------
+   ⚠️ Nessun valore scritto a mano: misure e colori vengono dai token, e nessuna
+   regola qui sotto usa px per il testo (regola 1 e §«Scala tipografica» del
+   sistema di design).
+
+   ⚠️ NESSUNA LARGHEZZA FISSA DOVE C'È TESTO TRADOTTO. Le etichette delle sei
+   misure sono RILEVANZA / RELEVANZ / PERTINENCE e IDONEITÀ / FÖRDERFÄHIGKEIT /
+   ÉLIGIBILITÉ: la griglia si adatta al contenuto (`auto-fit` + `minmax`),
+   perché a larghezza fissa il tedesco esce dal riquadro — è già successo con
+   la rilevanza a 66px.
+   =========================================================================== */
+
+/* Il titolo di una riga è un pulsante, ma deve leggersi come un titolo: senza
+   questa regola il fondo e il bordo del browser lo trasformano in un bottone
+   grigio dentro un elenco. */
+.inc-open { background: none; border: 0; padding: 0; font: inherit; color: var(--accent-text);
+  cursor: pointer; text-align: left; }
+.inc-open:hover { text-decoration: underline; }
+
+.inc-row-side { display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: var(--sp-2); margin-left: auto; }
+
+/* Le sei misure. Etichetta sopra, valore sotto: in colonna reggono le tre
+   lingue senza che nessuna riga vada a capo in modo diverso dalle altre. */
+.inc-measures { display: grid; gap: var(--sp-2) var(--sp-4); margin: var(--sp-3) 0 0;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+.inc-measure dt { font-size: var(--fs-label); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .02em;
+  /* Due righe riservate: «Freschezza della fonte» in tedesco va a capo, e senza
+     l'altezza minima il suo valore scenderebbe disallineando tutta la fila. */
+  min-height: 2.4em; }
+.inc-measure dd { font-size: var(--fs-meta); color: var(--ink); margin: 0; }
+
+/* «Che cosa fare adesso»: una riga sola, e l'unica con l'accento. */
+.inc-next { display: flex; align-items: center; gap: var(--sp-2);
+  margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--accent-text); }
+
+/* La scadenza. ⚠️ Il rosso lo prende SOLO quando il motore dichiara l'urgenza:
+   un colore forte su ogni data trasformerebbe l'avviso in decorazione, e due
+   avvisi rossi affiancati non dicono «due volte urgente», dicono «non
+   guardare». */
+.inc-deadline { display: flex; align-items: center; gap: var(--sp-2);
+  margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); }
+.inc-deadline.is-urgent { color: var(--red-dark); font-weight: 600; }
+
+.inc-flag { margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--amber); }
+
+/* Un criterio. */
+.inc-criterion { padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.inc-criterion:first-child { border-top: none; }
+.inc-crit-head { display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: var(--sp-2); }
+.inc-crit-label { font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
+.inc-crit-meta { margin-top: var(--sp-1); font-size: var(--fs-meta); color: var(--muted); }
+.inc-crit-reason { margin-top: var(--sp-1); font-size: var(--fs-label); color: var(--muted); }
+.inc-crit-reason code { font-size: inherit; }
+
+/* La citazione della fonte: l'evidenza originale, che può essere in una lingua
+   diversa da quella dell'interfaccia. `mark.ev-hl` porta già il proprio colore
+   di testo (`--on-highlight`) in entrambi i temi. */
+.inc-quote { margin: var(--sp-2) 0 0; padding-left: var(--sp-3);
+  border-left: 2px solid var(--accent-line); }
+.inc-quote-src { margin-top: var(--sp-1); font-size: var(--fs-label); color: var(--muted); }
+
+/* Un passo della checklist: la spunta occupa la riga, il cestino sta a destra.
+   Il bersaglio della spunta è la FRASE (label), non la casella. */
+.inc-step { display: flex; align-items: flex-start; gap: var(--sp-3); }
+.inc-step .checklist-item { flex: 1; min-width: 0; }
+
+.inc-cat-detail { margin-top: var(--sp-3); }
+.inc-cat-row { align-items: flex-start; }
+
+/* La conferma che la risposta è stata REGISTRATA — non che il criterio sia
+   cambiato. Verde perché è una scrittura riuscita, discreta perché il verdetto
+   resta quello del badge sopra. */
+.inc-crit-answered { display: flex; align-items: center; gap: var(--sp-2);
+  margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--green); }

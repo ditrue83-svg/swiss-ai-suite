@@ -23,6 +23,12 @@ import type {
   ContractTerminationMethod, ContractCostFrequency, ContractMilestoneKind,
   ContractMilestoneSource, ContractMilestoneStatus, ContractQualityFlag, ContractEventKind,
   ContractAttentionClauseKind,
+  SubsidyProjectStage, SubsidyOpportunityKind, SubsidyRelevanceLevel,
+  SubsidyEligibilityStatus, SubsidyCompleteness, SubsidyTiming, SubsidyFreshness,
+  SubsidyReadiness, SubsidyCallStatus, SubsidyRuleHardness, SubsidyRuleEvaluability,
+  SubsidyCriterionState, SubsidyFactSource, SubsidyDismissalReason,
+  SubsidyCaseOutcome, SubsidyChecklistKind, SubsidyCaseEventKind,
+  SubsidySourceType, SubsidySourceCriticality,
 } from './database';
 
 export type {
@@ -46,6 +52,12 @@ export type {
   ContractTerminationMethod, ContractCostFrequency, ContractMilestoneKind,
   ContractMilestoneSource, ContractMilestoneStatus, ContractQualityFlag, ContractEventKind,
   ContractAttentionClauseKind,
+  SubsidyProjectStage, SubsidyOpportunityKind, SubsidyRelevanceLevel,
+  SubsidyEligibilityStatus, SubsidyCompleteness, SubsidyTiming, SubsidyFreshness,
+  SubsidyReadiness, SubsidyCallStatus, SubsidyRuleHardness, SubsidyRuleEvaluability,
+  SubsidyCriterionState, SubsidyFactSource, SubsidyDismissalReason,
+  SubsidyCaseOutcome, SubsidyChecklistKind, SubsidyCaseEventKind,
+  SubsidySourceType, SubsidySourceCriticality,
 };
 
 // ---- Utente / azienda -------------------------------------------------------
@@ -637,6 +649,239 @@ export interface SubsidyCaseItem {
   title: string;
   completed: boolean;
   sortOrder: number;
+}
+
+// ---- Incentivi / Subsidy AI 2.0 (0032) --------------------------------------
+//
+// ⚠️ I NOMI COMINCIANO CON `Incentive` E NON CON `Subsidy`, e non è una
+// preferenza estetica: `SubsidyCase` qui sopra esiste ed è il modello 1.0, che
+// resta in esercizio finché la vecchia schermata gira. Due interfacce con lo
+// stesso nome e campi diversi sarebbero la peggiore delle collisioni — il
+// compilatore sceglierebbe una delle due e la schermata leggerebbe campi
+// sempre `undefined`.
+//
+// ⚠️ NESSUNO DI QUESTI MODELLI HA UN CAMPO «PUNTEGGIO» O «PROBABILITÀ». Le sei
+// misure sono sei campi separati, esattamente come sono sei colonne nel
+// database: comprimerle in un numero è il modo in cui un prodotto del genere
+// comincia a mentire. `relevanceScore` esiste solo perché l'elenco va ordinato,
+// e nessuna schermata lo stampa.
+
+/** Una ragione della rilevanza: CHIAVE di traduzione con parametri, mai una frase. */
+export interface IncentiveRelevanceReason {
+  key: string;
+  params?: Record<string, string | number>;
+}
+
+export interface IncentiveProject {
+  id: string;
+  title: string;
+  description: string | null;
+  stage: SubsidyProjectStage;
+  ownerUserId: string | null;
+  locationCanton: string | null;
+  sector: string | null;
+  estimatedStartDate: string | null;
+  estimatedEndDate: string | null;
+  budgetAmount: number | null;
+  budgetCurrency: string | null;
+  employeeImpact: number | null;
+  /** ⚠️ Tre valori: `null` è «non lo sappiamo», e non è `false`. */
+  hasResearchPartner: boolean | null;
+  hasInnovationPartner: boolean | null;
+  hasInternationalPartners: boolean | null;
+  projectTypes: string[];
+  goals: string | null;
+  status: string;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Conteggi calcolati dal database: qui non si conta niente. */
+  opportunityCount: number;
+  highRelevanceCount: number;
+  staleCount: number;
+  documentCount: number;
+  partnerCount: number;
+  /** L'ultima versione dell'interpretazione AI, `null` se non ce n'è nessuna. */
+  interpretationVersion: number | null;
+}
+
+export interface IncentiveOpportunity {
+  id: string;
+  projectId: string | null;
+  projectTitle: string | null;
+  kind: SubsidyOpportunityKind;
+  programId: string;
+  programName: string;
+  authority: string;
+  supportType: string;
+  programAvailability: string;
+  programLifecycle: string;
+  officialSourceUrl: string;
+  programVersionId: string;
+  versionNumber: number;
+  versionEffectiveFrom: string | null;
+  callId: string | null;
+  callTitle: string | null;
+  callStatus: SubsidyCallStatus | null;
+  callDeadlineOn: string | null;
+  callDeadlineAt: string | null;
+  callContinuous: boolean;
+  // ---- Le sei misure ----
+  relevanceLevel: SubsidyRelevanceLevel;
+  /** INTERNO, per ordinare. Non si mostra: «82/100» diventa «82% di possibilità». */
+  relevanceScore: number;
+  eligibilityStatus: SubsidyEligibilityStatus;
+  completeness: SubsidyCompleteness;
+  timing: SubsidyTiming;
+  sourceFreshness: SubsidyFreshness;
+  readiness: SubsidyReadiness;
+  // ---- Che cosa manca ----
+  missingFactCount: number;
+  openCriteriaCount: number;
+  assessmentStale: boolean;
+  savedAt: string | null;
+  dismissedAt: string | null;
+  dismissedReason: SubsidyDismissalReason | null;
+  reopenSuggestedAt: string | null;
+  lastAssessedAt: string | null;
+  firstMatchedAt: string;
+  /** La pratica non archiviata più recente nata da questa opportunità. */
+  caseId: string | null;
+  caseStatus: SubsidyCaseStatus | null;
+  relevanceReasons: IncentiveRelevanceReason[];
+  /** La valutazione corrente: serve a chiedere i criteri. */
+  currentAssessmentId: string | null;
+}
+
+/**
+ * Un criterio dentro una valutazione.
+ *
+ * ⚠️ `valueSource` è il campo che rende la risposta verificabile: senza,
+ * «soddisfatto» è un'affermazione dell'app; con, è una catena che si risale
+ * fino al profilo, alla risposta di una persona o alla citazione di un
+ * documento. Una schermata che lo omettesse svuoterebbe la colonna.
+ */
+export interface IncentiveCriterion {
+  ruleKey: string;
+  label: string;
+  hardness: SubsidyRuleHardness;
+  evaluability: SubsidyRuleEvaluability;
+  question: string | null;
+  state: SubsidyCriterionState;
+  observedValue: string | null;
+  valueSource: SubsidyFactSource | null;
+  reasonCode: string | null;
+  factKey: string | null;
+  /** { quote, section, page, url, language, checkedAt } — l'evidenza sulla fonte. */
+  sourceEvidence: {
+    quote?: string; section?: string; page?: number | null;
+    url?: string; language?: string; checkedAt?: string;
+  } | null;
+  sortOrder: number;
+}
+
+export interface IncentiveCase {
+  id: string;
+  opportunityId: string | null;
+  projectId: string | null;
+  projectTitle: string | null;
+  programId: string;
+  programName: string | null;
+  authority: string | null;
+  status: SubsidyCaseStatus;
+  ownerUserId: string | null;
+  /** §118 — DUE scadenze: quella della call non si tocca, quella interna sì. */
+  officialDeadline: string | null;
+  officialDeadlineAt: string | null;
+  internalDeadline: string | null;
+  amountRequested: number | null;
+  amountAwarded: number | null;
+  currency: string | null;
+  outcome: SubsidyCaseOutcome;
+  /** Quando una PERSONA ha registrato l'invio. Non è una conferma dell'autorità. */
+  submittedAt: string | null;
+  decisionAt: string | null;
+  /** Vero per le pratiche nate prima della 0032: l'istantanea non è ricostruibile. */
+  legacySnapshot: boolean;
+  /** Il catalogo è cambiato dopo la creazione: si mostra il confronto, non si aggiorna. */
+  sourceChangedAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  itemsTotal: number;
+  itemsDone: number;
+  itemsRequiredOpen: number;
+  documentCount: number;
+}
+
+export interface IncentiveCaseItem {
+  id: string;
+  subsidyCaseId: string;
+  title: string;
+  completed: boolean;
+  sortOrder: number;
+  kind: SubsidyChecklistKind;
+  documentId: string | null;
+  taskId: string | null;
+  dueDate: string | null;
+  required: boolean;
+  sourceRequirementKey: string | null;
+  completedAt: string | null;
+  completedBy: string | null;
+}
+
+export interface IncentiveCaseEvent {
+  id: string;
+  kind: SubsidyCaseEventKind;
+  detail: Record<string, unknown>;
+  actorUserId: string | null;
+  createdAt: string;
+}
+
+/** Una riga del Catalogo: il programma con la sua versione, le call e la fonte. */
+export interface IncentiveCatalogProgram {
+  id: string;
+  name: string;
+  authority: string;
+  supportType: string;
+  officialSourceUrl: string;
+  availability: string;
+  availabilityNote: string | null;
+  availabilityCheckedAt: string | null;
+  lifecycle: string;
+  dataStatus: string;
+  lastCheckedAt: string | null;
+  geography: string[];
+  projectTypes: string[];
+  contributionDescription: string | null;
+  mustApplyBeforeStart: boolean;
+  documentsRequired: string[];
+  /** La versione PUBBLICATA. `null` quando non ce n'è: si dichiara, non si finge. */
+  version: {
+    id: string; versionNumber: number; effectiveFrom: string | null;
+    publishedAt: string | null; reviewedAt: string | null; criteriaCount: number;
+  } | null;
+  calls: Array<{
+    id: string; title: string | null; status: SubsidyCallStatus;
+    opensOn: string | null; deadlineOn: string | null; deadlineAt: string | null;
+    continuous: boolean; expectedNextCall: string | null; externalReference: string | null;
+  }>;
+  /** La fonte ufficiale e la data dell'ultimo controllo RIUSCITO. */
+  source: {
+    id: string; authority: string; sourceType: SubsidySourceType;
+    canonicalUrl: string; criticality: SubsidySourceCriticality;
+    lastSuccessfulCheckAt: string | null; checkFrequencyDays: number;
+    lastErrorAt: string | null;
+  } | null;
+}
+
+export interface IncentiveSummary {
+  newOpportunities: number;
+  highRelevance: number;
+  staleAssessments: number;
+  openCases: number;
+  casesWithSourceChange: number;
+  deadlinesSoon: number;
+  activeProjects: number;
 }
 
 // ---- Inbox ------------------------------------------------------------------

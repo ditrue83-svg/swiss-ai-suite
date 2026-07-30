@@ -30,7 +30,14 @@ export const NAV: NavEntry[] = [
   { id: 'calendar', labelKey: 'nav.calendar', icon: 'calendar', path: '/calendario' },
   { sectionKey: 'nav.sectionModules' },
   { id: 'admin', labelKey: 'nav.adminAi', icon: 'document', path: '/admin' },
-  { id: 'subsidy', labelKey: 'nav.subsidyAi', icon: 'banknote', path: '/subsidy' },
+  // Gli Incentivi puntano al modulo 2.0 (`/incentivi`, 0032): progetto →
+  // opportunità → pratica, con la fonte e la data di ogni criterio. La
+  // schermata 1.0 resta raggiungibile da `/subsidy` finché il profilo
+  // incentivi e l'interpretazione AI non hanno una casa nel 2.0, ma non ha
+  // una voce propria: due voci per due versioni dello stesso modulo
+  // obbligherebbero a scegliere ogni volta quale aprire — l'errore già
+  // pagato con «Panoramica» e «Dashboard».
+  { id: 'subsidy', labelKey: 'nav.incentives', icon: 'banknote', path: '/incentivi' },
   // I Documenti non sono un modulo accanto agli altri: sono la memoria su cui
   // gli altri lavorano. Restano però qui, in fondo ai moduli, perché spostare
   // il menu è un'altra decisione e non va presa di straforo insieme a questa.
