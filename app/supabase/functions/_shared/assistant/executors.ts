@@ -1203,6 +1203,26 @@ function contractSource(r: Record<string, unknown>, ref: string): AssistantSourc
   });
 }
 
+/**
+ * Il titolo dell'elenco dice QUALE elenco.
+ *
+ * ⚠️ Una stessa domanda passa spesso due volte da qui con filtri diversi — «da
+ * verificare» e «preavvisi in scadenza» — e con un titolo unico ne uscivano due
+ * schede fonte identiche in tutto tranne un parametro invisibile
+ * nell'indirizzo (visto a schermo il 2026-07-30). Il titolo è ciò che l'utente
+ * legge: deve distinguere ciò che le due letture hanno davvero cercato.
+ * Le viste sono quelle dichiarate nel registro degli strumenti.
+ */
+export function contractsGroupTitle(view: string): string {
+  switch (view) {
+    case 'needs_review': return 'Contratti da verificare';
+    case 'active': return 'Contratti attivi';
+    case 'renewals': return 'Contratti in rinnovo';
+    case 'notices': return 'Contratti con preavviso in scadenza';
+    default: return 'Contratti trovati';
+  }
+}
+
 const listContracts: Executor = async (input, deps) => {
   const { db, ctx } = deps;
   const limit = clampLimit(input.limit, ASSISTANT_LIMITS.maxRowsPerTool, 10);
@@ -1234,7 +1254,7 @@ const listContracts: Executor = async (input, deps) => {
   }
   const gref = deps.allocRef();
   sources.push(groupSource(
-    gref, 'contract', ROUTES.contracts(view !== 'all' ? view : undefined), 'Contratti trovati',
+    gref, 'contract', ROUTES.contracts(view !== 'all' ? view : undefined), contractsGroupTitle(view),
     list.map((r) => ({ id: String(r.id), title: str(r.display_name) ?? 'Contratto', route: ROUTES.contract(String(r.id)) })),
     'deterministic',
   ));

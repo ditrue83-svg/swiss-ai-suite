@@ -282,7 +282,28 @@ Deno.serve(async (req: Request) => {
 
         if (runId) await writeToolCalls(sbAdmin, runId, outcome.toolCalls);
 
-        if (outcome.ok && outcome.answer) {
+        // §114 — se l'interruzione è arrivata, non si scrive.
+        //
+        // Il ciclo guarda il segnale prima di ogni giro, e un'interruzione a
+        // metà lo ferma davvero: provato il 2026-07-30 interrompendo durante la
+        // prima ricerca, dopo trenta secondi non era stato scritto nulla.
+        // Questo controllo chiude ciò che resta, cioè il caso in cui la
+        // disconnessione arriva mentre la risposta si sta componendo.
+        //
+        // ⚠️ NON COPRE LA FINESTRA FINALE, e non può. Fra il momento in cui il
+        // modello consegna la risposta e questa riga passano poche decine di
+        // millisecondi di lavoro locale, mentre la chiusura del browser deve
+        // attraversare la rete: provato il 2026-07-30 abortendo esattamente
+        // sull'evento `composing`, il segnale qui era ancora falso e la
+        // risposta è stata scritta. È una corsa che non si vince spostando
+        // questo controllo, e infatti non si prova: a dire il vero è la
+        // SCHERMATA, che dopo un'interruzione rilegge la conversazione e mostra
+        // ciò che c'è davvero (vedi `LATE_ANSWER_GRACE_MS` in AssistantPage).
+        if (controller.signal.aborted) {
+          errorCode = ASSISTANT_ERROR_CODES.CANCELLED;
+          status = 'cancelled';
+          send({ type: 'error', code: 'CANCELLED', message: errorCode });
+        } else if (outcome.ok && outcome.answer) {
           const written = await writeAnswer(sbAdmin, {
             threadId, companyId, runId,
             answer: outcome.answer,

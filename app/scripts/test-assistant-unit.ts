@@ -27,8 +27,16 @@ import {
   ASSISTANT_TOOLS, STRICT_UNSUPPORTED_KEYWORDS, SUBMIT_ANSWER_TOOL, TOOL_KEYS, findTool, toApiTools,
 } from '../supabase/functions/_shared/assistant/registry.ts';
 import {
-  EXECUTORS, sanitizeToolInput, type DbLike, type DbResult, type ExecutorDeps, type QueryLike,
+  EXECUTORS, contractsGroupTitle, sanitizeToolInput,
+  type DbLike, type DbResult, type ExecutorDeps, type QueryLike,
 } from '../supabase/functions/_shared/assistant/executors.ts';
+// ⚠️ Le funzioni pure della SCHERMATA, provate qui come `crmModel` in
+// `test-crm-unit`: il difetto delle pastiglie stava proprio nel pezzo che
+// nessuna prova toccava.
+import {
+  citationLabel, dedupeCitations,
+} from '../src/features/assistant/assistantModel.ts';
+import type { AssistantCitation } from '../src/types/models.ts';
 import {
   buildFactSet, checkGrounding, finalizeAnswer, isHighRisk, resolveCitations, validateAnswerShape,
 } from '../supabase/functions/_shared/assistant/answer.ts';
@@ -542,6 +550,88 @@ check('un testo corto non viene toccato', truncate('breve', 20) === 'breve');
 check('i limiti dichiarati sono coerenti fra loro',
   ASSISTANT_LIMITS.maxToolCalls < ASSISTANT_LIMITS.maxTurns
   && ASSISTANT_LIMITS.maxRowsPerTool <= ASSISTANT_LIMITS.maxRowsPerRun);
+
+// ---------------------------------------------------------------------------
+section('12. Le pastiglie delle fonti — che cosa legge chi guarda');
+
+// ⚠️ Questa sezione nasce da un difetto passato inosservato: `citationLabel`
+// aveva già il ramo giusto per un gruppo, ma la schermata non lo chiamava mai —
+// e a schermo comparivano CINQUE pastiglie che dicevano tutte «1 elementi».
+// I 134 controlli di allora erano verdi perché nessuno provava l'etichetta.
+const CIT = (over: Partial<AssistantCitation>): AssistantCitation => ({
+  index: 1, sourceType: 'contract', sourceId: null, groupSize: null,
+  route: '/contratti', title: 'Contratti trovati', subtitle: null, pageNumber: null,
+  fieldName: null, citedText: null, valueSnapshot: null, sourceVersion: null,
+  verification: null, ...over,
+});
+const items = (...routes: string[]) =>
+  ({ items: routes.map((r, i) => ({ title: `Voce ${i + 1}`, route: r })) });
+const count = (n: number) => (n === 1 ? '1 elemento' : `${n} elementi`);
+
+check('una fonte singola porta il tipo e il proprio nome',
+  citationLabel(CIT({ sourceId: 'x', title: 'Swisscom 847291' }), 'Fattura', count)
+  === 'Fattura · Swisscom 847291');
+check('un gruppo di UNO porta il titolo dell\'insieme, non «1 elementi»',
+  citationLabel(
+    CIT({ groupSize: 1, title: 'Contratti da verificare' }), 'Contratto', count,
+  ) === 'Contratti da verificare');
+check('un gruppo di più di uno aggiunge il conteggio',
+  citationLabel(
+    CIT({ groupSize: 3, title: 'Contratti trovati' }), 'Contratto', count,
+  ) === 'Contratti trovati · 3 elementi');
+check('un gruppo senza titolo utile ripiega sul tipo',
+  citationLabel(CIT({ groupSize: 1, title: '—' }), 'Panoramica', count) === 'Panoramica');
+// ⚠️ LA CONTROPROVA CHE CONTA: due letture dello stesso elenco con filtri
+// diversi devono leggersi diverse, ed è esattamente ciò che a schermo non
+// succedeva. Il titolo è l'unica cosa che le separa.
+check('due viste dello stesso elenco producono etichette diverse',
+  citationLabel(CIT({ groupSize: 1, title: 'Contratti da verificare' }), 'Contratto', count)
+  !== citationLabel(CIT({ groupSize: 1, title: 'Contratti con preavviso in scadenza' }), 'Contratto', count));
+// Nessuna etichetta di gruppo deve mai dire «1 elementi», per nessuna via.
+check('nessun percorso produce il plurale con uno solo', ![
+  citationLabel(CIT({ groupSize: 1, title: 'Contratti trovati' }), 'Contratto', count),
+  citationLabel(CIT({ groupSize: 1, title: '—' }), 'Contratto', count),
+  citationLabel(CIT({ groupSize: 1, valueSnapshot: items('/c/a') }), 'Contratto', count),
+].some((s) => s.includes('1 elementi')));
+
+check('due citazioni identiche diventano una',
+  dedupeCitations([
+    CIT({ index: 1, groupSize: 1, valueSnapshot: items('/contratti/a') }),
+    CIT({ index: 2, groupSize: 1, valueSnapshot: items('/contratti/a') }),
+  ]).length === 1);
+check('e resta la prima, quella con l\'indice più basso',
+  dedupeCitations([
+    CIT({ index: 4, groupSize: 1, valueSnapshot: items('/contratti/a') }),
+    CIT({ index: 7, groupSize: 1, valueSnapshot: items('/contratti/a') }),
+  ])[0].index === 4);
+// ⚠️ La controprova: accorpare troppo nasconderebbe una fonte diversa.
+check('due citazioni con rotta diversa NON si accorpano',
+  dedupeCitations([
+    CIT({ index: 1, route: '/contratti?vista=needs_review' }),
+    CIT({ index: 2, route: '/contratti?vista=notices' }),
+  ]).length === 2);
+check('due citazioni con elementi diversi NON si accorpano',
+  dedupeCitations([
+    CIT({ index: 1, groupSize: 1, valueSnapshot: items('/contratti/a') }),
+    CIT({ index: 2, groupSize: 1, valueSnapshot: items('/contratti/b') }),
+  ]).length === 2);
+check('due schede singole di record diversi NON si accorpano',
+  dedupeCitations([
+    CIT({ index: 1, sourceId: 'a', route: '/contratti/a', title: 'A' }),
+    CIT({ index: 2, sourceId: 'b', route: '/contratti/b', title: 'B' }),
+  ]).length === 2);
+
+// Il titolo dell'elenco dei contratti distingue le viste: due letture con
+// filtri diversi non devono più produrre due schede identiche.
+{
+  const views = findTool('list_contracts')?.inputSchema.properties?.view as
+    { enum?: string[] } | undefined;
+  const declared = views?.enum ?? [];
+  const titles = declared.map((v) => contractsGroupTitle(v));
+  check('ogni vista dichiarata dei contratti ha il suo titolo, tutti diversi fra loro',
+    declared.length > 1 && titles.every(Boolean) && new Set(titles).size === titles.length,
+    `${declared.join(', ')} → ${titles.join(' | ')}`);
+}
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);

@@ -480,8 +480,37 @@ manipolazione.
 | Tempo esaurito | Ultimo giro con il solo strumento terminale; se non basta, `TIME_BUDGET`. |
 | Il modello non chiama `submit_answer` | Un giro di richiamo; poi `INVALID_ANSWER`. Il testo libero **non** viene promosso a risposta: non avrebbe citazioni. |
 | Il modello rifiuta | `PROVIDER_REFUSAL`. |
-| L'utente interrompe | La richiesta al modello viene abortita davvero; elaborazione `cancelled`. |
+| L'utente interrompe | La richiesta al modello viene abortita davvero; elaborazione `cancelled`. Vedi il riquadro qui sotto per l'unico caso che sfugge. |
 | Il servizio AI non è configurato | 503 `AI_NOT_CONFIGURED`. L'app continua a funzionare in tutto il resto. |
+
+### «Interrompi» e la finestra che non si chiude (misurato il 2026-07-30)
+
+Interrompere ferma davvero il lavoro, ma non in ogni istante, e vale la pena
+dire quale istante fa eccezione perché la differenza si vede a schermo.
+
+Il ciclo controlla il segnale di interruzione prima di ogni giro e lo passa alla
+chiamata al modello. Interrompendo durante la prima ricerca, dopo trenta secondi
+non risultava scritto nulla: né risposta, né citazioni. Quello funziona.
+
+Ciò che non si può chiudere è la finestra finale. Fra il momento in cui il
+modello consegna la risposta e quello in cui la risposta viene scritta passano
+poche decine di millisecondi di lavoro locale, mentre la chiusura del browser
+deve attraversare la rete per arrivare all'isolate. Abortendo la connessione
+esattamente sull'evento `composing`, il segnale lato server risultava ancora
+falso e la risposta è stata scritta lo stesso. Non è un difetto da spostare di
+qualche riga: è una corsa fra un lavoro locale e un messaggio di rete, e la
+perde sempre il messaggio di rete.
+
+Quindi la schermata non dichiara: **controlla**. Dopo un'interruzione aspetta
+`LATE_ANSWER_GRACE_MS` (1,5 s), rilegge la conversazione e mostra ciò che c'è
+davvero — se la risposta è arrivata comunque, l'avviso «Risposta interrotta.»
+sparisce invece di contraddire quello che si vede. E se non è arrivata, la
+domanda rimasta in fondo lo dice da sola, con una riga che resta anche riaprendo
+la conversazione il giorno dopo.
+
+Il costo resta speso in entrambi i casi: la quota si prenota prima della
+chiamata e `finalize_ai_request` la chiude comunque. Interrompere serve a non
+aspettare, non a non pagare — e la copy non promette il contrario.
 
 ---
 

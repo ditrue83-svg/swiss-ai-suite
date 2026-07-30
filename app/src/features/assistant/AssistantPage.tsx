@@ -31,11 +31,21 @@ import type {
   AssistantThread,
 } from '@/types/models';
 import {
-  ENTITY_LABEL_PARAM, ENTITY_PARAM, citationLabel, groupItems, isGroupCitation, parseEntityContext,
+  ENTITY_LABEL_PARAM, ENTITY_PARAM, citationLabel, dedupeCitations, groupItems, parseEntityContext,
   runningKey, sourceIcon, sourceTypeKey, statusBadgeClass, statusKey, statusNeedsHint,
 } from './assistantModel';
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Quanto si aspetta, dopo un'interruzione, prima di rileggere la conversazione.
+ *
+ * Non è un tempo scelto a occhio: è il margine perché una risposta già composta
+ * quando l'interruzione è partita finisca di essere scritta. Più corto direbbe
+ * «interrotta» su una risposta che sta per comparire; più lungo lascerebbe la
+ * schermata ferma senza motivo.
+ */
+const LATE_ANSWER_GRACE_MS = 1500;
 
 /** Un messaggio dell'assistente ancora in arrivo: esiste solo a schermo. */
 interface PendingAnswer {
@@ -71,7 +81,7 @@ export function AssistantPage() {
 
   const abortRef = useRef<AbortController | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const streamRef = useRef<HTMLDivElement | null>(null);
 
   // §120/§121 — la scheda da cui la domanda è partita.
   const entityContext = useMemo(
@@ -120,8 +130,15 @@ export function AssistantPage() {
   }, [threadId]);
 
   // Il fuoco torna alla conversazione quando una risposta arriva (§167).
+  //
+  // ⚠️ SI SCORRE IL CONTENITORE, NON LA FINESTRA. Con `scrollIntoView` sul
+  // fondo del flusso scorreva l'intero documento, e siccome il composer sta
+  // SOTTO il flusso finiva fuori schermo a ogni risposta: misurati 163px sotto
+  // la piega il 2026-07-30, con il pulsante «Chiedi» invisibile. Per scrivere
+  // la domanda successiva bisognava scorrere giù ogni volta.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' });
+    const el = streamRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, pending?.statusLine]);
 
   // Alla chiusura della schermata una risposta in corso viene interrotta:
@@ -132,6 +149,9 @@ export function AssistantPage() {
     () => messages.find((m) => m.id === selectedMessageId) ?? null,
     [messages, selectedMessageId],
   );
+
+  // L'ultima riga è una domanda: quella richiesta non è mai arrivata in fondo.
+  const unanswered = messages.length > 0 && messages[messages.length - 1].role === 'user';
 
   // -- La domanda ------------------------------------------------------------
   const ask = useCallback(async (text: string) => {
@@ -185,7 +205,7 @@ export function AssistantPage() {
       });
     } catch (e) {
       got.failureCode = null;
-      setAskError(toUserMessage(e));
+      if (!controller.signal.aborted) setAskError(toUserMessage(e));
     } finally {
       abortRef.current = null;
     }
@@ -199,6 +219,19 @@ export function AssistantPage() {
       return;
     }
 
+    // ⚠️ DOPO UN'INTERRUZIONE SI ASPETTA, POI SI GUARDA.
+    //
+    // Il server smette davvero quando l'interruzione lo raggiunge in tempo
+    // (provato: interrotta durante la prima ricerca, non viene scritto nulla).
+    // Ma fra il momento in cui il modello consegna la risposta e quello in cui
+    // viene scritta passano poche decine di millisecondi di lavoro locale,
+    // mentre la disconnessione deve attraversare la rete: quella corsa non si
+    // vince. Provato il 2026-07-30 abortendo esattamente sull'evento
+    // `composing` — la risposta è stata scritta lo stesso.
+    // Quindi non si dichiara: si CONTROLLA. Si lascia al server il tempo di
+    // finire, si rilegge la conversazione, e si dice ciò che c'è davvero.
+    if (controller.signal.aborted) await new Promise((r) => { setTimeout(r, LATE_ANSWER_GRACE_MS); });
+
     if (got.threadId && got.threadId !== threadId) setThreadId(got.threadId);
     const target = got.threadId ?? threadId;
     if (target) {
@@ -206,6 +239,10 @@ export function AssistantPage() {
         const list = await assistantService.getMessages(target);
         setMessages(list);
         setSelectedMessageId(got.answered?.messageId ?? lastAssistantId(list));
+        // La risposta è arrivata comunque: l'avviso «interrotta» sarebbe falso.
+        if (controller.signal.aborted && list[list.length - 1]?.role === 'assistant') {
+          setAskError(null);
+        }
       } catch (e) {
         setMessagesError(toUserMessage(e));
       }
@@ -213,6 +250,8 @@ export function AssistantPage() {
     void loadThreads();
   }, [activeCompanyId, threadId, locale, entityContext, pending?.running, t, loadThreads]);
 
+  // L'avviso compare subito, perché il gesto deve avere una risposta immediata.
+  // Se poi la risposta arriva lo stesso, `ask` lo toglie: vedi il commento là.
   const stop = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -334,7 +373,7 @@ export function AssistantPage() {
             </div>
           )}
 
-          <div className="as-stream">
+          <div className="as-stream" ref={streamRef}>
             {/* Ordine obbligatorio: prima il guasto, poi il vuoto, poi i dati. */}
             {messagesError && <ErrorState message={messagesError} />}
 
@@ -385,7 +424,14 @@ export function AssistantPage() {
               </div>
             )}
 
-            <div ref={endRef} />
+            {/* Una domanda rimasta in fondo senza risposta non si spiega da
+                sola: riaprendo la conversazione il giorno dopo sembra che il
+                prodotto l'abbia ignorata. L'avviso a schermo di un'eventuale
+                interruzione vive solo finché la schermata è aperta — questa
+                riga resta, e vale anche per una richiesta non riuscita. */}
+            {unanswered && !pending && !askError && (
+              <p className="as-a-hint as-unanswered">{t('assistant.unanswered')}</p>
+            )}
           </div>
 
           {/* ---- Composer --------------------------------------------- */}
@@ -475,6 +521,7 @@ function AnswerBlock({
   const [askWhy, setAskWhy] = useState(false);
   const status = message.answerStatus ?? 'answered';
   const badge = statusBadgeClass(status);
+  const citations = useMemo(() => dedupeCitations(message.citations), [message.citations]);
 
   return (
     <article className={`as-a${selected ? ' is-selected' : ''}`} aria-label={t(statusKey(status))}>
@@ -496,14 +543,14 @@ function AnswerBlock({
         </div>
       )}
 
-      {message.citations.length > 0 && (
+      {citations.length > 0 && (
         <div className="as-chips">
-          {message.citations.map((c) => <CitationChip key={c.index} citation={c} />)}
+          {citations.map((c) => <CitationChip key={c.index} citation={c} />)}
           <button type="button" className="as-chip as-chip-more" onClick={onSelect}>
             <Icon name="eye" className="ic-sm" />
-            {message.citations.length === 1
+            {citations.length === 1
               ? t('assistant.sources.countOne')
-              : t('assistant.sources.count', { count: message.citations.length })}
+              : t('assistant.sources.count', { count: citations.length })}
           </button>
         </div>
       )}
@@ -555,9 +602,12 @@ function AnswerBlock({
 function CitationChip({ citation }: { citation: AssistantCitation }) {
   const t = useT();
   const typeLabel = t(sourceTypeKey(citation.sourceType));
-  const label = isGroupCitation(citation)
-    ? t('assistant.sources.group', { count: citation.groupSize ?? 0 })
-    : citationLabel(citation, typeLabel);
+  // Il singolare è una chiave a parte, come per il conteggio delle fonti: in
+  // tedesco e in francese «1 Einträge» e «1 éléments» erano sbagliati quanto
+  // «1 elementi» in italiano.
+  const label = citationLabel(citation, typeLabel, (count) => (count === 1
+    ? t('assistant.sources.groupOne')
+    : t('assistant.sources.group', { count })));
   return (
     <Link className="as-chip" to={citation.route} title={citation.title}>
       <Icon name={sourceIcon(citation.sourceType)} className="ic-sm" />
@@ -657,6 +707,7 @@ function SourcesColumn({
   message, drawerOpen, onClose,
 }: { message: AssistantMessage | null; drawerOpen: boolean; onClose: () => void }) {
   const t = useT();
+  const citations = useMemo(() => dedupeCitations(message?.citations ?? []), [message?.citations]);
   const body = (
     <>
       <div className="as-col-head">
@@ -665,11 +716,11 @@ function SourcesColumn({
       <p className="muted-sm">{t('assistant.sources.subtitle')}</p>
 
       {!message && <div className="empty">{t('assistant.sources.selectHint')}</div>}
-      {message && !message.citations.length && <div className="empty">{t('assistant.sources.empty')}</div>}
+      {message && !citations.length && <div className="empty">{t('assistant.sources.empty')}</div>}
 
-      {message && message.citations.length > 0 && (
+      {message && citations.length > 0 && (
         <ul className="crm-list as-sources">
-          {message.citations.map((c) => <SourceCard key={c.index} citation={c} />)}
+          {citations.map((c) => <SourceCard key={c.index} citation={c} />)}
         </ul>
       )}
     </>

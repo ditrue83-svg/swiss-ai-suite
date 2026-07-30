@@ -79,10 +79,58 @@ export const statusNeedsHint = (status: AssistantAnswerStatus): boolean => statu
 
 /**
  * Il testo della pastiglia di una fonte: «Fattura · Swisscom 847291».
- * Il tipo lo traduce chi chiama, perché qui non si entra in React.
+ * Il tipo e il conteggio li traduce chi chiama, perché qui non si entra in React.
+ *
+ * ⚠️ UN GRUPPO DI UNO NON È «1 elementi». Fino al 2026-07-30 ogni citazione
+ * aggregata mostrava soltanto il conteggio: a schermo comparivano cinque
+ * pastiglie identiche — «1 elementi», «1 elementi», … — distinguibili solo
+ * dall'icona, e due avevano pure la stessa icona. Un gruppo di uno si NOMINA;
+ * il conteggio serve solo quando gli elementi sono davvero più d'uno.
  */
-export function citationLabel(citation: AssistantCitation, typeLabel: string): string {
-  return citation.groupSize != null ? typeLabel : `${typeLabel} · ${citation.title}`;
+export function citationLabel(
+  citation: AssistantCitation, typeLabel: string, countLabel: (count: number) => string,
+): string {
+  const title = citation.title.trim();
+  const named = title && title !== '—' ? title : null;
+  if (!isGroupCitation(citation)) return named ? `${typeLabel} · ${named}` : typeLabel;
+  // ⚠️ Per un gruppo il titolo DESCRIVE GIÀ l'insieme — «Contratti da
+  // verificare», «Attività non assegnate» — ed è l'unica cosa che distingue due
+  // letture dello stesso elenco con filtri diversi. Ripetergli davanti il tipo
+  // direbbe «Contratto · Contratti da verificare»; usare invece il nome
+  // dell'unico elemento farebbe tornare due pastiglie identiche quando le due
+  // ricerche cadono sullo stesso record. I nomi dei record stanno nel pannello
+  // delle fonti, che esiste per quello.
+  const base = named ?? typeLabel;
+  const size = citation.groupSize ?? 0;
+  return size > 1 ? `${base} · ${countLabel(size)}` : base;
+}
+
+/**
+ * §57 — due citazioni indistinguibili sono una sola pastiglia.
+ *
+ * Una domanda può passare due volte dallo stesso elenco con filtri diversi. Se
+ * ne escono la stessa rotta, lo stesso titolo e gli stessi elementi, le due
+ * schede sono identiche per chi legge — visto il 2026-07-30 con «Contratti
+ * trovati» ripetuto due volte, uguale in tutto tranne un parametro invisibile
+ * nell'indirizzo — e ripeterle è solo rumore. Si tiene la prima.
+ *
+ * ⚠️ NON si accorpano citazioni che differiscono per rotta o per titolo: là la
+ * differenza si vede a schermo, ed è informazione. Questa funzione toglie i
+ * doppioni, non riassume.
+ */
+export function dedupeCitations(list: AssistantCitation[]): AssistantCitation[] {
+  const seen = new Set<string>();
+  const out: AssistantCitation[] = [];
+  for (const c of list) {
+    const key = [
+      c.sourceType, c.route, c.title, c.sourceId ?? '',
+      groupItems(c).map((i) => i.route).join(','),
+    ].join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
 }
 
 /**

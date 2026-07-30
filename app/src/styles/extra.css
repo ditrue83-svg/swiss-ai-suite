@@ -519,19 +519,43 @@
    una riga lunga — il testo di una citazione, il nome di un fornitore — allarga
    la colonna e fa comparire lo scorrimento orizzontale della pagina.
    ========================================================================== */
-.as-page { display: flex; flex-direction: column; }
+/* ⚠️ LA SCHERMATA STA NELLO SCHERMO E A SCORRERE SONO LE COLONNE.
+   È l'unica pagina del prodotto fatta così, e la ragione è il composer: se a
+   scorrere è la pagina, il campo della domanda — che sta sotto la conversazione
+   — finisce fuori schermo a ogni risposta. Misurato il 2026-07-30: 163px sotto
+   la piega, con il pulsante «Chiedi» invisibile.
 
-.as-layout { display: grid; align-items: start; gap: var(--sp-4);
-  grid-template-columns: minmax(0, 232px) minmax(0, 1fr) minmax(0, 300px); }
+   `--as-shell-y` sono le spaziature verticali di `.main` (app.css), ripetute
+   qui ai suoi stessi tre punti di rottura. Sono gli unici numeri che questo
+   file condivide con l'involucro: se cambiano là, vanno cambiati qui.
+   `dvh` con `vh` di riserva — su telefono la barra degli indirizzi entra ed
+   esce, e con `100vh` il composer resterebbe sotto il bordo proprio mentre si
+   scrive. Chi non conosce `dvh` ignora la seconda riga. */
+.as-page { --as-shell-y: 94px; /* 30 + 64 */
+  display: flex; flex-direction: column; min-height: 0;
+  height: calc(100vh - var(--as-shell-y));
+  height: calc(100dvh - var(--as-shell-y)); }
+
+.as-layout { display: grid; align-items: stretch; gap: var(--sp-4);
+  flex: 1 1 auto; min-height: 0;
+  grid-template-columns: minmax(0, 264px) minmax(0, 1fr) minmax(0, 300px); }
 
 /* Il pulsante che apre l'elenco esiste solo dove le colonne spariscono. */
 .as-only-narrow { display: none; }
 
+/* Le colonne laterali non hanno più bisogno di `sticky`: la griglia che le
+   contiene è già alta quanto lo schermo, e ciascuna scorre per conto suo. */
 .as-side { border: 1px solid var(--line); border-radius: var(--radius);
-  background: var(--card); padding: var(--sp-3); position: sticky; top: var(--sp-4);
-  max-height: calc(100vh - var(--sp-8)); overflow-y: auto; }
-.as-col-head { display: flex; align-items: center; justify-content: space-between;
-  gap: var(--sp-2); margin-bottom: var(--sp-2); }
+  background: var(--card); padding: var(--sp-3);
+  height: 100%; min-height: 0; overflow-y: auto; }
+/* ⚠️ `wrap` E il pulsante che non si stringe. In francese «Nouvelle» è più
+   lungo di «Nuova» e di «Neu», e in una colonna da 232px usciva dal pannello:
+   15px oltre il bordo della scheda, misurati il 2026-07-30. Con l'a capo la
+   riga si allunga solo dove serve, e nessuna lingua viene tagliata. */
+.as-col-head { display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.as-col-head > .section-title { min-width: 0; overflow-wrap: anywhere; }
+.as-col-head > .btn { flex: 0 0 auto; white-space: nowrap; }
 .as-col-empty { display: flex; justify-content: center; padding: var(--sp-4); }
 
 /* ---- Conversazioni ------------------------------------------------------ */
@@ -557,9 +581,11 @@
 .as-icon-btn:hover { background: var(--surface-2); color: var(--ink); }
 
 /* ---- La conversazione --------------------------------------------------- */
-.as-main { display: flex; flex-direction: column; min-width: 0; }
+/* A scorrere è il FLUSSO, non la pagina: il composer resta sempre a schermo. */
+.as-main { display: flex; flex-direction: column; min-width: 0;
+  height: 100%; min-height: 0; }
 .as-stream { display: flex; flex-direction: column; gap: var(--sp-3);
-  min-height: 320px; }
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 .as-context { display: inline-flex; align-items: center; gap: var(--sp-2);
   align-self: flex-start; border: 1px solid var(--accent-line);
@@ -661,6 +687,7 @@
 
 @media (max-width: 900px) {
   /* Una colonna: le due laterali diventano pannelli. */
+  .as-page { --as-shell-y: 68px; /* 20 + 48 */ }
   .as-layout { grid-template-columns: minmax(0, 1fr); }
   .as-side { display: none; }
   .as-only-narrow { display: inline-flex; align-self: flex-start; }
@@ -677,11 +704,22 @@
   .as-drawer-left { left: 0; transform: translateX(-100%); }
   .as-drawer-right { right: 0; transform: translateX(100%); }
   .as-drawer.open { transform: translateX(0); }
-  .as-drawer-close { position: absolute; top: var(--sp-2); right: var(--sp-2);
+  /* ⚠️ 44px, non 26: è un bersaglio per un dito, non per un puntatore. E
+     l'intestazione gli lascia il posto — con la × sovrapposta al pulsante
+     «Nuova» (22×15px di sovrapposizione, misurati il 2026-07-30) chi mirava
+     all'angolo del pulsante chiudeva il pannello. */
+  .as-drawer-close { position: absolute; top: var(--sp-1); right: var(--sp-1);
+    display: inline-flex; align-items: center; justify-content: center;
     background: transparent; color: var(--ink); border: 0; cursor: pointer;
-    min-width: 26px; min-height: 26px; }
+    min-width: 44px; min-height: 44px; border-radius: var(--radius-sm); }
+  .as-drawer-close:hover { background: var(--surface-2); }
+  .as-drawer .as-col-head { padding-right: 44px; }
 
   .as-q { max-width: 100%; }
+}
+
+@media (max-width: 600px) {
+  .as-page { --as-shell-y: 60px; /* 16 + 44 */ }
 }
 
 /* Chi ha chiesto meno movimento non deve vedere i pannelli scorrere. */
