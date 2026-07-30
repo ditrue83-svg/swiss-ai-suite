@@ -114,6 +114,7 @@ collegamento, e `docs:check` lo segnalava da tempo. Questo è l'indice vero.
 | [`finance-operations.md`](docs/finance-operations.md) | Finanze: fatture, spese, duplicati |
 | [`contract-manager.md`](docs/contract-manager.md) | Contratti: termini, rinnovi, preavvisi |
 | [`crm-light.md`](docs/crm-light.md) | Clienti: organizzazioni, opportunità, contatti |
+| [`incentivi.md`](docs/incentivi.md) | Incentivi (Subsidy AI 2.0): sei misure, quattro schede, scheduler, limiti |
 | [`company-assistant.md`](docs/company-assistant.md) | Chiedi ad AI-Swisse: ciclo, fonti, limiti |
 | [`company-assistant-search-eval.md`](docs/company-assistant-search-eval.md) | La prova di ricerca dell'assistente |
 
@@ -799,6 +800,13 @@ npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
 npm run i18n:typography # spazi insecabili (U+202F) prima dei segni doppi francesi
 npm run i18n:typography -- --self-test
+npm run test:operations # ogni Edge Function ha un invocante? ogni scheduler è inventariato,
+                        #   dichiara il timeout di pg_net e punta a una funzione che esiste?
+npm run test:operations -- --self-test  # verifica che il CONTROLLO sappia fallire (11 casi)
+npm run verify:deploy   # l'altra metà: quegli scheduler esistono DAVVERO nel progetto?
+                        #   Richiede SUPABASE_ACCESS_TOKEN e FALLISCE se non ce l'ha:
+                        #   «non ho potuto verificare» non è un verde. Fuori da test:all
+                        #   di proposito — giudica l'ambiente, non il codice.
 npm run docs:check      # la documentazione descrive il codice che c'è davvero? Confronta i README
                         # con il filesystem: moduli, migrazioni, documenti, comandi, Edge Function.
                         # Esce 1 se divergono, e dice COSA manca e DOVE. ⚠️ Il controllo sui moduli

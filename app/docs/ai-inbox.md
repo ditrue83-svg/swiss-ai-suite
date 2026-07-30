@@ -464,7 +464,13 @@ select cron.schedule(
       'x-inbox-maintenance-secret',
       (select decrypted_secret from vault.decrypted_secrets where name = 'inbox_maintenance_secret')
     ),
-    body    := '{}'::jsonb
+    body    := '{}'::jsonb,
+    -- ⚠️ NON FACOLTATIVO. `pg_net` chiude la connessione dopo 5 secondi
+    -- predefiniti: la manutenzione ne dura ottanta, e senza questa riga OGNI
+    -- esecuzione risulterebbe fallita. Il job in esercizio ce l'ha; questo
+    -- riquadro l'ha omesso fino al 2026-07-31, e chi avesse ricreato lo
+    -- scheduler copiandolo avrebbe riprodotto la trappola già pagata una volta.
+    timeout_milliseconds := 150000
   );
   $$
 );
