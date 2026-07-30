@@ -21,7 +21,7 @@
 import {
   ACTION_KEYS, CURRENCIES, OPERATORS, OPERATORS_BY_TYPE,
   UNARY_OPERATORS, actionsForTrigger, findAction, findField, findTrigger,
-  isAutoExecutable,
+  isAutoExecutable, triggerHasOwner,
   type ActionKey, type AddDocumentTagConfig, type AssignTaskConfig,
   type CreateNotificationConfig, type CreateTaskConfig, type SetDocumentCategoryConfig,
   type SetTaskPriorityConfig, type TriggerDef, type WorkflowAction,
@@ -363,10 +363,11 @@ function validateNotification(
   if (!['assignee', 'admins', 'user'].includes(recipient)) {
     out.push(issue('unknownRecipient', { value: recipient }, where));
   }
-  // «Il responsabile» esiste solo se l'innesco parla di un'attività. Su un
-  // documento non c'è nessun responsabile da avvisare, e una regola che lo
-  // dicesse non avviserebbe mai nessuno.
-  if (recipient === 'assignee' && trigger.entityType !== 'task') {
+  // «Il responsabile» esiste solo dove l'entità ne ha uno: l'assegnatario di
+  // un'attività, il responsabile di un contratto, di una controparte o di una
+  // trattativa. Su un documento e su una comunicazione non c'è nessuno da
+  // avvisare, e una regola che lo dicesse non avviserebbe mai nessuno.
+  if (recipient === 'assignee' && !triggerHasOwner(trigger)) {
     out.push(issue('recipientNotAvailable', { trigger: trigger.key }, where));
   }
   if (recipient === 'user' && !isUuid(c.userId)) {

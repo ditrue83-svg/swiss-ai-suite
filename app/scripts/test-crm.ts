@@ -2,10 +2,12 @@
 // AI-Swisse — CRM Light: test d'integrazione sul DATABASE REALE.
 //   npm run test:crm
 //
-// Richiede le migrazioni 0026 e 0028 applicate, e `.env.test` valorizzato.
-// ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 13 FALLISCE, perché lo
+// Richiede le migrazioni 0026, 0028 e 0030 applicate, e `.env.test` valorizzato.
+// ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 14 FALLISCE, perché lo
 // storico del CRM impedisce la cancellazione di un'azienda. È il difetto che
 // questo file ha trovato alla prima esecuzione.
+// ⚠️ Senza la 0030 fallisce la sezione 13: `crm_scan_link_suggestions` non
+// esiste ancora e la RPC risponde `PGRST202`.
 //
 // Non prova che il codice sia scritto bene: prova che le GARANZIE siano in
 // vigore. Sono dodici, e stanno tutte nel DATABASE, perché un servizio ben
@@ -555,7 +557,94 @@ async function main() {
     !notifOk.error, msg(notifOk.error));
 
   // -------------------------------------------------------------------------
-  section('13. Cascata — cancellata l’azienda non resta niente');
+  section('13. Il candidato automatico — PROPONE, non crea (0030)');
+
+  // Il nome della controparte scritto sul contratto coincide, normalizzato, con
+  // una controparte che il CRM ha già: il candidato deve proporre di collegarli.
+  const orgScan = await makeOrg(A.client, A.companyId, `Elettro Scan ${stamp} SA`);
+  const { data: cMatch, error: cMatchErr } = await admin.from('contracts').insert({
+    company_id: A.companyId, display_name: `Contratto con match ${stamp}`,
+    counterparty_name: `elettro   scan ${stamp}   sa`,
+  }).select('id').single();
+  check('contratto di prova con una controparte riconoscibile', !cMatchErr, msg(cMatchErr));
+  const { data: cNew } = await admin.from('contracts').insert({
+    company_id: A.companyId, display_name: `Contratto senza match ${stamp}`,
+    counterparty_name: `Sconosciuta ${stamp} Sagl`,
+  }).select('id').single();
+
+  // ⚠️ Il conteggio si misura PRIMA e DOPO, invece di confrontarlo con un
+  // numero fisso: le sezioni precedenti hanno già creato controparti in questa
+  // azienda, e «devono essere una» sarebbe un'asserzione sul test, non sulla
+  // scansione. Prima stesura rossa proprio per questo — un test che fallisce
+  // non prova sempre che il codice sia sbagliato.
+  const orgsBefore = ((await admin.from('crm_organizations')
+    .select('id').eq('company_id', A.companyId)).data ?? []).length;
+
+  const scan1 = await admin.rpc('crm_scan_link_suggestions', { p_limit: 200 });
+  check('la scansione gira e dice quanti suggerimenti ha creato',
+    !scan1.error && typeof scan1.data === 'number', `${msg(scan1.error)} ${code(scan1.error)}`);
+
+  const { data: sugg1 } = await admin.from('crm_link_suggestions')
+    .select('source_entity_id, suggested_organization_id, suggested_name, reason, status, dedupe_key')
+    .eq('company_id', A.companyId);
+  const rowsS = (sugg1 ?? []) as Array<Record<string, unknown>>;
+  const matchRow = rowsS.find((r) => r.source_entity_id === (cMatch as { id: string } | null)?.id);
+  const newRow = rowsS.find((r) => r.source_entity_id === (cNew as { id: string } | null)?.id);
+
+  check('la controparte già presente diventa un suggerimento di COLLEGAMENTO',
+    matchRow?.reason === 'name_normalized' && matchRow?.suggested_organization_id === orgScan,
+    JSON.stringify(matchRow));
+  check('il nome che il CRM non conosce diventa un suggerimento di CREAZIONE',
+    newRow?.reason === 'extracted_name' && newRow?.suggested_organization_id === null,
+    JSON.stringify(newRow));
+  check('il nome proposto è quello letto sul documento, non una versione normalizzata',
+    newRow?.suggested_name === `Sconosciuta ${stamp} Sagl`, String(newRow?.suggested_name));
+  const orgsAfter = ((await admin.from('crm_organizations')
+    .select('id').eq('company_id', A.companyId)).data ?? []).length;
+  check('nessuna organizzazione è nata dalla scansione: PROPONE, non crea (§21)',
+    orgsAfter === orgsBefore, `prima ${orgsBefore}, dopo ${orgsAfter}`);
+  check('nessun contratto è stato collegato dalla scansione',
+    ((await admin.from('contracts').select('id').eq('company_id', A.companyId)
+      .not('counterparty_organization_id', 'is', null)).data ?? []).length === 0);
+
+  // ⚠️ IDEMPOTENZA: è la proprietà che rende utilizzabile un lavoro che gira
+  // ogni cinque minuti. Senza, l'elenco «da verificare» si riempirebbe di copie.
+  const scan2 = await admin.rpc('crm_scan_link_suggestions', { p_limit: 200 });
+  const { data: sugg2 } = await admin.from('crm_link_suggestions')
+    .select('id').eq('company_id', A.companyId);
+  check('la seconda passata non crea nessun doppione',
+    scan2.data === 0 && ((sugg2 ?? []) as unknown[]).length === rowsS.length,
+    `creati ${String(scan2.data)}, totale ${((sugg2 ?? []) as unknown[]).length}`);
+
+  // ⚠️ Un «no» resta un no: risolto un suggerimento, la scansione non lo
+  // ripropone — è il vincolo unico sulla chiave, non un controllo nel codice.
+  await admin.from('crm_link_suggestions').update({ status: 'rejected' })
+    .eq('company_id', A.companyId).eq('source_entity_id', (cNew as { id: string }).id);
+  await admin.rpc('crm_scan_link_suggestions', { p_limit: 200 });
+  const { data: afterReject } = await admin.from('crm_link_suggestions')
+    .select('status').eq('company_id', A.companyId).eq('source_entity_id', (cNew as { id: string }).id);
+  check('un suggerimento rifiutato non torna in sospeso',
+    ((afterReject ?? []) as Array<{ status: string }>).every((r) => r.status === 'rejected')
+    && ((afterReject ?? []) as unknown[]).length === 1,
+    JSON.stringify(afterReject));
+
+  // ⚠️ La chiamata è LAVORO DI SISTEMA: un utente autenticato deve essere
+  // respinto. `security definer` senza questo controllo scriverebbe per conto
+  // di tutte le aziende — è la lezione della 0029.
+  const asUser = await A.client.rpc('crm_scan_link_suggestions', { p_limit: 10 });
+  check('un utente autenticato NON può eseguire la scansione',
+    Boolean(asUser.error), `${msg(asUser.error)} ${code(asUser.error)}`);
+
+  // Origine sparita: il pending che nessuno potrebbe più risolvere se ne va.
+  await admin.from('contracts').delete().eq('id', (cMatch as { id: string }).id);
+  await admin.rpc('crm_scan_link_suggestions', { p_limit: 200 });
+  const { data: orphan } = await admin.from('crm_link_suggestions')
+    .select('id').eq('company_id', A.companyId).eq('source_entity_id', (cMatch as { id: string }).id);
+  check('cancellato il contratto, il suggerimento in sospeso non resta orfano',
+    ((orphan ?? []) as unknown[]).length === 0);
+
+  // -------------------------------------------------------------------------
+  section('14. Cascata — cancellata l’azienda non resta niente');
 
   const tables: Array<[string, string]> = [
     ['crm_organizations', 'company_id'],

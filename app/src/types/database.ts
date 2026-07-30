@@ -145,7 +145,11 @@ export type CrmDocumentRelation =
  * suggerimenti da confermare.
  */
 export type CrmMatchReason =
-  | 'uid_exact' | 'email_exact' | 'domain_match' | 'name_normalized' | 'manual';
+  | 'uid_exact' | 'email_exact' | 'domain_match' | 'name_normalized' | 'manual'
+  // 0030 — «il documento nomina qualcuno che nel CRM non c'è». Non è una
+  // corrispondenza: è la sua assenza, e riusare `name_normalized` avrebbe
+  // scritto «ragione sociale simile» dove non c'è niente a cui somigliare.
+  | 'extracted_name';
 /** `ignored` non è `rejected`: «non ora» e «no» sono risposte diverse. */
 export type CrmLinkStatus = 'pending' | 'accepted' | 'rejected' | 'ignored';
 export type CrmEventKind =

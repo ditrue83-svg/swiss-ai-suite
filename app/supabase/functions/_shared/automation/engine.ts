@@ -90,6 +90,8 @@ function contextFor(
     taskId: entity.taskId,
     contractId: entity.contractId,
     contractMilestoneId: entity.contractMilestoneId,
+    crmOrganizationId: entity.crmOrganizationId,
+    crmOpportunityId: entity.crmOpportunityId,
     assigneeUserId: entity.assigneeUserId,
     now,
   };

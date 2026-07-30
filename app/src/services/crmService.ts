@@ -1224,4 +1224,65 @@ export const crmService = {
       .update({ status }).eq('id', suggestionId);
     if (error) fail(error);
   },
+
+  /**
+   * Accettare un suggerimento: si collega l'origine e SOLO POI si segna la riga
+   * come accettata.
+   *
+   * ⚠️ L'ORDINE NON È INDIFFERENTE, ed è la stessa disciplina della
+   * cancellazione di un documento («prima la riga, poi il file»): Postgres non
+   * offre qui una transazione fra due tabelle attraverso PostgREST, e delle due
+   * metà quella che deve riuscire per prima è il COLLEGAMENTO. Se fallisce, il
+   * suggerimento resta in sospeso e si può riprovare; nell'ordine opposto un
+   * guasto lascerebbe un suggerimento «accettato» che non ha collegato niente —
+   * cioè una schermata che dice il falso senza modo di accorgersene.
+   *
+   * ⚠️ Non crea nulla: l'organizzazione deve esistere già. Il caso «questa
+   * controparte nel CRM non c'è» passa dalla creazione, che è un gesto a sé.
+   */
+  /**
+   * Come `acceptSuggestion`, ma partendo dal solo identificativo: la riga si
+   * RILEGGE dal database.
+   *
+   * ⚠️ Non si accetta l'origine dall'indirizzo del browser, e non è formalismo:
+   * la RLS impedirebbe comunque di toccare i dati di un'altra azienda, ma un
+   * `sourceEntityId` scritto a mano nell'URL farebbe collegare alla nuova
+   * scheda un contratto QUALSIASI della propria azienda. Chi decide che cosa
+   * viene collegato è la riga del suggerimento, non chi arriva alla pagina.
+   */
+  async acceptSuggestionById(
+    companyId: string, suggestionId: string, organizationId: string,
+  ): Promise<void> {
+    const { data, error } = await requireSupabase().from('crm_link_suggestions')
+      .select('id, source_entity_type, source_entity_id, status')
+      .eq('company_id', companyId).eq('id', suggestionId).limit(1);
+    if (error) fail(error);
+    const row = ((data ?? []) as Array<Record<string, unknown>>)[0];
+    if (!row) throw new Error('crm.errors.suggestionNotFound');
+    // Già risolto da qualcun altro nel frattempo: non lo si «riapre» e non si
+    // collega niente di nascosto.
+    if (row.status !== 'pending') throw new Error('crm.errors.suggestionNotFound');
+    await crmService.acceptSuggestion({
+      id: row.id as string,
+      sourceEntityType: row.source_entity_type as CrmLinkSuggestion['sourceEntityType'],
+      sourceEntityId: row.source_entity_id as string,
+    }, organizationId);
+  },
+
+  async acceptSuggestion(
+    suggestion: Pick<CrmLinkSuggestion, 'id' | 'sourceEntityType' | 'sourceEntityId'>,
+    organizationId: string,
+  ): Promise<void> {
+    if (suggestion.sourceEntityType === 'contract') {
+      await crmService.linkContract(suggestion.sourceEntityId, organizationId);
+    } else if (suggestion.sourceEntityType === 'finance_item') {
+      await crmService.linkFinanceItem(suggestion.sourceEntityId, organizationId);
+    } else {
+      // Le altre entità hanno percorsi di collegamento propri (documento,
+      // email, attività) e questa funzione non li conosce. Meglio un errore
+      // esplicito che un «accettato» che non ha collegato niente.
+      throw new Error('crm.errors.suggestionSourceUnsupported');
+    }
+    await crmService.resolveSuggestion(suggestion.id, 'accepted');
+  },
 };

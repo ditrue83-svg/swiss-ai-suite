@@ -22,6 +22,7 @@
 // ============================================================================
 import { timingSafeEqual } from '../_shared/email/crypto.ts';
 import {
+  CRM_FOLLOW_UP_LOOKBACK_DAYS, CRM_SUGGESTION_SCAN_LIMIT,
   EDGE_TIME_BUDGET_MS, EVENT_BATCH, EVENT_LOCK_SECONDS, MAX_EVENT_ATTEMPTS,
   MAX_RUNS_PER_COMPANY_PER_PASS, OVERDUE_LOOKBACK_DAYS, eventBackoffSeconds,
 } from '../_shared/automation/contract.ts';
@@ -45,6 +46,19 @@ Deno.serve(async (req: Request) => {
 
   const report = {
     overdueEmitted: 0,
+    // 0026 — contato A PARTE e non sommato a `overdueEmitted`: sono due fatti
+    // diversi («questa attività è scaduta», «questo follow-up è scaduto») e un
+    // numero solo non direbbe quale delle due scansioni ha prodotto lavoro.
+    crmFollowUpEmitted: 0,
+    // ⚠️ Dichiarato con il tipo, non lasciato inferire: il typecheck NON guarda
+    // gli `index.ts` delle Edge Function (`tsconfig` include solo `src` e
+    // `scripts`, e nessuno importa i punti d'ingresso), quindi qui un errore di
+    // tipo lo troverebbe soltanto il deploy.
+    crmFollowUpError: null as string | null,
+    // 0030 — quanti suggerimenti di collegamento sono stati CREATI in questo
+    // giro. Zero è la risposta normale: le righe già proposte non si ripropongono.
+    crmSuggestionsCreated: 0,
+    crmSuggestionsError: null as string | null,
     claimed: 0, processed: 0, retried: 0, failed: 0, deadLettered: 0,
     ...emptyReport(),
     // Dichiarato nella risposta: chi legge deve poter distinguere «non c'era
@@ -61,6 +75,55 @@ Deno.serve(async (req: Request) => {
     });
     if (emitError) throw new Error(`overdue: ${(emitError as { message?: string }).message ?? 'errore'}`);
     report.overdueEmitted = typeof emitted === 'number' ? emitted : 0;
+
+    // (1-bis) L'altro fatto che non ha un UPDATE: «il prossimo passo di questa
+    //     trattativa è scaduto» (0026). La 0026 lo dichiara nel proprio corpo:
+    //     `crm_emit_follow_up_due` è la gemella di `automation_emit_overdue` e
+    //     gira in QUESTO worker, nello stesso giro — nessun cron nuovo, nessuna
+    //     Edge Function nuova.
+    //
+    //     ⚠️ NON è terminale come la scansione delle scadute, e la differenza è
+    //     motivata: `automation_emit_overdue` appartiene alla 0020, cioè alla
+    //     migrazione che crea la coda che questo worker consuma — senza di lei
+    //     non c'è niente da fare comunque. La 0026 è un modulo successivo e può
+    //     non essere applicata: fermare l'intera coda delle automazioni perché
+    //     manca il CRM significherebbe spegnere Documenti, Finanze e Contratti
+    //     per un modulo che quell'azienda non usa.
+    //     Il guasto NON è silenzioso: il codice finisce nel rapporto E in una
+    //     riga di log propria. Un rapporto con `crmFollowUpError` valorizzato è
+    //     un'affermazione, non un'assenza.
+    try {
+      const { data: crmEmitted, error: crmError } = await sb.rpc('crm_emit_follow_up_due', {
+        p_lookback_days: CRM_FOLLOW_UP_LOOKBACK_DAYS, p_limit: 200,
+      });
+      if (crmError) throw new Error(`crm_follow_up: ${(crmError as { message?: string }).message ?? 'errore'}`);
+      report.crmFollowUpEmitted = typeof crmEmitted === 'number' ? crmEmitted : 0;
+    } catch (error) {
+      report.crmFollowUpError = codeOf(error);
+      logEvent('automation-worker', { code: report.crmFollowUpError, phase: 'crm_follow_up' });
+    }
+
+    // (1-ter) Il candidato automatico (0030): legge le controparti dei
+    //     contratti e i fornitori di Finanze e PROPONE. Non crea anagrafiche e
+    //     non collega niente — scrive righe `crm_link_suggestions` in attesa
+    //     di un sì (§21).
+    //
+    //     ⚠️ NON EMETTE EVENTI, quindi non alimenta la coda che segue: un
+    //     suggerimento non è un fatto dell'azienda, è un'ipotesi del prodotto,
+    //     e far scattare una regola su un'ipotesi significherebbe creare lavoro
+    //     a partire da un sospetto. È scritto anche nel registro degli inneschi.
+    //
+    //     Non terminale, per la stessa ragione della scansione qui sopra.
+    try {
+      const { data: suggested, error: scanError } = await sb.rpc('crm_scan_link_suggestions', {
+        p_limit: CRM_SUGGESTION_SCAN_LIMIT,
+      });
+      if (scanError) throw new Error(`crm_scan: ${(scanError as { message?: string }).message ?? 'errore'}`);
+      report.crmSuggestionsCreated = typeof suggested === 'number' ? suggested : 0;
+    } catch (error) {
+      report.crmSuggestionsError = codeOf(error);
+      logEvent('automation-worker', { code: report.crmSuggestionsError, phase: 'crm_suggestions' });
+    }
 
     // (2) La coda.
     const events = await claimEvents(sb, EVENT_BATCH, EVENT_LOCK_SECONDS, MAX_RUNS_PER_COMPANY_PER_PASS);

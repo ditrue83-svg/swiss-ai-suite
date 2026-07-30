@@ -266,6 +266,9 @@ export function reasonRank(reason: CrmMatchReason): number {
     case 'domain_match': return 2;
     case 'name_normalized': return 3;
     case 'manual': return 4;
+    // 0030 — il più debole di tutti, ed è giusto che lo sia: non dice «somiglia
+    // a questa scheda», dice «questa scheda non c'è». Non collega niente.
+    case 'extracted_name': return 5;
   }
 }
 

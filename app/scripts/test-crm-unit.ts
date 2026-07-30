@@ -507,5 +507,78 @@ check('l’ordinamento è stabile fra due esecuzioni',
   JSON.stringify([...righe].sort(compareTimeline).map((r) => r.id)) === JSON.stringify(ordinate));
 
 // ---------------------------------------------------------------------------
+section('11. Il candidato automatico (0030) — la chiave scritta due volte');
+
+// ⚠️ STESSA CLASSE DEL CONTROLLO SUI DOMINI PUBBLICI, ed è il motivo per cui
+// questa sezione esiste. `suggestionKey()` in TypeScript e la stringa composta
+// dentro `crm_scan_link_suggestions` in SQL sono la stessa chiave di
+// idempotenza scritta due volte. Se divergono non si rompe niente in modo
+// visibile: la scansione ricrea a ogni giro proposte che il frontend considera
+// nuove, e l'elenco «da verificare» diventa illeggibile nel giro di un'ora.
+// Il typecheck non guarda dentro l'SQL: questa è l'unica rete.
+const CANDIDATE = readFileSync(
+  join(HERE, '..', 'supabase', 'migrations', '0030_crm_link_candidate.sql'), 'utf8');
+
+const sqlKeyParts = [...CANDIDATE.matchAll(
+  /v_key := '([^']+)' \|\| r\.id::text \|\| ':' \|\| v_reason::text \|\| ':'\s*\|\| coalesce\(v_target::text, '([^']+)'\)/g)]
+  .map((m) => ({ prefix: m[1]!, fallback: m[2]! }));
+
+check('le due chiavi composte in SQL hanno la forma di suggestionKey()',
+  sqlKeyParts.length === 2, `trovate ${sqlKeyParts.length}`);
+
+const keysMatch = sqlKeyParts.every(({ prefix, fallback }) => {
+  // `crm:contract:` → entità «contract», e la chiave TS con lo stesso motivo e
+  // lo stesso bersaglio deve venire identica, carattere per carattere.
+  const entity = prefix.replace(/^crm:/, '').replace(/:$/, '');
+  const withTarget = `${prefix}00000000-0000-4000-8000-000000000001:name_normalized:org-1`;
+  const withoutTarget = `${prefix}00000000-0000-4000-8000-000000000001:extracted_name:${fallback}`;
+  return suggestionKey(entity, '00000000-0000-4000-8000-000000000001', 'name_normalized', 'org-1') === withTarget
+    && suggestionKey(entity, '00000000-0000-4000-8000-000000000001', 'extracted_name', null) === withoutTarget;
+});
+check('SQL e TypeScript compongono la STESSA chiave di idempotenza', keysMatch,
+  sqlKeyParts.map((p) => `${p.prefix}…:${p.fallback}`).join(' | '));
+
+// Le due sorgenti sono quelle dichiarate, e sono valori dell'enum
+// `crm_linked_entity`: una entità sbagliata verrebbe rifiutata dal database
+// solo al primo inserimento vero, cioè in produzione.
+check('il candidato legge contratti e voci di Finanze, e nient’altro',
+  JSON.stringify(sqlKeyParts.map((p) => p.prefix).sort())
+    === JSON.stringify(['crm:contract:', 'crm:finance_item:']),
+  sqlKeyParts.map((p) => p.prefix).join(', '));
+
+// ⚠️ `extracted_name` NON deve autorizzare un collegamento automatico: dice che
+// una scheda NON c'è, ed è il più debole dei motivi. Se qualcuno lo aggiungesse
+// ad AUTO_LINK_REASONS, il prodotto comincerebbe a collegare documenti a
+// controparti inesistenti.
+check('«nome letto sul documento» non collega niente da solo',
+  !canAutoLink('extracted_name') && !AUTO_LINK_REASONS.includes('extracted_name'));
+check('«nome letto sul documento» è il motivo più debole della scala',
+  reasonRank('extracted_name') > reasonRank('name_normalized'));
+
+// La migrazione aggiunge UN valore enum e non lo nomina nel blocco che gira
+// (55P04, terza volta in questo repository).
+const addedByCandidate = [...CANDIDATE.matchAll(
+  /alter type public\.\w+ add value if not exists '([^']+)'/g)].map((m) => m[1]!);
+check('la 0030 aggiunge un solo valore all’enum dei motivi',
+  addedByCandidate.length === 1 && addedByCandidate[0] === 'extracted_name',
+  addedByCandidate.join(', '));
+const candidateSelfCheck = CANDIDATE.slice(CANDIDATE.lastIndexOf('-- 4. Autoverifica'));
+check('il blocco di autoverifica della 0030 non nomina il valore aggiunto (55P04)',
+  addedByCandidate.every((v) => !candidateSelfCheck.includes(`'${v}'`)));
+
+// ⚠️ La funzione si difende da sola: `revoke` più il controllo su `auth.uid()`.
+// È la lezione della 0029 — su Supabase un `revoke` senza la seconda serratura
+// dipende dal fatto che nessuno riconceda i privilegi per default.
+check('la scansione rifiuta la chiamata di un utente autenticato',
+  CANDIDATE.includes('auth.uid() is not null'));
+check('la scansione è revocata a public, anon e authenticated',
+  /revoke all on function public\.crm_scan_link_suggestions\(integer\) from public, anon, authenticated/
+    .test(CANDIDATE));
+// Propone e basta: nessuna scrittura sulle anagrafiche né sui documenti.
+check('il candidato non scrive MAI su crm_organizations, contracts o finance_items',
+  !/insert into public\.crm_organizations|update public\.(contracts|finance_items|crm_organizations)/
+    .test(CANDIDATE));
+
+// ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);
 process.exit(fail ? 1 : 0);

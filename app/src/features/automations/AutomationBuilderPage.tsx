@@ -31,7 +31,7 @@ import { useT, type TFunction, type TKey } from '@/i18n';
 import { useMembers } from '@/features/tasks/useMembers';
 import {
   CURRENCIES, MAX_ACTIONS, MAX_CONDITIONS, OPERATORS_BY_TYPE, UNARY_OPERATORS,
-  actionsForTrigger, findAction, findField, findTrigger, validateWorkflow,
+  actionsForTrigger, findAction, findField, findTrigger, triggerHasOwner, validateWorkflow,
   type ActionKey, type AutomationEventType, type CreateNotificationConfig,
   type CreateTaskConfig, type Operator, type TriggerDef, type ValidationIssue,
   type WorkflowAction, type WorkflowCondition,
@@ -614,11 +614,17 @@ function ActionCard({
               </div>
             )}
           </div>
+          {/* ⚠️ L'etichetta nomina CIÒ CHE VIENE COLLEGATO DAVVERO. Diceva
+              «il documento» su ogni innesco: su un contratto e su una
+              controparte era falsa, e il difetto che ne derivava era peggiore
+              di una parola sbagliata — sugli inneschi del CRM la casella era
+              spuntata e non collegava nulla, perché il motore non passava
+              l'organizzazione. Ora fa entrambe le cose e lo dice. */}
           {trigger.entityType !== 'task' && (
             <label className="check-pill">
               <input type="checkbox" checked={config.linkEntity !== false}
                 onChange={(e) => set({ linkEntity: e.target.checked })} />
-              {t('automations.linkEntity')}
+              {t(linkEntityKey(trigger))}
             </label>
           )}
           {(config.dueDate === 'from_deadline'
@@ -690,7 +696,10 @@ function ActionCard({
               <select id={`${id}-rec`} value={String(config.recipient ?? 'admins')}
                 onChange={(e) => set({ recipient: e.target.value })}>
                 <option value="admins">{t('automations.recipients.admins')}</option>
-                {trigger.entityType === 'task' && (
+                {/* Offerto dove l'entità ha davvero un responsabile: attività,
+                    contratto, controparte, trattativa. Il validatore applica lo
+                    stesso elenco — è la stessa funzione, non una copia. */}
+                {triggerHasOwner(trigger) && (
                   <option value="assignee">{t('automations.recipients.assignee')}</option>
                 )}
                 <option value="user">{t('automations.recipients.user')}</option>
@@ -887,6 +896,15 @@ function DryRunView({
   );
 }
 
+/** Che cosa viene collegato all'attività, secondo l'entità dell'innesco. */
+function linkEntityKey(trigger: TriggerDef): TKey {
+  if (trigger.entityType === 'contract') return 'automations.linkEntityContract';
+  if (trigger.entityType === 'crm_organization' || trigger.entityType === 'crm_opportunity') {
+    return 'automations.linkEntityCrm';
+  }
+  return 'automations.linkEntity';
+}
+
 /** L'anteprima di un'azione, in parole. Mai identificativi in pagina. */
 function previewText(
   t: TFunction, preview: Record<string, string | number | boolean | null>, names: NameResolver,
@@ -899,6 +917,8 @@ function previewText(
   if (preview.assigneeUserId) parts.push(names.member(String(preview.assigneeUserId)));
   if (preview.category) parts.push(pickLabel(t, 'labels.categories', String(preview.category)));
   if (preview.tag) parts.push(String(preview.tag));
+  // L'identificativo NON si stampa (§53): si dice che il collegamento c'è.
+  if (preview.crmOrganizationId) parts.push(t('automations.previewLinkedClient'));
   if (typeof preview.recipients === 'number') {
     parts.push(t('automations.previewRecipients', { n: preview.recipients }));
   }

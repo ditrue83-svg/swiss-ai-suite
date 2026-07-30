@@ -94,6 +94,34 @@ export const AUTO_PAUSE_AFTER_FAILURES = 5;
 export const OVERDUE_LOOKBACK_DAYS = 3;
 
 /**
+ * Quanti giorni all'indietro guarda la scansione dei follow-up scaduti (0026).
+ *
+ * ⚠️ Stessa ragione di `OVERDUE_LOOKBACK_DAYS`, e stesso valore per la stessa
+ * causa: senza il limite, la prima esecuzione dopo l'attivazione di una regola
+ * emetterebbe un evento per OGNI opportunità con il prossimo passo scaduto —
+ * cioè il backfill che §164 vieta. Il commento della 0026 lo dichiara nel corpo
+ * di `crm_emit_follow_up_due`: «non esiste alcun recupero del passato, e
+ * prometterlo sarebbe falso».
+ *
+ * ⚠️ È una COSTANTE SEPARATA e non un riuso di quella delle attività, anche se
+ * oggi vale lo stesso: le due scansioni guardano fatti diversi e chi un domani
+ * volesse allungare la finestra dei follow-up non deve toccare quella delle
+ * scadenze.
+ */
+export const CRM_FOLLOW_UP_LOOKBACK_DAYS = 3;
+
+/**
+ * Quante righe guarda per volta il candidato automatico dei suggerimenti (0030).
+ *
+ * ⚠️ È un limite di VOLUME, non una selezione: le righe che restano fuori le
+ * guarda il giro dopo, cinque minuti più tardi. La scansione salta ciò che ha
+ * già una proposta in sospeso, quindi avanza invece di riesaminare sempre le
+ * stesse — senza quel filtro un'azienda con mille fatture non arriverebbe mai
+ * alla millesima.
+ */
+export const CRM_SUGGESTION_SCAN_LIMIT = 200;
+
+/**
  * Soglia sotto la quale un dato prodotto dall'AI non viene trattato come certo
  * (§25).
  *

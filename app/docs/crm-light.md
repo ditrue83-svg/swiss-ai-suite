@@ -348,7 +348,49 @@ lettura per contratto.
 
 `crm_follow_up_due` **riusa lo scheduler esistente**: la scansione
 `crm_emit_follow_up_due` gira nel worker delle automazioni già acceso, accanto ad
-`automation_emit_overdue`. Nessun cron nuovo.
+`automation_emit_overdue`. Nessun cron nuovo. ✅ **La chiamata esiste dal
+2026-07-30**: fino a quel giorno l'innesco era dichiarato e non scattava mai,
+perché la funzione c'era nel database e non la chiamava nessuno.
+
+### I tre modelli offerti nel generatore (§136–§138)
+
+- **Follow-up scaduto** — quando il prossimo passo di una trattativa supera la
+  sua data: crea un'attività per OGGI, collegata alla controparte e alla
+  trattativa, e avvisa chi la segue. La data del passo mancato non si riusa:
+  sarebbe una scadenza già passata scritta su lavoro nuovo.
+- **Trattativa senza responsabile** — alla nascita di una trattativa che non è di
+  nessuno, avvisa gli amministratori. Non «il responsabile»: è ciò che manca.
+- **Nuovo cliente** — quando a una controparte viene aggiunto il ruolo `customer`,
+  crea un'attività di avvio a cinque giorni. Sul ruolo APPENA AGGIUNTO (che
+  arriva nel payload), non su `role_customer`, che sarebbe vero anche quando ad
+  essere aggiunto è «fornitore».
+
+⚠️ **Nessun modello scrive testo dentro un titolo o un messaggio.** Un titolo
+creato da una regola resta nel database com'è nato: una parola italiana scritta
+nel modello comparirebbe identica nella schermata tedesca di un'azienda di
+Coira. Ci sono solo segnaposti — nomi propri, che non si traducono — e
+`test:workflows-unit` lo sorveglia per tutti e otto i modelli.
+
+### ⚠️ Il collegamento che l'interfaccia prometteva e il motore non faceva
+
+Trovato scrivendo i modelli, non usando l'app. `create_task` non scriveva mai
+`tasks.crm_organization_id` né `crm_opportunity_id`: un'attività creata da una
+regola CRM nasceva **senza controparte**, cioè compariva nel Work Hub e non sulla
+scheda del cliente — il solo posto per cui il modulo esiste. La casella «collega
+l'entità» del generatore era spuntata e non faceva nulla, e l'etichetta diceva
+«Collega il documento all'attività» anche dove un documento non c'era.
+Ora il motore passa entrambe le chiavi, l'etichetta nomina ciò che collega
+davvero, e l'anteprima della prova a vuoto lo dichiara.
+
+### ⚠️ «Avvisa il responsabile» era rifiutato proprio dove serviva
+
+`store.ts` calcola il responsabile per contratti, controparti e trattative — con
+un commento che cita §84 e §136 — mentre il validatore accettava
+`recipient: 'assignee'` solo sugli inneschi che parlano di un'attività: la
+condizione era `entityType === 'task'`, scritta quando le entità erano tre. Il
+motore sapeva a chi scrivere e il generatore non lasciava dirlo. Ora la regola
+sta in un posto solo (`triggerHasOwner`), usata dal validatore E dal generatore,
+e su documento e comunicazione resta rifiutata: là un responsabile non c'è.
 
 ### I ruoli nelle automazioni sono BOOLEANI, non un elenco
 
@@ -563,6 +605,92 @@ ramo. Sono diventate due funzioni.
 
 ---
 
+## 15-bis. Il candidato automatico (0030) — §171
+
+Il pezzo che fa passare il CRM da «si riempie a mano» a «si riempie
+confermando». Una funzione sola, `crm_scan_link_suggestions`, chiamata dal worker
+delle automazioni nello stesso giro delle altre due scansioni: nessuna Edge
+Function nuova, nessun cron nuovo, nessuna tabella nuova.
+
+**Che cosa legge**: le controparti dei **contratti** (`counterparty_name` dove
+`counterparty_organization_id` è vuoto) e i fornitori di **Finanze**
+(`eff_supplier_name` dove `supplier_organization_id` è vuoto). Confronta il nome
+normalizzato con `finance_norm_supplier` — la stessa funzione che il database usa
+già per `eff_supplier_norm`, non una seconda definizione.
+
+**Che cosa scrive**: righe `crm_link_suggestions` in stato `pending`, e nient'altro.
+
+| trovato | motivo | che cosa propone |
+|---|---|---|
+| una sola controparte con quel nome | `name_normalized` | collegare l'origine a quella scheda |
+| nessuna controparte con quel nome | `extracted_name` | creare la scheda, col nome letto sul documento |
+| più di una | — | **niente**: la decisione torna a una persona |
+
+⚠️ **`extracted_name` è un valore enum NUOVO, e serviva.** Il campo `reason`
+risponde a «perché me lo stai proponendo?»: quando nel CRM non c'è nessuna
+controparte con quel nome, la proposta non nasce da una corrispondenza — nasce
+dalla sua assenza. Riusare `name_normalized` avrebbe scritto «ragione sociale
+simile» accanto a una riga dove non c'è niente a cui somigliare, e la schermata
+lo avrebbe mostrato a una persona. È anche il motivo più debole della scala: non
+collega niente da solo, e un test lo sorveglia.
+
+⚠️ **Ambiguità uguale niente.** Due controparti con lo stesso nome normalizzato
+non producono alcun suggerimento: sceglierne una significherebbe attribuire un
+contratto all'impresa sbagliata in silenzio. Quel caso ha già il proprio posto,
+«possibili duplicati».
+
+⚠️ **Idempotenza.** La `dedupe_key` è `crm:<entità>:<id>:<motivo>:<bersaglio|new>`
+— nessun timestamp, nessun indirizzo email — e ha **una copia dichiarata in
+TypeScript** (`suggestionKey()` in `crmMatch.ts`). `test:crm-unit` legge la
+migrazione e confronta le due forme: è l'unico controllo che può vedere la
+divergenza, perché il typecheck non guarda dentro l'SQL. Se divergessero non si
+romperebbe niente in modo visibile — l'elenco «da verificare» si riempirebbe di
+copie nel giro di un'ora.
+
+⚠️ **Non si riesamina ciò che ha già una proposta in sospeso.** Senza quel filtro
+ogni passaggio del worker riguarderebbe le stesse duecento righe più recenti e
+non arriverebbe mai alle altre. Una proposta risolta rende la riga di nuovo
+esaminabile, e il vincolo unico impedisce che la stessa identica proposta torni:
+**un «no» resta un no**.
+
+⚠️ **Le proposte senza origine si tolgono.** `source_entity_id` è polimorfico e
+non ha una chiave esterna: cancellato il contratto, il suggerimento in sospeso
+resterebbe a chiedere di confermare qualcosa che non esiste più. Si cancellano
+solo i `pending`, e solo delle due entità che questa scansione produce: una
+proposta già risolta è storia.
+
+### La schermata: «Da verificare»
+
+⚠️⚠️ **Prima del 2026-07-30 nessuna schermata leggeva quella tabella.**
+`crmService.suggestions()` esisteva, i permessi c'erano, le etichette erano nei
+tre dizionari — e non li chiamava nessuno. Riempirla senza la scheda avrebbe
+prodotto suggerimenti invisibili: la stessa trappola di `home.module`,
+`amountsFound` e `errorCreditExhausted`, dove la parte scritta c'era e il
+collegamento no.
+
+La scheda sta in cima a `/clienti`, compare solo quando c'è qualcosa in sospeso e
+offre tre gesti: **Collega** (scrive il collegamento e SOLO POI segna
+`accepted`), **Non è questa** (`rejected`), **Non ora** (`ignored`). Quando non
+c'è una scheda a cui collegare, il pulsante porta a crearla con il nome
+precompilato: alla creazione il documento d'origine viene collegato e il
+suggerimento si chiude. Se quella seconda metà fallisce, **la scheda resta e lo
+si dice** — far sparire il lavoro riuscito per colpa di quello secondario sarebbe
+peggio.
+
+⚠️ Un guasto in lettura si dichiara: «niente da verificare» su una richiesta
+fallita è il difetto trovato nell'Inbox con la 0013 non applicata.
+
+**Provato nel browser** il 2026-07-30 sull'azienda demo, con dati veri e poi
+rimossi (verifica di sparizione eseguita): «Non ora» scrive `ignored` con il
+timbro del database; «Collega» collega il contratto e segna `accepted`, lasciando
+intatto `counterparty_name`; «Crea la scheda» crea la controparte, collega il
+contratto e chiude il suggerimento. Nessuno scroll orizzontale a 375 px, i tre
+pulsanti a 37 px di altezza, tedesco e francese verificati a schermo — ed è così
+che è saltato fuori «Pourquoi: …» senza lo spazio insecabile, perché i due punti
+erano nel JSX (§ la stessa trappola di «Priorité: toutes» nel Calendario).
+
+---
+
 ## 16. Configurazione
 
 Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
@@ -572,8 +700,17 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
    fanno fallire l'applicazione se qualcosa non è come dichiarato.
 2. Rideployare `automation-worker` e `automation-admin`: `_shared/automation/`
    (registro e fatti) è cambiato.
-3. Per far girare `crm_emit_follow_up_due` va aggiunta la sua chiamata nel worker
-   delle automazioni, accanto ad `automation_emit_overdue`.
+3. ✅ **FATTO il 2026-07-30**: `crm_emit_follow_up_due` viene chiamata dal worker
+   delle automazioni, accanto ad `automation_emit_overdue`. Il rapporto la conta a
+   parte (`crmFollowUpEmitted`), perché «un'attività è scaduta» e «un follow-up è
+   scaduto» sono due fatti diversi.
+4. Applicare **0030_crm_link_candidate.sql** per il candidato automatico, e
+   rideployare `automation-worker`: la scansione `crm_scan_link_suggestions` gira
+   nello stesso giro delle altre due (`crmSuggestionsCreated` nel rapporto).
+   ⚠️ Nessuna delle due scansioni del CRM è terminale per il worker: se falliscono,
+   il codice finisce nel rapporto e in una riga di log, e la coda degli altri
+   moduli continua. Un modulo non installato non deve spegnere le automazioni di
+   Documenti, Finanze e Contratti.
 
 ---
 
@@ -594,9 +731,16 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
 
 **Non implementato, e non per dimenticanza**
 
-- **I quattro modelli di regola** (§136-§139): gli inneschi esistono e i fatti si
-  caricano, ma nessun modello è offerto nel generatore. Una regola CRM si scrive a
-  mano dal builder.
+- **Il quarto modello di regola, «cliente inattivo» (§139), NON è scritto**, e la
+  ragione è tecnica: non esiste un innesco che scatti al PASSARE DEL TEMPO su una
+  controparte. `crm_follow_up_due` guarda le trattative, non le relazioni.
+  Costruirlo richiede un innesco periodico nuovo, e prima di aggiungerlo va risolto
+  il problema che lo rende insidioso: un evento «inattivo» emesso ogni giorno
+  farebbe creare un'attività al giorno, perché `create_task` non è idempotente; un
+  evento emesso una volta sola alla trentesima giornata di silenzio, invece,
+  renderebbe inservibile una regola che dica «più di novanta giorni», perché
+  quando l'evento arriva i giorni sono trenta. Gli altri tre modelli (§136–§138)
+  sono in `automationModel.ts` accanto ai cinque preesistenti.
 - **Il filtro per cliente nel Work Hub** (§82): richiede un parametro nuovo in
   `list_tasks`, quindi `drop function` con la firma a 9 argomenti e i grant
   rifatti. È una migrazione a sé. Nel frattempo le attività di ogni controparte si
@@ -608,10 +752,14 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   **caricamento**: `documents` non ha una colonna di data, e la data del documento è
   un valore effettivo che vive nell'analisi. Chiamare `created_at` «data del
   documento» sarebbe più comodo e falso.
-- **Il candidato automatico** (§171) non è scritto: nessun job produce suggerimenti
-  dalle controparti dei contratti o dai fornitori di Finanze. La tabella
-  `crm_link_suggestions` esiste e l'interfaccia la legge; a riempirla, per ora, non
-  c'è nessuno.
+- **Nessun suggerimento dalle EMAIL.** `deservesSuggestion()` esiste, è misurata
+  sulle 117 email vere e non la chiama nessuno: il candidato automatico della 0030
+  legge contratti e Finanze, non l'Inbox. È il prossimo passo naturale, e ha già
+  il proprio filtro scritto e provato.
+- **Nessun collegamento automatico nemmeno sull'identità forte.** Il §25
+  autorizzerebbe `uid_exact` e `email_exact` a collegare da soli; il candidato non
+  lo fa, perché le sue due sorgenti portano un NOME letto su un documento, non
+  un'identità.
 
 **Rischi residui**
 

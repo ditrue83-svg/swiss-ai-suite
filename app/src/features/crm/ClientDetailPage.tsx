@@ -421,7 +421,8 @@ function OverviewTab(props: {
               <div className="crm-ask-main">
                 <Link to={`/clienti/${d.duplicateId}`}>{d.duplicateName}</Link>
                 <div className="muted-sm">
-                  {t('crm.suggestions.reason')}: {L.crmReason(d.reason)}
+                  {/* I due punti nella chiave: in francese vogliono U+202F. */}
+                  {t('crm.suggestions.reasonWith', { reason: L.crmReason(d.reason) })}
                   {d.reasonDetail ? ` · ${d.reasonDetail}` : ''}
                 </div>
               </div>

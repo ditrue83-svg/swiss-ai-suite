@@ -747,6 +747,32 @@ export function actionsForTrigger(trigger: TriggerDef): readonly ActionDef[] {
 }
 
 /**
+ * Le entità che hanno un RESPONSABILE, cioè una persona che una notifica può
+ * raggiungere senza sceglierla a mano.
+ *
+ * ⚠️ ELENCO E NON UN CONFRONTO SPARSO, perché deve coincidere con ciò che
+ * `store.ts` calcola davvero in `assigneeUserId`: un'attività ha il proprio
+ * assegnatario, un contratto e una controparte il proprio responsabile, una
+ * trattativa il proprio (e in mancanza quello della relazione, §84/§136). Un
+ * documento e una comunicazione non ne hanno alcuno: là «avvisa il
+ * responsabile» non avviserebbe mai nessuno, e offrirlo significherebbe far
+ * comporre una regola che non può funzionare.
+ *
+ * ⚠️ Fino al 2026-07-30 questo controllo era `entityType === 'task'`, scritto
+ * quando le entità erano tre. Da allora la 0024 e la 0026 hanno aggiunto tre
+ * entità CON un responsabile, e `store.ts` lo calcolava già citando §136 —
+ * ma il validatore rifiutava la regola che avrebbe dovuto usarlo. Il motore
+ * sapeva a chi scrivere e il generatore non lasciava dirlo.
+ */
+const ENTITIES_WITH_OWNER: readonly AutomationEntityType[] = [
+  'task', 'contract', 'crm_organization', 'crm_opportunity',
+];
+
+export function triggerHasOwner(trigger: TriggerDef): boolean {
+  return ENTITIES_WITH_OWNER.includes(trigger.entityType);
+}
+
+/**
  * ⚠️ IL MOTORE ESEGUE AUTOMATICAMENTE SOLO QUESTO LIVELLO (§19).
  * Esiste come funzione e non come confronto sparso nel codice perché il giorno
  * in cui nascerà l'approvazione umana la modifica dovrà essere in un posto solo.

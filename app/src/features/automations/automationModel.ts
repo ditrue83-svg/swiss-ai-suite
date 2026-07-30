@@ -421,6 +421,101 @@ export const AUTOMATION_TEMPLATES: readonly AutomationTemplate[] = [
     actions: [{ key: 'add_document_tag', config: { tagId: '' } }],
     needsTag: true,
   },
+  // -------------------------------------------------------------------------
+  // 0026 — i modelli del CRM (§136–§138).
+  //
+  // ⚠️ NESSUN TESTO SCRITTO DENTRO UN MODELLO, e non è pigrizia: il titolo di
+  // un'attività creata da una regola vive nel database e resta com'è nato. Una
+  // frase italiana scritta qui comparirebbe identica nella schermata tedesca di
+  // un'azienda di Coira. Perciò i titoli sono SOLO segnaposti — nomi propri,
+  // che non si traducono — e ciò che va spiegato sta nella descrizione del
+  // modello, che invece passa dai dizionari.
+  //
+  // ⚠️ IL QUARTO MODELLO — «cliente inattivo» (§139) — NON C'È, e la ragione è
+  // tecnica e dichiarata: non esiste un innesco che scatti al PASSARE DEL
+  // TEMPO su una controparte. `crm_follow_up_due` guarda le trattative, non le
+  // relazioni. Scriverlo sopra un innesco che parla d'altro darebbe una regola
+  // con un nome che promette una cosa e un comportamento che ne fa un'altra.
+  // Che cosa servirebbe è annotato in `docs/crm-light.md`, insieme al problema
+  // che va risolto prima: un evento «inattivo» emesso ogni giorno farebbe
+  // creare un'attività al giorno, perché `create_task` non è idempotente.
+  // -------------------------------------------------------------------------
+  {
+    id: 'crm_follow_up_overdue',
+    nameKey: 'automations.templates.crmFollowUpName',
+    descriptionKey: 'automations.templates.crmFollowUpDesc',
+    triggerType: 'crm_follow_up_due',
+    conditionMatch: 'all',
+    // Nessuna condizione: l'innesco È già la condizione. La scansione
+    // `crm_emit_follow_up_due` emette solo per le trattative aperte con il
+    // prossimo passo scaduto, e ripeterlo qui sarebbe un filtro che sembra
+    // fare qualcosa e non lo fa. La frase riassuntiva lo dice («sempre»).
+    conditions: [],
+    actions: [
+      {
+        key: 'create_task',
+        config: {
+          titleTemplate: '{{organization.name}} — {{opportunity.title}}',
+          priority: 'medium',
+          // Un passo già scaduto si fa oggi: `in_days: 0` è la data di oggi,
+          // non l'assenza di scadenza. La data del passo mancato NON si
+          // riusa — sarebbe una scadenza già passata scritta su lavoro nuovo.
+          dueDate: 'in_days',
+          dueDateDays: 0,
+          linkEntity: true,
+        } as CreateTaskConfig,
+      },
+      {
+        key: 'create_notification',
+        config: {
+          // §84 e §136 — al responsabile della TRATTATIVA; se non c'è, a quello
+          // della relazione. Lo decide `store.ts`, non questa configurazione.
+          recipient: 'assignee',
+          messageTemplate: '{{organization.name}} — {{opportunity.title}}',
+        } as CreateNotificationConfig,
+      },
+    ],
+  },
+  {
+    id: 'crm_opportunity_unowned',
+    nameKey: 'automations.templates.crmUnownedName',
+    descriptionKey: 'automations.templates.crmUnownedDesc',
+    triggerType: 'crm_opportunity_created',
+    conditionMatch: 'all',
+    // §137 — «senza responsabile» è l'ASSENZA di un valore, non un valore
+    // speciale: `not_exists`, non un confronto con una stringa vuota.
+    conditions: [{ field: 'opportunity.owner', operator: 'not_exists' }],
+    actions: [{
+      key: 'create_notification',
+      config: {
+        // Qui gli amministratori e non «il responsabile»: il responsabile è
+        // esattamente ciò che manca, e avvisarlo non avviserebbe nessuno.
+        recipient: 'admins',
+        messageTemplate: '{{organization.name}} — {{opportunity.title}}',
+      } as CreateNotificationConfig,
+    }],
+  },
+  {
+    id: 'crm_new_customer',
+    nameKey: 'automations.templates.crmNewCustomerName',
+    descriptionKey: 'automations.templates.crmNewCustomerDesc',
+    triggerType: 'crm_role_added',
+    conditionMatch: 'all',
+    // ⚠️ Sul RUOLO APPENA AGGIUNTO, che arriva nel payload dell'evento — non
+    // su `organization.role_customer`, che dice «è cliente adesso» e sarebbe
+    // vero anche quando a essere stato aggiunto è il ruolo «fornitore».
+    conditions: [{ field: 'organization.role', operator: 'equals', value: 'customer' }],
+    actions: [{
+      key: 'create_task',
+      config: {
+        titleTemplate: '{{organization.name}}',
+        priority: 'medium',
+        dueDate: 'in_days',
+        dueDateDays: 5,
+        linkEntity: true,
+      } as CreateTaskConfig,
+    }],
+  },
   {
     id: 'unassigned_urgent',
     nameKey: 'automations.templates.unassignedName',

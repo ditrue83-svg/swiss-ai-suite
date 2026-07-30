@@ -86,6 +86,8 @@ Decidere questioni legali: **no**.
         ┌───────────────────────────────────────────────────────────────────────┐
         │  automation-worker  (Edge Function, chiamata da pg_cron)               │
         │  1. automation_emit_overdue()   «questa attività è scaduta»            │
+        │  1-bis. crm_emit_follow_up_due()  «questo follow-up è scaduto» (0026)  │
+        │  1-ter. crm_scan_link_suggestions()  propone collegamenti CRM (0030)   │
         │  2. automation_events_claim()   lotto con lease, tetto per azienda     │
         │  3. per ogni evento: processEvent()                                    │
         └───────────────────────────────────────────────────────────────────────┘
@@ -161,6 +163,35 @@ Due limiti dichiarati:
   l'arretrato — cioè farebbe il backfill che §164 vieta;
 - emette **una volta sola per attività** (chiave di deduplicazione). Se
   un'attività viene completata e riaperta oltre la scadenza, non riparte.
+
+### Le altre due scansioni del giro (0026 e 0030)
+
+Il worker ne esegue altre due, per la stessa ragione per cui esegue la prima —
+sono fatti che nessun UPDATE produce — e nello stesso giro, senza cron nuovi:
+
+- **`crm_emit_follow_up_due()`**: «il prossimo passo di questa trattativa è
+  scaduto». Stessa finestra all'indietro di tre giorni
+  (`CRM_FOLLOW_UP_LOOKBACK_DAYS`, costante separata di proposito), stessa regola
+  contro il backfill, e una chiave per opportunità **e per data**: spostare il
+  prossimo passo a un'altra data è una scadenza nuova e vale.
+- **`crm_scan_link_suggestions()`** (0030): il candidato automatico. Non emette
+  eventi e non alimenta la coda — un suggerimento non è un fatto dell'azienda, è
+  un'ipotesi del prodotto, e far scattare una regola su un'ipotesi
+  significherebbe creare lavoro a partire da un sospetto.
+
+⚠️ **Nessuna delle due è terminale.** `automation_emit_overdue` appartiene alla
+0020, cioè alla migrazione che crea la coda che questo worker consuma: se
+fallisce, non c'è comunque niente da fare e il giro si chiude con un 500. Le due
+scansioni del CRM appartengono a moduli successivi che un'azienda può non avere:
+fermare l'intera coda perché manca il CRM spegnerebbe le automazioni di
+Documenti, Finanze e Contratti. Il guasto **non è silenzioso** — il codice
+compare nel rapporto (`crmFollowUpError`, `crmSuggestionsError`) e in una riga di
+log propria. Un rapporto con quei campi valorizzati è un'affermazione, non
+un'assenza.
+
+Il rapporto del worker conta le tre cose **separatamente** — `overdueEmitted`,
+`crmFollowUpEmitted`, `crmSuggestionsCreated` — perché un numero solo non
+direbbe quale scansione ha prodotto lavoro.
 
 ---
 
@@ -260,6 +291,23 @@ regola nasce con `tasks.insert`, quindi prende lo stesso guardiano
 (assegnatario membro dell'azienda, timbri scritti dal database), lo stesso
 storico, la stessa coda del calendario, la stessa notifica di assegnazione.
 Nessuna scorciatoia SQL che ricopia le regole di un dominio altrui (§87).
+
+**Che cosa viene collegato all'attività creata** dipende dall'entità
+dell'innesco: il documento o la comunicazione, il contratto e la sua data, e —
+dal 2026-07-30 — la **controparte e la trattativa** del CRM. Fino a quel giorno
+`crm_organization_id` e `crm_opportunity_id` non venivano scritti: la casella
+«collega l'entità» era spuntata e non collegava niente, e l'attività compariva
+nel Work Hub ma non sulla scheda del cliente. L'etichetta della casella nomina
+ora ciò che collega davvero, invece di dire «il documento» ovunque.
+
+**«Avvisa il responsabile»** è offerto dove un responsabile esiste davvero:
+l'assegnatario di un'attività, il responsabile di un contratto, di una
+controparte o di una trattativa (`triggerHasOwner`, usata dal validatore E dal
+generatore — una regola sola, non due copie). Su un documento e su una
+comunicazione resta rifiutato: là non c'è nessuno da avvisare, e una regola che
+lo dicesse non avviserebbe mai nessuno. ⚠️ Fino al 2026-07-30 la condizione era
+`entityType === 'task'`, scritta quando le entità erano tre: il motore calcolava
+già il responsabile di contratti e CRM e il generatore non lasciava usarlo.
 
 ### Ogni azione è in due tempi
 
@@ -627,7 +675,7 @@ esisterà un percorso di approvazione umana. È voluto.
 ## 14. Test
 
 ```bash
-npm run test:workflows-unit   # 103 · offline, senza rete né crediti
+npm run test:workflows-unit   # 112 · offline, senza rete né crediti
 npm run test:workflows        # su DB reale (richiede la 0020 applicata)
 ```
 

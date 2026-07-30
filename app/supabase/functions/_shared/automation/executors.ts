@@ -49,6 +49,9 @@ export interface ActionContext {
   /** 0024 — il contratto e la sua data, quando l'innesco ne parla. */
   contractId: string | null;
   contractMilestoneId: string | null;
+  /** 0026 — la controparte e la trattativa, quando l'innesco ne parla. */
+  crmOrganizationId: string | null;
+  crmOpportunityId: string | null;
   assigneeUserId: string | null;
   now: Date;
 }
@@ -193,6 +196,10 @@ function planCreateTask(ctx: ActionContext, config: CreateTaskConfig): ActionPla
       dueDate,
       assigneeUserId: config.assigneeUserId ?? null,
       documentId: linkEntity ? ctx.documentId : null,
+      // §53 — l'anteprima dice ciò che accadrebbe: se il collegamento al
+      // cliente c'è, si vede prima di attivare la regola e non dopo.
+      crmOrganizationId: linkEntity ? ctx.crmOrganizationId : null,
+      crmOpportunityId: linkEntity ? ctx.crmOpportunityId : null,
     },
     write: {
       kind: 'create_task',
@@ -213,6 +220,13 @@ function planCreateTask(ctx: ActionContext, config: CreateTaskConfig): ActionPla
         // aziende coincidano (§105).
         contract_id: linkEntity ? ctx.contractId : null,
         contract_milestone_id: linkEntity ? ctx.contractMilestoneId : null,
+        // 0026 — la controparte e la trattativa, per la stessa ragione del
+        // contratto: una CHIAVE ESTERNA, mai un nome scritto nella descrizione.
+        // ⚠️ `tasks_crm_guard` verifica che azienda e trattativa coincidano e
+        // rifiuta una coppia incoerente: qui non si finge di poterlo garantire
+        // dal codice applicativo.
+        crm_organization_id: linkEntity ? ctx.crmOrganizationId : null,
+        crm_opportunity_id: linkEntity ? ctx.crmOpportunityId : null,
         // `created_by` resta NULL: nessuna persona ha creato questa attività, e
         // metterci l'autore della regola direbbe che l'ha scritta lui adesso.
         created_by: null,

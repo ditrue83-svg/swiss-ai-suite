@@ -14,7 +14,7 @@
 // personale. Le persone si aggiungono dalla scheda, a mano.
 // ============================================================================
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
 import { ErrorState } from '@/components/ui/states';
@@ -70,7 +70,14 @@ export function ClientCreatePage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const [displayName, setDisplayName] = useState('');
+  // Un suggerimento può portare qui il nome letto su un contratto o su una
+  // fattura, insieme al proprio identificativo. Il nome è solo una PROPOSTA nel
+  // campo — resta modificabile, e resta il nome che il documento dice.
+  const [params] = useSearchParams();
+  const fromSuggestion = params.get('da');
+  const suggestedName = (params.get('nome') ?? '').slice(0, 200);
+
+  const [displayName, setDisplayName] = useState(suggestedName);
   const [legalName, setLegalName] = useState('');
   const [uidChe, setUidChe] = useState('');
   const [website, setWebsite] = useState('');
@@ -130,6 +137,21 @@ export function ClientCreatePage() {
         // saperlo. Non significa che i dati siano verificati.
         source: fromRegistry ? 'registry' : 'manual',
       });
+      // Il cerchio si chiude: la scheda esiste, quindi il documento che l'aveva
+      // fatta proporre le si collega e il suggerimento diventa «accettato».
+      // ⚠️ Se questa seconda metà fallisce, la scheda RESTA e lo si DICE — è la
+      // stessa scelta dei ruoli qui sotto e della cancellazione di un documento:
+      // far sparire il lavoro riuscito per colpa di quello secondario sarebbe
+      // peggio, e tacerlo sarebbe una bugia.
+      if (fromSuggestion) {
+        try {
+          await crmService.acceptSuggestionById(company.id, fromSuggestion, id);
+        } catch {
+          showToast(t('crm.errors.suggestionNotLinked'));
+          navigate(`/clienti/${id}`, { replace: true });
+          return;
+        }
+      }
       showToast(t('crm.form.created'));
       navigate(`/clienti/${id}`, { replace: true });
     } catch (err) {

@@ -151,6 +151,18 @@ export interface EntityFacts {
   /** 0024 — il contratto e la sua data, quando l'innesco ne parla. */
   contractId: string | null;
   contractMilestoneId: string | null;
+  /**
+   * 0026 — la controparte e la trattativa, quando l'innesco ne parla.
+   *
+   * ⚠️ SENZA QUESTI DUE CAMPI IL CRM NON COLLEGAVA NIENTE. Un'attività creata
+   * da una regola «follow-up scaduto» nasceva senza `crm_organization_id`:
+   * compariva nel Work Hub e non compariva sulla scheda del cliente, cioè
+   * proprio nel posto in cui il modulo esiste per farla comparire. La casella
+   * «collega l'entità» del generatore era spuntata e non faceva nulla — una
+   * promessa dell'interfaccia che nessuno manteneva.
+   */
+  crmOrganizationId: string | null;
+  crmOpportunityId: string | null;
   /** Il responsabile dell'attività, quando l'innesco parla di un'attività. */
   assigneeUserId: string | null;
 }
@@ -238,6 +250,11 @@ async function crmOrganizationFacts(
     taskId: null,
     contractId: null,
     contractMilestoneId: null,
+    // L'innesco parla della CONTROPARTE: l'attività creata le appartiene.
+    // Nessuna trattativa, perché qui non ce n'è una — e indovinarne una fra le
+    // aperte significherebbe attribuire il lavoro alla trattativa sbagliata.
+    crmOrganizationId: o.id as string,
+    crmOpportunityId: null,
     // ⚠️ Il destinatario «assegnatario» punta al RESPONSABILE DELLA RELAZIONE:
     // è la persona che una notifica su questa controparte deve raggiungere.
     assigneeUserId: (o.account_owner_user_id as string | null) ?? null,
@@ -342,6 +359,12 @@ async function crmOpportunityFacts(
     taskId: null,
     contractId: null,
     contractMilestoneId: null,
+    // La trattativa E la sua controparte. Le passiamo entrambe pur sapendo che
+    // `tasks_crm_guard` riempirebbe l'organizzazione da sola: scrivere solo
+    // l'opportunità farebbe dipendere da un trigger un dato che qui è già noto,
+    // e il giorno in cui quel trigger cambiasse non fallirebbe nessun test.
+    crmOrganizationId: (p.organization_id as string | null) ?? null,
+    crmOpportunityId: p.id as string,
     // §84 e §136 — l'avviso e l'attività vanno al responsabile della TRATTATIVA;
     // se non c'è, al responsabile della relazione. Senza nessuno dei due resta
     // null, e l'azione «assegna» viene saltata dichiarandolo.
@@ -446,6 +469,13 @@ async function contractFacts(
     taskId: null,
     contractId: c.id as string,
     contractMilestoneId: milestoneId,
+    // ⚠️ La controparte del contratto NON viene propagata all'attività, e non
+    // è una dimenticanza: `contracts.counterparty_organization_id` è
+    // FACOLTATIVA e spesso vuota, e un'attività agganciata a un cliente che
+    // qualcuno collegherà domani direbbe oggi una cosa che oggi non è vera.
+    // Il collegamento fra contratto e cliente si legge dal contratto.
+    crmOrganizationId: null,
+    crmOpportunityId: null,
     assigneeUserId: (c.owner_user_id as string | null) ?? null,
   };
 }
@@ -569,7 +599,8 @@ async function documentFacts(
 
   return {
     facts, documentId: String(doc.id), emailMessageId: null, taskId: null,
-    contractId: null, contractMilestoneId: null, assigneeUserId: null,
+    contractId: null, contractMilestoneId: null,
+    crmOrganizationId: null, crmOpportunityId: null, assigneeUserId: null,
   };
 }
 
@@ -664,7 +695,8 @@ async function emailFacts(sb: ServerClient, event: ClaimedEvent): Promise<Entity
 
   return {
     facts, documentId, emailMessageId: String(msg.id), taskId: null,
-    contractId: null, contractMilestoneId: null, assigneeUserId: null,
+    contractId: null, contractMilestoneId: null,
+    crmOrganizationId: null, crmOpportunityId: null, assigneeUserId: null,
   };
 }
 
@@ -694,6 +726,10 @@ async function taskFacts(sb: ServerClient, event: ClaimedEvent): Promise<EntityF
     taskId: String(task.id),
     contractId: null,
     contractMilestoneId: null,
+    // L'innesco parla di un'ATTIVITÀ che esiste già: non se ne crea un'altra da
+    // collegare, e le azioni di questi inneschi lavorano su quella.
+    crmOrganizationId: null,
+    crmOpportunityId: null,
     assigneeUserId: (task.assignee_user_id as string | null) ?? null,
   };
 }

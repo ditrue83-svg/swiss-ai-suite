@@ -683,6 +683,85 @@ async function main() {
       JSON.stringify(tasksL));
   }
 
+  // =========================================================================
+  section('16 · Una regola CRM crea un’attività COLLEGATA alla controparte (0026)');
+  // =========================================================================
+  {
+    // ⚠️ IL DIFETTO CHE QUESTA SEZIONE SORVEGLIA: fino al 2026-07-30
+    // `create_task` non scriveva `crm_organization_id` né `crm_opportunity_id`.
+    // L'attività nasceva, compariva nel Work Hub, e sulla scheda del cliente non
+    // c'era — cioè mancava proprio dove il CRM esiste per farla comparire. La
+    // casella «collega l'entità» del generatore era spuntata e non faceva nulla:
+    // nessun test poteva vederlo, perché nessuno guardava quelle due colonne.
+    const companyM = await makeCompany(`Prova Automazioni M ${Date.now()}`, andrea.id);
+    await makeWorkflow(companyM, andrea.id, {
+      name: 'Nuova trattativa senza responsabile',
+      trigger_type: 'crm_opportunity_created',
+      conditions: [{ field: 'opportunity.owner', operator: 'not_exists' }],
+      actions: [{
+        key: 'create_task',
+        config: {
+          titleTemplate: '{{organization.name}} — {{opportunity.title}}',
+          priority: 'medium', dueDate: 'in_days', dueDateDays: 0, linkEntity: true,
+        },
+      }],
+    });
+
+    const { data: orgM, error: orgErr } = await admin.from('crm_organizations')
+      .insert({ company_id: companyM, display_name: 'Bernasconi Prova SA' })
+      .select('id').single();
+    check('la controparte di prova esiste', !orgErr, orgErr?.message ?? '');
+    const { data: oppM, error: oppErr } = await admin.from('crm_opportunities').insert({
+      company_id: companyM, organization_id: (orgM as { id: string }).id,
+      title: 'Impianto di riscaldamento', stage: 'lead',
+    }).select('id').single();
+    check('la trattativa di prova esiste', !oppErr, oppErr?.message ?? '');
+
+    await sleep(200);
+    await drain(companyM);
+
+    const { data: tasksM } = await admin.from('tasks')
+      .select('title, source, due_date, crm_organization_id, crm_opportunity_id')
+      .eq('company_id', companyM);
+    const taskM = ((tasksM ?? []) as Array<Record<string, unknown>>)[0];
+    check('la regola CRM ha creato l’attività',
+      (tasksM ?? []).length === 1 && taskM?.source === 'workflow', JSON.stringify(tasksM));
+    check('il titolo compone i due nomi propri, senza testo in una lingua sola',
+      taskM?.title === 'Bernasconi Prova SA — Impianto di riscaldamento', String(taskM?.title));
+    check('⚠️ l’attività è COLLEGATA alla controparte',
+      taskM?.crm_organization_id === (orgM as { id: string }).id,
+      `${String(taskM?.crm_organization_id)} vs ${(orgM as { id: string }).id}`);
+    check('⚠️ e alla trattativa che l’ha fatta nascere',
+      taskM?.crm_opportunity_id === (oppM as { id: string }).id,
+      `${String(taskM?.crm_opportunity_id)} vs ${(oppM as { id: string }).id}`);
+    check('la scadenza «fra 0 giorni» è oggi, non «nessuna scadenza»',
+      taskM?.due_date === new Date().toISOString().slice(0, 10), String(taskM?.due_date));
+
+    // CONTROPROVA sul percorso opposto: senza «collega», nessun collegamento —
+    // altrimenti il caso qui sopra proverebbe solo che le colonne si scrivono
+    // sempre, il che è un'altra cosa.
+    await makeWorkflow(companyM, andrea.id, {
+      name: 'Trattativa vinta, attività scollegata',
+      trigger_type: 'crm_opportunity_won',
+      conditions: [],
+      actions: [{
+        key: 'create_task',
+        config: { titleTemplate: '{{opportunity.title}}', priority: 'low', dueDate: 'none', linkEntity: false },
+      }],
+    });
+    await admin.from('crm_opportunities').update({ stage: 'won' })
+      .eq('id', (oppM as { id: string }).id);
+    await sleep(200);
+    await drain(companyM);
+    const { data: tasksM2 } = await admin.from('tasks')
+      .select('title, crm_organization_id').eq('company_id', companyM)
+      .eq('title', 'Impianto di riscaldamento');
+    const unlinkedTask = ((tasksM2 ?? []) as Array<Record<string, unknown>>)[0];
+    check('senza «collega» l’attività nasce SENZA controparte',
+      (tasksM2 ?? []).length === 1 && unlinkedTask?.crm_organization_id === null,
+      JSON.stringify(tasksM2));
+  }
+
   // ---- pulizia -------------------------------------------------------------
   // ⚠️ Una pulizia incompleta FA FALLIRE il test. Lezione del 2026-07-27:
   // `cleanup()` dell'Inbox ignorava l'esito delle delete e due aziende di prova

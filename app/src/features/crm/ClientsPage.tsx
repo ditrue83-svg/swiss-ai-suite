@@ -36,6 +36,7 @@ import type {
 import type {
   CrmOpportunityStage, CrmOrganizationRole, CrmRelationshipStatus,
 } from '@/types/database';
+import { SuggestionsCard } from './SuggestionsCard';
 import {
   CRM_PAGE_SIZE, CRM_SORTS, CRM_VIEWS, DEFAULT_STALE_DAYS, MAX_QUERY_LENGTH,
   PIPELINE_STAGES, countByStage, daysSince, filtersFromParams, hasActiveFilters,
@@ -228,6 +229,12 @@ export function ClientsPage() {
       ) : !loading && !error ? (
         <ErrorState message={t('crm.noAccess')} />
       ) : null}
+
+      {/* «Da verificare»: ciò che il candidato automatico ha proposto e che
+          nessuno ha ancora confermato. Sta SOPRA l'elenco perché è lavoro da
+          fare, non un archivio da consultare — e sparisce da sé quando non c'è
+          niente in sospeso. */}
+      {!error && <SuggestionsCard companyId={company.id} />}
 
       <nav className="tabs" aria-label={t('crm.title')}>
         {CRM_VIEWS.map((v) => (

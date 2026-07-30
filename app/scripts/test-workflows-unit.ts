@@ -36,7 +36,7 @@ import {
 import {
   ACTIONS, AUTOMATION_EVENT_TYPES, OPERATORS, OPERATORS_BY_TYPE, TRIGGERS, actionsForTrigger, findAction,
   findField, findTrigger, isAutoExecutable,
-  type WorkflowAction, type WorkflowCondition,
+  type AutomationEventType, type WorkflowAction, type WorkflowCondition,
 } from '../supabase/functions/_shared/automation/registry.ts';
 import { validateWorkflow } from '../supabase/functions/_shared/automation/validate.ts';
 import {
@@ -595,6 +595,7 @@ section('12 · La prova a vuoto non scrive: lo dice il tipo, non la buona fede')
     facts: { 'document.title': known('Sollecito IVA'), 'analysis.urgency': known('alta') },
     entityType: 'document', entityId: 'd', documentId: 'd',
     emailMessageId: null, taskId: null, contractId: null, contractMilestoneId: null,
+    crmOrganizationId: null, crmOpportunityId: null,
     assigneeUserId: null, now: NOW,
   };
 
@@ -615,6 +616,124 @@ section('12 · La prova a vuoto non scrive: lo dice il tipo, non la buona fede')
   } as WorkflowAction);
   ok(noUrgency.outcome === 'skip' && noUrgency.errorCode === 'value_not_derivable',
     'senza urgenza la priorità NON si inventa: l’azione si salta e lo dichiara');
+}
+
+// ===========================================================================
+section('13 · Il CRM dentro le automazioni (0026 — §136–§139)');
+// ===========================================================================
+{
+  // (a) I tre modelli scrivibili con gli inneschi che esistono. Il quarto —
+  //     «cliente inattivo», §139 — non c'è, e il test lo DICHIARA invece di
+  //     lasciar credere che sia stato dimenticato: nessun innesco scatta al
+  //     passare del tempo su una controparte.
+  const crmIds = ['crm_follow_up_overdue', 'crm_opportunity_unowned', 'crm_new_customer'];
+  const found = crmIds.filter((id) => AUTOMATION_TEMPLATES.some((x) => x.id === id));
+  ok(found.length === crmIds.length, 'i tre modelli del CRM sono offerti nel generatore',
+    `mancano: ${crmIds.filter((id) => !found.includes(id)).join(', ')}`);
+  ok(!AUTOMATION_TEMPLATES.some((x) => x.triggerType === 'crm_organization_created'
+    && x.id.includes('inactive')),
+    'nessun modello finge di sorvegliare l’inattività di un cliente (§139 non è implementabile oggi)');
+
+  // (b) ⚠️ IL DIFETTO CHE QUESTO CASO SORVEGLIA: un'attività creata da una
+  //     regola CRM deve NASCERE COLLEGATA alla controparte. Fino al 2026-07-30
+  //     `linkEntity` era spuntata e non collegava niente, perché il motore non
+  //     passava l'organizzazione: l'attività compariva nel Work Hub e non sulla
+  //     scheda del cliente, cioè nel solo posto per cui il modulo esiste.
+  const crmTasks = AUTOMATION_TEMPLATES
+    .filter((x) => crmIds.includes(x.id))
+    .flatMap((x) => x.actions.filter((a) => a.key === 'create_task'));
+  ok(crmTasks.length > 0 && crmTasks.every((a) => (a.config as { linkEntity?: boolean }).linkEntity !== false),
+    'le attività dei modelli CRM nascono collegate alla controparte');
+
+  // (c) Il collegamento non è una dichiarazione: si verifica sul PIANO.
+  const crmCtx: ActionContext = {
+    companyId: 'c', runId: null, workflowId: 'w', workflowName: 'Prova',
+    facts: { 'organization.name': known('Bernasconi Impianti SA'), 'opportunity.title': known('Impianto') },
+    entityType: 'crm_opportunity', entityId: 'o',
+    documentId: null, emailMessageId: null, taskId: null,
+    contractId: null, contractMilestoneId: null,
+    crmOrganizationId: 'org-1', crmOpportunityId: 'opp-1',
+    assigneeUserId: 'u-1', now: NOW,
+  };
+  const sbNoop = {
+    from: () => {
+      const chain: Record<string, unknown> = {};
+      const self = () => chain;
+      for (const m of ['select', 'eq', 'neq', 'in', 'order', 'limit', 'gte']) chain[m] = self;
+      chain.maybeSingle = async () => ({ data: null, error: null });
+      return chain;
+    },
+    rpc: async () => ({ data: null, error: null }),
+  };
+  const crmPlan = await planAction(sbNoop as never, crmCtx, {
+    key: 'create_task',
+    config: {
+      titleTemplate: '{{organization.name}} — {{opportunity.title}}',
+      priority: 'medium', dueDate: 'in_days', dueDateDays: 0, linkEntity: true,
+    },
+  } as WorkflowAction);
+  const row = crmPlan.outcome === 'ready' && crmPlan.write.kind === 'create_task'
+    ? crmPlan.write.row as Record<string, unknown> : {};
+  ok(row.crm_organization_id === 'org-1' && row.crm_opportunity_id === 'opp-1',
+    'l’attività pianificata porta la controparte E la trattativa',
+    `org=${String(row.crm_organization_id)} opp=${String(row.crm_opportunity_id)}`);
+
+  // CONTROPROVA: senza «collega», nessun collegamento. Un test che vede solo il
+  // caso positivo non distingue «lo scrive» da «lo scrive sempre».
+  const unlinked = await planAction(sbNoop as never, crmCtx, {
+    key: 'create_task',
+    config: {
+      titleTemplate: '{{organization.name}}', priority: 'medium',
+      dueDate: 'none', linkEntity: false,
+    },
+  } as WorkflowAction);
+  const row2 = unlinked.outcome === 'ready' && unlinked.write.kind === 'create_task'
+    ? unlinked.write.row as Record<string, unknown> : {};
+  ok(row2.crm_organization_id === null && row2.crm_opportunity_id === null,
+    'togliendo «collega» il collegamento sparisce davvero');
+
+  // (d) ⚠️ IL SECONDO DIFETTO: «avvisa il responsabile» era rifiutato ovunque
+  //     tranne che sulle attività, mentre `store.ts` calcola il responsabile
+  //     anche per contratti, controparti e trattative citando §84 e §136. Il
+  //     motore sapeva a chi scrivere e il generatore non lasciava dirlo.
+  const owned: AutomationEventType[] = [
+    'crm_follow_up_due', 'crm_opportunity_created', 'crm_organization_created',
+    'contract_verified', 'task_became_overdue',
+  ];
+  const ownedOk = owned.every((trigger) => validateWorkflow({
+    name: 'x', triggerType: trigger, conditionMatch: 'all', conditions: [],
+    actions: [{ key: 'create_notification', config: { recipient: 'assignee', messageTemplate: 'x' } }],
+  }, { forActivation: true }).length === 0);
+  ok(ownedOk, 'si può avvisare il responsabile dove un responsabile esiste');
+
+  // CONTROPROVA: dove il responsabile NON esiste la regola resta invalida —
+  // altrimenti avremmo solo allargato il permesso a tutto.
+  const noOwner = validateWorkflow({
+    name: 'x', triggerType: 'document_analysis_completed', conditionMatch: 'all', conditions: [],
+    actions: [{ key: 'create_notification', config: { recipient: 'assignee', messageTemplate: 'x' } }],
+  }, { forActivation: true });
+  ok(noOwner.some((i) => i.key === 'recipientNotAvailable'),
+    'su un documento «avvisa il responsabile» resta rifiutato: là non c’è nessuno');
+
+  // (e) ⚠️ NESSUN TESTO DENTRO UN MODELLO. Il titolo di un'attività creata da
+  //     una regola resta nel database com'è nato: una parola italiana scritta
+  //     qui comparirebbe identica nella schermata tedesca. Sono ammessi solo
+  //     segnaposti e separatori — questo controllo vale per TUTTI i modelli,
+  //     non solo per quelli del CRM.
+  const withText: string[] = [];
+  for (const tpl of AUTOMATION_TEMPLATES) {
+    for (const a of tpl.actions) {
+      const cfg = a.config as { titleTemplate?: string; messageTemplate?: string; descriptionTemplate?: string };
+      for (const text of [cfg.titleTemplate, cfg.messageTemplate, cfg.descriptionTemplate]) {
+        if (!text) continue;
+        const residuo = text.replace(/\{\{[^}]+\}\}/g, '').replace(/[\s—–\-·:,.|/]+/g, '');
+        if (residuo !== '') withText.push(`${tpl.id}: «${residuo}»`);
+      }
+    }
+  }
+  ok(withText.length === 0,
+    'nessun modello scrive testo in una lingua sola dentro un titolo o un messaggio',
+    withText.join(' | '));
 }
 
 console.log(`\n${B}Risultato${X}  ${pass} superati, ${fail} falliti\n`);
