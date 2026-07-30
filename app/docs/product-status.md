@@ -11,6 +11,23 @@
 > tabella è dedotta dal codice: dove non ho potuto verificare, la colonna dice
 > **no**, non «probabilmente».
 
+## ⚠️⚠️ IL CREDITO ANTHROPIC È ESAURITO (verificato il 2026-07-31)
+
+Ogni chiamata all'API risponde **400 — «Your credit balance is too low»**, e
+l'impronta della chiave in `.env.test` **coincide con quella del secret
+`ANTHROPIC_API_KEY` delle Edge Function**: è la stessa chiave. Quindi non è un
+problema dei soli test.
+
+**Fermo adesso in produzione**: analisi dei documenti (Admin AI), classificazione
+della posta in arrivo, estrazione delle Finanze, `contract-worker`,
+interpretazione di Subsidy AI, «Chiedi ad AI-Swisse». Il prodotto **lo dichiara**
+invece di fingere un guasto temporaneo (commit `dd7b2e0`), ma resta fermo.
+
+Conseguenza per questa tabella: le colonne «testato» e «servizio reale» dei
+moduli che dipendono dall'AI descrivono l'ultima misura riuscita, non una
+misura di oggi. `test:integration` e `test:eval` **non sono eseguibili** finché
+il credito non viene ricaricato.
+
 ## Le sei parole, e perché sono sei
 
 Fino al 2026-07-31 i documenti usavano «in esercizio» per stati molto diversi, e
@@ -42,7 +59,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
 | Contratti | `/contratti` | sì | sì | sì | sì | **no** | parziale | — | ⚠️ **il worker non ha mai prodotto un'estrazione su un contratto vero**: `contract_extractions` è a zero. Il prompt è allineato a un ragionamento, non a una risposta reale |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
-| Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | parziale | sì | sì | Anthropic | ⚠️ `eval:assistant` chiude **15/16** ed è **non deterministico**: due esecuzioni consecutive hanno fallito due casi diversi, perché interroga il database reale. Sola lettura, retention 180 giorni attiva |
+| Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | parziale | sì | sì | Anthropic | ⚠️ `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione. La causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato), corretta il 2026-07-31 e verificata contro il database vero; l'asserzione sull'ancoraggio è ora una funzione pura provata offline. ⚠️ **L'eval NON è stata rieseguita**: credito esaurito. Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | parziale | sì | sì | fonti ufficiali (7 siti) | ⚠️ **nessuna suite d'integrazione su database**: 277 asserzioni offline, l'end-to-end è stato fatto a mano una volta. 7 revisioni del catalogo in attesa di una persona |
 
 ## Le integrazioni esterne
