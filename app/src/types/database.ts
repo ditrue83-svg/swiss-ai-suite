@@ -275,7 +275,14 @@ export type AutomationEventType =
   // gira dentro il worker delle automazioni già acceso. Nessun cron nuovo.
   | 'crm_organization_created' | 'crm_role_added'
   | 'crm_opportunity_created' | 'crm_opportunity_stage_changed'
-  | 'crm_opportunity_won' | 'crm_follow_up_due';
+  | 'crm_opportunity_won' | 'crm_follow_up_due'
+  // 0032 — i sette inneschi degli incentivi. ⚠️ Stanno qui perché il database
+  // li ammette: l'unione TypeScript deve SEGUIRE l'enum SQL, non inseguirlo.
+  // Il registro condiviso li dichiara e un test confronta i due elenchi.
+  | 'subsidy_opportunity_created' | 'subsidy_opportunity_high_relevance'
+  | 'subsidy_call_opened' | 'subsidy_deadline_approaching'
+  | 'subsidy_assessment_became_stale' | 'subsidy_case_status_changed'
+  | 'subsidy_source_critical_change';
 export type AutomationEventStatus = 'pending' | 'processing' | 'done' | 'failed' | 'dead_letter';
 /**
  * Stato di una regola. L'archiviazione è uno STATO — non una data come per le

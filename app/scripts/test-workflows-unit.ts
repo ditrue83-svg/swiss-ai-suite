@@ -54,6 +54,11 @@ import { planAction, type ActionContext } from '../supabase/functions/_shared/au
 // con questa, e la sezione 9 lo verifica su una matrice. Vedi il commento in
 // cima a `urgencyFrom`.
 import { urgencyFromType, daysUntil } from '../src/features/admin-ai/engine';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 import {
   AUTOMATION_TEMPLATES, describeCondition, summarySentence, type NameResolver,
 } from '../src/features/automations/automationModel';
@@ -106,6 +111,58 @@ section('1 · Il registro: nessun innesco e nessuna azione dichiarati a vuoto');
     `registro ${TRIGGERS.length}, enum ${AUTOMATION_EVENT_TYPES.length}`);
   ok(TRIGGERS.every((t) => (AUTOMATION_EVENT_TYPES as readonly string[]).includes(t.key)),
     'nessun innesco nomina un evento che il database non conosce');
+
+  // ⚠️⚠️ IL CONTROLLO CHE MANCAVA, e la sua assenza è costata sette inneschi.
+  //    I due elenchi confrontati sopra vivono NELLO STESSO FILE TypeScript:
+  //    coincidono per costruzione, e il commento che parla dell'«enum che il
+  //    database accetta» non era vero. Il 2026-07-30 l'SQL dichiarava sette
+  //    inneschi degli incentivi (0032) che il registro non conosceva: la
+  //    schermata non li offriva, e nessun test se n'era accorto. Ora si legge
+  //    l'SQL.
+  const MIGRAZIONI = readdirSync(join(HERE, '..', 'supabase', 'migrations'))
+    .filter((f) => f.endsWith('.sql')).sort()
+    .map((f) => readFileSync(join(HERE, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
+  const sqlEventi = new Set<string>();
+  const creato = MIGRAZIONI.match(/create type public\.automation_event_type as enum \(([\s\S]*?)\)/i);
+  if (creato) {
+    for (const m of creato[1].replace(/--[^\n]*/g, '').matchAll(/'([^']+)'/g)) sqlEventi.add(m[1]);
+  }
+  for (const m of MIGRAZIONI.matchAll(
+    /alter type public\.automation_event_type add value if not exists '([^']+)'/gi)) {
+    sqlEventi.add(m[1]);
+  }
+  ok(sqlEventi.size === AUTOMATION_EVENT_TYPES.length,
+    'il registro dichiara ESATTAMENTE gli inneschi che l\u2019SQL ammette',
+    `SQL ${sqlEventi.size}, registro ${AUTOMATION_EVENT_TYPES.length}`);
+  const soloSql = [...sqlEventi].filter((e) => !(AUTOMATION_EVENT_TYPES as readonly string[]).includes(e));
+  ok(soloSql.length === 0,
+    'nessun innesco esiste nel database e manca dal registro: sarebbe un evento che nessuna regola pu\u00f2 usare',
+    soloSql.join(', '));
+
+  // ⚠️⚠️ E OGNI ENTITÀ DI UN INNESCO DEVE AVERE UN CARICATORE DI FATTI.
+  //    Senza, la regola si compone dall'interfaccia, l'evento arriva, `loadFacts`
+  //    torna `null` e l'evento viene scartato IN SILENZIO: una regola che
+  //    sembra attiva e non fa niente. È la stessa bugia di un innesco senza
+  //    produttore, vista dall'altro lato.
+  const STORE = readFileSync(
+    join(HERE, '..', 'supabase', 'functions', '_shared', 'automation', 'store.ts'), 'utf8');
+  const entitaSenzaFatti = [...new Set(TRIGGERS.map((t) => t.entityType))]
+    .filter((e) => !STORE.includes(`event.entity_type === '${e}'`));
+  ok(entitaSenzaFatti.length === 0,
+    'ogni entit\u00e0 nominata da un innesco ha un caricatore di fatti in store.ts',
+    entitaSenzaFatti.join(', '));
+
+  // ⚠️ E ogni campo dichiarato deve essere PRODOTTO da quel caricatore: un
+  //    campo che nessuno riempie è una condizione che risponde sempre «manca il
+  //    dato», cioè un menu che promette un confronto impossibile.
+  const campiSenzaFatto = TRIGGERS
+    .filter((t) => t.entityType === 'subsidy_opportunity' || t.entityType === 'subsidy_case')
+    .flatMap((t) => t.fields.map((f) => f.path))
+    .filter((path, i, all) => all.indexOf(path) === i)
+    .filter((path) => !STORE.includes(`'${path}':`));
+  ok(campiSenzaFatto.length === 0,
+    'ogni campo degli incentivi \u00e8 davvero prodotto dal caricatore',
+    campiSenzaFatto.join(', '));
   ok(ACTIONS.length === 6, 'sei azioni dichiarate', String(ACTIONS.length));
 
   let allFieldsSane = true, allOperatorsSane = true;
