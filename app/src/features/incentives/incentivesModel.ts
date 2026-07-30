@@ -144,13 +144,26 @@ export function filtersFromParams(params: URLSearchParams): IncentiveFilters {
   return {
     tab: tabFromParam(params.get('scheda')),
     view: OPPORTUNITY_VIEWS.includes(view as OpportunityView) ? (view as OpportunityView) : 'all',
-    projectId: params.get('progetto') || null,
+    // ⚠️ SOLO un identificativo BEN FORMATO diventa un filtro. Con `?progetto=abc`
+    //    la funzione SQL riceveva `abc` come uuid e PostgREST rispondeva
+    //    «invalid input syntax for type uuid: "abc"» — una stringa tecnica, in
+    //    inglese, dentro un'interfaccia che può essere in tedesco. Un
+    //    identificativo malformato non è un filtro: è rumore in un indirizzo, e
+    //    si ignora come si ignora `?vista=pippo`. Un progetto che NON ESISTE è
+    //    un'altra cosa e resta un filtro: l'elenco vuoto è la risposta vera.
+    projectId: isUuid(params.get('progetto')) ? params.get('progetto') : null,
     archived: params.get('archiviati') === '1',
     // Un valore non numerico NON diventa una pagina qualsiasi: diventa la
     // prima. Interpretare `?da=pippo` come «pagina 3» mostrerebbe il vuoto
     // senza che nulla lo dichiari.
     offset: Number.isFinite(offset) && offset > 0 ? Math.trunc(offset) : 0,
   };
+}
+
+/** La forma di un uuid. Non ne verifica l'esistenza: quella la sa il database. */
+export function isUuid(v: string | null | undefined): boolean {
+  return typeof v === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
 export function paramsFromFilters(f: IncentiveFilters): URLSearchParams {

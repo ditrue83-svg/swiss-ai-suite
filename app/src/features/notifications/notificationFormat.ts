@@ -33,6 +33,15 @@ export function notificationTitleKey(n: Pick<AppNotification, 'type' | 'payload'
     case 'workflow_alert': return 'notifications.typeWorkflow';
     // 0026 — la trattativa affidata a qualcuno.
     case 'crm_opportunity_assigned': return 'notifications.typeCrmOpportunity';
+    // 0032 — gli incentivi. ⚠️ Questi quattro `case` non sono un di più: senza,
+    // lo `switch` non copre valori che il DATABASE ammette e la funzione
+    // restituisce `undefined`, cioè `t(undefined)` e la campanella in crash. Il
+    // compilatore lo impedisce solo perché `NotificationType` li dichiara: è la
+    // ragione per cui l'elenco TS deve seguire l'enum SQL, non inseguirlo.
+    case 'subsidy_new_opportunity': return 'notifications.typeSubsidyNew';
+    case 'subsidy_call_opened': return 'notifications.typeSubsidyCall';
+    case 'subsidy_deadline_approaching': return 'notifications.typeSubsidyDeadline';
+    case 'subsidy_program_changed': return 'notifications.typeSubsidyChanged';
   }
 }
 
@@ -67,6 +76,27 @@ export function notificationLink(
     const org = typeof n.payload?.organizationId === 'string' ? n.payload.organizationId : null;
     return org ? `/clienti/${org}/opportunita/${n.entityId}` : '/clienti';
   }
+  // ⚠️ 0024 — IL CONTRATTO MANCAVA, e il vincolo di `notifications` lo ammette
+  //    dalla 0024 proprio perché «il preavviso di X si avvicina» non ha altro
+  //    referente sensato. Senza questo ramo quell'avviso cadeva nel `return '/'`
+  //    in fondo: la campanella portava alla Panoramica invece che al contratto,
+  //    e chi ci cliccava doveva ritrovarselo a mano. Difetto trovato leggendo il
+  //    vincolo del database accanto a questa funzione, non provando l'app.
+  if (n.entityType === 'contract') return `/contratti/${n.entityId}`;
+  // 0032 — gli incentivi. ⚠️ NON esiste una rotta per la singola opportunità né
+  //    per la singola pratica: il modulo è una schermata con quattro schede, e
+  //    inventare `/incentivi/:id` produrrebbe un indirizzo che risponde 404 di
+  //    fatto. Si porta dove la cosa si trova davvero — la stessa scelta già
+  //    fatta per `email_message`, che porta all'elenco perché un messaggio non
+  //    ha un indirizzo proprio.
+  if (n.entityType === 'subsidy_opportunity') {
+    // Se il produttore dichiara il progetto, l'elenco arriva già filtrato: §61
+    // dice che i risultati non si mescolano fra progetti, e il filtro esiste.
+    // Se non lo dichiara NON si inventa: si apre l'elenco, che è vero.
+    const project = typeof n.payload?.projectId === 'string' ? n.payload.projectId : null;
+    return project ? `/incentivi?progetto=${encodeURIComponent(project)}` : '/incentivi';
+  }
+  if (n.entityType === 'subsidy_case') return '/incentivi?scheda=pratiche';
   // Un tipo di entità che non conosciamo non diventa un collegamento inventato:
   // porta alla panoramica, che esiste sempre.
   return '/';

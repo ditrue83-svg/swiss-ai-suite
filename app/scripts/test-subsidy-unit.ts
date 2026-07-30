@@ -74,7 +74,7 @@ import {
   OPPORTUNITY_VIEWS, INCENTIVE_TABS, TAB_PARAM, tabFromParam,
   filtersFromParams, paramsFromFilters, deadlineNotice, nextStep, caseDeadline,
   checklistProgress, canMarkReady, nextStatuses, validateProject, plural,
-  subsidyErrorKey, summaryNotices, daysBetweenDates, todayISO,
+  subsidyErrorKey, summaryNotices, daysBetweenDates, todayISO, isUuid,
   DEADLINE_SOON_DAYS as UI_DEADLINE_SOON_DAYS,
   DEADLINE_SOON_DAYS as DEADLINE_SOON_DAYS_UI,
 } from '../src/features/incentives/incentivesModel.ts';
@@ -737,6 +737,22 @@ check('una pagina non numerica diventa la PRIMA, non una pagina a caso',
   && filtersFromParams(new URLSearchParams('da=-4')).offset === 0);
 check('e una pagina valida si conserva',
   filtersFromParams(new URLSearchParams('da=50')).offset === 50);
+// ⚠️ Un identificativo MALFORMATO non diventa un filtro: arrivava fino al
+//    database e tornava come «invalid input syntax for type uuid: "abc"», cioè
+//    una stringa tecnica in inglese dentro un'interfaccia che può essere in
+//    tedesco. Trovato aprendo il collegamento che una notifica potrebbe
+//    costruire, non rileggendo il codice.
+check('un progetto malformato nell\'indirizzo non diventa un filtro',
+  filtersFromParams(new URLSearchParams('progetto=abc')).projectId === null);
+// ⚠️ Ma un identificativo BEN FORMATO che non esiste resta un filtro: l'elenco
+//    vuoto è la risposta vera, e ignorarlo mostrerebbe le opportunità di TUTTI
+//    i progetti sotto un indirizzo che ne promette uno.
+check('un progetto ben formato resta un filtro, anche se non esiste',
+  filtersFromParams(new URLSearchParams('progetto=00000000-0000-0000-0000-000000000000')).projectId
+    === '00000000-0000-0000-0000-000000000000');
+check('isUuid non si lascia ingannare da una forma quasi giusta',
+  !isUuid('00000000-0000-0000-0000-00000000000') && !isUuid('') && !isUuid(null)
+  && isUuid('A10B1325-BA46-496A-853B-5F2B28A9316E'));
 
 // ---- 14c. La scadenza: nessuna urgenza inventata --------------------------
 const opp = (o: Partial<IncentiveOpportunity> = {}): IncentiveOpportunity => ({

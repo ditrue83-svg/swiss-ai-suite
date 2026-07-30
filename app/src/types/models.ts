@@ -590,6 +590,13 @@ export interface AppNotification {
      * istante, non lo stato di adesso.
      */
     organizationId?: string; stage?: string;
+    /**
+     * 0032 — il progetto di un'opportunità di incentivo. Stessa ragione di
+     * `organizationId`: serve a `notificationLink` per aprire l'elenco già
+     * filtrato sul progetto giusto (§61 — i risultati non si mescolano fra
+     * progetti). Se manca NON si inventa: si apre l'elenco intero, che è vero.
+     */
+    projectId?: string;
   };
   readAt: string | null;
   createdAt: string;

@@ -180,7 +180,16 @@ export type NotificationType =
   // 0026 — la trattativa affidata a qualcuno. Non c'è una notifica «cliente
   // inattivo»: l'inattività è un giudizio con una soglia, e diventa lavoro
   // passando da una regola di automazione, non da una campanella automatica.
-  | 'crm_opportunity_assigned';
+  | 'crm_opportunity_assigned'
+  // 0032 — gli incentivi. QUATTRO e non dodici: si notifica ciò che cambia il
+  // lavoro di una persona, non ogni rivalutazione.
+  // ⚠️ Stanno qui perché il database li ammette: senza, lo `switch` di
+  //    `notificationTitleKey` resta esaustivo per il compilatore e una riga
+  //    reale gli passa accanto restituendo `undefined` — cioè la campanella va
+  //    in crash su `t(undefined)`. È la stessa forma del `NEXT_STEP_TEXT`
+  //    parziale della Panoramica: un elenco incompleto non sbaglia, rompe.
+  | 'subsidy_new_opportunity' | 'subsidy_call_opened'
+  | 'subsidy_deadline_approaching' | 'subsidy_program_changed';
 
 // ---- CRM Light (0026) ------------------------------------------------------
 // «Con chi stiamo lavorando». Il modulo COLLEGA le entità degli altri moduli

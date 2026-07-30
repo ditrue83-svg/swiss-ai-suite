@@ -48,6 +48,11 @@ import { badgeLabel, notificationLink, notificationTitleKey, relativeTime } from
 // Function non va importato dai test.
 import { DEFAULT_TIMEZONE as UI_TIMEZONE, defaultPreferences as uiDefaults } from '../src/features/calendar/preferencesDefaults';
 import type { CalendarTaskItem } from '../src/types/models';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 let pass = 0, fail = 0;
 const G = '\x1b[32m', R = '\x1b[31m', B = '\x1b[1m', DIM = '\x1b[2m', X = '\x1b[0m';
@@ -664,12 +669,39 @@ section('9 · Griglia del mese e agenda');
 section('10 · Notifiche: etichette, collegamenti, badge');
 // ===========================================================================
 {
-  const tipi = ['task_assigned', 'task_due_soon', 'task_due_today', 'task_overdue',
-    'unassigned_task_due_soon', 'calendar_sync_failed', 'calendar_reauth_required'] as const;
-  for (const type of tipi) {
-    const key = notificationTitleKey({ type, payload: {} });
+  // ⚠️⚠️ L'ELENCO SI LEGGE DALLE MIGRAZIONI, non si scrive a mano.
+  //
+  // Fino al 2026-07-30 questo test enumerava SETTE tipi scritti qui dentro,
+  // mentre il database ne ammetteva già undici: `workflow_alert` (0020),
+  // `crm_opportunity_assigned` (0026) e i quattro degli incentivi (0032) non
+  // venivano provati da nessuno. Una lista a mano non fallisce quando l'enum
+  // cresce — smette semplicemente di guardare, e resta verde. È la stessa
+  // trappola di `crm_is_public_domain`, chiusa nello stesso modo: il test
+  // LEGGE l'SQL.
+  //
+  // ⚠️ E il difetto non sarebbe stato cosmetico: `notificationTitleKey` è uno
+  //    `switch` senza `default`, quindi un tipo non coperto torna `undefined` e
+  //    la campanella va in crash su `t(undefined)`.
+  const SQL = ['0018_calendar_notifications', '0020_workflow_automation',
+    '0024_contract_manager', '0026_crm_light', '0032_subsidy_ai_2']
+    .map((f) => readFileSync(join(HERE, '..', 'supabase', 'migrations', `${f}.sql`), 'utf8'))
+    .join('\n');
+
+  const dichiarati = new Set<string>();
+  const creato = SQL.match(/create type public\.notification_type as enum \(([\s\S]*?)\)/i);
+  if (creato) {
+    for (const m of creato[1].replace(/--[^\n]*/g, '').matchAll(/'([^']+)'/g)) dichiarati.add(m[1]);
+  }
+  for (const m of SQL.matchAll(/alter type public\.notification_type add value if not exists '([^']+)'/gi)) {
+    dichiarati.add(m[1]);
+  }
+
+  ok(dichiarati.size >= 11,
+    `l'enum del database dichiara ${dichiarati.size} tipi di notifica`, [...dichiarati].join(', '));
+  for (const type of dichiarati) {
+    const key = notificationTitleKey({ type: type as never, payload: {} });
     ok(typeof key === 'string' && key.startsWith('notifications.'),
-      `«${type}» ha la sua etichetta: un tipo senza etichetta comparirebbe grezzo in pagina`);
+      `«${type}» ha la sua etichetta: senza, la campanella chiama t(undefined) e va in crash`);
   }
   ok(notificationTitleKey({ type: 'task_due_soon', payload: { kind: 'd1' } }) === 'notifications.typeDueTomorrow',
     '«domani» e «fra una settimana» sono la stessa notifica per il database e due frasi diverse per chi legge');
@@ -682,6 +714,45 @@ section('10 · Notifiche: etichette, collegamenti, badge');
     'una notifica di calendario porta alle impostazioni');
   ok(notificationLink({ entityType: 'sconosciuto', entityId: 'x' }) === '/',
     'un tipo sconosciuto non diventa un collegamento inventato');
+
+  // ⚠️⚠️ OGNI ENTITÀ CHE IL VINCOLO DI `notifications` AMMETTE deve avere un
+  //    collegamento vero. Il ramo finale `return '/'` esiste per i valori
+  //    SCONOSCIUTI, ed è giusto; ma un valore che il database ammette e che
+  //    finisce lì è una campanella che porta alla Panoramica invece che alla
+  //    cosa di cui parla. Il 2026-07-30 ci finivano `contract` (ammesso dalla
+  //    0024 apposta per «il preavviso si avvicina») e i due degli incentivi.
+  // ⚠️ SI PRENDE L'ULTIMO, non il primo: il vincolo viene RIDEFINITO a ogni
+  //    migrazione che allarga l'elenco (0020, 0024, 0026, 0032), e quello in
+  //    vigore è l'ultimo applicato. La prima versione di questo controllo
+  //    leggeva il primo e vedeva tre entità su nove — cioè dichiarava di
+  //    guardare tutto mentre guardava un terzo. Un controllo che sembra
+  //    completo e non lo è vale meno di nessun controllo.
+  const vincoli = [...SQL.matchAll(
+    /alter table public\.notifications[\s\S]*?check \(entity_type in \(([\s\S]*?)\)\)/gi)];
+  const ultimo = vincoli.length ? vincoli[vincoli.length - 1] : null;
+  const entita = ultimo
+    ? [...ultimo[1].replace(/--[^\n]*/g, '').matchAll(/'([^']+)'/g)].map((m) => m[1])
+    : [];
+  ok(entita.length >= 9, `il vincolo ammette ${entita.length} tipi di entità`, entita.join(', '));
+  for (const et of entita) {
+    const link = notificationLink({ entityType: et as never, entityId: 'abc', payload: {} });
+    ok(link !== '/',
+      `«${et}» porta a qualcosa di preciso e non alla Panoramica`, link);
+  }
+
+  ok(notificationLink({ entityType: 'contract', entityId: 'c1' }) === '/contratti/c1',
+    'un avviso di contratto porta al contratto (0024)');
+  ok(notificationLink({ entityType: 'subsidy_case', entityId: 'k1' }) === '/incentivi?scheda=pratiche',
+    'una notifica di pratica porta alla scheda Pratiche');
+  // ⚠️ Non esiste una rotta per la singola opportunità: si porta all'elenco,
+  //    filtrato sul progetto quando il produttore lo dichiara. Inventare
+  //    `/incentivi/:id` darebbe un indirizzo che non risponde.
+  ok(notificationLink({ entityType: 'subsidy_opportunity', entityId: 'o1', payload: {} }) === '/incentivi',
+    'senza progetto dichiarato, una notifica di opportunità apre l’elenco');
+  ok(notificationLink({
+    entityType: 'subsidy_opportunity', entityId: 'o1', payload: { projectId: 'p 1' },
+  }) === '/incentivi?progetto=p%201',
+    'con il progetto dichiarato l’elenco arriva già filtrato, e l’identificativo è codificato');
 
   ok(badgeLabel(0) === '' && badgeLabel(3) === '3' && badgeLabel(147) === '9+',
     'il pallino non contiene mai più di due caratteri (§80)');
