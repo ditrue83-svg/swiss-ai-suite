@@ -65,9 +65,20 @@ che l'archivio custodisce già, non un secondo posto dove scrivere.
 **Online**, verificato il 2026-07-27: l'applicazione su `app.ai-swisse.com` (Cloudflare Pages) e
 la vetrina su `ai-swisse.com` (GitHub Pages).
 
-**In esercizio**: Admin AI, Subsidy AI, Attività, Documenti, Calendario e notifiche, Automazioni,
-Finanze, Contratti. L'**Inbox è attiva con Google** — una casella reale collegata, posta importata,
-classificata e analizzata, manutenzione periodica automatica.
+⚠️ **Lo stato di ogni modulo è dichiarato in un posto solo:
+[`app/docs/product-status.md`](app/docs/product-status.md).** Sei colonne distinte —
+implementato, deployato, configurato, testato, provato contro il servizio reale, disponibile a
+clienti esterni — perché fino al 2026-07-31 questa riga diceva «in esercizio» per stati molto
+diversi, e un modulo con 58 asserzioni verdi e **nessuno scheduler che lo invocasse** risultava
+in esercizio come uno che funzionava davvero. `npm run docs:check` ora fallisce se un documento
+contraddice quella tabella.
+
+**In esercizio**: Admin AI, Subsidy AI, Attività, Documenti, Automazioni, Finanze, Contratti,
+Clienti, Chiedi ad AI-Swisse, Incentivi. L'**Inbox è attiva con Google** — una casella reale
+collegata, posta importata, classificata e analizzata, manutenzione periodica automatica.
+⚠️ **«Calendario e notifiche» NON è in esercizio**: il codice c'è ed è deployato, ma i suoi due
+scheduler non esistono nel progetto e i suoi secret non sono impostati, quindi nessun promemoria
+è mai stato generato e nessuna email è mai stata consegnata (`npm run verify:deploy`).
 
 **Il limite che conta oggi**: lo scope Gmail è riservato, e fuori dalla modalità «Test» Google
 impone una verifica dell'app con valutazione di sicurezza di terzi. Finché non c'è, **un cliente

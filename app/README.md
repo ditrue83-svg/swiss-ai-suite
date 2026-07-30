@@ -873,7 +873,9 @@ Creano dati reali e li rimuovono alla fine.
   un tentativo di prompt injection nel documento che non sposta di un centesimo i valori strutturati;
   e il **contratto letto dal file SQL della 0021** — l'elenco dei campi correggibili e ogni bandiera di
   qualità con la sua frase nei tre dizionari. Ogni sezione porta almeno una controprova.
-- **`test:finance` (95 asserzioni nel file, non ancora eseguito)** — richiede la 0021 applicata.
+- **`test:finance` (95 asserzioni)** — richiede la 0021 applicata. ⚠️ Fino al 2026-07-31 questa
+  riga diceva «non ancora eseguito»: la suite gira ed è verde. I conteggi qui sotto invecchiano —
+  il numero vero lo dà `npm run test:db`, non questo elenco.
   Prova le garanzie sul database vero: il verbale immutabile che si affianca invece di riscriversi, la
   correzione umana che vince con la firma di chi la scrive, la proiezione `eff_*` che si ricalcola e
   che il guardiano non annulla, il duplicato **calcolato** e mai fuso, due valute che restano due righe,
@@ -1014,11 +1016,13 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
 
 ## Limitazioni attuali (dichiarate, non nascoste)
 
-- **Automazioni (0020): il motore È in esercizio, il FRONTEND non è ancora pubblicato.**
-  Migrazione applicata (`test:workflows` 61/61), Edge Function deployate, scheduler pg_cron ogni 5
-  minuti, catena provata end-to-end in produzione su un'azienda temporanea poi rimossa. Ma la
-  schermata `/automazioni` esiste solo in locale: su `app.ai-swisse.com` non c'è. Finché non si
-  pubblica, le regole si creano solo chiamando `automation-admin` o scrivendole via SQL.
+- **Automazioni: lo stato sta in [`docs/product-status.md`](docs/product-status.md).**
+  ⚠️ Fino al 2026-07-31 questa riga negava che la schermata fosse online, mentre il README della
+  radice la dava per online: una delle due era falsa da settimane, e nessun controllo poteva
+  vederlo, perché tutti e cinque verificavano che le cose *esistessero* — non che le affermazioni
+  su di esse fossero vere. Ora lo stato di ogni modulo è dichiarato **in un posto solo**, e
+  `docs:check` fallisce se un altro documento lo contraddice.
+  Il limite che resta, e che è un limite e non uno stato:
   ⚠️ Il **budget di tempo** non è mai stato messo sotto pressione: le esecuzioni provate trattavano
   un evento alla volta. Il comportamento con decine di eventi in coda si vedrà al primo carico vero,
   e il rapporto del worker lo dichiara (`timeBudgetReached`).
@@ -1050,7 +1054,9 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
 - **Calendario esterno: mai provato contro le API vive.** Gli adapter Google e Microsoft sono
   allineati alla documentazione ufficiale corrente, non a una risposta reale — la stessa distinzione
   già dichiarata per Zefix, e vale la stessa cautela. Le migrazioni 0018 e 0019 sono applicate e
-  `npm run test:calendar` è verde (58/58), ma nessuna connessione OAuth reale è mai stata stabilita.
+  `npm run test:calendar` è verde, ma nessuna connessione OAuth reale è mai stata stabilita —
+  e soprattutto i suoi due scheduler NON esistono nel progetto: vedi `docs/product-status.md`
+  e `npm run verify:deploy`.
 - **Le notifiche non seguono per cascata la cancellazione di un'attività**: `entity_id` è polimorfico
   e non ha una chiave esterna. Nella pratica non succede — nulla nell'applicazione cancella una
   task, si archiviano — e cascatano comunque su azienda e utente.
@@ -1118,7 +1124,7 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
   stati provati sul campo il 2026-07-27 fino all'analisi; **notifica push e scollegamento no**.
   La posta acquisita non viene mai cancellata automaticamente e scollegare una casella non elimina
   i dati già importati.
-- **Non implementati**: invio email, calendar sync, Stripe/pagamenti, interfaccia fiduciaria
+- **Non implementati**: Stripe/pagamenti, interfaccia fiduciaria
   completa, fine-tuning.
   ⚠️ Fino al 2026-07-27 questo elenco comprendeva anche le **notifiche push**, che invece sono
   implementate e solo non attivate (vedi il punto sull'Inbox qui sopra). «Non fatto» e «fatto, non

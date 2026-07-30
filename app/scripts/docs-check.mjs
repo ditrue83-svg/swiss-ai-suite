@@ -211,6 +211,121 @@ export function checkCommands(report, { scripts, commandsSection, ignore = [] })
   }
 }
 
+// ---------------------------------------------------------------------------
+// I controlli 6, 7 e 8 — aggiunti il 2026-07-31.
+//
+// ⚠️ I primi cinque verificano che le cose DESCRITTE esistano. Non vedono la
+// classe di bugia più cara: un'AFFERMAZIONE DI STATO falsa. Il README della
+// radice diceva `/automazioni` pubblicata e `app/README.md` diceva che esisteva
+// «solo in locale»; una delle due era falsa da settimane, e tutti e cinque i
+// controlli restavano verdi perché la cartella, la migrazione e i comandi
+// c'erano tutti.
+//
+// La cura NON è un parser semantico: è una FONTE UNICA. `docs/product-status.md`
+// dichiara lo stato di ogni modulo in una tabella, e questi tre controlli
+// verificano che nessun altro documento la contraddica.
+// ---------------------------------------------------------------------------
+
+/** Le parole con cui un documento nega che qualcosa sia pubblicato. */
+export const FRASI_NON_PUBBLICATO = [
+  'non è ancora pubblicat', 'non ancora pubblicat', 'non è pubblicat',
+  'esiste solo in locale', 'solo in locale',
+];
+
+/** Legge la tabella dei moduli da `product-status.md`. */
+export function leggiStato(testo) {
+  const sezione = /## I moduli\n([\s\S]*?)(?=\n## )/.exec(testo);
+  if (!sezione) return [];
+  return sezione[1].split('\n')
+    .filter((r) => r.trim().startsWith('|'))
+    .map((r) => r.split('|').slice(1, -1).map((c) => c.trim()))
+    .filter((c) => c.length >= 8 && !/^-+$/.test(c[0]) && c[0] !== 'Modulo')
+    .map((c) => ({
+      nome: c[0],
+      rotta: c[1].replace(/`/g, ''),
+      // ⚠️ Il grassetto si toglie: chi scrive la tabella metterà in evidenza
+      // proprio i **no** che contano, e un controllo che li rifiuta per la
+      // formattazione insegna a non evidenziarli più.
+      stati: c.slice(2, 8).map((s) => s.replace(/[*_`]/g, '').trim()),
+    }));
+}
+
+/** 6. La tabella dello stato copre esattamente i moduli di prodotto. */
+export function checkStatusTable(report, { righe, map }) {
+  const VOCABOLARIO = new Set(['sì', 'no', 'parziale', '—']);
+  const attesi = Object.values(map).filter((m) => m.moduleName).map((m) => m.moduleName);
+  const presenti = righe.map((r) => r.nome);
+
+  for (const nome of attesi) {
+    if (!presenti.includes(nome)) {
+      report.add('stato', `il modulo «${nome}» non ha una riga in product-status.md`,
+        'docs/product-status.md → «I moduli»',
+        'un modulo il cui stato non è dichiarato da nessuna parte verrà '
+        + 'descritto a memoria, e la memoria invecchia');
+    }
+  }
+  for (const r of righe) {
+    if (!attesi.includes(r.nome)) {
+      report.add('stato', `product-status.md dichiara «${r.nome}», che non è un modulo di prodotto`,
+        'docs/product-status.md', 'o il nome è sbagliato, o va aggiunto a FEATURES');
+    }
+    for (const s of r.stati) {
+      if (!VOCABOLARIO.has(s)) {
+        report.add('stato', `il modulo «${r.nome}» ha lo stato «${s}», che non è del vocabolario`,
+          'docs/product-status.md',
+          `i valori ammessi sono: ${[...VOCABOLARIO].join(', ')} — «quasi» e `
+          + '«in corso» sono i modi in cui una tabella smette di dire qualcosa');
+      }
+    }
+  }
+}
+
+/** 7. Le rotte dichiarate esistono nel router. */
+export function checkRoutes(report, { rotte, router }) {
+  for (const r of rotte) {
+    if (!r || r === '—') continue;
+    if (!router.includes(`path="${r}"`)) {
+      report.add('rotte', `la rotta «${r}» è dichiarata ma non esiste nel router`,
+        'docs/product-status.md ↔ src/App.tsx',
+        'chi la incolla in un browser finisce sulla Panoramica, e nessun test lo vede');
+    }
+  }
+}
+
+/** 8. Nessun documento nega ciò che la tabella dichiara. */
+export function checkStatusContradictions(report, { moduli, testi }) {
+  // ⚠️ Il grassetto va tolto PRIMA di cercare. `docs/crm-light.md` scriveva
+  // «Il modulo non è ancora **pubblicato**», e la prima versione di questo
+  // controllo non lo vedeva: gli asterischi cadevano in mezzo alla frase. È
+  // esattamente la forma del difetto di `i18n:coverage`, che cercava parole
+  // al singolare mentre le etichette erano al plurale — un controllo che
+  // guarda dove è comodo invece che dove sta il testo.
+  const pulisci = (s) => s.replace(/[*_`]/g, '').toLowerCase();
+
+  for (const { file, testo } of testi) {
+    const righe = testo.split('\n');
+    righe.forEach((riga, i) => {
+      const bassa = pulisci(riga);
+      if (!FRASI_NON_PUBBLICATO.some((f) => bassa.includes(f))) return;
+      // Le frasi si spezzano a capo: si guarda un intorno, non la sola riga.
+      const contesto = pulisci(righe.slice(Math.max(0, i - 2), i + 3).join(' '));
+      for (const m of moduli) {
+        // Oltre al nome della tabella e alla rotta si accettano gli ALIAS —
+        // la cartella di `src/features/`. `docs/crm-light.md` chiama «CRM» il
+        // modulo che la tabella chiama «Clienti», e senza questo la
+        // contraddizione più vecchia del repository sarebbe rimasta invisibile.
+        const nomi = [m.nome, m.rotta, ...(m.alias ?? [])].map((s) => s.toLowerCase());
+        if (!nomi.some((n) => n && contesto.includes(n))) continue;
+        report.add('stato',
+          `«${file}» dice che «${m.nome}» (${m.rotta}) non è pubblicato, mentre product-status.md lo dichiara`,
+          `${file}:${i + 1}`,
+          'una delle due è falsa. Lo stato si dichiara in product-status.md e '
+          + 'in nessun altro posto: qui va tolta la frase, non aggiornata');
+      }
+    });
+  }
+}
+
 /** 5. EDGE FUNCTION — ogni funzione deployabile è elencata. */
 export function checkFunctions(report, { functionDirs, texts }) {
   for (const dir of functionDirs) {
@@ -280,6 +395,44 @@ function scan() {
   checkFunctions(report, {
     functionDirs: listDirs(join(APP, 'supabase', 'functions')), texts,
   });
+
+  // --- 6, 7 e 8: la fonte unica dello stato -------------------------------
+  // ⚠️ Questi tre NON dipendono dal README della radice: funzionano anche
+  // dalla directory di sviluppo, dove i primi controlli si fermano. È voluto —
+  // le contraddizioni sullo stato sono la classe che è costata di più, e un
+  // controllo che le vede solo dal monorepo le vedrebbe troppo tardi.
+  const statusFile = join(APP, 'docs', 'product-status.md');
+  const statusRaw = read(statusFile);
+  if (statusRaw === null) {
+    report.add('stato', 'docs/product-status.md non esiste',
+      'docs/product-status.md',
+      'è la definizione autorevole dello stato dei moduli: senza, ogni '
+      + 'documento torna a dichiararlo per conto proprio');
+  } else {
+    const righe = leggiStato(statusRaw);
+    checkStatusTable(report, { righe, map: FEATURES });
+    checkRoutes(report, {
+      rotte: righe.map((r) => r.rotta),
+      router: read(join(APP, 'src', 'App.tsx')) ?? '',
+    });
+
+    // Ogni documento del progetto, tranne la fonte stessa.
+    const testi = [];
+    for (const f of listFiles(join(APP, 'docs'), '.md')) {
+      if (f === 'product-status.md') continue;
+      testi.push({ file: `docs/${f}`, testo: read(join(APP, 'docs', f)) ?? '' });
+    }
+    testi.push({ file: 'app/README.md', testo: appReadme });
+    if (rootReadme !== null) testi.push({ file: 'README.md', testo: rootReadme });
+
+    // L'alias di un modulo è la sua cartella in `src/features/`.
+    const conAlias = righe.map((r) => ({
+      ...r,
+      alias: Object.entries(FEATURES)
+        .filter(([, v]) => v.moduleName === r.nome).map(([k]) => k),
+    }));
+    checkStatusContradictions(report, { moduli: conAlias, testi });
+  }
 
   return { report, rootMissing };
 }
@@ -386,6 +539,96 @@ const CASES = [
     name: 'tutto allineato → nessun problema',
     run: (r) => checkFunctions(r, {
       functionDirs: ['contract-worker', '_shared'], texts: ['contract-worker'],
+    }),
+    expect: 0,
+  },
+
+  // --- i tre controlli sullo STATO ---------------------------------------
+  {
+    name: 'la tabella dello stato si legge davvero (nome, rotta, sei stati)',
+    run: (r) => {
+      const righe = leggiStato(
+        '## I moduli\n\n| Modulo | Rotta | A | B | C | D | E | F | G | H |\n'
+        + '|---|---|---|---|---|---|---|---|---|---|\n'
+        + '| Inbox | `/inbox` | sì | sì | sì | sì | sì | no | Google | CASA |\n'
+        + '\n## Altro\n',
+      );
+      const c = righe[0];
+      if (righe.length !== 1 || c.nome !== 'Inbox' || c.rotta !== '/inbox'
+          || c.stati.join(',') !== 'sì,sì,sì,sì,sì,no') {
+        r.add('autoverifica', 'il lettore della tabella non ha letto ciò che doveva', 'leggiStato');
+      }
+    },
+    expect: 0,
+  },
+  {
+    name: 'un modulo senza riga nella tabella → problema',
+    run: (r) => checkStatusTable(r, {
+      righe: [], map: { contracts: { moduleName: 'Contratti' } },
+    }),
+    expect: 1,
+  },
+  {
+    name: 'uno stato fuori dal vocabolario → problema',
+    run: (r) => checkStatusTable(r, {
+      righe: [{ nome: 'Contratti', rotta: '/contratti', stati: ['sì', 'quasi', 'sì', 'sì', 'no', 'sì'] }],
+      map: { contracts: { moduleName: 'Contratti' } },
+    }),
+    expect: 1,
+  },
+  {
+    name: 'tabella allineata → nessun problema',
+    run: (r) => checkStatusTable(r, {
+      righe: [{ nome: 'Contratti', rotta: '/contratti', stati: ['sì', 'sì', 'sì', 'sì', 'no', 'parziale'] }],
+      map: { contracts: { moduleName: 'Contratti' } },
+    }),
+    expect: 0,
+  },
+  {
+    name: 'una rotta dichiarata e assente dal router → problema',
+    run: (r) => checkRoutes(r, {
+      rotte: ['/incentivi'], router: '<Route path="/clienti" element={<X/>} />',
+    }),
+    expect: 1,
+  },
+  {
+    name: 'una rotta dichiarata e presente → nessun problema',
+    run: (r) => checkRoutes(r, {
+      rotte: ['/clienti'], router: '<Route path="/clienti" element={<X/>} />',
+    }),
+    expect: 0,
+  },
+  {
+    // ⚠️ È IL CASO REALE: il README diceva `/automazioni` pubblicata e
+    // app/README.md diceva che esisteva «solo in locale». Se questo caso
+    // smettesse di fallire, il controllo sarebbe morto.
+    name: 'un documento che nega la pubblicazione di un modulo dichiarato → problema',
+    run: (r) => checkStatusContradictions(r, {
+      moduli: [{ nome: 'Automazioni', rotta: '/automazioni' }],
+      testi: [{
+        file: 'app/README.md',
+        testo: 'Automazioni (0020): il motore è in esercizio,\nma la schermata '
+          + '`/automazioni` esiste solo in locale.\n',
+      }],
+    }),
+    expect: 1,
+  },
+  {
+    // ⚠️ ANCHE QUESTO È UN CASO REALE: docs/crm-light.md scriveva «non è
+    // ancora **pubblicato**», e la prima versione di questo controllo non lo
+    // vedeva perché il grassetto cadeva dentro la frase.
+    name: 'la negazione col GRASSETTO in mezzo → problema lo stesso',
+    run: (r) => checkStatusContradictions(r, {
+      moduli: [{ nome: 'Clienti', rotta: '/clienti' }],
+      testi: [{ file: 'docs/crm-light.md', testo: 'Il modulo Clienti non è ancora **pubblicato**.\n' }],
+    }),
+    expect: 1,
+  },
+  {
+    name: 'la stessa frase su un modulo che NON è nella tabella → nessun problema',
+    run: (r) => checkStatusContradictions(r, {
+      moduli: [{ nome: 'Automazioni', rotta: '/automazioni' }],
+      testi: [{ file: 'docs/x.md', testo: 'Il portale fiduciario non è ancora pubblicato.\n' }],
     }),
     expect: 0,
   },

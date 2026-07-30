@@ -763,8 +763,10 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
 
 **Rischi residui**
 
-- `docs:check` mostra sette divergenze «documento orfano» in `~/swiss-ai-suite-app`:
-  il controllo cerca il README della radice del monorepo, che lì non esiste. Non è
-  un difetto del CRM ed erano sei prima.
-- Il modulo non è ancora **pubblicato**: la cartella condivisa contiene anche un
-  modulo di un'altra sessione in costruzione.
+- ⚠️ **Le due righe che stavano qui erano false il 2026-07-31**, ed erano invecchiate
+  senza che nulla potesse accorgersene. Dicevano che `docs:check` mostrava sette
+  divergenze «documento orfano» (oggi ne mostra zero) e che il modulo non era ancora
+  online (lo è da `a1b6487`). Lo stato del modulo si legge in
+  [`product-status.md`](product-status.md), che è l'unico posto dove è dichiarato:
+  `docs:check` ora fallisce se un documento lo contraddice, ed è così che queste due
+  righe sono state trovate.
