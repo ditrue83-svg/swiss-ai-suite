@@ -31,6 +31,7 @@ supabase/
                 0024_contract_manager · 0025_contract_fixes
                 0026_crm_light · 0027_company_assistant · 0028_crm_cascade_history
                 0029_assistant_purge_lockdown · 0030_crm_link_candidate
+                0031_assistant_purge_schedule
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -623,11 +624,17 @@ letta e gli elementi restano `pending` per sempre.
 
 Documento completo: **`docs/finance-operations.md`**.
 
-### Chiedi ad AI-Swisse (Company Assistant) — migrazioni 0027 e 0029
+### Chiedi ad AI-Swisse (Company Assistant) — migrazioni 0027, 0029 e 0031
 
-> **In esercizio dal 2026-07-30.** Migrazioni `0027` e `0029` applicate, Edge
-> Function pubblicata e verificata end-to-end. Alla prima valutazione con verità
-> di riferimento: **16 domande su 16**, 2,3 strumenti e 2,1 fonti per domanda.
+> **In esercizio dal 2026-07-30.** Migrazioni `0027`, `0029` e `0031` applicate,
+> Edge Function pubblicata e verificata end-to-end. Alla prima valutazione con
+> verità di riferimento: **16 domande su 16**, 2,3 strumenti e 2,1 fonti per
+> domanda.
+>
+> La `0031` pianifica la retention: `assistant-purge`, ogni notte alle 04:00,
+> chiama `assistant_purge_expired(180)`. Fino ad allora la funzione esisteva ed
+> era chiusa a chiunque non fosse il ruolo di servizio, ma non la chiamava
+> nessuno — e una retention che nessuno esegue è una riga di documentazione.
 
 Una domanda sola invece di cinque schermate: «quali fatture scadono nei prossimi
 dieci giorni?», «da quale email è arrivata questa fattura?», «qual è il preavviso

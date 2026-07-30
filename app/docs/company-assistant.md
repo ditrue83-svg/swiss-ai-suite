@@ -390,6 +390,18 @@ citazioni e voti se ne vanno in cascata. È eseguibile **solo dal ruolo di
 servizio**: è una manutenzione pianificata, non un'azione dall'interfaccia.
 Non tocca nessuna fonte aziendale.
 
+**E viene eseguita davvero, dal 2026-07-30.** La migrazione `0031` registra il
+job `pg_cron` **`assistant-purge`**, ogni notte alle **04:00** (UTC), con la
+retention scritta in chiaro nel comando — `assistant_purge_expired(180)` — così
+che leggendo `cron.job` si veda per quanto tempo le conversazioni restano, senza
+dover risalire al default della funzione. La migrazione verifica il proprio
+esito: se il job non esiste, non è attivo, ha un'altra pianificazione o chiama
+un'altra retention, `db push` fallisce.
+
+Fino a quel giorno la funzione esisteva, era documentata, era provata — e non
+la chiamava nessuno. Una politica di conservazione che nessuno esegue non è una
+politica: è una frase.
+
 **Eliminazione.** «Elimina conversazione» è una `DELETE` vera. Spariscono
 messaggi, citazioni e metriche; i documenti, le fatture e i contratti citati
 restano dove sono.
