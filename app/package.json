@@ -47,7 +47,15 @@
     "eval:assistant": "node --env-file=.env.test --import tsx scripts/eval-assistant.ts",
     "test:crm": "node --env-file=.env.test --import tsx scripts/test-crm.ts",
     "test:subsidy-unit": "node --import tsx scripts/test-subsidy-unit.ts",
-    "subsidy:seed-catalog": "node --env-file=.env.test scripts/seed-subsidy-catalog.mjs"
+    "subsidy:seed-catalog": "node --env-file=.env.test scripts/seed-subsidy-catalog.mjs",
+    "suite": "node scripts/run-test-suite.mjs",
+    "test:quality": "node scripts/run-test-suite.mjs quality",
+    "test:unit": "node scripts/run-test-suite.mjs unit",
+    "test:db": "node scripts/run-test-suite.mjs db",
+    "test:integration": "node scripts/run-test-suite.mjs integration",
+    "test:eval": "node scripts/run-test-suite.mjs eval",
+    "test:all": "node scripts/run-test-suite.mjs all",
+    "ci": "node scripts/run-test-suite.mjs quality unit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

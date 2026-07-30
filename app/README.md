@@ -688,6 +688,36 @@ Documento completo: [`docs/company-assistant.md`](docs/company-assistant.md).
 
 ## Comandi
 
+### La suite, in un comando solo
+
+I trenta comandi qui sotto restano tutti validi e si possono ancora eseguire uno
+per uno. Ma l'elenco non diceva la cosa che conta di più — **che cosa serve per
+eseguirli** — e chi non lo sapeva a memoria doveva scegliere fra eseguire tutto
+(e pagare credito Anthropic) o eseguire a caso. `scripts/run-test-suite.mjs`
+raggruppa i test per **requisito**, non per modulo.
+
+```bash
+npm run test:quality    # typecheck, build, docs, i18n, bundle SQL — nessuna credenziale
+npm run test:unit       # tutte le suite offline — nessuna credenziale, nessuna rete
+npm run test:db         # le suite su database — richiede .env.test, NON spende credito AI
+npm run test:all        # quality + unit + db (di proposito NON comprende ciò che spende)
+npm run ci              # quality + unit: ciò che una CI può eseguire senza segreti
+npm run test:integration -- --allow-ai   # phase2, async, pipeline — SPENDONO credito
+npm run test:eval -- --allow-ai          # eval:subsidy, eval:admin, eval:assistant — SPENDONO
+npm run suite -- --list                  # i gruppi, i passi e ciò che ciascuno richiede
+```
+
+⚠️ **Un gruppo che non si può eseguire non è verde e non è rosso: è SALTATO, con
+la ragione scritta.** Senza `.env.test` il gruppo `db` viene dichiarato saltato e
+il riepilogo lo elenca; non viene mai contato come superato. I gruppi che spendono
+credito richiedono `--allow-ai` esplicito: la spesa si chiede, non si eredita.
+
+Opzioni: `--continue-on-error` prosegue dopo un rosso (uso locale; senza, ci si
+ferma al primo, che è la modalità CI) · `--no-skip` trasforma un gruppo saltato in
+un fallimento, per i contesti in cui l'ambiente **deve** essere completo.
+
+### I comandi singoli
+
 ```bash
 npm run dev             # server di sviluppo (5174)
 npm run build           # typecheck + build di produzione
