@@ -888,8 +888,14 @@ export const ACTIONS: readonly ActionDef[] = [
     // 0026 — vale anche sul CRM: è il modo in cui un «prossimo passo» diventa
     // lavoro assegnabile e tracciabile (§50). ⚠️ NON esiste, e non deve
     // esistere, un'azione che scriva a un cliente (§135).
+    // 0032 — vale anche sugli incentivi: è il modo in cui «rispondi ai criteri
+    // aperti» o «la scadenza si avvicina» diventa lavoro con un responsabile e
+    // una data. ⚠️ NON esiste, e non deve esistere, un'azione che invii la
+    // domanda, compili un formulario o dichiari qualcosa a un ente: il modulo
+    // comprende e prepara, non candida.
     entityTypes: ['document', 'email_message', 'task', 'contract',
-                  'crm_organization', 'crm_opportunity'],
+                  'crm_organization', 'crm_opportunity',
+                  'subsidy_opportunity', 'subsidy_case'],
     outputEntityType: 'task',
   },
   {
@@ -937,7 +943,8 @@ export const ACTIONS: readonly ActionDef[] = [
     // il motore non ha alcun modo di scrivere a un indirizzo esterno, e questa
     // assenza è il vincolo (§135).
     entityTypes: ['document', 'email_message', 'task', 'contract',
-                  'crm_organization', 'crm_opportunity'],
+                  'crm_organization', 'crm_opportunity',
+                  'subsidy_opportunity', 'subsidy_case'],
     outputEntityType: 'notification',
   },
 ];
@@ -971,6 +978,12 @@ export function actionsForTrigger(trigger: TriggerDef): readonly ActionDef[] {
  */
 const ENTITIES_WITH_OWNER: readonly AutomationEntityType[] = [
   'task', 'contract', 'crm_organization', 'crm_opportunity',
+  // 0032 — la PRATICA ha un responsabile e `store.ts` lo calcola. ⚠️
+  // L'OPPORTUNITÀ NO, e la sua assenza è il punto: nessuno l'ha ancora presa in
+  // carico, ed è ciò che la distingue da una pratica. Offrire «avvisa il
+  // responsabile» su un'opportunità farebbe comporre una regola che non
+  // avviserebbe mai nessuno.
+  'subsidy_case',
 ];
 
 export function triggerHasOwner(trigger: TriggerDef): boolean {

@@ -35,6 +35,7 @@ import {
 } from '../supabase/functions/_shared/automation/contract.ts';
 import {
   ACTIONS, AUTOMATION_EVENT_TYPES, OPERATORS, OPERATORS_BY_TYPE, TRIGGERS, actionsForTrigger, findAction,
+  triggerHasOwner,
   findField, findTrigger, isAutoExecutable,
   type AutomationEventType, type WorkflowAction, type WorkflowCondition,
 } from '../supabase/functions/_shared/automation/registry.ts';
@@ -187,6 +188,28 @@ section('1 · Il registro: nessun innesco e nessuna azione dichiarati a vuoto');
     '«assegna attività» NON è offerta su un innesco documentale');
   ok(actionsForTrigger(findTrigger('task_created')!).some((a) => a.key === 'assign_task'),
     '«assegna attività» è offerta su un innesco di attività');
+
+  // ⚠️⚠️ OGNI INNESCO DEVE AVERE ALMENO UN'AZIONE OFFERIBILE, e questo controllo
+  //    nasce da un difetto vissuto: i sette inneschi degli incentivi si
+  //    sceglievano dal menu, le condizioni si componevano, e la sezione
+  //    «Allora» restava VUOTA — nessuna azione dichiarava le due entità nuove.
+  //    Si arrivava fino in fondo per leggere «aggiungi almeno un'azione» senza
+  //    poterne aggiungere una. Un innesco senza azioni è un vicolo cieco che
+  //    l'interfaccia percorre tutto prima di dirlo.
+  const senzaAzioni = TRIGGERS.filter((t) => actionsForTrigger(t).length === 0).map((t) => t.key);
+  ok(senzaAzioni.length === 0,
+    'ogni innesco ha almeno un\u2019azione che si pu\u00f2 scegliere',
+    senzaAzioni.join(', '));
+
+  // ⚠️ E «avvisa il responsabile» si offre SOLO dove un responsabile esiste
+  //    davvero: `triggerHasOwner` deve coincidere con ciò che `store.ts`
+  //    riempie in `assigneeUserId`. Un'opportunità non ha nessuno che l'abbia
+  //    presa in carico — è ciò che la distingue da una pratica — e offrirlo
+  //    farebbe comporre una regola che non avvisa mai nessuno.
+  ok(triggerHasOwner(findTrigger('subsidy_deadline_approaching')!),
+    'una pratica ha un responsabile che una notifica pu\u00f2 raggiungere');
+  ok(!triggerHasOwner(findTrigger('subsidy_opportunity_created')!),
+    'un\u2019opportunit\u00e0 no: nessuno l\u2019ha ancora presa in carico');
 
   ok(ACTIONS.every(isAutoExecutable), 'tutte le azioni della versione 1 sono a basso rischio (§19)');
   ok(ACTIONS.every((a) => lookup(a.labelKey) !== undefined),
