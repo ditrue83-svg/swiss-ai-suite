@@ -121,6 +121,18 @@ verify_jwt = false
 [functions.email-maintenance]
 verify_jwt = false
 
+# ⚠️ DICHIARATA ESPLICITAMENTE, e la ragione va ricordata. Questo file elencava
+# solo le funzioni con il gate SPENTO; per le altre non si mandava nulla, e la
+# piattaforma teneva l'ultimo valore impostato. Il 2026-08-01 un
+# `--no-verify-jwt` di troppo su questa funzione ha spento il gate, e il
+# rideploy SENZA quel flag non l'ha riacceso: il valore si porta dietro se
+# stesso finché qualcuno non lo dichiara. È il gemello della trappola di
+# `calendar-sync`, che era rimasta con il gate ACCESO e rispondeva 401 al
+# segreto giusto. `email-sync` è chiamata dal browser con il JWT dell'utente:
+# il gate ci vuole.
+[functions.email-sync]
+verify_jwt = true
+
 # ---------------------------------------------------------------------------
 # Calendario e notifiche (0018). Stessa logica, stessi chiamanti anomali:
 #
