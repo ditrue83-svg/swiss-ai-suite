@@ -128,6 +128,16 @@ Su [supabase.com](https://supabase.com) crea un progetto. Da **Project Settings 
 **Installazione da zero — SQL Editor:** incolla ed esegui `supabase/full-setup.sql` (contiene tutte le
 migrazioni in ordine; è un file **generato** — si rigenera con `npm run db:bundle`).
 
+⚠️ **Il file comincia con un preambolo di privilegi, e non è un dettaglio.** Nessuna migrazione concede
+la DML di base: in produzione `companies` si legge perché il progetto, creato a luglio, porta un default
+di piattaforma (`pg_default_acl`: tabelle `arwdDxtm` ad `anon`/`authenticated`/`service_role`). **Sugli
+stack Supabase recenti quel default concede solo `Dxt`**, e senza il preambolo l'installazione riesce,
+lo schema è perfetto e **l'applicazione risponde «permission denied» su ogni tabella**. Il preambolo
+riproduce esattamente la produzione; ciò che protegge i dati resta la RLS più i `revoke all` espliciti
+delle migrazioni. `npm run db:bundle` si rifiuta di generare un file che ne sia privo, e la CI applica
+questo file su un database vuoto a ogni pull request — quindi il percorso d'installazione è **provato**,
+non dichiarato.
+
 ⚠️ **Su un database che ha già le migrazioni precedenti si applica UNA migrazione alla volta**, il singolo
 file di `supabase/migrations/`. `full-setup.sql` è rieseguibile — `npm run db:bundle` lo verifica riga per
 riga — ma rieseguirlo per aggiungere l'ultima migrazione significa ricreare policy e trigger di tutto lo

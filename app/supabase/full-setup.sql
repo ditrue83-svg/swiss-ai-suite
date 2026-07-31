@@ -57,6 +57,27 @@
 -- «on conflict», «drop constraint if exists»).
 -- ============================================================================
 
+-- ---------------------------------------------------------------------------
+-- PRIVILEGI DI BASE — da eseguire PRIMA di creare qualunque tabella.
+--
+-- ⚠️ Su un progetto Supabase queste righe di norma esistono già: le mette la
+--    piattaforma. Su uno stack recente NON è più così, e senza di esse
+--    l'applicazione ottiene «permission denied» su ogni tabella pur avendo lo
+--    schema completo — un guasto che non si manifesta durante l'installazione.
+--
+-- ⚠️ Riproducono ESATTAMENTE il progetto in esercizio (misurato su
+--    pg_default_acl: tabelle arwdDxtm, sequenze rwU, funzioni X ai tre ruoli).
+--    Non sono un permesso «largo per comodità»: ciò che protegge i dati è la
+--    RLS più i `revoke all` espliciti che le migrazioni scrivono tabella per
+--    tabella. Su `public` un grant di colonna non restringe nulla senza un
+--    `revoke all` che lo preceda — è la lezione della 0013 → 0014.
+-- ---------------------------------------------------------------------------
+grant usage on schema public to anon, authenticated, service_role;
+
+alter default privileges in schema public grant all on tables    to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+
 -- >>>>>>>>>>>>>>>>>>>>  0001_core  <<<<<<<<<<<<<<<<<<<<
 
 -- ============================================================================
