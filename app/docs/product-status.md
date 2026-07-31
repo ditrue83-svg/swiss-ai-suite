@@ -137,6 +137,41 @@ accodato la richiesta.** Da oggi `npm run verify:deploy` legge comunque l'esito
 dell'ultima esecuzione di ogni job — prima sapeva solo che il job *esisteva* —
 e i due worker scrivono `phase=start` / `phase=end` con `rid` e `durationMs`.
 
+## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
+
+`npm run test:production -- --no-skip` → **VERDE**, 3 passi, 10,8 s. Non provano
+il prodotto: provano *questo* progetto Supabase, ed è per questo che restano
+manuali e si rifiutano di girare contro `127.0.0.1`.
+
+| Suite | Esito | Che cosa ha verificato |
+|---|---|---|
+| `check:auth` | **4/4** | i link inviati per email portano a `https://app.ai-swisse.com`, il redirect richiesto è rispettato, e un URL estraneo **non** viene accettato (niente open redirect) |
+| `subsidy:health` | **exit 0** | 7 programmi, tutti `verified` e attivi, contenuti tradotti de+fr 7/7, **0 errori di integrità**, **0 da ricontrollare** |
+| `test:functions` | **12/12** | `generate-reply` e `interpret-project` **deployate**: 405, 401, 400, **403 cross-tenant**, 422, e il **429** del limite per azienda — tutti respinti prima della chiamata al modello, quindi senza spendere credito |
+
+⚠️ **`check:auth` senza argomento verifica `http://localhost:5174`.** Il primo
+lancio è passato dicendo «i link porteranno a http://localhost:5174» — verde su
+una domanda diversa da quella che conta. Il risultato scritto qui sopra è della
+riesecuzione esplicita:
+
+```
+npm run check:auth -- https://app.ai-swisse.com
+```
+
+⚠️⚠️ **`subsidy:health` verde NON vuol dire «niente in sospeso».** Esce 0 e
+scrive «catalogo valido e aggiornato», ma guarda freschezza e integrità — **non
+la coda di revisione**. Interrogando `subsidy_catalog_reviews`:
+
+```
+status = pending → 7   (tutte del 2026-07-30)
+```
+
+Le **sette revisioni in attesa di una persona ci sono ancora**, e nessun
+controllo automatico le nomina. Chi legge solo l'esito della suite non le vede.
+
+Segnalato dalla suite stessa, e legittimo: **`ti-lrilocc` è SOSPESO** — attivo
+ma non concedibile, stato verificato 6 giorni fa. Concedibili 6 su 7.
+
 ## `test:integration` — 71 asserzioni contro la funzione DEPLOYATA
 
 Eseguito il **2026-07-31**, tre passi, 65,7 s, **0 fallimenti**:
@@ -255,8 +290,34 @@ aziende vere (Pilota Impianti Sagl, Rossi SA) intatte.
 
 ```bash
 npm run test:all         # quality + unit + db
-npm run verify:deploy    # scheduler ed Edge Function nel progetto reale
+npm run verify:deploy    # scheduler ed Edge Function nel progetto reale (serve il token)
 ```
+
+E le suite che **non** stanno in `test:all`, perché provano il progetto o
+spendono credito — con i flag, che non sono facoltativi:
+
+```bash
+npm run test:production -- --no-skip          # check:auth · subsidy:health · test:functions
+npm run check:auth -- https://app.ai-swisse.com   # ⚠️ senza argomento verifica localhost
+npm run test:integration -- --allow-ai        # ⚠️ senza il flag esce 0 SENZA eseguire
+npm run test:eval -- --allow-ai               # idem: eval assistant/admin/subsidy
+```
+
+⚠️⚠️ **DUE MODI DI OTTENERE UN VERDE CHE NON VALE NIENTE, incontrati entrambi il
+2026-07-31 mentre si rimisurava questa tabella:**
+
+1. **`test:integration` / `test:eval` senza `--allow-ai`** escono **0 in un
+   millisecondo** senza eseguire un solo passo, stampando
+   `ESITO: verde sui gruppi eseguiti · 1 SALTATI`. Il salto è dichiarato — ma
+   uscita zero e la parola «verde» sulla stessa riga bastano a far scrivere un
+   risultato inesistente. `--no-skip` trasforma il salto in un rosso.
+2. **`check:auth` senza argomento** verifica `http://localhost:5174` e passa,
+   dicendo che i link porteranno lì. È un verde su un'altra domanda: il dominio
+   che conta va passato a mano.
+
+⚠️ **Un esito verde non copre ciò che la suite non guarda.** `subsidy:health`
+esce 0 con «catalogo valido e aggiornato» mentre **sette revisioni aspettano una
+persona** in `subsidy_catalog_reviews`: nessun controllo automatico le nomina.
 
 ⚠️ **Nessuna riga va aggiornata da un commit message o da un ricordo.** Un
 numero di test scritto in un messaggio di commit descrive l'albero di quel
