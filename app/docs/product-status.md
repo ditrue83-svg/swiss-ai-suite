@@ -41,11 +41,9 @@ Subsidy AI, «Chiedi ad AI-Swisse».
 verdi: `eval:assistant` **16/16**, `eval:admin` **35/35**, `eval:subsidy`
 **14/14**. Dettaglio e limiti nella sezione dedicata più sotto.
 
-⚠️ **Ciò che questa verifica NON dice.** Che TUTTE le suite a consumo siano
-state rieseguite: **`test:integration` non è stato eseguito** (`test:phase2`,
-`test:async`, `test:pipeline`). Per ciò che copre solo lui, le colonne
-«testato» e «servizio reale» continuano a descrivere l'ultima misura riuscita —
-adesso perché nessuno l'ha eseguito, non più per mancanza di credito.
+✅ **E anche `test:integration`**, la sera stessa: **71 asserzioni, 0 fallite**
+(`test:phase2` 36, `test:async` 17, `test:pipeline` 18). Tutte le suite a
+consumo sono quindi state rieseguite dopo il ripristino del credito.
 
 ## Le sei parole, e perché sono sei
 
@@ -138,6 +136,33 @@ servirebbe una connessione vera, che non c'è.
 accodato la richiesta.** Da oggi `npm run verify:deploy` legge comunque l'esito
 dell'ultima esecuzione di ogni job — prima sapeva solo che il job *esisteva* —
 e i due worker scrivono `phase=start` / `phase=end` con `rid` e `durationMs`.
+
+## `test:integration` — 71 asserzioni contro la funzione DEPLOYATA
+
+Eseguito il **2026-07-31**, tre passi, 65,7 s, **0 fallimenti**:
+
+| Suite | Esito | Che cosa prova che nient'altro prova |
+|---|---|---|
+| `test:phase2` | **36/36** | la Edge Function `analyze-document` **deployata** via HTTP: immutabilità dello snapshot (0010), 403 cross-tenant, 401 senza sessione, 422 su testo vuoto, **429 oltre il limite/minuto**, e che tutte e 9 le citazioni «verificate» esistano davvero nel documento (§20) |
+| `test:async` | **17/17** | che l'asincronia sia **reale**: 202 in 0,5 s, `analyzing → completed` osservato nel database, lavoro concluso **senza altre chiamate del client**, e sicurezza che resta **sincrona** (cross-tenant 403 subito, non 202) |
+| `test:pipeline` | **18/18** | il percorso dati completo: analisi → validazione → persistenza → **rilettura dopo re-login** → attività dallo scadenziario → bozza salvata che **non dichiara pagamenti mai effettuati** (§36) |
+
+⚠️ **Il primo tentativo è uscito 0 senza eseguire niente.** Il gruppo si è
+SALTATO da solo — «spende credito Anthropic vero: serve `--allow-ai`» — e il
+riepilogo diceva `ESITO: verde sui gruppi eseguiti · 1 SALTATI`. Il runner si è
+comportato bene (ha dichiarato il salto e la ragione), ma **uscita zero e la
+parola «verde» nella stessa riga** sono esattamente ciò che fa scrivere un
+risultato che non esiste. La misura qui sopra è del secondo lancio, con
+`--allow-ai`.
+
+⚠️ Una cosa che solo questa suite mostra: la provenienza registrata dice
+`anthropic/claude-opus-4-8`. È il modello che la funzione **deployata** usa
+davvero — non necessariamente quello che si userebbe scrivendo codice nuovo.
+
+**Dati di prova rimossi**, verificato interrogando il database: restano le due
+aziende vere (Pilota Impianti Sagl, Rossi SA), **zero utenti di prova**, e
+**zero righe orfane** fra documenti, attività e bozze. I 19 documenti presenti
+appartengono tutti a Rossi SA.
 
 ## Le valutazioni AI — tutte e tre eseguite il 2026-07-31
 
