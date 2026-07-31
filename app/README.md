@@ -772,6 +772,12 @@ npm run test:subsidy-unit    # Incentivi offline: gli operatori dei criteri e so
                              #   progetto avviato che si segnala invece di sparire, l'urgenza che
                              #   non nasce da testo libero, la guardia SSRF sulle fonti, e gli
                              #   elenchi scritti due volte in TS e in SQL (176 casi)
+npm run test:subsidy         # Incentivi su DB: isolamento fra aziende anche chiamando le quattro
+                             #   funzioni di lettura col p_company_id altrui, cross-tenant che
+                             #   nemmeno il service role attraversa, catalogo in sola lettura,
+                             #   risposte append-only firmate dal database, e soprattutto LA
+                             #   CASCATA — una risposta rendeva l'azienda indistruttibile finché
+                             #   non sono arrivate la 0033 e la 0034 (richiede 0032+0033+0034)
 npm run subsidy:seed-catalog # scrive il CATALOGO 2.0: fonti ufficiali, versioni immutabili,
                              #   criteri tipizzati e call. Dry-run senza `-- --write`. ⚠️ Non
                              #   sostituisce `subsidy:seed`, che scrive l'identità dei programmi

@@ -142,6 +142,7 @@ const GROUPS = {
       { script: 'test:crm' },
       { script: 'test:finance' },
       { script: 'test:workflows' },
+      { script: 'test:subsidy' },
     ],
   },
   integration: {
