@@ -187,6 +187,29 @@ jobs:
           } > .env.test
           rm -f .supabase-status
 
+      # ⚠️ DIAGNOSTICA TEMPORANEA. Il seed è fallito con «permission denied for
+      # table subsidy_sources» USANDO LA CHIAVE DI SERVIZIO, cosa che in
+      # produzione non succede. Prima di correggere serve sapere PERCHÉ, invece
+      # di aggiungere un `grant` a caso finché diventa verde: un rimedio non
+      # capito nasconde la differenza fra i due ambienti invece di dichiararla.
+      - name: Diagnostica dei permessi (temporanea)
+        run: |
+          set -euo pipefail
+          DB=$(supabase status -o env | grep -E '^DB_URL=' | head -1 | cut -d= -f2- | tr -d '"')
+          psql "$DB" -c "select current_user as utente_corrente, session_user as utente_di_sessione;"
+          psql "$DB" -c "select grantee, string_agg(privilege_type, ',' order by privilege_type) as privilegi
+                           from information_schema.table_privileges
+                          where table_schema='public' and table_name='subsidy_sources'
+                          group by grantee order by grantee;"
+          psql "$DB" -c "select grantee, string_agg(privilege_type, ',' order by privilege_type) as privilegi
+                           from information_schema.table_privileges
+                          where table_schema='public' and table_name='companies'
+                          group by grantee order by grantee;"
+          psql "$DB" -c "select defaclrole::regrole as per_ruolo, defaclnamespace::regnamespace as schema,
+                                defaclobjtype as tipo, defaclacl as privilegi_predefiniti
+                           from pg_default_acl;"
+          psql "$DB" -c "select tableowner, count(*) from pg_tables where schemaname='public' group by 1;"
+
       # Il catalogo non nasce con le migrazioni: è dato, non schema. `test:subsidy`
       # ha bisogno di UNA versione pubblicata e si rifiuta di crearsela da sé —
       # scrivere nel catalogo dentro un test sarebbe scrivere per tutti.
