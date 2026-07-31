@@ -307,8 +307,28 @@ jobs:
       # `subsidy_programs`, quindi prima i programmi.
       - name: Seminare il catalogo
         run: |
-          npm run subsidy:seed
+          set -euo pipefail
+          # ⚠️ `--write` SU ENTRAMBI. Senza, i due script girano in dry-run,
+          #    stampano un'anteprima ed escono ZERO: il passo risultava
+          #    superato dopo non aver scritto niente, e a fallire era la
+          #    migrazione dopo, con una chiave esterna che sembrava un difetto
+          #    dello schema. Un no-op che esce 0 è un fallback silenzioso.
+          npm run subsidy:seed -- --write
           npm run subsidy:seed-catalog -- --write
+
+          # E si CONTROLLA che il seed abbia davvero prodotto ciò che serve,
+          # invece di fidarsi dell'exit code: `test:subsidy` ha bisogno di
+          # almeno una versione PUBBLICATA e si rifiuta di crearsela da sé.
+          DB=$(supabase status -o env | grep -E '^DB_URL=' | head -1 | cut -d= -f2- | tr -d '"')
+          psql "$DB" -v ON_ERROR_STOP=1 -t -c "do \$\$
+          declare n integer;
+          begin
+            select count(*) into n from public.subsidy_programs;
+            if n = 0 then raise exception 'il seed dei programmi non ha scritto niente'; end if;
+            select count(*) into n from public.subsidy_program_versions where status = 'published';
+            if n = 0 then raise exception 'nessuna versione PUBBLICATA: test:subsidy non potrebbe provare niente'; end if;
+            raise notice 'catalogo seminato: % versioni pubblicate', n;
+          end \$\$;"
 
       # `--no-skip`: qui l'ambiente è completo per costruzione, quindi un
       # gruppo «saltato» sarebbe un guasto travestito da verde.
