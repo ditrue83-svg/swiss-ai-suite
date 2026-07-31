@@ -200,9 +200,21 @@ jobs:
       # passava il primo e rompeva il secondo, «invisibile a chi ha già il
       # database» — e nessuno era mai stato il primo cliente nuovo.
       #
-      # ⚠️ `--single-transaction` non è pignoleria: il SQL editor di Supabase
-      #    esegue tutto in una transazione sola, quindi provarlo in autocommit
-      #    proverebbe un percorso che nessuno percorre.
+      # ⚠️⚠️ IN AUTOCOMMIT, E LA RAGIONE È STATA MISURATA QUI. Il primo
+      #    tentativo usava `--single-transaction`, perché il README diceva di
+      #    incollare questo file nel SQL editor di Supabase, che esegue tutto in
+      #    una transazione. La CI è diventata rossa con
+      #    `55P04 unsafe use of new value "extracting"`: la 0006 aggiunge
+      #    quell'etichetta a `document_status` e `list_documents` (0017,
+      #    `language sql`, corpo analizzato alla creazione) la usa. In una
+      #    transazione sola Postgres rifiuta; una migrazione alla volta no,
+      #    ed è così che è nato il database in esercizio.
+      #
+      #    Non si è aggirato il rosso: si è corretta la PROMESSA. Il README e
+      #    l'intestazione del bundle ora dicono di applicarlo in autocommit
+      #    (`psql -f` o `supabase db push`), e questo passo prova esattamente
+      #    quella procedura. Il percorso «incolla nel SQL editor» non esisteva:
+      #    era scritto e non era mai stato eseguito.
       - name: Installare da ZERO con full-setup.sql, come un cliente nuovo
         run: |
           set -euo pipefail
@@ -213,7 +225,7 @@ jobs:
           fi
 
           psql "$DB" -v ON_ERROR_STOP=1 -c "drop schema public cascade; create schema public;"
-          psql "$DB" -v ON_ERROR_STOP=1 --single-transaction -q -f supabase/full-setup.sql
+          psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/full-setup.sql
 
           # PostgREST tiene in cache lo schema: dopo averlo ricostruito da capo
           # servirebbe una vita intera di 404 per capire perché.
