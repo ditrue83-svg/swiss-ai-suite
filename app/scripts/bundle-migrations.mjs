@@ -45,11 +45,116 @@ ${names.map((n) => `--   ${n}`).join('\n')}
 
 `;
 
+// ---------------------------------------------------------------------------
+// IL PREAMBOLO DEI PRIVILEGI — e senza di esso questo file installa un database
+// in cui l'applicazione NON funziona.
+//
+// ⚠️⚠️ Scoperto il 2026-07-31 facendo girare le suite contro un Supabase
+// effimero nella CI: il seed falliva con «permission denied» USANDO LA CHIAVE
+// DI SERVIZIO. La causa non era nel nostro SQL — era ciò che il nostro SQL dà
+// per scontato.
+//
+//   NESSUNA MIGRAZIONE CONCEDE LA DML DI BASE. `companies` non ha un solo
+//   `grant` in tutto il repository: legge e scrive perché il progetto Supabase
+//   di produzione, creato a luglio, porta questo default di piattaforma:
+//
+//     pg_default_acl · ruolo `postgres` · schema `public`
+//       tabelle   anon/authenticated/service_role = arwdDxtm   (tutto)
+//       sequenze  anon/authenticated/service_role = rwU        (tutto)
+//       funzioni  anon/authenticated/service_role = X          (tutto)
+//
+//   Lo stack locale della CLI attuale concede invece soltanto `Dxt` — TRUNCATE,
+//   REFERENCES, TRIGGER. Su un database così, `select * from companies` come
+//   utente autenticato è «permission denied», e l'app non parte.
+//
+// ⚠️ QUINDI: chi avesse installato da zero con questo file su uno stack
+//    recente avrebbe ottenuto uno schema perfetto e un'applicazione morta,
+//    senza un solo errore durante l'installazione. Il primo cliente nuovo
+//    sarebbe stato il primo a scoprirlo — la stessa forma della trappola 55P04
+//    della 0015, «si sarebbe visto al primo cliente nuovo».
+//
+// ⚠️ PERCHÉ SI RIPRODUCE IL DEFAULT PERMISSIVO invece di concedere il minimo
+//    per tabella. Perché la garanzia di questo prodotto NON è il permesso: è la
+//    RLS più i `revoke all` espliciti delle migrazioni (0014, 0026, 0032), che
+//    sono provati da centinaia di asserzioni contro il database vero. Scrivere
+//    qui una baseline più stretta di quella della produzione creerebbe DUE
+//    database diversi — e il secondo non sarebbe provato da niente. Se un
+//    giorno si vorrà stringere, va stretto in tutti e due, con le prove.
+// ---------------------------------------------------------------------------
+const PREAMBOLO = `-- ---------------------------------------------------------------------------
+-- PRIVILEGI DI BASE — da eseguire PRIMA di creare qualunque tabella.
+--
+-- ⚠️ Su un progetto Supabase queste righe di norma esistono già: le mette la
+--    piattaforma. Su uno stack recente NON è più così, e senza di esse
+--    l'applicazione ottiene «permission denied» su ogni tabella pur avendo lo
+--    schema completo — un guasto che non si manifesta durante l'installazione.
+--
+-- ⚠️ Riproducono ESATTAMENTE il progetto in esercizio (misurato su
+--    pg_default_acl: tabelle arwdDxtm, sequenze rwU, funzioni X ai tre ruoli).
+--    Non sono un permesso «largo per comodità»: ciò che protegge i dati è la
+--    RLS più i \`revoke all\` espliciti che le migrazioni scrivono tabella per
+--    tabella. Su \`public\` un grant di colonna non restringe nulla senza un
+--    \`revoke all\` che lo preceda — è la lezione della 0013 → 0014.
+-- ---------------------------------------------------------------------------
+grant usage on schema public to anon, authenticated, service_role;
+
+alter default privileges in schema public grant all on tables    to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+
+`;
+
 const body = files.map((f, i) =>
   `-- >>>>>>>>>>>>>>>>>>>>  ${names[i]}  <<<<<<<<<<<<<<<<<<<<\n\n${readFileSync(join(MIG_DIR, f), 'utf8').trimEnd()}\n\n`,
 ).join('');
 
-const bundled = header + body;
+const bundled = header + PREAMBOLO + body;
+
+/**
+ * Il preambolo c'è, ed è completo?
+ *
+ * ⚠️ Non è una formalità: è il controllo che impedisce di rigenerare un bundle
+ * che installa un database muto. Un elenco di ruoli incompleto è peggio della
+ * sua assenza, perché lo schema si crea, l'installazione riesce, e a mancare è
+ * soltanto il ruolo che nessuno prova subito.
+ */
+function problemiPreambolo(sql) {
+  const problemi = [];
+  const RUOLI = ['anon', 'authenticated', 'service_role'];
+  const righe = [
+    ['grant usage on schema public', /grant usage on schema public to ([^;]+);/],
+    ['alter default privileges … on tables', /alter default privileges in schema public grant all on tables\s+to ([^;]+);/],
+    ['alter default privileges … on sequences', /alter default privileges in schema public grant all on sequences to ([^;]+);/],
+    ['alter default privileges … on functions', /alter default privileges in schema public grant all on functions to ([^;]+);/],
+  ];
+  for (const [nome, re] of righe) {
+    const m = re.exec(sql);
+    if (!m) { problemi.push(`manca il preambolo: ${nome}`); continue; }
+    const mancanti = RUOLI.filter((r) => !new RegExp(`\\b${r}\\b`).test(m[1]));
+    if (mancanti.length) problemi.push(`${nome}: ruoli mancanti (${mancanti.join(', ')})`);
+  }
+  return problemi;
+}
+
+/**
+ * ⚠️ I casi che DEVONO fallire, e non sono decorativi: due versioni del
+ * controllo i18n di questo repository erano inerti, e nessuno se n'era accorto
+ * perché nessuno le aveva messe alla prova.
+ */
+const AUTOVERIFICA_PREAMBOLO = [
+  { nome: 'preambolo completo → nessun problema', attesi: 0, sql: PREAMBOLO },
+  { nome: 'preambolo assente → 4 problemi', attesi: 4, sql: 'create table x (id int);' },
+  {
+    nome: 'manca la riga sulle tabelle → 1 problema',
+    attesi: 1,
+    sql: PREAMBOLO.replace(/alter default privileges in schema public grant all on tables.*\n/, ''),
+  },
+  {
+    nome: 'un ruolo dimenticato → 1 problema',
+    attesi: 1,
+    sql: PREAMBOLO.replace('on tables    to anon, authenticated, service_role', 'on tables    to anon, authenticated'),
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Controllo: un valore aggiunto a un enum non può essere USATO nello stesso file
@@ -175,6 +280,10 @@ for (let i = 0; i < files.length; i++) {
   const sql = readFileSync(join(MIG_DIR, files[i]), 'utf8');
   for (const p of problemiEnum(sql)) problemi.push(`${names[i]}: ${p}`);
 }
+// ⚠️ Il bundle GENERATO deve portare il preambolo. Non è un controllo sulle
+// migrazioni — è un controllo su ciò che questo file sta per scrivere: senza
+// il preambolo produrrebbe un'installazione con lo schema giusto e l'app muta.
+for (const p of problemiPreambolo(bundled)) problemi.push(`full-setup.sql: ${p}`);
 
 // ---------------------------------------------------------------------------
 // Controllo: `full-setup.sql` deve essere RIESEGUIBILE, come dichiara la sua
@@ -338,6 +447,7 @@ if (process.argv.includes('--self-test')) {
   for (const [titolo, casi, controllo] of [
     ['Autoverifica del controllo di ripetibilità', AUTOVERIFICA, problemiDiRipetibilita],
     ['Autoverifica del controllo sugli enum', AUTOVERIFICA_ENUM, problemiEnum],
+    ['Autoverifica del preambolo dei privilegi', AUTOVERIFICA_PREAMBOLO, problemiPreambolo],
   ]) {
     console.log(`\n${titolo}\n`);
     for (const c of casi) {
@@ -358,6 +468,7 @@ if (process.argv.includes('--self-test')) {
 const autoverificaFallita = [
   ...casiNonSuperati(AUTOVERIFICA, problemiDiRipetibilita),
   ...casiNonSuperati(AUTOVERIFICA_ENUM, problemiEnum),
+  ...casiNonSuperati(AUTOVERIFICA_PREAMBOLO, problemiPreambolo),
 ];
 if (autoverificaFallita.length) {
   console.error('\n✗ I controlli non riconoscono i propri casi noti:');
