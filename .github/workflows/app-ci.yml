@@ -14,16 +14,34 @@
 #      e anche senza alcun segreto. Sono 1500+ asserzioni che non toccano né
 #      rete né credenziali: se non passano, non si unisce.
 #
-#   2. `database` — gira SOLO a comando (`workflow_dispatch`) e SOLO se i
-#      segreti esistono. ⚠️ Il motivo per cui NON è automatico è che
-#      `.env.test` punta al progetto Supabase di PRODUZIONE: quelle suite
-#      creano aziende usa-e-getta e le rimuovono, ma farlo a ogni push
-#      significherebbe far scrivere la CI in produzione, e due esecuzioni
-#      sovrapposte potrebbero lasciare residui. Se un giorno esisterà un
-#      progetto Supabase separato per i test, questo job può diventare
-#      automatico cambiando soltanto la riga `if:`.
+#   2. `database-ephemeral` — gira SEMPRE, su ogni pull request, e **senza un
+#      solo segreto**. Il runner avvia un Supabase locale (`supabase start`),
+#      che applica le 34 migrazioni a un database VUOTO, semina il catalogo ed
+#      esegue le undici suite che hanno bisogno di UN database — non del
+#      progetto di produzione. A fine esecuzione tutto viene distrutto.
 #
-#   3. `ai-evaluations` — gira solo a comando e solo se chiesto esplicitamente.
+#      ⚠️ PERCHÉ NON UN PROGETTO SUPABASE DEDICATO, che era il piano: l'organi-
+#      zzazione è sul piano `free` e ha già 2 progetti su 2. Un terzo costava
+#      il passaggio a Pro. Ma l'effimero non è un ripiego — è meglio: nessun
+#      segreto significa che il job gira anche sulle pull request da un FORK,
+#      dove i segreti non arrivano per costruzione.
+#
+#      ⚠️ E VERIFICA UNA COSA CHE NON ERA MAI STATA VERIFICATA IN DUE MESI:
+#      che le migrazioni si applichino DA ZERO. Finora si sapeva solo che
+#      l'installazione incrementale funzionava, perché il database di sviluppo
+#      è lo stesso da luglio. La trappola 55P04 della 0015 — un valore enum
+#      aggiunto e usato nella stessa transazione — era esattamente del tipo che
+#      «si sarebbe visto al primo cliente nuovo», e nessuno era mai stato il
+#      primo cliente nuovo.
+#
+#   3. `production-suites` — gira SOLO a comando e SOLO se i segreti esistono.
+#      ⚠️ Non sono le suite «lente»: sono le tre che provano QUEL progetto e
+#      non il prodotto — la configurazione di autenticazione, il contenuto vero
+#      del catalogo, le Edge Function deployate. Su un database effimero
+#      passerebbero senza provare niente, ed è per questo che il gruppo
+#      `production` del runner si RIFIUTA di girare contro `127.0.0.1`.
+#
+#   4. `ai-evaluations` — gira solo a comando e solo se chiesto esplicitamente.
 #      Consuma credito Anthropic vero. Non deve poter partire per sbaglio.
 #
 # ⚠️ Un job saltato per mancanza di segreti NON deve somigliare a un job
@@ -45,8 +63,8 @@ on:
       - '.github/workflows/app-ci.yml'
   workflow_dispatch:
     inputs:
-      run_database:
-        description: 'Esegui le suite su database (scrivono nel progetto Supabase reale)'
+      run_production:
+        description: 'Esegui le suite che provano il PROGETTO REALE (ci scrivono dentro)'
         type: boolean
         default: false
       run_evaluations:
@@ -96,7 +114,104 @@ jobs:
         run: npm run ci
 
   # -------------------------------------------------------------------------
-  # 2. I segreti ci sono? Si risponde SÌ o NO senza mai stampare un valore:
+  # 2. IL CANCELLO CHE FINORA NON GIRAVA MAI.
+  #
+  # Undici suite su database, a ogni pull request, senza un solo segreto. Il
+  # database nasce vuoto, riceve le 34 migrazioni, vive qualche minuto e muore.
+  # -------------------------------------------------------------------------
+  database-ephemeral:
+    name: Database effimero (senza segreti)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Installazione riproducibile
+        run: npm ci
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # ⚠️ È QUI che si scopre se una migrazione non sa applicarsi da zero:
+      # `supabase start` le esegue in ordine su un database vuoto. Se la 55P04
+      # della 0015 si ripresentasse in una migrazione futura, questo passo
+      # diventerebbe rosso — e oggi nessun altro controllo se ne accorgerebbe,
+      # perché `db:bundle --check` legge i file, non li esegue.
+      - name: Avviare Supabase e applicare le migrazioni da ZERO
+        run: supabase start
+
+      # ⚠️ Le chiavi di un'istanza locale NON sono segreti: sono le stesse per
+      # ogni sviluppatore che esegue `supabase start`, valgono solo su
+      # 127.0.0.1 e muoiono col container. Vengono comunque scritte con
+      # `umask 077` e mai stampate.
+      #
+      # ⚠️ NESSUN RIPIEGO: se una delle tre variabili non si ricava dallo
+      # stato, il passo FALLISCE. Un `.env.test` composto a metà darebbe suite
+      # rosse per la ragione sbagliata, e si passerebbe un'ora a cercare un
+      # difetto che non c'è.
+      - name: Comporre .env.test dall'istanza locale
+        run: |
+          set -euo pipefail
+          umask 077
+          supabase status -o env > .supabase-status
+
+          # ⚠️ I valori si estraggono PRIMA e si controllano DOPO, fuori da
+          #    qualunque `$(...)`. Un `exit 1` dentro una sostituzione di
+          #    comando esce dal SUBSHELL e non dal passo: il job proseguirebbe
+          #    con una variabile vuota, cioè con un fallback silenzioso — la
+          #    cosa che questo repository ha già pagato tre volte.
+          val() { grep -E "^$1=" .supabase-status | head -1 | cut -d= -f2- | tr -d '"'; }
+          URL_V=$(val API_URL)
+          ANON_V=$(val ANON_KEY)
+          SERVICE_V=$(val SERVICE_ROLE_KEY)
+
+          for nome in URL_V ANON_V SERVICE_V; do
+            eval "valore=\${$nome}"
+            if [ -z "$valore" ]; then
+              echo "::error title=Stato Supabase incompleto::$nome non si ricava da 'supabase status -o env'. Le undici suite NON sono state eseguite: non sono verdi."
+              exit 1
+            fi
+          done
+
+          {
+            printf 'SUPABASE_URL=%s\n'              "$URL_V"
+            printf 'SUPABASE_ANON_KEY=%s\n'         "$ANON_V"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SERVICE_V"
+          } > .env.test
+          rm -f .supabase-status
+
+      # Il catalogo non nasce con le migrazioni: è dato, non schema. `test:subsidy`
+      # ha bisogno di UNA versione pubblicata e si rifiuta di crearsela da sé —
+      # scrivere nel catalogo dentro un test sarebbe scrivere per tutti.
+      # ⚠️ L'ordine conta: `subsidy_program_versions.program_id` punta a
+      # `subsidy_programs`, quindi prima i programmi.
+      - name: Seminare il catalogo
+        run: |
+          npm run subsidy:seed
+          npm run subsidy:seed-catalog -- --write
+
+      # `--no-skip`: qui l'ambiente è completo per costruzione, quindi un
+      # gruppo «saltato» sarebbe un guasto travestito da verde.
+      - name: Le undici suite su database
+        run: npm run test:db -- --no-skip
+
+      - name: Spegnere Supabase
+        if: always()
+        run: supabase stop --no-backup
+
+      - name: Rimuovere le credenziali dal runner
+        if: always()
+        run: rm -f .env.test .supabase-status
+
+  # -------------------------------------------------------------------------
+  # 3. I segreti ci sono? Si risponde SÌ o NO senza mai stampare un valore:
   #    `-n` verifica che la stringa non sia vuota e non la mostra.
   # -------------------------------------------------------------------------
   preflight:
@@ -133,14 +248,15 @@ jobs:
           fi
 
   # -------------------------------------------------------------------------
-  # 3. Le suite su database. Manuali di proposito (vedi l'intestazione).
+  # 4. Le tre suite che provano IL PROGETTO, non il prodotto. Manuali di
+  #    proposito: ci scrivono dentro, ed è la produzione.
   # -------------------------------------------------------------------------
-  database:
-    name: Suite su database (manuale)
+  production-suites:
+    name: Suite sul progetto reale (manuale)
     needs: [preflight, quality-and-unit]
     if: >-
       github.event_name == 'workflow_dispatch'
-      && inputs.run_database
+      && inputs.run_production
       && needs.preflight.outputs.has_database == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -176,15 +292,20 @@ jobs:
       # `--no-skip`: qui l'ambiente DEVE essere completo. Se `.env.test` non
       # fosse valido, un «saltato» silenzioso sarebbe la bugia peggiore —
       # il job risulterebbe verde senza aver provato niente.
-      - name: Suite su database
-        run: npm run test:db -- --no-skip
+      #
+      # ⚠️ E il gruppo `production` ha un requisito in più che nessun `if:` di
+      # GitHub può esprimere: si RIFIUTA di girare se `SUPABASE_URL` punta a
+      # `127.0.0.1`. Provare la configurazione di autenticazione di un database
+      # effimero darebbe un verde che non significa niente.
+      - name: Suite sul progetto reale
+        run: npm run test:production -- --no-skip
 
       - name: Rimuovere le credenziali dal runner
         if: always()
         run: rm -f .env.test
 
   # -------------------------------------------------------------------------
-  # 4. Le valutazioni AI. Mai automatiche: spendono denaro vero.
+  # 5. Le valutazioni AI. Mai automatiche: spendono denaro vero.
   # -------------------------------------------------------------------------
   ai-evaluations:
     name: Valutazioni AI (manuale, a consumo)
