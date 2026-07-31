@@ -622,11 +622,19 @@ export function DocumentDetailPage() {
             />
           </div>
         ) : (
-          <button ref={createTaskButtonRef} className="btn btn-sm mt-10"
-            onClick={openTaskForm} disabled={busy || !step.canCreateTask}>
-            <Icon name="plus" className="ic-sm" />
-            {' '}{detail.tasks.length ? t('documents.nextStep.actionCreateAnother') : t('documents.createTask')}
-          </button>
+          <>
+            <button ref={createTaskButtonRef} className="btn btn-sm mt-10"
+              onClick={openTaskForm} disabled={busy || !step.canCreateTask}>
+              <Icon name="plus" className="ic-sm" />
+              {' '}{detail.tasks.length ? t('documents.nextStep.actionCreateAnother') : t('documents.createTask')}
+            </button>
+            {/* Un pulsante spento senza una ragione accanto è un pulsante che
+                sembra rotto: la spiegazione sta anche in cima, ma chi arriva
+                qui scorrendo non l'ha necessariamente letta. */}
+            {!step.canCreateTask && (
+              <div className="muted-sm mt-8">{t('documents.nextStep.noticeProcessing')}</div>
+            )}
+          </>
         )}
         {/* §79 — da un documento di categoria «contratti» si arriva ai Contratti.
             ⚠️ NON si crea niente da soli: il pulsante porta al modulo di
