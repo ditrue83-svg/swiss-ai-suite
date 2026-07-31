@@ -87,12 +87,16 @@ impone una verifica dell'app con valutazione di sicurezza di terzi. Finché non 
 reale non può collegare la propria casella**. Microsoft è implementato ma non configurato, e
 l'applicazione lo dichiara invece di fallire.
 
-**Calendario e notifiche** (migrazioni 0018 e 0019): **applicate e verificate** — 58 controlli sul
-database reale, 158 offline, e le schermate provate nel browser con dati veri nelle tre lingue. Il
-calendario **esterno** resta però **mai provato contro le API vive**: nessuna connessione OAuth reale
-a Google o Microsoft è stata stabilita, perché le credenziali non sono configurate. Gli adapter sono
-allineati alla documentazione ufficiale corrente, non a una risposta reale. Vedi
-[`app/docs/calendar-notifications.md`](app/docs/calendar-notifications.md).
+**Calendario e notifiche** (migrazioni 0018, 0019 e **0035**): **applicate e verificate** — 58
+controlli sul database reale, 188 offline, e le schermate provate nel browser con dati veri nelle tre
+lingue. Dalla **0035** i due scheduler (`calendar-sync-drain` ogni 10 minuti, `notifications-worker`
+ogni 15) sono creati da una **migrazione** e non più incollati a mano nel SQL editor: prima vivevano
+solo dentro un documento, e un database rifatto sarebbe rimasto senza promemoria senza che nulla
+diventasse rosso. Il percorso dei promemoria è stato **provato dal capo alla coda** su un tenant
+tecnico, poi rimosso. Il calendario **esterno** resta però **mai provato contro le API vive**:
+nessuna connessione OAuth reale a Google o Microsoft è stata stabilita, perché le credenziali non
+sono configurate. Gli adapter sono allineati alla documentazione ufficiale corrente, non a una
+risposta reale. Vedi [`app/docs/calendar-notifications.md`](app/docs/calendar-notifications.md).
 
 **Implementato ma non attivo**: le notifiche push dell'Inbox (rimandate per scelta motivata —
 vedi [`app/docs/ai-inbox.md`](app/docs/ai-inbox.md)).
