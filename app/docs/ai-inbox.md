@@ -652,11 +652,66 @@ implementata.
 
 ---
 
+## 10bis. Dal messaggio al documento (2026-07-31)
+
+Il percorso «posta → documento → analisi → attività» esisteva, ma dal dettaglio
+di una comunicazione si arrivava **soltanto** alla schermata di analisi. Tre
+conseguenze, tutte trovate seguendo il percorso invece di rileggerlo:
+
+* con un corpo **e** un allegato importati comparivano **due pulsanti identici**
+  «Apri analisi» che portavano in posti diversi, e niente diceva quale fosse quale;
+* il **documento** — dove quel foglio si organizza, si archivia e diventa lavoro —
+  non era raggiungibile dalla posta;
+* su un allegato appena importato quel pulsante prometteva una schermata che non
+  aveva ancora niente da mostrare.
+
+Ora la scheda **«Documenti prodotti»** elenca ciò che quella comunicazione ha
+generato: per ogni riga la **provenienza** (corpo o allegato), il nome del file e
+un collegamento a `/documenti/:id`. L'analisi ha un collegamento **solo**, quello
+del documento principale (§33). Nessun dato del Document Hub è copiato qui:
+titolo, provenienza e stato viaggiano già con il messaggio.
+
+⚠️ **Lo stato si mostra solo dove si SA.** `documents.status` e l'esito
+dell'ultima analisi possono divergere — misurato in produzione il 2026-07-31: una
+riga `status = 'completed'` con l'ultima analisi `needs_review`. Su quel
+documento la posta avrebbe scritto «Analizzato» mentre la schermata del
+documento, due clic più in là, dice «Da verificare». Perciò: sul documento
+principale, di cui la schermata carica l'analisi, si usa `stateOf` — la stessa
+funzione del Document Hub; sugli altri si mostra solo ciò che `documents.status`
+decide da solo (in elaborazione, fallito, mai analizzato) e **nel dubbio nessuna
+pastiglia**. Un'etichetta plausibile e sbagliata è peggio di un'etichetta assente.
+
+### `/inbox?msg=…` — tre correzioni
+
+1. ⚠️ **Un identificativo malformato** (`/inbox?msg=abc`) faceva arrivare a
+   schermo `invalid input syntax for type uuid: "abc"` — stringa tecnica, in
+   inglese, dentro un'interfaccia che può essere tedesca. È la stessa apertura
+   già chiusa su `/incentivi?progetto=abc`. Ora un identificativo malformato non
+   è una selezione e si ignora; uno **ben formato che non esiste resta** una
+   selezione, perché «non trovato» è la risposta vera e va detta.
+2. ⚠️ **Aprire un messaggio sostituiva la voce di cronologia**: il tasto indietro
+   del browser usciva dall'Inbox in un colpo solo, saltando l'elenco. Ora aprire
+   **aggiunge** una voce — dalla lista si torna alla lista, da un documento si
+   torna al documento. Chiudere resta un `replace`, altrimenti il tasto indietro
+   diventerebbe un clic a vuoto.
+3. «Messaggio non trovato» rendeva un pulsante **«Riprova» che tornava indietro**.
+   Ora dice quello che fa. I due casi — non esiste, oppure è di un'altra azienda —
+   restano indistinguibili di proposito: dire quale sarebbe rivelare l'esistenza
+   di una riga altrui.
+
+**Verificato nel browser il 2026-07-31** su un'azienda tecnica, poi rimossa:
+apertura a freddo di `/inbox?msg=<uuid>` (l'indirizzo sopravvive, si apre il
+messaggio giusto), ritorno al documento e ritorno alla lista con il tasto
+indietro, `?msg=abc` che mostra l'elenco senza errori tecnici in pagina.
+
+---
+
 ## 11. Test
 
 ```bash
-npm run test:inbox-unit   # 148 asserzioni offline: HTML/XSS, normalizzazione,
-                          # allegati, classificazione, injection, adapter, crypto
+npm run test:inbox-unit   # 172 asserzioni offline: HTML/XSS, normalizzazione,
+                          # allegati, classificazione, injection, adapter, crypto,
+                          # e (sez. 10) il collegamento messaggio → documento
 npm run test:inbox        # 50 asserzioni sul database reale: RLS, isolamento fra
                           # aziende, permessi di colonna, vincoli, quota di sistema
 ```
