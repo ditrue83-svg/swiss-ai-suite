@@ -125,8 +125,20 @@ Su [supabase.com](https://supabase.com) crea un progetto. Da **Project Settings 
 `Project URL`, chiave `anon`/`publishable`, chiave `service_role` (quest'ultima **solo** per i test locali).
 
 ### 2) Migrazioni
-**Installazione da zero — SQL Editor:** incolla ed esegui `supabase/full-setup.sql` (contiene tutte le
-migrazioni in ordine; è un file **generato** — si rigenera con `npm run db:bundle`).
+**Installazione da zero:** applica `supabase/full-setup.sql` (contiene tutte le migrazioni in ordine; è un
+file **generato** — si rigenera con `npm run db:bundle`):
+
+```bash
+psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/full-setup.sql   # oppure: npx supabase db push --linked
+```
+
+⚠️⚠️ **NON si incolla nel SQL Editor di Supabase, e non è una preferenza: è stato misurato.** Il SQL editor
+esegue tutto in **una transazione**, e in una transazione sola questo file **fallisce** con
+`55P04 unsafe use of new value "extracting"` — la 0006 aggiunge quell'etichetta a `document_status`,
+`list_documents` (0017, `language sql`, quindi con il corpo analizzato alla creazione) la usa. Applicando
+**una migrazione alla volta** non succede niente, perché ogni migrazione ha la sua transazione, ed è così
+che è nato il database in esercizio. La CI applica questo file a un database vuoto a ogni pull request:
+la procedura qui sopra è **provata**, non dichiarata.
 
 ⚠️ **Il file comincia con un preambolo di privilegi, e non è un dettaglio.** Nessuna migrazione concede
 la DML di base: in produzione `companies` si legge perché il progetto, creato a luglio, porta un default

@@ -18,8 +18,24 @@ if (!files.length) { console.error('Nessuna migrazione trovata in', MIG_DIR); pr
 const names = files.map((f) => basename(f, '.sql'));
 
 const header = `-- ============================================================================
--- SwissAI Suite — SETUP COMPLETO DATABASE
--- Incolla TUTTO questo file nel SQL Editor di Supabase ed esegui.
+-- AI-Swisse — SETUP COMPLETO DATABASE
+--
+-- ⚠️⚠️ NON SI INCOLLA NEL SQL EDITOR DI SUPABASE, e la ragione è stata MISURATA
+--    il 2026-07-31 applicando davvero questo file a un database vuoto: il SQL
+--    editor esegue tutto in UNA transazione, e in una transazione sola questo
+--    file FALLISCE con 55P04 «unsafe use of new value "extracting"». La 0006
+--    aggiunge quell'etichetta a \`document_status\`; \`list_documents\` (0017,
+--    \`language sql\`, quindi con il corpo analizzato alla creazione) la usa.
+--    Applicando UNA MIGRAZIONE ALLA VOLTA non succede niente, perché ogni
+--    migrazione ha la sua transazione — ed è così che è nato il database in
+--    esercizio. Concatenate in una sola, no.
+--
+--    Si applica quindi in AUTOCOMMIT:
+--        psql "\$DB_URL" -v ON_ERROR_STOP=1 -f supabase/full-setup.sql
+--    oppure, meglio, con la CLI:  npx supabase db push --linked
+--
+--    La CI applica questo file a un database vuoto a ogni pull request, quindi
+--    la promessa qui sopra è PROVATA e non dichiarata.
 --
 -- GENERATO dalle migrazioni versionate: NON modificarlo a mano.
 -- Per rigenerarlo dopo aver aggiunto una migrazione:  npm run db:bundle
@@ -36,7 +52,10 @@ ${names.map((n) => `--   ${n}`).join('\n')}
 --   · nessun trigger e nessuna policy vengano creati senza un «drop … if exists»
 --     che li preceda (42710 fermerebbe tutto il file), riconoscendo anche i nomi
 --     fra virgolette;
---   · nessun valore enum appena aggiunto venga usato nello stesso file (55P04).
+--   · nessun valore enum appena aggiunto venga usato nello stesso file (55P04),
+--     distinguendo i corpi \`plpgsql\` — che Postgres non guarda alla creazione —
+--     da quelli \`language sql\`, che invece analizza;
+--   · il preambolo dei privilegi ci sia e nomini tutti e tre i ruoli.
 -- Ciò che NON controlla, e che quindi resta responsabilità di chi scrive una
 -- migrazione: tabelle, indici, colonne, vincoli, tipi e inserimenti di dati,
 -- che vanno resi ripetibili a mano («if not exists», «do $$ … exception»,
@@ -226,7 +245,13 @@ export function corpiDiFunzione(sql) {
         if (chiusura < 0) break;                       // quotatura non chiusa
         const intestazione = sql.slice(inizioIstruzione, i);
         if (/\bcreate\b[\s\S]*\bfunction\b/i.test(intestazione)) {
-          intervalli.push([apertura, chiusura]);
+          // ⚠️ IL LINGUAGGIO CAMBIA TUTTO, e va cercato su ENTRAMBI i lati:
+          // `language sql as $$ … $$` e `as $$ … $$ language sql` sono la
+          // stessa cosa per Postgres e due testi diversi per una regex.
+          const fine = sql.indexOf(';', chiusura + tag.length);
+          const coda = sql.slice(chiusura + tag.length, fine < 0 ? sql.length : fine);
+          const lang = (/\blanguage\s+(\w+)/i.exec(intestazione) ?? /\blanguage\s+(\w+)/i.exec(coda))?.[1];
+          intervalli.push([apertura, chiusura, (lang ?? 'plpgsql').toLowerCase()]);
         }
         i = chiusura + tag.length;
         continue;
@@ -257,7 +282,22 @@ export function problemiEnum(sql) {
   );
 
   const corpi = corpiDiFunzione(codice);
-  const dentroUnCorpoDiFunzione = (idx) => corpi.some(([a, b]) => idx >= a && idx < b);
+  // ⚠️ SOLO I CORPI CHE POSTGRES NON GUARDA ALLA CREAZIONE.
+  //
+  // Un corpo `plpgsql` è testo finché qualcuno non lo esegue, quindi
+  // nominarci dentro un'etichetta enum appena aggiunta è lecito. Un corpo
+  // `language sql` invece viene ANALIZZATO alla creazione della funzione, e
+  // l'etichetta nuova lo fa fallire con 55P04 esattamente come se fosse in
+  // un'istruzione qualunque.
+  //
+  // ⚠️ Questa distinzione mancava, e non era teorica: `list_documents` (0017,
+  // `language sql`) usa `'extracting'`, aggiunto a `document_status` dalla
+  // 0006. Applicando una migrazione alla volta non succede niente — la 0006
+  // ha già chiuso la sua transazione. Applicando `full-setup.sql` in UNA
+  // transazione, Postgres rifiuta. Il controllo esentava tutti i corpi di
+  // funzione e non poteva vederlo.
+  const dentroUnCorpoDiFunzione = (idx) =>
+    corpi.some(([a, b, lang]) => idx >= a && idx < b && lang !== 'sql');
 
   for (const valore of aggiunti) {
     if (creati.has(valore)) continue;
@@ -405,12 +445,28 @@ const AUTOVERIFICA_ENUM = [
   { nome: 'valore aggiunto e usato in un indice parziale', attesi: 1, sql: `
     alter type public.t_stato add value if not exists 'nuovo';
     create index idx_x on public.t (a) where stato = 'nuovo';` },
-  { nome: 'valore aggiunto e usato SOLO nel corpo di una funzione', attesi: 0, sql: `
+  { nome: 'valore aggiunto e usato SOLO in un corpo plpgsql', attesi: 0, sql: `
     alter type public.t_stato add value if not exists 'nuovo';
     create or replace function public.f() returns void language plpgsql as $$
     begin
       perform public.g('nuovo');
     end $$;` },
+  // ⚠️⚠️ IL CASO CHE IL CONTROLLO NON VEDEVA, ed era vero in produzione: un
+  // corpo `language sql` viene ANALIZZATO alla creazione, quindi l'etichetta
+  // nuova lo fa fallire come qualunque altra istruzione. È il difetto di
+  // `list_documents` (0017) con 'extracting' (0006).
+  { nome: 'valore aggiunto e usato in un corpo LANGUAGE SQL', attesi: 1, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    create or replace function public.f() returns setof int language sql stable as $$
+      select 1 where 'nuovo'::public.t_stato is not null;
+    $$;` },
+  // E la stessa cosa con il linguaggio dichiarato DOPO il corpo, che per
+  // Postgres è identico e per una regex distratta no.
+  { nome: 'language sql dichiarato dopo il corpo → visto lo stesso', attesi: 1, sql: `
+    alter type public.t_stato add value if not exists 'nuovo';
+    create or replace function public.f() returns setof int as $$
+      select 1 where 'nuovo'::public.t_stato is not null;
+    $$ language sql stable;` },
   // ⚠️ IL CASO CHE DEVE RESTARE VIETATO: un blocco «do» viene ESEGUITO subito.
   { nome: 'valore aggiunto e usato dentro un blocco do', attesi: 1, sql: `
     alter type public.t_stato add value if not exists 'nuovo';

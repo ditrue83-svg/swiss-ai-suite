@@ -1,6 +1,22 @@
 -- ============================================================================
--- SwissAI Suite — SETUP COMPLETO DATABASE
--- Incolla TUTTO questo file nel SQL Editor di Supabase ed esegui.
+-- AI-Swisse — SETUP COMPLETO DATABASE
+--
+-- ⚠️⚠️ NON SI INCOLLA NEL SQL EDITOR DI SUPABASE, e la ragione è stata MISURATA
+--    il 2026-07-31 applicando davvero questo file a un database vuoto: il SQL
+--    editor esegue tutto in UNA transazione, e in una transazione sola questo
+--    file FALLISCE con 55P04 «unsafe use of new value "extracting"». La 0006
+--    aggiunge quell'etichetta a `document_status`; `list_documents` (0017,
+--    `language sql`, quindi con il corpo analizzato alla creazione) la usa.
+--    Applicando UNA MIGRAZIONE ALLA VOLTA non succede niente, perché ogni
+--    migrazione ha la sua transazione — ed è così che è nato il database in
+--    esercizio. Concatenate in una sola, no.
+--
+--    Si applica quindi in AUTOCOMMIT:
+--        psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/full-setup.sql
+--    oppure, meglio, con la CLI:  npx supabase db push --linked
+--
+--    La CI applica questo file a un database vuoto a ogni pull request, quindi
+--    la promessa qui sopra è PROVATA e non dichiarata.
 --
 -- GENERATO dalle migrazioni versionate: NON modificarlo a mano.
 -- Per rigenerarlo dopo aver aggiunto una migrazione:  npm run db:bundle
@@ -50,7 +66,10 @@
 --   · nessun trigger e nessuna policy vengano creati senza un «drop … if exists»
 --     che li preceda (42710 fermerebbe tutto il file), riconoscendo anche i nomi
 --     fra virgolette;
---   · nessun valore enum appena aggiunto venga usato nello stesso file (55P04).
+--   · nessun valore enum appena aggiunto venga usato nello stesso file (55P04),
+--     distinguendo i corpi `plpgsql` — che Postgres non guarda alla creazione —
+--     da quelli `language sql`, che invece analizza;
+--   · il preambolo dei privilegi ci sia e nomini tutti e tre i ruoli.
 -- Ciò che NON controlla, e che quindi resta responsabilità di chi scrive una
 -- migrazione: tabelle, indici, colonne, vincoli, tipi e inserimenti di dati,
 -- che vanno resi ripetibili a mano («if not exists», «do $$ … exception»,
