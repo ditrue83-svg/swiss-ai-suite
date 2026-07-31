@@ -129,3 +129,33 @@ export const TASK_METADATA_KEY = 'aiSwisseTaskId';
  */
 export const MS_PROPERTY_SET_GUID = 'a11c9f2e-6d34-4b51-9a2f-0f7e1c5d8b40';
 export const MS_TASK_PROPERTY = `String {${MS_PROPERTY_SET_GUID}} Name ${TASK_METADATA_KEY}`;
+
+// ---------------------------------------------------------------------------
+// OSSERVABILITÀ — l'identificativo che lega un'esecuzione ai suoi log.
+//
+// ⚠️ PERCHÉ SERVE. I due worker scrivono una riga di report a fine esecuzione, e
+// quella riga da sola non risponde alla domanda che si fa quando qualcosa non
+// va: «quale esecuzione?». Due giri consecutivi dello scheduler producono log
+// indistinguibili, e se uno dei due è morto a metà — il budget di 150 secondi
+// uccide l'isolate senza far girare il `finally` — non c'è modo di dire quale
+// riga di apertura appartenga a quale chiusura, né quanto sia durato.
+//
+// ⚠️ E DICHIARA QUANDO SE L'È INVENTATO. Se la piattaforma fornisce un
+// identificativo, quello è l'unico che permetta di correlare il log della
+// funzione con quello del gateway. Se non lo fornisce, se ne genera uno — ma
+// con il prefisso `gen:`, perché chi legge deve poter distinguere «questo id lo
+// ritrovi nei log della piattaforma» da «questo id esiste solo qui dentro». Un
+// identificativo inventato che si spaccia per quello del gateway manderebbe a
+// cercare per mezz'ora una riga che non esiste.
+// ---------------------------------------------------------------------------
+
+/** Le intestazioni che possono portare un identificativo, in ordine di fiducia. */
+export const CORRELATION_HEADERS = ['sb-request-id', 'x-request-id', 'cf-ray'] as const;
+
+export function correlationId(headers: { get(name: string): string | null }): string {
+  for (const nome of CORRELATION_HEADERS) {
+    const valore = headers.get(nome);
+    if (valore && valore.trim()) return valore.trim();
+  }
+  return `gen:${crypto.randomUUID()}`;
+}

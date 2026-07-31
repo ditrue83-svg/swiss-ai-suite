@@ -33,6 +33,7 @@ supabase/
                 0029_assistant_purge_lockdown · 0030_crm_link_candidate
                 0031_assistant_purge_schedule · 0032_subsidy_ai_2
                 0033_subsidy_answers_cascade · 0034_subsidy_answers_project_cascade
+                0035_calendar_notification_schedulers
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
