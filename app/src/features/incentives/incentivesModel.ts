@@ -48,6 +48,7 @@ export { computeDeadline, computeTiming } from '../../../supabase/functions/_sha
 
 import { DEADLINE_SOON_DAYS } from '../../../supabase/functions/_shared/subsidy/contract.ts';
 import { computeDeadline } from '../../../supabase/functions/_shared/subsidy/timing.ts';
+import { isUuid } from '@/lib/ids';
 
 // ---------------------------------------------------------------------------
 // LE QUATTRO SCHEDE
@@ -160,11 +161,14 @@ export function filtersFromParams(params: URLSearchParams): IncentiveFilters {
   };
 }
 
-/** La forma di un uuid. Non ne verifica l'esistenza: quella la sa il database. */
-export function isUuid(v: string | null | undefined): boolean {
-  return typeof v === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
-}
+/**
+ * La forma di un uuid. Non ne verifica l'esistenza: quella la sa il database.
+ * ⚠️ L'implementazione si è spostata in `@/lib/ids` perché serve anche
+ * all'Inbox (`/inbox?msg=…`), che aveva la stessa apertura di questo modulo.
+ * Qui resta la riesportazione: una seconda espressione regolare sarebbe stata
+ * la solita coppia destinata a divergere.
+ */
+export { isUuid };
 
 export function paramsFromFilters(f: IncentiveFilters): URLSearchParams {
   const p = new URLSearchParams();

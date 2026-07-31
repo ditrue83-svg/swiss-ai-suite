@@ -15,7 +15,7 @@
 // scelta dal mittente si mostra il DOMINIO REALE di destinazione (§56).
 // ============================================================================
 import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, ErrorState, SkeletonLine } from '@/components/ui/states';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -32,6 +32,7 @@ import { documentService } from '@/services/documentService';
 import { emailConnectionService, inboxErrorMessage } from '@/services/emailConnectionService';
 import { inboxService } from '@/services/inboxService';
 import { senderLabel, subjectLabel } from './parts';
+import { messageDocumentRows, primaryDocumentOf } from './messageDocuments';
 import type { DocumentAnalysis, EmailAttachment, EmailMessageDetail } from '@/types/models';
 
 interface Props {
@@ -68,7 +69,9 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
 
     // L'analisi da mostrare è quella del documento PRINCIPALE: l'allegato se
     // c'è, il corpo altrimenti. Non si fondono evidenze di fonti diverse (§33).
-    const primary = message.documents.find((d) => d.relation === 'attachment') ?? message.documents[0] ?? null;
+    // La scelta la fa `primaryDocumentOf`, ed è la stessa che marca la riga
+    // nell'elenco dei documenti: due copie indicherebbero due «principali».
+    const primary = primaryDocumentOf(message.documents);
     const analysis = primary ? await analysisService.getForDocument(primary.documentId) : null;
     return { message, analysis };
   }, [messageId]);
@@ -124,7 +127,25 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
     );
   }
   if (error) return <ErrorState message={error} onRetry={reload} />;
-  if (!message) return <ErrorState message={t('errors.notFound')} onRetry={onBack} />;
+  // ⚠️ Il messaggio non c'è. Sono due casi che da qui NON si distinguono, ed è
+  // giusto così: non esiste più, oppure è di un'altra azienda e la RLS non lo
+  // consegna. Dire quale dei due sarebbe rivelare l'esistenza di una riga
+  // altrui. Prima questo caso rendeva un pulsante «Riprova» che in realtà
+  // TORNAVA INDIETRO: un comando che dice una cosa e ne fa un'altra.
+  if (!message) {
+    return (
+      <div className="state-error" role="alert">
+        <Icon name="alert" />
+        <div>
+          <div>{t('errors.notFound')}</div>
+          <button className="btn btn-sm mt-8" onClick={onBack}>
+            <Icon name="arrowLeft" className="ic-sm" /> {t('inbox.detail.back')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  const documentRows = messageDocumentRows(message.documents, message.attachments);
 
   const received = new Date(message.receivedAt);
   const receivedLabel = Number.isNaN(received.getTime())
@@ -244,13 +265,19 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
               </div>
             )}
 
-            <div className="inbox-actions">
-              {message.documents.map((d) => (
-                <button key={d.documentId} className="btn btn-sm" onClick={() => navigate(`/admin?doc=${d.documentId}`)}>
+            {/* UN solo collegamento all'analisi, quella del documento
+                principale: è l'analisi che questa scheda sta mostrando.
+                Prima ce n'era uno per documento, tutti con la stessa
+                etichetta, e con un corpo e un allegato importati comparivano
+                due pulsanti identici che portavano in posti diversi. Gli altri
+                documenti stanno nell'elenco qui sotto, con il loro stato. */}
+            {documentRows.filter((d) => d.isPrimary).map((d) => (
+              <div className="inbox-actions" key={d.documentId}>
+                <button className="btn btn-sm" onClick={() => navigate(`/admin?doc=${d.documentId}`)}>
                   <Icon name="fileSearch" className="ic-sm" /> {t('inbox.detail.openAnalysis')}
                 </button>
-              ))}
-            </div>
+              </div>
+            ))}
           </>
         ) : (
           <div className="empty">
@@ -263,6 +290,44 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
           <p className="muted-sm">
             <strong>{t('inbox.detail.reason')}</strong> — {message.relevanceReason}
           </p>
+        )}
+      </div>
+
+      {/* Che cosa ha PRODOTTO questa comunicazione.
+          Il percorso «posta → documento → analisi → attività» esisteva già, ma
+          da qui si arrivava soltanto alla schermata di analisi: il documento —
+          dove si organizza, si archivia e diventa lavoro — non era
+          raggiungibile. Nessun dato del Document Hub è copiato qui: titolo,
+          provenienza e stato viaggiano già con il messaggio. */}
+      <div className="card">
+        <div className="card-title"><span>{t('inbox.detail.documents')}</span></div>
+        {documentRows.length === 0 ? (
+          <div className="empty">{t('inbox.detail.documentsNone')}</div>
+        ) : (
+          <ul className="stack-sm">
+            {documentRows.map((d) => (
+              <li key={d.documentId} className="list-row">
+                <span className="list-main">
+                  <span className="list-title">{d.title}</span>
+                  <span className="list-sub">
+                    {[
+                      d.relation === 'attachment'
+                        ? t('documents.originAttachment')
+                        : t('documents.originBody'),
+                      d.filename,
+                    ].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+                {/* Lo stato è TESTO e usa le parole del Document Hub: un
+                    secondo vocabolario per «in elaborazione» sarebbero due
+                    parole per la stessa cosa. */}
+                <span className="badge badge-neutral">{t(`documents.states.${d.state}` as const)}</span>
+                <Link className="btn btn-sm" to={`/documenti/${d.documentId}`}>
+                  <Icon name="document" className="ic-sm" /> {t('inbox.detail.openDocument')}
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
@@ -292,10 +357,14 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
                     <Icon name="download" className="ic-sm" /> {t('inbox.detail.openFile')}
                   </button>
                 )}
+                {/* Porta al DOCUMENTO e non all'analisi: un allegato appena
+                    importato un'analisi può non averla ancora, e un pulsante
+                    che promette una schermata vuota è un pulsante che porta a
+                    un rifiuto. */}
                 {a.documentId && (
-                  <button className="btn btn-sm" onClick={() => navigate(`/admin?doc=${a.documentId}`)}>
-                    {t('inbox.detail.openAnalysis')}
-                  </button>
+                  <Link className="btn btn-sm" to={`/documenti/${a.documentId}`}>
+                    {t('inbox.detail.openDocument')}
+                  </Link>
                 )}
               </li>
             ))}
