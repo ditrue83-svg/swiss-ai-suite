@@ -60,7 +60,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Contratti | `/contratti` | sì | sì | sì | sì | **no** | parziale | — | ⚠️ **il worker non ha mai prodotto un'estrazione su un contratto vero**: `contract_extractions` è a zero. Il prompt è allineato a un ragionamento, non a una risposta reale |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | parziale | sì | sì | Anthropic | ⚠️ `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione. La causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato), corretta il 2026-07-31 e verificata contro il database vero; l'asserzione sull'ancoraggio è ora una funzione pura provata offline. ⚠️ **L'eval NON è stata rieseguita**: credito esaurito. Sola lettura, retention 180 giorni attiva |
-| Incentivi | `/incentivi` | sì | sì | sì | parziale | sì | sì | fonti ufficiali (7 siti) | ⚠️ **nessuna suite d'integrazione su database**: 277 asserzioni offline, l'end-to-end è stato fatto a mano una volta. 7 revisioni del catalogo in attesa di una persona |
+| Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 (80 asserzioni). ⚠️ Resta scoperto il **motore**: che `subsidy-worker` produca l'opportunità giusta da un progetto è stato provato **a mano una volta**, non da una suite. 7 revisioni del catalogo in attesa di una persona |
 
 ## Le integrazioni esterne
 

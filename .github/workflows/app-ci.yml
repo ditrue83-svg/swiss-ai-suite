@@ -123,7 +123,7 @@ jobs:
             echo "has_database=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_database=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Suite database non eseguibili::I segreti SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY non sono configurati in questo repository. Le 13 suite su database NON sono state eseguite: non sono verdi, sono saltate."
+            echo "::notice title=Suite database non eseguibili::I segreti SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY non sono configurati in questo repository. Le suite su database NON sono state eseguite: non sono verdi, sono saltate. L'elenco lo stampa 'npm run suite -- --list'."
           fi
           if [ -n "$ANTHROPIC_API_KEY" ]; then
             echo "has_anthropic=true" >> "$GITHUB_OUTPUT"
