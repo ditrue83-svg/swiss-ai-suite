@@ -19,6 +19,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useI18n, useT } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
+import { isUuid } from '@/lib/ids';
 import { emailConnectionService, inboxErrorMessage } from '@/services/emailConnectionService';
 import { inboxService } from '@/services/inboxService';
 import { INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES } from './constants';
@@ -54,7 +55,14 @@ export function InboxPage() {
   const [params, setParams] = useSearchParams();
   const companyId = activeCompanyId as string;
 
-  const selectedId = params.get('msg');
+  // ⚠️ Un identificativo MALFORMATO non è una selezione. Passato al servizio,
+  // PostgREST risponde «invalid input syntax for type uuid: "abc"» e quella
+  // stringa tecnica, in inglese, finisce a schermo dentro un'interfaccia che
+  // può essere tedesca. È il difetto già chiuso su `/incentivi?progetto=abc`:
+  // l'Inbox aveva la stessa apertura, e `/inbox?msg=abc` la mostrava.
+  // Uno BEN FORMATO che non esiste RESTA una selezione, perché «non trovato»
+  // è la risposta vera e va detta.
+  const selectedId = isUuid(params.get('msg')) ? params.get('msg') : null;
   const filter = (FILTERS.includes(params.get('filter') as InboxFilter) ? params.get('filter') : 'all') as InboxFilter;
   const connectionFilter = params.get('account');
 
@@ -161,6 +169,25 @@ export function InboxPage() {
     if (value) next.set(key, value); else next.delete(key);
     if (key !== 'msg') next.delete('msg');
     setParams(next, { replace: true });
+  };
+
+  /**
+   * Aprire un messaggio AGGIUNGE una voce alla cronologia, non la sostituisce.
+   *
+   * ⚠️ Era `replace`, e il tasto indietro del browser saltava l'elenco: da un
+   * messaggio aperto dalla lista si usciva dall'Inbox in un colpo solo,
+   * perché la voce della lista era stata sovrascritta. Con `push`:
+   *   · dalla lista → indietro riporta ALLA LISTA;
+   *   · da un documento (`/inbox?msg=…`) → indietro riporta AL DOCUMENTO,
+   *     perché quella voce non è mai stata toccata.
+   * Chiudere il messaggio con «Indietro» resta invece un `replace`: aggiungere
+   * una seconda voce identica alla lista renderebbe il tasto indietro del
+   * browser un clic a vuoto.
+   */
+  const openMessage = (messageId: string) => {
+    const next = new URLSearchParams(params);
+    next.set('msg', messageId);
+    setParams(next);
   };
 
   const activeConnections = useMemo(
@@ -378,7 +405,7 @@ export function InboxPage() {
                 <li key={m.id}>
                   <button
                     className={`inbox-row${m.seenAt ? '' : ' is-unseen'}`}
-                    onClick={() => updateParam('msg', m.id)}
+                    onClick={() => openMessage(m.id)}
                   >
                     <span className="inbox-row-main">
                       <span className="inbox-sender">{senderLabel(m, t)}</span>

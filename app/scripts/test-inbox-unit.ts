@@ -38,6 +38,15 @@ import {
 } from '../supabase/functions/_shared/email/contract.ts';
 import { INITIAL_SYNC_DAYS as UI_DAYS, INITIAL_SYNC_MAX_MESSAGES as UI_MAX } from '../src/features/inbox/constants';
 import type { NormalizedEmailMessage } from '../supabase/functions/_shared/email/types.ts';
+import { isUuid } from '../src/lib/ids';
+import {
+  documentStateFromStatus, messageDocumentRows, primaryDocumentOf,
+} from '../src/features/inbox/messageDocuments';
+import { it } from '../src/i18n/locales/it';
+import { de } from '../src/i18n/locales/de';
+import { fr } from '../src/i18n/locales/fr';
+import type { EmailAttachment, EmailLinkedDocument } from '../src/types/models';
+import type { DocumentStatus } from '../src/types/database';
 // Importati anche per farli passare dal typecheck: `sync.ts` e `store.ts` non
 // sono raggiungibili da `src/`, quindi senza questo import `npm run typecheck`
 // non li guarderebbe mai — e un errore di tipo nell'orchestrazione della
@@ -704,6 +713,89 @@ ok(ANALYSIS_SLOT_MS > 30_000 && EDGE_TIME_BUDGET_MS + ANALYSIS_SLOT_MS < 150_000
   + 'il margine non è un augurio, è aritmetica');
 ok(INBOX_ERROR_CODES.includes('TIME_BUDGET'),
   '«tempo esaurito» ha un codice proprio: non è un guasto e non va detto come tale');
+
+// ===========================================================================
+section('10 · Dal messaggio al documento, e ritorno');
+// ⚠️ PERCHÉ ESISTE QUESTA SEZIONE. Dal dettaglio di una comunicazione si
+// arrivava soltanto alla schermata di ANALISI, e con un corpo e un allegato
+// importati comparivano DUE pulsanti identici che portavano in posti diversi.
+// Il documento — dove quel foglio si organizza, si archivia e diventa lavoro —
+// non era raggiungibile dalla posta. E `/inbox?msg=abc` faceva arrivare a
+// schermo un errore di PostgREST in inglese, la stessa apertura già chiusa su
+// `/incentivi?progetto=abc`.
+{
+  const allegato = (over: Partial<EmailAttachment> = {}): EmailAttachment => ({
+    id: 'att-1', emailMessageId: 'msg-1', providerAttachmentId: 'p-1',
+    filename: 'fattura.pdf', mimeType: 'application/pdf', declaredMimeType: 'application/pdf',
+    sizeBytes: 2048, isInline: false, storagePath: 'co/att-1.pdf',
+    importStatus: 'imported', skipReason: null, documentId: 'doc-att', ...over,
+  });
+  const collegato = (over: Partial<EmailLinkedDocument> = {}): EmailLinkedDocument => ({
+    documentId: 'doc-body', relation: 'body', attachmentId: null,
+    title: 'Corpo della comunicazione', status: 'completed', ...over,
+  });
+
+  // -- la guardia sull'indirizzo --------------------------------------------
+  ok(!isUuid('abc'),
+    '⚠️ `/inbox?msg=abc`: un identificativo malformato NON è una selezione, altrimenti «invalid input syntax for type uuid» finisce a schermo in inglese');
+  ok(!isUuid(null) && !isUuid(''), 'nessun parametro, nessuna selezione');
+  ok(isUuid('3f832034-7564-41b7-8111-dfd799238ee1'),
+    'un identificativo ben formato resta una selezione: se non esiste, «non trovato» è la risposta vera e va detta');
+  ok(!isUuid('3f832034-7564-41b7-8111-dfd799238ee1 or 1=1'),
+    'e non si accetta un identificativo con della coda attaccata');
+
+  // -- quale documento è il principale --------------------------------------
+  ok(primaryDocumentOf([]) === null, 'un messaggio senza documenti non ne ha uno principale');
+  ok(primaryDocumentOf([collegato()])?.documentId === 'doc-body',
+    'con il solo corpo, il principale è il corpo');
+  ok(primaryDocumentOf([
+    collegato(), collegato({ documentId: 'doc-att', relation: 'attachment', attachmentId: 'att-1' }),
+  ])?.documentId === 'doc-att',
+    '§33 — se c’è un allegato è LUI il principale: le evidenze di fonti diverse non si mescolano');
+
+  // -- l'elenco: corpo e allegato si distinguono ----------------------------
+  const righe = messageDocumentRows(
+    [
+      collegato(),
+      collegato({ documentId: 'doc-att', relation: 'attachment', attachmentId: 'att-1', title: 'Fattura marzo' }),
+    ],
+    [allegato()],
+  );
+  ok(righe.length === 2, 'ogni documento prodotto dalla comunicazione ha la sua riga');
+  ok(righe[0].relation === 'body' && righe[1].relation === 'attachment',
+    '⚠️ e si distingue se è nato dal CORPO o da un ALLEGATO: prima erano due pulsanti identici');
+  ok(righe[1].filename === 'fattura.pdf',
+    'la riga di un allegato porta il nome del file, che il titolo del documento può non essere più');
+  ok(righe[0].filename === null, 'quella del corpo no: non c’è nessun file da nominare');
+  ok(righe.filter((r) => r.isPrimary).length === 1 && righe[1].isPrimary,
+    'uno solo è il principale, e coincide con quello di cui si mostra l’analisi');
+
+  // -- lo stato: le parole del Document Hub, non parole nuove ----------------
+  ok(documentStateFromStatus('analyzing') === 'processing'
+    && documentStateFromStatus('extracting') === 'processing',
+    'un documento in lavorazione dice «in elaborazione»');
+  ok(documentStateFromStatus('failed') === 'failed', 'una lettura fallita lo dichiara');
+  ok(documentStateFromStatus('needs_review') === 'to_verify', 'e una da verificare pure');
+  ok(documentStateFromStatus('completed') === 'analyzed' && documentStateFromStatus('analyzed') === 'analyzed',
+    'un documento letto è «analizzato»');
+  ok(documentStateFromStatus('uploaded') === 'none',
+    'e uno appena importato è «non ancora analizzato» — non «pronto», che sarebbe falso');
+
+  // ⚠️ Il vocabolario è UNO SOLO: ogni stato che questa funzione può produrre
+  // ha già la sua etichetta nel Document Hub, in tutte e tre le lingue. Senza
+  // questo controllo, un valore nuovo comparirebbe grezzo in pagina.
+  const statiPossibili: DocumentStatus[] = [
+    'uploaded', 'extracting', 'analyzing', 'completed', 'needs_review', 'failed', 'processing', 'analyzed',
+  ];
+  for (const [lang, dict] of Object.entries({ it, de, fr })) {
+    const etichette = (dict.documents as { states: Record<string, string> }).states;
+    const mancanti = statiPossibili
+      .map((s) => documentStateFromStatus(s))
+      .filter((stato) => !etichette[stato]);
+    ok(mancanti.length === 0, `${lang}: ogni stato mostrato nella posta ha la sua etichetta`,
+      `mancanti: ${[...new Set(mancanti)].join(', ')}`);
+  }
+}
 
 // ===========================================================================
 console.log(`\n${B}Riepilogo${X}  ${G}${pass} superati${X}${fail ? `  ${R}${fail} falliti${X}` : ''}\n`);
