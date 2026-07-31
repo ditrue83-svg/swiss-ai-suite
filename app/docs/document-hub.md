@@ -261,7 +261,7 @@ rimasta indietro. Massimo duecento documenti per volta.
 
 | Modulo | Dal Hub | Verso il Hub |
 |---|---|---|
-| **AI Inbox** | «Apri comunicazione» → `/inbox?msg=…` | l'allegato importato diventa un documento |
+| **AI Inbox** | «Apri comunicazione» → `/inbox?msg=…` | «Documenti prodotti» → `/documenti/:id`, con corpo/allegato e stato |
 | **Admin AI** | «Apri analisi completa» → `/admin?doc=…` | l'analisi alimenta valori e categoria |
 | **Attività** | «Crea attività» / «Apri attività» | `tasks.document_id` → sezione Attività |
 | **Panoramica** | solo i documenti che richiedono attenzione | — |
@@ -278,10 +278,74 @@ tantum). Per questo l'avviso «N azioni non ancora diventate attività» compare
 **solo quando non è nata nessuna attività** da quel documento: è l'unico caso in
 cui la deduzione è certa. Il resto sarebbe una deduzione fragile.
 
+## Il percorso «documento → attività» (2026-07-31)
+
+Il dettaglio mostrava tutto ciò che si sa e non diceva mai che cosa restasse da
+fare. Ora, sotto l'intestazione e l'origine, c'è **«Prossimo passo»**: un
+riquadro compatto che legge soltanto dati già presenti e mette in primo piano
+**una** azione.
+
+| Situazione | Azione primaria | Creare un'attività |
+|---|---|---|
+| nessuna analisi | Analizza | possibile, con l'avvertenza che nascerà senza scadenza e senza passaggi |
+| analisi in elaborazione | *nessuna: si aspetta* | **impedito** |
+| analisi fallita | Riprova analisi | possibile |
+| analisi da verificare | Verifica analisi | possibile, con avvertenza esplicita |
+| analisi utilizzabile, nessuna attività | Crea attività | — |
+| una o più attività | Apri attività / Vedi attività | secondaria: «Crea un'altra attività» |
+
+⚠️ **Un solo caso impedisce la creazione**: mentre l'analisi lavora. Non è una
+restrizione di comodo — in quell'istante l'attività nascerebbe senza la scadenza
+e senza i passaggi che stanno per arrivare, cioè un dato incompleto prodotto da
+un'attesa.
+
+⚠️ **Più attività su uno stesso documento restano legittime** (§40). Non esiste
+nessun vincolo che lo impedisca, né nel database né nell'interfaccia: quando
+un'attività esiste già, «crearne un'altra» smette solo di essere l'azione
+primaria. Nascondere quella possibilità avrebbe risolto un problema di
+distrazione creandone uno di verità.
+
+### La revisione prima di creare
+
+Premendo «Crea attività» compare il **modulo condiviso** (`TaskCreateForm`,
+lo stesso dell'elenco Attività, §17) con i valori derivati dai dati **effettivi**
+— correzioni umane comprese. I valori iniziali NON sono ricostruiti dalla
+schermata: li calcola `documentTaskDraft`, la stessa funzione che poi scrive.
+Due derivazioni della stessa cosa prima o poi mostrano una priorità e ne salvano
+un'altra.
+
+Le avvertenze del riquadro sono ripetute accanto ai campi: chi apre il modulo
+dal fondo della pagina non ha necessariamente letto quello in cima.
+
+### La protezione dal doppio invio, e il rischio che resta
+
+⚠️ **Il pulsante disabilitato NON basta, ed è stato misurato**: `saving` è uno
+stato React, due clic nello stesso tick lo leggono entrambi a `false`. Il
+2026-07-31, provando nel browser, due clic hanno creato **due attività
+identiche a 14 millisecondi di distanza** sul database vero. La difesa che
+regge è `createSubmitLatch`, una variabile che cambia nell'istante del primo
+clic; il modulo si chiude dopo un successo, quindi da una apertura nasce al
+massimo un'attività.
+
+⚠️ **Rischio residuo dichiarato**: due schede aperte, oppure un invio il cui
+esito si perde in rete e viene ritentato dal browser, possono ancora produrre un
+duplicato. È **visibile** (due righe nell'elenco) e si cancella. Chiuderlo
+davvero richiederebbe una chiave di idempotenza lato database, cioè una
+migrazione: non è stata introdotta, e il servizio non ne ha già una da riusare.
+
+### Dopo la creazione
+
+L'esito resta a schermo con il collegamento all'attività appena creata, e
+l'elenco si aggiorna: cercare in «Attività» una cosa fatta un istante fa è
+lavoro in più. Se i passaggi della checklist non si sono potuti aggiungere,
+**non si dichiara un successo pieno** (`stepsFailed`): l'attività esiste, è
+raggiungibile, e la mancanza dei passaggi è un fatto che viene detto.
+
 ## Test
 
 ```
-npm run test:documents-unit    60 · offline: stati, argomenti, estratti, indirizzo, etichette
+npm run test:documents-unit   107 · offline: stati, argomenti, estratti, indirizzo, etichette,
+                                    «Prossimo passo» (sez. 8) e la scrittura dell'attività (sez. 9)
 npm run test:documents              su DB reale: richiede la 0017 applicata
 ```
 
