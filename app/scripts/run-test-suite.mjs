@@ -153,6 +153,12 @@ const GROUPS = {
       { script: 'test:routing' },
       { script: 'test:validate' },
       { script: 'test:operations' },
+      // ⚠️ SOLO l'autoverifica: `verify:deploy` interroga il progetto reale e
+      // non può stare in un gruppo senza credenziali. I suoi due controlli
+      // nuovi — duplicati ed esito dell'ultima esecuzione — sono però funzioni
+      // pure, e vanno provati sui casi che DEVONO farli fallire: romperli nel
+      // progetto vero per vederli reagire non è un'opzione.
+      { script: 'verify:deploy', args: ['--self-test'] },
       { script: 'test:inbox-unit' },
       { script: 'test:tasks-unit' },
       { script: 'test:documents-unit' },
