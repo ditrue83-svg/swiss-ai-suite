@@ -16,7 +16,7 @@
 // visibile quello che l'analisi aveva rilevato: la correzione non cancella
 // nulla, si affianca.
 // ============================================================================
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -30,8 +30,15 @@ import { documentHubService } from '@/services/documentHubService';
 import { documentService } from '@/services/documentService';
 import { analyzeStoredDocument } from '@/features/admin-ai/analyzeStored';
 import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
+import { documentTaskDraft } from '@/features/tasks/documentToTask';
+import { TaskCreateForm } from '@/features/tasks/TaskCreateForm';
+import {
+  EMPTY_TASK_FORM, taskFormSubmission, type TaskFormValues,
+} from '@/features/tasks/taskCreateModel';
 import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
 import { useMembers } from '@/features/tasks/useMembers';
+import { NextStepCard } from './NextStepCard';
+import { nextStepFor, proposedTaskTitle } from './nextStep';
 import { formatBytes, formatCurrency, formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TKey } from '@/i18n';
@@ -80,7 +87,7 @@ export function DocumentDetailPage() {
 
   // La rubrica dell'azienda: `profiles` è leggibile solo dal proprietario,
   // quindi il nome di un collega arriva da qui e non da un join.
-  const { byId: membersById } = useMembers();
+  const { members, byId: membersById } = useMembers();
   /** Il responsabile di un'attività. Senza responsabile è «Non assegnata». */
   function assigneeName(userId: string | null): string {
     if (!userId) return t('tasks.unassigned');
@@ -136,29 +143,99 @@ export function DocumentDetailPage() {
     }
   }
 
-  async function createTask() {
+  // ---- da documento ad attività, CON un passaggio di revisione -------------
+  // Prima si creava di colpo: chi premeva «Crea attività» scopriva soltanto
+  // dopo quale titolo, quale scadenza e quale priorità erano finiti
+  // nell'attività — e se la scadenza era una di quelle che l'analisi dichiara
+  // da verificare, se ne accorgeva a cose fatte. Ora i valori si vedono prima,
+  // e sono gli stessi che verranno salvati perché li calcola `documentTaskDraft`,
+  // cioè la funzione che poi scrive davvero.
+  const [taskForm, setTaskForm] = useState<TaskFormValues | null>(null);
+  const [savingTask, setSavingTask] = useState(false);
+  const [taskError, setTaskError] = useState<string | null>(null);
+  const [createdTask, setCreatedTask] = useState<{ id: string; steps: number; stepsFailed: boolean } | null>(null);
+  const tasksCardRef = useRef<HTMLDivElement>(null);
+  // ⚠️ Il fuoco torna al pulsante che POSSIEDE il modulo — quello nella scheda
+  // «Attività» — e non a quello che è stato premuto: il modulo può essere
+  // aperto anche dal riquadro in cima, e riportare il fuoco lassù lo
+  // allontanerebbe da dove il lavoro sta avvenendo. Serve un ref di CALLBACK e
+  // non un `useRef`: mentre il modulo è aperto quel pulsante non esiste, e
+  // chiamare `.focus()` subito dopo aver chiuso troverebbe un nodo non ancora
+  // montato — un fallimento silenzioso, che è precisamente il modo in cui una
+  // regola di accessibilità smette di funzionare senza che nessuno se ne accorga.
+  const [refocusOnClose, setRefocusOnClose] = useState(false);
+  const createTaskButtonRef = useCallback((el: HTMLButtonElement | null) => {
+    if (el && refocusOnClose) { el.focus(); setRefocusOnClose(false); }
+  }, [refocusOnClose]);
+
+  function openTaskForm() {
     if (!detail || !user) return;
-    await withBusy(async () => {
+    // I valori iniziali NON si ricostruiscono qui: si chiedono alla funzione
+    // che li userà per scrivere. Due derivazioni della stessa cosa prima o poi
+    // mostrano una priorità e ne salvano un'altra.
+    const draft = documentTaskDraft({
+      companyId,
+      userId: user.id,
+      documentId: detail.document.id,
+      title: proposedTaskTitle(detail),
+      analysis: detail.analysis,
+      // Valori EFFETTIVI: se una persona ha corretto il mittente o la scadenza,
+      // il modulo mostra il dato corretto, non quello che l'AI aveva letto.
+      authority: detail.item.sender,
+      dueDate: detail.item.deadline,
+    });
+    setTaskForm({
+      ...EMPTY_TASK_FORM,
+      title: draft.payload.title,
+      // `<input type="date">` vuole `YYYY-MM-DD` e niente altro.
+      dueDate: (draft.payload.dueDate ?? '').slice(0, 10),
+      priority: draft.payload.priority ?? '',
+    });
+    setTaskError(null);
+    setCreatedTask(null);
+    tasksCardRef.current?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function closeTaskForm() {
+    setTaskForm(null);
+    setTaskError(null);
+    // Non si chiama `.focus()` qui: il pulsante non è ancora tornato nel DOM.
+    // Lo farà il suo ref di callback quando si rimonta.
+    setRefocusOnClose(true);
+  }
+
+  async function submitTaskForm() {
+    if (!detail || !user || !taskForm || savingTask) return;
+    const values = taskFormSubmission(taskForm);
+    if (!values.title.trim()) return;
+    setSavingTask(true);
+    setTaskError(null);
+    try {
       const outcome = await createTaskFromDocument({
         companyId,
         userId: user.id,
         documentId: detail.document.id,
-        // Il titolo è la prima azione richiesta dal documento, se c'è: è quella
-        // che dice cosa va fatto. Altrimenti il titolo del documento.
-        title: detail.analysis?.primaryAction || detail.document.title,
+        title: values.title,
         analysis: detail.analysis,
-        // Valori EFFETTIVI: se una persona ha corretto il mittente o la
-        // scadenza, l'attività nasce con il dato corretto.
         authority: detail.item.sender,
-        dueDate: detail.item.deadline,
+        dueDate: values.dueDate,
+        priority: values.priority,
+        assigneeUserId: values.assigneeUserId,
       });
-      showToast(
-        outcome.stepsFailed ? t('documents.taskCreatedStepsFailed')
-          : outcome.steps ? t('documents.taskCreatedWithSteps', { n: outcome.steps })
-          : t('documents.taskCreated'),
-      );
+      // Il modulo si chiude: un secondo invio da questa apertura non è più
+      // possibile. L'esito resta a schermo con il collegamento all'attività,
+      // perché cercarla in «Attività» sarebbe lavoro in più per una cosa
+      // appena fatta.
+      setTaskForm(null);
+      setCreatedTask({ id: outcome.task.id, steps: outcome.steps, stepsFailed: outcome.stepsFailed });
       reload();
-    });
+    } catch (e) {
+      // Il guasto resta accanto al modulo, che resta aperto: quello che la
+      // persona aveva scritto non si perde e si può riprovare.
+      setTaskError(toUserMessage(e));
+    } finally {
+      setSavingTask(false);
+    }
   }
 
   async function setCategory(category: DocumentCategory | null) {
@@ -261,12 +338,15 @@ export function DocumentDetailPage() {
   // caricato personalmente il documento. È la stessa regola della policy del
   // database — qui si nasconde un pulsante, là si impedisce l'operazione.
   const canDelete = isAdmin || (!!doc.uploadedBy && doc.uploadedBy === user?.id);
+  // Che cosa conviene fare adesso. La decisione è una funzione PURA e vive in
+  // `nextStep.ts`: una guardia di questo tipo si sbaglia in silenzio — propone
+  // la cosa sbagliata e non lo dice nessuno.
+  const step = nextStepFor(detail);
   // §40 — le azioni dell'analisi e le attività sono cose diverse, e dopo la
   // conversione non esiste un collegamento fra le due liste. Perciò questo
   // avviso compare SOLO quando non è nata nessuna attività da questo documento:
   // è l'unico caso in cui la deduzione è certa.
-  const openActions = analysis ? analysis.actions.filter((a) => !a.done).length : 0;
-  const actionsNotConverted = detail.tasks.length === 0 ? openActions : 0;
+  const actionsNotConverted = detail.tasks.length === 0 ? step.facts.openActions : 0;
 
   return (
     <>
@@ -319,6 +399,66 @@ export function DocumentDetailPage() {
           <Icon name="archive" className="ic-sm" /> {archived ? t('documents.restore') : t('documents.archive')}
         </button>
       </div>
+
+      {/* ---- Origine: da dove è arrivato. Sta subito sotto l'intestazione
+           perché «che cos'è questo documento» viene prima di «che cosa devo
+           farne»: senza sapere da quale comunicazione è nato, il resto della
+           pagina è un foglio senza mittente. ---------------------------- */}
+      <div className="card mt-16">
+        <div className="card-title">{t('documents.origin')}</div>
+        {doc.sourceType === 'email' || detail.emails.length > 0 ? (
+          detail.emails.length === 0 ? (
+            <div className="muted-sm">{t('documents.sources.email')}</div>
+          ) : (
+            detail.emails.map((mail) => (
+              <div className="list-row" key={`${mail.messageId}-${mail.relation}`}>
+                <div className="list-main">
+                  <div className="list-title">{mail.subject || t('documents.sources.email')}</div>
+                  <div className="list-sub">
+                    {[
+                      mail.senderName || mail.senderEmail,
+                      formatDate(mail.receivedAt),
+                      mail.relation === 'attachment' ? t('documents.originAttachment') : t('documents.originBody'),
+                      mail.accountEmail ? t('documents.originAccount', { email: mail.accountEmail }) : null,
+                    ].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <Link className="btn btn-sm" to={`/inbox?msg=${mail.messageId}`}>{t('documents.openInInbox')}</Link>
+              </div>
+            ))
+          )
+        ) : (
+          <div className="muted-sm">
+            {doc.sourceType === 'pasted_text'
+              ? t('documents.originText')
+              : t('documents.originUploadUnknown')}
+            {' · '}{t('documents.originOn', { date: formatDate(doc.createdAt) })}
+          </div>
+        )}
+        {detail.sameContentIds.length > 0 && (
+          <div className="info-box mt-12">
+            <div><b>{t('documents.sameContent')}</b></div>
+            <div className="muted-sm">{t('documents.sameContentSub')}</div>
+            <Link className="btn btn-sm mt-8" to={`/documenti/${detail.sameContentIds[0]}`}>
+              {t('documents.sameContentOpen')}
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ---- Prossimo passo -------------------------------------------
+           Sta QUI, sopra l'analisi, perché è la domanda a cui una persona
+           vuole rispondere aprendo un documento: che cosa devo fare? Non
+           introduce dati nuovi — legge quelli che la pagina ha già — e
+           mette in primo piano UNA azione sola. -------------------- */}
+      <NextStepCard
+        step={step}
+        documentId={doc.id}
+        busy={busy}
+        progress={progress}
+        onAnalyze={() => void analyze()}
+        onCreateTask={openTaskForm}
+      />
 
       {/* ---- Analisi ---------------------------------------------------- */}
       <div className="card mt-16">
@@ -399,52 +539,28 @@ export function DocumentDetailPage() {
         )}
       </div>
 
-      {/* ---- Origine ----------------------------------------------------- */}
-      <div className="card mt-16">
-        <div className="card-title">{t('documents.origin')}</div>
-        {doc.sourceType === 'email' || detail.emails.length > 0 ? (
-          detail.emails.length === 0 ? (
-            <div className="muted-sm">{t('documents.sources.email')}</div>
-          ) : (
-            detail.emails.map((mail) => (
-              <div className="list-row" key={`${mail.messageId}-${mail.relation}`}>
-                <div className="list-main">
-                  <div className="list-title">{mail.subject || t('documents.sources.email')}</div>
-                  <div className="list-sub">
-                    {[
-                      mail.senderName || mail.senderEmail,
-                      formatDate(mail.receivedAt),
-                      mail.relation === 'attachment' ? t('documents.originAttachment') : t('documents.originBody'),
-                      mail.accountEmail ? t('documents.originAccount', { email: mail.accountEmail }) : null,
-                    ].filter(Boolean).join(' · ')}
-                  </div>
-                </div>
-                <Link className="btn btn-sm" to={`/inbox?msg=${mail.messageId}`}>{t('documents.openInInbox')}</Link>
-              </div>
-            ))
-          )
-        ) : (
-          <div className="muted-sm">
-            {doc.sourceType === 'pasted_text'
-              ? t('documents.originText')
-              : t('documents.originUploadUnknown')}
-            {' · '}{t('documents.originOn', { date: formatDate(doc.createdAt) })}
-          </div>
-        )}
-        {detail.sameContentIds.length > 0 && (
-          <div className="info-box mt-12">
-            <div><b>{t('documents.sameContent')}</b></div>
-            <div className="muted-sm">{t('documents.sameContentSub')}</div>
-            <Link className="btn btn-sm mt-8" to={`/documenti/${detail.sameContentIds[0]}`}>
-              {t('documents.sameContentOpen')}
+      {/* ---- Attività ---------------------------------------------------- */}
+      <div className="card mt-16" id="doc-tasks" ref={tasksCardRef}>
+        <div className="card-title">{t('documents.tasks')}</div>
+
+        {/* L'esito della creazione appena fatta. Resta a schermo con il
+            collegamento: cercare in «Attività» una cosa creata un istante fa
+            sarebbe lavoro in più. ⚠️ Se i passaggi non sono stati aggiunti NON
+            si dichiara un successo pieno — l'attività c'è ed è raggiungibile,
+            la checklist no, e sono due fatti diversi. */}
+        {createdTask && (
+          <div className={createdTask.stepsFailed ? 'warn-box' : 'info-box'} role="status">
+            <div>
+              {createdTask.stepsFailed ? t('documents.taskCreatedStepsFailed')
+                : createdTask.steps ? t('documents.taskCreatedWithSteps', { n: createdTask.steps })
+                : t('documents.taskCreated')}
+            </div>
+            <Link className="btn btn-sm btn-primary mt-8" to={`/attivita/${createdTask.id}`}>
+              <Icon name="arrowRight" className="ic-sm" /> {t('documents.taskForm.openCreated')}
             </Link>
           </div>
         )}
-      </div>
 
-      {/* ---- Attività ---------------------------------------------------- */}
-      <div className="card mt-16">
-        <div className="card-title">{t('documents.tasks')}</div>
         {detail.tasks.length === 0 && <div className="muted-sm">{t('documents.tasksNone')}</div>}
         {detail.tasks.map((task) => {
           const due = dueLabel(task.dueDate);
@@ -468,9 +584,42 @@ export function DocumentDetailPage() {
               : t('documents.actionsNotConvertedMany', { n: actionsNotConverted })}
           </div>
         )}
-        <button className="btn btn-sm mt-10" onClick={() => void createTask()} disabled={busy}>
-          <Icon name="calendar" className="ic-sm" /> {t('documents.createTask')}
-        </button>
+        {/* ---- revisione prima di creare -------------------------------- */}
+        {taskForm ? (
+          <div className="mt-10">
+            <div className="card-title">{t('documents.taskForm.title')}</div>
+            <p className="muted-sm">{t('documents.taskForm.intro')}</p>
+            <p className="muted-sm">
+              <b>{t('documents.taskForm.linkedDocument')}</b> — {doc.title}
+            </p>
+            {/* Le stesse avvertenze del riquadro in cima, accanto ai campi:
+                qui è dove si sta per decidere, e chi apre il modulo dal
+                fondo della pagina non le ha necessariamente lette. */}
+            {step.notices.length > 0 && (
+              <ul className="stack-sm muted-sm">
+                {step.notices.map((n) => <li key={n.key}>{t(n.key, n.params)}</li>)}
+              </ul>
+            )}
+            <TaskCreateForm
+              idPrefix="doc-task"
+              values={taskForm}
+              onChange={setTaskForm}
+              onSubmit={() => void submitTaskForm()}
+              onCancel={closeTaskForm}
+              saving={savingTask}
+              error={taskError}
+              members={members}
+              submitLabel={t('documents.createTask')}
+              autoFocus
+            />
+          </div>
+        ) : (
+          <button ref={createTaskButtonRef} className="btn btn-sm mt-10"
+            onClick={openTaskForm} disabled={busy || !step.canCreateTask}>
+            <Icon name="plus" className="ic-sm" />
+            {' '}{detail.tasks.length ? t('documents.nextStep.actionCreateAnother') : t('documents.createTask')}
+          </button>
+        )}
         {/* §79 — da un documento di categoria «contratti» si arriva ai Contratti.
             ⚠️ NON si crea niente da soli: il pulsante porta al modulo di
             creazione con il documento già scelto, e a decidere è una persona

@@ -26,7 +26,12 @@ import {
 import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
-import type { DocumentHubFilters, DocumentHubItem } from '../src/types/models';
+import { nextStepFor } from '../src/features/documents/nextStep';
+import { documentTaskDraft, runCreateFromDocument } from '../src/features/tasks/documentToTask';
+import type {
+  ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
+  DocumentLinkedTask, Task,
+} from '../src/types/models';
 
 let pass = 0, fail = 0;
 const G = '\x1b[32m', R = '\x1b[31m', B = '\x1b[1m', DIM = '\x1b[2m', X = '\x1b[0m';
@@ -200,6 +205,316 @@ section('7 · Ogni valore ha la sua etichetta, in tutte e tre le lingue');
 
     const sorts = dict.documents.sorts as Record<string, string>;
     ok(SORTS.every((s) => sorts[s]), `${lang}: ogni ordinamento ha la sua etichetta`);
+  }
+}
+
+// ===========================================================================
+// FABBRICHE per le sezioni 8 e 9. Tipizzate per intero e non `as unknown as`:
+// se un campo del modello cambia, questi test devono ROMPERSI — è l'unico modo
+// perché continuino a provare il prodotto vero e non una sua imitazione.
+// ===========================================================================
+// ⚠️ Il testo predefinito COINCIDE con `primaryAction`, ed è voluto: è il caso
+// in cui la prima azione diventa il titolo dell'attività e non deve tornare
+// anche come primo passaggio. Con un testo diverso quella regola non sarebbe
+// esercitata da nessuna asserzione — ed è così che si scrive un test inerte.
+const azione = (over: Partial<ChecklistAction> = {}): ChecklistAction => ({
+  id: over.id ?? 1, text: over.text ?? 'Trasmettere il rendiconto IVA',
+  done: over.done ?? false, sourceType: 'extracted', evidence: null,
+});
+
+function analisi(over: Partial<DocumentAnalysis> = {}): DocumentAnalysis {
+  return {
+    id: 'an-1', documentId: 'doc-1', companyId: 'co-1', analysisVersion: 1,
+    engine: 'ai', language: 'it', languageLabel: 'Italiano',
+    sender: 'Amministrazione federale delle contribuzioni', senderUncertain: false, senderEvidence: null,
+    documentType: 'vat_statement', documentTypeLabel: 'Rendiconto IVA',
+    urgency: 'alta', deadline: '2026-08-20', deadlineLevel: 'urgente', daysToDeadline: 19,
+    deadlineEvidence: null, amount: null, amountCurrency: null, amountDisplay: null,
+    amountType: null, amountEvidence: null, summary: null,
+    actions: [azione(), azione({ id: 2, text: 'Allegare i giustificativi' })],
+    primaryAction: 'Trasmettere il rendiconto IVA', primaryActionSource: 'extracted',
+    requestedDocuments: [], risk: { text: '', level: 'unknown', evidence: null }, risks: [],
+    uncertainties: [], uncertaintyItems: [], confidence: 'alta',
+    recipient: null, subject: null, documentDate: null, senderAuthorityType: null,
+    amounts: [], referenceNumbers: [], legalReferences: [],
+    deadlineType: null, deadlineRequiresVerification: false, deadlineSourceText: null,
+    overallConfidence: null, analysisStatus: 'completed', errorCode: null, errorMessageSafe: null,
+    createdAt: '2026-07-31T08:00:00Z', updatedAt: '2026-07-31T08:00:00Z',
+    ...over,
+  };
+}
+
+function voce(over: Partial<DocumentHubItem> = {}): DocumentHubItem {
+  return {
+    id: 'doc-1', title: 'Rendiconto IVA 2026', originalFilename: 'iva.pdf', mimeType: 'application/pdf',
+    fileSize: 1024, storagePath: 'co-1/doc-1.pdf', sourceType: 'email', status: 'completed',
+    pageCount: 2, createdAt: '2026-07-30T08:00:00Z', archivedAt: null,
+    category: 'taxes', categorySource: 'rule', state: 'analyzed', analysisId: 'an-1',
+    lastAttemptFailed: false, errorCode: null,
+    documentType: 'vat_statement', documentTypeCorrected: false,
+    sender: 'Amministrazione federale delle contribuzioni', senderCorrected: false,
+    senderAuthorityType: 'federal', documentDate: '2026-07-15',
+    deadline: '2026-08-20', deadlineCorrected: false, deadlineRequiresVerification: false,
+    amount: null, amountCurrency: null, amountCorrected: false, confidence: 'alta',
+    tags: [], openTaskCount: 0, taskCount: 0, emailCount: 1, snippet: null,
+    ...over,
+  };
+}
+
+function attivita(over: Partial<DocumentLinkedTask> = {}): DocumentLinkedTask {
+  return {
+    id: 't-1', title: 'Trasmettere il rendiconto IVA', status: 'open', priority: 'high',
+    dueDate: '2026-08-20', assigneeUserId: null, archivedAt: null, ...over,
+  };
+}
+
+function dettaglio(over: {
+  item?: Partial<DocumentHubItem>;
+  analysis?: DocumentAnalysis | null;
+  tasks?: DocumentLinkedTask[];
+  archivedAt?: string | null;
+  title?: string;
+} = {}): DocumentDetail {
+  const item = voce(over.item);
+  return {
+    document: {
+      id: 'doc-1', companyId: 'co-1', uploadedBy: null, title: over.title ?? item.title,
+      originalFilename: item.originalFilename, mimeType: item.mimeType, fileSize: item.fileSize,
+      storagePath: item.storagePath, sourceType: item.sourceType, status: item.status,
+      createdAt: item.createdAt, updatedAt: item.createdAt,
+      archivedAt: over.archivedAt ?? null, category: item.category, categorySource: item.categorySource,
+      pageCount: item.pageCount,
+    },
+    item,
+    analysis: over.analysis === undefined ? analisi() : over.analysis,
+    corrections: [], tags: [], emails: [], tasks: over.tasks ?? [],
+    technical: null, sameContentIds: [],
+  };
+}
+
+const chiavi = (s: ReturnType<typeof nextStepFor>) => s.notices.map((n) => n.key);
+
+// ===========================================================================
+section('8 · «Prossimo passo»: che cosa la pagina propone di fare, e quando');
+// ⚠️ PERCHÉ ESISTE. Il dettaglio mostrava tutto ciò che si sa e non diceva mai
+// che cosa restava da fare; «Crea attività» era premibile ANCHE mentre
+// l'analisi stava ancora lavorando, e produceva un'attività senza scadenza e
+// senza passaggi — un dato incompleto nato da un'attesa. Una guardia di questo
+// tipo si sbaglia in silenzio: propone la cosa sbagliata e non lo dice nessuno,
+// quindi è una funzione pura e si prova. Stessa forma di `routeGate`.
+{
+  // -- nessuna analisi -------------------------------------------------------
+  const nessuna = nextStepFor(dettaglio({ item: { state: 'none', analysisId: null }, analysis: null }));
+  ok(nessuna.kind === 'none' && nessuna.primary.action === 'analyze',
+    'senza analisi la cosa da fare è analizzare');
+  ok(chiavi(nessuna).includes('documents.nextStep.noticeNoAnalysis'),
+    'e si DICHIARA che un’attività creata adesso nascerebbe senza scadenza e senza passaggi');
+  ok(nessuna.canCreateTask, 'crearla resta comunque possibile: era possibile prima e non si toglie niente');
+
+  // -- analisi in elaborazione ----------------------------------------------
+  const inCorso = nextStepFor(dettaglio({ item: { state: 'processing' }, analysis: null }));
+  ok(inCorso.kind === 'processing' && inCorso.primary.action === 'wait',
+    'mentre l’analisi lavora non c’è niente da premere');
+  ok(!inCorso.canCreateTask,
+    '⚠️ ed è l’UNICO caso in cui creare è impedito: un’attività aperta in quell’istante nascerebbe senza la scadenza che sta per arrivare');
+  ok(inCorso.secondary.length === 0, 'nessuna azione secondaria che produca dati incompleti');
+
+  // -- analisi fallita -------------------------------------------------------
+  const fallita = nextStepFor(dettaglio({
+    item: { state: 'failed', sender: null, deadline: null },
+    analysis: analisi({ analysisStatus: 'failed', errorMessageSafe: 'Il servizio ha risposto con un errore.' }),
+  }));
+  ok(fallita.kind === 'failed' && fallita.primary.action === 'retry_analysis',
+    'un’analisi fallita si riprova');
+  ok(chiavi(fallita).includes('documents.nextStep.noticeFailed'),
+    'e si dice che non è stato estratto NIENTE: non si mostrano valori di ripiego');
+
+  // -- analisi da verificare -------------------------------------------------
+  const daVerificare = nextStepFor(dettaglio({
+    item: { state: 'to_verify' },
+    analysis: analisi({ analysisStatus: 'needs_review' }),
+  }));
+  ok(daVerificare.kind === 'to_verify' && daVerificare.primary.action === 'verify_analysis',
+    'con un’analisi da verificare la cosa da fare è verificarla');
+  ok(daVerificare.secondary.some((s) => s.action === 'create_task'),
+    'creare l’attività resta possibile — il comportamento attuale lo consente — ma in secondo piano');
+  ok(chiavi(daVerificare).includes('documents.nextStep.noticeToVerify'),
+    '⚠️ e l’avvertenza è ESPLICITA: l’attività porterebbe dati non ancora verificati');
+
+  // -- analisi pronta e nessuna attività ------------------------------------
+  const pronta = nextStepFor(dettaglio());
+  ok(pronta.kind === 'ready' && pronta.primary.action === 'create_task',
+    'con un’analisi utilizzabile e nessuna attività, la cosa da fare è aprire il lavoro');
+  ok(pronta.facts.deadline === '2026-08-20' && pronta.facts.sender !== null,
+    'e il riquadro porta la scadenza e il mittente su cui si sta per decidere');
+  ok(pronta.facts.stepsToCreate === 1,
+    'i passaggi annunciati sono quelli che verranno creati DAVVERO: l’azione uguale al titolo non si conta');
+
+  // -- la scadenza da verificare, l’assenza di scadenza, l’assenza di azioni -
+  const senzaTermine = nextStepFor(dettaglio({
+    item: { deadline: null }, analysis: analisi({ deadline: null }),
+  }));
+  ok(chiavi(senzaTermine).includes('documents.nextStep.noticeNoDeadline'),
+    'senza scadenza lo si dice invece di inventarne una');
+  const daControllare = nextStepFor(dettaglio({
+    item: { deadlineRequiresVerification: true },
+  }));
+  ok(chiavi(daControllare).includes('documents.nextStep.noticeDeadlineToVerify'),
+    '§36 — una scadenza che l’analisi non dà per certa si dichiara PRIMA di creare l’attività');
+  const senzaAzioni = nextStepFor(dettaglio({
+    analysis: analisi({ actions: [], primaryAction: null }),
+  }));
+  ok(chiavi(senzaAzioni).includes('documents.nextStep.noticeNoActions'),
+    'senza azioni si dice che la checklist resterà vuota');
+  ok(senzaAzioni.facts.proposedTitle === 'Rendiconto IVA 2026',
+    'e il titolo proposto ripiega su quello del documento');
+  const incerta = nextStepFor(dettaglio({
+    analysis: analisi({
+      uncertaintyItems: [{ field: 'deadline', description: 'La data è ambigua', severity: 'medium' }],
+    }),
+  }));
+  ok(chiavi(incerta).includes('documents.nextStep.noticeUncertaintyOne'),
+    'un punto incerto si conta al singolare: «1 punti» è un errore anche in italiano');
+
+  // -- attività già esistenti ------------------------------------------------
+  const unaAttivita = nextStepFor(dettaglio({ tasks: [attivita()] }));
+  ok(unaAttivita.kind === 'has_tasks' && unaAttivita.primary.action === 'open_task'
+    && unaAttivita.primary.taskId === 't-1',
+    'con UNA attività la cosa da fare è aprirla, e si sa quale');
+  ok(unaAttivita.secondary.some((s) => s.action === 'create_another_task'),
+    '⚠️ crearne un’altra NON sparisce: più attività su un documento sono legittime (§40)');
+  ok(unaAttivita.primary.action !== 'create_task',
+    'ma non è più l’azione primaria: è così che si riducono i doppioni per distrazione');
+  const dueAttivita = nextStepFor(dettaglio({ tasks: [attivita(), attivita({ id: 't-2' })] }));
+  ok(dueAttivita.primary.action === 'see_tasks' && dueAttivita.primary.taskId === undefined,
+    'con più di una non si sceglie per la persona: si portano a vederle');
+  ok(chiavi(dueAttivita).includes('documents.nextStep.noticeExistingMany'),
+    'e si dice quante ne sono già nate');
+
+  // ⚠️ Un’attività esistente vince anche su «da verificare», ma la verifica
+  //    resta offerta: sono due cose da fare, e la prima è il lavoro.
+  const attivitaEdaVerificare = nextStepFor(dettaglio({
+    item: { state: 'to_verify' }, tasks: [attivita()],
+  }));
+  ok(attivitaEdaVerificare.primary.action === 'open_task',
+    'con un’attività aperta il lavoro viene prima della verifica');
+  ok(attivitaEdaVerificare.secondary.some((s) => s.action === 'verify_analysis'),
+    'ma verificare l’analisi resta a portata di mano');
+
+  // -- documento archiviato --------------------------------------------------
+  const archiviato = nextStepFor(dettaglio({ archivedAt: '2026-07-31T09:00:00Z' }));
+  ok(chiavi(archiviato).includes('documents.nextStep.noticeArchived'),
+    'su un documento archiviato lo si rende evidente prima di creare qualcosa');
+  ok(archiviato.canCreateTask,
+    'senza però impedirlo: archiviare non è cancellare, e la decisione resta di chi guarda');
+  ok(chiavi(archiviato)[0] === 'documents.nextStep.noticeArchived',
+    'e l’avviso viene per PRIMO, non in fondo a un elenco di note');
+}
+
+// ===========================================================================
+section('9 · Da documento ad attività: quello che viene scritto, e che cosa succede se la checklist fallisce');
+// ⚠️ Fino a oggi questa catena aveva una prova sola, su database reale, e tre
+// dei suoi esiti là non si sanno provocare — a cominciare da «l'attività è
+// nata, i passaggi no», che è precisamente la garanzia dichiarata nel codice.
+{
+  const base = {
+    companyId: 'co-1', userId: 'u-1', documentId: 'doc-1',
+    title: 'Trasmettere il rendiconto IVA',
+  };
+
+  // -- i valori EFFETTIVI battono quelli dell'analisi ------------------------
+  const conCorrezione = documentTaskDraft({
+    ...base, analysis: analisi(),
+    authority: 'Divisione delle contribuzioni del Cantone Ticino',   // corretto a mano
+    dueDate: '2026-09-01',                                            // corretta a mano
+  });
+  ok(conCorrezione.payload.authority === 'Divisione delle contribuzioni del Cantone Ticino',
+    '⚠️ un mittente corretto da una persona non viene rimpiazzato da quello che l’AI aveva letto');
+  ok(conCorrezione.payload.dueDate === '2026-09-01',
+    'e nemmeno la scadenza corretta');
+  ok(conCorrezione.payload.source === 'admin_ai',
+    'l’attività dichiara di venire da un’analisi: chi la riceve ha diritto di saperlo');
+  ok(conCorrezione.payload.documentId === 'doc-1', 'e resta collegata al documento');
+
+  // -- priorità dall'urgenza, responsabile dal modulo ------------------------
+  ok(documentTaskDraft({ ...base, analysis: analisi({ urgency: 'bassa' }) }).payload.priority === 'low',
+    'la priorità deriva dall’urgenza dell’analisi');
+  ok(documentTaskDraft({ ...base, analysis: analisi(), priority: 'medium' }).payload.priority === 'medium',
+    'ma la scelta fatta nel modulo di revisione vince');
+  ok(documentTaskDraft({ ...base, analysis: analisi(), assigneeUserId: 'u-7' }).payload.assigneeUserId === 'u-7',
+    'il responsabile scelto nel modulo arriva al servizio');
+  ok(documentTaskDraft({ ...base, analysis: analisi() }).payload.assigneeUserId === null,
+    'e senza scelta resta «non assegnata», non un valore inventato');
+
+  // -- senza analisi ---------------------------------------------------------
+  const senzaAnalisi = documentTaskDraft({ ...base, analysis: null, authority: null, dueDate: null });
+  ok(senzaAnalisi.payload.source === 'manual', 'senza analisi l’attività è «a mano», non «Admin AI»');
+  ok(senzaAnalisi.steps.length === 0, 'e non nasce nessun passaggio');
+
+  // -- la scrittura: i tre esiti --------------------------------------------
+  const taskFinta = (id: string): Task => ({
+    id, companyId: 'co-1', createdBy: 'u-1', documentId: 'doc-1', subsidyCaseId: null,
+    title: base.title, description: null, authority: null, dueDate: null, priority: 'high',
+    status: 'open', source: 'admin_ai', assigneeUserId: null,
+    completedAt: null, completedBy: null, archivedAt: null, archivedBy: null, workflowRunId: null,
+    createdAt: '2026-07-31T10:00:00Z', updatedAt: '2026-07-31T10:00:00Z',
+  });
+
+  {
+    let passaggi: string[] | null = null;
+    const esito = await runCreateFromDocument({ ...base, analysis: analisi() }, {
+      createTask: async () => taskFinta('t-9'),
+      addSteps: async (_c, _t, texts) => { passaggi = texts; },
+    });
+    ok(esito.task.id === 't-9' && !esito.stepsFailed && esito.steps === 1,
+      'creazione riuscita: l’attività c’è e i passaggi pure');
+    ok(passaggi !== null && (passaggi as string[])[0] === 'Allegare i giustificativi',
+      'e i passaggi sono quelli derivati dall’analisi, senza l’azione uguale al titolo');
+  }
+
+  {
+    // ⚠️ Il `try` non è prudenza: è l'asserzione. Se un giorno questo percorso
+    // tornasse a RILANCIARE, senza questo blocco il test morirebbe invece di
+    // fallire — e un test che esplode dice molto meno di uno che diventa rosso
+    // sulla riga giusta.
+    let rilanciato = false;
+    let esito: Awaited<ReturnType<typeof runCreateFromDocument>> | null = null;
+    try {
+      esito = await runCreateFromDocument({ ...base, analysis: analisi() }, {
+        createTask: async () => taskFinta('t-10'),
+        addSteps: async () => { throw new Error('permission denied'); },
+      });
+    } catch { rilanciato = true; }
+    ok(!rilanciato,
+      '⚠️ CHECKLIST FALLITA: l’errore NON viene rilanciato — l’attività esiste, e un’eccezione la renderebbe irraggiungibile');
+    ok(esito?.task.id === 't-10',
+      'l’identificativo dell’attività resta: chi ha premuto deve poterla aprire');
+    ok(esito?.stepsFailed === true && esito?.steps === 0,
+      'e non si dichiara un successo pieno: i passaggi mancanti sono un fatto, non un dettaglio da tacere');
+  }
+
+  {
+    let chiamata = false;
+    const esito = await runCreateFromDocument(
+      { ...base, analysis: analisi({ actions: [], primaryAction: null }) },
+      { createTask: async () => taskFinta('t-11'), addSteps: async () => { chiamata = true; } },
+    );
+    ok(!chiamata, 'senza passaggi non si chiama il servizio della checklist a vuoto');
+    ok(!esito.stepsFailed && esito.steps === 0, 'e zero passaggi non è un fallimento');
+  }
+
+  {
+    // Un guasto sulla creazione RISALE: senza attività non c'è niente da
+    // raccontare, e inghiottirlo sarebbe il fallback silenzioso che questo
+    // progetto non ammette.
+    let sollevato = false;
+    try {
+      await runCreateFromDocument({ ...base, analysis: analisi() }, {
+        createTask: async () => { throw new Error('assignee_not_member'); },
+        addSteps: async () => undefined,
+      });
+    } catch { sollevato = true; }
+    ok(sollevato, 'se l’attività non si crea, l’errore arriva a chi ha premuto');
   }
 }
 
