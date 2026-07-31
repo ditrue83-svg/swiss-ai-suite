@@ -5,19 +5,22 @@
 > criteri, 9 call); `subsidy-worker` **deployata** e su scheduler; schermata
 > `/incentivi` **pubblicata** e provata a mano end-to-end sul database vero.
 >
-> ✅ **Dal 2026-07-31 esiste anche una suite d'integrazione su database**:
-> `npm run test:subsidy`, 80 asserzioni in 11 sezioni contro il progetto
-> Supabase reale. Copre le garanzie che vivono nel DATABASE — isolamento,
-> cross-tenant, catalogo in sola lettura, append-only delle risposte, la
-> cascata della 0033/0034, le guardie di validazione, i timbri, lo storico, le
-> viste dell'elenco.
+> ✅ **Dal 2026-07-31 esiste una suite d'integrazione su database**:
+> `npm run test:subsidy`, 91 asserzioni in 12 sezioni contro un database reale.
+> Copre le garanzie che vivono nel DATABASE — isolamento, cross-tenant,
+> catalogo in sola lettura, append-only delle risposte, la cascata della
+> 0033/0034, le guardie di validazione, i timbri, lo storico, le viste — **e il
+> MOTORE**: la sezione 11 esegue `runMatching`, la stessa funzione che
+> `subsidy-worker` chiama in produzione, e verifica che da un progetto nascano
+> le opportunità giuste, che la seconda passata non riscriva niente, che
+> l'azienda accanto non venga toccata e che un progetto archiviato esca dalla
+> coda.
 >
-> ⚠️ **Ciò che quella suite NON esercita, e va detto:** il MOTORE. Le
-> opportunità e le valutazioni le scrive `subsidy-worker`, e il test le crea
-> col ruolo di servizio per poter provare ciò che il database garantisce
-> intorno a esse. L'end-to-end vero (progetto → worker → opportunità →
-> valutazione → pratica → checklist → stato) resta quello eseguito **a mano
-> dall'interfaccia**, una volta, e poi ripulito.
+> ⚠️ **Ciò che NON esercita, e va detto:** l'involucro HTTP della Edge Function
+> (segreto, budget di 150 secondi, rapporto) e `runSourceChecks`, che esce in
+> rete verso sette siti ufficiali. L'end-to-end completo dall'interfaccia
+> (progetto → opportunità → pratica → checklist → stato) resta quello eseguito
+> **a mano**, una volta, e poi ripulito.
 
 ⚠️ **Questo documento è nato il 2026-07-31 e colma un buco: il modulo più
 grande del repository — 3885 righe di SQL, 17 tabelle, 26 enum, 37 funzioni,
@@ -113,7 +116,7 @@ progetti attivi e a rileggere le fonti, non a far funzionare il modulo.
 
 ```bash
 npm run test:subsidy-unit    # 277 asserzioni offline, 16 sezioni
-npm run test:subsidy         # 80 asserzioni su DATABASE REALE, 11 sezioni
+npm run test:subsidy         # 91 asserzioni su DATABASE REALE, 12 sezioni (il MOTORE compreso)
 npm run subsidy:health       # integrità e freschezza del catalogo 1.0
 ```
 
@@ -126,7 +129,7 @@ stesso motore** del modulo invece di ricontare per conto suo (sezione 16).
 `test:subsidy` prova le stesse garanzie **in vigore**, che è una cosa diversa
 da «scritte nel file»: la sezione 5 cancella un progetto che ha una risposta
 collegata e verifica che la cascata passi (0034) *mentre* la cancellazione
-diretta resta vietata, e la sezione 11 fa lo stesso con l'azienda (0033) —
+diretta resta vietata, e la sezione 12 fa lo stesso con l'azienda (0033) —
 cioè riproduce, dal lato giusto, il difetto che rendeva un'azienda
 **indistruttibile** e che nessun test poteva vedere prima, perché nessun test
 cancellava un'azienda che avesse risposto a un criterio.
@@ -137,9 +140,11 @@ resta verde.
 
 ## 6. Limiti dichiarati
 
-- **Il MOTORE non è coperto da una suite**: `test:subsidy` prova ciò che il
-  database garantisce, non che `subsidy-worker` produca l'opportunità giusta a
-  partire da un progetto. Quel passaggio è stato provato a mano una volta.
+- **L'involucro della Edge Function non è coperto**: `test:subsidy` esegue
+  `runMatching`, cioè il motore vero, ma non il `Deno.serve` che lo avvolge —
+  il controllo del segreto, il budget di 150 secondi, il rapporto. Nemmeno
+  `runSourceChecks` è coperto: esce in rete verso sette siti ufficiali, e una
+  suite che dipende da loro sarebbe rossa il giorno in cui uno cambia pagina.
 - **I contenuti del catalogo sono in italiano** anche con interfaccia tedesca o
   francese: vivono nel database, non nei dizionari.
 - **Divergenza nota e NON corretta di proposito**: il catalogo dice che la RUE
