@@ -99,6 +99,15 @@ export function inboxErrorMessage(code: string | null | undefined): string | nul
     case 'ANALYSIS_FAILED':
     case 'ANALYSIS_SKIPPED':
       return tr('inbox.errors.analysisFailed');
+    // ⚠️ Non invita a riprovare, e dice a CHI tocca rimediare: aspettare non
+    // risolve un credito esaurito. È la stessa regola già applicata ad Admin AI.
+    case 'AI_CREDIT_EXHAUSTED':
+      return tr('inbox.errors.aiCreditExhausted');
+    // Il modello ha risposto qualcosa che non si riesce a usare: è un guasto
+    // diverso da «il servizio non c'era», e porta a un'azione diversa.
+    case 'INVALID_RESPONSE':
+    case 'CLASSIFY_FAILED':
+      return tr('inbox.errors.classifyFailed');
     // Distinto da un'analisi fallita: qui l'elaborazione non è arrivata in
     // fondo. Dirlo com'è cambia cosa può fare la persona — riprovare ha senso.
     case 'INTERRUPTED':

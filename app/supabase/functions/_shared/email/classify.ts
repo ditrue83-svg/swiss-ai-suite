@@ -21,8 +21,70 @@
 // dipende dalla lingua in cui è scritta la lettera.
 // ============================================================================
 import type { NormalizedEmailMessage } from './types.ts';
+import { classifyProviderError } from '../validate.ts';
 
 export const CLASSIFIER_VERSION = 'prescreen-1';
+
+// ============================================================================
+// PERCHÉ UNA CLASSIFICAZIONE FALLISCE — e perché la differenza conta
+//
+// Fino al 2026-07-31 ogni guasto della classificazione finiva in un unico
+// codice, `CLASSIFY_FAILED`, e l'errore vero veniva buttato via. Il risultato
+// misurato: 16 messaggi fermi in produzione con la causa NON RICOSTRUIBILE, e
+// due guasti opposti confusi in uno solo. Le durate in `ai_request_log` hanno
+// mostrato due popolazioni — 13 fallimenti in 124–551 ms (la chiamata non ha
+// mai raggiunto il modello) e 3 in 1835–2791 ms in mezzo a 36 successi (il
+// modello ha risposto, ed è caduto ciò che veniva dopo).
+//
+// La distinzione che serve è una sola: **il guasto è dell'AMBIENTE o del
+// risultato?** Un ambiente che rifiuta torna a posto da solo, e il messaggio
+// va ripreso; un risultato inutilizzabile no.
+//
+// ⚠️ La funzione che sa riconoscere il credito esaurito ESISTEVA GIÀ dal
+// 2026-07-29 (`classifyProviderError` in `_shared/validate.ts`, con i suoi
+// test) e questa strada non la chiamava: la usava solo `analyze-document`.
+// Qui non se ne scrive una seconda — si traduce la sua risposta nel
+// vocabolario dell'Inbox, che è l'unico che l'interfaccia sa mostrare.
+// ============================================================================
+
+/**
+ * Il codice Inbox per un guasto dell'AI durante la classificazione.
+ * Nessun codice nuovo inventato: sono tutti già in `INBOX_ERROR_CODES`.
+ */
+export function inboxCodeForAiError(error: unknown): string {
+  switch (classifyProviderError(error)) {
+    case 'AI_CREDIT_EXHAUSTED': return 'AI_CREDIT_EXHAUSTED';
+    case 'RATE_LIMITED': return 'PROVIDER_RATE_LIMITED';
+    // Il modello non ha risposto in tempo: è il servizio a monte a non esserci
+    // stato, non la risposta a essere sbagliata.
+    case 'AI_TIMEOUT': return 'PROVIDER_UNAVAILABLE';
+    default: return 'CLASSIFY_FAILED';
+  }
+}
+
+/**
+ * I guasti che si RIPRENDONO da soli, e per i quali quindi il messaggio resta
+ * in coda invece di essere chiuso come fallito.
+ *
+ * ⚠️ `CLASSIFY_FAILED` NON è qui, di proposito: è il secchio del «non lo
+ * sappiamo», e riprovare all'infinito un guasto ignoto è il modo di bruciare
+ * credito in silenzio. Un guasto ignoto resta fermo e visibile.
+ * `INVALID_RESPONSE` nemmeno: se il modello ha risposto una cosa inutilizzabile,
+ * riprovare la stessa domanda è una scommessa, non un rimedio.
+ */
+export const CLASSIFY_RETRYABLE_CODES = [
+  'AI_CREDIT_EXHAUSTED', 'PROVIDER_RATE_LIMITED', 'PROVIDER_UNAVAILABLE',
+  // `INTERRUPTED` non è un codice nuovo e non è un'eccezione di comodo: in
+  // questo repository significa già «l'esecuzione non è arrivata in fondo, e
+  // merita un tentativo» — lo scrive `recoverInterrupted` sui messaggi uccisi
+  // dal limite dei 150 secondi. Fino a oggi una classificazione interrotta così
+  // restava ferma per sempre: nessuno la riprendeva. Ora sì.
+  'INTERRUPTED',
+] as const;
+
+export function isClassifyRetryable(code: string | null | undefined): boolean {
+  return !!code && (CLASSIFY_RETRYABLE_CODES as readonly string[]).includes(code);
+}
 
 export type Prescreen = 'administrative' | 'unclear' | 'bulk_only';
 

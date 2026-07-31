@@ -30,7 +30,10 @@ import {
   INITIAL_SYNC_MAX_MESSAGES, MIN_BODY_CHARS_FOR_ANALYSIS, RECONCILE_MAX_MESSAGES,
   RECONCILE_WINDOW_HOURS, SYNC_LEASE_SECONDS, attentionForRelevance,
 } from './contract.ts';
-import { buildClassifierInput, prescreen, CLASSIFIER_VERSION } from './classify.ts';
+import {
+  buildClassifierInput, prescreen, CLASSIFIER_VERSION, inboxCodeForAiError, isClassifyRetryable,
+  CLASSIFY_RETRYABLE_CODES,
+} from './classify.ts';
 import { buildClassifyRequest, validateClassifierOutput, CLASSIFIER_MODEL, CLASSIFIER_PROMPT_VERSION } from './classifyPrompt.ts';
 import { pickPrimaryAttachment, planAttachments, sniffMatches, safeAttachmentName, extensionForMime } from './attachments.ts';
 import { EmailProviderError } from './types.ts';
@@ -371,7 +374,11 @@ async function processMessage(
   } catch (error) {
     // §102 — l'AI ha fallito, la mail resta. Stato coerente, ritentabile,
     // e visibile in Inbox come «da verificare»: non si perde nulla.
-    const code = error instanceof EmailProviderError ? error.code : 'CLASSIFY_FAILED';
+    // ⚠️ Il codice è quello VERO, non un unico `CLASSIFY_FAILED` per tutto:
+    // da esso dipende se questo messaggio verrà ripreso o resterà fermo per
+    // sempre. `drainPendingClassifications` ripesca i codici d'ambiente, come
+    // il drenaggio delle analisi già fa con `PROVIDER_RATE_LIMITED`.
+    const code = error instanceof EmailProviderError ? error.code : inboxCodeForAiError(error);
     await setMessageProcessing(deps.sb, upserted.id, 'failed', {
       error_code: code,
       attention_status: 'to_verify',
@@ -465,7 +472,17 @@ async function classifyMessage(
     });
     const response = await deps.createMessage!(request as never) as ModelMessage;
     const block = response.content.find((b) => b.type === 'text' && typeof b.text === 'string');
-    const parsed = validateClassifierOutput(JSON.parse((block?.text ?? '{}').slice((block?.text ?? '{}').indexOf('{'))));
+    // ⚠️ La LETTURA della risposta ha un codice suo. «Il modello ha risposto
+    // qualcosa che non si riesce a usare» e «l'ambiente ci ha rifiutato» sono
+    // guasti opposti: il secondo si riprende da solo, il primo no. Confonderli
+    // è ciò che ha reso non diagnosticabili i 16 messaggi del 2026-07-31.
+    let parsed;
+    try {
+      const testo = block?.text ?? '{}';
+      parsed = validateClassifierOutput(JSON.parse(testo.slice(testo.indexOf('{'))));
+    } catch (_e) {
+      throw new EmailProviderError('INVALID_RESPONSE', 'risposta del classificatore non utilizzabile');
+    }
 
     // §86 — un tentativo di manipolazione non rende il messaggio «sicuro»: lo
     // rende sospetto. Non si accetta mai un declassamento chiesto dal contenuto.
@@ -495,7 +512,7 @@ async function classifyMessage(
     await finalizeSystemAiSlot(deps.sb, slot, {
       status: 'error',
       durationMs: Date.now() - startedMs,
-      errorCode: error instanceof EmailProviderError ? error.code : 'CLASSIFY_FAILED',
+      errorCode: error instanceof EmailProviderError ? error.code : inboxCodeForAiError(error),
     });
     throw error;
   }
@@ -821,6 +838,100 @@ export async function drainPendingAnalyses(
     done++;
   }
   return done;
+}
+
+/**
+ * Riprende le classificazioni cadute per un guasto dell'AMBIENTE.
+ *
+ * PERCHÉ ESISTE. Un messaggio già acquisito non passa mai una seconda volta da
+ * `processMessage` (`if (!upserted.isNew) return`), e `recoverInterrupted`
+ * guarda soltanto gli stati in lavorazione: un messaggio chiuso come `failed`
+ * non lo riprendeva NESSUNO. Il 2026-07-31 in produzione c'erano 16 messaggi
+ * mai classificati, tredici dei quali caduti mentre il credito era esaurito —
+ * cioè per una ragione che si era già risolta da sola.
+ *
+ * ⚠️ Non è un meccanismo nuovo: è la stessa forma che `drainPendingAnalyses`
+ * usa già da mesi per `failed` + `PROVIDER_RATE_LIMITED`. Qui cambia solo che
+ * cosa manca — la classificazione invece dell'analisi.
+ *
+ * Si riprendono SOLO i codici d'ambiente (`isClassifyRetryable`) e SOLO i
+ * messaggi mai classificati (`relevance is null`): un messaggio che una
+ * relevance ce l'ha è già passato di là, e riclassificarlo cancellerebbe un
+ * giudizio già dato.
+ */
+export async function drainPendingClassifications(
+  deps: SyncDeps,
+  connection: ConnectionRow,
+  adapter: EmailProviderAdapter,
+  accessToken: string,
+  max = ANALYSIS_DRAIN_BATCH,
+  deadlineMs?: number,
+): Promise<{ classified: number; failed: number }> {
+  const esito = { classified: 0, failed: 0 };
+  if (!deps.createMessage) return esito;
+
+  const { data } = await deps.sb.from('email_messages')
+    .select('id, provider_message_id, error_code')
+    .eq('connection_id', connection.id)
+    .eq('processing_status', 'failed')
+    .is('relevance', null)
+    .in('error_code', [...CLASSIFY_RETRYABLE_CODES])
+    .order('received_at', { ascending: false })
+    .limit(max);
+
+  for (const row of (data ?? []) as { id: string; provider_message_id: string; error_code: string }[]) {
+    if (!isClassifyRetryable(row.error_code)) continue;      // difesa in profondità
+    // Una classificazione costa meno di un'analisi, ma il budget resta quello
+    // dell'esecuzione: senza tempo davanti si lascia in coda, che è il posto
+    // giusto per aspettare.
+    if (deadlineMs && Date.now() + ANALYSIS_SLOT_MS > deadlineMs) break;
+
+    let message: NormalizedEmailMessage;
+    try {
+      message = await adapter.getMessage({ accessToken, messageId: row.provider_message_id });
+    } catch (error) {
+      const code = error instanceof EmailProviderError ? error.code : 'UNKNOWN';
+      await setMessageProcessing(deps.sb, row.id, 'failed', { error_code: code });
+      esito.failed++;
+      continue;
+    }
+
+    const senderKnown = await isKnownAdministrativeSender(
+      deps.sb, connection.company_id, message.from?.email ?? null,
+    );
+    const screening = prescreen({ message, cleanBody: null, senderKnown });
+    if (screening.skipAi) {
+      // Il filtro deterministico basta: non si spende per saperlo.
+      await setMessageClassification(deps.sb, row.id, {
+        relevance: 'clearly_irrelevant', confidence: null,
+        reason: 'prescreen:bulk_no_administrative_signal',
+        classifierVersion: CLASSIFIER_VERSION,
+        provider: null, model: null, promptVersion: null,
+      });
+      await setMessageProcessing(deps.sb, row.id, 'done', { error_code: null });
+      esito.classified++;
+      continue;
+    }
+
+    try {
+      await classifyMessage(deps, {
+        companyId: connection.company_id, messageId: row.id, message, screening,
+      });
+      // Classificato: il messaggio riprende la strada normale. L'analisi la
+      // deciderà il drenaggio delle analisi, che guarda `likely_actionable`.
+      await setMessageProcessing(deps.sb, row.id, 'done', { error_code: null });
+      esito.classified++;
+    } catch (error) {
+      const code = error instanceof EmailProviderError ? error.code : inboxCodeForAiError(error);
+      await setMessageProcessing(deps.sb, row.id, 'failed', {
+        error_code: code, attention_status: 'to_verify',
+      });
+      esito.failed++;
+      // Se l'ambiente rifiuta di nuovo, il resto del lotto non andrà meglio.
+      if (isClassifyRetryable(code)) break;
+    }
+  }
+  return esito;
 }
 
 async function loadCompanyContext(sb: ServerClient, companyId: string): Promise<CompanyContext> {
