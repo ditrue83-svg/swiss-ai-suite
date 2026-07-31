@@ -11,9 +11,9 @@
 // messo via. Non è un filtro con cinque valori: è il modo in cui una persona
 // guarda il proprio lavoro.
 // ============================================================================
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { taskService, priorityFromDueDate, type TaskView } from '@/services/taskService';
+import { taskService, type TaskView } from '@/services/taskService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
@@ -25,6 +25,8 @@ import { useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
 import { dueLabel, isOverdue, sourceLabelKey, statusLabelKey } from './taskFormat';
+import { TaskCreateForm } from './TaskCreateForm';
+import { EMPTY_TASK_FORM, safeDatePrefill, taskFormSubmission, type TaskFormValues } from './taskCreateModel';
 import type { TaskPriority, TaskWithPeople } from '@/types/models';
 
 const PAGE_SIZE = 25;
@@ -89,9 +91,15 @@ export function TasksPage() {
   const total = data?.total ?? 0;
 
   // ---- creazione -----------------------------------------------------------
+  // Il modulo è `TaskCreateForm`, condiviso con il dettaglio di un documento:
+  // qui restano soltanto lo stato dei campi e che cosa succede DOPO il
+  // salvataggio, che nei due posti è diverso (qui si azzera e si richiude, là
+  // si mostra l'attività appena creata).
   const [creating, setCreating] = useState(false);
-  const [title, setTitle] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [form, setForm] = useState<TaskFormValues>(EMPTY_TASK_FORM);
+  const [saving, setSaving] = useState(false);
+  const newTaskButtonRef = useRef<HTMLButtonElement>(null);
+
   // Il Calendario NON ha un proprio modulo di creazione (§17): quando si preme
   // un giorno, porta qui con la data nell'URL e si apre QUESTO modulo, che è
   // l'unico del prodotto. Due moduli avrebbero significato due posti in cui
@@ -101,34 +109,27 @@ export function TasksPage() {
     if (!prefill) return;
     // Si accetta solo una data nella forma attesa: un valore arbitrario
     // dall'URL non deve finire in un campo che poi viene salvato.
-    if (/^\d{4}-\d{2}-\d{2}$/.test(prefill)) setDueDate(prefill);
+    const safe = safeDatePrefill(prefill);
+    if (safe) setForm((f) => ({ ...f, dueDate: safe }));
     setCreating(true);
     const next = new URLSearchParams(params);
     next.delete('nuova');
     setParams(next, { replace: true });
   }, [params, setParams]);
-  const [newPriority, setNewPriority] = useState<TaskPriority | ''>('');
-  const [newAssignee, setNewAssignee] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  // La priorità proposta segue la scadenza finché la persona non sceglie: da
-  // quel momento la scelta è sua e non viene più sovrascritta.
-  const proposedPriority = useMemo(() => priorityFromDueDate(dueDate || null), [dueDate]);
 
   async function createTask() {
-    if (!title.trim() || saving) return;
+    if (saving) return;
+    const payload = taskFormSubmission(form);
+    if (!payload.title.trim()) return;
     setSaving(true);
     try {
       await taskService.create({
         companyId,
         userId: user!.id,
-        title,
-        dueDate: dueDate || null,
-        priority: (newPriority || proposedPriority) as TaskPriority,
-        assigneeUserId: newAssignee || null,
+        ...payload,
         source: 'manual',
       });
-      setTitle(''); setDueDate(''); setNewPriority(''); setNewAssignee('');
+      setForm(EMPTY_TASK_FORM);
       setCreating(false);
       reload();
       showToast(t('tasks.created'));
@@ -137,6 +138,12 @@ export function TasksPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Chiudere il modulo riporta il fuoco al pulsante che lo ha aperto. */
+  function closeCreate() {
+    setCreating(false);
+    newTaskButtonRef.current?.focus();
   }
 
   function memberName(userId: string | null): string {
@@ -154,7 +161,8 @@ export function TasksPage() {
       </div>
 
       <div className="row-wrap">
-        <button className="btn btn-primary btn-block-mobile" onClick={() => setCreating((v) => !v)} aria-expanded={creating}>
+        <button ref={newTaskButtonRef} className="btn btn-primary btn-block-mobile"
+          onClick={() => setCreating((v) => !v)} aria-expanded={creating}>
           <Icon name="plus" className="ic-sm" /> {t('tasks.newTask')}
         </button>
         <div className="field" style={{ flex: 1, minWidth: 200, margin: 0 }}>
@@ -169,39 +177,16 @@ export function TasksPage() {
       {creating && (
         <div className="card mt-16">
           <div className="card-title">{t('tasks.newTask')}</div>
-          <div className="grid-2">
-            <div className="field">
-              <label htmlFor="nt-title">{t('tasks.titleField')}</label>
-              <input id="nt-title" value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder={t('tasks.titlePlaceholder')} autoFocus />
-            </div>
-            <div className="field">
-              <label htmlFor="nt-due">{t('tasks.dueLabel')}</label>
-              <input id="nt-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            </div>
-            <div className="field">
-              <label htmlFor="nt-prio">{t('tasks.priorityLabel')}</label>
-              <select id="nt-prio" value={newPriority || proposedPriority}
-                onChange={(e) => setNewPriority(e.target.value as TaskPriority)}>
-                <option value="high">{L.urgency('alta')}</option>
-                <option value="medium">{L.urgency('media')}</option>
-                <option value="low">{L.urgency('bassa')}</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="nt-assignee">{t('tasks.assignee')}</label>
-              <select id="nt-assignee" value={newAssignee} onChange={(e) => setNewAssignee(e.target.value)}>
-                <option value="">{t('tasks.unassigned')}</option>
-                {members.map((m) => (
-                  <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <button className="btn btn-primary btn-sm btn-block-mobile" onClick={() => void createTask()}
-            disabled={saving || !title.trim()} aria-busy={saving || undefined}>
-            {saving ? <span className="spinner" aria-hidden="true" /> : null} {t('tasks.add')}
-          </button>
+          <TaskCreateForm
+            idPrefix="nt"
+            values={form}
+            onChange={setForm}
+            onSubmit={() => void createTask()}
+            onCancel={closeCreate}
+            saving={saving}
+            members={members}
+            autoFocus
+          />
         </div>
       )}
 

@@ -54,6 +54,31 @@ export function isOverdue(task: Pick<Task, 'dueDate' | 'status'>, today: Date = 
   return d != null && d < 0;
 }
 
+/**
+ * La priorità PROPOSTA da una scadenza.
+ *
+ * ⚠️ Vive qui, e non più in `taskService`, per una ragione sola: è una decisione
+ * di prodotto pura e va provata senza database. `taskService` la importa e la
+ * riesporta, così i chiamanti storici non cambiano e l'implementazione resta
+ * UNA — lo stesso schema già usato da `notificationService` con
+ * `preferencesDefaults`. Chi la volesse riscrivere nel modulo di creazione
+ * avrebbe due tabelle di soglie destinate a divergere.
+ *
+ * `now` è un parametro e non `Date.now()` letto dentro: una funzione che legge
+ * l'orologio da sé non si può provare su un istante scelto — è il difetto già
+ * pagato dalla sezione 9 di `test:workflows-unit`.
+ */
+export function priorityFromDueDate(
+  dueDate: string | null | undefined,
+  now: Date = new Date(),
+): Task['priority'] {
+  if (!dueDate) return 'low';
+  const days = Math.ceil((new Date(dueDate).getTime() - now.getTime()) / 86400000);
+  if (days <= 10) return 'high';
+  if (days <= 30) return 'medium';
+  return 'low';
+}
+
 export function statusLabelKey(status: TaskStatus): TKey {
   switch (status) {
     case 'open': return 'tasks.statusOpen';

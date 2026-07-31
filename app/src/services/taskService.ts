@@ -21,6 +21,7 @@
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { translate as tr } from '@/i18n';
+import { priorityFromDueDate } from '@/features/tasks/taskFormat';
 import type { Task, TaskPriority, TaskSource, TaskStatus, TaskWithPeople } from '@/types/models';
 import type { Database } from '@/types/database';
 
@@ -120,14 +121,15 @@ export interface UpdateTaskInput {
  * essere importante e un'informazione di domani può non esserlo. Chi crea
  * l'attività può sempre scegliere diversamente, e da quel momento la scelta
  * della persona non viene più sovrascritta.
+ *
+ * ⚠️ L'IMPLEMENTAZIONE VIVE IN `features/tasks/taskFormat`, e questa riga la
+ * riesporta soltanto. La ragione è che un servizio importa il client Supabase e
+ * quindi non è caricabile da uno script di prova: lasciata qui, questa regola
+ * non si sarebbe potuta provare senza database. Stessa scelta già fatta da
+ * `notificationService` con `preferencesDefaults`. Riscriverla nel modulo di
+ * creazione avrebbe prodotto due tabelle di soglie destinate a divergere.
  */
-export function priorityFromDueDate(dueDate: string | null | undefined): TaskPriority {
-  if (!dueDate) return 'low';
-  const days = Math.ceil((new Date(dueDate).getTime() - Date.now()) / 86400000);
-  if (days <= 10) return 'high';
-  if (days <= 30) return 'medium';
-  return 'low';
-}
+export { priorityFromDueDate };
 
 /**
  * Messaggi comprensibili per i guasti che questo dominio può produrre davvero.
