@@ -27,8 +27,9 @@
 // ============================================================================
 import { timingSafeEqual } from '../_shared/email/crypto.ts';
 import {
-  EDGE_TIME_BUDGET_MS, MANUAL_SYNC_MIN_INTERVAL_SECONDS, QUEUE_BATCH, QUEUE_LOCK_SECONDS,
-  QUEUE_MAX_ATTEMPTS, RECONCILE_BATCH, RECONCILE_EVERY_HOURS, queueBackoffSeconds,
+  correlationId, EDGE_TIME_BUDGET_MS, MANUAL_SYNC_MIN_INTERVAL_SECONDS, QUEUE_BATCH,
+  QUEUE_LOCK_SECONDS, QUEUE_MAX_ATTEMPTS, RECONCILE_BATCH, RECONCILE_EVERY_HOURS,
+  queueBackoffSeconds,
 } from '../_shared/calendar/contract.ts';
 import {
   adapterFor, adminClient, appOrigin, assertMember, authenticate, CORS, env, failure,
@@ -87,10 +88,17 @@ async function handleDrain(req: Request): Promise<Response> {
   if (!env('CALENDAR_WORKER_SECRET')) return failure('CONFIG_MISSING', 503);
   if (!schedulerAuthorized(req)) return failure('FORBIDDEN', 403);
 
+  // ⚠️ Apertura PRIMA del lavoro: il budget di 150 secondi uccide l'isolate
+  // senza far girare il `finally`, e senza questa riga un'esecuzione morta a
+  // metà non si distingue da una mai partita. `rid` lega apertura e chiusura.
+  const rid = correlationId(req.headers);
+  const startedAtMs = Date.now();
+  logEvent('calendar-sync', { phase: 'start', action: 'drain', rid });
+
   const sb = adminClient();
   const key = await getEncryptionKey();
   const deps = depsFor(sb, key);
-  const deadline = Date.now() + EDGE_TIME_BUDGET_MS;
+  const deadline = startedAtMs + EDGE_TIME_BUDGET_MS;
 
   const report = {
     claimed: 0, upserted: 0, deleted: 0, failures: 0, retried: 0, givenUp: 0,
@@ -142,7 +150,9 @@ async function handleDrain(req: Request): Promise<Response> {
   }
 
   report.timeBudgetReached = Date.now() >= deadline;
-  logEvent('calendar-sync', { action: 'drain', ...report });
+  logEvent('calendar-sync', {
+    phase: 'end', action: 'drain', rid, durationMs: Date.now() - startedAtMs, ...report,
+  });
   return json({ status: 'ok', report });
 }
 

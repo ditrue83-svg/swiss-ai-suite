@@ -30,8 +30,9 @@ import {
   daysBetween, dueReminders, reminderWindow, unassignedAlert, zonedNow,
 } from '../supabase/functions/_shared/calendar/reminders.ts';
 import {
-  DEFAULT_TIMEZONE, EMAIL_MAX_ATTEMPTS, QUEUE_MAX_ATTEMPTS, REMINDER_LOCAL_HOUR,
-  UNASSIGNED_ALERT_DAYS, dedicatedCalendarName, emailBackoffSeconds, queueBackoffSeconds,
+  CORRELATION_HEADERS, DEFAULT_TIMEZONE, EMAIL_MAX_ATTEMPTS, QUEUE_MAX_ATTEMPTS,
+  REMINDER_LOCAL_HOUR, UNASSIGNED_ALERT_DAYS, correlationId, dedicatedCalendarName,
+  emailBackoffSeconds, queueBackoffSeconds,
 } from '../supabase/functions/_shared/calendar/contract.ts';
 import { SERVER_LOCALES, formatDay, st } from '../supabase/functions/_shared/calendar/i18n.ts';
 import { createGoogleCalendarAdapter } from '../supabase/functions/_shared/calendar/google.ts';
@@ -816,6 +817,49 @@ section('11 · Coerenza fra server e interfaccia');
   ok(/^\d{4}-\d{2}-\d{2}$/.test(t1), 'todayISO produce una data di calendario', t1);
   ok(todayISO(new Date('2026-08-31T00:10:00')) === todayISO(new Date('2026-08-31T23:50:00')),
     'e non cambia fra l’inizio e la fine dello stesso giorno locale');
+}
+
+// ===========================================================================
+// L'IDENTIFICATIVO DI CORRELAZIONE — l'unico dato di osservabilità che i due
+// worker non avevano, e senza il quale due esecuzioni consecutive dello
+// scheduler producono log indistinguibili.
+//
+// ⚠️ Il caso che conta è l'ULTIMO: quando la piattaforma non fornisce nulla,
+// l'id generato dev'essere RICONOSCIBILE come tale. Un id inventato che si
+// spaccia per quello del gateway manda a cercare per mezz'ora una riga che nei
+// log della piattaforma non esiste.
+// ===========================================================================
+{
+  const headers = (h: Record<string, string>) => ({ get: (n: string) => h[n] ?? null });
+
+  ok(correlationId(headers({ 'sb-request-id': 'abc-123' })) === 'abc-123',
+    'l’identificativo della piattaforma viene usato così com’è');
+
+  ok(correlationId(headers({ 'x-request-id': 'xyz' })) === 'xyz',
+    'in mancanza, si accetta x-request-id');
+
+  ok(correlationId(headers({ 'cf-ray': 'ray-9' })) === 'ray-9',
+    'e in mancanza anche di quello, cf-ray');
+
+  ok(correlationId(headers({ 'sb-request-id': 'primo', 'x-request-id': 'secondo' })) === 'primo',
+    'con più intestazioni vince la più affidabile, non l’ultima letta');
+
+  ok(correlationId(headers({ 'sb-request-id': '   ' })) !== '   '
+    && correlationId(headers({ 'sb-request-id': '   ' })).startsWith('gen:'),
+    'un’intestazione presente ma VUOTA non conta come identificativo');
+
+  ok(correlationId(headers({ 'sb-request-id': '  spazi-attorno  ' })) === 'spazi-attorno',
+    'gli spazi attorno vengono tolti');
+
+  const generato = correlationId(headers({}));
+  ok(generato.startsWith('gen:'),
+    '⚠️ senza nessuna intestazione l’id è DICHIARATO come generato (prefisso gen:)',
+    generato);
+  ok(generato !== correlationId(headers({})),
+    'e due esecuzioni senza intestazione non condividono lo stesso id');
+
+  ok(CORRELATION_HEADERS.length === 3 && CORRELATION_HEADERS[0] === 'sb-request-id',
+    'l’ordine delle intestazioni è dichiarato, non implicito nel codice');
 }
 
 // ===========================================================================

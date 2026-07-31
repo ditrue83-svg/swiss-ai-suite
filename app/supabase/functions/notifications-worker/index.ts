@@ -21,7 +21,7 @@
 // attività né indirizzi (§128).
 // ============================================================================
 import { timingSafeEqual } from '../_shared/email/crypto.ts';
-import { EDGE_TIME_BUDGET_MS } from '../_shared/calendar/contract.ts';
+import { correlationId, EDGE_TIME_BUDGET_MS } from '../_shared/calendar/contract.ts';
 import {
   adminClient, appOrigin, CORS, env, failure, json, logEvent, resolveEmailProvider,
 } from '../_shared/calendar/runtime.ts';
@@ -37,7 +37,16 @@ Deno.serve(async (req: Request) => {
   const provided = req.headers.get('x-notifications-worker-secret') ?? '';
   if (!timingSafeEqual(provided, expected)) return failure('FORBIDDEN', 403);
 
-  const deadline = Date.now() + EDGE_TIME_BUDGET_MS;
+  // ⚠️ L'apertura si scrive PRIMA di qualsiasi lavoro, e la ragione è il budget
+  // di 150 secondi: se l'isolate viene ucciso a metà, la riga di chiusura non
+  // arriva MAI. Senza un'apertura, un'esecuzione morta è indistinguibile da
+  // un'esecuzione mai partita — e sono due guasti diversi, con due cause
+  // diverse. `rid` lega le due righe fra loro.
+  const rid = correlationId(req.headers);
+  const startedAtMs = Date.now();
+  logEvent('notifications-worker', { phase: 'start', rid });
+
+  const deadline = startedAtMs + EDGE_TIME_BUDGET_MS;
   const emailProvider = resolveEmailProvider();
 
   const report = {
@@ -77,10 +86,14 @@ Deno.serve(async (req: Request) => {
     report.timeBudgetReached = Date.now() >= deadline;
   } catch (error) {
     const code = error instanceof CalendarProviderError ? error.code : 'UNKNOWN';
-    logEvent('notifications-worker', { code });
+    logEvent('notifications-worker', {
+      phase: 'end', rid, durationMs: Date.now() - startedAtMs, status: 'failed', code, ...report,
+    });
     return json({ status: 'failed', code, report }, 500);
   }
 
-  logEvent('notifications-worker', { ...report });
+  logEvent('notifications-worker', {
+    phase: 'end', rid, durationMs: Date.now() - startedAtMs, status: 'ok', ...report,
+  });
   return json({ status: 'ok', report });
 });

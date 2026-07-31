@@ -130,20 +130,36 @@ verify_jwt = false
 #                         verificano l'autenticazione nel codice (401 se manca).
 #   notifications-worker  lo chiama uno scheduler, non una persona. Autenticato
 #                         con un segreto confrontato a tempo costante.
+#   calendar-sync         lo chiamano TRE soggetti, e ognuno si autentica NEL
+#                         CODICE: lo scheduler (`drain`) e la diagnostica
+#                         (`reconcile`) con `CALENDAR_WORKER_SECRET` confrontato
+#                         a tempo costante, una persona (`sync`) con il proprio
+#                         JWT — verificato da `authenticate()`, più la proprietà
+#                         della connessione e `assertMember`. Senza JWT resta
+#                         401 anche presentando il segreto del worker.
 #
-# ⚠️ `calendar-sync` NON compare qui, ed è deliberato: ha DUE chiamanti — lo
-# scheduler con il proprio segreto e una persona con il proprio JWT — e tenere
-# la verifica del JWT attiva non gli toglie nulla, perché lo scheduler chiama
-# comunque con la service role key nell'header `Authorization`. Disattivarla
-# avrebbe allargato la superficie senza alcun guadagno.
+# ⚠️⚠️ QUI C'ERA SCRITTO IL CONTRARIO, e la riga sbagliata è costata un guasto.
+# Questo file dichiarava che `calendar-sync` teneva `verify_jwt = true` di
+# proposito «perché lo scheduler chiama comunque con la service role key
+# nell'header Authorization». Quell'header NON C'È: il comando di
+# `calendar-sync-drain` manda `Content-Type` e `x-calendar-worker-secret`, e
+# nient'altro (si legge in `cron.job`, e ora anche nella migrazione 0035). Il
+# risultato è stato 401 a ogni esecuzione, dal gate della piattaforma, PRIMA che
+# il codice della funzione lo vedesse — la stessa trappola già pagata con
+# `email-webhook`. Rideployata `--no-verify-jwt` il 2026-07-31; il progetto
+# hosted oggi la porta a `false` (`npm run verify:deploy` lo rilegge).
+#
 # ⚠️ Questo file NON viene applicato al progetto hosted: al deploy va passato
-# `--no-verify-jwt` alle due funzioni. Il comando esatto è in
+# `--no-verify-jwt` a tutte e tre le funzioni. Il comando esatto è in
 # docs/calendar-notifications.md.
 # ---------------------------------------------------------------------------
 [functions.calendar-oauth]
 verify_jwt = false
 
 [functions.notifications-worker]
+verify_jwt = false
+
+[functions.calendar-sync]
 verify_jwt = false
 
 # ---------------------------------------------------------------------------

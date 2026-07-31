@@ -37,6 +37,20 @@ const header = `-- =============================================================
 --    La CI applica questo file a un database vuoto a ogni pull request, quindi
 --    la promessa qui sopra è PROVATA e non dichiarata.
 --
+-- ⚠️ UN PREREQUISITO, DALLA 0035. Gli scheduler del calendario e delle notifiche
+--    devono sapere a quale progetto appartiene questo database, e l'origine NON
+--    è scritta dentro le migrazioni di proposito (altrimenti ogni installazione
+--    nuova chiamerebbe il progetto di chi le ha scritte). Da eseguire UNA volta,
+--    prima o dopo questo file:
+--
+--        select vault.create_secret('https://<ref>.supabase.co',
+--                                   'project_functions_base_url');
+--
+--    Finché manca, i due job esistono e OGNI loro esecuzione fallisce dicendolo
+--    in \`cron.job_run_details\`: un guasto registrato, non un silenzio. Servono
+--    inoltre nel Vault \`calendar_worker_secret\` e \`notifications_worker_secret\`
+--    (vedi docs/calendar-notifications.md §11.4).
+--
 -- GENERATO dalle migrazioni versionate: NON modificarlo a mano.
 -- Per rigenerarlo dopo aver aggiunto una migrazione:  npm run db:bundle
 --
