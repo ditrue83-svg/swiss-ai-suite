@@ -59,6 +59,12 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
 import { createClient } from '@supabase/supabase-js';
+// ⚠️ IL MOTORE VERO, non una sua imitazione. `runMatching` è la funzione che
+// `subsidy-worker` chiama in produzione: importarla qui è ciò che rende la
+// sezione 11 una prova invece di una descrizione. Nessuna riga di
+// `_shared/subsidy/` chiama il modello — il motore è deterministico, e per
+// questo si può provare anche con il credito Anthropic esaurito.
+import { runMatching } from '../supabase/functions/_shared/subsidy/match.ts';
 
 if (!globalThis.WebSocket) (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
 
@@ -632,7 +638,86 @@ async function main() {
     `sommario ${String(s.highRelevance)}, tabella ${(alteTab ?? []).length}`);
 
   // -------------------------------------------------------------------------
-  section('11. Cascata dell’azienda (0033) — e l’elenco si legge dalle migrazioni');
+  section('11. IL MOTORE — `runMatching`, quello vero che chiama subsidy-worker');
+
+  // ⚠️ FINO A OGGI QUESTA ERA L'UNICA PARTE NON COPERTA del modulo, e
+  // `product-status.md` lo dichiarava: che il motore producesse l'opportunità
+  // giusta da un progetto era stato provato A MANO UNA VOLTA. Qui gira la
+  // funzione che gira in produzione — non una sua imitazione.
+  //
+  // ⚠️ `companyId` NON è un dettaglio: senza, `runMatching` scandisce TUTTI i
+  // progetti attivi, comprese le due aziende vere. Restringerlo è ciò che
+  // rende questa sezione eseguibile contro il database di produzione.
+  const M = await makeTenant('motore');
+  const projM = await makeProject(M.client, M.companyId, `Sviluppo software con partner di ricerca ${stamp}`, {
+    stage: 'planned', location_canton: 'TI', location_country: 'CH', sector: 'ict',
+    project_types: ['innovazione', 'digitalizzazione'], budget_amount: 180000,
+    budget_currency: 'CHF', has_research_partner: true, employee_impact: 2,
+  });
+
+  const oppPrimaDiA = await countFor('subsidy_opportunities', A.companyId);
+  const giro1 = await runMatching(admin, { companyId: M.companyId, today: new Date().toISOString().slice(0, 10) });
+
+  check('il motore ha scandito il progetto e non ha errori',
+    giro1.projectsScanned === 1 && giro1.errors.length === 0,
+    JSON.stringify(giro1));
+  check('e ha prodotto almeno un’opportunità',
+    giro1.opportunitiesCreated > 0, `create: ${giro1.opportunitiesCreated}`);
+  check('scrivendo anche le valutazioni',
+    giro1.assessmentsWritten > 0, `valutazioni: ${giro1.assessmentsWritten}`);
+
+  const { data: oppM } = await admin.from('subsidy_opportunities')
+    .select('id, project_id, company_id, eligibility_status, current_assessment_id')
+    .eq('company_id', M.companyId);
+  const opportunita = (oppM ?? []) as Array<{
+    id: string; project_id: string; company_id: string;
+    eligibility_status: string; current_assessment_id: string | null;
+  }>;
+  check('le opportunità appartengono all’azienda e al progetto giusti',
+    opportunita.length > 0 && opportunita.every((o) => o.company_id === M.companyId && o.project_id === projM),
+    `righe: ${opportunita.length}`);
+  check('ognuna ha una valutazione corrente',
+    opportunita.every((o) => Boolean(o.current_assessment_id)));
+
+  const { data: criteri } = await admin.from('subsidy_criterion_results')
+    .select('id').eq('company_id', M.companyId);
+  check('e i criteri sono stati valutati uno per uno',
+    ((criteri ?? []) as unknown[]).length > 0, `criteri: ${(criteri ?? []).length}`);
+
+  // ⚠️ LA GARANZIA CHE VALE PIÙ DI TUTTE LE ALTRE DI QUESTA SEZIONE: l'enum
+  // non contiene «eligible» e il motore non può inventarlo. Un prodotto che
+  // dicesse a una PMI «sei idonea» sulla base di un catalogo letto da un sito
+  // starebbe promettendo una cosa che non può sapere.
+  check('nessuna opportunità è dichiarata IDONEA: il massimo è «potenzialmente»',
+    opportunita.every((o) => ['not_assessed', 'insufficient_information',
+      'potentially_eligible', 'likely_ineligible', 'ineligible'].includes(o.eligibility_status)
+      && o.eligibility_status !== 'eligible'),
+    opportunita.map((o) => o.eligibility_status).join(', '));
+
+  // ⚠️ IDEMPOTENZA — è la proprietà che rende utilizzabile un lavoro che gira
+  // ogni quarto d'ora. Senza, ogni giro riscriverebbe le valutazioni e la
+  // schermata direbbe «aggiornata» su dati identici.
+  const giro2 = await runMatching(admin, { companyId: M.companyId, today: new Date().toISOString().slice(0, 10) });
+  const dopo = await countFor('subsidy_opportunities', M.companyId);
+  check('la seconda passata non scrive nessuna valutazione nuova',
+    giro2.assessmentsWritten === 0, JSON.stringify(giro2));
+  check('e non crea nessuna opportunità doppia',
+    dopo === opportunita.length, `prima ${opportunita.length}, dopo ${dopo}`);
+
+  check('il motore non ha toccato l’altra azienda',
+    (await countFor('subsidy_opportunities', A.companyId)) === oppPrimaDiA,
+    `A prima ${oppPrimaDiA}, dopo ${await countFor('subsidy_opportunities', A.companyId)}`);
+
+  // Un progetto archiviato esce dalla coda: `loadActiveProjects` filtra su
+  // `status = 'active'`, e senza questo controllo un archivio non alleggerirebbe
+  // niente.
+  await M.client.from('subsidy_projects').update({ status: 'archived' }).eq('id', projM);
+  const giro3 = await runMatching(admin, { companyId: M.companyId, today: new Date().toISOString().slice(0, 10) });
+  check('un progetto archiviato non viene più rivalutato',
+    giro3.projectsScanned === 0, JSON.stringify(giro3));
+
+  // -------------------------------------------------------------------------
+  section('12. Cascata dell’azienda (0033) — e l’elenco si legge dalle migrazioni');
 
   const tabelle = subsidyTablesWithCompany();
   // ⚠️ Un parser che non trova niente passerebbe in silenzio: la soglia esiste
@@ -648,9 +733,14 @@ async function main() {
 
   // ⚠️ DOPO la pulizia, non prima: è insieme il test della cascata e la prova
   // che la pulizia ha davvero pulito.
+  // ⚠️ ENTRAMBE le aziende usa-e-getta: A porta le risposte append-only (la
+  // condizione che la rendeva indistruttibile), M porta le righe scritte DAL
+  // MOTORE — opportunità, valutazioni, criteri. Controllare solo la prima
+  // lascerebbe fuori proprio le tabelle che la sezione 11 ha riempito.
   for (const table of tabelle) {
-    const { data, error } = await admin.from(table).select('id').eq('company_id', A.companyId);
-    check(`cancellata l’azienda, ${table} non ha residui`,
+    const { data, error } = await admin.from(table).select('id')
+      .in('company_id', [A.companyId, M.companyId]);
+    check(`cancellate le aziende, ${table} non ha residui`,
       !error && ((data ?? []) as unknown[]).length === 0, why(error));
   }
 

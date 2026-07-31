@@ -817,7 +817,8 @@ npm run test:subsidy         # Incentivi su DB: isolamento fra aziende anche chi
                              #   nemmeno il service role attraversa, catalogo in sola lettura,
                              #   risposte append-only firmate dal database, e soprattutto LA
                              #   CASCATA — una risposta rendeva l'azienda indistruttibile finché
-                             #   non sono arrivate la 0033 e la 0034 (richiede 0032+0033+0034)
+                             #   non sono arrivate la 0033 e la 0034. Dalla sezione 11 esegue anche
+                             #   IL MOTORE VERO (runMatching) (richiede 0032+0033+0034)
 npm run subsidy:seed-catalog # scrive il CATALOGO 2.0: fonti ufficiali, versioni immutabili,
                              #   criteri tipizzati e call. Dry-run senza `-- --write`. ⚠️ Non
                              #   sostituisce `subsidy:seed`, che scrive l'identità dei programmi
