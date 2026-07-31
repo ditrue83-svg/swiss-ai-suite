@@ -187,33 +187,23 @@ jobs:
           } > .env.test
           rm -f .supabase-status
 
-      # ⚠️⚠️ IL PEZZO PIÙ IMPORTANTE DI QUESTO JOB, e non era previsto.
+      # ⚠️⚠️ QUI SI PROVA IL PERCORSO D'INSTALLAZIONE VERO, quello che userebbe
+      # un cliente nuovo: si svuota lo schema e si applica `full-setup.sql` —
+      # il file che il README dice di incollare nel SQL editor di Supabase.
       #
-      # Alla prima esecuzione il seed è fallito con «permission denied for
-      # table subsidy_sources» USANDO LA CHIAVE DI SERVIZIO. La diagnostica ha
-      # dato la causa, ed è una differenza fra i due ambienti che nessuno
-      # conosceva:
+      # Perché DUE installazioni nello stesso job, e non è uno spreco:
+      #   · `supabase start` (sopra) applica le migrazioni UNA ALLA VOLTA, che
+      #     è ciò che succede a un database già in esercizio;
+      #   · questo passo le applica CONCATENATE e in UNA TRANSAZIONE, che è
+      #     ciò che succede a un'installazione da zero.
+      # I due percorsi falliscono in modi diversi: la trappola 55P04 della 0015
+      # passava il primo e rompeva il secondo, «invisibile a chi ha già il
+      # database» — e nessuno era mai stato il primo cliente nuovo.
       #
-      #   produzione   pg_default_acl per il ruolo `postgres` in `public`:
-      #                anon/authenticated/service_role = arwdDxt  (DML compresa)
-      #   locale (CLI) stesso posto:
-      #                anon/authenticated/service_role = Dxt      (SOLO truncate,
-      #                                                            references, trigger)
-      #
-      # ⚠️ LA CONSEGUENZA VA CAPITA PRIMA DI AGGIRARLA: le nostre migrazioni
-      #    non concedono MAI esplicitamente la DML di base — `companies` non ha
-      #    un solo `grant` in tutto il repository. Funziona perché la
-      #    piattaforma l'aveva già concessa per default. È la stessa dipendenza
-      #    implicita che nella 0013 aveva prodotto il difetto peggiore del
-      #    progetto, vista dall'altro lato: là il default concedeva TROPPO, qui
-      #    la sua assenza non concede abbastanza.
-      #
-      # Qui si RICOSTRUISCE l'ordine di costruzione della produzione: prima i
-      # privilegi predefiniti, poi le migrazioni. Non si aggiunge un `grant`
-      # finché il verde arriva — quello nasconderebbe la differenza invece di
-      # riprodurla, e il database della CI smetterebbe di somigliare a quello
-      # vero proprio nella cosa che questo repository controlla di più.
-      - name: Ricostruire lo schema con i privilegi predefiniti della produzione
+      # ⚠️ `--single-transaction` non è pignoleria: il SQL editor di Supabase
+      #    esegue tutto in una transazione sola, quindi provarlo in autocommit
+      #    proverebbe un percorso che nessuno percorre.
+      - name: Installare da ZERO con full-setup.sql, come un cliente nuovo
         run: |
           set -euo pipefail
           DB=$(supabase status -o env | grep -E '^DB_URL=' | head -1 | cut -d= -f2- | tr -d '"')
@@ -222,39 +212,23 @@ jobs:
             exit 1
           fi
 
-          psql "$DB" -v ON_ERROR_STOP=1 <<'SQL'
-          drop schema public cascade;
-          create schema public;
-          grant usage  on schema public to postgres, anon, authenticated, service_role;
-          grant create on schema public to postgres;
-          alter default privileges in schema public grant all on tables    to anon, authenticated, service_role;
-          alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
-          alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
-          SQL
-
-          for f in supabase/migrations/*.sql; do
-            echo "── $(basename "$f")"
-            psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f"
-          done
+          psql "$DB" -v ON_ERROR_STOP=1 -c "drop schema public cascade; create schema public;"
+          psql "$DB" -v ON_ERROR_STOP=1 --single-transaction -q -f supabase/full-setup.sql
 
           # PostgREST tiene in cache lo schema: dopo averlo ricostruito da capo
-          # servirebbe una vita intera di 404 per capire perché. Si ricarica.
+          # servirebbe una vita intera di 404 per capire perché.
           psql "$DB" -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
           sleep 3
 
-      # ⚠️ LA RICOSTRUZIONE SI AUTOVERIFICA SUI DUE LATI, ed è il punto: se la
-      # baseline non fosse tornata, le suite fallirebbero tutte e si darebbe la
-      # colpa al prodotto; se le restrizioni delle migrazioni fossero state
-      # cancellate dalla baseline, le suite passerebbero su un database più
-      # permissivo di quello vero — un verde che vale meno di un rosso.
-      # ⚠️ LA RICOSTRUZIONE SI AUTOVERIFICA SUI DUE LATI, ed è il punto.
-      # Se la baseline non fosse tornata, le undici suite fallirebbero tutte e
-      # si darebbe la colpa al prodotto. Se invece la baseline avesse
+      # ⚠️ L'INSTALLAZIONE SI AUTOVERIFICA SUI DUE LATI, ed è il punto.
+      # Se il preambolo dei privilegi di `full-setup.sql` non avesse funzionato,
+      # le undici suite fallirebbero tutte e si darebbe la colpa al prodotto.
+      # Se invece avesse
       # CANCELLATO le restrizioni delle migrazioni, passerebbero su un database
       # più permissivo di quello vero — e un verde ottenuto su garanzie assenti
       # vale meno di un rosso. Un controllo che guarda un lato solo non vede
       # l'altro fallire: è la lezione della cascata 0033/0034.
-      - name: Il database ricostruito somiglia davvero alla produzione?
+      - name: L'installazione da zero somiglia davvero alla produzione?
         run: |
           set -euo pipefail
           DB=$(supabase status -o env | grep -E '^DB_URL=' | head -1 | cut -d= -f2- | tr -d '"')
