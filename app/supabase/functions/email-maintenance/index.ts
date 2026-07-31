@@ -32,7 +32,9 @@ import {
   getEncryptionKey, json, logEvent, outputLanguage, webhookUrl,
 } from '../_shared/email/runtime.ts';
 import { getConnection, newCounters, readSecrets, writeSecrets, type ServerClient } from '../_shared/email/store.ts';
-import { drainPendingAnalyses, getValidAccessToken, runSync, type SyncDeps } from '../_shared/email/sync.ts';
+import {
+  drainPendingAnalyses, drainPendingClassifications, getValidAccessToken, runSync, type SyncDeps,
+} from '../_shared/email/sync.ts';
 import { EmailProviderError } from '../_shared/email/types.ts';
 // ⚠️ QUESTA FUNZIONE NON È PIÙ SOLO DELL'INBOX, e vale la pena dirlo qui.
 // `recoverStuckAnalyses` chiude i documenti di Admin AI rimasti «in
@@ -66,6 +68,7 @@ Deno.serve(async (req: Request) => {
   const sb = adminClient();
   const report = {
     renewed: 0, renewFailed: 0, reconciled: 0, reconcileFailed: 0, analysed: 0,
+    reclassified: 0, reclassifyFailed: 0,
     requeued: 0, interrupted: 0, runsClosed: 0, cleanedStates: 0, cleanedEvents: 0,
     // Documenti di Admin AI rimasti appesi: dichiarati falliti, oppure solo
     // riallineati quando l'analisi c'era già ed era lo stato a essere indietro.
@@ -102,6 +105,12 @@ Deno.serve(async (req: Request) => {
     report.stuckRecovered = stuck.recovered;
     report.stuckReconciled = stuck.reconciled;
     await reconcile(deps, report, deadline);
+    // ⚠️ PRIMA delle analisi, di proposito: un messaggio classificato adesso
+    // come «azionabile» entra nella coda delle analisi nello stesso giro,
+    // invece di aspettare quindici minuti.
+    const ripresa = await drainClassifications(deps, deadline);
+    report.reclassified = ripresa.classified;
+    report.reclassifyFailed = ripresa.failed;
     report.analysed = await drainAnalyses(deps, deadline);
     report.cleanedStates = await cleanupOauthStates(sb);
     report.cleanedEvents = await cleanupWebhookEvents(sb);
@@ -227,6 +236,46 @@ async function reconcile(
  * smaltire a lotti è ciò che rende il primo collegamento sopportabile senza
  * alzare un limite che protegge davvero.
  */
+/**
+ * Riprende le classificazioni cadute per un guasto dell'AMBIENTE.
+ *
+ * ⚠️ Senza questo passo un messaggio chiuso come `failed` non lo riprendeva
+ * NESSUNO: `processMessage` salta i messaggi già acquisiti e
+ * `recoverInterrupted` guarda solo gli stati in lavorazione. Il 2026-07-31 in
+ * produzione c'erano 16 messaggi mai classificati, tredici dei quali caduti
+ * mentre il credito era esaurito — per una ragione che si era già risolta.
+ */
+async function drainClassifications(
+  deps: SyncDeps, deadline: number,
+): Promise<{ classified: number; failed: number }> {
+  const esito = { classified: 0, failed: 0 };
+  const { data } = await deps.sb.from('email_connections')
+    .select('id')
+    .eq('status', 'active').eq('sync_enabled', true)
+    .limit(MAX_PER_RUN);
+
+  for (const row of (data ?? []) as { id: string }[]) {
+    if (Date.now() >= deadline) break;
+    const connection = await getConnection(deps.sb, row.id);
+    if (!connection) continue;
+    try {
+      const adapter = adapterForConnection(connection);
+      const accessToken = await getValidAccessToken(deps, connection, adapter);
+      const parziale = await drainPendingClassifications(
+        deps, connection, adapter, accessToken, undefined, deadline,
+      );
+      esito.classified += parziale.classified;
+      esito.failed += parziale.failed;
+    } catch (error) {
+      logEvent('email-maintenance', {
+        step: 'reclassify',
+        code: error instanceof EmailProviderError ? error.code : 'UNKNOWN',
+      });
+    }
+  }
+  return esito;
+}
+
 async function drainAnalyses(deps: SyncDeps, deadline: number): Promise<number> {
   const { data } = await deps.sb.from('email_connections')
     .select('id')

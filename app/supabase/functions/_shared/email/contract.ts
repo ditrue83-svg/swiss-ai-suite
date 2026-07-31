@@ -160,5 +160,10 @@ export const INBOX_ERROR_CODES = [
   'CURSOR_EXPIRED', 'SUBSCRIPTION_GONE', 'NOT_FOUND', 'INVALID_RESPONSE', 'CONFIG_MISSING',
   'SYNC_BUSY', 'QUOTA_EXCEEDED', 'ATTACHMENT_FAILED', 'ANALYSIS_FAILED', 'INTERRUPTED',
   'TIME_BUDGET', 'UNKNOWN',
+  // Dal 2026-07-31: la classificazione dice PERCHÉ è caduta, invece di un
+  // unico codice opaco. `AI_CREDIT_EXHAUSTED` e `INVALID_RESPONSE` sono i due
+  // guasti opposti che prima finivano insieme in `CLASSIFY_FAILED` — il primo
+  // si riprende da solo, il secondo no.
+  'AI_CREDIT_EXHAUSTED', 'CLASSIFY_FAILED',
 ] as const;
 export type InboxErrorCode = (typeof INBOX_ERROR_CODES)[number];

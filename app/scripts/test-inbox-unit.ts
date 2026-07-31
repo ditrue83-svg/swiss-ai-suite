@@ -26,7 +26,10 @@ import {
 import {
   planAttachments, sniffMatches, safeAttachmentName, pickPrimaryAttachment, extensionForMime,
 } from '../supabase/functions/_shared/email/attachments.ts';
-import { prescreen, CLASSIFIER_VERSION } from '../supabase/functions/_shared/email/classify.ts';
+import {
+  prescreen, CLASSIFIER_VERSION, inboxCodeForAiError, isClassifyRetryable,
+  CLASSIFY_RETRYABLE_CODES,
+} from '../supabase/functions/_shared/email/classify.ts';
 import { validateClassifierOutput, buildClassifyRequest } from '../supabase/functions/_shared/email/classifyPrompt.ts';
 import { createGoogleAdapter } from '../supabase/functions/_shared/email/google.ts';
 import { createMicrosoftAdapter } from '../supabase/functions/_shared/email/microsoft.ts';
@@ -54,6 +57,7 @@ import type { AnalysisStatus, DocumentStatus } from '../src/types/database';
 import { newCounters, type LinkedDocument } from '../supabase/functions/_shared/email/store.ts';
 import {
   runSync, importAndAnalyze, getValidAccessToken, drainPendingAnalyses, planAnalysisTarget,
+  drainPendingClassifications,
 } from '../supabase/functions/_shared/email/sync.ts';
 
 let pass = 0, fail = 0;
@@ -831,6 +835,60 @@ section('10 · Dal messaggio al documento, e ritorno');
     ok(mancanti.length === 0, `${lang}: ogni stato mostrato nella posta ha la sua etichetta`,
       `mancanti: ${mancanti.join(', ')}`);
   }
+}
+
+// ===========================================================================
+section('11 · Perché una classificazione è caduta — e se va ripresa');
+// ⚠️⚠️ NASCE DA 16 MESSAGGI FERMI IN PRODUZIONE (2026-07-31). Ogni guasto della
+// classificazione finiva in un unico codice opaco e l'errore vero veniva
+// buttato via: la causa NON era ricostruibile. Le durate in `ai_request_log`
+// hanno mostrato due popolazioni — 13 fallimenti in 124–551 ms (mai arrivati al
+// modello, nella finestra del credito esaurito) e 3 in 1835–2791 ms in mezzo a
+// 36 successi (il modello ha risposto, è caduto ciò che veniva dopo).
+// La distinzione che conta è una sola: **ambiente o risultato?** Il primo si
+// riprende da solo, il secondo no.
+{
+  // -- il messaggio vero dell'API, copiato dalla risposta del 2026-07-29 ------
+  const credito = { status: 400, message: 'Your credit balance is too low to access the Anthropic API' };
+  ok(inboxCodeForAiError(credito) === 'AI_CREDIT_EXHAUSTED',
+    '⚠️ il credito esaurito ha un codice PROPRIO: è la causa dei 13 fallimenti veloci, e prima si chiamava «CLASSIFY_FAILED»');
+  ok(inboxCodeForAiError({ status: 429, message: 'rate limit' }) === 'PROVIDER_RATE_LIMITED',
+    'un limite di frequenza si riconosce e si distingue');
+  ok(inboxCodeForAiError({ name: 'AbortError', message: 'aborted' }) === 'PROVIDER_UNAVAILABLE',
+    'un modello che non risponde in tempo è un servizio che non c’è stato, non una risposta sbagliata');
+  ok(inboxCodeForAiError(new Error('qualcosa di mai visto')) === 'CLASSIFY_FAILED',
+    'ciò che non si sa riconoscere resta nel secchio del «non lo sappiamo», senza inventare una diagnosi');
+
+  // -- che cosa si riprende, e che cosa no ----------------------------------
+  ok(isClassifyRetryable('AI_CREDIT_EXHAUSTED'),
+    'il credito torna: il messaggio va ripreso, non chiuso per sempre');
+  ok(isClassifyRetryable('PROVIDER_RATE_LIMITED') && isClassifyRetryable('PROVIDER_UNAVAILABLE'),
+    'e così un limite di frequenza o un servizio assente');
+  ok(isClassifyRetryable('INTERRUPTED'),
+    '⚠️ e un’esecuzione INTERROTTA dal limite dei 150 secondi: il codice significa già «merita un tentativo» in tutto il repository, e finora una classificazione uccisa così restava ferma per sempre');
+  ok(!isClassifyRetryable('CLASSIFY_FAILED'),
+    '⚠️ un guasto IGNOTO non si riprova all’infinito: sarebbe il modo di bruciare credito in silenzio. Resta fermo e visibile');
+  ok(!isClassifyRetryable('INVALID_RESPONSE'),
+    '⚠️ e nemmeno una risposta inutilizzabile: rifare la stessa domanda è una scommessa, non un rimedio');
+  ok(!isClassifyRetryable(null) && !isClassifyRetryable(''), 'nessun codice, nessuna ripresa');
+
+  // -- i codici esistono nel contratto e hanno una frase in tutte le lingue --
+  for (const code of [...CLASSIFY_RETRYABLE_CODES, 'CLASSIFY_FAILED', 'INVALID_RESPONSE']) {
+    ok((INBOX_ERROR_CODES as readonly string[]).includes(code),
+      `«${code}» è dichiarato in INBOX_ERROR_CODES`);
+  }
+  // ⚠️ Un codice senza frase cade nel messaggio generico: la persona legge «c'è
+  // stato un problema» su un guasto che ha un rimedio preciso. È la trappola di
+  // `errorCreditExhausted`, tradotto per giorni e mai collegato.
+  for (const [lang, dict] of Object.entries({ it, de, fr })) {
+    const errs = (dict.inbox as { errors: Record<string, string> }).errors;
+    const mancanti = ['aiCreditExhausted', 'classifyFailed'].filter((k) => !errs[k]);
+    ok(mancanti.length === 0, `${lang}: i guasti della classificazione hanno la loro frase`,
+      `mancanti: ${mancanti.join(', ')}`);
+  }
+  ok(!/riprova|versuchen Sie es erneut|réessayer/i.test(
+    (it.inbox as { errors: Record<string, string> }).errors.aiCreditExhausted),
+    '⚠️ il testo del credito NON invita a riprovare: aspettare non risolve, e dirlo manderebbe la persona a premere invano');
 }
 
 // ===========================================================================
