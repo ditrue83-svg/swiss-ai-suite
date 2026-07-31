@@ -668,7 +668,12 @@ async function cleanup() {
     const { error } = await admin.auth.admin.deleteUser(id);
     if (error) { clean = false; console.log(`  ${R}pulizia utente ${id}: ${why(error)}${X}`); }
   }
-  check('la pulizia è riuscita: nessun residuo nel database di produzione', clean);
+  // ⚠️ «nel database», non «in produzione»: dal 2026-07-31 questa suite gira
+  // anche contro un Supabase effimero nella CI, e una frase che nomina la
+  // produzione mentre parla di un container usa-e-getta è una piccola bugia
+  // che invecchia in un log letto da qualcun altro. Quale sia il database lo
+  // dichiara il runner, una volta, in cima al gruppo.
+  check('la pulizia è riuscita: nessun residuo nel database', clean);
 }
 
 main().catch(async (e) => {
