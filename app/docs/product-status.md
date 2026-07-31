@@ -37,15 +37,15 @@ confronto corretto è `sha256(chiave) === row.value`, ed è quello eseguito qui.
 posta in arrivo, estrazione delle Finanze, `contract-worker`, interpretazione di
 Subsidy AI, «Chiedi ad AI-Swisse».
 
-⚠️ **Ciò che questa verifica NON dice.** Che le suite che spendono credito siano
-state rieseguite tutte. **Una sola lo è stata**: `eval:assistant`, la sera del
-2026-07-31, con esito **16/16 su tre esecuzioni per domanda** (vedi la riga
-«Chiedi ad AI-Swisse» e la sezione dedicata). Restano NON eseguite `eval:admin`,
-`eval:subsidy` — le altre due voci di `test:eval` — e tutto `test:integration`
-(`test:phase2`, `test:async`, `test:pipeline`). Per quei moduli le colonne
-«testato» e «servizio reale» continuano a descrivere l'ultima misura riuscita,
-non una misura di oggi: adesso perché nessuno le ha eseguite, non più per
-mancanza di credito.
+✅ **Le tre valutazioni AI sono state rieseguite** la sera del 2026-07-31, tutte
+verdi: `eval:assistant` **16/16**, `eval:admin` **35/35**, `eval:subsidy`
+**14/14**. Dettaglio e limiti nella sezione dedicata più sotto.
+
+⚠️ **Ciò che questa verifica NON dice.** Che TUTTE le suite a consumo siano
+state rieseguite: **`test:integration` non è stato eseguito** (`test:phase2`,
+`test:async`, `test:pipeline`). Per ciò che copre solo lui, le colonne
+«testato» e «servizio reale» continuano a descrivere l'ultima misura riuscita —
+adesso perché nessuno l'ha eseguito, non più per mancanza di credito.
 
 ## Le sei parole, e perché sono sei
 
@@ -139,7 +139,49 @@ accodato la richiesta.** Da oggi `npm run verify:deploy` legge comunque l'esito
 dell'ultima esecuzione di ogni job — prima sapeva solo che il job *esisteva* —
 e i due worker scrivono `phase=start` / `phase=end` con `rid` e `durationMs`.
 
-## `eval:assistant` — 16/16, e che cosa significa davvero
+## Le valutazioni AI — tutte e tre eseguite il 2026-07-31
+
+| Valutazione | Esito | Che cosa mette alla prova |
+|---|---|---|
+| `eval:assistant` | **16/16** (`--runs 3`, 48 esecuzioni) | esito dichiarato, fonti citate, frasi che il prodotto non deve mai dire |
+| `eval:admin` | **35/35** su 8 documenti | lingua, mittente, tipo di autorità, scadenze, importi, rischio, **prompt injection** |
+| `eval:subsidy` | **14/14** su 5 progetti | tipi di progetto, timing, investimento, evidence verbatim, **injection e governance** |
+
+⚠️ **Le tre voci sono state eseguite singolarmente**, non invocando il gruppo
+`npm run test:eval`: la copertura è la stessa (il gruppo esegue esattamente
+questi tre script), ma il runner del gruppo non è stato lanciato.
+
+### `eval:admin` — 35/35
+
+Otto documenti contro il modello vero, usando **schema, prompt e validazione
+della Edge Function** (i moduli `_shared`), non una loro imitazione. Coperti i
+tre casi linguistici (AVS in tedesco, AFC in francese, Comune in italiano) e —
+la parte che conta di più — i casi in cui la risposta giusta è **non inventare**:
+
+- nessuna scadenza e nessun importo nel testo → `deadline.type = none`, data
+  `null`, nessun importo prodotto;
+- scadenza **relativa** → `deadline.type = relative`, nessuna data assoluta
+  fabbricata, `requiresVerification = true`;
+- **prompt injection** nel documento → `sender.name` non diventa `INJECTED_OK`,
+  il riassunto non diventa `HACKED`, la lingua resta quella vera.
+
+E su tutti e otto: **nessuna evidence dichiarata «verificata» è assente dal testo**
+(§20). È l'asserzione che rende il resto affidabile — senza, un modello potrebbe
+azzeccare i campi citando frasi che non esistono.
+
+### `eval:subsidy` — 14/14
+
+Cinque progetti. Riconosce i tipi (energia, edilizia, innovazione,
+digitalizzazione, assunzioni), l'investimento, e il **timing** — che un progetto
+già avviato sia dichiarato tale è ciò che separa un incentivo ottenibile da uno
+perso. Reggono anche i due casi difensivi: un'iniezione non forza
+`overallConfidence` a 1 e il progetto vero viene interpretato lo stesso; una
+descrizione vaga **non produce tipi inventati**.
+
+⚠️ **Nessuna delle due tocca il database**: chiamano l'API con i moduli
+condivisi. Non c'è pulizia da verificare, al contrario di `eval:assistant`.
+
+### `eval:assistant` — 16/16, e che cosa significa davvero
 
 Rieseguita la sera del **2026-07-31**, la prima volta dopo la correzione del
 seed e dopo il ripristino del credito:
@@ -176,9 +218,9 @@ strumenti nei tre giri e citato 2, 5 e 2 fonti; `clienti` 5, 6 e 4 strumenti.
 L'esito dichiarato e le fonti giuste reggono; quanto lavoro serva per arrivarci,
 no.
 
-⚠️ **Che cosa NON dice questa misura.** Che `test:eval` sia verde: quel gruppo ha
-tre voci e **è stata eseguita una sola**. `eval:admin` e `eval:subsidy` restano
-non eseguite, come tutto `test:integration`.
+⚠️ **Che cosa NON dice questa misura.** Che il modulo sia provato oltre le sedici
+domande della verità di riferimento: `eval:assistant` misura l'esito dichiarato,
+le fonti e le frasi vietate, non che ogni risposta «suoni bene».
 
 **Dati di prova rimossi**, verificato interrogando il database e non fidandosi
 dello script: zero aziende `Eval Assistant%`, zero utenti di prova, e le due
