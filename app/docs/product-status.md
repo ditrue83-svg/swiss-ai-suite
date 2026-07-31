@@ -11,22 +11,38 @@
 > tabella è dedotta dal codice: dove non ho potuto verificare, la colonna dice
 > **no**, non «probabilmente».
 
-## ⚠️⚠️ IL CREDITO ANTHROPIC È ESAURITO (verificato il 2026-07-31)
+## ✅ IL CREDITO ANTHROPIC È STATO RIPRISTINATO (riverificato il 2026-07-31, la sera)
 
-Ogni chiamata all'API risponde **400 — «Your credit balance is too low»**, e
-l'impronta della chiave in `.env.test` **coincide con quella del secret
-`ANTHROPIC_API_KEY` delle Edge Function**: è la stessa chiave. Quindi non è un
-problema dei soli test.
+Questa sezione diceva il contrario fino a poche ore fa, e **la riga sbagliata è
+sopravvissuta al ripristino**: il credito era stato ricaricato, il documento no.
+Rimisurato chiamando l'API vera con la chiave di `.env.test`:
 
-**Fermo adesso in produzione**: analisi dei documenti (Admin AI), classificazione
-della posta in arrivo, estrazione delle Finanze, `contract-worker`,
-interpretazione di Subsidy AI, «Chiedi ad AI-Swisse». Il prodotto **lo dichiara**
-invece di fingere un guasto temporaneo (commit `dd7b2e0`), ma resta fermo.
+```
+POST /v1/messages · model=claude-opus-5 · max_tokens=16
+→ HTTP 200 · stop_reason=end_turn · «OK» · 16 token in, 4 out
+```
 
-Conseguenza per questa tabella: le colonne «testato» e «servizio reale» dei
-moduli che dipendono dall'AI descrivono l'ultima misura riuscita, non una
-misura di oggi. `test:integration` e `test:eval` **non sono eseguibili** finché
-il credito non viene ricaricato.
+Ed è **la stessa chiave delle Edge Function**, verificata con il confronto
+giusto: `sha256(chiave) === value` del secret `ANTHROPIC_API_KEY` del progetto —
+coincide.
+
+⚠️⚠️ **LA TRAPPOLA DA NON RIPETERE.** `GET /v1/projects/<ref>/secrets` **non
+restituisce il valore dei secret**: restituisce il loro **SHA-256** (64 caratteri
+esadecimali, per tutti e 21). Confrontare quel campo con l'impronta della chiave
+dà sempre «diverse», e usarlo come chiave dà sempre 401. Il 2026-07-31 questo ha
+prodotto la diagnosi di un guasto che non esisteva, per due giri interi. Il
+confronto corretto è `sha256(chiave) === row.value`, ed è quello eseguito qui.
+
+**Ripartono quindi**: analisi dei documenti (Admin AI), classificazione della
+posta in arrivo, estrazione delle Finanze, `contract-worker`, interpretazione di
+Subsidy AI, «Chiedi ad AI-Swisse».
+
+⚠️ **Ciò che questa verifica NON dice.** Che le suite che spendono credito siano
+state rieseguite: `test:integration` e `test:eval` sono di nuovo **eseguibili**,
+e non sono state eseguite. Finché non lo saranno, le colonne «testato» e
+«servizio reale» dei moduli che dipendono dall'AI continuano a descrivere
+l'ultima misura riuscita, non una misura di oggi — per la stessa ragione di
+prima, non più per mancanza di credito.
 
 ## Le sei parole, e perché sono sei
 
@@ -59,7 +75,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
 | Contratti | `/contratti` | sì | sì | sì | sì | **no** | parziale | — | ⚠️ **il worker non ha mai prodotto un'estrazione su un contratto vero**: `contract_extractions` è a zero. Il prompt è allineato a un ragionamento, non a una risposta reale |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
-| Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | parziale | sì | sì | Anthropic | ⚠️ `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione. La causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato), corretta il 2026-07-31 e verificata contro il database vero; l'asserzione sull'ancoraggio è ora una funzione pura provata offline. ⚠️ **L'eval NON è stata rieseguita**: credito esaurito. Sola lettura, retention 180 giorni attiva |
+| Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | parziale | sì | sì | Anthropic | ⚠️ `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione. La causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato), corretta il 2026-07-31 e verificata contro il database vero; l'asserzione sull'ancoraggio è ora una funzione pura provata offline. ⚠️ **L'eval NON è stata rieseguita.** Non più per mancanza di credito — il credito è stato ripristinato e riverificato il 2026-07-31 — ma perché nessuno l'ha eseguita da allora: `eval:assistant` è di nuovo eseguibile e resta da eseguire. Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). 7 revisioni del catalogo in attesa di una persona |
 
 ## Le integrazioni esterne
