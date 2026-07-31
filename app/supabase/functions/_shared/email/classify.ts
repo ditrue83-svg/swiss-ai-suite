@@ -76,12 +76,25 @@ export function inboxCodeForAiError(error: unknown): string {
  *
  * ⚠️ `CLASSIFY_FAILED` NON è qui, di proposito: è il secchio del «non lo
  * sappiamo», e riprovare all'infinito un guasto ignoto è il modo di bruciare
- * credito in silenzio. Un guasto ignoto resta fermo e visibile.
- * `INVALID_RESPONSE` nemmeno: se il modello ha risposto una cosa inutilizzabile,
- * riprovare la stessa domanda è una scommessa, non un rimedio.
+ * credito in silenzio. Un guasto ignoto resta fermo e visibile. Nemmeno
+ * `AI_OUTPUT_TRUNCATED`: il tetto di token non si alza da solo.
+ *
+ * ⚠️⚠️ `INVALID_RESPONSE` C'È, E LA SCELTA È STATA RIFATTA SU UNA MISURA.
+ * Il 2026-08-01 stava qui scritto il contrario — «riprovare la stessa domanda è
+ * una scommessa, non un rimedio» — e la misura l'ha smentito: rieseguendo la
+ * classificazione degli stessi messaggi, lo stesso identico testo a volte
+ * produce un JSON leggibile e a volte no (0/3 in un giro e 1/1 in un altro;
+ * 2/3 su un secondo messaggio). La risposta VARIA, quindi un secondo tentativo
+ * non è una scommessa a probabilità fissa: è il rimedio normale a un
+ * formattatore non deterministico.
+ * **Ma una volta sola.** Il conteggio non ha bisogno di una colonna nuova: lo
+ * porta il codice stesso, come `INTERRUPTED` fa già in questo modulo. Se il
+ * secondo tentativo cade ANCORA per la stessa ragione, il messaggio passa a
+ * `CLASSIFY_FAILED` — che è terminale, ha già la sua frase nelle tre lingue, e
+ * dice la verità: non si è riusciti a stabilire se richieda attenzione.
  */
 export const CLASSIFY_RETRYABLE_CODES = [
-  'AI_CREDIT_EXHAUSTED', 'PROVIDER_RATE_LIMITED', 'PROVIDER_UNAVAILABLE',
+  'AI_CREDIT_EXHAUSTED', 'PROVIDER_RATE_LIMITED', 'PROVIDER_UNAVAILABLE', 'INVALID_RESPONSE',
   // `INTERRUPTED` non è un codice nuovo e non è un'eccezione di comodo: in
   // questo repository significa già «l'esecuzione non è arrivata in fondo, e
   // merita un tentativo» — lo scrive `recoverInterrupted` sui messaggi uccisi
@@ -92,6 +105,22 @@ export const CLASSIFY_RETRYABLE_CODES = [
 
 export function isClassifyRetryable(code: string | null | undefined): boolean {
   return !!code && (CLASSIFY_RETRYABLE_CODES as readonly string[]).includes(code);
+}
+
+/**
+ * Che codice scrivere quando un RITENTATIVO cade a sua volta.
+ *
+ * L'unico caso che diventa terminale è la ripetizione IDENTICA: una risposta
+ * illeggibile seguita da un'altra risposta illeggibile. Se il secondo
+ * tentativo cade per una ragione d'AMBIENTE — credito, limite di frequenza,
+ * servizio assente — quel codice resta, e il messaggio resta ripescabile:
+ * l'ambiente non è colpa del messaggio, e contarglielo come tentativo bruciato
+ * lo condannerebbe per un guasto di qualcun altro.
+ */
+export function codeAfterRetry(precedente: string | null | undefined, nuovo: string): string {
+  return precedente === 'INVALID_RESPONSE' && nuovo === 'INVALID_RESPONSE'
+    ? 'CLASSIFY_FAILED'
+    : nuovo;
 }
 
 export type Prescreen = 'administrative' | 'unclear' | 'bulk_only';

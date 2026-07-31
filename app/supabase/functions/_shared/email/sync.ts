@@ -22,6 +22,7 @@
 //    giudicato probabilmente azionabile. Ogni salto è dichiarato nel record.
 // ============================================================================
 import { runAnalysisPipeline, type CreateMessage, type ModelMessage } from '../pipeline.ts';
+import { parseModelJson } from '../parse.ts';
 import { ocrExtract, textExtraction } from '../extract.ts';
 import type { CompanyContext } from '../prompt.ts';
 import type { ExtractionResult } from '../validate.ts';
@@ -32,7 +33,7 @@ import {
 } from './contract.ts';
 import {
   buildClassifierInput, prescreen, CLASSIFIER_VERSION, inboxCodeForAiError, isClassifyRetryable,
-  CLASSIFY_RETRYABLE_CODES,
+  CLASSIFY_RETRYABLE_CODES, codeAfterRetry,
 } from './classify.ts';
 import { buildClassifyRequest, validateClassifierOutput, CLASSIFIER_MODEL, CLASSIFIER_PROMPT_VERSION } from './classifyPrompt.ts';
 import { pickPrimaryAttachment, planAttachments, sniffMatches, safeAttachmentName, extensionForMime } from './attachments.ts';
@@ -508,9 +509,17 @@ async function classifyMessage(
     // ci ha rifiutato» sono guasti opposti: il secondo si riprende da solo, il
     // primo no. Confonderli è ciò che ha reso non diagnosticabili i 16 messaggi
     // del 2026-07-31.
+    // ⚠️ `parseModelJson` e non uno `slice` dalla prima graffa: è lo stesso
+    // parser che l'analisi documentale usa dal principio, e tollera i recinti
+    // markdown attorno all'oggetto — che uno `slice` non toglie, lasciando i
+    // tre apici finali dentro il testo da interpretare. Ancora una volta lo
+    // strumento esisteva in casa e questo percorso non lo usava.
+    // ⚠️ Limite dichiarato: non tollera testo DOPO la graffa di chiusura. Il
+    // commento di `parse.ts` dice «primo oggetto bilanciato», ma il codice non
+    // bilancia — vale per tutti e quattro i chiamanti, non solo per questo.
     let parsed;
     try {
-      parsed = validateClassifierOutput(JSON.parse(block.text.slice(block.text.indexOf('{'))));
+      parsed = validateClassifierOutput(parseModelJson(block.text));
     } catch (_e) {
       throw new EmailProviderError('INVALID_RESPONSE', 'risposta del classificatore non utilizzabile');
     }
@@ -953,13 +962,17 @@ export async function drainPendingClassifications(
       await setMessageProcessing(deps.sb, row.id, 'done', { error_code: null });
       esito.classified++;
     } catch (error) {
-      const code = error instanceof EmailProviderError ? error.code : inboxCodeForAiError(error);
+      const grezzo = error instanceof EmailProviderError ? error.code : inboxCodeForAiError(error);
+      // ⚠️ UNA VOLTA SOLA: una risposta illeggibile due volte di fila diventa
+      // terminale. Il conteggio lo porta il codice, senza una colonna nuova.
+      const code = codeAfterRetry(row.error_code, grezzo);
       await setMessageProcessing(deps.sb, row.id, 'failed', {
         error_code: code, attention_status: 'to_verify',
       });
       esito.failed++;
-      // Se l'ambiente rifiuta di nuovo, il resto del lotto non andrà meglio.
-      if (isClassifyRetryable(code)) break;
+      // Se l'AMBIENTE rifiuta di nuovo, il resto del lotto non andrà meglio.
+      // Una risposta illeggibile riguarda invece solo questo messaggio.
+      if (grezzo !== 'INVALID_RESPONSE' && isClassifyRetryable(grezzo)) break;
     }
   }
   return esito;
