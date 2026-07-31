@@ -38,11 +38,14 @@ posta in arrivo, estrazione delle Finanze, `contract-worker`, interpretazione di
 Subsidy AI, «Chiedi ad AI-Swisse».
 
 ⚠️ **Ciò che questa verifica NON dice.** Che le suite che spendono credito siano
-state rieseguite: `test:integration` e `test:eval` sono di nuovo **eseguibili**,
-e non sono state eseguite. Finché non lo saranno, le colonne «testato» e
-«servizio reale» dei moduli che dipendono dall'AI continuano a descrivere
-l'ultima misura riuscita, non una misura di oggi — per la stessa ragione di
-prima, non più per mancanza di credito.
+state rieseguite tutte. **Una sola lo è stata**: `eval:assistant`, la sera del
+2026-07-31, con esito **16/16 su tre esecuzioni per domanda** (vedi la riga
+«Chiedi ad AI-Swisse» e la sezione dedicata). Restano NON eseguite `eval:admin`,
+`eval:subsidy` — le altre due voci di `test:eval` — e tutto `test:integration`
+(`test:phase2`, `test:async`, `test:pipeline`). Per quei moduli le colonne
+«testato» e «servizio reale» continuano a descrivere l'ultima misura riuscita,
+non una misura di oggi: adesso perché nessuno le ha eseguite, non più per
+mancanza di credito.
 
 ## Le sei parole, e perché sono sei
 
@@ -75,7 +78,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
 | Contratti | `/contratti` | sì | sì | sì | sì | **no** | parziale | — | ⚠️ **il worker non ha mai prodotto un'estrazione su un contratto vero**: `contract_extractions` è a zero. Il prompt è allineato a un ragionamento, non a una risposta reale |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
-| Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | parziale | sì | sì | Anthropic | ⚠️ `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione. La causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato), corretta il 2026-07-31 e verificata contro il database vero; l'asserzione sull'ancoraggio è ora una funzione pura provata offline. ⚠️ **L'eval NON è stata rieseguita.** Non più per mancanza di credito — il credito è stato ripristinato e riverificato il 2026-07-31 — ma perché nessuno l'ha eseguita da allora: `eval:assistant` è di nuovo eseguibile e resta da eseguire. Sola lettura, retention 180 giorni attiva |
+| Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). 7 revisioni del catalogo in attesa di una persona |
 
 ## Le integrazioni esterne
@@ -135,6 +138,51 @@ servirebbe una connessione vera, che non c'è.
 accodato la richiesta.** Da oggi `npm run verify:deploy` legge comunque l'esito
 dell'ultima esecuzione di ogni job — prima sapeva solo che il job *esisteva* —
 e i due worker scrivono `phase=start` / `phase=end` con `rid` e `durationMs`.
+
+## `eval:assistant` — 16/16, e che cosa significa davvero
+
+Rieseguita la sera del **2026-07-31**, la prima volta dopo la correzione del
+seed e dopo il ripristino del credito:
+
+```
+npm run eval:assistant -- --runs 3
+→ 16 superati su 16 · 48 esecuzioni, tutte verdi
+  token in 96 548 · out 51 318 · da cache 1 914 676
+  strumenti 7,4/domanda · fonti 6,8/domanda · 66 397 ms/domanda
+```
+
+Era **15/16 con un caso diverso a ogni esecuzione**. Tre giri per domanda, tutti
+verdi, sono una prova sostanzialmente più forte di un giro solo: se il difetto
+del seed fosse ancora lì, 48 esecuzioni avrebbero dovuto incontrarlo.
+
+⚠️ **VERDE NON VUOL DIRE DETERMINISTICO, e qui si vede.** Su `claude-opus-5` i
+parametri di campionamento sono stati rimossi, quindi la ripetibilità bit per
+bit **non è ottenibile** — `--runs N` esiste per misurare la varianza, non per
+eliminarla. In questa esecuzione due casi hanno cambiato ESITO fra un giro e
+l'altro, pur passando tutte e tre le volte:
+
+| Caso | Giro 1 | Giro 2 | Giro 3 |
+|---|---|---|---|
+| `contratti · rinnovi` | `answered` | `partial` | `answered` |
+| `incrocio fra moduli` | `partial` | `answered` | `partial` |
+
+Passano perché l'asserzione accetta entrambi gli esiti, non perché il modello si
+comporti allo stesso modo. **È un margine, e va saputo prima di stringerlo**: se
+un domani si pretendesse `answered` esatto su quei due casi, tornerebbero a
+lampeggiare — e non sarebbe una regressione del prodotto.
+
+Varia parecchio anche il PERCORSO, a esito invariato: `date` ha usato 4, 6 e 5
+strumenti nei tre giri e citato 2, 5 e 2 fonti; `clienti` 5, 6 e 4 strumenti.
+L'esito dichiarato e le fonti giuste reggono; quanto lavoro serva per arrivarci,
+no.
+
+⚠️ **Che cosa NON dice questa misura.** Che `test:eval` sia verde: quel gruppo ha
+tre voci e **è stata eseguita una sola**. `eval:admin` e `eval:subsidy` restano
+non eseguite, come tutto `test:integration`.
+
+**Dati di prova rimossi**, verificato interrogando il database e non fidandosi
+dello script: zero aziende `Eval Assistant%`, zero utenti di prova, e le due
+aziende vere (Pilota Impianti Sagl, Rossi SA) intatte.
 
 ## Come si rimisura questa tabella
 
