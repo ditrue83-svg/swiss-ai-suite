@@ -187,28 +187,118 @@ jobs:
           } > .env.test
           rm -f .supabase-status
 
-      # ⚠️ DIAGNOSTICA TEMPORANEA. Il seed è fallito con «permission denied for
-      # table subsidy_sources» USANDO LA CHIAVE DI SERVIZIO, cosa che in
-      # produzione non succede. Prima di correggere serve sapere PERCHÉ, invece
-      # di aggiungere un `grant` a caso finché diventa verde: un rimedio non
-      # capito nasconde la differenza fra i due ambienti invece di dichiararla.
-      - name: Diagnostica dei permessi (temporanea)
+      # ⚠️⚠️ IL PEZZO PIÙ IMPORTANTE DI QUESTO JOB, e non era previsto.
+      #
+      # Alla prima esecuzione il seed è fallito con «permission denied for
+      # table subsidy_sources» USANDO LA CHIAVE DI SERVIZIO. La diagnostica ha
+      # dato la causa, ed è una differenza fra i due ambienti che nessuno
+      # conosceva:
+      #
+      #   produzione   pg_default_acl per il ruolo `postgres` in `public`:
+      #                anon/authenticated/service_role = arwdDxt  (DML compresa)
+      #   locale (CLI) stesso posto:
+      #                anon/authenticated/service_role = Dxt      (SOLO truncate,
+      #                                                            references, trigger)
+      #
+      # ⚠️ LA CONSEGUENZA VA CAPITA PRIMA DI AGGIRARLA: le nostre migrazioni
+      #    non concedono MAI esplicitamente la DML di base — `companies` non ha
+      #    un solo `grant` in tutto il repository. Funziona perché la
+      #    piattaforma l'aveva già concessa per default. È la stessa dipendenza
+      #    implicita che nella 0013 aveva prodotto il difetto peggiore del
+      #    progetto, vista dall'altro lato: là il default concedeva TROPPO, qui
+      #    la sua assenza non concede abbastanza.
+      #
+      # Qui si RICOSTRUISCE l'ordine di costruzione della produzione: prima i
+      # privilegi predefiniti, poi le migrazioni. Non si aggiunge un `grant`
+      # finché il verde arriva — quello nasconderebbe la differenza invece di
+      # riprodurla, e il database della CI smetterebbe di somigliare a quello
+      # vero proprio nella cosa che questo repository controlla di più.
+      - name: Ricostruire lo schema con i privilegi predefiniti della produzione
         run: |
           set -euo pipefail
           DB=$(supabase status -o env | grep -E '^DB_URL=' | head -1 | cut -d= -f2- | tr -d '"')
-          psql "$DB" -c "select current_user as utente_corrente, session_user as utente_di_sessione;"
-          psql "$DB" -c "select grantee, string_agg(privilege_type, ',' order by privilege_type) as privilegi
-                           from information_schema.table_privileges
-                          where table_schema='public' and table_name='subsidy_sources'
-                          group by grantee order by grantee;"
-          psql "$DB" -c "select grantee, string_agg(privilege_type, ',' order by privilege_type) as privilegi
-                           from information_schema.table_privileges
-                          where table_schema='public' and table_name='companies'
-                          group by grantee order by grantee;"
-          psql "$DB" -c "select defaclrole::regrole as per_ruolo, defaclnamespace::regnamespace as schema,
-                                defaclobjtype as tipo, defaclacl as privilegi_predefiniti
-                           from pg_default_acl;"
-          psql "$DB" -c "select tableowner, count(*) from pg_tables where schemaname='public' group by 1;"
+          if [ -z "$DB" ]; then
+            echo "::error title=DB_URL assente::non si ricava da 'supabase status -o env'."
+            exit 1
+          fi
+
+          psql "$DB" -v ON_ERROR_STOP=1 <<'SQL'
+          drop schema public cascade;
+          create schema public;
+          grant usage  on schema public to postgres, anon, authenticated, service_role;
+          grant create on schema public to postgres;
+          alter default privileges in schema public grant all on tables    to anon, authenticated, service_role;
+          alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+          alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+          SQL
+
+          for f in supabase/migrations/*.sql; do
+            echo "── $(basename "$f")"
+            psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+
+          # PostgREST tiene in cache lo schema: dopo averlo ricostruito da capo
+          # servirebbe una vita intera di 404 per capire perché. Si ricarica.
+          psql "$DB" -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          sleep 3
+
+      # ⚠️ LA RICOSTRUZIONE SI AUTOVERIFICA SUI DUE LATI, ed è il punto: se la
+      # baseline non fosse tornata, le suite fallirebbero tutte e si darebbe la
+      # colpa al prodotto; se le restrizioni delle migrazioni fossero state
+      # cancellate dalla baseline, le suite passerebbero su un database più
+      # permissivo di quello vero — un verde che vale meno di un rosso.
+      # ⚠️ LA RICOSTRUZIONE SI AUTOVERIFICA SUI DUE LATI, ed è il punto.
+      # Se la baseline non fosse tornata, le undici suite fallirebbero tutte e
+      # si darebbe la colpa al prodotto. Se invece la baseline avesse
+      # CANCELLATO le restrizioni delle migrazioni, passerebbero su un database
+      # più permissivo di quello vero — e un verde ottenuto su garanzie assenti
+      # vale meno di un rosso. Un controllo che guarda un lato solo non vede
+      # l'altro fallire: è la lezione della cascata 0033/0034.
+      - name: Il database ricostruito somiglia davvero alla produzione?
+        run: |
+          set -euo pipefail
+          DB=$(supabase status -o env | grep -E '^DB_URL=' | head -1 | cut -d= -f2- | tr -d '"')
+          psql "$DB" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare
+            v_manca text;
+          begin
+            -- (a) la DML di base è tornata dove la produzione ce l'ha
+            select 'authenticated non ha SELECT su companies' into v_manca
+             where not exists (
+               select 1 from information_schema.table_privileges
+                where table_schema='public' and table_name='companies'
+                  and grantee='authenticated' and privilege_type='SELECT');
+            if v_manca is not null then raise exception '%', v_manca; end if;
+
+            select 'service_role non ha INSERT su subsidy_sources' into v_manca
+             where not exists (
+               select 1 from information_schema.table_privileges
+                where table_schema='public' and table_name='subsidy_sources'
+                  and grantee='service_role' and privilege_type='INSERT');
+            if v_manca is not null then raise exception '%', v_manca; end if;
+
+            -- (b) e le restrizioni delle migrazioni NON sono state cancellate
+            select 'la 0032 è stata annullata: authenticated ha INSERT su subsidy_sources' into v_manca
+             where exists (
+               select 1 from information_schema.table_privileges
+                where table_schema='public' and table_name='subsidy_sources'
+                  and grantee='authenticated' and privilege_type='INSERT');
+            if v_manca is not null then raise exception '%', v_manca; end if;
+
+            select 'la 0014 è stata annullata: authenticated ha UPDATE di tabella su email_messages' into v_manca
+             where exists (
+               select 1 from information_schema.table_privileges
+                where table_schema='public' and table_name='email_messages'
+                  and grantee='authenticated' and privilege_type='UPDATE'
+                  and not exists (select 1 from information_schema.column_privileges
+                                   where table_schema='public' and table_name='email_messages'
+                                     and grantee='authenticated' and privilege_type='UPDATE'));
+            if v_manca is not null then raise exception '%', v_manca; end if;
+
+            raise notice 'privilegi ricostruiti: baseline presente, restrizioni intatte';
+          end $$;
+          SQL
 
       # Il catalogo non nasce con le migrazioni: è dato, non schema. `test:subsidy`
       # ha bisogno di UNA versione pubblicata e si rifiuta di crearsela da sé —
