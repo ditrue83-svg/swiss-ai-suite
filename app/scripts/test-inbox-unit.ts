@@ -28,9 +28,11 @@ import {
 } from '../supabase/functions/_shared/email/attachments.ts';
 import {
   prescreen, CLASSIFIER_VERSION, inboxCodeForAiError, isClassifyRetryable,
-  CLASSIFY_RETRYABLE_CODES,
+  CLASSIFY_RETRYABLE_CODES, codeAfterRetry,
 } from '../supabase/functions/_shared/email/classify.ts';
 import { validateClassifierOutput, buildClassifyRequest } from '../supabase/functions/_shared/email/classifyPrompt.ts';
+import { parseModelJson } from '../supabase/functions/_shared/parse.ts';
+import { readFileSync } from 'node:fs';
 import { createGoogleAdapter } from '../supabase/functions/_shared/email/google.ts';
 import { createMicrosoftAdapter } from '../supabase/functions/_shared/email/microsoft.ts';
 import { seal, open as openSealed, importKey, generateKeyBase64, timingSafeEqual, sha256Hex } from '../supabase/functions/_shared/email/crypto.ts';
@@ -897,8 +899,49 @@ section('11 · Perché una classificazione è caduta — e se va ripresa');
     '⚠️ e un’esecuzione INTERROTTA dal limite dei 150 secondi: il codice significa già «merita un tentativo» in tutto il repository, e finora una classificazione uccisa così restava ferma per sempre');
   ok(!isClassifyRetryable('CLASSIFY_FAILED'),
     '⚠️ un guasto IGNOTO non si riprova all’infinito: sarebbe il modo di bruciare credito in silenzio. Resta fermo e visibile');
-  ok(!isClassifyRetryable('INVALID_RESPONSE'),
-    '⚠️ e nemmeno una risposta inutilizzabile: rifare la stessa domanda è una scommessa, non un rimedio');
+  ok(isClassifyRetryable('INVALID_RESPONSE'),
+    '⚠️ una risposta illeggibile SI riprova — e la scelta è stata rifatta su una misura: lo stesso testo a volte produce JSON leggibile e a volte no, quindi il secondo tentativo è il rimedio normale a un formattatore non deterministico');
+
+  // -- ma UNA volta sola, e il conteggio lo porta il codice -----------------
+  ok(codeAfterRetry('INVALID_RESPONSE', 'INVALID_RESPONSE') === 'CLASSIFY_FAILED',
+    '⚠️ due risposte illeggibili di fila diventano terminali: nessuna colonna nuova, il codice stesso è il contatore — come `INTERRUPTED` fa già in questo modulo');
+  ok(!isClassifyRetryable(codeAfterRetry('INVALID_RESPONSE', 'INVALID_RESPONSE')),
+    'e il codice terminale non è ripescabile: il ciclo si chiude, non si riprova all’infinito');
+  ok(codeAfterRetry('INVALID_RESPONSE', 'AI_CREDIT_EXHAUSTED') === 'AI_CREDIT_EXHAUSTED',
+    '⚠️ se il SECONDO tentativo cade per l’AMBIENTE, quel codice resta e il messaggio resta ripescabile: l’ambiente non è colpa del messaggio, e contarglielo lo condannerebbe per un guasto di qualcun altro');
+  ok(codeAfterRetry('AI_CREDIT_EXHAUSTED', 'INVALID_RESPONSE') === 'INVALID_RESPONSE',
+    'e una risposta illeggibile dopo un guasto d’ambiente è la PRIMA volta che è illeggibile: ha diritto al suo tentativo');
+  ok(codeAfterRetry(null, 'INVALID_RESPONSE') === 'INVALID_RESPONSE',
+    'senza un codice precedente non si è mai riprovato');
+
+  // -- il parser: perché non basta tagliare dalla prima graffa -------------
+  // ⚠️ Il classificatore faceva `JSON.parse(testo.slice(testo.indexOf('{')))`.
+  // Su una risposta dentro un recinto markdown quello slice lascia i tre apici
+  // finali DENTRO il testo da interpretare, e l'analisi fallisce su una
+  // risposta perfettamente valida. `parseModelJson` — lo stesso parser che
+  // l'analisi documentale usa dal principio — il recinto lo toglie.
+  {
+    const recintata = '```json\n{"relevance":"informational","confidence":0.8,"reason":"x","manipulationAttempt":false}\n```';
+    let naive = false;
+    try { JSON.parse(recintata.slice(recintata.indexOf('{'))); naive = true; } catch { /* no */ }
+    ok(!naive, 'lo slice dalla prima graffa NON legge una risposta dentro un recinto markdown');
+    ok((parseModelJson(recintata) as { relevance: string }).relevance === 'informational',
+      '⚠️ `parseModelJson` sì — ed è lo strumento che esisteva già in casa e che questo percorso non usava');
+    ok(validateClassifierOutput(parseModelJson(recintata)).relevance === 'informational',
+      'e il risultato attraversa la validazione come una risposta qualunque');
+
+    // ⚠️ I due controlli qui sopra provano lo STRUMENTO, non che il codice lo
+    // USI: rimettendo lo slice ingenuo in `sync.ts` resterebbero verdi. Questo
+    // legge il sorgente, come `test:crm-unit` fa con le migrazioni — è l'unico
+    // modo di vedere una divergenza che nessun tipo può cogliere.
+    const sorgente = readFileSync(
+      new URL('../supabase/functions/_shared/email/sync.ts', import.meta.url), 'utf8',
+    );
+    ok(sorgente.includes('parseModelJson(block.text)'),
+      '⚠️ e il classificatore lo USA davvero: senza questa riga i due controlli sopra sarebbero verdi su un codice che non l’ha mai chiamato');
+    ok(!/JSON\.parse\(\s*block\.text\.slice/.test(sorgente),
+      'e non è rimasto lo slice ingenuo accanto');
+  }
   ok(!isClassifyRetryable(null) && !isClassifyRetryable(''), 'nessun codice, nessuna ripresa');
 
   // -- i codici esistono nel contratto e hanno una frase in tutte le lingue --
