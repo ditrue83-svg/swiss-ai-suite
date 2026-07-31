@@ -46,7 +46,7 @@ import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
 import type { EmailAttachment, EmailLinkedDocument } from '../src/types/models';
-import type { DocumentStatus } from '../src/types/database';
+import type { AnalysisStatus, DocumentStatus } from '../src/types/database';
 // Importati anche per farli passare dal typecheck: `sync.ts` e `store.ts` non
 // sono raggiungibili da `src/`, quindi senza questo import `npm run typecheck`
 // non li guarderebbe mai — e un errore di tipo nell'orchestrazione della
@@ -775,25 +775,61 @@ section('10 · Dal messaggio al documento, e ritorno');
     && documentStateFromStatus('extracting') === 'processing',
     'un documento in lavorazione dice «in elaborazione»');
   ok(documentStateFromStatus('failed') === 'failed', 'una lettura fallita lo dichiara');
-  ok(documentStateFromStatus('needs_review') === 'to_verify', 'e una da verificare pure');
-  ok(documentStateFromStatus('completed') === 'analyzed' && documentStateFromStatus('analyzed') === 'analyzed',
-    'un documento letto è «analizzato»');
   ok(documentStateFromStatus('uploaded') === 'none',
-    'e uno appena importato è «non ancora analizzato» — non «pronto», che sarebbe falso');
+    'uno appena importato è «non ancora analizzato» — non «pronto», che sarebbe falso');
 
-  // ⚠️ Il vocabolario è UNO SOLO: ogni stato che questa funzione può produrre
-  // ha già la sua etichetta nel Document Hub, in tutte e tre le lingue. Senza
-  // questo controllo, un valore nuovo comparirebbe grezzo in pagina.
+  // ⚠️⚠️ IL CASO CHE HA FATTO CAMBIARE QUESTA FUNZIONE, trovato guardando la
+  // schermata e poi INTERROGANDO IL DATABASE VERO. `documents.status` e
+  // l'esito dell'ultima analisi POSSONO divergere: il 2026-07-31 in produzione
+  // c'era una riga `status = 'completed'` con l'ultima analisi `needs_review`.
+  // Su quel documento la posta avrebbe scritto «Analizzato» mentre la
+  // schermata del documento, due clic più in là, dice «Da verificare».
+  ok(documentStateFromStatus('completed') === null
+    && documentStateFromStatus('analyzed') === null
+    && documentStateFromStatus('needs_review') === null,
+    '⚠️ da `documents.status` NON si deduce se un’analisi è da verificare: nel dubbio la riga non mostra nessuna pastiglia');
+
+  // Dove il dato c'è davvero — il documento principale, di cui la schermata
+  // carica l'analisi — si usa `stateOf`, la STESSA funzione del Document Hub.
+  {
+    const righeConAnalisi = messageDocumentRows(
+      [collegato({ documentId: 'doc-att', relation: 'attachment', attachmentId: 'att-1', status: 'completed' })],
+      [allegato()],
+      'needs_review',
+    );
+    ok(righeConAnalisi[0].state === 'to_verify',
+      '⚠️ sul documento principale vince l’analisi VERA: «Da verificare», la stessa parola del Document Hub');
+    const senzaAnalisi = messageDocumentRows(
+      [collegato({ documentId: 'doc-att', relation: 'attachment', attachmentId: 'att-1', status: 'completed' })],
+      [allegato()],
+      null,
+    );
+    ok(senzaAnalisi[0].state === null,
+      'e senza analisi letta non si afferma niente');
+  }
+
+  // ⚠️ Il vocabolario è UNO SOLO: ogni stato che queste funzioni possono
+  // produrre ha già la sua etichetta nel Document Hub, in tutte e tre le
+  // lingue. Senza questo controllo, un valore nuovo comparirebbe grezzo.
   const statiPossibili: DocumentStatus[] = [
     'uploaded', 'extracting', 'analyzing', 'completed', 'needs_review', 'failed', 'processing', 'analyzed',
   ];
+  const analisiPossibili: (AnalysisStatus | null)[] = ['pending', 'completed', 'needs_review', 'failed', null];
   for (const [lang, dict] of Object.entries({ it, de, fr })) {
     const etichette = (dict.documents as { states: Record<string, string> }).states;
-    const mancanti = statiPossibili
-      .map((s) => documentStateFromStatus(s))
-      .filter((stato) => !etichette[stato]);
+    const prodotti = new Set<string>();
+    for (const s of statiPossibili) {
+      const solo = documentStateFromStatus(s);
+      if (solo) prodotti.add(solo);
+      for (const a of analisiPossibili) {
+        prodotti.add(messageDocumentRows(
+          [collegato({ status: s })], [], a,
+        )[0].state ?? 'analyzed');
+      }
+    }
+    const mancanti = [...prodotti].filter((stato) => !etichette[stato]);
     ok(mancanti.length === 0, `${lang}: ogni stato mostrato nella posta ha la sua etichetta`,
-      `mancanti: ${[...new Set(mancanti)].join(', ')}`);
+      `mancanti: ${mancanti.join(', ')}`);
   }
 }
 

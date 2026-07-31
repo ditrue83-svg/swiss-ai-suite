@@ -26,7 +26,9 @@ import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
 import { dueLabel, isOverdue, sourceLabelKey, statusLabelKey } from './taskFormat';
 import { TaskCreateForm } from './TaskCreateForm';
-import { EMPTY_TASK_FORM, safeDatePrefill, taskFormSubmission, type TaskFormValues } from './taskCreateModel';
+import {
+  EMPTY_TASK_FORM, createSubmitLatch, safeDatePrefill, taskFormSubmission, type TaskFormValues,
+} from './taskCreateModel';
 import type { TaskPriority, TaskWithPeople } from '@/types/models';
 
 const PAGE_SIZE = 25;
@@ -99,6 +101,8 @@ export function TasksPage() {
   const [form, setForm] = useState<TaskFormValues>(EMPTY_TASK_FORM);
   const [saving, setSaving] = useState(false);
   const newTaskButtonRef = useRef<HTMLButtonElement>(null);
+  // Stessa corsa del dettaglio Documento, stessa difesa: vedi `createSubmitLatch`.
+  const latch = useRef(createSubmitLatch());
 
   // Il Calendario NON ha un proprio modulo di creazione (§17): quando si preme
   // un giorno, porta qui con la data nell'URL e si apre QUESTO modulo, che è
@@ -118,9 +122,9 @@ export function TasksPage() {
   }, [params, setParams]);
 
   async function createTask() {
-    if (saving) return;
     const payload = taskFormSubmission(form);
     if (!payload.title.trim()) return;
+    if (!latch.current.tryAcquire()) return;
     setSaving(true);
     try {
       await taskService.create({
@@ -136,6 +140,7 @@ export function TasksPage() {
     } catch (e) {
       showToast(toUserMessage(e));
     } finally {
+      latch.current.release();
       setSaving(false);
     }
   }

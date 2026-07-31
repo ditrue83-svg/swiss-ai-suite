@@ -145,7 +145,9 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
       </div>
     );
   }
-  const documentRows = messageDocumentRows(message.documents, message.attachments);
+  const documentRows = messageDocumentRows(
+    message.documents, message.attachments, analysis?.analysisStatus ?? null,
+  );
 
   const received = new Date(message.receivedAt);
   const receivedLabel = Number.isNaN(received.getTime())
@@ -321,7 +323,12 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
                 {/* Lo stato è TESTO e usa le parole del Document Hub: un
                     secondo vocabolario per «in elaborazione» sarebbero due
                     parole per la stessa cosa. */}
-                <span className="badge badge-neutral">{t(`documents.states.${d.state}` as const)}</span>
+                {/* La pastiglia compare solo se lo stato si SA: vedi
+                    `messageDocuments.ts`. Un'etichetta plausibile e sbagliata
+                    è peggio di un'etichetta assente. */}
+                {d.state && (
+                  <span className="badge badge-neutral">{t(`documents.states.${d.state}` as const)}</span>
+                )}
                 <Link className="btn btn-sm" to={`/documenti/${d.documentId}`}>
                   <Icon name="document" className="ic-sm" /> {t('inbox.detail.openDocument')}
                 </Link>

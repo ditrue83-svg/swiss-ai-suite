@@ -70,14 +70,48 @@ export function effectivePriority(values: TaskFormValues, now?: Date): TaskPrior
 }
 
 /**
- * Si può inviare?
+ * Si può inviare? Riguarda ciò che si VEDE: il pulsante è premibile o no.
  *
- * Due condizioni, e la seconda è la protezione contro il doppio invio: finché
- * un salvataggio è in corso il pulsante non riparte. Non è l'unica difesa — il
- * componente disabilita anche il pulsante — ma è quella che si può provare.
+ * ⚠️ NON è la protezione contro il doppio invio, e crederlo è costato una
+ * prova nel browser: `saving` è uno stato React, e due clic nello stesso tick
+ * lo leggono ENTRAMBI a `false` — la nuova resa arriva dopo. Il 2026-07-31,
+ * con questa sola difesa, due clic ravvicinati hanno creato due attività
+ * identiche a 14 millisecondi di distanza sul database vero.
+ * La difesa che regge è `createSubmitLatch`, qui sotto.
  */
 export function canSubmitTaskForm(values: TaskFormValues, saving: boolean): boolean {
   return !saving && values.title.trim().length > 0;
+}
+
+/**
+ * Un salvataggio alla volta, deciso SINCRONAMENTE.
+ *
+ * Non è uno stato e non è un `useState`: è una variabile che cambia
+ * nell'istante stesso del primo clic, quindi il secondo la trova già presa
+ * anche se avviene prima di qualunque nuova resa. Il componente ne tiene una
+ * in un `useRef`.
+ *
+ * ⚠️ Ciò che questo NON copre, e va detto: due schede aperte, oppure un clic
+ * il cui esito si perde in rete e viene ritentato. Là il duplicato è possibile
+ * e resta VISIBILE — l'alternativa (una chiave di idempotenza) chiederebbe una
+ * migrazione, e questo intervento non ne introduce nessuna.
+ */
+export interface SubmitLatch {
+  /** `true` se il posto era libero e ora è preso. */
+  tryAcquire(): boolean;
+  release(): void;
+}
+
+export function createSubmitLatch(): SubmitLatch {
+  let inFlight = false;
+  return {
+    tryAcquire() {
+      if (inFlight) return false;
+      inFlight = true;
+      return true;
+    },
+    release() { inFlight = false; },
+  };
 }
 
 /** Ciò che si manda al servizio. È il confine fra «stringa vuota» e `null`. */

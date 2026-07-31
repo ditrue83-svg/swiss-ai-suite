@@ -17,10 +17,11 @@
 // etichette sono quelle di `documents.states.*`: un secondo vocabolario per
 // dire «in elaborazione» avrebbe prodotto due parole per lo stesso stato.
 // ============================================================================
+import { stateOf } from '@/features/documents/documentModel';
 import type {
   DocumentState, EmailAttachment, EmailDocumentRelation, EmailLinkedDocument,
 } from '@/types/models';
-import type { DocumentStatus } from '@/types/database';
+import type { AnalysisStatus, DocumentStatus } from '@/types/database';
 
 export interface MessageDocumentRow {
   documentId: string;
@@ -28,8 +29,15 @@ export interface MessageDocumentRow {
   title: string;
   /** Il nome del file, quando la riga viene da un allegato. */
   filename: string | null;
-  /** Lo stesso vocabolario del Document Hub: nessuna parola nuova. */
-  state: DocumentState;
+  /**
+   * Lo stesso vocabolario del Document Hub — e `null` quando da qui NON si sa.
+   * ⚠️ `null` non è pigrizia: `documents.status` e lo stato dell'analisi
+   * POSSONO divergere, e il 2026-07-31 in produzione c'era una riga
+   * `status = 'completed'` con l'ultima analisi `needs_review`. Scrivere
+   * «Analizzato» su quel documento significherebbe dire una cosa che la
+   * schermata del documento smentisce due clic più in là.
+   */
+  state: DocumentState | null;
   /**
    * È il documento su cui il messaggio mostra l'analisi (§33): l'allegato se
    * c'è, altrimenti il corpo. Non si fondono evidenze di fonti diverse.
@@ -38,15 +46,21 @@ export interface MessageDocumentRow {
 }
 
 /**
- * Lo stato del documento a partire dal suo `status`.
+ * Lo stato di un documento di cui NON si è letta l'analisi.
  *
- * ⚠️ Deliberatamente NON usa `stateOf` del Document Hub: quella funzione
- * decide dall'esito dell'ULTIMO TENTATIVO di analisi, un dato che il carico
- * del messaggio non porta. Fingere di saperlo qui vorrebbe dire raccontare uno
- * stato che nessuno ha letto. Da `uploaded` si ricava «non ancora analizzato»,
- * che è vero; il resto lo racconta la schermata del documento.
+ * Il carico del messaggio porta `documents.status`, che da solo decide con
+ * certezza tre casi e non gli altri:
+ *   · in lavorazione, fallito, mai analizzato  → si sanno;
+ *   · «completato» / «da verificare»           → NON si sanno, perché quello
+ *     stato lo stabilisce l'ultimo tentativo di analisi, e i due valori
+ *     possono divergere (misurato in produzione il 2026-07-31: un documento
+ *     `completed` con l'ultima analisi `needs_review`).
+ *
+ * Nel dubbio si restituisce `null` e la riga non mostra nessuna pastiglia: la
+ * schermata del documento lo dice, e lo dice giusto. Un'etichetta plausibile e
+ * sbagliata è peggio di un'etichetta assente.
  */
-export function documentStateFromStatus(status: DocumentStatus): DocumentState {
+export function documentStateFromStatus(status: DocumentStatus): DocumentState | null {
   switch (status) {
     case 'extracting':
     case 'analyzing':
@@ -54,13 +68,12 @@ export function documentStateFromStatus(status: DocumentStatus): DocumentState {
       return 'processing';
     case 'failed':
       return 'failed';
-    case 'needs_review':
-      return 'to_verify';
-    case 'completed':
-    case 'analyzed':
-      return 'analyzed';
     case 'uploaded':
       return 'none';
+    case 'completed':
+    case 'needs_review':
+    case 'analyzed':
+      return null;
   }
 }
 
@@ -81,6 +94,13 @@ export function primaryDocumentOf(
 export function messageDocumentRows(
   documents: EmailLinkedDocument[],
   attachments: EmailAttachment[],
+  /**
+   * L'esito dell'ultima analisi del documento PRINCIPALE, che il dettaglio del
+   * messaggio carica già per mostrare «Cosa richiede attenzione». Per quella
+   * riga lo stato si ricava con `stateOf`, la STESSA funzione del Document
+   * Hub: là dove il dato c'è, si usa quello vero.
+   */
+  primaryAnalysisStatus: AnalysisStatus | null = null,
 ): MessageDocumentRow[] {
   const primary = primaryDocumentOf(documents);
   return documents.map((d) => ({
@@ -93,7 +113,9 @@ export function messageDocumentRows(
     filename: d.attachmentId
       ? attachments.find((a) => a.id === d.attachmentId)?.filename ?? null
       : null,
-    state: documentStateFromStatus(d.status),
+    state: primary?.documentId === d.documentId && primaryAnalysisStatus !== null
+      ? stateOf(primaryAnalysisStatus, d.status)
+      : documentStateFromStatus(d.status),
     isPrimary: primary?.documentId === d.documentId,
   }));
 }
