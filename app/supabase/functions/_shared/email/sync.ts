@@ -471,15 +471,46 @@ async function classifyMessage(
       deterministicSignals: input.screening.reasons,
     });
     const response = await deps.createMessage!(request as never) as ModelMessage;
+
+    // ⚠️ IL TETTO DI TOKEN È NOSTRO, e va detto così. Quando il budget finisce,
+    // il modello viene tagliato a metà frase: il JSON non si parsa e senza
+    // questo ramo il caso finirebbe in «la risposta non è utilizzabile», cioè
+    // accusare il fornitore di un limite scelto da noi. È lo stesso ramo che
+    // `pipeline.ts`, `contracts/process.ts` e `finance/process.ts` hanno dal
+    // 2026-07-29: l'audit dichiarò «mancava in TRE posti», ed erano QUATTRO —
+    // questo non l'aveva visto nessuno.
+    //
+    // ⚠️ Va PRIMA del blocco di testo: se il budget si esaurisce durante il
+    // thinking, `content` non contiene alcun blocco `text`, e il caso uscirebbe
+    // da lì come «risposta non utilizzabile» — vero, e senza spiegare niente.
+    if (response.stop_reason === 'max_tokens') {
+      // Un `Error` con `.code`, non un `EmailProviderError`: quel tipo è il
+      // vocabolario dei guasti del PROVIDER DI POSTA, e questo non lo è.
+      // Stessa forma di `pipeline.ts`.
+      const troncata = new Error('max_tokens') as Error & { code?: string };
+      troncata.code = 'AI_OUTPUT_TRUNCATED';
+      throw troncata;
+    }
+
     const block = response.content.find((b) => b.type === 'text' && typeof b.text === 'string');
-    // ⚠️ La LETTURA della risposta ha un codice suo. «Il modello ha risposto
-    // qualcosa che non si riesce a usare» e «l'ambiente ci ha rifiutato» sono
-    // guasti opposti: il secondo si riprende da solo, il primo no. Confonderli
-    // è ciò che ha reso non diagnosticabili i 16 messaggi del 2026-07-31.
+    // ⚠️ NESSUN BLOCCO DI TESTO non è «una risposta vuota»: è nessuna risposta.
+    // Prima si proseguiva con `'{}'`, che si parsa benissimo e attraversa
+    // `validateClassifierOutput` fino al suo ripiego prudente: il messaggio
+    // veniva classificato «forse azionabile» con fiducia zero, cioè un
+    // risultato plausibile costruito sul nulla. È il fallback silenzioso che
+    // questo progetto non ammette, ed era in piedi anche dopo la correzione
+    // del 2026-07-31.
+    if (!block || typeof block.text !== 'string' || !block.text.trim()) {
+      throw new EmailProviderError('INVALID_RESPONSE', 'nessun blocco di testo nella risposta');
+    }
+
+    // «Il modello ha risposto qualcosa che non si riesce a usare» e «l'ambiente
+    // ci ha rifiutato» sono guasti opposti: il secondo si riprende da solo, il
+    // primo no. Confonderli è ciò che ha reso non diagnosticabili i 16 messaggi
+    // del 2026-07-31.
     let parsed;
     try {
-      const testo = block?.text ?? '{}';
-      parsed = validateClassifierOutput(JSON.parse(testo.slice(testo.indexOf('{'))));
+      parsed = validateClassifierOutput(JSON.parse(block.text.slice(block.text.indexOf('{'))));
     } catch (_e) {
       throw new EmailProviderError('INVALID_RESPONSE', 'risposta del classificatore non utilizzabile');
     }

@@ -1709,6 +1709,7 @@ export const it = {
       aiNotConfigured: 'L’analisi automatica non è configurata su questo server.',
       aiCreditExhausted: 'Il servizio di lettura non ha credito disponibile: la comunicazione non è stata esaminata. Aspettare non risolve — serve un intervento di chi amministra l\u2019applicazione. Il messaggio viene ripreso da solo appena il servizio torna disponibile.',
       classifyFailed: 'Non è stato possibile stabilire se questa comunicazione richieda attenzione. Il messaggio resta fra quelli da verificare.',
+      aiOutputTruncated: 'L\u2019esame di questa comunicazione si è interrotto prima della fine: la risposta richiesta era più lunga di quella prevista. Non dipende dal messaggio — serve un intervento di chi amministra l\u2019applicazione.',
       analysisFailed: 'L’analisi di questa comunicazione non è riuscita. La comunicazione resta nella Inbox.',
       interrupted: 'L’elaborazione di questa comunicazione si è interrotta prima di concludersi. La comunicazione resta nella Inbox: puoi farla analizzare adesso.',
       timeBudget: 'È stato elaborato quanto entra in una sola esecuzione. Il resto prosegue da solo: non serve riprovare.',
