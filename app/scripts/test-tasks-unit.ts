@@ -15,6 +15,10 @@ import {
   calendarDaysUntil, compareTasks, dueLabel, eventLabelKey, isOverdue,
   sortTasks, sourceLabelKey, statusLabelKey, stepsFromActions,
 } from '../src/features/tasks/taskFormat';
+import {
+  EMPTY_TASK_FORM, canSubmitTaskForm, effectivePriority, proposedPriority,
+  safeDatePrefill, taskFormSubmission, type TaskFormValues,
+} from '../src/features/tasks/taskCreateModel';
 import type { ChecklistAction, Task, TaskEventKind, TaskSource, TaskStatus } from '../src/types/models';
 
 let pass = 0, fail = 0;
@@ -188,6 +192,65 @@ section('6 · Dall’analisi Admin AI ai passaggi dell’attività');
   ok(stepsFromActions([], 'Titolo').length === 0, 'nessuna azione, nessun passaggio: non se ne inventano');
   ok(stepsFromActions([action({ done: true })], 'Titolo').length === 0,
     'se tutte le azioni sono già fatte, l’attività nasce senza passaggi invece che con passaggi finti');
+}
+
+// ===========================================================================
+section('7 · Il modulo di creazione è UNO SOLO — le regole che l’estrazione non deve cambiare');
+// ⚠️ PERCHÉ QUESTA SEZIONE ESISTE. Il modulo di creazione viveva dentro
+// `TasksPage`; portarlo anche nel dettaglio di un documento significava o
+// duplicarlo o estrarlo. È stato estratto, e queste asserzioni sono la prova
+// che l'estrazione non ha cambiato le quattro cose che l'elenco Attività
+// faceva già: data precompilata dal Calendario, priorità proposta dalla
+// scadenza, scelta del responsabile, e un titolo vuoto che non salva niente.
+// Nessun test poteva vederle prima: stavano dentro un componente, e le suite
+// di questo repository sono script Node senza DOM.
+{
+  // Un istante fisso: `priorityFromDueDate` leggeva l'orologio da sé e non si
+  // sarebbe potuta provare su una distanza scelta — è il difetto già pagato
+  // dalla sezione 9 di `test:workflows-unit`.
+  const adesso = new Date('2026-08-01T12:00:00Z');
+
+  // -- la data che arriva dal Calendario ------------------------------------
+  ok(safeDatePrefill('2026-08-12') === '2026-08-12',
+    'una data ben formata dall’URL precompila la scadenza: è il percorso del Calendario (§17)');
+  ok(safeDatePrefill('oggi') === '', 'un valore arbitrario dall’URL NON entra in un campo che poi viene salvato');
+  ok(safeDatePrefill('2026-8-12') === '', 'nemmeno una data quasi giusta: la forma è una sola');
+  ok(safeDatePrefill(null) === '' && safeDatePrefill(undefined) === '',
+    'senza parametro il campo resta vuoto, non «oggi»');
+  ok(safeDatePrefill("2026-08-12'); drop table tasks;--") === '',
+    'un valore ostile dall’URL non passa');
+
+  // -- la priorità proposta segue la scadenza -------------------------------
+  ok(proposedPriority('2026-08-05', adesso) === 'high', 'entro dieci giorni la priorità proposta è alta');
+  ok(proposedPriority('2026-08-25', adesso) === 'medium', 'entro trenta giorni è media');
+  ok(proposedPriority('2026-12-01', adesso) === 'low', 'più in là è bassa');
+  ok(proposedPriority('', adesso) === 'low', 'senza scadenza è bassa, e non si inventa una data');
+
+  // -- ma la scelta della persona vince, e non viene più sovrascritta --------
+  const scelta: TaskFormValues = { ...EMPTY_TASK_FORM, title: 'X', dueDate: '2026-08-05', priority: 'low' };
+  ok(effectivePriority(scelta, adesso) === 'low',
+    '⚠️ scelta la priorità, la proposta NON la sovrascrive più: da quel momento la decisione è della persona');
+  ok(effectivePriority({ ...scelta, priority: '' }, adesso) === 'high',
+    'finché non sceglie, vale la proposta');
+  ok(taskFormSubmission({ ...scelta, priority: '' }, adesso).priority === 'high',
+    '⚠️ il valore MOSTRATO è il valore SALVATO: la proposta arriva al database, non resta a schermo');
+
+  // -- il confine fra «vuoto» e `null` --------------------------------------
+  const vuoto = taskFormSubmission({ ...EMPTY_TASK_FORM, title: 'Solo titolo' }, adesso);
+  ok(vuoto.dueDate === null, 'una scadenza non compilata diventa `null`, non la stringa vuota');
+  ok(vuoto.assigneeUserId === null, 'nessun responsabile diventa `null`: «non assegnata» è un dato, non un vuoto');
+  const conResponsabile = taskFormSubmission(
+    { ...EMPTY_TASK_FORM, title: 'X', assigneeUserId: 'u-1' }, adesso,
+  );
+  ok(conResponsabile.assigneeUserId === 'u-1', 'il responsabile scelto arriva al servizio');
+
+  // -- titolo vuoto e doppio invio ------------------------------------------
+  ok(!canSubmitTaskForm(EMPTY_TASK_FORM, false), 'senza titolo non si salva');
+  ok(!canSubmitTaskForm({ ...EMPTY_TASK_FORM, title: '   ' }, false),
+    'un titolo di soli spazi non è un titolo');
+  ok(canSubmitTaskForm({ ...EMPTY_TASK_FORM, title: 'Pagare l’IVA' }, false), 'con un titolo si salva');
+  ok(!canSubmitTaskForm({ ...EMPTY_TASK_FORM, title: 'Pagare l’IVA' }, true),
+    '⚠️ MENTRE SALVA NON SI RIPARTE: è la protezione contro il doppio invio, e vale anche se il pulsante restasse premibile');
 }
 
 // ===========================================================================
