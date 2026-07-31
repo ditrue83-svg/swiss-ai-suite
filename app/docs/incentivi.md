@@ -5,12 +5,19 @@
 > criteri, 9 call); `subsidy-worker` **deployata** e su scheduler; schermata
 > `/incentivi` **pubblicata** e provata a mano end-to-end sul database vero.
 >
-> ⚠️ **Ciò che NON esiste, e va detto prima di tutto il resto: non c'è una suite
-> d'integrazione su database per questo modulo.** `npm run test:subsidy-unit`
-> copre 277 asserzioni **offline**; l'end-to-end (progetto → opportunità →
-> valutazione → pratica → passo di checklist → stato) è stato eseguito **a mano
-> dall'interfaccia**, una volta, e poi ripulito. È l'unico modulo di prodotto
-> senza copertura automatica su database.
+> ✅ **Dal 2026-07-31 esiste anche una suite d'integrazione su database**:
+> `npm run test:subsidy`, 80 asserzioni in 11 sezioni contro il progetto
+> Supabase reale. Copre le garanzie che vivono nel DATABASE — isolamento,
+> cross-tenant, catalogo in sola lettura, append-only delle risposte, la
+> cascata della 0033/0034, le guardie di validazione, i timbri, lo storico, le
+> viste dell'elenco.
+>
+> ⚠️ **Ciò che quella suite NON esercita, e va detto:** il MOTORE. Le
+> opportunità e le valutazioni le scrive `subsidy-worker`, e il test le crea
+> col ruolo di servizio per poter provare ciò che il database garantisce
+> intorno a esse. L'end-to-end vero (progetto → worker → opportunità →
+> valutazione → pratica → checklist → stato) resta quello eseguito **a mano
+> dall'interfaccia**, una volta, e poi ripulito.
 
 ⚠️ **Questo documento è nato il 2026-07-31 e colma un buco: il modulo più
 grande del repository — 3885 righe di SQL, 17 tabelle, 26 enum, 37 funzioni,
@@ -106,6 +113,7 @@ progetti attivi e a rileggere le fonti, non a far funzionare il modulo.
 
 ```bash
 npm run test:subsidy-unit    # 277 asserzioni offline, 16 sezioni
+npm run test:subsidy         # 80 asserzioni su DATABASE REALE, 11 sezioni
 npm run subsidy:health       # integrità e freschezza del catalogo 1.0
 ```
 
@@ -115,10 +123,23 @@ sette viste di `list_subsidy_opportunities` esistano davvero (sezione 14), che
 i trigger sopravvivano alla cascata (sezione 15) e che la **Panoramica legga lo
 stesso motore** del modulo invece di ricontare per conto suo (sezione 16).
 
+`test:subsidy` prova le stesse garanzie **in vigore**, che è una cosa diversa
+da «scritte nel file»: la sezione 5 cancella un progetto che ha una risposta
+collegata e verifica che la cascata passi (0034) *mentre* la cancellazione
+diretta resta vietata, e la sezione 11 fa lo stesso con l'azienda (0033) —
+cioè riproduce, dal lato giusto, il difetto che rendeva un'azienda
+**indistruttibile** e che nessun test poteva vedere prima, perché nessun test
+cancellava un'azienda che avesse risposto a un criterio.
+⚠️ L'elenco delle tabelle su cui la cascata viene verificata **si legge dalle
+migrazioni**, non è scritto a mano: una tabella aggiunta domani entra da sé.
+Una lista a mano non fallisce quando l'insieme cresce — smette di guardare e
+resta verde.
+
 ## 6. Limiti dichiarati
 
-- **Nessuna suite d'integrazione su database** (`test:subsidy` non esiste). È il
-  limite principale e non è mitigato da nessuno degli altri numeri.
+- **Il MOTORE non è coperto da una suite**: `test:subsidy` prova ciò che il
+  database garantisce, non che `subsidy-worker` produca l'opportunità giusta a
+  partire da un progetto. Quel passaggio è stato provato a mano una volta.
 - **I contenuti del catalogo sono in italiano** anche con interfaccia tedesca o
   francese: vivono nel database, non nei dizionari.
 - **Divergenza nota e NON corretta di proposito**: il catalogo dice che la RUE
