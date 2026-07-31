@@ -16,7 +16,7 @@ import {
   sortTasks, sourceLabelKey, statusLabelKey, stepsFromActions,
 } from '../src/features/tasks/taskFormat';
 import {
-  EMPTY_TASK_FORM, canSubmitTaskForm, effectivePriority, proposedPriority,
+  EMPTY_TASK_FORM, canSubmitTaskForm, createSubmitLatch, effectivePriority, proposedPriority,
   safeDatePrefill, taskFormSubmission, type TaskFormValues,
 } from '../src/features/tasks/taskCreateModel';
 import type { ChecklistAction, Task, TaskEventKind, TaskSource, TaskStatus } from '../src/types/models';
@@ -250,7 +250,32 @@ section('7 · Il modulo di creazione è UNO SOLO — le regole che l’estrazion
     'un titolo di soli spazi non è un titolo');
   ok(canSubmitTaskForm({ ...EMPTY_TASK_FORM, title: 'Pagare l’IVA' }, false), 'con un titolo si salva');
   ok(!canSubmitTaskForm({ ...EMPTY_TASK_FORM, title: 'Pagare l’IVA' }, true),
-    '⚠️ MENTRE SALVA NON SI RIPARTE: è la protezione contro il doppio invio, e vale anche se il pulsante restasse premibile');
+    'mentre salva il pulsante non è premibile');
+
+  // -- il doppio invio, e perché il pulsante disabilitato NON basta ----------
+  // ⚠️⚠️ QUESTO CONTROLLO NASCE DA UN DIFETTO VERO, trovato premendo due volte
+  //     nel browser il 2026-07-31: sono state create DUE attività identiche a
+  //     14 millisecondi di distanza sul database di produzione. `saving` è uno
+  //     stato React, e due clic nello stesso tick lo leggono ENTRAMBI a
+  //     `false` — la resa nuova arriva dopo. Il fermo deve cambiare
+  //     nell'istante del primo clic, e per questo è una variabile e non uno stato.
+  {
+    const latch = createSubmitLatch();
+    ok(latch.tryAcquire(), 'il primo invio passa');
+    ok(!latch.tryAcquire(),
+      '⚠️ il SECONDO invio nello stesso istante NON passa: è qui che si ferma il doppio clic');
+    ok(!latch.tryAcquire(), 'e nemmeno il terzo');
+    latch.release();
+    ok(latch.tryAcquire(), 'finito il salvataggio si può inviare di nuovo — anche dopo un errore');
+  }
+  {
+    // Due moduli aperti (elenco Attività e dettaglio Documento) hanno fermi
+    // DIVERSI: uno non deve bloccare l'altro.
+    const a = createSubmitLatch();
+    const b = createSubmitLatch();
+    a.tryAcquire();
+    ok(b.tryAcquire(), 'due moduli diversi non si bloccano a vicenda');
+  }
 }
 
 // ===========================================================================

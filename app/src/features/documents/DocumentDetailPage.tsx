@@ -33,7 +33,7 @@ import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
 import { documentTaskDraft } from '@/features/tasks/documentToTask';
 import { TaskCreateForm } from '@/features/tasks/TaskCreateForm';
 import {
-  EMPTY_TASK_FORM, taskFormSubmission, type TaskFormValues,
+  EMPTY_TASK_FORM, createSubmitLatch, taskFormSubmission, type TaskFormValues,
 } from '@/features/tasks/taskCreateModel';
 import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
 import { useMembers } from '@/features/tasks/useMembers';
@@ -155,6 +155,12 @@ export function DocumentDetailPage() {
   const [taskError, setTaskError] = useState<string | null>(null);
   const [createdTask, setCreatedTask] = useState<{ id: string; steps: number; stepsFailed: boolean } | null>(null);
   const tasksCardRef = useRef<HTMLDivElement>(null);
+  // ⚠️ Il guardiano del doppio invio è QUESTO, non `savingTask`: uno stato
+  // React due clic nello stesso tick lo leggono entrambi a `false`, e il
+  // 2026-07-31 due clic ravvicinati hanno creato due attività identiche a 14
+  // millisecondi di distanza sul database vero. Il fermo qui cambia
+  // nell'istante del primo clic.
+  const latch = useRef(createSubmitLatch());
   // ⚠️ Il fuoco torna al pulsante che POSSIEDE il modulo — quello nella scheda
   // «Attività» — e non a quello che è stato premuto: il modulo può essere
   // aperto anche dal riquadro in cima, e riportare il fuoco lassù lo
@@ -205,9 +211,10 @@ export function DocumentDetailPage() {
   }
 
   async function submitTaskForm() {
-    if (!detail || !user || !taskForm || savingTask) return;
+    if (!detail || !user || !taskForm) return;
     const values = taskFormSubmission(taskForm);
     if (!values.title.trim()) return;
+    if (!latch.current.tryAcquire()) return;
     setSavingTask(true);
     setTaskError(null);
     try {
@@ -234,6 +241,7 @@ export function DocumentDetailPage() {
       // persona aveva scritto non si perde e si può riprovare.
       setTaskError(toUserMessage(e));
     } finally {
+      latch.current.release();
       setSavingTask(false);
     }
   }
