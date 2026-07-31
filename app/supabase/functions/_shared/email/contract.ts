@@ -165,5 +165,9 @@ export const INBOX_ERROR_CODES = [
   // guasti opposti che prima finivano insieme in `CLASSIFY_FAILED` — il primo
   // si riprende da solo, il secondo no.
   'AI_CREDIT_EXHAUSTED', 'CLASSIFY_FAILED',
+  // ⚠️ Dal 2026-08-01. NON è «risposta non valida»: il modello stava
+  // rispondendo bene ed è stato tagliato dal tetto di token che abbiamo scelto
+  // NOI. Chiamarlo in un altro modo manda a cercare il guasto dove non è.
+  'AI_OUTPUT_TRUNCATED',
 ] as const;
 export type InboxErrorCode = (typeof INBOX_ERROR_CODES)[number];

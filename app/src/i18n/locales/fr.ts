@@ -1694,6 +1694,7 @@ export const fr: Dictionary = {
       aiNotConfigured: 'L’analyse automatique n’est pas configurée sur ce serveur.',
       aiCreditExhausted: 'Le service de lecture ne dispose d\u2019aucun crédit\u202f: la communication n\u2019a pas été examinée. Attendre n\u2019y change rien — il faut l\u2019intervention de la personne qui administre l\u2019application. Le message est repris automatiquement dès que le service redevient disponible.',
       classifyFailed: 'Impossible de déterminer si cette communication demande une attention. Le message reste parmi ceux à vérifier.',
+      aiOutputTruncated: 'L\u2019examen de cette communication s\u2019est interrompu avant la fin\u202f: la réponse nécessaire dépassait la longueur prévue. Cela ne vient pas du message — il faut l\u2019intervention de la personne qui administre l\u2019application.',
       analysisFailed: 'L’analyse de cette communication a échoué. La communication reste dans l’Inbox.',
       interrupted: 'Le traitement de cette communication s’est interrompu avant la fin. La communication reste dans l’Inbox : vous pouvez lancer l’analyse maintenant.',
       timeBudget: 'Tout ce qui tient dans un seul passage a été traité. Le reste se poursuit tout seul : inutile de réessayer.',

@@ -108,6 +108,11 @@ export function inboxErrorMessage(code: string | null | undefined): string | nul
     case 'INVALID_RESPONSE':
     case 'CLASSIFY_FAILED':
       return tr('inbox.errors.classifyFailed');
+    // ⚠️ Dice che il limite è NOSTRO e che tocca a chi amministra, non a chi
+    // legge la posta: «la risposta non è valida» accuserebbe il fornitore di un
+    // tetto scelto da noi, e manderebbe a cercare il guasto dove non è.
+    case 'AI_OUTPUT_TRUNCATED':
+      return tr('inbox.errors.aiOutputTruncated');
     // Distinto da un'analisi fallita: qui l'elaborazione non è arrivata in
     // fondo. Dirlo com'è cambia cosa può fare la persona — riprovare ha senso.
     case 'INTERRUPTED':

@@ -52,6 +52,14 @@ export const CLASSIFIER_VERSION = 'prescreen-1';
  * Nessun codice nuovo inventato: sono tutti già in `INBOX_ERROR_CODES`.
  */
 export function inboxCodeForAiError(error: unknown): string {
+  // ⚠️ Un errore che porta GIÀ un codice esplicito lo conserva. È la stessa
+  // precedenza di `analyze-document` (`err.code ?? classifyProviderError(err)`),
+  // ed è il modo in cui il livello AI segnala ciò che `classifyProviderError`
+  // non può dedurre dal messaggio — per esempio il tetto di token, che non è
+  // un errore del fornitore ma una scelta nostra.
+  const esplicito = (error as { code?: unknown } | null)?.code;
+  if (typeof esplicito === 'string' && esplicito) return esplicito;
+
   switch (classifyProviderError(error)) {
     case 'AI_CREDIT_EXHAUSTED': return 'AI_CREDIT_EXHAUSTED';
     case 'RATE_LIMITED': return 'PROVIDER_RATE_LIMITED';

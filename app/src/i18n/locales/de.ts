@@ -1696,6 +1696,7 @@ export const de: Dictionary = {
       aiNotConfigured: 'Die automatische Analyse ist auf diesem Server nicht konfiguriert.',
       aiCreditExhausted: 'Für den Lesedienst ist kein Guthaben verfügbar: Die Mitteilung wurde nicht geprüft. Warten hilft nicht — es braucht einen Eingriff der Person, die die Anwendung verwaltet. Sobald der Dienst wieder verfügbar ist, wird die Nachricht von selbst erneut aufgenommen.',
       classifyFailed: 'Es liess sich nicht feststellen, ob diese Mitteilung Aufmerksamkeit erfordert. Die Nachricht bleibt unter den zu prüfenden.',
+      aiOutputTruncated: 'Die Prüfung dieser Mitteilung wurde vor dem Ende abgebrochen: Die nötige Antwort war länger als vorgesehen. Es liegt nicht an der Nachricht — es braucht einen Eingriff der Person, die die Anwendung verwaltet.',
       analysisFailed: 'Die Analyse dieser Mitteilung ist fehlgeschlagen. Die Mitteilung bleibt in der Inbox.',
       interrupted: 'Die Verarbeitung dieser Mitteilung wurde vor dem Abschluss unterbrochen. Die Mitteilung bleibt in der Inbox: Sie können die Analyse jetzt starten.',
       timeBudget: 'Es wurde so viel verarbeitet, wie in einen Durchgang passt. Der Rest läuft von selbst weiter: ein erneuter Versuch ist nicht nötig.',

@@ -859,6 +859,35 @@ section('11 · Perché una classificazione è caduta — e se va ripresa');
   ok(inboxCodeForAiError(new Error('qualcosa di mai visto')) === 'CLASSIFY_FAILED',
     'ciò che non si sa riconoscere resta nel secchio del «non lo sappiamo», senza inventare una diagnosi');
 
+  // -- il tetto di token è NOSTRO, e il codice deve dirlo ------------------
+  // ⚠️ `stop_reason === 'max_tokens'` era controllato in `pipeline.ts`,
+  // `assistant`, `contracts/process.ts` e `finance/process.ts`. L'audit del
+  // 2026-07-29 dichiarò «mancava in TRE posti»: erano QUATTRO, e il quarto —
+  // questo — non l'aveva visto nessuno perché il ramo d'errore non registrava
+  // nulla da cui accorgersene.
+  const troncata = Object.assign(new Error('max_tokens'), { code: 'AI_OUTPUT_TRUNCATED' });
+  ok(inboxCodeForAiError(troncata) === 'AI_OUTPUT_TRUNCATED',
+    '⚠️ una risposta tagliata dal NOSTRO tetto di token non si chiama «risposta non valida»: accuserebbe il fornitore di un limite scelto da noi');
+  ok(!isClassifyRetryable('AI_OUTPUT_TRUNCATED'),
+    'e non si riprova: il tetto non si alza da solo, e rifare la stessa domanda costa senza cambiare nulla');
+  ok((INBOX_ERROR_CODES as readonly string[]).includes('AI_OUTPUT_TRUNCATED'),
+    '«AI_OUTPUT_TRUNCATED» è dichiarato nel contratto dell’Inbox');
+  for (const [lang, dict] of Object.entries({ it, de, fr })) {
+    const errs = (dict.inbox as { errors: Record<string, string> }).errors;
+    ok(!!errs.aiOutputTruncated, `${lang}: la risposta troncata ha la sua frase`);
+  }
+  ok(/amministra|verwaltet|administre/.test(
+    (it.inbox as { errors: Record<string, string> }).errors.aiOutputTruncated
+    + (de.inbox as { errors: Record<string, string> }).errors.aiOutputTruncated
+    + (fr.inbox as { errors: Record<string, string> }).errors.aiOutputTruncated),
+    '⚠️ e la frase dice a CHI tocca rimediare: non è chi legge la posta');
+
+  // -- un codice esplicito ha la precedenza, come in `analyze-document` -----
+  ok(inboxCodeForAiError(Object.assign(new Error('x'), { code: 'PROVIDER_UNAVAILABLE' })) === 'PROVIDER_UNAVAILABLE',
+    'un errore che porta già un codice lo conserva');
+  ok(inboxCodeForAiError(Object.assign(new Error('credit balance is too low'), { code: '' })) === 'AI_CREDIT_EXHAUSTED',
+    'ma un codice vuoto non copre la diagnosi che si può fare dal messaggio');
+
   // -- che cosa si riprende, e che cosa no ----------------------------------
   ok(isClassifyRetryable('AI_CREDIT_EXHAUSTED'),
     'il credito torna: il messaggio va ripreso, non chiuso per sempre');
