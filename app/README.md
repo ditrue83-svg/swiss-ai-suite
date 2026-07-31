@@ -700,8 +700,11 @@ raggruppa i test per **requisito**, non per modulo.
 ```bash
 npm run test:quality    # typecheck, build, docs, i18n, bundle SQL — nessuna credenziale
 npm run test:unit       # tutte le suite offline — nessuna credenziale, nessuna rete
-npm run test:db         # le suite su database — richiede .env.test, NON spende credito AI
-npm run test:all        # quality + unit + db (di proposito NON comprende ciò che spende)
+npm run test:db         # le suite che servono UN database col nostro schema — in locale
+                        #   è quello di .env.test, nella CI è un Supabase effimero
+npm run test:production # le tre che provano QUEL progetto: configurazione auth, catalogo
+                        #   vero, Edge Function deployate. Si RIFIUTA di girare su localhost
+npm run test:all        # quality + unit + db + production (NON ciò che spende credito)
 npm run ci              # quality + unit: ciò che una CI può eseguire senza segreti
 npm run test:integration -- --allow-ai   # phase2, async, pipeline — SPENDONO credito
 npm run test:eval -- --allow-ai          # eval:subsidy, eval:admin, eval:assistant — SPENDONO
@@ -716,6 +719,21 @@ credito richiedono `--allow-ai` esplicito: la spesa si chiede, non si eredita.
 Opzioni: `--continue-on-error` prosegue dopo un rosso (uso locale; senza, ci si
 ferma al primo, che è la modalità CI) · `--no-skip` trasforma un gruppo saltato in
 un fallimento, per i contesti in cui l'ambiente **deve** essere completo.
+
+⚠️ **Prima di ogni gruppo che scrive, il runner stampa CONTRO QUALE database sta
+per farlo** — l'host, mai le chiavi. Undici di quelle suite creano e cancellano
+righe, e «ho lanciato `test:db`» e «ho lanciato `test:db` contro la produzione»
+sono due frasi diverse. L'host non è un segreto: sta nel bundle pubblicato come
+`VITE_SUPABASE_URL`.
+
+⚠️ **`db` e `production` sono separati perché rispondono a domande diverse.**
+`db` chiede «il prodotto funziona?» e gli basta un database qualunque con il
+nostro schema: nella CI è un Supabase **effimero** avviato dal runner, quindi
+quelle undici suite girano **a ogni pull request, senza segreti**, anche da un
+fork. `production` chiede «quel progetto è configurato bene?» — configurazione
+di autenticazione, catalogo vero, Edge Function deployate — e su un database
+effimero passerebbe senza provare niente: per questo si **rifiuta** di girare
+se `SUPABASE_URL` punta a `127.0.0.1`, invece di dare un verde vuoto.
 
 ### I comandi singoli
 

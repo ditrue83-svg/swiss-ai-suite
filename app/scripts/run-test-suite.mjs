@@ -29,8 +29,11 @@
 //                 l'ambiente deve essere completo (il job database della CI).
 //
 // COSA NON FA
-//   · non stampa mai il VALORE di una variabile d'ambiente: legge i NOMI
-//     presenti in `.env.test` e si ferma lì;
+//   · non stampa mai una CHIAVE, senza eccezioni: di `.env.test` legge i NOMI.
+//     ⚠️ L'unica eccezione, dichiarata, è l'HOST di `SUPABASE_URL`, che segreto
+//     non è — sta dentro il bundle pubblicato come `VITE_SUPABASE_URL`. Viene
+//     stampato prima di ogni gruppo che scrive, perché «ho lanciato test:db» e
+//     «ho lanciato test:db contro la produzione» sono due frasi diverse;
 //   · non inventa credenziali e non ne scrive;
 //   · non cambia il significato di nessun test: esegue gli stessi
 //     `npm run …` che esistevano prima, nello stesso ordine deterministico.
@@ -78,7 +81,44 @@ const REQUIREMENTS = {
       ? { ok: true }
       : { ok: false, why: 'spende credito Anthropic vero: serve --allow-ai (o AISWISSE_ALLOW_AI=1)' }),
   },
+  // ⚠️ Il gruppo `production` non prova il PRODOTTO: prova QUEL progetto —
+  // la configurazione di autenticazione, il contenuto del catalogo, le Edge
+  // Function deployate. Eseguirlo contro un database effimero darebbe un verde
+  // che non significa niente, e un verde che non significa niente è peggio di
+  // un rosso: è la lezione di `i18n:coverage`, due volte.
+  realProject: {
+    label: 'il progetto Supabase REALE (non un database effimero)',
+    check: () => {
+      const host = supabaseHost();
+      if (!host) return { ok: false, why: 'SUPABASE_URL non è leggibile da .env.test' };
+      return /^(127\.0\.0\.1|localhost|\[::1\])/.test(host)
+        ? { ok: false, why: `SUPABASE_URL punta a ${host}: queste suite provano il progetto reale, non un database qualunque` }
+        : { ok: true };
+    },
+  },
 };
+
+/**
+ * L'HOST di `SUPABASE_URL`, mai la chiave.
+ *
+ * ⚠️ L'intestazione di questo file dice che non stampa MAI il valore di una
+ * variabile d'ambiente, e questa è l'unica eccezione, dichiarata: l'URL del
+ * progetto **non è un segreto** — sta dentro il bundle pubblicato su
+ * app.ai-swisse.com come `VITE_SUPABASE_URL`, leggibile da chiunque. Sapere
+ * CONTRO QUALE database si sta per scrivere vale più della purezza della
+ * regola, perché quattordici di queste suite creano e cancellano righe, e
+ * «ho lanciato test:db» e «ho lanciato test:db contro la produzione» sono due
+ * frasi diverse. Le CHIAVI restano non stampabili, senza eccezioni.
+ */
+function supabaseHost() {
+  const path = join(APP, '.env.test');
+  if (!existsSync(path)) return null;
+  const riga = readFileSync(path, 'utf8').split('\n')
+    .map((l) => /^SUPABASE_URL=(.*)$/.exec(l.trim())?.[1])
+    .find(Boolean);
+  if (!riga) return null;
+  try { return new URL(riga.replace(/^["']|["']$/g, '')).host; } catch { return null; }
+}
 
 // ---------------------------------------------------------------------------
 // I GRUPPI
@@ -125,14 +165,17 @@ const GROUPS = {
       { script: 'test:subsidy-unit' },
     ],
   },
+  // ⚠️ QUESTO GRUPPO NON HA BISOGNO DEL PROGETTO DI PRODUZIONE, e la
+  // distinzione è la ragione per cui il cancello può smettere di essere
+  // manuale. Gli serve UN database con il nostro schema: in locale è quello di
+  // `.env.test` (che è la produzione), nella CI è un Supabase EFFIMERO avviato
+  // dal runner e distrutto alla fine. Le suite sono identiche — cambia solo
+  // dove puntano, e il runner lo stampa prima di cominciare.
   db: {
-    title: 'Database — richiede .env.test · NON spende credito AI',
+    title: 'Database — richiede UN database con il nostro schema · NON spende credito AI',
     needs: ['env'],
     steps: [
-      { script: 'check:auth' },
-      { script: 'subsidy:health' },
       { script: 'test:phase1' },
-      { script: 'test:functions' },
       { script: 'test:tasks' },
       { script: 'test:inbox' },
       { script: 'test:calendar' },
@@ -143,6 +186,23 @@ const GROUPS = {
       { script: 'test:finance' },
       { script: 'test:workflows' },
       { script: 'test:subsidy' },
+    ],
+  },
+  // ⚠️ NON SPOSTABILI NELL'EFFIMERO, e per tre ragioni diverse:
+  //   · `check:auth`      legge la configurazione di autenticazione DI QUEL
+  //                       progetto (indirizzi di ritorno dei link email);
+  //   · `subsidy:health`  giudica il CONTENUTO del catalogo vero — la sua
+  //                       freschezza è una proprietà dei dati reali, e su un
+  //                       catalogo appena seminato direbbe sempre di sì;
+  //   · `test:functions`  prova la sicurezza delle Edge Function DEPLOYATE.
+  // Un database effimero le farebbe passare senza provare niente.
+  production: {
+    title: 'Progetto reale — prova QUEL progetto, non il prodotto',
+    needs: ['env', 'realProject'],
+    steps: [
+      { script: 'check:auth' },
+      { script: 'subsidy:health' },
+      { script: 'test:functions' },
     ],
   },
   integration: {
@@ -165,7 +225,14 @@ const GROUPS = {
   },
 };
 
-const ALL = ['quality', 'unit', 'db'];
+// ⚠️ `production` è dentro `all` di proposito: in locale `.env.test` PUNTA al
+// progetto reale, quindi togliendolo `npm run test:all` avrebbe smesso di
+// eseguire tre suite che eseguiva ieri — una perdita di copertura travestita
+// da riorganizzazione. Nella CI non viene mai chiamato `all`: il job effimero
+// chiede `db`, e `production` resta manuale perché i suoi requisiti non sono
+// soddisfatti da un database usa-e-getta (e il gruppo lo DICHIARA, invece di
+// passare a vuoto).
+const ALL = ['quality', 'unit', 'db', 'production'];
 
 // ---------------------------------------------------------------------------
 
@@ -262,6 +329,16 @@ for (const id of opts.groups) {
   }
 
   console.log(`\n${B}▸ ${id}${X} ${DIM}— ${g.title}${X}`);
+  // ⚠️ CONTRO QUALE DATABASE. Quattordici di queste suite creano e cancellano
+  // righe: sapere dove le stanno creando non è un dettaglio estetico. L'host
+  // non è un segreto (sta nel bundle pubblicato); le chiavi non si stampano.
+  if (g.needs.includes('env')) {
+    const host = supabaseHost();
+    const dove = /^(127\.0\.0\.1|localhost|\[::1\])/.test(host ?? '')
+      ? `${host} ${DIM}(database effimero)${X}`
+      : `${Y}${host}${X} ${DIM}(progetto reale: le righe di prova nascono e muoiono QUI)${X}`;
+    console.log(`  ${DIM}database:${X} ${dove}`);
+  }
   const t0 = Date.now();
   let falliti = 0;
 

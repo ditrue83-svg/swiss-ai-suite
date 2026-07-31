@@ -55,6 +55,7 @@
     "test:quality": "node scripts/run-test-suite.mjs quality",
     "test:unit": "node scripts/run-test-suite.mjs unit",
     "test:db": "node scripts/run-test-suite.mjs db",
+    "test:production": "node scripts/run-test-suite.mjs production",
     "test:integration": "node scripts/run-test-suite.mjs integration",
     "test:eval": "node scripts/run-test-suite.mjs eval",
     "test:all": "node scripts/run-test-suite.mjs all",
