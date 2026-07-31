@@ -28,6 +28,16 @@
 //                   esecuzione risulta fallita.
 //   4. BERSAGLIO    un cron che punta a `functions/v1/<x>` punta a una
 //                   funzione che esiste davvero in questo repository.
+//   5. MIGRAZIONE   ogni job dell'inventario è creato da una MIGRAZIONE, non
+//                   soltanto descritto in un documento. Un blocco SQL dentro
+//                   un `.md` è un'istruzione per una persona: nessun database
+//                   lo esegue. Le eccezioni note stanno in CRON_SOLO_A_MANO,
+//                   ciascuna con la data in cui è stata creata a mano.
+//   6. ORIGINE      una migrazione non porta l'URL del progetto scritto dentro:
+//                   finirebbe in `full-setup.sql` e ogni installazione nuova
+//                   chiamerebbe periodicamente la NOSTRA produzione.
+//   7. DUPLICATI    due migrazioni non creano lo stesso job: quale definizione
+//                   sopravviva dipenderebbe dall'ordine di applicazione.
 //
 // ⚠️ COSA QUESTO CONTROLLO NON PUÒ SAPERE, e non finge di sapere: se quei cron
 // esistano DAVVERO nel progetto Supabase. Un file non può interrogare un
@@ -65,6 +75,32 @@ export const CRON_ATTESI = {
   'assistant-purge':      { funzione: null,                   cadenza: '0 4 * * *' },
   'calendar-sync-drain':  { funzione: 'calendar-sync',        cadenza: '*/10 * * * *' },
   'notifications-worker': { funzione: 'notifications-worker', cadenza: '*/15 * * * *' },
+};
+
+// ---------------------------------------------------------------------------
+// IL DEBITO — gli scheduler che vivono SOLO in un blocco SQL dentro un
+// documento, e che quindi qualcuno ha incollato a mano una volta.
+//
+// ⚠️ PERCHÉ QUESTA LISTA ESISTE. L'inventario qui sopra accetta una
+// dichiarazione scritta in un `.md`, e per quattro mesi è bastato. Non basta:
+// un blocco di codice dentro un documento non lo esegue NESSUNO. Un progetto
+// Supabase rifatto, un ambiente di prova, un cliente installato da zero con
+// `full-setup.sql` ottengono lo schema completo e nessuno di questi job —
+// senza che un solo test diventi rosso, perché non si può vedere l'assenza di
+// una cosa che non è mai stata scritta da nessuna parte se non in prosa.
+//
+// Dalla 0035 i due job del calendario e delle notifiche sono in una
+// MIGRAZIONE. Gli altri cinque no, e questa lista li tiene VISIBILI invece di
+// lasciarli sembrare a posto: ognuno con la data in cui è stato creato a mano.
+// Togliere una riga da qui è il gesto che accompagna la migrazione che lo
+// sostituisce; aggiungerne una nuova dovrebbe costare una discussione.
+// ---------------------------------------------------------------------------
+export const CRON_SOLO_A_MANO = {
+  'inbox-maintenance': 'creato a mano il 2026-07-26 (docs/ai-inbox.md §…): non ancora in una migrazione',
+  'automation-worker': 'creato a mano il 2026-07-27 (docs/workflow-automation.md): non ancora in una migrazione',
+  'finance-worker':    'creato a mano il 2026-07-28 (docs/finance-operations.md): non ancora in una migrazione',
+  'contract-worker':   'creato a mano il 2026-07-28 (docs/contract-manager.md): non ancora in una migrazione',
+  'subsidy-worker':    'creato a mano il 2026-07-30 (docs/incentivi.md): non ancora in una migrazione',
 };
 
 /**
@@ -165,6 +201,101 @@ export function checkBersaglioCron(report, { dichiarati, funzioni }) {
   }
 }
 
+/**
+ * 5. Uno scheduler che chiama una Edge Function è scritto in una MIGRAZIONE.
+ *
+ * ⚠️ È il controllo che mancava, ed è la ragione per cui `calendar-sync-drain`
+ * e `notifications-worker` sono rimasti sei giorni «dichiarati» e mai creati:
+ * l'inventario li trovava in `docs/calendar-notifications.md` e si dichiarava
+ * soddisfatto. Un blocco SQL dentro un documento è una ISTRUZIONE PER UNA
+ * PERSONA, non un artefatto che qualcosa esegue.
+ *
+ * `assistant-purge` non ha bisogno di eccezioni: è già in una migrazione (0031).
+ */
+export function checkCronInMigrazione(report, { dichiarati, attesi, soloAMano }) {
+  const inMigrazione = new Set(
+    dichiarati.filter((d) => d.file.startsWith('supabase/migrations/')).map((d) => d.nome),
+  );
+
+  for (const [nome, atteso] of Object.entries(attesi)) {
+    if (inMigrazione.has(nome)) continue;
+    if (soloAMano[nome]) continue;
+    report.add('migrazione',
+      `il job «${nome}» non è creato da nessuna migrazione`,
+      'supabase/migrations/',
+      atteso.funzione
+        ? `esiste solo come blocco SQL da incollare a mano: un database rifatto avrebbe «${atteso.funzione}» `
+          + 'deployata e mai chiamata. Scrivilo in una migrazione, oppure — se la scelta è consapevole — '
+          + 'aggiungilo a CRON_SOLO_A_MANO con la data in cui è stato creato'
+        : 'esiste solo come blocco SQL da incollare a mano: un database rifatto non lo avrebbe. '
+          + 'Scrivilo in una migrazione, oppure aggiungilo a CRON_SOLO_A_MANO con la ragione');
+  }
+
+  // ⚠️ Nei DUE sensi, come l'inventario: una riga di debito che non corrisponde
+  // più a niente fa credere che ci sia un problema aperto quando non c'è, e —
+  // peggio — nasconderebbe il caso in cui il job venga migrato ma la riga resti,
+  // rendendo l'eccezione permanente.
+  for (const nome of Object.keys(soloAMano)) {
+    if (!attesi[nome]) {
+      report.add('migrazione',
+        `CRON_SOLO_A_MANO elenca «${nome}», che non è nell'inventario`,
+        'scripts/test-operations.mjs → CRON_SOLO_A_MANO',
+        'il job è stato rimosso: togli anche la riga del debito');
+    } else if (inMigrazione.has(nome)) {
+      report.add('migrazione',
+        `«${nome}» è ormai creato da una migrazione, ma è ancora elencato fra quelli creati a mano`,
+        'scripts/test-operations.mjs → CRON_SOLO_A_MANO',
+        'togli la riga: un\'eccezione che non serve più diventa un permesso permanente');
+    }
+  }
+}
+
+/**
+ * 6. Una migrazione non porta l'origine del progetto scritta dentro.
+ *
+ * ⚠️ Un documento PUÒ: è un'istruzione per una persona, che la incolla su un
+ * progetto preciso. Una migrazione no — finisce in `supabase/full-setup.sql`,
+ * che la CI applica a un database effimero e che il README dà a chi installa
+ * da zero. Con l'origine scritta dentro, ogni installazione nuova
+ * programmerebbe chiamate periodiche verso la NOSTRA produzione.
+ */
+export function checkOrigineCron(report, { dichiarati }) {
+  for (const d of dichiarati) {
+    if (!d.file.startsWith('supabase/migrations/')) continue;
+    if (!d.urlInChiaro) continue;
+    report.add('origine',
+      `il job «${d.nome}» porta un URL scritto in chiaro dentro una migrazione`,
+      d.file,
+      'l\'origine va risolta a ogni esecuzione — `current_setting(\'app.settings.functions_base_url\')` — '
+      + 'come il segreto si legge dal Vault: altrimenti ogni database che applica questa migrazione '
+      + 'chiama il progetto di chi l\'ha scritta');
+  }
+}
+
+/**
+ * 7. Due migrazioni non creano lo stesso job.
+ *
+ * `cron.schedule` con un nome già esistente aggiorna o solleva a seconda della
+ * versione di pg_cron: in entrambi i casi, quale delle due definizioni resti in
+ * `cron.job` dipende dall'ordine di applicazione, ed è la classe di problema che
+ * non si vede finché il database non viene rifatto.
+ */
+export function checkDuplicatiCron(report, { dichiarati }) {
+  const perNome = new Map();
+  for (const d of dichiarati) {
+    if (!d.file.startsWith('supabase/migrations/')) continue;
+    if (!perNome.has(d.nome)) perNome.set(d.nome, new Set());
+    perNome.get(d.nome).add(d.file);
+  }
+  for (const [nome, files] of perNome) {
+    if (files.size < 2) continue;
+    report.add('duplicati',
+      `il job «${nome}» è creato da ${files.size} migrazioni diverse`,
+      [...files].sort().join(' · '),
+      'quale definizione sopravviva dipende dall\'ordine di applicazione: ne resti una sola');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // LA RACCOLTA DEI FATTI
 // ---------------------------------------------------------------------------
@@ -193,16 +324,32 @@ export function estraiCron(testo, file) {
   const out = [];
   const re = /cron\.schedule\(\s*'([a-z0-9-]+)'\s*,\s*'([^']+)'/g;
   for (const m of testo.matchAll(re)) {
-    // Il blocco del job finisce al `);` che chiude la schedule, o dopo 1500
+    // Il blocco del job finisce dove comincia il job SEGUENTE, o dopo 1500
     // caratteri: abbastanza per contenere headers, body e timeout.
-    const coda = testo.slice(m.index, m.index + 1500);
-    const url = /functions\/v1\/([a-z-]+)/.exec(coda);
+    //
+    // ⚠️ Il limite al job seguente non c'era, e con due `cron.schedule` nello
+    // stesso file la coda del primo si mangiava il secondo: il primo risultava
+    // con timeout anche senza averlo, perché lo dichiarava il secondo. Un
+    // controllo che eredita la prova dal vicino non è un controllo.
+    const dopo = testo.slice(m.index + m[0].length);
+    const prossimo = dopo.indexOf('cron.schedule(');
+    const fine = m.index + m[0].length + (prossimo === -1 ? 1500 : Math.min(prossimo, 1500));
+    const coda = testo.slice(m.index, fine);
+
+    // ⚠️ I commenti SQL si tolgono prima di guardare: dentro questi blocchi si
+    // spiega spesso ciò che NON si è fatto («il segreto non è scritto qui»,
+    // «l'origine non è in chiaro»), e cercare `https://` in mezzo alla prosa
+    // che dice di non usarlo darebbe un rosso a chi ha fatto la cosa giusta.
+    const codice = coda.replace(/--[^\n]*/g, '');
+
+    const url = /functions\/v1\/([a-z-]+)/.exec(codice);
     out.push({
       nome: m[1],
       cadenza: m[2].trim(),
       funzione: url ? url[1] : null,
-      chiamaHttp: /net\.http_post/.test(coda),
-      timeout: /timeout_milliseconds/.test(coda),
+      chiamaHttp: /net\.http_post/.test(codice),
+      timeout: /timeout_milliseconds/.test(codice),
+      urlInChiaro: /https?:\/\//.test(codice),
       file,
     });
   }
@@ -257,6 +404,9 @@ function scan() {
   checkInventarioCron(report, { dichiarati, attesi: CRON_ATTESI });
   checkTimeoutCron(report, { dichiarati });
   checkBersaglioCron(report, { dichiarati, funzioni });
+  checkCronInMigrazione(report, { dichiarati, attesi: CRON_ATTESI, soloAMano: CRON_SOLO_A_MANO });
+  checkOrigineCron(report, { dichiarati });
+  checkDuplicatiCron(report, { dichiarati });
 
   return { report, funzioni, dichiarati };
 }
@@ -341,6 +491,144 @@ const CASES = [
       funzioni: ['finance-worker'],
     }),
     expect: 1,
+  },
+  // --- 5. MIGRAZIONE — il controllo che mancava ------------------------------
+  {
+    name: 'un job dell’inventario che vive solo in un documento → problema (il caso 0035)',
+    run: (r) => checkCronInMigrazione(r, {
+      dichiarati: [{ nome: 'calendar-sync-drain', file: 'docs/calendar-notifications.md' }],
+      attesi: { 'calendar-sync-drain': { funzione: 'calendar-sync', cadenza: '*/10 * * * *' } },
+      soloAMano: {},
+    }),
+    expect: 1,
+  },
+  {
+    name: 'lo stesso job scritto in una migrazione → nessun problema',
+    run: (r) => checkCronInMigrazione(r, {
+      dichiarati: [
+        { nome: 'calendar-sync-drain', file: 'docs/calendar-notifications.md' },
+        { nome: 'calendar-sync-drain', file: 'supabase/migrations/0035_calendar_notification_schedulers.sql' },
+      ],
+      attesi: { 'calendar-sync-drain': { funzione: 'calendar-sync', cadenza: '*/10 * * * *' } },
+      soloAMano: {},
+    }),
+    expect: 0,
+  },
+  {
+    name: 'un debito dichiarato in CRON_SOLO_A_MANO → nessun problema',
+    run: (r) => checkCronInMigrazione(r, {
+      dichiarati: [{ nome: 'finance-worker', file: 'docs/finance-operations.md' }],
+      attesi: { 'finance-worker': { funzione: 'finance-worker', cadenza: '*/5 * * * *' } },
+      soloAMano: { 'finance-worker': 'creato a mano il 2026-07-28' },
+    }),
+    expect: 0,
+  },
+  {
+    name: 'un debito ormai migrato e non tolto dalla lista → problema',
+    run: (r) => checkCronInMigrazione(r, {
+      dichiarati: [{ nome: 'finance-worker', file: 'supabase/migrations/0040_x.sql' }],
+      attesi: { 'finance-worker': { funzione: 'finance-worker', cadenza: '*/5 * * * *' } },
+      soloAMano: { 'finance-worker': 'creato a mano il 2026-07-28' },
+    }),
+    expect: 1,
+  },
+  {
+    name: 'un debito che non è più nell’inventario → problema',
+    run: (r) => checkCronInMigrazione(r, {
+      dichiarati: [], attesi: {}, soloAMano: { 'job-sparito': 'creato a mano chissà quando' },
+    }),
+    expect: 1,
+  },
+
+  // --- 6. ORIGINE ------------------------------------------------------------
+  {
+    name: 'una migrazione con l’URL del progetto scritto dentro → problema',
+    run: (r) => checkOrigineCron(r, {
+      dichiarati: [{ nome: 'x', urlInChiaro: true, file: 'supabase/migrations/0035_x.sql' }],
+    }),
+    expect: 1,
+  },
+  {
+    name: 'lo stesso URL dentro un DOCUMENTO → nessun problema (è un’istruzione per una persona)',
+    run: (r) => checkOrigineCron(r, {
+      dichiarati: [{ nome: 'x', urlInChiaro: true, file: 'docs/ai-inbox.md' }],
+    }),
+    expect: 0,
+  },
+  {
+    name: 'una migrazione che risolve l’origine a ogni esecuzione → nessun problema',
+    run: (r) => checkOrigineCron(r, {
+      dichiarati: [{ nome: 'x', urlInChiaro: false, file: 'supabase/migrations/0035_x.sql' }],
+    }),
+    expect: 0,
+  },
+
+  // --- 7. DUPLICATI ----------------------------------------------------------
+  {
+    name: 'lo stesso job creato da due migrazioni → problema',
+    run: (r) => checkDuplicatiCron(r, {
+      dichiarati: [
+        { nome: 'x', file: 'supabase/migrations/0035_a.sql' },
+        { nome: 'x', file: 'supabase/migrations/0036_b.sql' },
+      ],
+    }),
+    expect: 1,
+  },
+  {
+    name: 'lo stesso job in una migrazione E in un documento → nessun problema (il documento lo descrive)',
+    run: (r) => checkDuplicatiCron(r, {
+      dichiarati: [
+        { nome: 'x', file: 'supabase/migrations/0035_a.sql' },
+        { nome: 'x', file: 'docs/calendar-notifications.md' },
+      ],
+    }),
+    expect: 0,
+  },
+
+  // --- L'ESTRATTORE ----------------------------------------------------------
+  {
+    name: 'due job nello stesso file: il primo NON eredita il timeout del secondo',
+    run: (r) => {
+      const testo = "select cron.schedule('primo', '*/5 * * * *', $$select net.http_post("
+        + "url := 'https://x/functions/v1/a');$$);\n"
+        + "select cron.schedule('secondo', '*/9 * * * *', $$select net.http_post("
+        + "url := 'https://x/functions/v1/b', timeout_milliseconds := 150000);$$);";
+      const [primo, secondo] = estraiCron(testo, 'finto.sql');
+      if (!primo || primo.timeout) r.add('autoverifica', 'il primo job ha ereditato il timeout del secondo', 'estraiCron');
+      if (!secondo || !secondo.timeout) r.add('autoverifica', 'il secondo job ha perso il proprio timeout', 'estraiCron');
+      if (primo?.funzione !== 'a' || secondo?.funzione !== 'b') {
+        r.add('autoverifica', 'i bersagli si sono mescolati fra i due job', 'estraiCron');
+      }
+    },
+    expect: 0,
+  },
+  {
+    name: 'un commento che PARLA di https:// non è un URL in chiaro',
+    run: (r) => {
+      const [c] = estraiCron(
+        "select cron.schedule('x', '*/5 * * * *', $$\n"
+        + "  -- l'origine NON è scritta qui, niente https://esempio.supabase.co\n"
+        + "  select net.http_post(url := current_setting('app.settings.functions_base_url')"
+        + " || '/functions/v1/calendar-sync', timeout_milliseconds := 150000);$$);",
+        'supabase/migrations/0035_x.sql',
+      );
+      if (!c) r.add('autoverifica', 'l’estrattore non ha trovato il job', 'estraiCron');
+      else if (c.urlInChiaro) r.add('autoverifica', 'un commento è stato scambiato per un URL in chiaro', 'estraiCron');
+      else if (c.funzione !== 'calendar-sync') r.add('autoverifica', 'bersaglio non letto', 'estraiCron');
+    },
+    expect: 0,
+  },
+  {
+    name: 'un URL vero nel comando viene invece riconosciuto',
+    run: (r) => {
+      const [c] = estraiCron(
+        "select cron.schedule('x', '*/5 * * * *', $$select net.http_post("
+        + "url := 'https://abc.supabase.co/functions/v1/calendar-sync', timeout_milliseconds := 150000);$$);",
+        'supabase/migrations/0035_x.sql',
+      );
+      if (!c?.urlInChiaro) r.add('autoverifica', 'un URL in chiaro non è stato riconosciuto', 'estraiCron');
+    },
+    expect: 0,
   },
   {
     name: 'l’estrattore legge nome, cadenza, bersaglio e timeout',
