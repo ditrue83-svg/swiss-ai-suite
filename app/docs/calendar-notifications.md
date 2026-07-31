@@ -651,14 +651,22 @@ Solo se si vuole anche Outlook. Senza, la UI mostra Microsoft come
 
 ### 11.1 Applicare la migrazione
 
-Dal **SQL editor** del dashboard, incollare ed eseguire:
+Dal **SQL editor** del dashboard, incollare ed eseguire, **in quest'ordine**:
 
 ```
 supabase/migrations/0018_calendar_notifications.sql
+supabase/migrations/0019_notifications_mark_read.sql
+supabase/migrations/0035_calendar_notification_schedulers.sql
 ```
 
 ⚠️ **Una migrazione alla volta.** `full-setup.sql` serve a installare da zero, su
 un database in esercizio si applica il file singolo.
+
+⚠️ **La 0035 vuole già configurato ciò che sta in §11.2 e §11.4.** Non fallisce
+se manca — non potrebbe, perché deve poter essere applicata a un database vuoto
+— ma i due scheduler che crea falliranno a ogni giro finché il Vault non
+contiene `project_functions_base_url`. Lo dice con un `WARNING` mentre si
+applica, e poi in `cron.job_run_details` a ogni esecuzione.
 
 Verificare subito dopo:
 
@@ -709,13 +717,27 @@ REF=tcjmagaqktmzijbfntvy
 
 npx supabase functions deploy calendar-oauth        --project-ref $REF --no-verify-jwt
 npx supabase functions deploy notifications-worker  --project-ref $REF --no-verify-jwt
-npx supabase functions deploy calendar-sync         --project-ref $REF
+npx supabase functions deploy calendar-sync         --project-ref $REF --no-verify-jwt
 npx supabase functions deploy calendar-disconnect   --project-ref $REF
 ```
 
-⚠️ **`--no-verify-jwt` sulle prime due.** Senza, il callback OAuth riceve 401
+⚠️ **`--no-verify-jwt` sulle prime TRE.** Senza, il callback OAuth riceve 401
 prima che il codice lo veda e il collegamento non si completa mai; e lo scheduler
-non riesce a chiamare il worker. Verificare dopo il deploy:
+non riesce a chiamare i worker.
+
+⚠️⚠️ **`calendar-sync` è la terza, e qui c'era scritto il contrario.** Fino al
+2026-07-31 questo documento e `supabase/config.toml` dicevano che
+`calendar-sync` teneva la verifica del JWT **attiva** di proposito, «perché lo
+scheduler chiama comunque con la service role key nell'header `Authorization`».
+**Quell'header non c'è**: il comando di `calendar-sync-drain` manda
+`Content-Type` e `x-calendar-worker-secret`, e nient'altro — si legge in
+`cron.job` e ora nella migrazione 0035. Il risultato era **401 a ogni
+esecuzione**, dal gate della piattaforma, prima che il codice della funzione lo
+vedesse. La funzione autentica **tutti e tre** i propri chiamanti nel codice
+(§11.5), quindi `--no-verify-jwt` è il deploy corretto — ed è come sono
+deployate le altre cinque worker.
+
+Verificare dopo il deploy:
 
 ```bash
 npx supabase functions list --project-ref $REF
@@ -723,41 +745,52 @@ npx supabase functions list --project-ref $REF
 
 ### 11.4 Gli scheduler
 
-Dal SQL editor, dopo aver messo i due segreti nel Vault:
+⚠️⚠️ **I due scheduler NON si creano più a mano: li crea la migrazione 0035.**
+Fino al 2026-07-31 questa sezione conteneva due `cron.schedule` da incollare nel
+SQL editor, ed è così che sono nati. Ha funzionato una volta, su un progetto
+solo, e non sarebbe successo di nuovo: un blocco SQL dentro un documento è
+un'istruzione per una persona, non un artefatto che qualcosa esegue. Un progetto
+ricostruito, un ambiente di prova, un cliente installato da zero avrebbero avuto
+`notifications-worker` deployata e mai chiamata, **senza che un solo test
+diventasse rosso**. Dal 2026-07-31 `npm run test:operations` **rifiuta** un job
+dell'inventario che viva solo in un `.md` (controllo 5).
+
+Restano a mano **soltanto le tre voci del Vault**, che sono configurazione
+dell'ambiente e non possono stare in una migrazione:
 
 ```sql
 select vault.create_secret('<CALENDAR_WORKER_SECRET>',      'calendar_worker_secret');
 select vault.create_secret('<NOTIFICATIONS_WORKER_SECRET>', 'notifications_worker_secret');
 
--- La coda del calendario: spesso, perché è ciò che tiene allineati gli eventi.
-select cron.schedule(
-  'calendar-sync-drain', '*/10 * * * *',
-  $$ select net.http_post(
-       url := 'https://tcjmagaqktmzijbfntvy.supabase.co/functions/v1/calendar-sync',
-       headers := jsonb_build_object(
-         'Content-Type', 'application/json',
-         'x-calendar-worker-secret',
-         (select decrypted_secret from vault.decrypted_secrets where name = 'calendar_worker_secret')
-       ),
-       body := jsonb_build_object('action', 'drain'),
-       timeout_milliseconds := 150000
-     ); $$);
-
--- I promemoria: ogni quarto d'ora. La finestra è «dalle otto locali in poi»,
--- quindi girare spesso serve a coprire tutti i fusi e a recuperare un job saltato.
-select cron.schedule(
-  'notifications-worker', '*/15 * * * *',
-  $$ select net.http_post(
-       url := 'https://tcjmagaqktmzijbfntvy.supabase.co/functions/v1/notifications-worker',
-       headers := jsonb_build_object(
-         'Content-Type', 'application/json',
-         'x-notifications-worker-secret',
-         (select decrypted_secret from vault.decrypted_secrets where name = 'notifications_worker_secret')
-       ),
-       body := '{}'::jsonb,
-       timeout_milliseconds := 150000
-     ); $$);
+-- ⚠️ E l'origine del progetto: senza, i job non sanno chi chiamare.
+select vault.create_secret('https://<ref>.supabase.co',     'project_functions_base_url');
 ```
+
+Poi si applica `supabase/migrations/0035_calendar_notification_schedulers.sql`,
+che crea entrambi i job, li verifica e fallisce se qualcosa non torna.
+
+**Perché l'origine sta nel Vault e non nel comando.** Una migrazione finisce in
+`supabase/full-setup.sql`, che la CI applica a un database effimero a ogni pull
+request e che il README dà a chi installa da zero: con l'origine scritta dentro,
+ogni installazione nuova programmerebbe due chiamate ogni 10 e 15 minuti verso
+**la nostra** produzione. L'origine si legge quindi a ogni esecuzione, con
+`public.functions_base_url()` — lo stesso idioma con cui si legge il segreto, e
+per la stessa ragione: ruotarla non richiede di riscrivere il job.
+
+⚠️ **Non è un parametro di database, e non per gusto.** La prima versione usava
+`app.settings.functions_base_url`. Non si può: su Supabase ospitato `postgres`
+possiede il database ma non è superutente, e
+`alter database … set app.settings.…` risponde **42501 permission denied**
+(provato contro il progetto vero, come pure `alter role`). Il Vault è l'unico
+posto scrivibile da noi.
+
+⚠️ **`public.functions_base_url()` SOLLEVA se l'origine manca o è malformata**,
+invece di restituire `NULL`. Un `NULL` comporrebbe `net.http_post(url := null)`,
+cioè un guasto che nessuno legge; così invece ogni esecuzione finisce `failed`
+in `cron.job_run_details` con il messaggio che dice cosa manca. La funzione è
+`security invoker` e **revocata a `anon` e `authenticated`**: verificato con la
+chiave anon contro l'API vera, `rpc/functions_base_url` risponde **401
+permission denied**.
 
 ⚠️ **`timeout_milliseconds := 150000` non è facoltativo.** `pg_net` ha un timeout
 predefinito di **5 secondi**: senza, chiuderebbe la connessione a un lavoro che
@@ -766,7 +799,47 @@ pagata con l'Inbox.
 
 ⚠️ In `cron.job_run_details`, `succeeded` dice soltanto che `net.http_post` ha
 **accodato** la richiesta. Per sapere se il lavoro è stato fatto vanno letti i
-log della funzione.
+log della funzione — che dalla stessa data portano `phase=start`/`phase=end`,
+`rid` e `durationMs` (§11.6).
+
+### 11.5 Chi chiama che cosa, e come si autentica
+
+| Funzione | Chiamante | Autenticazione | `verify_jwt` |
+|---|---|---|---|
+| `calendar-sync` `{action:'drain'}` | scheduler `calendar-sync-drain` | `x-calendar-worker-secret`, confronto a tempo costante | `false` |
+| `calendar-sync` `{action:'reconcile'}` | diagnostica | idem | `false` |
+| `calendar-sync` `{action:'sync'}` | una persona, dal pulsante | JWT verificato in `authenticate()` + proprietà della connessione + `assertMember` | `false` |
+| `notifications-worker` | scheduler `notifications-worker` | `x-notifications-worker-secret`, confronto a tempo costante | `false` |
+
+Senza segreto → **403**; con il segreto sbagliato → **403**; senza il segreto
+della funzione impostato → **503 `CONFIG_MISSING`**. Su `sync`, senza JWT →
+**401**, anche presentando il segreto del worker.
+
+⚠️ `verify_jwt = false` **non allarga** la superficie: le quattro righe qui sopra
+sono verificate nel codice, non dal gate della piattaforma. Ciò che allargava la
+superficie era il contrario — una funzione che si affidava a un header che
+nessuno mandava.
+
+### 11.6 Che cosa lasciano nei log
+
+Entrambi i worker scrivono **due** righe per esecuzione:
+
+```
+[notifications-worker] phase=start rid=<id>
+[notifications-worker] phase=end rid=<id> durationMs=812 status=ok tasksScanned=3 created=1 …
+```
+
+⚠️ **L'apertura si scrive prima di qualsiasi lavoro**, e non è pedanteria: i 150
+secondi di Supabase uccidono l'isolate senza far girare il `finally`, quindi la
+riga di chiusura di un'esecuzione morta **non arriva mai**. Senza un'apertura,
+un'esecuzione morta a metà è indistinguibile da una mai partita — e sono due
+guasti diversi, con due cause diverse.
+
+`rid` è l'identificativo della piattaforma (`sb-request-id`, poi `x-request-id`,
+poi `cf-ray`). Se non ce n'è nessuno se ne genera uno **con il prefisso `gen:`**:
+chi legge deve poter distinguere «questo id lo ritrovi nei log del gateway» da
+«questo id esiste solo qui dentro». Nei log non finiscono titoli, indirizzi né
+token: solo numeri (§128).
 
 ---
 
