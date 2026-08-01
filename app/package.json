@@ -26,6 +26,7 @@
     "test:routing": "node --import tsx scripts/test-routing.ts",
     "test:validate": "node --import tsx scripts/test-validate.ts",
     "test:pipeline": "node --env-file=.env.test --import tsx scripts/test-pipeline.ts",
+    "test:ai-json-parser-unit": "node --import tsx scripts/test-ai-json-parser-unit.ts",
     "test:inbox-unit": "node --import tsx scripts/test-inbox-unit.ts",
     "test:inbox": "node --env-file=.env.test scripts/test-inbox.mjs",
     "inbox:diagnose": "node --env-file=.env.test scripts/inbox-diagnose.mjs",

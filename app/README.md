@@ -778,6 +778,11 @@ npm run test:routing    21  NUOVO il 2026-07-30. Le guardie di rotta come funzio
                         indirizzo profondo aperto A FREDDO finiva sulla Panoramica passando
                         per l'onboarding: `loading: false` non significa «ho guardato», e la
                         guardia leggeva quel falso come una risposta. 64 combinazioni.
+npm run test:ai-json-parser-unit  # Il parser CONDIVISO dell'output dei modelli, offline. Estrazione
+                        # SINTATTICA soltanto: scanner bilanciato con stato di stringa e di escape,
+                        # recinti markdown, testo prima E DOPO l'oggetto. Non ripara JSON invalido,
+                        # non trasforma un array in un oggetto, non restituisce mai `{}`. Tre parser
+                        # degradati girano come CONTROPROVE a ogni esecuzione. (72 test)
 npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto, ripresa (151 test)
 npm run test:tasks-unit # Attività offline: scadenze, ritardo, ordinamento, etichette (35 test)
 npm run test:tasks      # Attività su DB: isolamento, assegnazione, autore, completamento
