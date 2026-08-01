@@ -34,6 +34,7 @@ supabase/
                 0031_assistant_purge_schedule · 0032_subsidy_ai_2
                 0033_subsidy_answers_cascade · 0034_subsidy_answers_project_cascade
                 0035_calendar_notification_schedulers
+                0036_assistant_empty_group_citation
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
