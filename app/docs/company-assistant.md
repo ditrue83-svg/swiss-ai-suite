@@ -297,6 +297,48 @@ produce **una** citazione con `group_size = 3`, una rotta che apre l'elenco e
 un'istantanea con titolo e rotta di ciascun elemento, così il pannello delle
 fonti li elenca senza una seconda interrogazione.
 
+### L'insieme vuoto è citabile (0036, 2026-08-01)
+
+Un elenco consultato e trovato **vuoto** produce una citazione con
+`group_size = 0` e `source_ids = '{}'`: la rotta apre l'elenco, e chi legge può
+verificare da sé che non c'è nulla.
+
+⚠️ **Non è un dettaglio di forma: era un buco nell'ancoraggio.** I riferimenti
+`f1, f2…` li conia un contatore che avanza solo quando uno strumento produce una
+fonte, e un esito vuoto non ne produceva nessuna. Ma il prompt dichiara che quei
+riferimenti sono gli **unici** identificativi scrivibili e chiede di citare
+l'elenco per le affermazioni aggregate. Il modello doveva rispondere «nessuna
+automazione sta fallendo» senza avere niente da citare: a volte scriveva `f1`,
+che nessuno strumento aveva prodotto, e la guardia lo scartava — correttamente.
+
+L'asimmetria era la prova: un elenco **non** vuoto allocava sempre un
+riferimento di gruppo, uno vuoto non allocava niente. «Non c'è nulla» era
+l'unica risposta che il prodotto non sapeva ancorare, ed è una delle risposte
+che un assistente amministrativo deve saper dare più spesso. Trovato indagando
+l'instabilità di `eval:assistant` sul caso «Quali automazioni stanno fallendo?».
+
+**La regola è simmetrica**: dove il percorso non vuoto costruisce un gruppo,
+quello vuoto costruisce lo stesso gruppo con zero elementi. Sono nove esecutori
+(attività, attività per scadenza, documenti, messaggi, voci finanziarie,
+contratti, organizzazioni, opportunità, automazioni).
+
+⚠️ **Non vale per un mancato ritrovamento per identificativo** («nessuna
+attività con questo identificativo»): là non esiste alcun insieme da aprire, e
+una rotta verso un record inesistente sarebbe un collegamento verso il nulla.
+Quei rami continuano a non produrre citazioni. `test:assistant-unit` sorveglia
+entrambi gli elenchi leggendo il sorgente, perché nessun tipo può vedere che un
+ramo usa l'helper sbagliato.
+
+⚠️ `source_ids` resta obbligatorio anche a zero e deve valere `'{}'`, mai
+`null`: la differenza fra «ho guardato e non c'era niente» e «non so che cosa ci
+fosse» è esattamente ciò che questa citazione esiste per registrare.
+
+⚠️ **Lo zero è falsy**, e la scrittura di `assistant_citations` sopravvive solo
+perché confronta con `== null`. Un `c.groupSize ? …` scritto un giorno per
+«semplificare» rimanderebbe l'insieme vuoto a essere una fonte singola con
+`source_id` nullo, il vincolo lo respingerebbe e la risposta non si salverebbe.
+Nessun tipo lo vede: lo sorveglia un caso di `test:assistant-unit`.
+
 ### Versione della fonte
 
 `source_version` conserva il minimo per sapere su quale stato della fonte la
