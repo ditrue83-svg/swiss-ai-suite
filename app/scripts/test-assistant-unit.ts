@@ -722,6 +722,16 @@ section('14. Un insieme VUOTO si può citare (0036)');
     /source_id is not null and group_size is null/.test(vincolo));
   check('0036 — l\'autoverifica legge pg_constraint, non il proprio testo',
     M36.includes('pg_get_constraintdef') && M36.includes('pg_constraint'));
+  // ⚠️ IL CASO CHE LA CI HA TROVATO E QUESTO CONTROLLO NON VEDEVA. L'autoverifica
+  // della 0036 confronta letterali contro `upper(def)`: uno scritto in minuscolo
+  // non può MAI combaciare, e la migrazione fallisce su sé stessa invece che sul
+  // vincolo. In locale non c'è Postgres, quindi quel blocco non viene mai
+  // eseguito qui: senza questa riga il difetto si scopre solo in CI, e solo se
+  // qualcuno guarda il log.
+  const letterali = [...M36.matchAll(/position\(\s*'([^']*)'\s+in\s+upper\(/g)].map((m) => m[1]);
+  check('0036 — ogni letterale confrontato con upper() è MAIUSCOLO',
+    letterali.length > 0 && letterali.every((l) => l === l.toUpperCase()),
+    `minuscoli: ${letterali.filter((l) => l !== l.toUpperCase()).join(' · ') || '(nessun letterale trovato)'}`);
 
   // (b) I NOVE esecutori che elencano un insieme lo citano anche da vuoto.
   // ⚠️ Si legge il SORGENTE, come `test:crm-unit` fa con la migrazione: nessun

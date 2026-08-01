@@ -23780,7 +23780,15 @@ begin
 
   -- La garanzia che NON si sta allentando: una fonte singola non può portare
   -- una dimensione di gruppo, e un gruppo deve avere i propri identificativi.
-  if position('source_ids IS NOT NULL' in upper(def)) = 0 then
+  --
+  -- ⚠️ I LETTERALI VANNO IN MAIUSCOLO perché il confronto è contro `upper(def)`.
+  -- La prima stesura cercava `'source_ids IS NOT NULL'` — minuscolo — dentro una
+  -- stringa già alzata a maiuscolo: non poteva combaciare, e la migrazione
+  -- falliva su sé stessa. L'ha trovata la CI applicandola da zero, che è l'unico
+  -- posto dove questo blocco viene ESEGUITO: in locale non c'è Postgres, quindi
+  -- l'autoverifica era scritta e mai provata. `test:assistant-unit` ora sorveglia
+  -- che ogni letterale confrontato con `upper()` sia maiuscolo.
+  if position('SOURCE_IDS IS NOT NULL' in upper(def)) = 0 then
     raise exception '0036: il vincolo non richiede più source_ids sui gruppi (definizione: %)', def;
   end if;
   if position('SOURCE_ID IS NOT NULL' in upper(def)) = 0 then
