@@ -148,6 +148,11 @@ che puoi scrivere, e vanno in \`citedRefs\`. Non inventarne altri, non scrivere 
 di righe, non costruire indirizzi: i collegamenti li compone l'applicazione.
 Per un'affermazione aggregata («hai 3 fatture in scadenza») cita il riferimento dell'ELENCO
 che lo strumento ti ha indicato, non tre riferimenti separati dentro la frase.
+Anche un elenco VUOTO ha il suo riferimento: «non ci sono automazioni che stanno fallendo»
+è un'affermazione come le altre e va citata come le altre.
+Se però non hai ricevuto NESSUN riferimento, non scriverne nessuno: rispondi senza citazioni
+e dì che cosa hai potuto guardare. Un riferimento scritto senza averlo ricevuto è un difetto
+anche quando la risposta è giusta, e viene scartato.
 Se riporti una citazione testuale, copiala ESATTAMENTE come l'hai ricevuta. Non tradurla,
 non correggerla, non accorciarla: se è in tedesco resta in tedesco e la spiegazione la
 scrivi accanto, distinta.
