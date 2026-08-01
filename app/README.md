@@ -118,6 +118,7 @@ collegamento, e `docs:check` lo segnalava da tempo. Questo è l'indice vero.
 | [`incentivi.md`](docs/incentivi.md) | Incentivi (Subsidy AI 2.0): sei misure, quattro schede, scheduler, limiti |
 | [`company-assistant.md`](docs/company-assistant.md) | Chiedi ad AI-Swisse: ciclo, fonti, limiti |
 | [`company-assistant-search-eval.md`](docs/company-assistant-search-eval.md) | La prova di ricerca dell'assistente |
+| [`ai-output-parsing.md`](docs/ai-output-parsing.md) | Il contratto di lettura dell'output dei modelli: che cosa il parser condiviso tollera, che cosa non ripara, dove finisce la sintassi e comincia il dominio |
 
 ## Setup
 
