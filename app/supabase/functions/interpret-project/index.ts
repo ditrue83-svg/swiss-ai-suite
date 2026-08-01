@@ -14,7 +14,7 @@ import {
   buildInterpretRequest, validateInterpretation, INTERPRET_MODEL,
   type AiInterpretation, type SubsidyContext,
 } from '../_shared/subsidyInterpret.ts';
-import { parseModelJson } from '../_shared/parse.ts';
+import { describeModelJsonFailure, isModelJsonError, parseModelJson } from '../_shared/parse.ts';
 import { logAiRequest, reserveAiSlot, finalizeAiRequest } from '../_shared/persist.ts';
 
 const CORS = {
@@ -81,9 +81,46 @@ Deno.serve(async (req: Request) => {
     const anthropic = new Anthropic({ apiKey });
     const msg = await anthropic.messages.create(buildInterpretRequest(description, ctx, outputLanguage) as never) as { content: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number }; stop_reason?: string };
     if (msg.stop_reason === 'refusal') return json({ error: 'Interpretazione rifiutata dal modello.', code: 'PROVIDER_ERROR' }, 422);
+
+    // ⚠️⚠️ IL QUINTO POSTO DEL TRONCAMENTO. Il controllo `stop_reason ===
+    // 'max_tokens'` esisteva in `pipeline.ts`, `contracts/process.ts`,
+    // `finance/process.ts`, nell'assistente e — dal 2026-08-01 — nel
+    // classificatore della posta. Qui non c'era: un'interpretazione tagliata
+    // dal tetto cadeva nel `catch` generale come `PROVIDER_ERROR`, cioè
+    // accusando il fornitore di un limite scelto da NOI. Va PRIMA del blocco di
+    // testo, perché se il budget finisce nel thinking un blocco `text` non
+    // esiste. 500 e non 502: a monte hanno risposto benissimo.
+    if (msg.stop_reason === 'max_tokens') {
+      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'AI_OUTPUT_TRUNCATED' });
+      return json({ error: 'La risposta del modello è stata troncata dal limite di lunghezza.', code: 'AI_OUTPUT_TRUNCATED' }, 500);
+    }
+
+    // ⚠️ NESSUN BLOCCO DI TESTO non è «una risposta vuota». Prima si proseguiva
+    // con `''`, che il parser rifiuta comunque — ma il verbale avrebbe detto
+    // «JSON non estraibile» su una risposta che non è mai arrivata. Sono due
+    // guasti diversi e §12 chiede di poterli distinguere.
     const text = msg.content.find((b) => b.type === 'text' && b.text)?.text ?? '';
-    const raw = parseModelJson(text) as AiInterpretation;
-    const interpretation = validateInterpretation(raw, description);
+    if (!text.trim()) {
+      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'AI_INVALID_OUTPUT' });
+      console.error('[interpret] nessun blocco di testo nella risposta');
+      return json({ error: 'Il modello non ha restituito alcuna risposta.', code: 'AI_INVALID_OUTPUT' }, 502);
+    }
+
+    // ⚠️ Due guasti sotto lo stesso `try`: il JSON non si estrae, oppure si
+    // estrae e il DOMINIO lo rifiuta. Il parser condiviso fa solo la sintassi;
+    // `validateInterpretation` resta la regola di questo modulo, e le due cose
+    // non si fondono. §45 — nel log la categoria, mai la risposta.
+    let interpretation: ReturnType<typeof validateInterpretation>;
+    try {
+      const raw = parseModelJson(text) as AiInterpretation;
+      interpretation = validateInterpretation(raw, description);
+    } catch (e) {
+      const sintattico = isModelJsonError(e);
+      const code = sintattico ? 'AI_INVALID_OUTPUT' : 'EVIDENCE_VALIDATION_FAILED';
+      console.error(`[interpret] output non utilizzabile: ${sintattico ? describeModelJsonFailure(e) : (e as Error).name}`);
+      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code });
+      return json({ error: 'La risposta del modello non è in un formato valido.', code }, 502);
+    }
 
     const done = await finalizeAiRequest(sb, slot.logId, {
       status: 'ok', durationMs: Date.now() - started,

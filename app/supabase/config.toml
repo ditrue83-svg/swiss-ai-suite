@@ -190,3 +190,42 @@ verify_jwt = false
 # ---------------------------------------------------------------------------
 [functions.finance-worker]
 verify_jwt = false
+
+# ---------------------------------------------------------------------------
+# ⚠️⚠️ LE QUATTRO DICHIARAZIONI MANCANTI — 2026-08-01
+#
+# Questo blocco chiude, per le funzioni toccate dal parser condiviso, la
+# trappola che `email-sync` aveva pagato da sola: il file elencava SOLO le
+# funzioni con il gate spento, e per tutte le altre non si mandava nulla. La
+# piattaforma allora tiene l'ultimo valore impostato — cioè il gate di una
+# funzione dipende dalla memoria del progetto invece che dal repository, e un
+# flag di troppo in un deploy qualsiasi lo cambia per sempre in silenzio.
+#
+# I quattro valori qui sotto NON sono stati scelti a tavolino: sono quelli
+# MISURATI sul progetto il 2026-08-01 con `npm run verify:deploy`
+# (analyze-document v38 true · contract-worker v16 false · email-disconnect v16
+# true · interpret-project v25 true). Dichiararli non cambia niente oggi e
+# rende il deploy ripetibile domani, senza `--no-verify-jwt` a mano.
+#
+#   analyze-document   la chiama il browser con il JWT dell'utente.
+#   email-disconnect   idem: è un gesto di una persona nelle impostazioni.
+#   interpret-project  idem: parte dal modulo Incentivi.
+#   contract-worker    lo chiama uno scheduler, non una persona. Si autentica
+#                      NEL CODICE con `x-contract-worker-secret` confrontato a
+#                      tempo costante: senza segreto risponde 403. Se il gate
+#                      della piattaforma si accendesse, il cron prenderebbe 401
+#                      a ogni esecuzione, per sempre, e nulla diventerebbe
+#                      rosso — è esattamente ciò che è successo a
+#                      `calendar-sync` per sei giorni.
+# ---------------------------------------------------------------------------
+[functions.analyze-document]
+verify_jwt = true
+
+[functions.email-disconnect]
+verify_jwt = true
+
+[functions.interpret-project]
+verify_jwt = true
+
+[functions.contract-worker]
+verify_jwt = false
