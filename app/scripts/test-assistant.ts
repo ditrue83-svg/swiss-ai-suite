@@ -317,6 +317,59 @@ async function main() {
     check(`nessun residuo in ${table}`, (left.data?.length ?? 0) === 0);
   }
 
+  // -------------------------------------------------------------------------
+  section('La citazione di un insieme VUOTO (0036)');
+  // -------------------------------------------------------------------------
+  // ⚠️ La 0036 si autoverifica leggendo `pg_constraint`, cioè controlla che la
+  // DDL sia atterrata. Che il `check` si COMPORTI come deve lo prova solo una
+  // riga vera, e serve un messaggio vero a cui agganciarla: è questo il posto.
+  // Trovato indagando l'instabilità di `eval:assistant`: la domanda «quali
+  // automazioni stanno fallendo?» ha come risposta corretta «nessuna», e finché
+  // un insieme vuoto non era citabile quella frase restava senza fonte.
+  {
+    const base = {
+      message_id: seedA.messageId, company_id: A.companyId, citation_index: 90,
+      source_type: 'workflow_definition' as const, route: '/automazioni',
+      title: 'Automazioni con problemi',
+    };
+
+    const vuoto = await admin.from('assistant_citations')
+      .insert({ ...base, source_id: null, source_ids: [], group_size: 0 });
+    check('un gruppo VUOTO si può scrivere: «ho guardato e non c\'era niente»',
+      !vuoto.error, msg(vuoto.error));
+
+    // ⚠️ CONTROPROVA — il vincolo non è stato allentato, è stato PRECISATO.
+    // Senza queste tre righe «ammette lo zero» e «non controlla più niente»
+    // sarebbero indistinguibili.
+    const senzaIds = await admin.from('assistant_citations')
+      .insert({ ...base, citation_index: 91, source_id: null, source_ids: null, group_size: 0 });
+    check('CONTROPROVA: un gruppo senza source_ids resta VIETATO',
+      !!senzaIds.error, 'è passato: il vincolo non distingue più «vuoto» da «non so»');
+
+    const misto = await admin.from('assistant_citations')
+      .insert({ ...base, citation_index: 92, source_id: A.companyId, source_ids: [], group_size: 0 });
+    check('CONTROPROVA: fonte singola e gruppo insieme restano VIETATI',
+      !!misto.error, 'è passato: le due forme si sono confuse');
+
+    const negativo = await admin.from('assistant_citations')
+      .insert({ ...base, citation_index: 93, source_id: null, source_ids: [], group_size: -1 });
+    check('CONTROPROVA: una dimensione NEGATIVA resta vietata',
+      !!negativo.error, 'è passato: >= 0 non è stato scritto come si credeva');
+
+    // E la riga scritta si rilegge per quello che è: zero, non nullo.
+    const riletta = await admin.from('assistant_citations')
+      .select('group_size, source_ids, source_id')
+      .eq('message_id', seedA.messageId).eq('citation_index', 90).maybeSingle();
+    const r = riletta.data as { group_size: number | null; source_ids: string[] | null; source_id: string | null } | null;
+    check('rileggendola, la dimensione è ZERO e non NULL',
+      r?.group_size === 0, `letto: ${JSON.stringify(r)}`);
+    check('e l\'elenco degli identificativi è VUOTO, non assente (§ la differenza fra «non c\'era niente» e «non so»)',
+      Array.isArray(r?.source_ids) && r?.source_ids.length === 0 && r?.source_id === null);
+
+    await admin.from('assistant_citations').delete()
+      .eq('message_id', seedA.messageId).gte('citation_index', 90);
+  }
+
   await cleanup();
   console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);
   process.exit(fail ? 1 : 0);
