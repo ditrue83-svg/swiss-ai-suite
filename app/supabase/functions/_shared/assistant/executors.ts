@@ -182,6 +182,46 @@ function groupSource(
   });
 }
 
+/**
+ * L'insieme consultato e trovato VUOTO.
+ *
+ * ⚠️⚠️ ESISTE PERCHÉ «NON C'È NULLA» ERA L'UNICA RISPOSTA CHE IL PRODOTTO NON
+ * SAPEVA ANCORARE. I riferimenti `f1, f2…` li conia `allocRef()`, che avanza
+ * solo quando uno strumento produce una fonte; `emptyResult()` non ne produce
+ * nessuna. Il prompt però dichiara che quei riferimenti sono gli UNICI
+ * identificativi scrivibili e chiede di citare l'ELENCO per le affermazioni
+ * aggregate. Il modello si trovava a dover dire «nessuna automazione sta
+ * fallendo» senza niente da citare, e a volte scriveva `f1` — che nessuno
+ * strumento aveva prodotto. La guardia lo scartava, giustamente: il buco era
+ * qui. Trovato indagando l'instabilità di `eval:assistant` il 2026-08-01.
+ *
+ * ⚠️ `groupSize` vale ZERO e `sourceIds` è l'array VUOTO, non `null`: la
+ * differenza fra «ho guardato e non c'era niente» e «non so che cosa ci fosse»
+ * è ciò che questa citazione esiste per registrare. Richiede la **0036**, che
+ * rilassa `assistant_citations_single_or_group`; senza quella migrazione la
+ * scrittura delle citazioni viola il vincolo e la risposta non si salva.
+ *
+ * ⚠️ NON si usa per un mancato ritrovamento per identificativo («nessuna
+ * attività con questo identificativo»): là non esiste alcun insieme da aprire,
+ * e una rotta verso un record inesistente sarebbe un collegamento verso il
+ * nulla. Quei chiamanti continuano a usare `emptyResult`.
+ *
+ * ⚠️ `verification: 'deterministic'` — che l'insieme sia vuoto lo dice il
+ * database, non un giudizio del modello.
+ */
+function emptyGroup(
+  deps: ExecutorDeps,
+  sourceType: SourceType,
+  route: string,
+  title: string,
+  note: string,
+): ToolExecutionResult {
+  return {
+    ...emptyResult(note),
+    sources: [groupSource(deps.allocRef(), sourceType, route, title, [], 'deterministic')],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Rotte
 //
@@ -389,7 +429,12 @@ const listTasks: Executor = async (input, deps) => {
   list = list.slice(0, limit);
 
   if (!list.length) {
-    return { ...emptyResult('Nessuna attività corrisponde a questi filtri.'), totalCount: 0 };
+    return {
+      ...emptyGroup(deps, 'task', ROUTES.tasks(view === 'overdue' ? 'overdue' : undefined),
+        unassignedOnly ? 'Attività non assegnate' : 'Elenco delle attività',
+        'Nessuna attività corrisponde a questi filtri.'),
+      totalCount: 0,
+    };
   }
 
   const out: Record<string, unknown>[] = [];
@@ -447,7 +492,11 @@ const listTasksByDueDate: Executor = async (input, deps) => {
   const today = todayIn(ctx.now, ctx.timeZone);
   const list = rows(res.data).slice(0, limit);
   if (!list.length) {
-    return { ...emptyResult(`Nessuna attività con scadenza fra il ${range.from} e il ${range.to}.`), totalCount: 0 };
+    return {
+      ...emptyGroup(deps, 'task', ROUTES.tasks(), `Attività dal ${range.from} al ${range.to}`,
+        `Nessuna attività con scadenza fra il ${range.from} e il ${range.to}.`),
+      totalCount: 0,
+    };
   }
 
   const out: Record<string, unknown>[] = [];
@@ -611,7 +660,11 @@ const searchDocuments: Executor = async (input, deps) => {
 
   const list = rows(res.data);
   if (!list.length) {
-    return { ...emptyResult('Nessun documento corrisponde a questa ricerca fra quelli accessibili.'), totalCount: 0 };
+    return {
+      ...emptyGroup(deps, 'document', ROUTES.documents(str(input.query) ?? undefined), 'Documenti trovati',
+        'Nessun documento corrisponde a questa ricerca fra quelli accessibili.'),
+      totalCount: 0,
+    };
   }
   const total = int(list[0].total_count);
 
@@ -832,7 +885,13 @@ const listInboxMessages: Executor = async (input, deps) => {
     if (!alt.error) list = rows(alt.data);
   }
 
-  if (!list.length) return { ...emptyResult('Nessun messaggio corrisponde a questi filtri.'), totalCount: 0 };
+  if (!list.length) {
+    return {
+      ...emptyGroup(deps, 'email_message', ROUTES.inbox(), 'Messaggi trovati',
+        'Nessun messaggio corrisponde a questi filtri.'),
+      totalCount: 0,
+    };
+  }
 
   const out: Record<string, unknown>[] = [];
   const sources: AssistantSourceReference[] = [];
@@ -990,7 +1049,21 @@ const listFinanceItems: Executor = async (input, deps) => {
   const total = list.length ? int(list[0].total_count) : 0;
   if (type) list = list.filter((r) => str(r.type) === type);
   list = list.slice(0, limit);
-  if (!list.length) return { ...emptyResult('Nessuna voce finanziaria corrisponde a questi filtri.'), totalCount: 0 };
+  // ⚠️ Sollevato sopra il controllo dell'elenco vuoto: dipende solo da `input`,
+  // e serve alla rotta del gruppo in ENTRAMBI i rami. Ricalcolarlo due volte
+  // avrebbe prodotto due filtri destinati a divergere alla prima modifica.
+  const listParams = [
+    str(input.review) ? `verifica=${str(input.review)}` : '',
+    input.onlyDuplicates === true ? 'duplicati=1' : '',
+    input.onlyFlagged === true ? 'segnalati=1' : '',
+  ].filter(Boolean).join('&');
+  if (!list.length) {
+    return {
+      ...emptyGroup(deps, 'finance_item', ROUTES.financeList(listParams || undefined), 'Voci finanziarie trovate',
+        'Nessuna voce finanziaria corrisponde a questi filtri.'),
+      totalCount: 0,
+    };
+  }
 
   const today = todayIn(ctx.now, ctx.timeZone);
   const out: Record<string, unknown>[] = [];
@@ -1001,11 +1074,6 @@ const listFinanceItems: Executor = async (input, deps) => {
     sources.push(financeSource(r, ref));
   }
   const gref = deps.allocRef();
-  const listParams = [
-    str(input.review) ? `verifica=${str(input.review)}` : '',
-    input.onlyDuplicates === true ? 'duplicati=1' : '',
-    input.onlyFlagged === true ? 'segnalati=1' : '',
-  ].filter(Boolean).join('&');
   sources.push(groupSource(
     gref, 'finance_item', ROUTES.financeList(listParams || undefined), 'Voci finanziarie trovate',
     list.map((r) => ({
@@ -1242,7 +1310,13 @@ const listContracts: Executor = async (input, deps) => {
   if (res.error) return failed(res.error);
 
   const list = rows(res.data);
-  if (!list.length) return { ...emptyResult('Nessun contratto corrisponde a questi filtri.'), totalCount: 0 };
+  if (!list.length) {
+    return {
+      ...emptyGroup(deps, 'contract', ROUTES.contracts(view !== 'all' ? view : undefined), contractsGroupTitle(view),
+        'Nessun contratto corrisponde a questi filtri.'),
+      totalCount: 0,
+    };
+  }
   const total = int(list[0].total_count);
 
   const out: Record<string, unknown>[] = [];
@@ -1389,7 +1463,13 @@ const searchCrmOrganizations: Executor = async (input, deps) => {
   });
   if (res.error) return failed(res.error);
   const list = rows(res.data);
-  if (!list.length) return { ...emptyResult('Nessuna organizzazione corrisponde a questa ricerca.'), totalCount: 0 };
+  if (!list.length) {
+    return {
+      ...emptyGroup(deps, 'crm_organization', ROUTES.clients(), 'Organizzazioni trovate',
+        'Nessuna organizzazione corrisponde a questa ricerca.'),
+      totalCount: 0,
+    };
+  }
   const total = int(list[0].total_count);
 
   const out: Record<string, unknown>[] = [];
@@ -1483,7 +1563,13 @@ const listCrmOpportunities: Executor = async (input, deps) => {
   });
   if (res.error) return failed(res.error);
   const list = rows(res.data);
-  if (!list.length) return { ...emptyResult('Nessuna opportunità corrisponde a questi filtri.'), totalCount: 0 };
+  if (!list.length) {
+    return {
+      ...emptyGroup(deps, 'crm_opportunity', ROUTES.clients(), 'Opportunità trovate',
+        'Nessuna opportunità corrisponde a questi filtri.'),
+      totalCount: 0,
+    };
+  }
   const total = int(list[0].total_count);
 
   const out: Record<string, unknown>[] = [];
@@ -1579,7 +1665,11 @@ const listWorkflowFailures: Executor = async (input, deps) => {
 
   const list = rows(res.data);
   if (!list.length) {
-    return emptyResult('Nessuna automazione richiede attenzione: nessuna ha un problema registrato.');
+    // ⚠️ È IL CASO CHE HA RIVELATO IL DIFETTO. La risposta corretta a «quali
+    // automazioni stanno fallendo?» è «nessuna», e finché questo ramo non
+    // coniava un riferimento il modello non aveva niente da citare.
+    return emptyGroup(deps, 'workflow_definition', ROUTES.workflows(), 'Automazioni con problemi',
+      'Nessuna automazione richiede attenzione: nessuna ha un problema registrato.');
   }
 
   const out: Record<string, unknown>[] = [];
