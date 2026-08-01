@@ -38,6 +38,12 @@ import {
   type ContractQualityFlag, type ContractTerminationMethod, type ContractType,
 } from './contract.ts';
 import { canDeriveNoticeDeadline, detectAnchor, normalizeAnchor, parsePeriod } from './periods.ts';
+// L'estrazione sintattica è una sola in tutto il prodotto: vedi `parseModelJson`
+// più in basso per la ragione per cui questo modulo ne conserva l'involucro.
+import {
+  describeModelJsonFailure,
+  parseModelJson as parseSharedModelJson,
+} from '../parse.ts';
 
 // ---------------------------------------------------------------------------
 // Citazioni
@@ -583,15 +589,29 @@ function readAnnexes(
  * Il JSON dentro la risposta del modello.
  * ⚠️ Nessun `eval`, nessuna riparazione creativa: o è JSON o non lo è. Un
  * oggetto «aggiustato» è un oggetto di cui nessuno conosce più la provenienza.
+ *
+ * ⚠️⚠️ L'ESTRAZIONE NON VIVE PIÙ QUI. Questa funzione conteneva un proprio
+ * scanner — `indexOf('{')` … `lastIndexOf('}')` — che era il PEGGIORE dei tre
+ * del repository: prendendo l'ULTIMA graffa della risposta, una frase finale
+ * come «…e ho lasciato {vuoto} il campo X» veniva inghiottita, e due oggetti
+ * consecutivi venivano fusi in un blocco che non è JSON. Ora l'estrazione è
+ * quella condivisa di `_shared/parse.ts`, provata su 72 casi.
+ *
+ * ⚠️ Il CONTRATTO di questa funzione resta invariato e di proposito:
+ * restituisce `null` invece di sollevare, perché `contracts/process.ts` legge
+ * quel `null` per scrivere un verbale `AI_REFUSED` — e cambiare la forma
+ * dell'errore qui vorrebbe dire cambiare la gestione di un guasto che non
+ * c'entra con questo lavoro. Il modulo mantiene la propria validazione
+ * (`validateContractReading`): il parser condiviso fa solo la sintassi.
  */
 export function parseModelJson(text: string): unknown | null {
-  const trimmed = text.trim();
-  const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  if (start < 0 || end <= start) return null;
   try {
-    return JSON.parse(trimmed.slice(start, end + 1));
-  } catch {
+    return parseSharedModelJson(text);
+  } catch (e) {
+    // §45 — la categoria, mai l'output. `describeModelJsonFailure` porta
+    // lunghezza, presenza di recinto e posizione: abbastanza per distinguere
+    // «non c'era JSON» da «era troncato», niente per ricostruire un contratto.
+    console.error(`[contracts] json non estraibile: ${describeModelJsonFailure(e)}`);
     return null;
   }
 }

@@ -36,6 +36,8 @@ import { parseDate } from './dates.ts';
 import { normalizeCurrency, parseAmount, toString as decimalToString } from './money.ts';
 import type { FinanceAiField } from './prompt.ts';
 import { FINANCE_AI_FIELDS } from './prompt.ts';
+// Estrazione sintattica condivisa: vedi `parseFinanceModelJson` in fondo.
+import { parseModelJson as parseSharedModelJson } from '../parse.ts';
 
 // ---------------------------------------------------------------------------
 // Il testo su cui si verificano le citazioni
@@ -451,19 +453,19 @@ export function validateFinanceOutput(input: ValidateInput): FinanceAiReading {
 /**
  * Estrae e interpreta il JSON prodotto dal modello.
  *
- * ⚠️ DOPPIONE DICHIARATO di `parseModelJson` in `_shared/parse.ts`: la funzione
- * è identica, ma quel modulo appartiene alla pipeline dell'analisi e questo
- * deve poter essere letto — e provato — senza trascinarsela dietro. Tollera i
- * recinti markdown; NON «aggiusta» il contenuto.
+ * ⚠️⚠️ NON È PIÙ UN DOPPIONE, e la giustificazione che ne autorizzava uno era
+ * SBAGLIATA. Diceva: «quel modulo appartiene alla pipeline dell'analisi e
+ * questo deve poter essere letto senza trascinarsela dietro». Verificato:
+ * `_shared/parse.ts` non importa NIENTE — quindici righe senza una sola
+ * dipendenza — quindi non c'era nulla da trascinarsi dietro, e la copia è
+ * costata il difetto due volte invece di una. Un doppione «dichiarato» resta un
+ * doppione: la dichiarazione ne documenta il costo, non lo annulla.
+ *
+ * Resta l'involucro, con il suo nome, perché il CONTRATTO di Finanze è
+ * sollevare (lo legge il `try` di `finance/process.ts`, che scrive
+ * `AI_INVALID_OUTPUT` e mette la voce in `retry_later`). Il modulo mantiene la
+ * propria validazione, `validateFinanceOutput`: qui c'è solo la sintassi.
  */
 export function parseFinanceModelJson(text: string): unknown {
-  if (typeof text !== 'string') throw new Error('AI_INVALID_OUTPUT');
-  let s = text.trim();
-  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fence) s = fence[1].trim();
-  if (!s.startsWith('{')) {
-    const i = s.indexOf('{');
-    if (i >= 0) s = s.slice(i);
-  }
-  return JSON.parse(s);
+  return parseSharedModelJson(text);
 }
