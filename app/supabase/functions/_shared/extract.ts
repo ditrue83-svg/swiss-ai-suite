@@ -16,6 +16,10 @@
 // ============================================================================
 import type { ExtractionResult } from './validate.ts';
 import type { ModelMessage } from './pipeline.ts';
+// Estrazione sintattica condivisa: la trascrizione OCR è output di un modello
+// come tutti gli altri, e fino a oggi era l'unico percorso che non lo trattava
+// come tale.
+import { parseModelJson } from './parse.ts';
 
 /** Limite di dimensione del file sottoposto a trascrizione (§28). */
 export const MAX_FILE_BYTES = 15 * 1024 * 1024;
@@ -60,9 +64,26 @@ export function buildOcrRequest(base64: string, mimeType: string | null) {
 }
 
 export function parseOcrResponse(msg: ModelMessage): ExtractionResult {
+  // ⚠️ IL TETTO DI TOKEN PRIMA DEL BLOCCO DI TESTO. Una trascrizione tagliata a
+  // 8000 token non è «un documento corto»: è metà documento, e proseguire
+  // scriverebbe in `document_extractions` un testo mutilato che ogni analisi a
+  // valle leggerebbe come completo. Se il budget finisce durante il thinking un
+  // blocco `text` non esiste nemmeno, ed è la ragione dell'ordine — la stessa
+  // di `pipeline.ts`, `contracts/process.ts`, `finance/process.ts` e del
+  // classificatore della posta.
+  if (msg.stop_reason === 'max_tokens') {
+    const err = new Error('trascrizione troncata') as Error & { code?: string };
+    err.code = 'AI_OUTPUT_TRUNCATED';
+    throw err;
+  }
   const block = msg.content.find((b) => b.type === 'text' && typeof b.text === 'string');
   const raw = block?.text ?? '';
-  const parsed = JSON.parse(raw.slice(raw.indexOf('{')));
+  // ⚠️ Era `JSON.parse(raw.slice(raw.indexOf('{')))`: nessun recinto tolto e
+  // nessun bilanciamento, cioè la forma più esposta del difetto. Con
+  // `indexOf` a -1 lo `slice(-1)` prendeva perfino l'ULTIMO carattere della
+  // risposta e lo dava a `JSON.parse`, che sollevava un errore di sintassi su
+  // un output che semplicemente non c'era.
+  const parsed = parseModelJson(raw) as { pages?: unknown; fullText?: unknown };
   const pages = (Array.isArray(parsed.pages) ? parsed.pages : []).map((p: { pageNumber?: number; text?: string }, i: number) => ({
     pageNumber: typeof p.pageNumber === 'number' ? p.pageNumber : i + 1,
     text: String(p.text ?? ''),

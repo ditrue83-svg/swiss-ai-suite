@@ -104,6 +104,9 @@ const ok = (cond: boolean, label: string, detail = '') => {
   if (cond) { pass++; console.log(`  ${G}✓${X} ${label}`); }
   else { fail++; console.log(`  ${R}✗ ${label}${X}${detail ? `\n     ${DIM}${detail}${X}` : ''}`); }
 };
+
+// Un'asserzione che SOLLEVA uccide la suite e nasconde tutto ciò che segue.
+const prova = <T,>(f: () => T): T | null => { try { return f(); } catch { return null; } };
 const section = (title: string) => console.log(`\n${B}${title}${X}`);
 
 /** L'importo, come stringa decimale, oppure `null`: la forma con cui si confronta. */
@@ -668,13 +671,28 @@ section('5 · Validazione dell’estrazione: si scarta e si dichiara, non si agg
     'CONTROPROVA: una citazione inventata non si ritrova, e vale null');
 
   // L'output grezzo del modello.
-  ok((parseFinanceModelJson('```json\n{"a":1}\n```') as { a: number }).a === 1,
+  ok((prova(() => parseFinanceModelJson('```json\n{"a":1}\n```')) as { a: number } | null)?.a === 1,
     'i recinti markdown si tollerano: il modello a volte li mette');
-  ok((parseFinanceModelJson('Ecco il risultato: {"a":2}') as { a: number }).a === 2,
+  ok((prova(() => parseFinanceModelJson('Ecco il risultato: {"a":2}')) as { a: number } | null)?.a === 2,
     'il preambolo prima della graffa si scarta');
   let esplosa = false;
   try { parseFinanceModelJson('non è json'); } catch { esplosa = true; }
   ok(esplosa, 'CONTROPROVA: un output che non è JSON solleva un errore ESPLICITO — non un oggetto vuoto plausibile');
+
+  // ⚠️ REGRESSIONE 2026-08-01 — questa funzione era un DOPPIONE DICHIARATO di
+  // `_shared/parse.ts`, con la stessa identica falla: il testo dopo la graffa
+  // di chiusura finiva dentro `JSON.parse`. La giustificazione scritta nel
+  // commento («non trascinarsi dietro la pipeline») era falsa: `parse.ts` non
+  // importa niente. Ora resta solo l'involucro, che SOLLEVA come Finance vuole.
+  ok((prova(() => parseFinanceModelJson('{"gross_amount":"486.50"}\n\nHo verificato il totale.')) as { gross_amount: string } | null)?.gross_amount === '486.50',
+    'una lettura seguita da una frase di commento si legge lo stesso');
+  ok((prova(() => parseFinanceModelJson('```json\n{"iban":"CH93"}\n```\n\nIl QR non era decodificabile.')) as { iban: string } | null)?.iban === 'CH93',
+    'e anche dentro un recinto con testo dopo');
+  ok(((prova(() => parseFinanceModelJson('{"note":"importo di 1\'200 { CHF }"}')) as { note: string } | null)?.note ?? '').includes('{ CHF }'),
+    'le graffe DENTRO una stringa non chiudono l\'oggetto');
+  let troncata = false;
+  try { parseFinanceModelJson('{"gross_amount":"48'); } catch { troncata = true; }
+  ok(troncata, 'e una lettura troncata resta un errore, non un importo a metà');
 
   const spazzatura = validateFinanceOutput({ raw: 'una stringa', source: fonte, askFor: ['gross_amount'] });
   ok(Object.keys(spazzatura.fields).length === 0 && spazzatura.vatBreakdown.length === 0,

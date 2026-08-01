@@ -13,6 +13,7 @@ import {
 } from '../supabase/functions/_shared/validate.ts';
 import { buildAnalysisRow, reviewStatus } from '../supabase/functions/_shared/persist.ts';
 import { looksLikeScan, MIN_CHARS_ABSOLUTE } from '../supabase/functions/_shared/extractionQuality.ts';
+import { parseOcrResponse } from '../supabase/functions/_shared/extract.ts';
 import { runAnalysisPipeline, type ModelMessage } from '../supabase/functions/_shared/pipeline.ts';
 // ⚠️ I DUE WORKER VERI, non una loro imitazione: è l'unico modo perché questo
 // test veda una guardia scollegata. Il client Supabase e il modello sono finti,
@@ -31,6 +32,9 @@ const ok = (cond: boolean, label: string, detail = '') => {
   if (cond) { pass++; console.log(`  ✓ ${label}${detail ? ` — ${detail}` : ''}`); }
   else { fail++; console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`); }
 };
+
+// Un'asserzione che SOLLEVA uccide la suite e nasconde tutto ciò che segue.
+const prova = <T,>(f: () => T): T | null => { try { return f(); } catch { return null; } };
 
 const TEXT = `Ausgleichskasse des Kantons Zürich
 Betreff: Lohndeklaration 2025 — fehlende Unterlagen
@@ -739,6 +743,59 @@ console.log('\n10) Provenienza: pagina, citazione, testo riletto, lavoro appeso'
     ok(!tracce.some((t) => t.tabella === 'document_analyses' && t.azione === 'insert'),
       'e non si tocca l\'analisi buona');
   }
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n11) La trascrizione OCR è output di un modello come gli altri');
+// ---------------------------------------------------------------------------
+// ⚠️ `parseOcrResponse` era l'unico percorso AI del prodotto SENZA alcun test e
+// con la forma più esposta del difetto: `JSON.parse(raw.slice(raw.indexOf('{')))`
+// — nessun recinto tolto, nessun bilanciamento, e con `indexOf` a -1 lo
+// `slice(-1)` dava a `JSON.parse` l'ULTIMO CARATTERE della risposta. Un output
+// assente diventava così un errore di sintassi su un carattere a caso.
+{
+  const rispostaOcr = (testo: string, stop = 'end_turn'): ModelMessage =>
+    ({ content: [{ type: 'text', text: testo }], usage: {}, stop_reason: stop }) as ModelMessage;
+
+  const pagine = '{"pages":[{"pageNumber":1,"text":"Rechnung Nr. 42"}],"fullText":"Rechnung Nr. 42"}';
+
+  const nudo = prova(() => parseOcrResponse(rispostaOcr(pagine)));
+  ok(nudo?.fullText === 'Rechnung Nr. 42' && nudo?.extractionMethod === 'ocr',
+    'una trascrizione nuda si legge');
+
+  const recintata = prova(() => parseOcrResponse(rispostaOcr('```json\n' + pagine + '\n```')));
+  ok(recintata?.fullText === 'Rechnung Nr. 42',
+    '⚠️ dentro un recinto markdown anche: prima i tre apici finali entravano in JSON.parse');
+
+  const conCoda = prova(() => parseOcrResponse(rispostaOcr(pagine + '\n\nLa seconda pagina era illeggibile.')));
+  ok(conCoda?.pages.length === 1 && conCoda?.fullText === 'Rechnung Nr. 42',
+    '⚠️ e con una frase DOPO l\'oggetto: è il difetto che questo lavoro chiude');
+
+  // Le graffe dentro il testo trascritto non chiudono l'oggetto: su un
+  // documento vero capita (formule, codici, parentesi graffe stampate).
+  const conGraffe = prova(() => parseOcrResponse(rispostaOcr('{"pages":[{"pageNumber":1,"text":"codice {A} riga"}],"fullText":"codice {A} riga"}')));
+  ok(conGraffe?.fullText === 'codice {A} riga',
+    'le graffe dentro il testo trascritto non interrompono l\'estrazione');
+
+  let vuoto = false;
+  try { parseOcrResponse(rispostaOcr('')); } catch { vuoto = true; }
+  ok(vuoto, 'una risposta vuota è un guasto esplicito, non una trascrizione vuota plausibile');
+
+  let troncata: string | null = null;
+  try { parseOcrResponse(rispostaOcr('{"pages":[{"pageNumber":1,"text":"Rech', 'max_tokens')); }
+  catch (e) { troncata = (e as Error & { code?: string }).code ?? null; }
+  ok(troncata === 'AI_OUTPUT_TRUNCATED',
+    '⚠️ e una trascrizione TAGLIATA dal tetto di token si dichiara tale: metà documento salvato come intero sarebbe la bugia peggiore di tutte');
+
+  // ⚠️ CONTROPROVA sul controllo appena aggiunto: senza il ramo `max_tokens`
+  // questa risposta cadrebbe nel parser e uscirebbe come «JSON incompleto» —
+  // vero, e muto sulla causa. Il vecchio slice invece la accettava a metà? No:
+  // esplodeva. La differenza sta nel CODICE, che ora nomina il colpevole.
+  let senzaTetto: string | null = null;
+  try { parseOcrResponse(rispostaOcr('{"pages":[{"pageNumber":1,"text":"Rech')); }
+  catch (e) { senzaTetto = (e as Error & { code?: string }).code ?? null; }
+  ok(senzaTetto !== 'AI_OUTPUT_TRUNCATED',
+    'CONTROPROVA: lo stesso testo SENZA stop_reason non si dichiara troncato — il codice viene dal motivo, non dalla forma');
 }
 
 console.log(`\n${pass} passati, ${fail} falliti\n`);

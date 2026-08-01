@@ -32,6 +32,13 @@ import {
 } from '../supabase/functions/_shared/email/classify.ts';
 import { validateClassifierOutput, buildClassifyRequest } from '../supabase/functions/_shared/email/classifyPrompt.ts';
 import { parseModelJson } from '../supabase/functions/_shared/parse.ts';
+
+// Un'asserzione che SOLLEVA uccide la suite e nasconde tutto ciò che segue: la
+// controprova con il parser vecchio ha mostrato proprio questo, uno stack trace
+// al posto di un rosso con un nome. `prova()` trasforma l'eccezione in `null`,
+// così il caso fallisce DICHIARANDOSI.
+const prova = <T,>(f: () => T): T | null => { try { return f(); } catch { return null; } };
+
 import { readFileSync } from 'node:fs';
 import { createGoogleAdapter } from '../supabase/functions/_shared/email/google.ts';
 import { createMicrosoftAdapter } from '../supabase/functions/_shared/email/microsoft.ts';
@@ -925,9 +932,9 @@ section('11 · Perché una classificazione è caduta — e se va ripresa');
     let naive = false;
     try { JSON.parse(recintata.slice(recintata.indexOf('{'))); naive = true; } catch { /* no */ }
     ok(!naive, 'lo slice dalla prima graffa NON legge una risposta dentro un recinto markdown');
-    ok((parseModelJson(recintata) as { relevance: string }).relevance === 'informational',
+    ok((prova(() => parseModelJson(recintata)) as { relevance: string } | null)?.relevance === 'informational',
       '⚠️ `parseModelJson` sì — ed è lo strumento che esisteva già in casa e che questo percorso non usava');
-    ok(validateClassifierOutput(parseModelJson(recintata)).relevance === 'informational',
+    ok(prova(() => validateClassifierOutput(parseModelJson(recintata)))?.relevance === 'informational',
       'e il risultato attraversa la validazione come una risposta qualunque');
 
     // ⚠️ I due controlli qui sopra provano lo STRUMENTO, non che il codice lo
@@ -941,6 +948,26 @@ section('11 · Perché una classificazione è caduta — e se va ripresa');
       '⚠️ e il classificatore lo USA davvero: senza questa riga i due controlli sopra sarebbero verdi su un codice che non l’ha mai chiamato');
     ok(!/JSON\.parse\(\s*block\.text\.slice/.test(sorgente),
       'e non è rimasto lo slice ingenuo accanto');
+
+    // ⚠️ REGRESSIONE 2026-08-01 — IL LIMITE DICHIARATO QUI SOPRA È STATO
+    // CHIUSO. Il commento di `parse.ts` prometteva «primo oggetto bilanciato» e
+    // il codice non bilanciava: teneva tutto dalla prima graffa fino in fondo,
+    // quindi una frase DOPO la risposta la rendeva illeggibile. È la forma in
+    // cui il difetto è stato osservato consolidando l'Inbox.
+    const conCoda = 'Ho esaminato il messaggio.\n\n```json\n{"relevance":"likely_actionable","confidence":0.9,"reason":"Fattura fornitore","manipulationAttempt":false}\n```\n\nNon ho trovato altro da segnalare.';
+    let vecchio = false;
+    try { JSON.parse(conCoda.slice(conCoda.indexOf('{'))); vecchio = true; } catch { /* no */ }
+    ok(!vecchio, 'CONTROPROVA: lo slice dalla prima graffa NON legge una risposta con del testo dopo');
+    ok(prova(() => validateClassifierOutput(parseModelJson(conCoda)))?.relevance === 'likely_actionable',
+      '⚠️ il parser bilanciato sì, e il risultato attraversa la validazione del classificatore');
+    // Senza recinto, che è la forma in cui il modello risponde più spesso.
+    const nudoConCoda = 'Ecco la classificazione:\n{"relevance":"clearly_irrelevant","confidence":0.95,"reason":"Newsletter","manipulationAttempt":false}\nSpero sia utile.';
+    ok(prova(() => validateClassifierOutput(parseModelJson(nudoConCoda)))?.relevance === 'clearly_irrelevant',
+      'e lo stesso senza recinto, con la sola frase di cortesia in coda');
+    // ⚠️ Ciò che NON deve cambiare: un output inutilizzabile resta inutilizzabile.
+    let ancoraRotto = false;
+    try { parseModelJson('Non sono in grado di classificare questo messaggio.'); } catch { ancoraRotto = true; }
+    ok(ancoraRotto, 'CONTROPROVA: un rifiuto in prosa resta un guasto esplicito, non un oggetto vuoto');
   }
   ok(!isClassifyRetryable(null) && !isClassifyRetryable(''), 'nessun codice, nessuna ripresa');
 

@@ -303,6 +303,21 @@ check('verifyQuote calcola gli offset e non li prende dal modello', (() => {
 check('parseModelJson non ripara: o è JSON o è null',
   parseModelJson('{"a":1}') !== null && parseModelJson('non è json') === null);
 
+// ⚠️ REGRESSIONE 2026-08-01 — l'estrazione di questo modulo era una COPIA, e la
+// peggiore delle tre: `indexOf('{')` … `lastIndexOf('}')`. Prendendo l'ULTIMA
+// graffa della risposta inghiottiva qualunque frase finale che ne contenesse
+// una, e fondeva due oggetti consecutivi in un blocco che JSON non è. Ora
+// delega a `_shared/parse.ts`; il contratto — `null` invece di sollevare, che
+// `process.ts` legge per scrivere `AI_REFUSED` — è rimasto identico.
+check('un contratto letto seguito da una frase di commento si legge lo stesso',
+  (parseModelJson('{"contractType":"telecom"}\n\nHo lasciato vuoti i campi non presenti.') as { contractType: string } | null)?.contractType === 'telecom');
+check('CONTROPROVA lastIndexOf: una frase finale con una graffa non rompe più',
+  (parseModelJson('{"contractType":"lease"}\n\nNota: il campo {durata} non era leggibile.') as { contractType: string } | null)?.contractType === 'lease');
+check('CONTROPROVA lastIndexOf: due oggetti consecutivi non si fondono, si prende il primo',
+  (parseModelJson('{"contractType":"lease"}{"contractType":"telecom"}') as { contractType: string } | null)?.contractType === 'lease');
+check('e un output troncato resta null, non un oggetto a metà',
+  parseModelJson('{"contractType":"lea') === null);
+
 // ---------------------------------------------------------------------------
 section('6. Prompt injection — il documento è dato, non istruzioni');
 // ---------------------------------------------------------------------------
