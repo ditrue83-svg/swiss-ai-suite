@@ -159,6 +159,7 @@ const GROUPS = {
       // pure, e vanno provati sui casi che DEVONO farli fallire: romperli nel
       // progetto vero per vederli reagire non è un'opzione.
       { script: 'verify:deploy', args: ['--self-test'] },
+      { script: 'test:ai-json-parser-unit' },
       { script: 'test:inbox-unit' },
       { script: 'test:tasks-unit' },
       { script: 'test:documents-unit' },
