@@ -22,7 +22,7 @@
 //    giudicato probabilmente azionabile. Ogni salto è dichiarato nel record.
 // ============================================================================
 import { runAnalysisPipeline, type CreateMessage, type ModelMessage } from '../pipeline.ts';
-import { parseModelJson } from '../parse.ts';
+import { describeModelJsonFailure, isModelJsonError, parseModelJson } from '../parse.ts';
 import { ocrExtract, textExtraction } from '../extract.ts';
 import type { CompanyContext } from '../prompt.ts';
 import type { ExtractionResult } from '../validate.ts';
@@ -514,13 +514,25 @@ async function classifyMessage(
     // markdown attorno all'oggetto — che uno `slice` non toglie, lasciando i
     // tre apici finali dentro il testo da interpretare. Ancora una volta lo
     // strumento esisteva in casa e questo percorso non lo usava.
-    // ⚠️ Limite dichiarato: non tollera testo DOPO la graffa di chiusura. Il
-    // commento di `parse.ts` dice «primo oggetto bilanciato», ma il codice non
-    // bilancia — vale per tutti e quattro i chiamanti, non solo per questo.
+    // ✅ IL LIMITE DICHIARATO QUI È STATO CHIUSO il 2026-08-01. Diceva: «non
+    // tollera testo DOPO la graffa di chiusura — il commento di `parse.ts` dice
+    // primo oggetto bilanciato, ma il codice non bilancia, e vale per tutti e
+    // quattro i chiamanti». Ora bilancia davvero: scanner lineare con stato di
+    // stringa e di escape, 72 casi in `test:ai-json-parser-unit`.
     let parsed;
     try {
       parsed = validateClassifierOutput(parseModelJson(block.text));
-    } catch (_e) {
+    } catch (e) {
+      // ⚠️ L'ESITO NON CAMBIA — resta `INVALID_RESPONSE`, con il suo unico
+      // ripescaggio (`codeAfterRetry`): la politica di ritentativo appartiene a
+      // questo chiamante, non al parser, e non si tocca senza una misura.
+      // Cambia ciò che si può DIAGNOSTICARE: «non c'era JSON», «era troncato» e
+      // «lo schema del classificatore l'ha rifiutato» finivano tutti e tre in
+      // una riga muta. §45 — categoria, lunghezza e presenza di recinto; mai
+      // l'email.
+      console.error(`[inbox] classificazione non utilizzabile: ${
+        isModelJsonError(e) ? describeModelJsonFailure(e) : `schema · ${(e as Error).name}`
+      }`);
       throw new EmailProviderError('INVALID_RESPONSE', 'risposta del classificatore non utilizzabile');
     }
 
