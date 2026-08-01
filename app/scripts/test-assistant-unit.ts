@@ -691,5 +691,114 @@ check('diagnostica pulita → nessun problema',
   valoriNonAncorati(D({ ok: true })).length === 0);
 
 // ---------------------------------------------------------------------------
+section('14. Un insieme VUOTO si può citare (0036)');
+// ---------------------------------------------------------------------------
+// ⚠️ Perché questa sezione esiste: `eval:assistant` era instabile sul caso
+// «Quali automazioni stanno fallendo?», e la causa non era il modello. Quella è
+// l'unica domanda la cui risposta corretta è «nessuna», e finché un esito vuoto
+// non coniava un riferimento il modello non aveva niente da citare — mentre il
+// prompt gli dice che quei riferimenti sono gli UNICI identificativi scrivibili.
+// A volte scriveva `f1`, che nessuno strumento aveva prodotto.
+{
+  const EXEC_RAW = readFileSync(join(HERE, '..', 'supabase', 'functions', '_shared', 'assistant', 'executors.ts'), 'utf8');
+  const STORE_RAW = readFileSync(join(HERE, '..', 'supabase', 'functions', '_shared', 'assistant', 'store.ts'), 'utf8');
+  const M36 = readFileSync(join(HERE, '..', 'supabase', 'migrations', '0036_assistant_empty_group_citation.sql'), 'utf8');
+
+  // (a) La migrazione ammette lo zero, e non ha allentato il resto.
+  // ⚠️ SOLO l'espressione del vincolo, non tutto ciò che segue: affettando fino
+  // in fondo si prendeva dentro anche il blocco di autoverifica, che la stringa
+  // «group_size > 0» la contiene per forza — è la soglia che va a cercare. Il
+  // primo giro di questo controllo è stato rosso proprio così: un caso che
+  // falliva su sé stesso invece che sul vincolo.
+  const daAdd = M36.slice(M36.indexOf('add constraint assistant_citations_single_or_group'));
+  const vincolo = daAdd.slice(0, daAdd.indexOf(');') + 2);
+  check('0036 — il vincolo ammette group_size >= 0',
+    /group_size\s*>=\s*0/.test(vincolo));
+  check('0036 — e la vecchia soglia > 0 non è rimasta accanto',
+    !/group_size\s*>\s*0/.test(vincolo.replace(/>=/g, '≥')));
+  check('0036 — un gruppo deve comunque portare i propri source_ids',
+    /source_ids is not null/.test(vincolo));
+  check('0036 — e una fonte singola resta distinta dal gruppo',
+    /source_id is not null and group_size is null/.test(vincolo));
+  check('0036 — l\'autoverifica legge pg_constraint, non il proprio testo',
+    M36.includes('pg_get_constraintdef') && M36.includes('pg_constraint'));
+
+  // (b) I NOVE esecutori che elencano un insieme lo citano anche da vuoto.
+  // ⚠️ Si legge il SORGENTE, come `test:crm-unit` fa con la migrazione: nessun
+  // tipo può vedere che un ramo usa l'helper sbagliato.
+  const conGruppo = [
+    'Nessuna attività corrisponde a questi filtri.',
+    'Nessuna attività con scadenza fra il ',
+    'Nessun documento corrisponde a questa ricerca fra quelli accessibili.',
+    'Nessun messaggio corrisponde a questi filtri.',
+    'Nessuna voce finanziaria corrisponde a questi filtri.',
+    'Nessun contratto corrisponde a questi filtri.',
+    'Nessuna organizzazione corrisponde a questa ricerca.',
+    'Nessuna opportunità corrisponde a questi filtri.',
+    'Nessuna automazione richiede attenzione: nessuna ha un problema registrato.',
+  ];
+  for (const nota of conGruppo) {
+    const i = EXEC_RAW.indexOf(nota);
+    const finestra = i < 0 ? '' : EXEC_RAW.slice(Math.max(0, i - 320), i + nota.length);
+    check(`elenco vuoto citabile: «${nota.slice(0, 42)}…»`,
+      i >= 0 && finestra.includes('emptyGroup('),
+      i < 0 ? 'nota non trovata nel sorgente' : 'usa ancora emptyResult');
+  }
+
+  // (c) CONTROPROVA: i mancati ritrovamenti per IDENTIFICATIVO NON devono
+  // coniare nulla — là non esiste alcun insieme da aprire, e una rotta verso un
+  // record inesistente sarebbe un collegamento verso il nulla. Senza questo
+  // controllo la correzione potrebbe estendersi a tutto e nessuno se ne
+  // accorgerebbe.
+  const senzaGruppo = [
+    'Nessuna attività con questo identificativo fra quelle accessibili.',
+    'Nessun documento con questo identificativo fra quelli accessibili.',
+    'Nessun messaggio con questo identificativo fra quelli accessibili.',
+    'Nessuna voce finanziaria con questo identificativo fra quelle accessibili.',
+    'Nessun contratto con questo identificativo fra quelli accessibili.',
+    'Nessuna organizzazione con questo identificativo fra quelle accessibili.',
+    'Nessuna esecuzione con questo identificativo fra quelle accessibili.',
+  ];
+  for (const nota of senzaGruppo) {
+    const i = EXEC_RAW.indexOf(nota);
+    const finestra = i < 0 ? '' : EXEC_RAW.slice(Math.max(0, i - 200), i + nota.length);
+    check(`CONTROPROVA — nessun gruppo per «${nota.slice(0, 34)}…»`,
+      i >= 0 && !finestra.includes('emptyGroup('),
+      i < 0 ? 'nota non trovata' : 'conia un gruppo dove non c\'è alcun insieme');
+  }
+
+  // (d) ⚠️ LA TRAPPOLA DELLO ZERO FALSY. `group_size: 0` sopravvive solo perché
+  // la scrittura confronta con `== null`. Un giorno qualcuno scriverà
+  // `c.groupSize ? … : …` per «semplificare», e l'insieme vuoto tornerà a
+  // essere una fonte singola con `source_id` nullo: il vincolo lo respingerà e
+  // la risposta non si salverà. Nessun tipo lo vede.
+  check('store — la citazione di gruppo si riconosce da `== null`, non dalla verità',
+    STORE_RAW.includes('c.groupSize == null ? c.sourceId : null')
+    && STORE_RAW.includes('c.groupSize == null ? null : (src?.sourceIds ?? [])'));
+  check('store — e `group_size` si scrive tale e quale, senza ripieghi',
+    /group_size:\s*c\.groupSize,/.test(STORE_RAW));
+
+  // (e) La pastiglia di un gruppo vuoto mostra il TITOLO, non «0 elementi».
+  const vuota: AssistantCitation = {
+    index: 0, sourceType: 'workflow_definition', sourceId: null, groupSize: 0,
+    route: '/automazioni', title: 'Automazioni con problemi', subtitle: null,
+    pageNumber: null, fieldName: null, citedText: null,
+    verification: 'deterministic', valueSnapshot: { items: [] },
+  } as unknown as AssistantCitation;
+  check('pastiglia — un gruppo vuoto mostra il titolo dell\'insieme',
+    citationLabel(vuota, 'Automazione', (n) => `${n} elementi`) === 'Automazioni con problemi');
+  check('pastiglia — e non annuncia «0 elementi»',
+    !citationLabel(vuota, 'Automazione', (n) => `${n} elementi`).includes('0'));
+
+  // (f) Il prompt deve DIRLO, altrimenti il modello non sa di poterlo fare.
+  // ⚠️ Si legge il prompt COSTRUITO (`buildSystemPrompt`), non il file: è quello
+  // che il modello riceve davvero.
+  check('prompt — dichiara che anche un elenco vuoto ha il suo riferimento',
+    prompt.includes('Anche un elenco VUOTO ha il suo riferimento'));
+  check('prompt — e che senza riferimenti non se ne inventa nessuno',
+    prompt.includes('non hai ricevuto NESSUN riferimento'));
+}
+
+// ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);
 process.exit(fail ? 1 : 0);
