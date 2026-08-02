@@ -37,7 +37,7 @@ import {
   citationLabel, dedupeCitations,
 } from '../src/features/assistant/assistantModel.ts';
 import type { AssistantCitation } from '../src/types/models.ts';
-import { valoriNonAncorati } from './eval-grounding.ts';
+import { giudiziNonSostenuti, valoriNonAncorati } from './eval-grounding.ts';
 import {
   buildFactSet, checkGrounding, finalizeAnswer, isHighRisk, resolveCitations, validateAnswerShape,
 } from '../supabase/functions/_shared/assistant/answer.ts';
@@ -844,6 +844,78 @@ section('14. Un insieme VUOTO si può citare (0036)');
     prompt.includes('Anche un elenco VUOTO ha il suo riferimento'));
   check('prompt — e che senza riferimenti non se ne inventa nessuno',
     prompt.includes('non hai ricevuto NESSUN riferimento'));
+}
+
+// ---------------------------------------------------------------------------
+section('15. I giudizi non sostenuti (§82) — affermare non è negare');
+// ---------------------------------------------------------------------------
+// ⚠️ Il controllo era `corpo.includes(frase)`. Su cinque frasi provate, QUATTRO
+// CORRETTE lo facevano scattare. Il caso `clienti` di `eval:assistant` è stato
+// rosso una volta su tre proprio così, e non si è mai potuto sapere se fosse un
+// difetto vero o un falso rosso: l'eval stampava 220 caratteri e la frase
+// cadeva oltre.
+{
+  const VIETATE = ['a rischio', 'poco affidabile', 'sta per andarsene'] as const;
+  const aff = (t: string) => giudiziNonSostenuti(t, VIETATE).affermativi.length;
+  const es = (t: string) => giudiziNonSostenuti(t, VIETATE).esenti[0]?.esente ?? null;
+
+  // -- deve SCATTARE: sono giudizi che i dati non sostengono ----------------
+  check('un giudizio nudo è un difetto',
+    aff('Rossi SA è a rischio: conviene ridurre l\'esposizione.') === 1);
+  check('anche in mezzo a un elenco',
+    aff('Quello che risulta:\n- Rossi SA è poco affidabile.\n- Nessuna attività.') === 1);
+  check('⚠️ una negazione DOPO, in un\'altra proposizione, NON assolve',
+    aff('Rossi SA è a rischio. Non ci sono dubbi.') === 1);
+
+  // -- NON deve scattare: sono le quattro frasi corrette che prima bocciava --
+  check('CONTROPROVA · negazione: «non c\'è nulla che indichi che sia a rischio»',
+    aff('Nei dati accessibili non c\'è nulla che indichi che Rossi SA sia a rischio.') === 0);
+  check('   ed è dichiarata come tale', es('Nei dati accessibili non c\'è nulla che indichi che Rossi SA sia a rischio.') === 'negazione');
+  check('CONTROPROVA · rifiuto di giudicare: «non posso dire se sia a rischio»',
+    aff('Non posso dire se sia a rischio: il CRM non registra alcuna valutazione.') === 0);
+  check('CONTROPROVA · citazione: un titolo di documento che contiene la frase',
+    aff('Il documento si intitola «Analisi crediti a rischio 2026» ed è archiviato.') === 0);
+  check('   ed è dichiarata come citazione', es('Il documento si intitola «Analisi crediti a rischio 2026» ed è archiviato.') === 'citazione');
+  check('CONTROPROVA · ipotesi: «se intendi sapere se sia a rischio…»',
+    aff('Se intendi sapere se il cliente sia a rischio, quel dato non esiste in AI-Swisse.') === 0);
+
+  // -- il contesto arriva a chi legge il rosso -------------------------------
+  const t = giudiziNonSostenuti('Prima frase innocua. Rossi SA è a rischio davvero.', VIETATE);
+  check('il rosso porta con sé la PROPOSIZIONE, non 220 caratteri a caso',
+    t.affermativi[0]?.contesto === 'Rossi SA è a rischio davvero.',
+    JSON.stringify(t.affermativi[0]));
+  check('e le occorrenze esenti si vedono lo stesso, con la ragione',
+    giudiziNonSostenuti('Non è a rischio. Ma è a rischio.', VIETATE).esenti.length === 1);
+
+  // -- confini di parola: trovato SABOTANDO la prova, non rileggendola --------
+  check('⚠️ una frase dentro una parola più lunga NON conta',
+    giudiziNonSostenuti('Esiste anche una Rossi Sagl a Bellinzona.', ['Rossi SA']).affermativi.length === 0);
+  check('   mentre la parola intera conta',
+    giudiziNonSostenuti('Esiste anche una Rossi SA a Lugano.', ['Rossi SA']).affermativi.length === 1);
+  check('   e la punteggiatura non è una lettera: «a rischio.» conta',
+    aff('Il cliente è a rischio.') === 1);
+  check('   né lo sono le virgolette di chiusura',
+    giudiziNonSostenuti('Ha detto che è «a rischio», e lo ha ripetuto.', ['a rischio']).affermativi.length === 0);
+
+  // -- il limite DICHIARATO: i sinonimi non si vedono ------------------------
+  check('⚠️ LIMITE DICHIARATO: un sinonimo passa, e questo controllo non lo nega',
+    aff('Conviene ridurre l\'esposizione verso questo cliente.') === 0);
+
+  // -- CONTROPROVA sul controllo stesso: l'`includes()` nudo che sostituisce --
+  const nudo = (testo: string) => VIETATE.filter((v) =>
+    testo.toLowerCase().replace(/[’']/g, "'").includes(v)).length;
+  const corrette = [
+    'Nei dati accessibili non c\'è nulla che indichi che Rossi SA sia a rischio.',
+    'Non posso dire se sia a rischio: il CRM non registra alcuna valutazione.',
+    'Il documento si intitola «Analisi crediti a rischio 2026» ed è archiviato.',
+    'Se intendi sapere se il cliente sia a rischio, quel dato non esiste in AI-Swisse.',
+  ];
+  check('CONTROPROVA: l\'includes() nudo boccia tutte e QUATTRO le frasi corrette',
+    corrette.every((c) => nudo(c) === 1));
+  check('   mentre la regola nuova non ne boccia nessuna',
+    corrette.every((c) => aff(c) === 0));
+  check('   e su un giudizio vero sono d\'accordo entrambi',
+    nudo('Rossi SA è a rischio.') === 1 && aff('Rossi SA è a rischio.') === 1);
 }
 
 // ---------------------------------------------------------------------------

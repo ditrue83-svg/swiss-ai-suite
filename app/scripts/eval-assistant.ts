@@ -26,7 +26,7 @@ import { answerQuestion, type AssistantCreateMessage, type AssistantModelMessage
 import type { DbLike } from '../supabase/functions/_shared/assistant/executors.ts';
 import type { AssistantContext } from '../supabase/functions/_shared/assistant/contract.ts';
 import { DEFAULT_TIME_ZONE } from '../supabase/functions/_shared/assistant/dates.ts';
-import { valoriNonAncorati } from './eval-grounding.ts';
+import { giudiziNonSostenuti, valoriNonAncorati } from './eval-grounding.ts';
 
 if (!globalThis.WebSocket) (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
 
@@ -441,6 +441,9 @@ async function main() {
   const { companyId, userId, client } = await seed();
 
   const totals = { input: 0, output: 0, cacheRead: 0, tools: 0, ms: 0, citations: 0, uncited: 0 };
+  /** Frasi vietate incontrate ma NON contate: si mostrano in fondo con la ragione. */
+  const esenzioni: string[] = [];
+  const truncaContesto = (t: string) => (t.length > 160 ? `${t.slice(0, 160)}…` : t);
   /** Quante volte ciascun caso è passato, per il riepilogo di stabilità. */
   const passesPerCase = new Map<string, number>();
 
@@ -481,8 +484,20 @@ async function main() {
       for (const needle of c.mustContain ?? []) {
         if (!body.includes(norm(needle))) problems.push(`non contiene «${needle}»`);
       }
-      for (const needle of c.mustNotContain ?? []) {
-        if (body.includes(norm(needle))) problems.push(`⚠️ contiene la frase vietata «${needle}»`);
+      // ⚠️ NON PIÙ un `includes()` nudo. Quello non distingueva «è a rischio» da
+      // «nulla indica che sia a rischio», e su cinque frasi provate ne bocciava
+      // quattro corrette. La regola sta in `eval-grounding.ts`, funzione pura
+      // con i suoi casi nella sezione 15 di `test:assistant-unit`: una politica
+      // che decide se una risposta è un fallimento non può vivere in linea
+      // dentro uno script che costa denaro a ogni esecuzione.
+      const giudizi = giudiziNonSostenuti(a.text, c.mustNotContain ?? []);
+      for (const g of giudizi.affermativi) {
+        problems.push(`⚠️ giudizio non sostenuto «${g.frase}» in: «${g.contesto}»`);
+      }
+      // Le esenti si mostrano lo stesso: chi legge un rosso deve poter vedere
+      // anche ciò che è stato lasciato passare, e perché.
+      for (const g of giudizi.esenti) {
+        esenzioni.push(`${c.category}: «${g.frase}» esente (${g.esente}) — «${truncaContesto(g.contesto)}»`);
       }
       // §61 — un riferimento inventato è un difetto anche se la risposta è giusta.
       if (a.diagnostics.invalidRefs.length) {
@@ -504,7 +519,16 @@ async function main() {
     if (problems.length) {
       console.log(`${R}✗${X} ${B}${etichetta}${X} — ${c.question}`);
       for (const p of problems) console.log(`   ${DIM}${p}${X}`);
-      if (outcome.answer) console.log(`   ${DIM}risposta: ${outcome.answer.text.slice(0, 220)}${X}`);
+      // ⚠️ LA RISPOSTA INTERA, non 220 caratteri. Il caso `clienti` è stato rosso
+      // per una frase che cadeva OLTRE quel taglio: si sapeva che qualcosa non
+      // andava e non si poteva vedere che cosa, e l'indagine è costata due giri
+      // di eval a pagamento. I dati sono quelli seminati da questa prova su
+      // un'azienda usa-e-getta: non c'è nulla di un cliente da proteggere qui.
+      if (outcome.answer) {
+        console.log(`   ${DIM}── risposta ──${X}`);
+        for (const riga of outcome.answer.text.split('\n')) console.log(`   ${DIM}${riga}${X}`);
+        console.log(`   ${DIM}── fine · ${outcome.answer.citations.length} fonti · esito ${outcome.answer.status} ──${X}`);
+      }
     } else {
       passesPerCase.set(c.category, (passesPerCase.get(c.category) ?? 0) + 1);
       const a = outcome.answer;
@@ -537,6 +561,13 @@ async function main() {
   console.log(`${DIM}token in ${totals.input} · out ${totals.output} · da cache ${totals.cacheRead}${X}`);
   console.log(`${DIM}strumenti ${(totals.tools / n).toFixed(1)}/domanda · fonti ${(totals.citations / n).toFixed(1)}/domanda · ${Math.round(totals.ms / n)} ms/domanda${X}`);
   if (totals.uncited) console.log(`${Y}⚠️ ${totals.uncited} risposte «answered» senza alcuna fonte${X}`);
+  if (esenzioni.length) {
+    // ⚠️ Non è rumore: è l'elenco di ciò che la regola ha LASCIATO PASSARE. Se
+    // un giorno una di queste righe sembrasse sbagliata, è lì che si guarda —
+    // e non si scopre leggendo un verde muto.
+    console.log(`${DIM}Frasi vietate incontrate e non contate (${esenzioni.length}):${X}`);
+    for (const e of esenzioni) console.log(`${DIM}  · ${e}${X}`);
+  }
   process.exit(fail ? 1 : 0);
 }
 
