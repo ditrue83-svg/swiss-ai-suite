@@ -229,3 +229,13 @@ verify_jwt = true
 
 [functions.contract-worker]
 verify_jwt = false
+
+# ⚠️ Aggiunta il 2026-08-01, per la stessa ragione delle quattro qui sopra:
+# `company-assistant` non era dichiarata, quindi il suo gate dipendeva
+# dall'ultimo valore ricordato dalla piattaforma invece che dal repository.
+# La chiama il BROWSER con il JWT dell'utente — l'assistente risponde a una
+# persona, e tutte le letture usano il client di quella persona perché con il
+# ruolo di servizio la RLS sparirebbe. Il gate ci vuole. Valore MISURATO prima
+# di scriverlo: v12 verify_jwt=true.
+[functions.company-assistant]
+verify_jwt = true
