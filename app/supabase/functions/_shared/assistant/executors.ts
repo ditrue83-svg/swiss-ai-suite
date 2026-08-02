@@ -216,9 +216,24 @@ function emptyGroup(
   title: string,
   note: string,
 ): ToolExecutionResult {
+  const ref = deps.allocRef();
+  // ⚠️⚠️ IL RIFERIMENTO VA NELLA NOTA, e senza questa riga tutto il resto non
+  // serve a niente. `serializeResult` manda al modello `status`, `results`,
+  // `note` — MAI `sources`. I riferimenti arrivano solo perché ogni RIGA ne
+  // porta uno, e per il gruppo perché i nove percorsi non vuoti lo scrivono
+  // nella nota (`Riferimento per l'elenco: f7`). Con `rows: []` non c'è alcuna
+  // riga: senza nominarlo qui, `f1` esisterebbe nel registro e nel database e
+  // il modello non saprebbe che esiste.
+  //
+  // ⚠️ MISURATO, non dedotto: la prima stesura passava la nota nuda, e
+  // `eval:assistant -- --runs 3` è tornata verde — ma con «insufficient_evidence
+  // · 0 fonti» su tutti e tre i giri. Verde per la ragione sbagliata: a
+  // toglierlo dai guai era stata la riga di prompt che vieta di inventare un
+  // riferimento, non questo helper. Un caso che passa non è un caso che prova.
   return {
-    ...emptyResult(note),
-    sources: [groupSource(deps.allocRef(), sourceType, route, title, [], 'deterministic')],
+    ...emptyResult(`${note} Riferimento per l'elenco consultato, che è VUOTO: ${ref}. `
+      + 'Citalo: «non ce ne sono» è un\'affermazione come le altre, e questa è la sua fonte.'),
+    sources: [groupSource(ref, sourceType, route, title, [], 'deterministic')],
   };
 }
 

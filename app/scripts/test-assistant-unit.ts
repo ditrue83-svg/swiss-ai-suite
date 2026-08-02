@@ -755,6 +755,43 @@ section('14. Un insieme VUOTO si può citare (0036)');
       i < 0 ? 'nota non trovata nel sorgente' : 'usa ancora emptyResult');
   }
 
+  // (b-bis) ⚠️⚠️ LA PROVA CHE CONTA, e che al primo giro mancava. I controlli
+  // qui sopra leggono il SORGENTE: vedono che il ramo chiama `emptyGroup`, e
+  // NON possono vedere se il riferimento arriva al modello. `serializeResult`
+  // manda `status`, `results` e `note` — mai `sources` — quindi un riferimento
+  // che non è nominato nella NOTA non esiste, per chi deve citarlo.
+  //
+  // La prima stesura passava la nota nuda, `eval:assistant -- --runs 3` tornava
+  // 16/16 e il caso `automazioni` passava con «insufficient_evidence · 0 fonti»
+  // in tutti e tre i giri: verde perché il modello aveva smesso di INVENTARE un
+  // riferimento, non perché ne avesse uno da citare. Questo caso esegue
+  // l'esecutore vero contro un database finto vuoto e pretende che il ref
+  // coniato compaia nella nota.
+  {
+    const vuoti: Array<[string, Record<string, DbResult>]> = [
+      ['list_tasks', { list_tasks: { data: [], error: null } }],
+      ['list_tasks_by_due_date', { list_tasks: { data: [], error: null } }],
+      ['search_documents', { list_documents: { data: [], error: null } }],
+      ['list_inbox_messages', { email_messages: { data: [], error: null } }],
+      ['list_finance_items', { list_finance_items: { data: [], error: null } }],
+      ['list_contracts', { list_contracts: { data: [], error: null } }],
+      ['search_crm_organizations', { list_crm_organizations: { data: [], error: null } }],
+      ['list_crm_opportunities', { list_crm_opportunities: { data: [], error: null } }],
+      ['list_workflow_failures', { workflow_definitions: { data: [], error: null } }],
+    ];
+    for (const [chiave, risposte] of vuoti) {
+      const esec = EXECUTORS[chiave];
+      const res = await esec({ period: 'this_week' }, mkDeps(fakeDb(risposte)));
+      const ref = res.sources[0]?.ref;
+      check(`${chiave} — un esito vuoto conia UNA fonte di gruppo`,
+        res.status === 'empty' && res.sources.length === 1 && res.sources[0]?.groupSize === 0,
+        `stato=${res.status} fonti=${res.sources.length} dimensione=${res.sources[0]?.groupSize}`);
+      check(`${chiave} — e il riferimento è NELLA NOTA, dove il modello lo legge`,
+        !!ref && !!res.note && res.note.includes(ref),
+        `ref=${ref} nota=${(res.note ?? '(assente)').slice(0, 80)}`);
+    }
+  }
+
   // (c) CONTROPROVA: i mancati ritrovamenti per IDENTIFICATIVO NON devono
   // coniare nulla — là non esiste alcun insieme da aprire, e una rotta verso un
   // record inesistente sarebbe un collegamento verso il nulla. Senza questo
