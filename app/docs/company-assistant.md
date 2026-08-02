@@ -521,6 +521,50 @@ essere realistici: due fatture in due valute diverse, un contratto con termini
 in bozza, due «Rossi», un documento il cui **titolo** contiene un tentativo di
 manipolazione.
 
+### Le frasi vietate: affermare non è negare (2026-08-02)
+
+⚠️ Il controllo era `risposta.includes(frase)`, e **un `includes()` non
+distingue un'affermazione da una negazione**. Su cinque frasi provate, quattro
+**corrette** lo facevano scattare:
+
+| Frase | `includes()` | La regola di oggi |
+|---|---|---|
+| «Rossi SA **è a rischio**: conviene ridurre l'esposizione» | 🔴 | 🔴 giusto |
+| «non c'è nulla che indichi che sia **a rischio**» | 🔴 | 🟢 negazione |
+| «**non posso dire** se sia a rischio» | 🔴 | 🟢 negazione |
+| «il documento si intitola «Analisi crediti **a rischio** 2026»» | 🔴 | 🟢 citazione |
+| «**se** intendi sapere se sia a rischio…» | 🔴 | 🟢 ipotesi |
+
+È costato caro: il caso `clienti` è stato rosso una volta su tre e **non si è
+mai potuto sapere se fosse un difetto vero o un falso rosso**, perché l'eval
+stampava 220 caratteri di risposta e la frase incriminata cadeva oltre. Ci sono
+voluti due giri di valutazione a pagamento per non scoprirlo.
+
+La regola sta in **`scripts/eval-grounding.ts`**, funzione pura accanto a
+`valoriNonAncorati`, con i suoi casi nella sezione 15 di `test:assistant-unit` —
+una politica che decide se una risposta è un fallimento non può vivere in linea
+dentro uno script che costa denaro a ogni esecuzione. Esamina la
+**proposizione** in cui la frase compare e la scarta se è negata, citata fra
+virgolette o ipotetica; rispetta i **confini di parola** (altrimenti «Rossi SA»
+combacia dentro «Rossi Sagl», trovato sabotando la prova).
+
+⚠️ **In caso di dubbio l'occorrenza è affermativa**, cioè un difetto: un falso
+rosso costa un'indagine, un falso verde lascia passare un giudizio che i dati
+non sostengono.
+
+⚠️ **Limite dichiarato: i sinonimi non si vedono.** «Conviene ridurre
+l'esposizione» è lo stesso giudizio vietato e passa. Il controllo copre le
+formule che si sono viste, non il concetto.
+
+### Che cosa si vede quando un caso è rosso
+
+La **risposta intera**, non un troncamento; ogni occorrenza con la propria
+proposizione; e in fondo l'elenco delle frasi vietate **incontrate e non
+contate**, con la ragione dell'esenzione. Quest'ultimo non è rumore: è ciò che
+la regola ha lasciato passare, ed è lì che si guarda se un giorno sembrasse
+sbagliata. I dati sono quelli seminati dalla prova su un'azienda usa-e-getta,
+quindi non c'è nulla di un cliente da proteggere.
+
 ---
 
 ## 15. Modi di fallire, dichiarati
