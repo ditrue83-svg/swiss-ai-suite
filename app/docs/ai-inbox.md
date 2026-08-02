@@ -429,9 +429,7 @@ cioè è un guasto che si presenta come normalità. Oltre
   importazione o analisi torna **in coda** (`awaiting_analysis`), perché
   riprenderlo è sicuro: l'analisi riparte dal documento già creato;
 - tutto il resto diventa `failed` con codice **`INTERRUPTED`**, distinto da
-  `ANALYSIS_FAILED` perché la persona può ancora premere «Analizza». Un
-  messaggio interrotto durante la classificazione non è riclassificabile in
-  automatico (la sincronizzazione salta i messaggi già acquisiti);
+  `ANALYSIS_FAILED` perché la persona può ancora premere «Analizza»;
 - le sincronizzazioni rimaste `running` vengono chiuse come `failed`
   / `INTERRUPTED`, con `duration_ms` **vuoto**: quanto siano durate prima di
   morire non lo sappiamo, e un numero inventato in un registro diagnostico è
@@ -441,6 +439,42 @@ Il ritentativo è **uno solo**: `error_code` resta `INTERRUPTED` mentre il
 messaggio è in coda, quindi una seconda interruzione lo trova già marcato e lo
 ferma. Un'analisi che si interrompe sempre non può diventare una spesa
 ricorrente. Al successo la pipeline azzera il codice: la traccia sparisce da sé.
+
+### Ripescaggio delle CLASSIFICAZIONI cadute (`drainPendingClassifications`)
+
+⚠️ **Fino al 2026-07-31 un messaggio chiuso come `failed` non lo riprendeva
+nessuno**, e il buco era esattamente fra due meccanismi che facevano ciascuno
+il proprio mestiere: `processMessage` salta i messaggi già acquisiti
+(`if (!upserted.isNew) return`) e `recoverInterrupted` guarda solo gli stati *in
+lavorazione*. Un messaggio caduto in classificazione non era né l'uno né
+l'altro. Misura del 2026-07-31: **sedici messaggi mai classificati**, tredici
+dei quali caduti mentre il credito Anthropic era esaurito — cioè per una ragione
+che si era già risolta da sola.
+
+`drainPendingClassifications` (in `_shared/email/sync.ts`, chiamata da
+`email-maintenance` a ogni esecuzione) ripesca i messaggi `failed` che hanno
+`relevance is null` e un `error_code` **d'ambiente**. Non è un meccanismo nuovo:
+è la stessa forma che `drainPendingAnalyses` usa da mesi per `failed` +
+`PROVIDER_RATE_LIMITED`.
+
+| Codice | Si riprende? | Perché |
+|---|---|---|
+| `AI_CREDIT_EXHAUSTED` | **sì** | l'ambiente torna a posto da solo. Non consuma il tentativo: non è il messaggio a essere sbagliato |
+| `PROVIDER_RATE_LIMITED` · `PROVIDER_UNAVAILABLE` | **sì** | idem |
+| `INTERRUPTED` | **sì**, una volta | l'esecuzione non è arrivata in fondo |
+| `INVALID_RESPONSE` | **sì, UNA volta sola** | la risposta del modello varia: un secondo tentativo è il rimedio normale a un formattatore non deterministico. Due risposte illeggibili di fila → `CLASSIFY_FAILED`, terminale |
+| `CLASSIFY_FAILED` · `AI_OUTPUT_TRUNCATED` | **no** | il secchio del «non lo sappiamo» e il tetto di token: nessuno dei due si alza da solo, e riprovarli all'infinito brucia credito in silenzio |
+
+Il conteggio del ritentativo non ha una colonna nuova: lo porta il codice
+stesso (`codeAfterRetry`), come già fa `INTERRUPTED`. E si riprendono **solo** i
+messaggi mai classificati: uno che una `relevance` ce l'ha è già passato di là,
+e riclassificarlo cancellerebbe un giudizio già dato.
+
+⚠️ **Il ciclo non è a costo zero, ma il costo è misurato.** Con il credito
+esaurito ogni esecuzione tenta il messaggio più recente, riceve `400` — che
+Anthropic restituisce **prima** di far ragionare il modello, quindi **zero
+token** — e si ferma lì, perché se l'ambiente rifiuta uno rifiuterà anche gli
+altri. Resta una chiamata al provider di posta ogni quindici minuti.
 
 Non è configurata automaticamente dalla migrazione, di proposito: richiederebbe
 di mettere un segreto dentro il database. Due modi:

@@ -393,6 +393,15 @@ jobs:
       # I test leggono le credenziali da `.env.test` (`node --env-file`).
       # `umask 077` prima di scrivere; nessun `set -x`; i valori non vengono
       # mai stampati e GitHub li maschera comunque nei log.
+      #
+      # ⚠️ `VITE_PUBLIC_SITE_URL` NON è un segreto — sta già dentro il bundle
+      # pubblicato — ma è OBBLIGATORIO dal 2026-08-01: `check:auth` si rifiuta
+      # di indovinare quale dominio verificare. Prima, invocato nudo, verificava
+      # `http://localhost:5174` e usciva ZERO dicendo «i link porteranno lì»:
+      # dentro il job che prova il PROGETTO REALE girava un controllo sulla
+      # macchina di sviluppo. Senza questa riga il gruppo `production` non parte
+      # e lo dichiara (exit 3) — che è l'esito onesto, ma non è ciò che questo
+      # job esiste per fare.
       - name: Comporre .env.test dai segreti del repository
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -406,6 +415,7 @@ jobs:
             printf 'SUPABASE_ANON_KEY=%s\n'          "$SUPABASE_ANON_KEY"
             printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n'  "$SUPABASE_SERVICE_ROLE_KEY"
             printf 'ANTHROPIC_API_KEY=%s\n'          "$ANTHROPIC_API_KEY"
+            printf 'VITE_PUBLIC_SITE_URL=%s\n'       'https://app.ai-swisse.com'
           } > .env.test
 
       # `--no-skip`: qui l'ambiente DEVE essere completo. Se `.env.test` non

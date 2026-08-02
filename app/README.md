@@ -736,14 +736,37 @@ npm run test:eval -- --allow-ai          # eval:subsidy, eval:admin, eval:assist
 npm run suite -- --list                  # i gruppi, i passi e ciò che ciascuno richiede
 ```
 
-⚠️ **Un gruppo che non si può eseguire non è verde e non è rosso: è SALTATO, con
-la ragione scritta.** Senza `.env.test` il gruppo `db` viene dichiarato saltato e
-il riepilogo lo elenca; non viene mai contato come superato. I gruppi che spendono
-credito richiedono `--allow-ai` esplicito: la spesa si chiede, non si eredita.
+⚠️⚠️ **UN GRUPPO SALTATO ESCE NON-ZERO (codice 3), dal 2026-08-01.** Prima
+usciva **0** stampando `ESITO: verde sui gruppi eseguiti · 1 SALTATI`: il salto
+era dichiarato, ma le due cose che un lettore guarda per prime — il codice di
+uscita e la parola «verde» — dicevano entrambe «a posto». Il 2026-07-31
+`npm run test:integration` senza `--allow-ai` è uscito 0 in un millisecondo
+senza eseguire un passo, e quel non-risultato è finito in `product-status.md`
+come se le 71 asserzioni fossero passate. Dichiarare il salto **non bastava**.
+
+I tre codici, e la differenza fra i due non-zero:
+
+| Codice | Significa |
+|---|---|
+| **0** | tutto ciò che era stato chiesto è stato eseguito, e nessun gruppo è rosso |
+| **1** | almeno un gruppo è **ROSSO**: un test ha fallito |
+| **3** | nessun rosso, ma **qualcosa non è stato eseguito**. Non è un difetto del prodotto: è una misura che manca |
+
+La parola «verde» non compare **mai** su una riga di riepilogo che parla di un
+salto — nemmeno con `--allow-skip`, dove l'esito si chiama `INCOMPLETO`.
+`npm run suite -- --self-test` prova questa decisione sui casi che devono farla
+fallire, «gruppo saltato» compreso, e gira dentro `test:unit`.
 
 Opzioni: `--continue-on-error` prosegue dopo un rosso (uso locale; senza, ci si
-ferma al primo, che è la modalità CI) · `--no-skip` trasforma un gruppo saltato in
-un fallimento, per i contesti in cui l'ambiente **deve** essere completo.
+ferma al primo, che è la modalità CI) · `--allow-skip` accetta che un gruppo non
+eseguito non faccia uscire non-zero, per chi sa che cosa **non** ha provato ·
+`--no-skip` resta accettato ed è oggi il comportamento predefinito (la CI lo
+passa esplicitamente in tre job).
+
+⚠️ **Non si è invertito il default di `--allow-ai`**, che era l'altra strada
+possibile: eseguire per difetto e chiedere un flag per *non* spendere avrebbe
+reso `npm run test:all` una spesa involontaria. Ciò che era rotto non era il
+salto — era il verde che lo accompagnava.
 
 ⚠️ **Prima di ogni gruppo che scrive, il runner stampa CONTRO QUALE database sta
 per farlo** — l'host, mai le chiavi. Undici di quelle suite creano e cancellano
@@ -841,14 +864,27 @@ npm run test:assistant       # Chiedi ad AI-Swisse su DB: isolamento fra aziende
                              #   persona (richiede la 0027)
 npm run eval:assistant       # valutazione con VERITÀ DI RIFERIMENTO: 16 domande su dati noti,
                              #   esito atteso, fonti attese, frasi vietate. Costa denaro vero
-npm run subsidy:health  # integrità e freschezza del catalogo incentivi
-npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
+npm run subsidy:health  # integrità e freschezza del catalogo incentivi, E la CODA DI REVISIONE:
+                        #   il conteggio delle schede in attesa di una PERSONA compare sempre nel
+                        #   riepilogo e nella riga di esito, che quindi non può più dire «catalogo
+                        #   valido e aggiornato» e basta mentre sette revisioni aspettano. Oltre
+                        #   30 giorni di attesa o 25 in coda diventa un errore di integrità (exit 2)
+npm run subsidy:health:self-test   # verifica che il GIUDIZIO sulla coda sappia diventare rosso
+npm run subsidy:seed    # popola/aggiorna il catalogo. ⚠️ Senza --write NON scrive ed esce 3
+                        #   («non eseguito»): un no-op che esce 0 è un fallback silenzioso, e la
+                        #   CI ci è già cascata una volta
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
                         # Rifiuta di generare se una migrazione usa un valore enum appena aggiunto,
                         # o se crea un trigger/una policy senza «drop … if exists» che li preceda —
                         # anche quando il nome è fra virgolette, che è il caso che gli era sfuggito
 npm run db:bundle -- --self-test   # verifica che il CONTROLLO stesso riconosca i propri casi noti
-npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
+npm run check:auth -- https://app.ai-swisse.com   # configurazione Auth: i link inviati per email
+                        #   portano a QUEL dominio? ⚠️ IL DOMINIO VA INDICATO. Senza argomento
+                        #   esce 2 e non verifica niente: fino al 2026-08-01 ripiegava su
+                        #   http://localhost:5174 e usciva ZERO dicendo «i link porteranno lì» —
+                        #   vero, e su una domanda diversa da quella che conta
+npm run check:auth -- --local      # la macchina di sviluppo, dichiarata invece che indovinata
+npm run check:auth:self-test       # verifica che il CONTROLLO si rifiuti quando non sa rispondere
 npm run inbox:diagnose  # «perché questa casella non si aggiorna»: stati, sync run, conteggi.
                         # Solo metadati tecnici: mai oggetti, mittenti o contenuti
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
