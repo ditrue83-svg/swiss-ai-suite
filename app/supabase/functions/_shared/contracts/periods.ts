@@ -27,12 +27,41 @@ export interface ParsedPeriod {
 /**
  * I numerali scritti in lettere, nelle tre lingue del prodotto più l'inglese.
  *
- * ⚠️ FINO A DODICI, e non oltre di proposito: i periodi contrattuali reali
- * stanno tutti qui dentro, e un elenco che arrivasse a novantanove sarebbe
- * codice scritto per un caso che nessuno ha mai visto. Oltre il dodici i
- * contratti scrivono la cifra.
+ * ⚠️⚠️ «FINO A DODICI, E NON OLTRE DI PROPOSITO» — QUI C'ERA SCRITTO QUESTO, E
+ * LA MISURA LO HA SMENTITO IL 2026-08-03. La riga diceva: «i periodi
+ * contrattuali reali stanno tutti qui dentro … oltre il dodici i contratti
+ * scrivono la cifra». Su un mandato fiduciario francese di prova, «vingt-quatre
+ * mois» — la forma normale in un contratto francese — non tornava `null` come
+ * la nota lasciava supporre: tornava **4**. Il numerale composto non era nel
+ * l'elenco, la ricerca cadeva su «quatre», e nel database finiva una durata
+ * minima di quattro mesi al posto di ventiquattro.
+ *
+ * ⚠️ È il guasto peggiore che questo file possa produrre, e non perché il numero
+ * sia sbagliato: perché è PLAUSIBILE. Un `null` fa comparire la bandiera e manda
+ * una persona a leggere la clausola; un «4 mesi» non fa comparire niente.
+ *
+ * Le due correzioni sono separate e fanno cose diverse:
+ *   1. i composti che i contratti usano DAVVERO (18, 24, 36, 48, 60) sono
+ *      elencati qui sotto, come parole intere;
+ *   2. un composto NON elencato non deve più cadere su un suo pezzo — `18` in
+ *      `parsePeriod` fa sì che «trente-deux mois» torni `null` invece di «2».
+ * L'elenco resta corto per scelta; ciò che è cambiato è che uscirne non produce
+ * più un numero sbagliato.
  */
 const WORD_NUMBERS: Record<string, number> = {
+  // I composti delle durate contrattuali: 18, 24, 36, 48, 60 mesi sono
+  // praticamente tutte le durate minime che si incontrano.
+  // italiano (parole singole)
+  diciotto: 18, ventiquattro: 24, trentasei: 36, quarantotto: 48, sessanta: 60,
+  // francese (con trattino)
+  'dix-huit': 18, 'vingt-quatre': 24, 'trente-six': 36, 'quarante-huit': 48, soixante: 60,
+  // tedesco (parole singole; `fold` toglie i diacritici ma NON scioglie la ß)
+  achtzehn: 18, vierundzwanzig: 24,
+  sechsunddreissig: 36, 'sechsunddreißig': 36,
+  achtundvierzig: 48, sechzig: 60,
+  // inglese
+  eighteen: 18, 'twenty-four': 24, 'thirty-six': 36, 'forty-eight': 48, sixty: 60,
+
   // italiano
   uno: 1, una: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6,
   sette: 7, otto: 8, nove: 9, dieci: 10, undici: 11, dodici: 12,
@@ -98,12 +127,31 @@ export function parsePeriod(raw: string | null | undefined): ParsedPeriod | null
     for (const word of words) {
       // La quantità precede l'unità, con al più due parole in mezzo — abbastanza
       // per «trois (3) mois» e «6 volle Monate», non per attraversare una virgola.
+      //
+      // ⚠️ IL GRUPPO COL TRATTINO È LA CORREZIONE DEL 2026-08-03. Senza,
+      // «vingt-quatre mois» non poteva agganciarsi da «vingt» (il trattino non è
+      // nella classe), il motore riprovava più avanti e trovava «quatre mois»:
+      // ventiquattro mesi diventavano quattro. Ora il numerale composto si
+      // aggancia intero, e la parola più lunga vince perché il match più a
+      // sinistra è quello che il motore restituisce.
+      //
+      // ⚠️ Il limite passa da 8 a 20 caratteri perché i composti tedeschi sono
+      // parole sole: «vierundzwanzig» ne ha quattordici. Allargarlo non allarga
+      // ciò che si accetta — una parola sconosciuta resta `null` in
+      // `readQuantity` — allarga solo ciò che si riesce a GUARDARE.
       const re = new RegExp(
-        `(\\d{1,4}|[a-zà-ÿ]{2,8})\\s*(?:\\([^)]{0,8}\\))?\\s*[- ]?\\s*${word}\\b`,
+        `(\\d{1,4}|[a-zà-ÿ]{2,20}(?:-[a-zà-ÿ]{2,20})?)\\s*(?:\\([^)]{0,8}\\))?\\s*[- ]?\\s*${word}\\b`,
         'g',
       );
       let m: RegExpExecArray | null;
       while ((m = re.exec(text)) !== null) {
+        // ⚠️ Il pezzo di una parola più grande NON è una quantità. Se subito
+        // prima del token c'è una lettera o un trattino, quello che abbiamo in
+        // mano è un frammento — «-quatre» dentro «vingt-quatre» — e leggerlo
+        // come numero è esattamente il guasto che questa riga esiste per
+        // impedire. Si scarta: `null` è un esito, un periodo indovinato no.
+        const prima = m.index > 0 ? text[m.index - 1] : '';
+        if (prima && /[a-zà-ÿ-]/.test(prima)) continue;
         const quantity = readQuantity(m[1]);
         if (quantity === null) continue;
         found.push({ value: quantity, unit });

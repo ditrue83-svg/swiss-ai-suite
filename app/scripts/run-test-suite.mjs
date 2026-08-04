@@ -208,7 +208,12 @@ const GROUPS = {
       { script: 'typecheck' },
       { script: 'i18n:coverage' },
       { script: 'i18n:typography' },
-      { script: 'docs:check' },
+      // ⚠️ `--root` viene passato SOLO se chi lancia lo ha indicato. Senza, il
+      // passo esce 3 («non eseguito») e il gruppo resta INCOMPLETO invece di
+      // sembrare rosso: dalla directory di sviluppo due dei cinque controlli
+      // non sono eseguibili, e fingere il contrario è ciò che questo file
+      // combatte in ogni sua riga.
+      { script: 'docs:check', argsFrom: () => (opts.root ? ['--root', opts.root] : []) },
       { script: 'db:bundle', args: ['--check'] },
       { script: 'build' },
     ],
@@ -335,9 +340,20 @@ function parseArgs(argv) {
     continueOnError: false,
     allowAi: process.env.AISWISSE_ALLOW_AI === '1',
     allowSkip: false,
+    // ⚠️ La radice del monorepo, per i passi che non possono rispondere senza.
+    // Oggi ce n'è uno: `docs:check` verifica la tabella dei moduli contro il
+    // README della RADICE, che dalla directory di sviluppo (`~/swiss-ai-suite-app`)
+    // non esiste — è un livello sopra `app/`, nel monorepo. Senza, quel passo
+    // esce 3 e il gruppo resta INCOMPLETO; con `--root` il controllo è completo
+    // anche da qui. Il percorso si INDICA: dedurlo dal disco significherebbe
+    // verificare un file che non si sa quale sia.
+    root: null,
     groups: [],
   };
-  for (const a of argv) {
+  const resto = [...argv];
+  for (let i = 0; i < resto.length; i++) {
+    const a = resto[i];
+    if (a === '--root') { opts.root = resto[i + 1] ?? null; i++; continue; }
     if (a === '--list') opts.list = true;
     else if (a === '--self-test') opts.selfTest = true;
     else if (a === '--continue-on-error') opts.continueOnError = true;
@@ -392,8 +408,16 @@ export function decidiEsito({ esiti, gruppiChiesti, allowSkip = false }) {
   const righe = [];
   const rossi = esiti.filter((e) => e.stato === 'rosso');
   const saltati = esiti.filter((e) => e.stato === 'saltato');
+  // ⚠️ QUARTO STATO, dal 2026-08-03. Un gruppo «incompleto» ha eseguito tutti i
+  // passi che POTEVA eseguire e nessuno è fallito: uno o più non erano
+  // eseguibili in questo ambiente e sono usciti 3. Non è verde — manca una
+  // misura — e non è rosso — non è andato storto niente. Trattarlo come rosso
+  // fa cercare un difetto che non c'è; trattarlo come verde fa credere di aver
+  // verificato ciò che non si è verificato.
+  const incompleti = esiti.filter((e) => e.stato === 'incompleto');
   const nonEseguiti = gruppiChiesti - esiti.length;
   const gruppo = (n) => (n === 1 ? 'gruppo' : 'gruppi');
+  const passiNonEseguiti = incompleti.flatMap((e) => (e.nonEseguiti ?? []).map((p) => `${e.id}/${p}`));
 
   if (nonEseguiti > 0) {
     righe.push(`${nonEseguiti} ${gruppo(nonEseguiti)} ${nonEseguiti === 1 ? 'non è stato eseguito' : 'non sono stati eseguiti'}: ci si è fermati al primo fallimento.`);
@@ -405,6 +429,9 @@ export function decidiEsito({ esiti, gruppiChiesti, allowSkip = false }) {
     // legge deve avere entrambe. Prima il salto spariva dietro il fallimento.
     if (saltati.length) {
       righe.push(`E ${saltati.length} ${gruppo(saltati.length)} non sono stati eseguiti affatto: ${saltati.map((e) => e.id).join(', ')}`);
+    }
+    if (passiNonEseguiti.length) {
+      righe.push(`E ${passiNonEseguiti.length} passi non erano eseguibili: ${passiNonEseguiti.join(' · ')}`);
     }
     return { code: 1, righe };
   }
@@ -422,6 +449,21 @@ export function decidiEsito({ esiti, gruppiChiesti, allowSkip = false }) {
     righe.push(`ESITO: NON ESEGUITO — ${saltati.length} ${gruppo(saltati.length)} su ${esiti.length} non ${saltati.length === 1 ? 'è stato eseguito' : 'sono stati eseguiti'}.`);
     righe.push(`Mancano: ${elenco}`);
     righe.push('Nessuno di questi gruppi ha fallito: NON sono stati provati. Se è voluto, --allow-skip lo dichiara.');
+    return { code: 3, righe };
+  }
+
+  // ⚠️ Nessun gruppo saltato, nessun rosso, ma dei PASSI non eseguibili: non è
+  // verde. La parola «verde» qui direbbe che tutti i controlli hanno risposto,
+  // e uno non ha nemmeno potuto essere posto.
+  if (passiNonEseguiti.length) {
+    if (allowSkip) {
+      righe.push(`ESITO: INCOMPLETO — nessun fallimento, ${passiNonEseguiti.length} ${passiNonEseguiti.length === 1 ? 'passo NON eseguito' : 'passi NON eseguiti'} (--allow-skip).`);
+      righe.push(`Non provato: ${passiNonEseguiti.join(' · ')}`);
+      return { code: 0, righe };
+    }
+    righe.push(`ESITO: INCOMPLETO — nessun controllo ha fallito, ma ${passiNonEseguiti.length} non ${passiNonEseguiti.length === 1 ? 'è stato eseguito' : 'sono stati eseguiti'}.`);
+    righe.push(`Non provato: ${passiNonEseguiti.join(' · ')}`);
+    righe.push('Da ~/swiss-ai-suite-app il README della radice non esiste: `npm run ci -- --root ~/swiss-ai-suite-repo` esegue il controllo completo.');
     return { code: 3, righe };
   }
 
@@ -502,6 +544,52 @@ const CASI = [
     arg: { esiti: [{ id: 'quality', stato: 'rosso', falliti: 1, passi: 6 }], gruppiChiesti: 3 },
     code: 1,
     contiene: '2 gruppi non sono stati eseguiti',
+  },
+
+  // --- IL QUARTO STATO: un PASSO non eseguibile dentro un gruppo senza rossi --
+  // ⚠️ IL CASO REALE del 2026-08-03. `docs:check` da `~/swiss-ai-suite-app` non
+  // può verificare la tabella dei moduli — il README della radice sta nel
+  // monorepo — ed esce 3. Prima veniva contato fra i FALLITI: il riepilogo
+  // diceva «ROSSO quality — 1 su 6 falliti» mentre nessun controllo aveva
+  // fallito, e mandava a cercare un difetto inesistente.
+  {
+    name: '⚠️ un PASSO non eseguibile in un gruppo senza rossi → non-zero, e NON si chiama rosso',
+    arg: {
+      esiti: [{ id: 'quality', stato: 'incompleto', falliti: 0, nonEseguiti: ['docs:check'], passi: 6 }],
+      gruppiChiesti: 1,
+    },
+    code: 3,
+    vietaVerde: true,
+    contiene: 'docs:check',
+  },
+  {
+    name: 'lo stesso, con --allow-skip → 0, e la riga NON dice «verde»',
+    arg: {
+      esiti: [{ id: 'quality', stato: 'incompleto', falliti: 0, nonEseguiti: ['docs:check'], passi: 6 }],
+      gruppiChiesti: 1, allowSkip: true,
+    },
+    code: 0,
+    vietaVerde: true,
+  },
+  {
+    name: '⚠️ un rosso NON nasconde il passo non eseguito: restano due informazioni',
+    arg: {
+      esiti: [
+        { id: 'quality', stato: 'incompleto', falliti: 0, nonEseguiti: ['docs:check'], passi: 6 },
+        { id: 'unit', stato: 'rosso', falliti: 2, passi: 19 },
+      ],
+      gruppiChiesti: 2,
+    },
+    code: 1,
+    contiene: 'docs:check',
+  },
+  {
+    name: 'nessun passo non eseguito → resta VERDE: il quarto stato non contagia i verdi',
+    arg: {
+      esiti: [{ id: 'quality', stato: 'verde', falliti: 0, nonEseguiti: [], passi: 6 }],
+      gruppiChiesti: 1,
+    },
+    code: 0,
   },
 ];
 
@@ -643,6 +731,7 @@ for (const id of opts.groups) {
   }
   const t0 = Date.now();
   let falliti = 0;
+  const nonEseguitiQui = [];
 
   for (const step of g.steps) {
     const nome = nomeDelPasso(step);
@@ -650,22 +739,31 @@ for (const id of opts.groups) {
     const { code, ms } = runStep(step);
     if (code === 0) {
       console.log(`  ${G}✓${X} ${nome} ${DIM}${durata(ms)}${X}`);
+    } else if (code === 3) {
+      // ⚠️⚠️ 3 = «non eseguito», e dal 2026-08-03 NON viene più contato fra i
+      // falliti. Prima sì, e il riepilogo diceva «ROSSO quality — 1 su 6
+      // falliti» quando nessun controllo aveva fallito: mandava a cercare un
+      // difetto dove c'era un ambiente incompleto, che è lo stesso genere di
+      // bugia che questo file esiste per non dire. Il gruppo diventa
+      // INCOMPLETO, l'uscita resta non-zero.
+      nonEseguitiQui.push(nome);
+      console.log(`  ${Y}! ${nome}${X} ${Y}NON ESEGUITO${X} ${DIM}${durata(ms)} — exit 3${X}`);
+      // Un passo non eseguito NON ferma il gruppo: gli altri controlli sono
+      // eseguibili e la loro risposta serve.
     } else {
       falliti++;
-      // ⚠️ 3 = «non eseguito», la convenzione di questo repository. Un passo che
-      // ha saltato una misura non ha FALLITO, e chiamarlo fallimento manderebbe
-      // a cercare un difetto dove c'è un ambiente incompleto. Resta comunque
-      // non-verde: è il punto.
-      const etichetta = code === 3
-        ? `${R}✗ ${nome}${X} ${Y}NON ESEGUITO${X}`
-        : `${R}✗ ${nome}${X}`;
-      console.log(`  ${etichetta} ${DIM}${durata(ms)} — exit ${code}${X}`);
+      console.log(`  ${R}✗ ${nome}${X} ${DIM}${durata(ms)} — exit ${code}${X}`);
       if (!opts.continueOnError) { fermato = true; break; }
     }
   }
 
   esiti.push({
-    id, stato: falliti ? 'rosso' : 'verde', falliti, passi: g.steps.length, ms: Date.now() - t0,
+    id,
+    stato: falliti ? 'rosso' : nonEseguitiQui.length ? 'incompleto' : 'verde',
+    falliti,
+    nonEseguiti: nonEseguitiQui,
+    passi: g.steps.length,
+    ms: Date.now() - t0,
   });
   if (fermato) break;
 }
@@ -677,6 +775,8 @@ console.log(`\n${B}Riepilogo${X} ${DIM}(${durata(Date.now() - t0Totale)})${X}\n`
 for (const e of esiti) {
   if (e.stato === 'saltato') {
     console.log(`  ${Y}SALTATO${X}  ${e.id.padEnd(12)} ${DIM}${e.passi} passi — ${e.why}${X}`);
+  } else if (e.stato === 'incompleto') {
+    console.log(`  ${Y}INCOMPL${X}  ${e.id.padEnd(12)} ${DIM}${e.passi} passi, ${(e.nonEseguiti ?? []).length} non eseguibili (${(e.nonEseguiti ?? []).join(', ')}) — ${durata(e.ms)}${X}`);
   } else if (e.stato === 'verde') {
     console.log(`  ${G}VERDE  ${X}  ${e.id.padEnd(12)} ${DIM}${e.passi} passi — ${durata(e.ms)}${X}`);
   } else {

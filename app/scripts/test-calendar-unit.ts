@@ -37,7 +37,11 @@ import {
 import { SERVER_LOCALES, formatDay, st } from '../supabase/functions/_shared/calendar/i18n.ts';
 import { createGoogleCalendarAdapter } from '../supabase/functions/_shared/calendar/google.ts';
 import { createMicrosoftCalendarAdapter } from '../supabase/functions/_shared/calendar/microsoft.ts';
-import { buildReminderEmail } from '../supabase/functions/_shared/calendar/email.ts';
+import { buildReminderEmail, createResendProvider } from '../supabase/functions/_shared/calendar/email.ts';
+// ⚠️ `notify.ts` è PORTABILE: importa solo store/reminders/i18n/email, mai
+// `runtime.ts`. È ciò che permette di eseguire qui la funzione di consegna vera
+// invece di una sua imitazione.
+import { deliverEmails, type NotifyDeps } from '../supabase/functions/_shared/calendar/notify.ts';
 import {
   MAX_PER_DAY, addDays, agendaGroups, buildMonthGrid, gridRange, groupByDay,
   overdueByDays, overdueItems, shiftMonth, shortTitle, todayISO,
@@ -860,6 +864,238 @@ section('11 · Coerenza fra server e interfaccia');
 
   ok(CORRELATION_HEADERS.length === 3 && CORRELATION_HEADERS[0] === 'sb-request-id',
     'l’ordine delle intestazioni è dichiarato, non implicito nel codice');
+}
+
+// ===========================================================================
+section('12 · La CONSEGNA: `deliverEmails` eseguita davvero (§44/§79/§144)');
+// ===========================================================================
+//
+// ⚠️ PERCHÉ QUESTA SEZIONE ESISTE. Fino al 2026-08-03 il percorso di consegna
+// non era eseguito da NESSUN test: la sezione 8 prova `buildReminderEmail`, che
+// compone del testo, e si ferma lì. `deliverEmails` — la funzione che prenota la
+// riga, compone il destinatario, chiama il provider e decide se un guasto è
+// definitivo — non era mai stata eseguita, né qui né altrove. Un percorso che
+// non ha mai girato non è «implementato e testato»: è scritto.
+//
+// Qui gira la funzione VERA, con un client Supabase finto e una `fetch` finta.
+// La stessa scelta della sezione 8 di `test:validate`: l'ambiente è finto, il
+// codice è quello che gira in produzione.
+{
+  // Simulatore minimo di PostgREST: sostiene esattamente le catene che
+  // `deliverEmails` e `composeEmail` usano, e NIENTE di più. Una finzione che
+  // sostiene più di ciò che serve nasconde le query sbagliate invece di
+  // mostrarle.
+  type Row = Record<string, unknown>;
+  interface Scritto { tabella: string; id: unknown; patch: Row }
+
+  function sbFinto(tabelle: Record<string, Row[]>, scritti: Scritto[]) {
+    const from = (tabella: string) => {
+      const filtri: ((r: Row) => boolean)[] = [];
+      let patch: Row | null = null;
+      let tetto = Number.POSITIVE_INFINITY;
+      const righe = () => (tabelle[tabella] ?? []).filter((r) => filtri.every((f) => f(r)));
+      const api = {
+        select: () => api,
+        eq: (c: string, v: unknown) => { filtri.push((r) => r[c] === v); return api; },
+        in: (c: string, vs: unknown[]) => { filtri.push((r) => vs.includes(r[c])); return api; },
+        lte: (c: string, v: string) => { filtri.push((r) => String(r[c]) <= v); return api; },
+        order: () => api,
+        limit: (n: number) => { tetto = n; return api; },
+        update: (p: Row) => { patch = p; return api; },
+        maybeSingle: () => Promise.resolve({ data: righe()[0] ?? null, error: null }),
+        then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => {
+          const colpite = righe().slice(0, tetto);
+          if (patch) {
+            for (const r of colpite) {
+              Object.assign(r, patch);
+              scritti.push({ tabella, id: r.id, patch: patch as Row });
+            }
+          }
+          return Promise.resolve({ data: colpite, error: null }).then(res, rej);
+        },
+      };
+      return api;
+    };
+    return { from } as unknown as NotifyDeps['sb'];
+  }
+
+  /** Una `fetch` che risponde ciò che le si dice e registra cosa ha ricevuto. */
+  function fetchFinta(risposte: { status: number; body?: string; headers?: Record<string, string> }[]) {
+    const viste: { url: string; headers: Record<string, string>; body: Record<string, unknown> }[] = [];
+    let i = 0;
+    const impl = ((url: string, init: RequestInit) => {
+      const r = risposte[Math.min(i, risposte.length - 1)];
+      i++;
+      viste.push({
+        url: String(url),
+        headers: (init.headers ?? {}) as Record<string, string>,
+        body: JSON.parse(String(init.body ?? '{}')),
+      });
+      return Promise.resolve(new Response(r.body ?? '{"id":"resend-1"}', {
+        status: r.status,
+        headers: { 'content-type': 'application/json', ...(r.headers ?? {}) },
+      }));
+    }) as unknown as typeof fetch;
+    return { impl, viste, chiamate: () => i };
+  }
+
+  const COMPANY = 'comp-1', USER = 'user-1', DELIVERY = 'del-1';
+
+  /** Lo scenario nominale: una consegna in coda, con tutto al suo posto. */
+  const scenario = (over: {
+    profilo?: Row | null; notifica?: Row | null; prefs?: Row[]; consegna?: Row;
+  } = {}) => ({
+    notification_deliveries: [{
+      id: DELIVERY, attempts: 0, status: 'pending', channel: 'email',
+      // ⚠️ NEL PASSATO, e la prima stesura l'aveva messo nel futuro: la select
+      // di `deliverEmails` filtra `next_attempt_at <= adesso`, non selezionava
+      // nulla, e TRE asserzioni diventavano verdi perché non c'era niente da
+      // toccare. Un verde ottenuto da una coda vuota non dice niente sul codice.
+      next_attempt_at: '2020-01-01T00:00:00.000Z',
+      notification_id: 'notif-1',
+      notifications: over.notifica === undefined ? {
+        company_id: COMPANY, user_id: USER, type: 'task_due_today',
+        entity_type: 'task', entity_id: 'task-9',
+        payload: { title: 'Trasmettere rendiconto IVA', dueDate: '2026-08-03', kind: 'd0' },
+      } : over.notifica,
+      ...over.consegna,
+    }] as Row[],
+    profiles: over.profilo === undefined
+      ? [{ id: USER, email: 'destinatario.tecnico@ai-swisse.com' }]
+      : (over.profilo ? [over.profilo] : []),
+    companies: [{ id: COMPANY, legal_name: 'Tecnica Sagl' }],
+    notification_preferences: over.prefs ?? [],
+  });
+
+  const provider = (impl: typeof fetch) =>
+    createResendProvider({ apiKey: 're_chiave_finta', from: 'AI-Swisse <notifiche@ai-swisse.com>', fetchImpl: impl });
+
+  const deps = (tabelle: Record<string, Row[]>, scritti: Scritto[], p: NotifyDeps['emailProvider']): NotifyDeps => ({
+    sb: sbFinto(tabelle, scritti), appOrigin: 'https://app.ai-swisse.com', emailProvider: p,
+  });
+
+  const FUTURO = Date.now() + 60_000;
+
+  // --- 12.1 Il caso nominale: la consegna parte davvero ---------------------
+  {
+    const t = scenario(), scritti: Scritto[] = [];
+    const f = fetchFinta([{ status: 200, body: '{"id":"resend-abc"}' }]);
+    const rep = await deliverEmails(deps(t, scritti, provider(f.impl)), FUTURO);
+
+    ok(rep.attempted === 1 && rep.sent === 1 && rep.failed === 0 && rep.retried === 0,
+      'una consegna in coda viene tentata e riesce', JSON.stringify(rep));
+    ok(f.chiamate() === 1, 'il provider è stato chiamato UNA volta');
+    ok(f.viste[0]?.url === 'https://api.resend.com/emails', 'verso l’endpoint del provider', f.viste[0]?.url);
+    ok((f.viste[0]?.body.to as string[])?.[0] === 'destinatario.tecnico@ai-swisse.com',
+      '⚠️ il destinatario esce da `profiles.email`, non da un valore scritto nel codice',
+      JSON.stringify(f.viste[0]?.body.to));
+    ok(f.viste[0]?.body.from === 'AI-Swisse <notifiche@ai-swisse.com>',
+      'il mittente è quello configurato in NOTIFICATION_EMAIL_FROM');
+    ok(String(f.viste[0]?.body.subject).includes('in scadenza oggi'),
+      'l’oggetto è quello del tipo di notifica', String(f.viste[0]?.body.subject));
+    ok(String(f.viste[0]?.body.text).includes('Tecnica Sagl')
+      && String(f.viste[0]?.body.text).includes('Trasmettere rendiconto IVA')
+      && String(f.viste[0]?.body.text).includes('https://app.ai-swisse.com/attivita/task-9'),
+      'il corpo porta azienda, attività e il collegamento costruito dal SERVER');
+    ok(f.viste[0]?.headers['Idempotency-Key'] === `delivery:${DELIVERY}`,
+      '⚠️ la chiave di idempotenza è quella della CONSEGNA: è ciò che impedisce la seconda email quando la nostra richiesta si perde',
+      f.viste[0]?.headers['Idempotency-Key']);
+
+    const finale = t.notification_deliveries[0];
+    ok(finale.status === 'sent' && finale.provider_message_id === 'resend-abc' && finale.error_code === null,
+      'la riga si chiude come inviata, con l’identificativo del provider',
+      JSON.stringify({ status: finale.status, id: finale.provider_message_id }));
+    ok(scritti.some((s) => s.patch.status === 'sending' && s.patch.attempts === 1),
+      '⚠️ il tentativo è REGISTRATO PRIMA dell’invio: se l’isolate muore, il peggio è un’email in meno, mai una in più');
+  }
+
+  // --- 12.2 Nessun provider: la coda non si tocca ---------------------------
+  {
+    const t = scenario(), scritti: Scritto[] = [];
+    const rep = await deliverEmails(deps(t, scritti, null), FUTURO);
+    ok(rep.attempted === 0 && rep.sent === 0,
+      'senza provider configurato non parte niente — ed è la garanzia dichiarata in product-status, non una svista');
+    ok(scritti.length === 0 && t.notification_deliveries[0].status === 'pending',
+      '⚠️ e la riga in coda NON viene toccata: resta pending, non diventa «fallita»');
+  }
+
+  // --- 12.3 Senza indirizzo non si inventa un destinatario ------------------
+  {
+    const t = scenario({ profilo: null }), scritti: Scritto[] = [];
+    const f = fetchFinta([{ status: 200 }]);
+    const rep = await deliverEmails(deps(t, scritti, provider(f.impl)), FUTURO);
+    ok(f.chiamate() === 0, '⚠️ profilo senza indirizzo: il provider non viene chiamato affatto');
+    ok(t.notification_deliveries[0].status === 'cancelled'
+      && t.notification_deliveries[0].error_code === 'NO_RECIPIENT',
+      'e la consegna si chiude come ANNULLATA con la ragione, non come riuscita',
+      String(t.notification_deliveries[0].error_code));
+    ok(rep.sent === 0, 'e il report non conta un invio che non c’è stato');
+  }
+
+  // --- 12.4 La notifica non c'è più: annullata, non fallita -----------------
+  {
+    const t = scenario({ notifica: null }), scritti: Scritto[] = [];
+    const f = fetchFinta([{ status: 200 }]);
+    await deliverEmails(deps(t, scritti, provider(f.impl)), FUTURO);
+    ok(f.chiamate() === 0 && t.notification_deliveries[0].error_code === 'NOTIFICATION_GONE',
+      'una notifica sparita annulla la consegna: non è andato storto niente, e non si dice il contrario');
+  }
+
+  // --- 12.5 Un 4xx del provider è DEFINITIVO -------------------------------
+  {
+    const t = scenario(), scritti: Scritto[] = [];
+    // 403 con dominio non verificato: il caso che si incontra davvero al primo
+    // invio, se `NOTIFICATION_EMAIL_FROM` usa un dominio non registrato.
+    const f = fetchFinta([{ status: 403, body: '{"message":"The domain is not verified"}' }]);
+    const rep = await deliverEmails(deps(t, scritti, provider(f.impl)), FUTURO);
+    ok(f.chiamate() === 1,
+      '⚠️ un 4xx non si ritenta NEMMENO dentro il provider: ritentarlo non lo fa diventare valido',
+      `chiamate: ${f.chiamate()}`);
+    ok(rep.failed === 1 && rep.retried === 0, 'ed è contato come fallimento, non come ritentativo');
+    ok(t.notification_deliveries[0].status === 'failed'
+      && t.notification_deliveries[0].error_code === 'INVALID_RESPONSE',
+      'la riga si chiude subito invece di occupare la coda per giorni',
+      String(t.notification_deliveries[0].error_code));
+  }
+
+  // --- 12.6 Un 429 è transitorio: si ritenta ------------------------------
+  {
+    const t = scenario(), scritti: Scritto[] = [];
+    const f = fetchFinta([{ status: 429, headers: { 'retry-after': '0' } }]);
+    const rep = await deliverEmails(deps(t, scritti, provider(f.impl)), FUTURO);
+    ok(f.chiamate() === 2, 'un 429 viene ritentato dentro il provider (due tentativi, come dichiarato)',
+      `chiamate: ${f.chiamate()}`);
+    ok(rep.retried === 1 && rep.failed === 0, 'e il report lo chiama ritentativo, non fallimento');
+    ok(t.notification_deliveries[0].status === 'pending',
+      '⚠️ la riga torna in coda: un limite di frequenza non è un indirizzo sbagliato');
+  }
+
+  // --- 12.7 I tentativi sono finiti ---------------------------------------
+  {
+    const t = scenario({ consegna: { attempts: EMAIL_MAX_ATTEMPTS - 1 } }), scritti: Scritto[] = [];
+    const f = fetchFinta([{ status: 429, headers: { 'retry-after': '0' } }]);
+    const rep = await deliverEmails(deps(t, scritti, provider(f.impl)), FUTURO);
+    ok(rep.failed === 1 && t.notification_deliveries[0].status === 'failed',
+      'all’ultimo tentativo anche un guasto transitorio chiude la consegna: non si ritenta per sempre');
+  }
+
+  // --- 12.8 La lingua di chi riceve, non quella del server -----------------
+  {
+    const t = scenario({
+      prefs: [{
+        company_id: COMPANY, user_id: USER, in_app_enabled: true, email_enabled: true,
+        remind_7_days: true, remind_1_day: true, remind_due_day: true, remind_overdue: true,
+        timezone: 'Europe/Zurich', locale: 'de', show_task_title: true,
+      }],
+    });
+    const f = fetchFinta([{ status: 200 }]);
+    await deliverEmails(deps(t, [], provider(f.impl)), FUTURO);
+    ok(String(f.viste[0]?.body.subject).includes('Frist heute'),
+      '⚠️ l’oggetto arriva in TEDESCO se la preferenza dice de: la lingua è quella registrata, non quella del server',
+      String(f.viste[0]?.body.subject));
+    ok(String(f.viste[0]?.body.text).includes('Sie erhalten diese Nachricht'),
+      'e anche la riga che spiega perché il messaggio arriva');
+  }
 }
 
 // ===========================================================================

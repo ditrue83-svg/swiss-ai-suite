@@ -16,13 +16,27 @@
 > catalogo, e che cosa vede davvero chi accende i promemoria via email. Le
 > misure stanno qui sotto, e **due numeri di questa pagina erano invecchiati**.
 
-## ⛔ IL CREDITO ANTHROPIC È DI NUOVO ESAURITO (misurato il 2026-08-01, 21:44 UTC)
+## ⛔ IL CREDITO ANTHROPIC È DI NUOVO ESAURITO (rimisurato il 2026-08-03, 00:5x locali)
+
+⚠️ **Terza volta in tre giorni.** Ricaricato il 2026-08-01, si è esaurito di
+nuovo durante la lettura dei primi contratti veri. Rimisurato chiamando l'API:
+`claude-opus-4-8` → **HTTP 400, «Your credit balance is too low»**.
+
+✅ **E il codice si è comportato come deve**, il che è la sola cosa buona di
+questo blocco: `contract-worker` ha classificato l'esaurimento come guasto
+dell'AMBIENTE (`QUOTA_EXCEEDED`), ha rimesso i tre documenti **in coda** e non ha
+scritto nessun verbale `failed`. Nessuna affermazione falsa sui documenti.
+
+⚠️ **Conseguenza aperta**: la correzione delle date scritte a parole
+(§ «I contratti, letti per la prima volta») è provata sulla funzione, con 14
+asserzioni e una controprova, ma **non è stata rimisurata dal capo alla coda**.
+Il 88,6 % è la misura vera di PRIMA di quella correzione.
 
 ⚠️ **Questa sezione ha detto per un giorno il contrario, ed era vero quando è
 stata scritta.** Il credito era stato ripristinato la sera del 2026-07-31 — la
 misura qui sotto lo conferma — e si è esaurito di nuovo il **2026-08-01 verso le
-11:00 UTC**. È la seconda volta in due giorni: **non è un incidente, è il modo
-in cui questo prodotto funziona finché il credito si ricarica a mano.**
+11:00 UTC**. **Non è un incidente, è il modo in cui questo prodotto funziona
+finché il credito si ricarica a mano.**
 
 Rimisurato chiamando l'API vera con la chiave di `.env.test`:
 
@@ -103,10 +117,10 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Inbox | `/inbox` | sì | sì | sì | sì | sì | **no** | Google Gmail API | scope riservato: fuori dalla modalità Test Google impone la verifica CASA, quindi **un cliente reale non può collegare la propria casella**. Microsoft implementato e non configurato. ✅ **148 messaggi, TUTTI `done`, zero in `failed`** — rimisurato il 2026-08-05 interrogando la produzione. ⚠️ Questa riga ha detto «3 su 141 in `failed`» fino al 2026-08-05: era vero il 2026-08-01 e ha smesso di esserlo da sé, perché il ritentativo ha ripescato quei tre quando il credito è tornato. **Il meccanismo ha funzionato senza che nessuno lo toccasse**, ed è la prova che quella riga aspettava. Il numero qui si RIMISURA prima di unire una PR: `docs:check` confronta i documenti con il codice, non con il database, quindi su questa colonna non può aiutare (§sotto) |
 | Attività | `/attivita` | sì | — | sì | sì | — | sì | — | nessuna |
 | Documenti | `/documenti` | sì | — | sì | sì | — | sì | — | nessuna politica di conservazione delle analisi |
-| Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). Restano due cose: **nessuna email può partire** (`NOTIFICATION_EMAIL_API_KEY`/`_FROM` non configurati, `deliverEmails` esce subito) e **nessuna connessione OAuth reale è mai stata stabilita**, quindi la colonna «servizio reale» resta **no** |
+| Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). ⚠️⚠️ **Il 2026-08-03 si è scoperto che le email non sarebbero potute partire NEMMENO con i secret impostati**: `composeEmail` non metteva il destinatario nel messaggio, e ogni promemoria sarebbe uscito verso `to: [null]` (§sotto). Corretto e coperto da 25 controlli nuovi. Restano due cose, entrambe **gesti dell'utente**: i due secret del provider email non sono impostati, e **nessuna connessione OAuth reale è mai stata stabilita** — misurato il 2026-08-03, `POST /calendar-oauth/providers` risponde `{"providers":[],"emailConfigured":false}`. Quindi «servizio reale» resta **no** |
 | Automazioni | `/automazioni` | sì | sì | sì | sì | sì | sì | — | nessuna approvazione umana: solo azioni a rischio basso, e per questo non esiste nessuna azione che ne avrebbe bisogno. Le esecuzioni che non corrispondono non lasciano traccia |
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
-| Contratti | `/contratti` | sì | sì | sì | sì | **no** | parziale | Anthropic | ⚠️ **il worker non ha mai prodotto un'estrazione su un contratto vero**: `contract_extractions` è **ancora a zero**, riverificato il 2026-08-01 (`contracts` ha 1 riga, estrazioni 0). Il prompt è allineato a un ragionamento, non a una risposta reale. ⚠️ Oggi la prova è bloccata **due volte**: manca un contratto reale, e manca il credito Anthropic da cui `contract-worker` dipende |
+| Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ✅ **Letti tre contratti veri il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ⚠️ Le correzioni sono nel repository e **NON sono deployate**: `contract-worker` in produzione porta ancora il codice vecchio |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). 7 revisioni del catalogo in attesa di una persona |
@@ -222,7 +236,7 @@ che oggi lo ferma davvero.
 | Google Pub/Sub | implementato, **non attivato per scelta** | un account di fatturazione. Il cron a 15 minuti lo sostituisce |
 | Microsoft Graph (posta) | implementato, non configurato | credenziali Entra. L'app lo **dichiara** invece di fallire |
 | Google/Microsoft Calendar | implementato, **mai provato contro le API vive** | `GOOGLE_CALENDAR_CLIENT_ID`/`SECRET` espliciti |
-| Provider email (Resend) | implementato, **non configurato** — riverificato il 2026-08-01 | `NOTIFICATION_EMAIL_API_KEY` e `NOTIFICATION_EMAIL_FROM`: **assenti** dai 21 secret del progetto, controllati per NOME (il valore non è leggibile: la Management API restituisce lo SHA-256). Finché mancano, `deliverEmails` esce subito e **nessuna email può partire**: è una garanzia, non una svista. ✅ E la schermata lo **dichiara davvero** — non c'è nessun interruttore da accendere (§sotto) |
+| Provider email (Resend) | implementato, **non configurato** — riverificato il 2026-08-03 | `NOTIFICATION_EMAIL_API_KEY` e `NOTIFICATION_EMAIL_FROM`: **assenti** dai 21 secret del progetto, controllati per NOME (il valore non è leggibile: la Management API restituisce lo SHA-256). Finché mancano, `deliverEmails` esce subito e **nessuna email può partire**: è una garanzia, non una svista. ✅ E la schermata lo **dichiara davvero** — non c'è nessun interruttore da accendere (§sotto). ⚠️⚠️ **Fino al 2026-08-03 impostarli non sarebbe bastato**: vedi «Le email di notifica» qui sotto. Ora il percorso è eseguito da `test:calendar-unit` §12 e da `npm run test:notification-email`, che **esce 3** finché i due valori mancano |
 
 ## ⚠️ `calendar-sync` era deployata con `verify_jwt=true`, e lo scheduler non poteva funzionare
 
@@ -297,6 +311,189 @@ Tre misure indipendenti, il 2026-08-01:
 accodato la richiesta.** Da oggi `npm run verify:deploy` legge comunque l'esito
 dell'ultima esecuzione di ogni job — prima sapeva solo che il job *esisteva* —
 e i due worker scrivono `phase=start` / `phase=end` con `rid` e `durationMs`.
+
+## ⚠️⚠️ Le email di notifica: non sarebbero partite nemmeno con i secret
+
+Misurato il **2026-08-03**, scrivendo il primo test che esegue `deliverEmails`.
+
+**Il difetto.** `composeEmail` (`_shared/calendar/notify.ts`) dichiarava di
+restituire `{ to, subject, text }` e restituiva il risultato nudo di
+`buildReminderEmail`, che è `{ subject, text }`: **il campo `to` non c'era**.
+A runtime `message.to` era `undefined`, `JSON.stringify` lo scriveva `null`
+dentro l'array, e ogni promemoria sarebbe uscito verso `to: [null]`. Esito: 4xx
+del provider, consegna chiusa `failed`, **nessuna email mai arrivata a nessuno**.
+Chi avesse impostato i due secret avrebbe visto una coda di consegne fallite con
+un codice opaco, e avrebbe cercato il guasto nella configurazione.
+
+**Perché nessuno l'aveva visto.** `tsconfig.json` include `src` e `scripts`:
+un file di `supabase/functions/` entra nel typecheck **solo se qualcosa là dentro
+lo importa**, e `notify.ts` non era importato da niente. Su 103 file `.ts` sotto
+`supabase/functions/`, **25 non sono typecheckati** — fra cui gli `index.ts` di
+tutte e 19 le Edge Function. Il difetto è comparso nell'istante in cui un test ha
+importato il modulo per eseguirlo: prima è diventato rosso il test, poi
+`npm run typecheck`. **Un percorso che nessun test esegue non è coperto nemmeno
+dal typecheck.**
+
+✅ **Corretto**, e coperto da **25 controlli nuovi** (`test:calendar-unit` §12,
+da 188 a 213 asserzioni) che eseguono `deliverEmails` VERA contro un client
+Supabase finto e una `fetch` finta: caso nominale, chiave di idempotenza,
+destinatario preso da `profiles.email`, 4xx definitivo, 429 ritentato, tetto dei
+tentativi, lingua di chi riceve. **Controprova eseguita**: due mutazioni del
+codice di produzione (chiave di idempotenza sbagliata; tentativo non registrato
+prima dell'invio) producono un rosso ciascuna, e quello giusto.
+
+✅ **`npm run test:notification-email`** invia per davvero, verso
+`delivered@resend.dev`. ⚠️ **Esce 3 finché i due secret mancano**: un controllo
+che non si può eseguire non è verde.
+
+⚠️ **Restano due cancelli che i secret non aprono**, ed è la parte che va detta a
+chi li imposta: `notification_preferences.email_enabled` è **false per default**,
+e la coda si popola alla GENERAZIONE — le notifiche create mentre il provider non
+c'era **non hanno una riga di consegna e non l'avranno mai**. Le email partono dai
+promemoria generati da lì in avanti. Dettagli in
+[`calendar-notifications.md` § Accendere le email](calendar-notifications.md).
+
+## I contratti, letti per la prima volta — 88,6 % dei campi
+
+Misurato il **2026-08-03** con `npm run eval:contracts`, su tre contratti
+svizzeri verosimili scritti per la prova — locazione commerciale (it), fornitura
+(de), mandato fiduciario (fr) — stampati in PDF e riletti con la **stessa
+estrazione del prodotto**.
+
+⚠️ **Che cosa NON provano, dichiarato**: non sono contratti di terzi e sono
+impaginati puliti. Provano la lettura, **non** l'OCR di una scansione né un
+documento scritto male.
+
+**Il prompt non era il problema.** Il modello legge i tre documenti con fiducia
+0,9–0,98 e **supera tutte le trappole**: non calcola la data di fine dai
+ventiquattro mesi del mandato (non è scritta), non scambia una quantità minima
+d'acquisto per una durata minima, non deduce «nessun rinnovo» dal silenzio del
+contratto, e dichiara di non sapere la periodicità di un prezzo «pro Tonne»
+invece di sceglierne una plausibile. **Le perdite erano quasi tutte a valle.**
+
+**Due difetti del nostro codice, trovati misurando e corretti:**
+
+1. ⚠️⚠️ **`loadCompanyName` interrogava `companies.name`, colonna che non
+   esiste.** La select tornava `42703`, un `if (error) return null` se lo
+   mangiava, e il nome dell'azienda **non è mai arrivato al modello, per nessun
+   contratto, dal primo giorno**. Non è estetica: il prompt usa quel nome solo
+   per distinguere le due parti, e senza il modello legge correttamente i due
+   nomi ma non sa quale sia il cliente — e abbassa onestamente la fiducia a
+   **0,4–0,6**, sotto la soglia di 0,65 del validatore. Risultato: la scheda del
+   contratto usciva **senza controparte**, con `missing_counterparty` acceso su
+   ogni contratto. Un errore ingoiato a monte e un risultato plausibile a valle.
+   ✅ Corretto (`legal_name`, e l'errore ora **solleva** invece di travestirsi da
+   dato mancante), con una sezione nuova in `test:contracts` (66 → **69**) che
+   esegue la funzione vera contro lo schema vero. Controprova: rimettendo la
+   colonna sbagliata il test si ferma con `COMPANY_NAME_READ_FAILED:42703`.
+
+2. ⚠️ **`parsePeriod('vingt-quatre mois')` restituiva `4`.** Non un vuoto: un
+   numero **plausibile e sbagliato** su una durata minima, che non fa comparire
+   nessuna bandiera. Il commento del file dichiarava «fino a dodici, e non oltre
+   di proposito … oltre il dodici i contratti scrivono la cifra»: falso per il
+   francese. `'trente-deux mois'` dava **2**. ✅ Corretto in due parti — i
+   composti che i contratti usano davvero (18, 24, 36, 48, 60 nelle quattro
+   lingue) e, soprattutto, **un composto sconosciuto ora torna `null` invece di
+   un suo pezzo**. `test:contracts-unit` 93 → **102**; le 9 righe nuove sono
+   rosse contro il codice di prima.
+
+**Tasso per campo, dopo le correzioni — 70 su 79:**
+
+| esito | campi |
+|---|---|
+| 3/3 | `document_language` `detected_type` `company_party` `counterparty` `counterparty_address` `end_date_kind` `minimum_term_value` `minimum_term_unit` `auto_renewal` `notice_period_value` `notice_period_unit` `notice_anchor_text` `termination_method` `termination_address` `cost_amount` `cost_currency` `cost_frequency` `cost_vat_included` `price_adjustment` `governing_law` `jurisdiction` `signed` |
+| 2/3 | `end_date` · `renewal_period_value` |
+| 0/3 | `document_date` · `start_date` |
+
+⚠️⚠️ **I 9 rossi rimasti non sono nove difetti: sono due.**
+
+- **Sette erano la stessa cosa: le date scritte a parole.** `toDateOrNull`
+  accettava solo la forma ISO e `gg.mm.aaaa` con il giorno maggiore di 12. «12
+  giugno 2026», «3. November 2026», «1er février 2027» — la forma **normale** in
+  un contratto — diventavano `null`. Il modello le restituiva con fiducia 0,95 e
+  la citazione si ritrovava: le scartavamo noi. ⚠️ Non era una svista: era una
+  scelta dichiarata e **congelata in un test** («1er janvier 2026 non convertita
+  → null»). La motivazione scritta parlava però di forme *ambigue*, e un mese
+  scritto in lettere non lo è. Conseguenza misurata: senza `end_date` nessuna
+  scadenza di disdetta è derivabile, e i tre contratti uscivano con
+  `notice_not_derivable` — il modulo leggeva tutto e non sorvegliava niente.
+  ✅ **Corretto il 2026-08-03**: mesi in lettere in it/de/fr/en, con il luogo
+  davanti («Lugano, 12 giugno 2026») perché è così che i contratti li stampano.
+  ⚠️ **La severità non si è persa, e le controprove lo verificano**: «03.04.2026»
+  resta `null`, «31 febbraio 2026» resta `null`, e **due date diverse nella
+  stessa stringa restano `null`** — scegliere sarebbe indovinare.
+  `test:contracts-unit` 102 → **116**; le 14 righe nuove sono rosse contro il
+  codice di prima (10 rossi misurati).
+  ⚠️⚠️ **NON rimisurata dal capo alla coda**: il credito Anthropic si è esaurito
+  subito dopo. Il 88,6 % qui sopra è la misura di PRIMA di questa correzione. Il
+  numero atteso è ~77/79, ed è una previsione, non una misura.
+- **Due sono `renewal_period` sul contratto italiano**: «di anno in anno» non è
+  un numerale e `parsePeriod` torna `null`. È un limite, non un valore sbagliato.
+
+⚠️ **Le due correzioni NON sono deployate**: `contract-worker` in produzione
+porta ancora il codice vecchio. La misura è stata fatta eseguendo la pipeline
+vera (`processContractDocument`, lo stesso modulo del worker) in Node, contro il
+database reale e il modello vivo.
+
+✅ **Nessun residuo**: quattro esecuzioni dell'eval, ogni volta azienda tecnica
+creata e cancellata, cancellazione verificata. Produzione riletta a fine giro —
+2 aziende, 19 documenti, 0 aziende orfane, 0 verbali contrattuali.
+
+## ✅ I DUE CONTROLLI CHE NON SI CONTROLLAVANO — chiusi il 2026-08-03
+
+**`docs:check` dava un verde falso da `~/swiss-ai-suite-app`.** Il README della
+radice vive nel monorepo, un livello sopra l'app; dalla directory di sviluppo non
+c'è. Il controllo lo **dichiarava** — riga gialla, testo esplicito — e poi
+stampava «Nessuna divergenza» e usciva **ZERO**, con due dei cinque controlli
+(moduli e collegamenti della radice) mai eseguiti. Il salto era scritto, ma le
+due cose che un lettore guarda davvero — la parola «verde» e il codice di uscita
+— dicevano entrambe «a posto». È il difetto che quel file esiste per
+intercettare, commesso da quel file.
+
+Ora: **uscita 3** e la parola «PARZIALE», con tre modi dichiarati —
+`--root ~/swiss-ai-suite-repo` esegue il controllo **completo** dalla directory
+di sviluppo, `--allow-partial` accetta il parziale a occhi aperti, e dal monorepo
+non serve niente. La decisione è stata estratta in una funzione pura
+(`esitoFinale`) e provata su 5 casi, fra cui «⚠️ divergenze: `--allow-partial`
+NON le perdona». L'autoverifica passa da 21 a **26 casi**.
+
+**E la conseguenza sul runner è stata risolta, non subita.** Rendendo `docs:check`
+severo, `npm run ci` da `~/swiss-ai-suite-app` diventava **ROSSO — 1 su 6
+falliti**: falso, perché nessun controllo aveva fallito. Due correzioni:
+
+- un passo che esce **3** non è più contato fra i falliti. Il gruppo diventa
+  **`INCOMPL`**, il riepilogo NOMINA il passo, l'uscita resta 3, e gli altri
+  gruppi vengono comunque eseguiti — prima ci si fermava lì e `unit` non girava
+  affatto. `decidiEsito` ha un quarto stato, provato su **4 casi nuovi**
+  (autoverifica del runner da 7 a **11**), fra cui «un rosso NON nasconde il
+  passo non eseguito» e «il quarto stato non contagia i verdi»;
+- **`npm run ci -- --root ~/swiss-ai-suite-repo`** esegue il controllo COMPLETO
+  dalla directory di sviluppo. Misurato: senza `--root` uscita **3**
+  (`INCOMPLETO — nessun controllo ha fallito, ma 1 non è stato eseguito`), con
+  `--root` uscita **0, VERDE**. Dal monorepo — dove gira la CI — non serve
+  niente ed era già verde.
+
+⚠️ Ripiegare sul README dell'**app** non era un'opzione, ed è stato verificato
+invece che supposto: non contiene la tabella dei moduli, e il controllo avrebbe
+dichiarato mancanti Calendario, Contratti e l'Assistente. Falsi rossi al posto di
+un verde falso non sono un miglioramento.
+
+**`test:operations` non sapeva se un modulo fosse guardato dal typecheck.** Il
+difetto del destinatario delle email è vissuto per settimane perché
+`tsconfig.json` include `src` e `scripts`: un file di `supabase/functions/` entra
+nel programma **solo se qualcosa là dentro lo importa**. È la stessa domanda che
+`test:operations` pone già alle Edge Function — «qualcuno lo chiama?» — applicata
+al typecheck: **qualcuno lo guarda?**
+
+Il controllo 8 segue il grafo degli import da `src/` e `scripts/` e pretende che
+ogni modulo **portabile** sia raggiunto. I file che usano `Deno.` o importano
+`npm:`/`jsr:` sono esenti **per costruzione**, e il controllo lo verifica invece
+di crederci. Il debito noto sta in `TYPECHECK_SCOPERTI`, con la stessa forma di
+`CRON_SOLO_A_MANO`: **due moduli portabili** che nessuno importa —
+`_shared/calendar/sync.ts` (451 righe, nessun test le esegue) e
+`_shared/assistant/store.ts` (provato via HTTP, non importato). Un modulo NUOVO
+non importato fa fallire il controllo: **controprova eseguita** creando un file
+di prova sotto `_shared/`. Autoverifica da 24 a **30 casi**.
 
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 
