@@ -24,7 +24,11 @@ import type { ConditionResult } from './conditions.ts';
 /** Forma minima del client Supabase usata qui. Identica in Deno e Node. */
 export interface ServerClient {
   from: (table: string) => any;
-  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+  // ⚠️ `PromiseLike`, NON `Promise`: `sb.rpc(…)` torna un `PostgrestFilterBuilder`,
+  // che ha `then` e NON ha `catch` né `finally`. Dichiararlo `Promise` rendeva il
+  // client vero non assegnabile a questa interfaccia, e ha coperto un `.catch()`
+  // che a runtime sollevava. Vedi `persist.ts` → `SupabaseWithRpc`.
+  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
 }
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,30 @@ import { SCHEMA_VERSION } from './schema.ts';
 // Il client Supabase ha la stessa API a runtime in Deno e Node; tipizzazione minima.
 export type SupabaseLike = { from: (table: string) => any };
 
+/**
+ * Il client, più la RPC — per i due punti che ne hanno bisogno.
+ *
+ * ⚠️⚠️ IL RITORNO È `PromiseLike`, NON `Promise`, E LA DIFFERENZA NON È
+ * FORMALE. `sb.rpc(…)` non restituisce una Promise: restituisce un
+ * `PostgrestFilterBuilder`, che ha `then` e **non ha `catch` né `finally`**
+ * (verificato il 2026-08-04 sul pacchetto vero: `typeof builder.catch` è
+ * `undefined`). Si può attendere con `await`; non ci si può attaccare un
+ * `.catch()`.
+ *
+ * Dichiararlo `Promise` era comodo e falso, e il tipo falso ha coperto un
+ * difetto vero: in `company-assistant` una riga faceva
+ * `await sb.rpc(…).catch(() => undefined)` dentro il gestore d'errore, che a
+ * runtime solleva `TypeError: … .catch is not a function`. Il compilatore non
+ * poteva dirlo, perché quel file non era compilato da nessuno E perché il tipo
+ * prometteva un metodo che non esiste.
+ *
+ * ⚠️ Il tipo sta in UN posto solo: due copie di questa riga divergerebbero
+ * senza che nulla diventi rosso.
+ */
+export type SupabaseWithRpc = SupabaseLike & {
+  rpc?: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
+};
+
 // Evidence legacy attesa dalla UI attuale: solo citazioni VERIFICATE, con offset.
 //
 // ⚠️⚠️ `pageNumber` VIENE PROPAGATO, e fino al 2026-07-29 non lo era. `DocViewer`
@@ -251,7 +275,7 @@ export async function saveExtraction(
  * conteggio classico: il limite resta attivo, senza la garanzia di atomicità.
  */
 export async function reserveAiSlot(
-  sb: SupabaseLike & { rpc?: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  sb: SupabaseWithRpc,
   entry: { companyId: string; kind: string; limitPerMinute: number; documentId?: string | null; provider?: string | null; model?: string | null },
 ): Promise<{ allowed: boolean; logId: string | null; atomic: boolean }> {
   if (typeof sb.rpc === 'function') {
@@ -278,7 +302,7 @@ export async function reserveAiSlot(
 
 /** Completa la riga prenotata da reserveAiSlot con l'esito reale. */
 export async function finalizeAiRequest(
-  sb: SupabaseLike & { rpc?: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  sb: SupabaseWithRpc,
   logId: string | null,
   outcome: { status: 'ok' | 'error'; durationMs?: number | null; inputTokens?: number | null; outputTokens?: number | null; errorCode?: string | null; model?: string | null },
 ): Promise<boolean> {

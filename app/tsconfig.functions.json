@@ -1,0 +1,48 @@
+{
+  // ==========================================================================
+  // Il typecheck delle Edge Function.
+  //
+  // ⚠️ PERCHÉ UN SECONDO CONFIG E NON UNA RIGA IN PIÙ NEL PRIMO. `tsconfig.json`
+  // descrive due mondi che esistono davvero: il browser (`src`) e Node
+  // (`scripts`), e concede a entrambi i tipi di Node. Le Edge Function girano
+  // su Deno, dove `process`, `Buffer` e `require` NON esistono: aggiungerle
+  // all'`include` principale le avrebbe fatte compilare CON i globali di Node,
+  // cioè avrebbe dichiarato valido del codice che a runtime non parte.
+  // Qui `"types": []` toglie Node di mezzo, e resta la sola libreria standard
+  // del web — che è ciò che Deno offre davvero. Misurato prima di scegliere:
+  // sotto `supabase/functions/` non c'è un solo `node:`, `process.env`,
+  // `Buffer` o `require(`.
+  //
+  // ⚠️ I MODULI CONDIVISI SI COMPILANO DUE VOLTE, ed è voluto: una volta qui e
+  // una sotto il config principale, perché `scripts/` li importa. È la
+  // definizione operativa di «modulo portabile» — se smettesse di valere in uno
+  // dei due mondi, uno dei due typecheck diventerebbe rosso.
+  // ==========================================================================
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "skipLibCheck": true,
+
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // ⚠️ Vuoto di proposito: vedi il commento in testa. Un globale di Node usato
+    // per sbaglio in una funzione deve diventare rosso, non passare.
+    "types": []
+  },
+  "include": [
+    "supabase/functions",
+    "types/deno-globals.d.ts",
+    "scripts/deno-modules.d.ts"
+  ]
+}
