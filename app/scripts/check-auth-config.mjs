@@ -31,12 +31,14 @@
 // ============================================================================
 import WebSocket from 'ws';
 import { createClient } from '@supabase/supabase-js';
+// ⚠️ La regola «è la macchina di sviluppo?» sta in UN posto solo: qui c'era una
+// seconda copia, e divergeva già da quella di `run-test-suite.mjs`.
+import { LOCALE_RE } from './local-host.mjs';
 if (!globalThis.WebSocket) globalThis.WebSocket = WebSocket;
 
 const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 
 const LOCAL_DEFAULT = 'http://localhost:5174';
-const LOCALE_RE = /^(127\.0\.0\.1|localhost|\[::1\]|0\.0\.0\.0)$/i;
 
 /**
  * Che cosa verificare, e da dove viene la decisione. Funzione PURA: è la parte

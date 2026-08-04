@@ -31,6 +31,11 @@
 // ============================================================================
 import WebSocket from 'ws';
 import { createClient } from '@supabase/supabase-js';
+// ⚠️ Servono all'autoverifica, che legge gli stati ammessi dalla MIGRAZIONE
+// invece di ricopiarli: due copie di un elenco divergono in silenzio.
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 if (!globalThis.WebSocket) globalThis.WebSocket = WebSocket;
 
 // Insiemi ammessi (allineati a TIPI_PROGETTO/SETTORI/SupportType e alla 0007).
@@ -123,10 +128,44 @@ export function giudicaCodaRevisioni(revisioni, oggi, soglie = {}) {
 
 // ---- Autoverifica del giudizio -------------------------------------------
 const OGGI_FINTO = new Date('2026-08-01T00:00:00Z');
+
+// ⚠️⚠️ LE SOGLIE DEL TEST SONO FISSATE QUI, E NON SI EREDITANO DA `process.argv`.
+// Fino al 2026-08-05 i casi chiamavano `giudicaCodaRevisioni(revisioni, OGGI)`
+// senza terzo argomento, quindi la funzione ripiegava sui valori globali — che
+// arrivano dalla riga di comando. Conseguenza misurata:
+//   npm run subsidy:health:self-test -- --review-stale-days=5
+// faceva fallire il caso «esattamente 30 giorni» e stampava «il giudizio sulla
+// coda NON è affidabile», che è FALSO: il giudizio era corretto, erano i casi ad
+// assumere 30. Un'autoverifica che un flag rende rossa insegna a non fidarsi dei
+// suoi rossi, ed è un difetto tanto quanto un verde falso — solo nell'altra
+// direzione. Un caso deve dire per intero le condizioni che assume.
+const SOGLIE_DEL_TEST = { staleDays: 30, maxPending: 25 };
+
 const rev = (giorniFa, status = 'pending') => ({
   status,
   created_at: new Date(OGGI_FINTO.getTime() - giorniFa * 86_400_000).toISOString(),
 });
+
+/**
+ * Gli stati ammessi, LETTI DALLA MIGRAZIONE invece che ricopiati.
+ *
+ * ⚠️⚠️ PERCHÉ SI LEGGE L'SQL. Il caso «le revisioni già evase non contano» usava
+ * `'approved'`, che **non esiste**: l'enum è `pending · accepted · rejected ·
+ * ignored`. Sul comportamento non cambiava nulla, perché il filtro è
+ * `=== 'pending'` — ed è proprio questo il punto: nulla avrebbe MAI reso rossa
+ * quella divergenza, e il test documentava uno stato inventato a chi lo legge
+ * per sapere quali sono. È la stessa ragione per cui `test:crm-unit` legge la
+ * 0026 invece di ricopiarne l'elenco dei domini.
+ */
+function statiAmmessi() {
+  const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'migrations');
+  for (const f of readdirSync(dir).sort()) {
+    const m = /create type public\.subsidy_review_status as enum \(([^)]*)\)/
+      .exec(readFileSync(join(dir, f), 'utf8'));
+    if (m) return m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, ''));
+  }
+  return null;
+}
 
 const CASI = [
   {
@@ -155,16 +194,49 @@ const CASI = [
     revisioni: Array.from({ length: 26 }, () => rev(40)), errori: 2,
   },
   {
-    name: 'le revisioni già evase non contano',
-    revisioni: [rev(400, 'approved'), rev(400, 'rejected')], errori: 0, contiene: 'nessuna',
+    // ⚠️ TUTTI E TRE gli stati evasi veri, non uno inventato. Qui c'era
+    // `'approved'`, che non esiste nell'enum, e `accepted` e `ignored` — i due
+    // che si incontrano davvero — non erano provati da nessuno.
+    name: 'le revisioni già evase non contano (accepted · rejected · ignored)',
+    revisioni: [rev(400, 'accepted'), rev(400, 'rejected'), rev(400, 'ignored')],
+    errori: 0, contiene: 'nessuna',
   },
 ];
 
 function selfTest() {
   console.log('\nAutoverifica del giudizio sulla coda di revisione\n');
   let bad = 0;
+
+  // ---- Prima: i casi parlano di stati che ESISTONO? -----------------------
+  // ⚠️ Se questo controllo non si può eseguire, NON si prosegue come se fosse
+  // passato: «non ho potuto guardare» e «va bene» sono la stessa frase solo per
+  // chi non vuole saperlo. È la regola che questo stesso file applica alla
+  // lettura della coda.
+  const ammessi = statiAmmessi();
+  if (!ammessi) {
+    console.error('  ✗ enum `subsidy_review_status` non trovata nelle migrazioni:');
+    console.error('      gli stati usati dai casi non sono verificabili, e questo esito non vale.');
+    bad++;
+  } else {
+    const usati = [...new Set(CASI.flatMap((c) => c.revisioni.map((r) => r.status)))];
+    const inventati = usati.filter((s) => !ammessi.includes(s));
+    const evasiVeri = ammessi.filter((s) => s !== 'pending');
+    const scoperti = evasiVeri.filter((s) => !usati.includes(s));
+    if (inventati.length) {
+      console.log(`  ✗ i casi usano stati che non esistono: ${inventati.join(', ')} (ammessi: ${ammessi.join(' · ')})`);
+      bad++;
+    } else if (scoperti.length) {
+      console.log(`  ✗ stati evasi mai provati: ${scoperti.join(', ')}`);
+      bad++;
+    } else {
+      console.log(`  ✓ gli stati dei casi sono quelli della migrazione (${ammessi.join(' · ')})`);
+    }
+  }
+
   for (const c of CASI) {
-    const r = giudicaCodaRevisioni(c.revisioni, OGGI_FINTO);
+    // ⚠️ Le soglie si PASSANO: vedi `SOGLIE_DEL_TEST`. Ereditarle da `argv`
+    // rendeva l'esito di questa autoverifica dipendente da un flag.
+    const r = giudicaCodaRevisioni(c.revisioni, OGGI_FINTO, SOGLIE_DEL_TEST);
     const problemi = [];
     if (r.errori.length !== c.errori) problemi.push(`attesi ${c.errori} errori, trovati ${r.errori.length}`);
     if (c.contiene && !r.nominata.includes(c.contiene)) problemi.push(`la riga non nomina «${c.contiene}»: «${r.nominata}»`);

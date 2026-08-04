@@ -68,6 +68,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// ⚠️ La regola «è la macchina di sviluppo?» sta in UN posto solo: qui c'era una
+// seconda copia, priva dell'ancora finale, e nessuno poteva vedere la differenza.
+import { LOCALE_RE } from './local-host.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = resolve(HERE, '..');
@@ -175,7 +178,6 @@ function supabaseHost() {
  * L'intestazione di questo file lo dichiara: delle chiavi si leggono i NOMI, e
  * questa funzione non viene mai chiamata su una di esse.
  */
-const LOCALE_RE = /^(127\.0\.0\.1|localhost|\[::1\]|0\.0\.0\.0)/;
 
 function envValue(nome) {
   const path = join(APP, '.env.test');

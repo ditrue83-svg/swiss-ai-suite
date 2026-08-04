@@ -100,7 +100,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 |---|---|---|---|---|---|---|---|---|---|
 | Admin AI | `/admin` | sì | sì | sì | sì | sì | sì | Anthropic | in modalità `ai` il testo del documento va all'API; in `deterministic` lo snapshot non è probatorio |
 | Subsidy AI | `/subsidy` | sì | sì | sì | sì | sì | sì | Anthropic | catalogo 1.0: 7 programmi (Confederazione + Ticino), contenuti solo in italiano; `subsidy.footnote` stampa asterischi markdown non resi |
-| Inbox | `/inbox` | sì | sì | sì | sì | sì | **no** | Google Gmail API | scope riservato: fuori dalla modalità Test Google impone la verifica CASA, quindi **un cliente reale non può collegare la propria casella**. Microsoft implementato e non configurato. **3 messaggi su 141 in `failed`** (2,1%), tutti `AI_CREDIT_EXHAUSTED`, tutti del 2026-08-01: il ritentativo esiste, è deployato e gira ogni 15 minuti — è il credito a non esserci (§sotto) |
+| Inbox | `/inbox` | sì | sì | sì | sì | sì | **no** | Google Gmail API | scope riservato: fuori dalla modalità Test Google impone la verifica CASA, quindi **un cliente reale non può collegare la propria casella**. Microsoft implementato e non configurato. ✅ **148 messaggi, TUTTI `done`, zero in `failed`** — rimisurato il 2026-08-05 interrogando la produzione. ⚠️ Questa riga ha detto «3 su 141 in `failed`» fino al 2026-08-05: era vero il 2026-08-01 e ha smesso di esserlo da sé, perché il ritentativo ha ripescato quei tre quando il credito è tornato. **Il meccanismo ha funzionato senza che nessuno lo toccasse**, ed è la prova che quella riga aspettava. Il numero qui si RIMISURA prima di unire una PR: `docs:check` confronta i documenti con il codice, non con il database, quindi su questa colonna non può aiutare (§sotto) |
 | Attività | `/attivita` | sì | — | sì | sì | — | sì | — | nessuna |
 | Documenti | `/documenti` | sì | — | sì | sì | — | sì | — | nessuna politica di conservazione delle analisi |
 | Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). Restano due cose: **nessuna email può partire** (`NOTIFICATION_EMAIL_API_KEY`/`_FROM` non configurati, `deliverEmails` esce subito) e **nessuna connessione OAuth reale è mai stata stabilita**, quindi la colonna «servizio reale» resta **no** |
@@ -111,29 +111,38 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). 7 revisioni del catalogo in attesa di una persona |
 
-## I messaggi fermi dell'Inbox — 3 su 141, e non 11 su 124
+## I messaggi fermi dell'Inbox — da 11 su 124 a ZERO su 148
 
-Rimisurato interrogando il database la notte del **2026-08-01/02**. Il numero
-scritto sopra fino a ieri — *11 su 124, fermi in `failed` senza ritentativo* —
-**non descrive più niente**, e vale la pena dire perché, perché il perché è la
-parte utile.
+Rimisurato interrogando il database la notte del **2026-08-01/02**, e di nuovo
+il **2026-08-05**. Ogni numero mai scritto in questa sezione ha smesso di
+descrivere qualcosa nel giro di giorni, e il perché è la parte utile: prima
+perché il ritentativo mancava e i messaggi restavano fermi, poi perché il
+ritentativo c'era e li ha ripresi da solo appena il credito è tornato.
 
-| Che cosa | 2026-07-31 | 2026-08-01, 23:44 |
-|---|---|---|
-| Messaggi acquisiti | 124 | **141** |
-| In `failed` | 11 | **3** |
-| Tasso | 8,9 % | **2,1 %** |
-| Codici distinti | non raggruppati | **uno solo: `AI_CREDIT_EXHAUSTED`** |
+| Che cosa | 2026-07-31 | 2026-08-01, 23:44 | 2026-08-05 |
+|---|---|---|---|
+| Messaggi acquisiti | 124 | 141 | **148** |
+| In `failed` | 11 | 3 | **0** |
+| Tasso | 8,9 % | 2,1 % | **0 %** |
+| Codici distinti | non raggruppati | uno solo: `AI_CREDIT_EXHAUSTED` | **nessuno** |
+
+⚠️ **La terza colonna è stata aggiunta, non sostituita alla seconda.** Le due
+misure precedenti restano perché la storia di questa tabella È l'argomento: i
+tre `failed` del 01/08 si sono chiusi **da soli**, quando il credito è tornato,
+senza che nessuno intervenisse. È esattamente ciò che il ritentativo doveva fare
+e che fino al 2026-07-31 non faceva. Riscrivere le colonne vecchie avrebbe
+cancellato la prova insieme al problema.
 
 **I tre sono tutti dello stesso gruppo**, e la diagnosi è una sola:
 
 | `error_code` | N | Diagnosi | Ritentativo |
 |---|---|---|---|
-| `AI_CREDIT_EXHAUSTED` | 3 | **transitorio, d'ambiente** — e l'ambiente è ancora giù adesso | ha senso, e **c'è già** |
+| `AI_CREDIT_EXHAUSTED` | 3 | **transitorio, d'ambiente** — l'ambiente era giù mentre si scriveva | ha senso, **c'è già**, ✅ e ha funzionato: al 2026-08-05 i tre sono classificati e la casella è a zero `failed` |
 
-Tutti e tre hanno `relevance` e `classified_at` a **null**: sono caduti in
-**classificazione**, non in analisi. Nessuno ha un documento collegato, nessuno
-ha un'analisi. Due hanno solo corpo, uno ha due PDF in `pending`.
+Tutti e tre avevano `relevance` e `classified_at` a **null**: erano caduti in
+**classificazione**, non in analisi. Nessuno aveva un documento collegato,
+nessuno un'analisi. Due avevano solo corpo, uno due PDF in `pending`.
+✅ **Al 2026-08-05 sono classificati tutti e tre**, e nessuno ha dovuto toccarli.
 
 ⚠️ **NON ho ritentato niente, ed è la risposta giusta, non una rinuncia.** Il
 credito è esaurito *in questo momento* (§sopra, misurato con una chiamata vera):
