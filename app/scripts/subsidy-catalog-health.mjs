@@ -6,8 +6,9 @@
 //   npm run subsidy:health   [-- --stale-days=120] [-- --review-stale-days=30]
 //   npm run subsidy:health -- --self-test     ← prova il giudizio sulla coda
 //
-// Exit code:  0 = tutto valido e aggiornato · 1 = valido ma qualcosa da
-//             ricontrollare · 2 = errori di integrità (dati malformati).
+// Exit code:  0 = NIENTE IN SOSPESO · 1 = c'è lavoro per una persona (programmi
+//             da ricontrollare o revisioni in coda) · 2 = errori di integrità,
+//             o una coda oltre le soglie.
 //
 // ⚠️⚠️ E DA OGGI GUARDA ANCHE LA CODA DI REVISIONE, che è la cosa che non
 // guardava. Il 2026-07-31 questo comando usciva 0 scrivendo «catalogo valido e
@@ -19,15 +20,24 @@
 // un'impresa se un incentivo la riguarda, del lavoro in attesa di una persona
 // non può restare senza nome.
 //
-// LA REGOLA SCELTA, e perché non è «coda piena = rosso». Una revisione in coda
-// NON è un errore di integrità: il dato è valido, è la sua conferma che manca.
-// Farla diventare subito un fallimento insegnerebbe a ignorare quel rosso, che
-// è il modo più sicuro di rendere inutile anche il rosso vero. Quindi:
-//   · finché è dentro le soglie → la coda viene NOMINATA nel riepilogo e nella
-//     riga di esito, e l'esito non può più dire «valido e aggiornato» e basta;
-//   · oltre le soglie → diventa un errore di integrità, perché una coda che non
-//     si smaltisce mai non è un arretrato: è un pezzo di catalogo che nessuno
-//     sta più verificando.
+// LA REGOLA, e il fatto che sia CAMBIATA il 2026-08-05.
+//
+// La prima stesura (2026-08-01) diceva: finché la coda è dentro le soglie la si
+// NOMINA, ma l'uscita resta 0, «perché farla diventare subito un fallimento
+// insegnerebbe a ignorare quel rosso». Ragionamento sensato, e smentito dalla
+// misura: con sette revisioni ferme dal 2026-07-30 il comando ha continuato a
+// uscire **0** dicendo «catalogo valido e aggiornato», e in sei giorni nessuno
+// le ha guardate. **Nominare non è bastato.** Il codice d'uscita è ciò che
+// leggono la CI e chi passa di fretta, e diceva «a posto».
+//
+// Quindi, da oggi — con la gradualità intatta, che è ciò che salva l'obiezione
+// di allora:
+//   · 0 → niente in sospeso, e adesso vuol dire davvero quello;
+//   · 1 → c'è lavoro per una persona: programmi da ricontrollare O revisioni in
+//     coda. Non è un guasto da cercare col debugger, è un promemoria che esce
+//     non-zero — l'unico modo perché qualcuno lo veda;
+//   · 2 → errori di integrità, o una coda oltre le soglie: lì non è più un
+//     arretrato, è un pezzo di catalogo che nessuno sta più verificando.
 // ============================================================================
 import WebSocket from 'ws';
 import { createClient } from '@supabase/supabase-js';
@@ -126,6 +136,47 @@ export function giudicaCodaRevisioni(revisioni, oggi, soglie = {}) {
   };
 }
 
+/**
+ * L'esito del comando: codice d'uscita e frase che lo accompagna.
+ *
+ * ⚠️⚠️ UNA REVISIONE IN CODA IMPEDISCE IL VERDE, dal 2026-08-05, e questo è un
+ * CAMBIO DI REGOLA rispetto a com'era stata scritta il 2026-08-01.
+ *
+ * La regola precedente diceva: finché la coda è dentro le soglie, la si NOMINA
+ * ma l'uscita resta 0, «perché farla diventare subito un fallimento
+ * insegnerebbe a ignorare quel rosso». Il ragionamento non era sbagliato, ma la
+ * misura l'ha smentito: con sette revisioni ferme dal 2026-07-30 il comando ha
+ * continuato a uscire **0** dicendo «catalogo valido e aggiornato», e in sei
+ * giorni nessuno le ha guardate. Nominare non è bastato — il codice d'uscita è
+ * ciò che leggono la CI e chi passa di fretta, e diceva «a posto».
+ *
+ * ⚠️ La gradualità NON si è persa, ed è ciò che salva l'obiezione precedente:
+ *   · 0 = niente in sospeso, e adesso vuol dire davvero quello;
+ *   · 1 = c'è lavoro per una persona (programmi da ricontrollare O revisioni in
+ *         coda). Non è un guasto: è una coda da smaltire;
+ *   · 2 = errori di integrità, o una coda oltre le soglie — cioè un pezzo di
+ *         catalogo che nessuno sta più verificando.
+ * Un 1 non è un rosso da cercare col debugger: è un promemoria che esce
+ * non-zero, che è l'unico modo perché qualcuno lo veda.
+ *
+ * Funzione PURA, perché è una decisione, e le decisioni si provano.
+ */
+export function decidiEsito({ integrita = 0, daRicontrollare = 0, inCoda = 0 } = {}) {
+  const pezzi = [];
+  if (daRicontrollare) pezzi.push(`${daRicontrollare} da ricontrollare`);
+  if (inCoda) pezzi.push(`${inCoda} REVISIONI IN ATTESA DI UNA PERSONA`);
+
+  if (integrita) {
+    return { code: 2, esito: `ERRORI DI INTEGRITÀ — correggere il seed${pezzi.length ? ` · ${pezzi.join(' · ')}` : ''}` };
+  }
+  if (pezzi.length) {
+    // ⚠️ La parola «valido» resta, perché il catalogo LO È: ciò che non è vero è
+    // «aggiornato», ed è la parola che è stata tolta.
+    return { code: 1, esito: `catalogo valido, ma c'è lavoro in sospeso — ${pezzi.join(' · ')}` };
+  }
+  return { code: 0, esito: 'catalogo valido e aggiornato, niente in sospeso' };
+}
+
 // ---- Autoverifica del giudizio -------------------------------------------
 const OGGI_FINTO = new Date('2026-08-01T00:00:00Z');
 
@@ -203,9 +254,43 @@ const CASI = [
   },
 ];
 
+// ⚠️ I casi sull'ESITO. Il secondo è quello per cui questa parte esiste: sette
+// revisioni ferme e nient'altro devono dare **1**, non 0. Fino al 2026-08-05
+// davano 0, e sei giorni di attesa sono passati sotto la parola «verde».
+const CASI_ESITO = [
+  { name: 'niente in sospeso → 0, e la frase lo dice', arg: {}, code: 0, contiene: 'niente in sospeso' },
+  {
+    name: '⚠️ IL CASO REALE: 7 revisioni in coda e nient\'altro → 1, NON 0',
+    arg: { inCoda: 7 }, code: 1, contiene: '7 REVISIONI',
+  },
+  { name: 'solo programmi da ricontrollare → 1', arg: { daRicontrollare: 2 }, code: 1, contiene: 'da ricontrollare' },
+  { name: 'coda + da ricontrollare → 1, e li nomina entrambi', arg: { inCoda: 3, daRicontrollare: 2 }, code: 1, contiene: 'REVISIONI' },
+  { name: 'errori di integrità → 2', arg: { integrita: 1 }, code: 2, contiene: 'INTEGRITÀ' },
+  {
+    name: '⚠️ integrità E coda → 2, ma la coda resta NOMINATA: un guasto non la nasconde',
+    arg: { integrita: 1, inCoda: 7 }, code: 2, contiene: '7 REVISIONI',
+  },
+  {
+    // La parola tolta è «aggiornato»: il catalogo resta valido, non è aggiornato.
+    name: 'con lavoro in sospeso la frase NON dice «aggiornato»',
+    arg: { inCoda: 1 }, code: 1, nonContiene: 'aggiornato',
+  },
+];
+
 function selfTest() {
   console.log('\nAutoverifica del giudizio sulla coda di revisione\n');
   let bad = 0;
+
+  for (const c of CASI_ESITO) {
+    const r = decidiEsito(c.arg);
+    const problemi = [];
+    if (r.code !== c.code) problemi.push(`atteso exit ${c.code}, ottenuto ${r.code}`);
+    if (c.contiene && !r.esito.includes(c.contiene)) problemi.push(`la frase non dice «${c.contiene}»: «${r.esito}»`);
+    if (c.nonContiene && r.esito.includes(c.nonContiene)) problemi.push(`la frase dice «${c.nonContiene}» e non dovrebbe: «${r.esito}»`);
+    if (problemi.length) bad++;
+    console.log(`  ${problemi.length ? '✗' : '✓'} ${c.name}`);
+    for (const p of problemi) console.log(`      ${p}`);
+  }
 
   // ---- Prima: i casi parlano di stati che ESISTONO? -----------------------
   // ⚠️ Se questo controllo non si può eseguire, NON si prosegue come se fosse
@@ -245,7 +330,7 @@ function selfTest() {
     for (const p of problemi) console.log(`      ${p}`);
   }
   if (bad) { console.error(`\n${bad} casi falliti: il giudizio sulla coda NON è affidabile.\n`); return false; }
-  console.log(`\nTutti i ${CASI.length} casi superati.\n`);
+  console.log(`\nTutti i ${CASI.length + CASI_ESITO.length} casi superati.\n`);
   return true;
 }
 
@@ -415,16 +500,10 @@ const run = async () => {
   }
   if (integrityIssues.length) { console.log('\n— Errori di integrità (da correggere nel seed) —'); for (const e of integrityIssues) console.log(`  ✗ ${e}`); }
 
-  const code = integrityIssues.length ? 2 : toRecheck.length ? 1 : 0;
-  // ⚠️ LA FRASE «catalogo valido e aggiornato» NON PUÒ PIÙ COMPARIRE DA SOLA
-  // mentre del lavoro aspetta una persona. Era esattamente ciò che si leggeva
-  // il 2026-07-31 con sette revisioni ferme: vero sul catalogo, e completamente
-  // fuorviante su ciò che restava da fare.
-  const inAttesa = coda.pending ? ` · ${coda.pending} REVISIONI IN ATTESA DI UNA PERSONA` : '';
-  const esito = code === 0 ? 'catalogo valido e aggiornato'
-    : code === 1 ? 'valido, ma ci sono programmi da ricontrollare'
-      : 'ERRORI DI INTEGRITÀ — correggere il seed';
-  console.log(`\nEsito: ${esito}${inAttesa} (exit ${code})\n`);
+  const { code, esito } = decidiEsito({
+    integrita: integrityIssues.length, daRicontrollare: toRecheck.length, inCoda: coda.pending,
+  });
+  console.log(`\nEsito: ${esito} (exit ${code})\n`);
   process.exit(code);
 };
 

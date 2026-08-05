@@ -35,6 +35,8 @@ supabase/
                 0033_subsidy_answers_cascade · 0034_subsidy_answers_project_cascade
                 0035_calendar_notification_schedulers
                 0036_assistant_empty_group_citation
+                0037_subsidy_catalog_review
+                0038_subsidy_review_source_url
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -897,12 +899,16 @@ npm run test:assistant       # Chiedi ad AI-Swisse su DB: isolamento fra aziende
                              #   persona (richiede la 0027)
 npm run eval:assistant       # valutazione con VERITÀ DI RIFERIMENTO: 16 domande su dati noti,
                              #   esito atteso, fonti attese, frasi vietate. Costa denaro vero
-npm run subsidy:health  # integrità e freschezza del catalogo incentivi, E la CODA DI REVISIONE:
-                        #   il conteggio delle schede in attesa di una PERSONA compare sempre nel
-                        #   riepilogo e nella riga di esito, che quindi non può più dire «catalogo
-                        #   valido e aggiornato» e basta mentre sette revisioni aspettano. Oltre
-                        #   30 giorni di attesa o 25 in coda diventa un errore di integrità (exit 2)
-npm run subsidy:health:self-test   # verifica che il GIUDIZIO sulla coda sappia diventare rosso
+npm run subsidy:health  # integrità e freschezza del catalogo incentivi, E la CODA DI REVISIONE.
+                        #   ⚠️ VERDE VUOL DIRE «NIENTE IN SOSPESO», dal 2026-08-05:
+                        #     exit 0  niente in sospeso
+                        #     exit 1  c'è lavoro per una PERSONA — programmi da ricontrollare
+                        #             o revisioni in coda, a qualunque età
+                        #     exit 2  errori di integrità, o coda oltre 30 giorni / 25 schede
+                        #   Prima la coda veniva solo nominata e l'uscita restava 0: sette
+                        #   revisioni sono rimaste ferme sei giorni sotto la parola «verde».
+npm run subsidy:health:self-test   # verifica che il GIUDIZIO sulla coda e l'ESITO sappiano
+                        #   diventare rossi: 14 casi, compresa la regola vecchia come controprova
 npm run subsidy:seed    # popola/aggiorna il catalogo. ⚠️ Senza --write NON scrive ed esce 3
                         #   («non eseguito»): un no-op che esce 0 è un fallback silenzioso, e la
                         #   CI ci è già cascata una volta

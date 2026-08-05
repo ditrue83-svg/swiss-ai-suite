@@ -2239,6 +2239,30 @@ export interface Database {
         Returns: Record<string, unknown>[];
       };
       /**
+       * ⚠️ LE TRE FUNZIONI DELLA REVISIONE DEL CATALOGO (0037) NON PRENDONO UN
+       * `p_company_id`, e l'assenza è il punto: **il catalogo è globale**, non
+       * appartiene a un'azienda. L'autorità non è `member_role` — che è per
+       * azienda — ma l'appartenenza a `subsidy_catalog_editors`, controllata
+       * DENTRO le funzioni, che sono `security definer`. Le due tabelle restano
+       * con `revoke all`: qui si concede solo l'esecuzione.
+       *
+       * ⚠️ A chi non è operatore rispondono con un ERRORE (42501), non con un
+       * elenco vuoto: un vuoto direbbe «non c'è niente da revisionare», che è
+       * un'altra affermazione, e falsa.
+       */
+      subsidy_is_catalog_editor: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      list_subsidy_catalog_reviews: {
+        Args: { p_include_resolved?: boolean; p_limit?: number };
+        Returns: Record<string, unknown>[];
+      };
+      resolve_subsidy_catalog_review: {
+        Args: { p_id: string; p_decision: string; p_note?: string | null };
+        Returns: Record<string, unknown>[];
+      };
+      /**
        * ⚠️ Torna un `jsonb`, non righe: è un oggetto solo. Come
        * `crm_home_summary`, a chi non è membro non risponde con zeri per gentilezza
        * — la RLS filtra le sottointerrogazioni e i conteggi risultano nulli. Il

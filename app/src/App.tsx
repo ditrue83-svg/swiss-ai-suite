@@ -21,6 +21,7 @@ import { EmailAccountsPage } from '@/features/inbox/EmailAccountsPage';
 import { AdminAIPage } from '@/features/admin-ai/AdminAIPage';
 import { SubsidyPage } from '@/features/subsidy-ai/SubsidyPage';
 import { IncentivesPage } from '@/features/incentives/IncentivesPage';
+import { CatalogReviewPage } from '@/features/incentives/CatalogReviewPage';
 import { DocumentsPage } from '@/features/documents/DocumentsPage';
 import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
 import { FinancePage } from '@/features/finance/FinancePage';
@@ -125,6 +126,10 @@ export default function App() {
                 un futuro `/incentivi/:id`, ed è la stessa scelta già fatta
                 per la sezione delle Finanze. */}
             <Route path="/incentivi" element={<IncentivesPage />} />
+            {/* ⚠️ Non è per i clienti: il cancello è nelle RPC della 0037, non qui.
+                Una rotta nascosta non è un permesso — chi non è operatore del
+                catalogo apre la pagina e legge perché non può decidere. */}
+            <Route path="/incentivi/revisioni" element={<CatalogReviewPage />} />
             {/* ⚠️ La schermata 1.0 RESTA raggiungibile e non reindirizza, a
                 differenza di `/scadenziario` e `/archivio`. La ragione è di
                 merito: il 2.0 non copre ancora il profilo incentivi e

@@ -1353,6 +1353,52 @@ export const fr: Dictionary = {
       caseMissing: 'Le dossier n’existe plus.',
     },
   },
+  catalogReview: {
+    title: 'Révision du catalogue',
+    intro: 'Les sources officielles ont bougé. Pour chaque fiche : ce qui a changé sur la page, ce que dit le catalogue aujourd’hui, et la décision. Approuver ne modifie pas le catalogue : cela atteste que vous avez regardé et que cela tient.',
+    unknownProgram: 'Programme non identifié',
+    never: 'jamais',
+    waiting: 'en attente depuis {days} jours',
+    waitingUnknown: 'en attente depuis une date inconnue',
+    catalogSays: 'Le catalogue dit : dernière vérification {checked} · état {status}',
+    openSource: 'Ouvrir la source officielle',
+    notEditor: {
+      title: 'Vous ne faites pas partie des responsables du catalogue',
+      body: 'Le catalogue des incitations est partagé par toutes les entreprises : ce qu’il dit vaut pour tout le monde. Ses révisions sont donc décidées par un cercle restreint de personnes. Ce n’est pas une autorisation de votre entreprise, et c’est pourquoi aucun rôle ne l’accorde.',
+    },
+    empty: {
+      title: 'Rien en attente',
+      body: 'Aucune révision ouverte : les sources officielles n’ont produit aucun changement à examiner.',
+    },
+    changes: {
+      none: 'Aucune différence enregistrée entre la source et notre état.',
+      field: 'Champ',
+      before: 'Avant',
+      after: 'Maintenant',
+      technical: 'empreinte technique',
+      absent: 'absent',
+    },
+    note: {
+      label: 'Note',
+      placeholder: 'Ce que vous avez vu sur la source',
+      hint: 'Obligatoire pour rejeter : une révision rejetée sans dire ce qui ne va pas laisse le travail où il était.',
+    },
+    decision: {
+      accept: 'Approuver',
+      ignore: 'Sans importance',
+      reject: 'Rejeter',
+      hint: 'Approuver met à jour la date de dernière vérification. Sans importance ferme la fiche sans rien toucher. Rejeter signale que le catalogue doit être corrigé : la correction se fait dans le seed.',
+    },
+    error: {
+      noteRequired: 'Pour rejeter, il faut une note qui dise ce qui ne va pas.',
+      invalidDecision: 'Décision non admise.',
+    },
+    done: {
+      accepted: 'Approuvée : dernière vérification mise à jour au {date}.',
+      rejected: 'Rejetée, avec votre note.',
+      ignored: 'Fermée comme sans importance.',
+    },
+  },
   subsidy: {
     title: 'Subsidy AI',
     intro: 'Profil de l’entreprise → programmes pertinents → vérification de l’éligibilité → dossier. Pertinence et éligibilité sont deux choses distinctes. Couverture : Confédération + canton du Tessin.',

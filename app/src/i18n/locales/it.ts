@@ -1367,6 +1367,52 @@ export const it = {
       caseMissing: 'La pratica non esiste più.',
     },
   },
+  catalogReview: {
+    title: 'Revisione del catalogo',
+    intro: 'Le fonti ufficiali si sono mosse. Per ogni scheda: che cosa è cambiato sulla pagina, che cosa dice il catalogo oggi, e la decisione. Approvare non modifica il catalogo: dice che l’avete guardato e che regge.',
+    unknownProgram: 'Programma non identificato',
+    never: 'mai',
+    waiting: 'in attesa da {days} giorni',
+    waitingUnknown: 'in attesa da quando non si sa',
+    catalogSays: 'Il catalogo dice: ultima verifica {checked} · stato {status}',
+    openSource: 'Apri la fonte ufficiale',
+    notEditor: {
+      title: 'Non siete fra gli operatori del catalogo',
+      body: 'Il catalogo degli incentivi è condiviso da tutte le aziende: ciò che dice vale per tutti, quindi a deciderne le revisioni è un elenco ristretto di persone. Non è un permesso della vostra azienda, ed è per questo che nessun ruolo lo concede.',
+    },
+    empty: {
+      title: 'Niente in attesa',
+      body: 'Nessuna revisione aperta: le fonti ufficiali non hanno prodotto cambiamenti da guardare.',
+    },
+    changes: {
+      none: 'Nessuna differenza registrata fra la fonte e ciò che avevamo.',
+      field: 'Campo',
+      before: 'Prima',
+      after: 'Adesso',
+      technical: 'impronta tecnica',
+      absent: 'assente',
+    },
+    note: {
+      label: 'Nota',
+      placeholder: 'Che cosa avete visto sulla fonte',
+      hint: 'Obbligatoria per respingere: una revisione respinta senza dire che cosa non va lascia il lavoro dov’era.',
+    },
+    decision: {
+      accept: 'Approva',
+      ignore: 'Irrilevante',
+      reject: 'Respingi',
+      hint: 'Approva aggiorna la data dell’ultima verifica. Irrilevante chiude la scheda senza toccarla. Respingi segnala che il catalogo va corretto: la correzione si fa nel seed.',
+    },
+    error: {
+      noteRequired: 'Per respingere serve una nota che dica che cosa non va.',
+      invalidDecision: 'Decisione non ammessa.',
+    },
+    done: {
+      accepted: 'Approvata: ultima verifica aggiornata al {date}.',
+      rejected: 'Respinta, con la vostra nota.',
+      ignored: 'Chiusa come irrilevante.',
+    },
+  },
   subsidy: {
     title: 'Subsidy AI',
     intro: 'Profilo aziendale → programmi rilevanti → verifica di idoneità → pratica. Rilevanza e idoneità sono due cose distinte. Copertura: Confederazione + Cantone Ticino.',

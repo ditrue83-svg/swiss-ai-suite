@@ -27,6 +27,10 @@
 //  16. La Panoramica legge il motore 2.0 — e non raddoppia il lavoro.
 // ============================================================================
 import { readFileSync } from 'node:fs';
+// Sezione 17 — la revisione del catalogo (0037).
+import {
+  checkDecision, diffValues, waitingDays,
+} from '../src/features/incentives/reviewModel.ts';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -1081,6 +1085,73 @@ check('nemmeno una chiusa',
 // La finestra della Home è più stretta di quella del modulo, ed è dichiarata.
 check('la finestra della Panoramica è più stretta di quella del modulo',
   INCENTIVE_DEADLINE_DAYS < DEADLINE_SOON_DAYS_UI);
+
+// ===========================================================================
+section('17. La revisione del catalogo: che cosa è cambiato sulla fonte');
+// ===========================================================================
+// ⚠️ QUESTE SCHEDE NON PORTANO CAMPI DI CATALOGO. Le sette ferme dal 2026-07-30
+// contengono `textLength`, `contentHash`, `declaredUpdatedAt`,
+// `deadlineCandidateCount`, `unsupported`, `title`: impronte della PAGINA. Il
+// confronto serve a far decidere una persona, non ad applicare una patch — e i
+// casi qui sotto sono presi dalla forma reale di quelle righe.
+{
+  // La forma vera delle sette: `unsupported` sparisce, `title` compare.
+  const prev = {
+    textLength: 4213, contentHash: 'ab12', unsupported: true,
+    declaredUpdatedAt: '2026-05-02', deadlineCandidateCount: 0,
+  };
+  const next = {
+    textLength: 4570, contentHash: 'cd34', title: 'ProKilowatt — bandi 2026',
+    declaredUpdatedAt: '2026-07-29', deadlineCandidateCount: 2,
+  };
+  const d = diffValues(prev, next);
+  const byKey = Object.fromEntries(d.map((c) => [c.key, c]));
+
+  check('un campo SPARITO è una differenza, non un silenzio',
+    byKey.unsupported?.kind === 'removed');
+  check('un campo COMPARSO pure', byKey.title?.kind === 'added');
+  check('e un valore cambiato è «changed»', byKey.textLength?.kind === 'changed');
+  check('i campi identici NON compaiono: un elenco lungo non si legge',
+    d.every((c) => c.key !== 'costante'));
+  check('⚠️ le impronte tecniche sono MARCATE, non nascoste: chi approva vede tutto',
+    byKey.contentHash?.technical === true);
+  check('e ciò che una persona può giudicare non è marcato tecnico',
+    byKey.title?.technical === false && byKey.declaredUpdatedAt?.technical === false);
+  check('l\'ordine mette prima ciò che si può giudicare',
+    d.findIndex((c) => !c.technical) < d.findIndex((c) => c.technical));
+
+  // Controprova: due oggetti identici non producono nulla da leggere.
+  check('nessuna differenza → elenco vuoto, non una riga «uguale»',
+    diffValues(prev, { ...prev }).length === 0);
+  check('previous nullo non fa esplodere: tutto è «comparso»',
+    diffValues(null, { a: 1 }).every((c) => c.kind === 'added'));
+  check('proposed nullo: tutto è «sparito»',
+    diffValues({ a: 1 }, null).every((c) => c.kind === 'removed'));
+  // ⚠️ Il tipo è un dato: 1 e '1' non sono lo stesso valore.
+  check('1 e «1» sono una differenza, non un\'uguaglianza',
+    diffValues({ a: 1 }, { a: '1' }).length === 1);
+}
+
+// La regola della nota, che vive anche nella 0037.
+check('respingere senza nota è rifiutato',
+  checkDecision('rejected', '').ok === false);
+check('e una nota di soli spazi è una nota assente',
+  checkDecision('rejected', '   ').ok === false);
+check('con una nota, respingere si può', checkDecision('rejected', 'la finestra è chiusa').ok === true);
+check('approvare NON richiede una nota', checkDecision('accepted', '').ok === true);
+check('«irrilevante» nemmeno', checkDecision('ignored', '').ok === true);
+check('una decisione inventata è rifiutata', checkDecision('applica', 'x').ok === false);
+check('e il rifiuto porta una CHIAVE i18n, non un messaggio scritto a mano',
+  checkDecision('rejected', '').errorKey === 'noteRequired');
+
+// L'attesa: «non lo so» non è «zero giorni».
+check('l\'attesa si conta in giorni interi',
+  waitingDays('2026-07-30T00:00:00Z', new Date('2026-08-05T00:00:00Z')) === 6);
+check('⚠️ una data illeggibile dà null, NON zero: «non lo so» tranquillizzerebbe a torto',
+  waitingDays('non-una-data', new Date('2026-08-05T00:00:00Z')) === null);
+check('e una data assente pure', waitingDays(null, new Date()) === null);
+check('una data nel futuro non produce giorni negativi',
+  waitingDays('2026-09-01T00:00:00Z', new Date('2026-08-05T00:00:00Z')) === 0);
 
 // ===========================================================================
 console.log(`\n${B}Risultato:${X} ${G}${pass} passati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);
