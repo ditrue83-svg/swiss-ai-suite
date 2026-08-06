@@ -154,9 +154,11 @@ resta verde.
   `informative`/`manual` con la divergenza nelle note, **da verificare a mano**.
 - **Le scadenze delle call Innosuisse sono DERIVATE** dalla regola delle sei
   settimane pubblicata, non lette come date esplicite. La nota lo dice.
-- **Sette revisioni del catalogo sono in attesa di una persona**
-  (`subsidy_catalog_reviews`): è lavoro in coda, non un residuo. ✅ Dal
-  2026-08-05 si smaltiscono da `/incentivi/revisioni` — vedi § 7.
+- ✅ **La coda di revisione è VUOTA dal 2026-08-05** — e non perché qualcuno
+  abbia approvato sette schede, ma perché quelle sette **non erano un
+  cambiamento**: vedi § 7. `subsidy:health` esce 0.
+  ⚠️ **`last_checked_at` è rimasto al 2026-07-25 per tutti e sette i programmi**:
+  chiuderle non è stata una verifica, e la data lo dice.
 - **Non ancora fatti**: strumenti dell'assistente sugli incentivi, health-check
   2.0, valutazioni (`eval`) del modulo.
 
@@ -233,5 +235,31 @@ La 0038 toglie il problema invece di correggere la riga: la query diventa una
 sbagliata fa fallire la migrazione, subito. La funzione resta il cancello e
 legge dalla vista, così la query sta in un posto solo.
 
-⚠️ **Le sette schede sono ancora tutte `pending`**: nessuna è stata decisa qui.
-Deciderle è un giudizio, e tocca a chi apre la schermata.
+### Le sette schede non erano un cambiamento — misurato il 2026-08-05
+
+⚠️⚠️ **Erano la PRIMA LETTURA riuscita di ciascuna fonte, non il segno che la
+fonte si fosse mossa.** In tutte e sette `previousHash` è **null** e
+`unsupported` era `true` — l'adapter non sapeva ancora leggere quella pagina.
+`textLength`, `declaredUpdatedAt` e `deadlineCandidateCount` sono **identici**
+prima e dopo. L'unico campo normalizzato «diverso» era `unsupported` stesso.
+La nota diceva «il contenuto della fonte è cambiato»: falsa. **Non si è mossa la
+pagina, ha cominciato a funzionare il nostro lettore.**
+
+Il difetto stava in `diff.ts`, dove la proposta `program_metadata` era «sempre
+registrata» — anche senza un termine di paragone. Chiedere a una persona di
+confrontare «prima» e «adesso» quando il «prima» non esiste produce una coda che
+non si può smaltire, e una coda che non si smaltisce insegna a non guardarla:
+la fine di ogni controllo utile. ✅ Corretto: senza impronta precedente non si
+apre più una revisione di contenuto. ⚠️ Le altre proposte **non** sono toccate —
+una candidata di scadenza o una struttura non interpretabile meritano una
+persona anche alla prima lettura, perché non sono confronti, sono cose da
+leggere. Tre casi nella sezione 11 di `test:subsidy-unit`, con controprova.
+
+**Le sette sono state chiuse come `ignored`, non `accepted`**, e la differenza è
+tutto: `accepted` avrebbe scritto `last_checked_at = oggi`, cioè «una persona ha
+confrontato il catalogo con la fonte». Nessuno lo ha fatto. `reviewed_by` è
+**null** perché nessuna persona ha deciso: le ha chiuse il sistema, e la nota su
+ogni riga lo dice per esteso.
+⚠️ **Resta vero che nessuno ha ancora verificato i contenuti contro le fonti**:
+le date di `last_checked_at` sono ferme al 2026-07-25. La coda vuota dice che non
+c'è nulla *in sospeso*, non che il catalogo sia stato ricontrollato.

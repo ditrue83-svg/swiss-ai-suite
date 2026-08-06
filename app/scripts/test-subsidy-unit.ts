@@ -587,6 +587,41 @@ check('e la versione pubblicata non viene toccata (la proposta è solo dati)',
   changed[0].proposedValues.contentHash === 'hash-b'
   && !('status' in (changed[0] as unknown as Record<string, unknown>)));
 
+// ⚠️⚠️ LA PRIMA LETTURA NON È UN CAMBIAMENTO, e questa è la riga che ha prodotto
+//    l'intera coda vista in produzione. Al 2026-08-05 le SETTE revisioni ferme
+//    dal 2026-07-30 erano tutte così: `previousHash` null, `unsupported` true,
+//    `textLength` e `declaredUpdatedAt` IDENTICI. La nota diceva «il contenuto
+//    della fonte è cambiato»: falso — non si era mossa la fonte, aveva
+//    cominciato a funzionare il nostro lettore. Chiedere a una persona di
+//    confrontare «prima» e «adesso» quando il «prima» non esiste produce una
+//    coda che non si può smaltire, e una coda che non si smaltisce insegna a
+//    non guardarla.
+const primaLettura = detectChanges({
+  sourceId: 's', programId: 'p', previousHash: null,
+  result: okResult, previousNormalized: { unsupported: true, textLength: 900 },
+});
+check('⚠️ prima lettura (previousHash null) → NESSUNA revisione di contenuto',
+  primaLettura.every((c) => c.changeType !== 'program_metadata'),
+  JSON.stringify(primaLettura.map((c) => c.changeType)));
+
+// ⚠️ La controprova della correzione: ciò che NON deve sparire. Una candidata di
+//    scadenza va letta anche alla prima lettura, perché non è un confronto — è
+//    una cosa da guardare.
+const primaLetturaConScadenza = detectChanges({
+  sourceId: 's', programId: 'p', previousHash: null, previousNormalized: {},
+  result: { ...okResult, evidence: [{ field: 'deadline_candidate', quote: 'Termine: 30.09.2026', section: null, page: null }] },
+});
+check('ma una candidata di scadenza sopravvive alla prima lettura',
+  primaLetturaConScadenza.some((c) => c.changeType === 'deadline'));
+
+// E una fonte irraggiungibile resta un avviso anche senza impronta precedente.
+const primaLetturaCaduta = detectChanges({
+  sourceId: 's', programId: 'p', previousHash: null, previousNormalized: {},
+  result: { ...okResult, ok: false, errorCode: 'source_unreachable' },
+});
+check('e una fonte caduta si dichiara comunque',
+  primaLetturaCaduta.some((c) => c.changeType === 'source_unreachable'));
+
 // ⚠️ §22 — una candidata di scadenza diventa una revisione `critical`, mai un
 //    dato del catalogo.
 const withDeadline = detectChanges({
