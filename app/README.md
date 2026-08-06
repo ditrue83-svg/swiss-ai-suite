@@ -37,6 +37,7 @@ supabase/
                 0036_assistant_empty_group_citation
                 0037_subsidy_catalog_review
                 0038_subsidy_review_source_url
+                0039_audit_logs
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -88,6 +89,7 @@ src/
   features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing
                   inbox · calendar · notifications · automations · finance · contracts · crm
                   assistant (Chiedi ad AI-Swisse) · incentives (Incentivi, Subsidy AI 2.0)
+                  audit (Registro attività: una schermata, non un modulo — 0039)
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
@@ -714,6 +716,42 @@ l'utente deve vedere che cosa sta succedendo e poter interrompere.
 
 Documento completo: [`docs/company-assistant.md`](docs/company-assistant.md).
 
+### Registro attività — migrazione 0039
+
+Chi ha fatto che cosa, in ordine di tempo, per tutta l'azienda: `/registro`,
+riservato a titolari e amministratori. Chiude una promessa che la vetrina faceva
+e che il prodotto manteneva solo a metà — risalire a ciò che il sistema aveva
+letto e a chi ha corretto che cosa era vero per le analisi documento (0010) e
+per l'Inbox (0013), e per nient'altro.
+
+- **Non è una seconda fonte di verità.** `task_events`, `contract_events`,
+  `crm_events`, `email_audit_log` e `analysis_corrections` restano i proprietari
+  dei loro fatti: là c'è il dettaglio, qui l'indice trasversale. Perché non
+  possano divergere, `audit_logs` **non viene scritta da nessun servizio**: la
+  scrivono i TRIGGER delle tabelle che possiedono il fatto, nella stessa
+  transazione della scrittura che lo produce — la regola già adottata dalla 0020.
+- **Il client non ha alcun permesso di scrittura**, e non è una convenzione:
+  `revoke all` precede la sola `grant select`, perché su Supabase i privilegi
+  predefiniti dello schema `public` concedono tutto ad `anon` e `authenticated`.
+- **Non si modifica**, e il divieto vale anche per il service role: è un trigger.
+  Non si **cancella** perché nessun ruolo applicativo ha `delete` — e non per un
+  trigger, che renderebbe le aziende indistruttibili (lezione della 0023). Una
+  riga muore solo con la sua azienda.
+- **Dodici eventi e nient'altro**: documento caricato ed eliminato, analisi
+  avviata / conclusa / fallita, correzione manuale, risposta generata, attività
+  creata e modificata, persona aggiunta e rimossa, ruolo cambiato. L'elenco è un
+  enum, quindi un tredicesimo evento non entra per distrazione.
+- **Che cosa NON entra mai nel payload**: token, password, segreti e contenuto
+  di documenti. I campi pubblicati sono una lista di AMMESSI scritta a mano in
+  ogni trigger, non una lista di vietati: una colonna nuova su una tabella
+  sorvegliata non finisce nel registro perché nessuno l'ha ammessa. Di una
+  correzione si registra **quale campo** è stato corretto, non i due valori —
+  che sono dati letti dal documento e restano in `analysis_corrections`.
+
+Provato da `npm run test:audit-unit` (offline) e `npm run test:audit` (DB reale,
+con i negativi espliciti: né titolare, né membro, né chiave anon, né service role
+modificano o cancellano una riga).
+
 ## Comandi
 
 ### La suite, in un comando solo
@@ -885,6 +923,18 @@ npm run test:subsidy         # Incentivi su DB: isolamento fra aziende anche chi
                              #   CASCATA — una risposta rendeva l'azienda indistruttibile finché
                              #   non sono arrivate la 0033 e la 0034. Dalla sezione 11 esegue anche
                              #   IL MOTORE VERO (runMatching) (richiede 0032+0033+0034)
+npm run test:audit-unit      # Registro attività offline: gli enum scritti due volte in SQL e in
+                             #   TypeScript, ogni azione e ogni campo con la sua etichetta nelle
+                             #   tre lingue, e soprattutto LA SANIFICAZIONE — quali colonne i
+                             #   trigger pubblicano davvero, letta dalla migrazione e non
+                             #   dichiarata a mano (74 casi)
+npm run test:audit           # Registro attività su DB: ogni evento previsto produce la sua riga
+                             #   senza che il client la chieda, i valori di una correzione e il
+                             #   testo di una risposta NON ci entrano, un membro non amministratore
+                             #   legge zero righe, e i negativi espliciti — né titolare, né membro,
+                             #   né chiave anon, né service role modificano o cancellano una riga.
+                             #   Più la cascata: un'azienda con registro resta cancellabile
+                             #   (richiede la 0039)
 npm run subsidy:seed-catalog # scrive il CATALOGO 2.0: fonti ufficiali, versioni immutabili,
                              #   criteri tipizzati e call. Dry-run senza `-- --write`. ⚠️ Non
                              #   sostituisce `subsidy:seed`, che scrive l'identità dei programmi
@@ -983,6 +1033,22 @@ runtime resta quello di Supabase, la versione nello specificatore `npm:…@2` no
 GIRA è eseguirla.
 
 ## Test — cosa coprono
+
+- **`test:audit-unit` (74)** — Registro attività offline. Il controllo per cui il file esiste è
+  **la sanificazione**: quali colonne i trigger della 0039 pubblicano davvero, estratte dalla
+  migrazione invece che dichiarate a mano, e confrontate con una lista di ammessi. Più gli enum
+  scritti due volte (SQL e TypeScript), un'azione dichiarata che nessun trigger produce, le
+  etichette nelle tre lingue, i filtri in URL (un tipo inesistente diventa «tutti», non un elenco
+  vuoto senza spiegazione) e `changes` malformato, che si scarta invece di mostrarsi a metà.
+  Controprove eseguite: aggiungendo una colonna proibita a un trigger falliscono 3 controlli;
+  togliendo un valore all'enum SQL ne fallisce 1; e rinominando `audit_pair` il file dice «la
+  migrazione non pubblica nessun campo» invece di passare a vuoto.
+- **`test:audit` (DB — richiede la 0039)** — che le garanzie siano IN VIGORE, non descritte: ogni
+  evento previsto nasce dal database anche quando il client non fa nulla per registrarlo; i valori
+  di una correzione e il testo di una risposta non entrano nel payload; un membro non
+  amministratore legge zero righe; **nessun utente modifica o cancella** (titolare, membro, chiave
+  anon) e **nemmeno il service role modifica**; e la cascata — un'azienda con registro resta
+  cancellabile, che è la trappola della 0023.
 
 - **`test:phase1` (26)** — onboarding, documenti, Storage privato, task, pratiche, **RLS cross-tenant**
   (B non legge/scarica/scrive nulla di A), cascade delete, nessun accesso senza sessione, persistenza dopo re-login.

@@ -38,6 +38,7 @@ import { AutomationBuilderPage } from '@/features/automations/AutomationBuilderP
 import { AutomationDetailPage } from '@/features/automations/AutomationDetailPage';
 import { RunDetailPage } from '@/features/automations/RunDetailPage';
 import { PricingPage } from '@/features/pricing/PricingPage';
+import { AuditLogPage } from '@/features/audit/AuditLogPage';
 import { useT } from '@/i18n';
 
 /**
@@ -184,6 +185,13 @@ export default function App() {
                 membro può aggiornare. È anche l'unico posto in cui la ricerca
                 nel Registro IDI resta utilizzabile dopo l'onboarding. */}
             <Route path="/azienda" element={<CompanySettingsPage />} />
+            {/* Registro attività (0039): chi ha fatto che cosa, in ordine di
+                tempo. ⚠️ Non è una rotta protetta da una guardia: il cancello è
+                la policy `audit_select_admin`, e la pagina aperta da un membro
+                spiega perché non può leggere invece di mostrare un elenco
+                vuoto. Una rotta nascosta non è un permesso — stessa scelta di
+                `/incentivi/revisioni`. */}
+            <Route path="/registro" element={<AuditLogPage />} />
             <Route path="/prezzi" element={<PricingPage />} />
           </Route>
         </Route>

@@ -82,6 +82,11 @@ const FEATURES = {
   'dashboard':     { moduleName: null, why: 'la Panoramica: mostra i moduli, non è un modulo' },
   'notifications': { moduleName: null, why: 'la campanella, parte di «Calendario e notifiche»' },
   'pricing':       { moduleName: null, why: 'pagina commerciale' },
+  // Il Registro attività (0039) NON è un modulo di prodotto: è come l'azienda
+  // si guarda da fuori — una schermata sola, riservata a titolari e
+  // amministratori, che indicizza i fatti degli altri moduli senza possederne
+  // nessuno. Sta nel menu accanto a «Impostazioni azienda» per la stessa ragione.
+  'audit':         { moduleName: null, why: 'registro trasversale, non un modulo: indicizza i fatti degli altri' },
 };
 
 /** Le Edge Function di servizio, che la struttura non elenca una per una. */

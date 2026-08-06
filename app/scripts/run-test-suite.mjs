@@ -254,6 +254,7 @@ const GROUPS = {
       { script: 'test:crm-unit' },
       { script: 'test:assistant-unit' },
       { script: 'test:subsidy-unit' },
+      { script: 'test:audit-unit' },
     ],
   },
   // ⚠️ QUESTO GRUPPO NON HA BISOGNO DEL PROGETTO DI PRODUZIONE, e la
@@ -277,6 +278,7 @@ const GROUPS = {
       { script: 'test:finance' },
       { script: 'test:workflows' },
       { script: 'test:subsidy' },
+      { script: 'test:audit' },
     ],
   },
   // ⚠️ NON SPOSTABILI NELL'EFFIMERO, e per tre ragioni diverse:
