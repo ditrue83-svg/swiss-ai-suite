@@ -12,6 +12,24 @@ export function formatDate(value: string | null | undefined): string {
 }
 
 /**
+ * Data E ora, nella lingua scelta.
+ *
+ * Serve al Registro attività (0039), dove la sola data non basta: due
+ * correzioni dello stesso pomeriggio sullo stesso campo sono due fatti
+ * distinti, e un registro che non li distingue non è un registro. Stessa
+ * disciplina di `formatDate`: valore assente o illeggibile dà «—», mai una data
+ * di ripiego.
+ */
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(getCurrentLocaleTag(), {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+/**
  * ⚠️⚠️ QUANDO LA VALUTA NON È NOTA NON SI SCRIVE «CHF»: si scrive il numero.
  *
  * Fino al 2026-07-29 questa funzione faceva `currency || 'CHF'`, e la scelta era

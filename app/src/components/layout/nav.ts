@@ -3,7 +3,13 @@ import type { TKey } from '@/i18n';
 
 // Le voci portano una CHIAVE di traduzione, non un'etichetta già scritta:
 // l'etichetta si risolve al render, così il menu cambia lingua all'istante.
-export interface NavItem { id: string; labelKey: TKey; icon: IconName; path: string }
+//
+// ⚠️ `adminOnly` NASCONDE la voce, e nascondere non è proteggere: il cancello
+// vero sta nella policy RLS della pagina (per il Registro attività è
+// `audit_select_admin`, 0039). Serve a non mostrare a un membro una porta che
+// gli si chiuderebbe in faccia — e infatti la pagina, aperta per indirizzo,
+// spiega perché non può leggere invece di mostrare un elenco vuoto.
+export interface NavItem { id: string; labelKey: TKey; icon: IconName; path: string; adminOnly?: boolean }
 export interface NavSection { sectionKey: TKey }
 export type NavEntry = NavItem | NavSection;
 
@@ -76,6 +82,11 @@ export const NAV: NavEntry[] = [
   // ragione sociale non avevano dove andare. Sta sotto ACCOUNT e non fra i
   // moduli perché non è un posto dove si lavora: è chi si è.
   { id: 'company', labelKey: 'nav.companySettings', icon: 'building', path: '/azienda' },
+  // Il Registro attività (0039) sta accanto a «Impostazioni azienda» e non fra i
+  // moduli, per la stessa ragione: non è un posto dove si lavora, è come
+  // l'azienda si guarda da fuori. Ed è la sola voce riservata a titolari e
+  // amministratori, perché dice che cosa hanno fatto le PERSONE.
+  { id: 'audit', labelKey: 'nav.auditLog', icon: 'clock', path: '/registro', adminOnly: true },
   { id: 'pricing', labelKey: 'nav.pricing', icon: 'tag', path: '/prezzi' },
 ];
 

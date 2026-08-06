@@ -125,6 +125,57 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). 7 revisioni del catalogo in attesa di una persona |
 
+## Registro attività (0039) — applicato e provato sul database vero, NON deployato
+
+Non ha una riga nella tabella qui sopra perché **non è un modulo di prodotto**:
+è una schermata sola (`/registro`) che indicizza i fatti degli altri moduli
+senza possederne nessuno. Ma le sei parole valgono lo stesso, e vanno dette
+prima che qualcuno le deduca dal fatto che il codice esiste.
+
+| | Stato al 2026-08-06 (sera) |
+|---|---|
+| Implementato | sì — migrazione `0039_audit_logs`, pagina, servizio, due suite |
+| **Migrazione applicata** | **sì**, il 2026-08-06 con `supabase db push --linked`. Produzione a **0001–0039** (riletto da `supabase_migrations.schema_migrations`: 39 righe) |
+| Deployato | **no** — il dominio serve ancora `index-CkesEDA3.js`, quindi la pagina `/registro` **non è raggiungibile da nessun cliente**. I TRIGGER invece sono già in esercizio: da adesso ogni caricamento, analisi, correzione, risposta, attività e cambio di membership scrive la sua riga |
+| Configurato | non richiede configurazione: nessun segreto, nessuno scheduler |
+| Testato | **sì** — `test:audit-unit` 74/74 offline, `test:audit` **41/41 sul database vero** |
+| Provato contro la cosa reale | **sì**, e vedi sotto quali affermazioni sono diventate misure |
+| Disponibile a clienti esterni | no (manca il deploy) |
+
+⚠️ **Le tre cose che erano affermazioni fino a ieri, e adesso sono misure.** Le
+garanzie del registro sono permessi, policy e trigger: tre cose che si possono
+descrivere per mesi senza che siano vere (lezione della 0014). Eseguendo:
+
+- **i permessi**: `information_schema.role_table_grants` dice che su `audit_logs`
+  `authenticated` ha **solo SELECT** e `anon` non compare affatto — il
+  `revoke all` che precede la `grant` ha fatto il suo lavoro. Un titolare che
+  prova a modificare o cancellare riceve **42501 «permission denied for table
+  audit_logs»**;
+- **l'immutabilità oltre i permessi**: il service role, che i permessi ce li ha
+  tutti, riceve **42501 «audit_log_immutable»** — cioè lo ferma il TRIGGER, ed è
+  un meccanismo diverso da quello che ferma gli utenti. Le due righe di errore
+  distinte sono la prova che ciascuna difesa fa il suo lavoro, non che una
+  copre l'altra;
+- **la cascata**: cancellare un'azienda che ha documenti, attività e righe di
+  registro **riesce**, e non resta niente. Era l'incidente della 0023 previsto
+  in scrittura, e la guardia in `audit_log_write` regge sul database vero.
+
+⚠️ **La controprova del controllo.** Cinque asserzioni «non può» valgono poco da
+sole: un errore non nullo può arrivare da una chiamata malformata o da una
+sessione scaduta. La suite verifica quindi che **lo stesso client, con la stessa
+forma di chiamata, scriva senza errore dove il permesso c'è** — e rilegge il
+valore scritto, perché su PostgREST un UPDATE nascosto dalla RLS non dà errore:
+tocca zero righe e basta.
+
+⚠️ **Che cosa ha insegnato l'esecuzione, e non era previsto.** `test:audit` è
+uscito rosso due volte prima di essere verde, e in nessuno dei due casi il
+difetto era nel prodotto: la prima per un valore di enum inventato nel TEST
+(`task_priority` non ha `normal`), la seconda perché le righe `member_added`
+erano **due** e non una — anche la membership che `create_company_with_owner`
+crea all'onboarding è un ingresso in azienda, e il trigger la registra. È la
+conferma pratica del motivo per cui il registro sta nei trigger e non in un
+servizio: copre anche i percorsi a cui nessuno ha pensato.
+
 ## I messaggi fermi dell'Inbox — da 11 su 124 a ZERO su 148
 
 Rimisurato interrogando il database la notte del **2026-08-01/02**, e di nuovo
