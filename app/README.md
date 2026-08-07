@@ -757,6 +757,26 @@ salto — nemmeno con `--allow-skip`, dove l'esito si chiama `INCOMPLETO`.
 `npm run suite -- --self-test` prova questa decisione sui casi che devono farla
 fallire, «gruppo saltato» compreso, e gira dentro `test:unit`.
 
+⚠️ **UN PASSO NON ESEGUIBILE NON È UN PASSO FALLITO, dal 2026-08-03.** Un passo
+che esce 3 dentro un gruppo senza rossi rendeva il gruppo **ROSSO**, con
+`1 su 6 falliti` — mentre nessun controllo aveva fallito. Mandava a cercare un
+difetto dove c'era un ambiente incompleto, che è lo stesso genere di bugia che
+questo runner esiste per non dire. Ora quel gruppo è **`INCOMPL`**, il riepilogo
+nomina il passo, l'uscita resta 3, e gli altri gruppi vengono comunque eseguiti.
+
+```bash
+npm run ci -- --root ~/swiss-ai-suite-repo
+```
+
+⚠️ **Serve perché `docs:check` verifica la tabella dei moduli contro il README
+della RADICE**, che vive nel monorepo: da `~/swiss-ai-suite-app` non esiste, e
+due dei cinque controlli non sono eseguibili. Senza `--root`, `npm run ci` esce
+**3** e lo dichiara; con `--root` il controllo è completo anche dalla directory
+di sviluppo. Dal monorepo non serve niente. ⚠️ Ripiegare sul README dell'app
+**non** è un'opzione: non contiene la tabella dei moduli, e il controllo
+segnalerebbe come mancanti Calendario, Contratti e l'Assistente — falsi rossi al
+posto di un verde falso.
+
 Opzioni: `--continue-on-error` prosegue dopo un rosso (uso locale; senza, ci si
 ferma al primo, che è la modalità CI) · `--allow-skip` accetta che un gruppo non
 eseguito non faccia uscire non-zero, per chi sa che cosa **non** ha provato ·
@@ -796,6 +816,11 @@ npm run test:functions  # sicurezza di generate-reply e interpret-project (12 te
 npm run test:pipeline   # end-to-end analisi → persistenza → task → bozza (18 test)
 npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:subsidy    # eval interpretazione progetto (14 test)
+npm run eval:contracts             # estrazione contrattuale su TRE CONTRATTI VERI (it/de/fr):
+                                   # tasso di esattezza per campo. Crea un'azienda tecnica,
+                                   # la misura e la cancella verificando la cancellazione.
+                                   # -- --local esegue la pipeline qui invece di attendere il worker
+npm run eval:contracts:self-test   # prova il metro del confronto, offline
 npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
 npm run test:routing    21  NUOVO il 2026-07-30. Le guardie di rotta come funzione PURA
@@ -817,6 +842,9 @@ npm run test:documents       # Documenti su DB: isolamento della RICERCA, catego
 npm run test:calendar-unit   # Calendario e notifiche offline: stato desiderato, promemoria con ora
                              # legale, idempotenza degli adapter, griglia del mese (158 test)
 npm run test:calendar        # Calendario su DB: isolamento fra aziende E FRA PERSONE, coda, trigger
+npm run test:notification-email          # Invio VERO al provider di posta. Esce 3 se i due secret
+                                         # NOTIFICATION_EMAIL_* non ci sono: saltato ≠ verde
+npm run test:notification-email:self-test  # prova il controllo stesso, offline
 npm run test:workflows-unit  # Automazioni offline: registro, validazione, operatori, logica a tre
                              # valori, valute, incertezza, modelli di testo, frase (112 test)
 npm run test:workflows       # Automazioni su DB: esegue il MOTORE VERO — outbox, idempotenza,

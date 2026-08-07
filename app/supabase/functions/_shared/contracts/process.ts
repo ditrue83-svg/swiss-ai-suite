@@ -369,12 +369,53 @@ export function fieldsFromReading(r: ContractReading): Record<string, unknown> {
 }
 
 /**
- * Una data ISO, SOLO se il testo è già in forma ISO o inequivocabile.
+ * I mesi scritti in lettere, nelle tre lingue del prodotto più l'inglese.
+ *
+ * ⚠️ Le chiavi sono già senza diacritici: `foldDate()` normalizza prima di
+ * cercarle, quindi «märz» arriva come «marz» e «décembre» come «decembre». È la
+ * stessa trappola già pagata da `WORD_NUMBERS` in `periods.ts`.
+ * ⚠️ Le sovrapposizioni fra lingue sono volute e innocue perché CONCORDANO:
+ * «mai» è maggio in tedesco e in francese, «april» in tedesco e in inglese.
+ */
+const MONTH_WORDS: Record<string, number> = {
+  gennaio: 1, febbraio: 2, marzo: 3, aprile: 4, maggio: 5, giugno: 6,
+  luglio: 7, agosto: 8, settembre: 9, ottobre: 10, novembre: 11, dicembre: 12,
+  januar: 1, februar: 2, marz: 3, april: 4, mai: 5, juni: 6,
+  juli: 7, august: 8, oktober: 10, dezember: 12,
+  janvier: 1, fevrier: 2, mars: 3, avril: 4, juin: 6,
+  juillet: 7, aout: 8, septembre: 9, octobre: 10, decembre: 12,
+  january: 1, february: 2, march: 3, may: 5, june: 6, july: 7,
+  october: 10, december: 12,
+  // comuni a più lingue con la stessa grafia
+  september: 9, november: 11,
+};
+
+const foldDate = (text: string): string =>
+  text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+
+/**
+ * Una data ISO, SOLO quando il testo la dice senza ambiguità.
  *
  * ⚠️ NON INDOVINA. «03.04.2026» può essere il 3 aprile o il 4 marzo, e sceglierne
  * uno significherebbe scrivere nel database una data che il documento non dice.
  * Le forme ambigue restano `null`: il valore grezzo è comunque salvato
  * nell'evidenza, e una persona lo corregge in un gesto.
+ *
+ * ⚠️⚠️ IL MESE SCRITTO IN LETTERE NON È UNA FORMA AMBIGUA, e fino al 2026-08-03
+ * questa funzione lo rifiutava insieme alle altre. La regola scritta qui sopra
+ * parlava di ambiguità; l'implementazione era più severa della propria
+ * motivazione, e un test congelava la severità («1er janvier 2026 → null»).
+ *
+ * Il costo è stato misurato leggendo i primi tre contratti veri
+ * (`npm run eval:contracts`, 2026-08-03): «12 giugno 2026», «3. November 2026»,
+ * «1er février 2027» — la forma NORMALE di un contratto — davano `null` tutte e
+ * tre. Il modello le restituiva con fiducia 0,95 e la citazione ritrovata: le
+ * scartavamo noi. Conseguenza a valle: senza `end_date` nessuna scadenza di
+ * disdetta è derivabile, e i tre contratti uscivano con `notice_not_derivable`.
+ * Il modulo leggeva tutto e non sorvegliava niente.
+ *
+ * ⚠️ Che cosa NON è cambiato: «03.04.2026» resta `null`. La cautela sulle forme
+ * numeriche è intatta — è l'unica in cui l'ambiguità esiste davvero.
  */
 export function toDateOrNull(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -394,7 +435,30 @@ export function toDateOrNull(raw: string | null | undefined): string | null {
     }
     return null;
   }
-  return null;
+
+  // Giorno, mese in lettere, anno. Il giorno può portare il suo ordinale
+  // («1°», «1er», «3.»), e la data può essere preceduta dal luogo, perché è così
+  // che i contratti la stampano: «Lugano, 12 giugno 2026», «Genève, le 15
+  // décembre 2026». Si cerca il motivo DENTRO la stringa invece di ancorarlo,
+  // e la severità si ritrova subito sotto.
+  const folded = foldDate(t);
+  const re = /(?<![\d])(\d{1,2})\s*(?:°|er|\.)?\s+([a-z]{3,9})\s+(\d{4})(?![\d])/g;
+  const trovate: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(folded)) !== null) {
+    const mese = MONTH_WORDS[m[2]];
+    if (mese === undefined) continue;
+    const [g, a] = [+m[1], +m[3]];
+    if (!validCalendarDate(a, mese, g)) continue;
+    trovate.push(`${a}-${String(mese).padStart(2, '0')}-${String(g).padStart(2, '0')}`);
+  }
+
+  // ⚠️ UNA SOLA, e distinte. «dal 1° gennaio 2027 al 31 dicembre 2029» contiene
+  // due date: prenderne una sarebbe scegliere al posto di chi legge, che è
+  // esattamente ciò che questa funzione non fa. Due occorrenze della STESSA data
+  // non sono un'ambiguità e passano.
+  const distinte = [...new Set(trovate)];
+  return distinte.length === 1 ? distinte[0] : null;
 }
 
 function validCalendarDate(y: number, m: number, d: number): boolean {

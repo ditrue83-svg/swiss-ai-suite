@@ -69,6 +69,24 @@ const periodCases: [string, { value: number; unit: string } | null][] = [
   ['tre mesi per il primo anno, sei mesi in seguito', null],
   ['', null],
   ['a breve', null],
+
+  // ⚠️⚠️ I NUMERALI COMPOSTI — misurati su un contratto vero il 2026-08-03, e
+  // scoperti perché il risultato NON era un vuoto ma un numero sbagliato.
+  // «vingt-quatre mois» tornava 4 e «trente-deux mois» tornava 2: la ricerca
+  // agganciava il pezzo finale del composto. Nel database finiva una durata
+  // minima plausibile e falsa, che non fa comparire nessuna bandiera.
+  ['vingt-quatre mois', { value: 24, unit: 'months' }],
+  ['ventiquattro mesi', { value: 24, unit: 'months' }],
+  ['vierundzwanzig Monate', { value: 24, unit: 'months' }],
+  ['twenty-four months', { value: 24, unit: 'months' }],
+  ['dix-huit mois', { value: 18, unit: 'months' }],
+  ['trente-six mois', { value: 36, unit: 'months' }],
+  // ⚠️ LA META' CHE CONTA DI PIU': un composto NON in elenco deve tornare
+  // `null`, non il suo ultimo pezzo. Senza queste due righe la correzione
+  // sembrerebbe completa, e coprirebbe solo le durate che ho pensato io.
+  ['trente-deux mois', null],
+  ['quarante-neuf mois', null],
+  ['siebenundzwanzig Monate', null],
 ];
 for (const [input, expected] of periodCases) {
   const got = parsePeriod(input);
@@ -154,7 +172,42 @@ check('03.04.2026 AMBIGUA → null', toDateOrNull('03.04.2026') === null);
 check('30.02.2026 inesistente → null', toDateOrNull('30.02.2026') === null);
 check('29.02.2024 (bisestile) → valida', toDateOrNull('29.02.2024') === '2024-02-29');
 check('29.02.2026 (non bisestile) → null', toDateOrNull('29.02.2026') === null);
-check('«1er janvier 2026» non convertita → null', toDateOrNull('1er janvier 2026') === null);
+// ⚠️⚠️ QUESTA RIGA DICEVA IL CONTRARIO FINO AL 2026-08-03: «1er janvier 2026 non
+// convertita → null». Non era un difetto sfuggito, era una scelta — e il test la
+// teneva ferma. A smentirla è stata la prima lettura di tre contratti veri
+// (`npm run eval:contracts`): «12 giugno 2026», «3. November 2026», «1er février
+// 2027» sono la forma NORMALE in un contratto, il modello le restituiva con
+// fiducia 0,95, e le scartavamo noi. Senza `end_date` nessuna scadenza di
+// disdetta è derivabile: il modulo leggeva tutto e non sorvegliava niente.
+//
+// Un mese scritto in lettere NON è una forma ambigua, ed è tutta la differenza
+// con il caso qui sopra: «03.04.2026» resta null, e le tre righe seguenti lo
+// verificano ancora.
+check('«1er janvier 2026» → convertita: il mese in lettere non è ambiguo',
+  toDateOrNull('1er janvier 2026') === '2026-01-01');
+for (const [testo, atteso] of [
+  ['12 giugno 2026', '2026-06-12'],
+  ['1° ottobre 2026', '2026-10-01'],
+  ['3. November 2026', '2026-11-03'],
+  ['31. März 2026', '2026-03-31'],
+  ['15 décembre 2026', '2026-12-15'],
+  ['1 May 2027', '2027-05-01'],
+  // I contratti stampano il luogo davanti alla data, e il modello lo copia.
+  ['Lugano, 12 giugno 2026', '2026-06-12'],
+  ['Genève, le 15 décembre 2026', '2026-12-15'],
+] as const) {
+  check(`«${testo}» → ${atteso}`, toDateOrNull(testo) === atteso,
+    `ottenuto ${JSON.stringify(toDateOrNull(testo))}`);
+}
+// ⚠️ LE CONTROPROVE, e sono la metà che conta: la severità non si è persa.
+check('due date DIVERSE nella stessa stringa → null: scegliere sarebbe indovinare',
+  toDateOrNull('dal 1° gennaio 2027 al 31 dicembre 2029') === null);
+check('«31 febbraio 2026» non esiste → null', toDateOrNull('31 febbraio 2026') === null);
+check('senza anno → null', toDateOrNull('12 giugno') === null);
+check('senza giorno → null', toDateOrNull('giugno 2026') === null);
+check('una parola che non è un mese → null', toDateOrNull('12 pippo 2026') === null);
+check('la stessa data ripetuta NON è un\'ambiguità',
+  toDateOrNull('12 giugno 2026 (12 giugno 2026)') === '2026-06-12');
 
 check('importo svizzero 1\'250.00 → 1250.00', toNumberOrNull("1'250.00") === '1250.00');
 check('importo con valuta CHF 250.– → 250', toNumberOrNull('CHF 250.–') === '250');

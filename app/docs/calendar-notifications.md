@@ -359,6 +359,88 @@ server risponde `emailConfigured: false` e la schermata mostra le email come
 **non disponibili** invece di offrire un interruttore che non farebbe partire
 niente (§79). È un booleano, non la chiave: il client deve sapere *se*, non *cosa*.
 
+### Accendere le email
+
+**Due valori, e nient'altro da scrivere nel codice.**
+
+| variabile | che cos'è | esempio |
+| --- | --- | --- |
+| `NOTIFICATION_EMAIL_API_KEY` | la chiave API del provider transazionale (Resend) | `re_a1b2c3…` |
+| `NOTIFICATION_EMAIL_FROM` | il mittente, `Nome <indirizzo@dominio>`, su un dominio **verificato presso il provider** | `AI-Swisse <notifiche@ai-swisse.com>` |
+
+**Dove vanno impostati — in due posti, per due ragioni diverse.**
+
+1. **Come secret delle Edge Function**, ed è l'unico che conta in esercizio:
+   è da lì che `notifications-worker` li legge.
+
+   ```bash
+   npx supabase secrets set --project-ref tcjmagaqktmzijbfntvy \
+     NOTIFICATION_EMAIL_API_KEY='re_…' \
+     NOTIFICATION_EMAIL_FROM='AI-Swisse <notifiche@ai-swisse.com>'
+   ```
+
+2. **In `.env.test`**, solo per poter eseguire `npm run test:notification-email`
+   dalla propria macchina. Senza, quel comando **esce 3** e lo dichiara.
+
+**Come si ottengono.** Un account su [resend.com](https://resend.com), poi
+*Domains → Add domain* con il dominio del mittente e i record SPF/DKIM che
+Resend indica, sul DNS di `ai-swisse.com`; infine *API Keys → Create*. La chiave
+si vede **una volta sola**.
+
+⚠️ **Il dominio dev'essere verificato PRIMA del primo invio.** Un mittente su un
+dominio non verificato riceve un 4xx, che `deliverEmails` classifica — a
+ragione — come guasto **definitivo**: la consegna si chiude `failed` e non
+viene ritentata. Non è un difetto, è la regola di §44 applicata; ma se si
+configura al contrario, la prima email non parte e la coda non la riprende.
+
+⚠️ Per provare il percorso senza scrivere a una persona esiste
+`delivered@resend.dev`, l'indirizzo tecnico che il provider accetta sempre. È il
+destinatario predefinito di `npm run test:notification-email`.
+
+#### ⚠️⚠️ I due cancelli che restano chiusi anche dopo i secret
+
+Impostare le due variabili **non basta**, e nessuno dei due residui è visibile
+da fuori:
+
+- **`notification_preferences.email_enabled` è `false` per default** (lo
+  dichiarano sia la 0018 sia `defaultPreferences`). Chi non ha mai aperto le
+  impostazioni riceve le notifiche in-app e **nessuna email**. Va acceso da
+  *Notifiche e calendario*, o con una riga in `notification_preferences`.
+- **La coda si popola alla GENERAZIONE, non alla consegna.**
+  `generateReminders` accoda una consegna solo `if (p.email_enabled &&
+  deps.emailProvider)`. Quindi le notifiche già esistenti, create mentre il
+  provider non c'era, **non hanno una riga in `notification_deliveries` e non la
+  avranno mai**: configurare i secret non le recupera. Le email partono dai
+  promemoria generati **da lì in avanti**.
+
+E un terzo vincolo che non è un cancello ma un orario: `dueReminders` non
+produce nulla **prima delle 8 locali** di chi riceve (`REMINDER_LOCAL_HOUR`).
+Una prova fatta alle due di notte non genera niente, e non perché sia rotta.
+
+#### Che cosa prova che funziona
+
+```bash
+npm run test:calendar-unit                # §12: `deliverEmails` VERA, provider finto
+npm run test:notification-email           # invio VERO al destinatario tecnico
+npm run test:notification-email -- tu@dominio.ch
+```
+
+⚠️⚠️ **Il difetto che questo percorso nascondeva, corretto il 2026-08-03.**
+`composeEmail` dichiarava di restituire `{ to, subject, text }` e restituiva il
+risultato nudo di `buildReminderEmail`, che è `{ subject, text }`: **il campo
+`to` non c'era**. A runtime `message.to` era `undefined`, `JSON.stringify` lo
+scriveva come `null` dentro l'array, e ogni promemoria sarebbe partito verso
+`to: [null]` — 4xx del provider, consegna chiusa `failed`, nessuna email mai
+arrivata a nessuno. Chi avesse impostato i due secret avrebbe visto una coda di
+consegne fallite e un codice opaco.
+
+Perché nessuno l'aveva visto: `tsconfig.json` include `src` e `scripts`, quindi
+un file di `supabase/functions/` entra nel typecheck **solo se qualcosa là
+dentro lo importa** — e `notify.ts` non era importato da niente. Il difetto è
+comparso nel momento in cui la sezione 12 ha importato il modulo per eseguirlo:
+prima il test è diventato rosso sul destinatario, poi anche `npm run typecheck`.
+**Un percorso che nessun test esegue non è coperto nemmeno dal typecheck.**
+
 ---
 
 ## 7. Il calendario esterno
@@ -615,6 +697,52 @@ https://tcjmagaqktmzijbfntvy.supabase.co/functions/v1/calendar-oauth/callback
 elencati entrambi.
 
 Annotare **ID client** e **Client secret**.
+
+⚠️ **La riga di §9.2 sull'assenza di valutazione CASA non è stata verificata da
+questa parte**: è scritta qui dal 2026-07-31 e nessuno ha aperto la console per
+controllarla. La console dichiara la classificazione dello scope nel momento in
+cui lo si aggiunge: **quello è il posto dove leggerla**, non questo documento.
+In modalità *Test* la connessione funziona comunque per gli indirizzi elencati
+come utenti di prova, che è tutto ciò che serve per una prova.
+
+### 9.4 Stabilire la connessione di prova — la sequenza esatta
+
+**Stato misurato il 2026-08-03**, interrogando la funzione viva con il JWT
+dell'account dimostrativo:
+
+```
+POST /calendar-oauth/providers → 200 {"providers":[],"scopes":{},"emailConfigured":false}
+POST /calendar-oauth/start     → 503 PROVIDER_NOT_CONFIGURED
+GET  /calendar-oauth/callback  → 302 …/calendario/impostazioni?calendar=error&code=STATE_INVALID
+```
+
+Cioè: **nessun provider è configurato**, e il server lo dice invece di offrire un
+pulsante che porterebbe a un errore. Non manca il consenso: manca l'app OAuth.
+
+I passi, nell'ordine, e chi li può fare:
+
+1. **§9.1–9.3 nella console Google** — *solo l'utente*: creare o riusare il
+   progetto, abilitare Google Calendar API, aggiungere lo scope
+   `https://www.googleapis.com/auth/calendar.app.created` alla schermata di
+   consenso, aggiungere il proprio indirizzo fra gli **utenti di prova**, creare
+   l'ID client di tipo *Applicazione web* con l'URI di reindirizzamento di §9.3.
+2. **Impostare i due secret** — `GOOGLE_CALENDAR_CLIENT_ID` e
+   `GOOGLE_CALENDAR_CLIENT_SECRET`, come in §11.2. Sono **dedicati**: anche se
+   il valore fosse identico a quello dell'Inbox va scritto qui (§9, riquadro).
+3. **Verificare che il server abbia cambiato idea**: `POST /providers` deve
+   rispondere `{"providers":["google"],"scopes":{"google":["openid","…/calendar.app.created"]}}`.
+   Finché risponde `[]`, il resto non ha senso: i secret non sono arrivati alla
+   funzione.
+4. **Dare il consenso** — *solo l'utente*: da *Calendario → Impostazioni →
+   Collega Google*. ⚠️ Nella schermata di Google il permesso è una **casella da
+   spuntare**: chi preme «Continua» senza spuntarla ottiene un token valido
+   **senza** lo scope, e il callback risponde `SCOPE_NOT_GRANTED`. È l'errore
+   più probabile del percorso, ed è già stato pagato con l'Inbox.
+5. **Che cosa deve essere successo, e si legge dal database**: una riga in
+   `calendar_connections` con `status='active'` e `scopes` che contiene
+   `calendar.app.created`; due righe di segreti cifrati; una voce in coda per la
+   sincronizzazione iniziale. Poi `npm run test:calendar` resta verde e la
+   riconciliazione crea il calendario dedicato al primo giro del worker.
 
 ---
 
