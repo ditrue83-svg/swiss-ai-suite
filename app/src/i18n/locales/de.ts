@@ -1355,6 +1355,52 @@ export const de: Dictionary = {
       caseMissing: 'Das Dossier besteht nicht mehr.',
     },
   },
+  catalogReview: {
+    title: 'Katalogprüfung',
+    intro: 'Die offiziellen Quellen haben sich verändert. Pro Eintrag: was sich auf der Seite geändert hat, was der Katalog heute sagt, und die Entscheidung. Eine Freigabe ändert den Katalog nicht — sie bestätigt, dass Sie nachgesehen haben und dass es weiterhin stimmt.',
+    unknownProgram: 'Programm nicht identifiziert',
+    never: 'nie',
+    waiting: 'seit {days} Tagen offen',
+    waitingUnknown: 'offen seit unbekannt',
+    catalogSays: 'Der Katalog sagt: letzte Prüfung {checked} · Status {status}',
+    openSource: 'Offizielle Quelle öffnen',
+    notEditor: {
+      title: 'Sie gehören nicht zu den Katalog-Verantwortlichen',
+      body: 'Der Förderkatalog wird von allen Unternehmen geteilt: was er sagt, gilt für alle. Über seine Prüfungen entscheidet deshalb ein begrenzter Personenkreis. Es ist keine Berechtigung Ihres Unternehmens, und darum vergibt sie keine Rolle.',
+    },
+    empty: {
+      title: 'Nichts offen',
+      body: 'Keine offene Prüfung: die offiziellen Quellen haben keine Änderungen erzeugt.',
+    },
+    changes: {
+      none: 'Keine Unterschiede zwischen der Quelle und unserem Stand erfasst.',
+      field: 'Feld',
+      before: 'Vorher',
+      after: 'Jetzt',
+      technical: 'technischer Fingerabdruck',
+      absent: 'fehlt',
+    },
+    note: {
+      label: 'Notiz',
+      placeholder: 'Was Sie auf der Quelle gesehen haben',
+      hint: 'Pflicht beim Zurückweisen: eine Zurückweisung ohne Begründung lässt die Arbeit dort, wo sie war.',
+    },
+    decision: {
+      accept: 'Freigeben',
+      ignore: 'Unerheblich',
+      reject: 'Zurückweisen',
+      hint: 'Freigeben aktualisiert das Datum der letzten Prüfung. Unerheblich schliesst den Eintrag, ohne etwas zu ändern. Zurückweisen meldet, dass der Katalog korrigiert werden muss — die Korrektur erfolgt im Seed.',
+    },
+    error: {
+      noteRequired: 'Zum Zurückweisen braucht es eine Notiz, die sagt, was nicht stimmt.',
+      invalidDecision: 'Entscheidung nicht zulässig.',
+    },
+    done: {
+      accepted: 'Freigegeben: letzte Prüfung auf den {date} aktualisiert.',
+      rejected: 'Zurückgewiesen, mit Ihrer Notiz.',
+      ignored: 'Als unerheblich geschlossen.',
+    },
+  },
   subsidy: {
     title: 'Subsidy AI',
     intro: 'Unternehmensprofil → relevante Programme → Prüfung der Anspruchsberechtigung → Dossier. Relevanz und Anspruchsberechtigung sind zwei verschiedene Dinge. Abdeckung: Bund + Kanton Tessin.',
