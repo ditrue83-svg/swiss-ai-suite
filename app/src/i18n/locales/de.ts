@@ -912,6 +912,69 @@ export const de: Dictionary = {
     horizon90: '31 bis 90 Tage',
     horizonBeyond: 'Über 90 Tage',
   },
+  // ---- Druck / PDF-Export --------------------------------------------------
+  print: {
+    button: {
+      label: 'Drucken / als PDF speichern',
+      hint: 'Öffnet den Druckdialog des Browsers, dort lässt sich auch als PDF speichern.',
+    },
+    facts: {
+      authority: 'Behörde',
+    },
+
+    section: {
+      identification: 'Identifikation',
+      deadlineAndAmounts: 'Frist und Beträge',
+      actions: 'Massnahmen',
+      citations: 'Zitate aus dem Dokument',
+      toVerify: 'Zu prüfen',
+      sources: 'Offizielle Quelle',
+    },
+    deadline: {
+      label: 'Frist',
+      explicit: 'im Dokument ausdrücklich genannt',
+      relative: 'relative Frist, berechnet',
+      toVerify: 'an der Quelle zu prüfen',
+    },
+    amount: { label: 'Betrag' },
+    amountType: {
+      due: 'geschuldet',
+      fine: 'Busse',
+      fee: 'Gebühr',
+      contribution: 'Beitrag',
+      other: 'anderes',
+    },
+    actions: {
+      requested: 'Im Dokument verlangt',
+      suggested: 'Vorschlag von AI-Swisse',
+    },
+    citations: {
+      intro: 'Sätze aus dem Originaldokument, vollständig wiedergegeben.',
+      page: 'Seite {n}',
+    },
+    cite: {
+      sender: 'Absender',
+      deadline: 'Frist',
+      amount: 'Betrag',
+      action: 'Massnahme',
+      requestedDocument: 'Verlangtes Dokument',
+      reference: 'Referenz',
+      legal: 'Rechtsgrundlage',
+      risk: 'Risiko',
+      contractField: 'Klausel',
+    },
+    footer: {
+      company: 'Unternehmen: {name}',
+      companyUnknown: 'nicht angegeben',
+      printedAt: 'Gedruckt am {when}',
+      model: 'Analyse erstellt von: {model}',
+      modelUnknown: 'Verfahren nicht angegeben',
+      catalogEngine: 'Förderkatalog',
+      version: 'Version {version}',
+      disclaimer: 'Dieses Dokument ist eine automatisch erstellte Lesehilfe. Es ist keine Rechts-, Steuer- oder Treuhandberatung und ersetzt die Prüfung der Originaldokumente nicht.',
+    },
+  },
+
   // ---- Aktivitätsprotokoll (0039) -----------------------------------------
   audit: {
     title: 'Aktivitätsprotokoll',

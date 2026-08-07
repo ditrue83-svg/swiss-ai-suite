@@ -23,3 +23,7 @@ supabase/.branches/
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# Il foglio prodotto da `npm run status`: porta i conteggi della PRODUZIONE.
+# Si condivide con un gesto deliberato, non per distrazione di un `git add`.
+stato-attuale.md

@@ -39,6 +39,9 @@ import { toUserMessage } from '@/lib/errors';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { AskAbout } from '@/features/assistant/AskAbout';
+import { PrintButton } from '@/components/ui/PrintButton';
+import { PrintSheet } from '@/features/print/PrintSheet';
+import { CONTRACT_EVIDENCE_LABELS, buildFooter, contractCitations } from '@/features/print/printModel';
 import {
   canCreateTask, compareTerms, daysUntil, noticeUnavailableReason, openMilestones,
 } from './contractModel';
@@ -166,6 +169,10 @@ export function ContractDetailPage() {
           >
             {c.archivedAt ? t('contracts.restore') : t('contracts.archive')}
           </button>
+          {/* Si stampa la LETTURA del contratto, quindi il comando compare solo
+              quando una lettura c'è: un foglio d'archivio senza termini
+              sarebbe una scheda vuota con un'intestazione. */}
+          {shown && <PrintButton />}
         </div>
       </div>
 
@@ -501,6 +508,33 @@ export function ContractDetailPage() {
       </section>
 
       <p className="legal-note">{t('contracts.disclaimer')}</p>
+
+      {/* ⚠️ LA VERSIONE PER LA CARTA. A schermo ogni clausola ha il suo comando
+          per aprire la citazione; stampato, quel comando non si può premere. Qui
+          le citazioni verificate contro il testo estratto vanno per esteso, ed è
+          il motivo per cui una lettura di contratto può finire in un fascicolo
+          senza perdere ciò che la rende verificabile. */}
+      {shown && (
+        <PrintSheet
+          title={c.displayName}
+          facts={[
+            { labelKey: 'contracts.detail.fields.counterparty', value: c.counterpartyName },
+            { labelKey: 'contracts.detail.fields.type', value: L.contractType(c.contractType) },
+            { labelKey: 'contracts.detail.fields.start', value: shown.startDate ? formatDate(shown.startDate) : null },
+            { labelKey: 'contracts.detail.fields.end', value: shown.endDate ? formatDate(shown.endDate) : null },
+            { labelKey: 'contracts.detail.fields.noticePeriod', value: shown.noticePeriodValue && shown.noticePeriodUnit
+              ? `${shown.noticePeriodValue} ${L.contractUnit(shown.noticePeriodUnit)}` : null },
+          ]}
+          citations={contractCitations(mainExtraction?.evidence)}
+          toVerify={(mainExtraction?.uncertainties ?? []).map((u) => u.description)}
+          footer={buildFooter({
+            companyName: company?.legalName,
+            now: new Date(),
+            engine: mainExtraction?.model ?? null,
+            promptVersion: mainExtraction?.promptVersion ?? null,
+          })}
+        />
+      )}
     </>
   );
 }
@@ -828,10 +862,14 @@ function AddDocument(props: {
 // ---------------------------------------------------------------------------
 
 function fieldLabel(field: string, t: TFunction): string {
+  // ⚠️ La base è `CONTRACT_EVIDENCE_LABELS`, che il foglio di stampa usa per le
+  // citazioni: due mappe dello stesso campo divergono, e nel giorno in cui
+  // divergono la scheda e il foglio d'archivio chiamano la stessa clausola in
+  // due modi diversi. Qui restano solo le voci che il confronto ha in PIÙ,
+  // perché l'amendment confronta anche campi che non portano citazione.
   const map: Record<string, TKey> = {
+    ...CONTRACT_EVIDENCE_LABELS,
     counterparty_name: 'contracts.detail.fields.counterparty',
-    start_date: 'contracts.detail.fields.start',
-    end_date: 'contracts.detail.fields.end',
     end_date_kind: 'contracts.detail.fields.end',
     auto_renewal: 'contracts.detail.fields.autoRenewal',
     renewal_period_value: 'contracts.detail.fields.renewalPeriod',
@@ -841,11 +879,9 @@ function fieldLabel(field: string, t: TFunction): string {
     notice_anchor: 'contracts.detail.fields.noticeAnchor',
     minimum_term_value: 'contracts.detail.fields.minimumTerm',
     minimum_term_unit: 'contracts.detail.fields.minimumTerm',
-    cost_amount: 'contracts.detail.fields.cost',
     cost_currency: 'contracts.detail.fields.cost',
     cost_frequency: 'contracts.detail.fields.frequency',
     price_adjustment: 'contracts.detail.fields.priceAdjustment',
-    termination_method: 'contracts.detail.fields.terminationMethod',
   };
   const key = map[field];
   return key ? t(key) : field;

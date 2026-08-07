@@ -923,6 +923,14 @@ npm run test:subsidy         # Incentivi su DB: isolamento fra aziende anche chi
                              #   CASCATA — una risposta rendeva l'azienda indistruttibile finché
                              #   non sono arrivate la 0033 e la 0034. Dalla sezione 11 esegue anche
                              #   IL MOTORE VERO (runMatching) (richiede 0032+0033+0034)
+npm run test:print-unit      # Stampa offline: che cosa il foglio NON deve avere (navigazione,
+                             #   comandi, scorrimento) e che cosa deve avere (citazioni per
+                             #   esteso). Il controllo che conta è sull'ORDINE delle media
+                             #   query: `@media print` deve venire DOPO il tema scuro, o si
+                             #   stampa un foglio nero. Controprove eseguite: spostando il
+                             #   blocco, togliendo `.sidebar`, lasciando un token scuro,
+                             #   rimettendo un `overflow:hidden` e troncando le citazioni,
+                             #   falliscono 2, 1, 2, 1 e 2 controlli (60 casi)
 npm run test:audit-unit      # Registro attività offline: gli enum scritti due volte in SQL e in
                              #   TypeScript, ogni azione e ogni campo con la sua etichetta nelle
                              #   tre lingue, e soprattutto LA SANIFICAZIONE — quali colonne i
@@ -983,6 +991,14 @@ npm run i18n:typography -- --self-test
 npm run test:operations # ogni Edge Function ha un invocante? ogni scheduler è inventariato,
                         #   dichiara il timeout di pg_net e punta a una funzione che esiste?
 npm run test:operations -- --self-test  # verifica che il CONTROLLO sappia fallire (11 casi)
+npm run status               # LO STATO, MISURATO ADESSO, in un file solo (`stato-attuale.md`):
+                             #   quanto viene usato ogni modulo (conteggi dalla produzione),
+                             #   migrazioni sul disco e applicate, bundle servito dal dominio,
+                             #   commit non uniti e PR aperte. ⚠️ Non è un cruscotto e non si
+                             #   aggiorna da sé: ogni foglio porta l'istante della misura. Una
+                             #   misura non presa è marcata «non misurato» e il comando esce 3,
+                             #   mai uno zero di ripiego. Il file è in .gitignore: porta numeri
+                             #   della produzione e si condivide deliberatamente
 npm run verify:deploy   # l'altra metà: quegli scheduler esistono DAVVERO nel progetto?
                         #   Richiede SUPABASE_ACCESS_TOKEN e FALLISCE se non ce l'ha:
                         #   «non ho potuto verificare» non è un verde. Fuori da test:all
