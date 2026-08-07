@@ -15,8 +15,34 @@
 > credito Anthropic, i messaggi dell'Inbox fermi, la coda di revisione del
 > catalogo, e che cosa vede davvero chi accende i promemoria via email. Le
 > misure stanno qui sotto, e **due numeri di questa pagina erano invecchiati**.
+>
+> **Rimisurato il 2026-08-07** sui moduli che le modifiche dalla 0036 in poi
+> hanno toccato, eseguendo le suite e interrogando la produzione: migrazioni
+> **0001–0039, locale == remoto** (`supabase migration list --linked`);
+> `test:assistant` **45/45** — il rosso aperto della 0036 è chiuso (§sotto) —
+> `test:subsidy` **91/91**, `test:contracts` **69/69**, `test:audit` **41/41**,
+> `subsidy:health` **exit 0 «niente in sospeso»**; credito Anthropic **ancora
+> esaurito** (HTTP 400, misurato con una chiamata vera); bundle servito ancora
+> `index-CkesEDA3.js`. In produzione: 148 messaggi Inbox tutti `done`,
+> `audit_logs` a 0 righe, `contract_extractions` a **0** (§Contratti).
 
-## ⛔ IL CREDITO ANTHROPIC È DI NUOVO ESAURITO (rimisurato il 2026-08-03, 00:5x locali)
+## ⛔ IL CREDITO ANTHROPIC RESTA ESAURITO (rimisurato da ultimo il 2026-08-07)
+
+⚠️ **Rimisurato il 2026-08-07**, prima di provare a leggere contratti veri:
+
+```
+POST /v1/messages · model=claude-haiku-4-5 · max_tokens=1
+→ HTTP 400 · invalid_request_error
+  «Your credit balance is too low to access the Anthropic API.»
+```
+
+L'ultima riga di `ai_request_log` resta quella del **2026-08-02, 18:15 UTC**
+(`inbox_classification`, esito `ok`): da allora nessun percorso AI è partito.
+Non è inattività sospetta, è coerenza: la casella è a zero `failed`, quindi il
+ritentativo ogni quindici minuti non ha nulla da ripescare e non spende
+chiamate. Le 21 righe `pending` (tutte del 26–30 luglio) restano invariate.
+
+### La misura del 2026-08-03, conservata
 
 ⚠️ **Terza volta in tre giorni.** Ricaricato il 2026-08-01, si è esaurito di
 nuovo durante la lettura dei primi contratti veri. Rimisurato chiamando l'API:
@@ -120,10 +146,10 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). ⚠️⚠️ **Il 2026-08-03 si è scoperto che le email non sarebbero potute partire NEMMENO con i secret impostati**: `composeEmail` non metteva il destinatario nel messaggio, e ogni promemoria sarebbe uscito verso `to: [null]` (§sotto). Corretto e coperto da 25 controlli nuovi. Restano due cose, entrambe **gesti dell'utente**: i due secret del provider email non sono impostati, e **nessuna connessione OAuth reale è mai stata stabilita** — misurato il 2026-08-03, `POST /calendar-oauth/providers` risponde `{"providers":[],"emailConfigured":false}`. Quindi «servizio reale» resta **no** |
 | Automazioni | `/automazioni` | sì | sì | sì | sì | sì | sì | — | nessuna approvazione umana: solo azioni a rischio basso, e per questo non esiste nessuna azione che ne avrebbe bisogno. Le esecuzioni che non corrispondono non lasciano traccia |
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
-| Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ✅ **Letti tre contratti veri il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ⚠️ Le correzioni sono nel repository e **NON sono deployate**: `contract-worker` in produzione porta ancora il codice vecchio |
+| Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ✅ **Letti tre contratti veri il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ⚠️ Le correzioni sono nel repository e **NON sono deployate**: `contract-worker` in produzione porta ancora il codice vecchio. ⚠️ **Al 2026-08-07 la rilettura dal capo alla coda resta non eseguibile** (credito esaurito, misurato): il 88,6 % resta la misura di PRIMA della correzione delle date. In produzione `contract_extractions` è a **0 righe**: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il 2026-08-07 le prove che non spendono credito: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
-| Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). ⚠️ **Questa riga ha detto «7 revisioni del catalogo in attesa di una persona» fino al 2026-08-06, ed era vero fino al 2026-08-05**: rimisurato interrogando la produzione, la coda è a **ZERO in attesa — 7 `ignored`**, chiuse tutte alle 22:45:42 del 2026-08-05 **dal sistema e non da una persona** (`reviewed_by` nullo su tutte e sette). Non erano un cambiamento della fonte ma la **prima lettura riuscita**, e il difetto è corretto in `diff.ts` (commit `ac0c65e`). ⚠️⚠️ **Una coda vuota NON significa catalogo verificato**: `last_checked_at` è fermo al **2026-07-25** per tutti e sette i programmi — nessuno ha ancora confrontato il catalogo con la fonte, ed è la cosa che quella riga rischiava di far credere fatta |
+| Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). ⚠️ **Questa riga ha detto «7 revisioni del catalogo in attesa di una persona» fino al 2026-08-06, ed era vero fino al 2026-08-05**: rimisurato interrogando la produzione, la coda è a **ZERO in attesa — 7 `ignored`**, chiuse tutte alle 22:45:42 del 2026-08-05 **dal sistema e non da una persona** (`reviewed_by` nullo su tutte e sette). Non erano un cambiamento della fonte ma la **prima lettura riuscita**, e il difetto è corretto in `diff.ts` (commit `ac0c65e`). ⚠️⚠️ **Una coda vuota NON significa catalogo verificato**: `last_checked_at` è fermo al **2026-07-25** per tutti e sette i programmi — nessuno ha ancora confrontato il catalogo con la fonte, ed è la cosa che quella riga rischiava di far credere fatta. Rimisurato il 2026-08-07: `test:subsidy` **91/91** sul database vero, `subsidy:health` **exit 0 «niente in sospeso»**, `last_checked_at` ancora al 2026-07-25 |
 
 ## Registro attività (0039) — applicato e provato sul database vero, NON deployato
 
@@ -175,6 +201,13 @@ erano **due** e non una — anche la membership che `create_company_with_owner`
 crea all'onboarding è un ingresso in azienda, e il trigger la registra. È la
 conferma pratica del motivo per cui il registro sta nei trigger e non in un
 servizio: copre anche i percorsi a cui nessuno ha pensato.
+
+Riconfermato il **2026-08-07**: `test:audit` di nuovo **41/41** sul database
+vero, bundle servito ancora `index-CkesEDA3.js` (il deploy continua a mancare),
+e `audit_logs` in produzione a **0 righe** — i trigger sono in esercizio dal
+2026-08-06 e nessuna attività reale è avvenuta da allora; le righe scritte
+dalle suite se ne vanno con la cascata delle loro aziende usa-e-getta, che è il
+comportamento provato dalla sezione 7 della suite.
 
 ## I messaggi fermi dell'Inbox — da 11 su 124 a ZERO su 148
 
@@ -500,6 +533,19 @@ database reale e il modello vivo.
 creata e cancellata, cancellazione verificata. Produzione riletta a fine giro —
 2 aziende, 19 documenti, 0 aziende orfane, 0 verbali contrattuali.
 
+⚠️ **Rimisurato il 2026-08-07 — che cosa si può eseguire oggi, e che cosa no.**
+Il credito è ancora esaurito (misura in cima al documento), quindi la rilettura
+dal capo alla coda — quella che darebbe il tasso DOPO la correzione delle date —
+resta non eseguibile: il ~77/79 resta una previsione, non una misura. Ciò che
+non spende credito è stato rieseguito: `eval:contracts --self-test` **8/8** (il
+metro, senza rete), `test:contracts` **69/69** sul database vero. E una cosa va
+detta con la stessa voce del tasso: `contract_extractions` in produzione è a
+**0 righe**. Il contratto caricato da un'azienda vera non è mai stato letto —
+il worker deployato porta il codice vecchio e il credito manca — e le
+esecuzioni dell'eval non lasciano righe, perché l'azienda tecnica se ne va con
+tutto ciò che possiede. «Il modulo ha letto tre contratti» e «il modulo non ha
+mai letto il contratto di un cliente» sono entrambe vere.
+
 ## ✅ I DUE CONTROLLI CHE NON SI CONTROLLAVANO — chiusi il 2026-08-03
 
 **`docs:check` dava un verde falso da `~/swiss-ai-suite-app`.** Il README della
@@ -568,6 +614,12 @@ manuali e si rifiutano di girare contro `127.0.0.1`.
 | `subsidy:health` | **exit 0** | 7 programmi, tutti `verified` e attivi, contenuti tradotti de+fr 7/7, **0 errori di integrità**, **0 da ricontrollare** |
 | `test:functions` | **12/12** | `generate-reply` e `interpret-project` **deployate**: 405, 401, 400, **403 cross-tenant**, 422, e il **429** del limite per azienda — tutti respinti prima della chiamata al modello, quindi senza spendere credito |
 
+✅ **Tutte e tre rieseguite il 2026-08-07** (il gruppo `production` gira dentro
+`npm run test:all`, che oggi comprende anche lui): `check:auth` **4/4** contro
+`https://app.ai-swisse.com`, `subsidy:health` **exit 0** — ma la frase è
+cambiata, «niente in sospeso», e il perché sta nella sezione qui sotto —
+`test:functions` **12/12**, compresi i due 429 del limite per azienda.
+
 ⚠️ **`check:auth` senza argomento verifica `http://localhost:5174`.** Il primo
 lancio è passato dicendo «i link porteranno a http://localhost:5174» — verde su
 una domanda diversa da quella che conta. Il risultato scritto qui sopra è della
@@ -584,27 +636,43 @@ faceva esattamente ciò che dichiarava, freschezza e integrità — era un difet
 di **copertura**, che è peggio, perché chi legge l'esito non ha modo di sapere
 che cosa l'esito non guarda.
 
-Le sette ci sono ancora, e sono tutte della stessa forma: `change_type =
-program_metadata`, `risk_level = low`, una per ciascuno dei 7 programmi, tutte
-del 2026-07-30, tutte con la stessa nota — *«Il contenuto della fonte è cambiato
-(1 campi normalizzati diversi)»*. Non sono un arretrato di lavoro: sono sette
-volte la stessa domanda, «la fonte ufficiale è cambiata: quel che diciamo è
-ancora vero?», che nessun calcolo può chiudere.
+Le sette erano tutte della stessa forma: `change_type = program_metadata`,
+`risk_level = low`, una per ciascuno dei 7 programmi, tutte del 2026-07-30,
+tutte con la stessa nota — *«Il contenuto della fonte è cambiato (1 campi
+normalizzati diversi)»*. Sembravano sette volte la stessa domanda, «la fonte
+ufficiale è cambiata: quel che diciamo è ancora vero?» — e **non lo erano**:
+`previousHash` nullo su tutte e sette, nessun termine di paragone. Non si era
+mossa la fonte, aveva cominciato a funzionare il nostro lettore. **Chiuse il
+2026-08-05 come `ignored` dal sistema** (`reviewed_by` nullo: nessuna persona ha
+deciso, e `accepted` avrebbe scritto il falso — «una persona ha confrontato»).
+Il difetto che le emetteva è corretto in `diff.ts` (dettaglio nella riga degli
+Incentivi).
 
-Che cosa stampa adesso:
+E dal 2026-08-05 **il codice d'uscita distingue tre stati** invece di lasciare
+la coda sotto lo zero: **0** = niente in sospeso · **1** = catalogo valido ma
+c'è lavoro per una persona · **2** = errori di integrità. Fino ad allora usciva
+0 anche con sette revisioni in attesa, e sono rimaste ferme sei giorni sotto la
+parola «verde»: nominare non basta, si legge il codice d'uscita.
+
+Che cosa stampa oggi (rieseguito il **2026-08-07**):
 
 ```
-  Revisioni in attesa di una persona: 7 (la più vecchia da 2g, soglie: 30g · 25 in coda)
+  Programmi: 7  (verified 7 · recheck 0 · demo 0)
+  Attivi: 7/7
+  Concedibili: 6/7  (1 sospesi)
+  Contenuti tradotti (de+fr): 7/7
+  Errori di integrità: 0
+  Da ricontrollare (freschezza): 0
+  Revisioni in attesa di una persona: nessuna
 
-— In attesa di una persona —
-  7 revisioni del catalogo in stato «pending», la più vecchia da 2 giorni.
-  Nessun controllo automatico può chiuderle: contengono un giudizio, non un calcolo.
-
-Esito: catalogo valido e aggiornato · 7 REVISIONI IN ATTESA DI UNA PERSONA (exit 0)
+Esito: catalogo valido e aggiornato, niente in sospeso (exit 0)
 ```
 
-**La riga di esito non può più dire «catalogo valido e aggiornato» e basta**
-mentre qualcosa aspetta: è il vincolo, ed è dove stava la bugia.
+⚠️ **E questo zero va letto per ciò che è**: la coda è vuota, non «il catalogo è
+stato ricontrollato». `last_checked_at` è fermo al **2026-07-25** su tutti e
+sette i programmi — nessuna persona ha ancora confrontato le fonti con ciò che
+pubblichiamo. La freschezza non lo segnala perché la soglia dei 180 giorni è
+lontana, non perché il confronto sia avvenuto.
 
 **Le soglie oltre le quali diventa un errore di integrità (exit 2), e perché.**
 Una revisione in coda non è un errore — il dato è valido, è la sua conferma che
@@ -622,7 +690,7 @@ Entrambe si spostano da riga di comando (`--review-stale-days=`,
 casi con `npm run subsidy:health:self-test`, che gira dentro `test:unit`.
 
 Segnalato dalla suite stessa, e legittimo: **`ti-lrilocc` è SOSPESO** — attivo
-ma non concedibile, stato verificato 6 giorni fa. Concedibili 6 su 7.
+ma non concedibile, stato verificato il 2026-07-25. Concedibili 6 su 7.
 
 ## `test:integration` — 71 asserzioni contro la funzione DEPLOYATA
 
@@ -738,7 +806,7 @@ le fonti e le frasi vietate, non che ogni risposta «suoni bene».
 dello script: zero aziende `Eval Assistant%`, zero utenti di prova, e le due
 aziende vere (Pilota Impianti Sagl, Rossi SA) intatte.
 
-## ⚠️ UN ROSSO APERTO: `test:assistant`, 3 asserzioni su 45
+## ✅ IL ROSSO DI `test:assistant` È CHIUSO — la 0036 è applicata, 45/45 il 2026-08-07
 
 Eseguendo `npm run test:all` la notte del 2026-08-01/02: `quality` **verde** (6
 passi), `unit` **verde** (19 passi), `production` **verde** (3 passi), `db`
@@ -759,17 +827,25 @@ di ancorare la risposta «non c'è nulla» — e il database ha ancora quello de
 0027. Le tre asserzioni sono scritte bene: stanno chiedendo una cosa che non
 c'è.
 
-⚠️ **Non è stata applicata di proposito.** Applicare una migrazione cambia la
-produzione: è una decisione, non un passaggio di un lavoro, e `CLAUDE.md` dice
-che si chiede. Finché non viene applicata, questo rosso resta — **dichiarato,
-non nascosto e non aggirato**: le tre controprove della stessa sezione (gruppo
-senza `source_ids`, fonte singola *e* gruppo insieme, dimensione negativa) sono
-verdi, quindi il vincolo vecchio funziona ancora come deve.
+⚠️ **Non è stata applicata di proposito**, allora: applicare una migrazione
+cambia la produzione, è una decisione, non un passaggio di un lavoro, e finché
+la decisione non c'era il rosso è rimasto **dichiarato, non nascosto e non
+aggirato**. La decisione poi c'è stata: la produzione è a **0001–0039**
+(riletto il 2026-08-07 con `supabase migration list --linked`: 39 su 39,
+locale == remoto).
+
+✅ **Suite rieseguita il 2026-08-07: 45/45.** Le tre asserzioni che erano rosse
+sono verdi — il gruppo vuoto si scrive, rileggendolo la dimensione è ZERO e non
+NULL, l'elenco degli identificativi è vuoto e non assente — e le tre controprove
+restano verdi anch'esse: un gruppo senza `source_ids` resta vietato, fonte
+singola *e* gruppo insieme restano vietati, una dimensione negativa resta
+vietata. Il vincolo nuovo permette ciò che doveva permettere senza smettere di
+vietare ciò che vietava.
 
 ## Come si rimisura questa tabella
 
 ```bash
-npm run test:all         # quality + unit + db
+npm run test:all         # quality + unit + db + production (`production` è dentro di proposito: in locale `.env.test` punta al progetto reale)
 npm run verify:deploy    # scheduler ed Edge Function nel progetto reale (serve il token)
 ```
 
