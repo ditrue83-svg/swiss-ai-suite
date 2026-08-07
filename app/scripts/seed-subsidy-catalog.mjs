@@ -439,7 +439,17 @@ if (broken.length) {
   process.exit(2);
 }
 
-if (!WRITE) { console.log('\n(dry-run — rilancia con --write per scrivere sul DB)\n'); process.exit(0); }
+// ⚠️ USCITA 3, NON ZERO. Il dry-run è la modalità PREDEFINITA: `npm run
+// subsidy:seed` non scrive niente, e fino al 2026-08-01 usciva ZERO. La CI ci
+// è già cascata una volta — i due seed giravano senza `--write`, il passo
+// risultava superato dopo non aver scritto nulla, e a diventare rossa era la
+// migrazione dopo, con una chiave esterna che sembrava un difetto dello schema.
+// Un no-op che esce 0 è un fallback silenzioso: 3 significa «non eseguito»
+// in tutto questo repository, e distingue «non ho scritto» da «ho scritto bene».
+if (!WRITE) {
+  console.log('\n(dry-run: NON è stato scritto niente — rilancia con --write per scrivere sul DB)\n');
+  process.exit(3);
+}
 
 let errors = 0;
 const fail = (what, e) => { errors++; console.log(`  ✗ ${what}: ${e?.message ?? e}`); };

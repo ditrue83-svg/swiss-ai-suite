@@ -160,6 +160,16 @@ async function main() {
   }
 
   console.log(`\n${pass} passati, ${fail} falliti${skipped ? `, ${skipped} saltati` : ''}\n`);
+  // ⚠️ UN CONTROLLO SALTATO NON È UN CONTROLLO PASSATO, e qui valeva la stessa
+  // trappola del runner delle suite: `process.exit(fail ? 1 : 0)` ignorava
+  // `skipped`, quindi se la pre-popolazione del log fosse fallita le due
+  // asserzioni sul 429 sarebbero sparite e questa suite avrebbe stampato
+  // «10 passati, 0 falliti, 1 saltati» uscendo ZERO. In `product-status.md`
+  // sarebbe finito «test:functions 12/12» per una misura da 10.
+  if (skipped) {
+    console.error(`${R}Non eseguito:${X} ${skipped} controlli sono stati saltati.`);
+    console.error(`${DIM}  Le asserzioni saltate non sono passate: non sono state provate.${X}\n`);
+  }
 }
 
 async function cleanup() {
@@ -169,4 +179,8 @@ async function cleanup() {
 }
 
 main().catch((e) => { console.error('\nErrore inatteso:', e?.message ?? e); fail++; })
-  .finally(async () => { await cleanup(); process.exit(fail ? 1 : 0); });
+  // 0 = provato tutto · 1 = qualcosa è ROSSO · 3 = niente di rosso, ma
+  // qualcosa NON È STATO PROVATO. È la stessa convenzione del runner delle
+  // suite: distinguere «rotto» da «non misurato» è ciò che impedisce di
+  // scrivere il secondo come se fosse il primo.
+  .finally(async () => { await cleanup(); process.exit(fail ? 1 : skipped ? 3 : 0); });

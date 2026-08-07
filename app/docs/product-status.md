@@ -10,12 +10,46 @@
 > leggendo il bundle servito da `app.ai-swisse.com`. Nessuna riga di questa
 > tabella è dedotta dal codice: dove non ho potuto verificare, la colonna dice
 > **no**, non «probabilmente».
+>
+> **Rimisurato di nuovo la notte del 2026-08-01/02** su quattro punti: il
+> credito Anthropic, i messaggi dell'Inbox fermi, la coda di revisione del
+> catalogo, e che cosa vede davvero chi accende i promemoria via email. Le
+> misure stanno qui sotto, e **due numeri di questa pagina erano invecchiati**.
 
-## ✅ IL CREDITO ANTHROPIC È STATO RIPRISTINATO (riverificato il 2026-07-31, la sera)
+## ⛔ IL CREDITO ANTHROPIC È DI NUOVO ESAURITO (misurato il 2026-08-01, 21:44 UTC)
 
-Questa sezione diceva il contrario fino a poche ore fa, e **la riga sbagliata è
-sopravvissuta al ripristino**: il credito era stato ricaricato, il documento no.
+⚠️ **Questa sezione ha detto per un giorno il contrario, ed era vero quando è
+stata scritta.** Il credito era stato ripristinato la sera del 2026-07-31 — la
+misura qui sotto lo conferma — e si è esaurito di nuovo il **2026-08-01 verso le
+11:00 UTC**. È la seconda volta in due giorni: **non è un incidente, è il modo
+in cui questo prodotto funziona finché il credito si ricarica a mano.**
+
 Rimisurato chiamando l'API vera con la chiave di `.env.test`:
+
+```
+POST /v1/messages · model=claude-opus-4-8 · max_tokens=16
+→ HTTP 400 · invalid_request_error
+  «Your credit balance is too low to access the Anthropic API.»
+```
+
+L'ora dell'esaurimento non è dedotta: sta in `ai_request_log`, dove la prima
+richiesta caduta per credito è delle **11:00:03 UTC del 2026-08-01**, e da
+allora ogni tentativo successivo ha lo stesso codice.
+
+**Sono quindi ferme, adesso**: analisi dei documenti (Admin AI), classificazione
+della posta in arrivo, estrazione delle Finanze, `contract-worker`,
+interpretazione di Subsidy AI, «Chiedi ad AI-Swisse». Le colonne «servizio
+reale» della tabella restano **sì** dove lo erano — dicono che quel percorso *è
+stato* eseguito contro il servizio vero, che è un fatto storico — ma **oggi
+nessuno di quei percorsi arriva in fondo**.
+
+⚠️ Ne discende una cosa che vale per tutto il resto di questo documento: **le
+suite a consumo (`test:integration`, `test:eval`) e il punto sui contratti non
+sono eseguibili finché il credito non torna.** Non sono verdi e non sono rosse:
+non si possono eseguire, e da oggi il runner lo dice uscendo non-zero invece di
+uscire 0 con la parola «verde» accanto.
+
+### La misura del 2026-07-31, conservata perché resta vera
 
 ```
 POST /v1/messages · model=claude-opus-5 · max_tokens=16
@@ -33,13 +67,11 @@ dà sempre «diverse», e usarlo come chiave dà sempre 401. Il 2026-07-31 quest
 prodotto la diagnosi di un guasto che non esisteva, per due giri interi. Il
 confronto corretto è `sha256(chiave) === row.value`, ed è quello eseguito qui.
 
-**Ripartono quindi**: analisi dei documenti (Admin AI), classificazione della
-posta in arrivo, estrazione delle Finanze, `contract-worker`, interpretazione di
-Subsidy AI, «Chiedi ad AI-Swisse».
-
 ✅ **Le tre valutazioni AI sono state rieseguite** la sera del 2026-07-31, tutte
 verdi: `eval:assistant` **16/16**, `eval:admin` **35/35**, `eval:subsidy`
-**14/14**. Dettaglio e limiti nella sezione dedicata più sotto.
+**14/14**. Dettaglio e limiti nella sezione dedicata più sotto. ⚠️ Quella misura
+è del 31: **non è stata rifatta dopo il nuovo esaurimento**, e non può esserlo
+finché il credito non torna.
 
 ✅ **E anche `test:integration`**, la sera stessa: **71 asserzioni, 0 fallite**
 (`test:phase2` 36, `test:async` 17, `test:pipeline` 18). Tutte le suite a
@@ -68,16 +100,117 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 |---|---|---|---|---|---|---|---|---|---|
 | Admin AI | `/admin` | sì | sì | sì | sì | sì | sì | Anthropic | in modalità `ai` il testo del documento va all'API; in `deterministic` lo snapshot non è probatorio |
 | Subsidy AI | `/subsidy` | sì | sì | sì | sì | sì | sì | Anthropic | catalogo 1.0: 7 programmi (Confederazione + Ticino), contenuti solo in italiano; `subsidy.footnote` stampa asterischi markdown non resi |
-| Inbox | `/inbox` | sì | sì | sì | sì | sì | **no** | Google Gmail API | scope riservato: fuori dalla modalità Test Google impone la verifica CASA, quindi **un cliente reale non può collegare la propria casella**. Microsoft implementato e non configurato. 11 messaggi su 124 fermi in `failed` senza ritentativo |
+| Inbox | `/inbox` | sì | sì | sì | sì | sì | **no** | Google Gmail API | scope riservato: fuori dalla modalità Test Google impone la verifica CASA, quindi **un cliente reale non può collegare la propria casella**. Microsoft implementato e non configurato. ✅ **148 messaggi, TUTTI `done`, zero in `failed`** — rimisurato il 2026-08-05 interrogando la produzione. ⚠️ Questa riga ha detto «3 su 141 in `failed`» fino al 2026-08-05: era vero il 2026-08-01 e ha smesso di esserlo da sé, perché il ritentativo ha ripescato quei tre quando il credito è tornato. **Il meccanismo ha funzionato senza che nessuno lo toccasse**, ed è la prova che quella riga aspettava. Il numero qui si RIMISURA prima di unire una PR: `docs:check` confronta i documenti con il codice, non con il database, quindi su questa colonna non può aiutare (§sotto) |
 | Attività | `/attivita` | sì | — | sì | sì | — | sì | — | nessuna |
 | Documenti | `/documenti` | sì | — | sì | sì | — | sì | — | nessuna politica di conservazione delle analisi |
 | Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). Restano due cose: **nessuna email può partire** (`NOTIFICATION_EMAIL_API_KEY`/`_FROM` non configurati, `deliverEmails` esce subito) e **nessuna connessione OAuth reale è mai stata stabilita**, quindi la colonna «servizio reale» resta **no** |
 | Automazioni | `/automazioni` | sì | sì | sì | sì | sì | sì | — | nessuna approvazione umana: solo azioni a rischio basso, e per questo non esiste nessuna azione che ne avrebbe bisogno. Le esecuzioni che non corrispondono non lasciano traccia |
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
-| Contratti | `/contratti` | sì | sì | sì | sì | **no** | parziale | — | ⚠️ **il worker non ha mai prodotto un'estrazione su un contratto vero**: `contract_extractions` è a zero. Il prompt è allineato a un ragionamento, non a una risposta reale |
+| Contratti | `/contratti` | sì | sì | sì | sì | **no** | parziale | Anthropic | ⚠️ **il worker non ha mai prodotto un'estrazione su un contratto vero**: `contract_extractions` è **ancora a zero**, riverificato il 2026-08-01 (`contracts` ha 1 riga, estrazioni 0). Il prompt è allineato a un ragionamento, non a una risposta reale. ⚠️ Oggi la prova è bloccata **due volte**: manca un contratto reale, e manca il credito Anthropic da cui `contract-worker` dipende |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). 7 revisioni del catalogo in attesa di una persona |
+
+## I messaggi fermi dell'Inbox — da 11 su 124 a ZERO su 148
+
+Rimisurato interrogando il database la notte del **2026-08-01/02**, e di nuovo
+il **2026-08-05**. Ogni numero mai scritto in questa sezione ha smesso di
+descrivere qualcosa nel giro di giorni, e il perché è la parte utile: prima
+perché il ritentativo mancava e i messaggi restavano fermi, poi perché il
+ritentativo c'era e li ha ripresi da solo appena il credito è tornato.
+
+| Che cosa | 2026-07-31 | 2026-08-01, 23:44 | 2026-08-05 |
+|---|---|---|---|
+| Messaggi acquisiti | 124 | 141 | **148** |
+| In `failed` | 11 | 3 | **0** |
+| Tasso | 8,9 % | 2,1 % | **0 %** |
+| Codici distinti | non raggruppati | uno solo: `AI_CREDIT_EXHAUSTED` | **nessuno** |
+
+⚠️ **La terza colonna è stata aggiunta, non sostituita alla seconda.** Le due
+misure precedenti restano perché la storia di questa tabella È l'argomento: i
+tre `failed` del 01/08 si sono chiusi **da soli**, quando il credito è tornato,
+senza che nessuno intervenisse. È esattamente ciò che il ritentativo doveva fare
+e che fino al 2026-07-31 non faceva. Riscrivere le colonne vecchie avrebbe
+cancellato la prova insieme al problema.
+
+**I tre sono tutti dello stesso gruppo**, e la diagnosi è una sola:
+
+| `error_code` | N | Diagnosi | Ritentativo |
+|---|---|---|---|
+| `AI_CREDIT_EXHAUSTED` | 3 | **transitorio, d'ambiente** — l'ambiente era giù mentre si scriveva | ha senso, **c'è già**, ✅ e ha funzionato: al 2026-08-05 i tre sono classificati e la casella è a zero `failed` |
+
+Tutti e tre avevano `relevance` e `classified_at` a **null**: erano caduti in
+**classificazione**, non in analisi. Nessuno aveva un documento collegato,
+nessuno un'analisi. Due avevano solo corpo, uno due PDF in `pending`.
+✅ **Al 2026-08-05 sono classificati tutti e tre**, e nessuno ha dovuto toccarli.
+
+⚠️ **NON ho ritentato niente, ed è la risposta giusta, non una rinuncia.** Il
+credito è esaurito *in questo momento* (§sopra, misurato con una chiamata vera):
+un ritentativo in blocco cadrebbe sullo stesso errore per tutti e tre, e
+l'unica cosa che produrrebbe sarebbe tre righe in più in `ai_request_log`.
+
+⚠️⚠️ **E soprattutto: il ritentativo esiste già, è deployato, e sta girando.**
+`drainPendingClassifications` (in `_shared/email/sync.ts`, chiamata da
+`email-maintenance` v30, deployata il 2026-08-01 alle 08:42 UTC) ripesca i
+messaggi `failed` con `relevance is null` e un codice d'ambiente. La prova non è
+il codice: è `ai_request_log`, che mostra **un tentativo di classificazione ogni
+quindici minuti**, puntuale, dalle 11:00 in poi — 65 righe, tutte
+`AI_CREDIT_EXHAUSTED`, l'ultima alle 21:30:04.
+
+```
+21:30:03  inbox_classification  error  AI_CREDIT_EXHAUSTED  1234ms  claude-opus-4-8
+21:15:04  inbox_classification  error  AI_CREDIT_EXHAUSTED   250ms  claude-opus-4-8
+21:00:04  inbox_classification  error  AI_CREDIT_EXHAUSTED   299ms  claude-opus-4-8
+…
+```
+
+Ne segue una cosa che va detta chiaramente: **quando il credito tornerà, i tre
+messaggi si classificheranno da soli, senza che nessuno faccia niente.** Il ciclo
+prende un messaggio per esecuzione (il più recente) e si ferma al primo errore
+d'ambiente, perché se l'ambiente rifiuta uno rifiuterà anche gli altri.
+
+⚠️ **Il tetto di un ritentativo solo non è stato aggirato.** Vale per
+`INVALID_RESPONSE`, dove il secondo fallimento identico diventa `CLASSIFY_FAILED`
+e finisce lì. `AI_CREDIT_EXHAUSTED` non consuma il tentativo di proposito: non è
+il messaggio a essere sbagliato, ed è scritto in `classify.ts`
+(`codeAfterRetry`). Il costo del ciclo infinito è misurato: **zero token**, perché
+l'API rifiuta con 400 prima di far ragionare il modello, più una chiamata Gmail
+ogni quindici minuti.
+
+### E l'utente li vede? Sì — verificato, e non è stato toccato niente
+
+| Domanda | Risposta misurata |
+|---|---|
+| In quale filtro cadono | `attention_status = 'to_verify'` → **«Da verificare»** e «Tutte». Non spariscono |
+| Compaiono in «Da gestire» | no, e **è giusto**: quel filtro è `needs_attention`, che l'analisi non ha mai potuto assegnare |
+| Si vede che è andata male | sì: `ProcessingNote` mostra icona d'allarme + «fallito» nella lista |
+| E nel dettaglio | sì: al posto di «Cosa richiede attenzione» compare `inboxErrorMessage('AI_CREDIT_EXHAUSTED')` |
+| C'è «Analizza» | sì: `canAnalyze` esclude solo `analyzing` e `importing`, non `failed` |
+
+Il testo mostrato, nelle tre lingue, dice anche **di chi è il compito** e **che
+il messaggio verrà ripreso da solo** — cosa che oggi è letteralmente vera:
+
+> «Il servizio di lettura non ha credito disponibile: la comunicazione non è
+> stata esaminata. Aspettare non risolve — serve un intervento di chi amministra
+> l'applicazione. Il messaggio viene ripreso da solo appena il servizio torna
+> disponibile.»
+
+**Nessuna modifica all'interfaccia**: era già corretta.
+
+### Il tasso: 2,1 %, e non è strutturale
+
+Il 9 % di ieri **non era un tasso di guasto del prodotto**: era la fotografia di
+una finestra in cui il credito era finito e nessuno ripescava i caduti. Delle
+due cause, la seconda è stata corretta il 2026-08-01. Il 2,1 % di oggi ha una
+sola causa, esterna e nota, e **il numero atteso a credito ripristinato è zero**
+— non perché qualcuno li chiuderà a mano, ma perché il ciclo li riprenderà.
+
+⚠️ Ciò che **resta** strutturale è un'altra cosa, e più importante: finché il
+credito si ricarica a mano, **ogni sua interruzione produce una coda**. Il
+prodotto la dichiara bene, la riprende da solo e non perde niente — ma nel
+frattempo la posta amministrativa di quelle ore non è esaminata. È la
+dipendenza esterna più semplice da rimuovere di tutto il prodotto, e l'unica
+che oggi lo ferma davvero.
 
 ## Le integrazioni esterne
 
@@ -89,7 +222,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Google Pub/Sub | implementato, **non attivato per scelta** | un account di fatturazione. Il cron a 15 minuti lo sostituisce |
 | Microsoft Graph (posta) | implementato, non configurato | credenziali Entra. L'app lo **dichiara** invece di fallire |
 | Google/Microsoft Calendar | implementato, **mai provato contro le API vive** | `GOOGLE_CALENDAR_CLIENT_ID`/`SECRET` espliciti |
-| Provider email (Resend) | implementato, **non configurato** | `NOTIFICATION_EMAIL_API_KEY` e `NOTIFICATION_EMAIL_FROM`. Finché mancano, `deliverEmails` esce subito e **nessuna email può partire**: è una garanzia, non una svista |
+| Provider email (Resend) | implementato, **non configurato** — riverificato il 2026-08-01 | `NOTIFICATION_EMAIL_API_KEY` e `NOTIFICATION_EMAIL_FROM`: **assenti** dai 21 secret del progetto, controllati per NOME (il valore non è leggibile: la Management API restituisce lo SHA-256). Finché mancano, `deliverEmails` esce subito e **nessuna email può partire**: è una garanzia, non una svista. ✅ E la schermata lo **dichiara davvero** — non c'è nessun interruttore da accendere (§sotto) |
 
 ## ⚠️ `calendar-sync` era deployata con `verify_jwt=true`, e lo scheduler non poteva funzionare
 
@@ -132,6 +265,34 @@ provider non è configurato e `deliverEmails` esce subito — verificato, zero
 consegne accodate. E che un evento compaia su un calendario esterno: per quello
 servirebbe una connessione vera, che non c'è.
 
+### ✅ Che cosa vede chi va ad accendere i promemoria via email — misurato, non dedotto
+
+Il README affermava che la schermata dichiara le email «non disponibili» invece
+di mostrare un interruttore inerte. **È vero, e questa volta è stato provato
+contro la cosa reale** invece di essere riletto nel codice — è esattamente il
+genere di affermazione che in questo repository si è già rivelata falsa due
+volte.
+
+Tre misure indipendenti, il 2026-08-01:
+
+1. **I secret non ci sono.** `GET /v1/projects/<ref>/secrets` elenca 21 nomi:
+   `NOTIFICATION_EMAIL_API_KEY` e `NOTIFICATION_EMAIL_FROM` **non ci sono**.
+2. **La funzione deployata lo dice.** Chiamata `POST /calendar-oauth/providers`
+   con la sessione di un utente usa-e-getta (creato, usato e rimosso, rimozione
+   verificata): `HTTP 200`, `emailConfigured: false`. ⚠️ Questa misura serviva:
+   `calendar-oauth` è deployata in **v12 dal 2026-07-27**, prima del commit che
+   ha introdotto quel campo — dal codice locale non si poteva concludere niente,
+   e infatti il campo si è dovuto **chiedere alla funzione vera**.
+3. **La schermata segue.** `CalendarSettingsPage` mostra il `Toggle` solo se
+   `emailConfigured === true`; altrimenti stampa «Non disponibile» con la
+   ragione, e la ragione esiste nelle tre lingue.
+
+> «Su questa installazione non è configurato nessun servizio di invio email,
+> quindi le notifiche via email non partirebbero.»
+
+**Nessun interruttore inerte, in nessuna delle due schermate**: `emailEnabled`
+è scrivibile solo da lì. Nessuna modifica fatta — non ce n'era da fare.
+
 ⚠️ **`succeeded` in `cron.job_run_details` dice solo che `net.http_post` ha
 accodato la richiesta.** Da oggi `npm run verify:deploy` legge comunque l'esito
 dell'ultima esecuzione di ogni job — prima sapeva solo che il job *esisteva* —
@@ -158,16 +319,49 @@ riesecuzione esplicita:
 npm run check:auth -- https://app.ai-swisse.com
 ```
 
-⚠️⚠️ **`subsidy:health` verde NON vuol dire «niente in sospeso».** Esce 0 e
-scrive «catalogo valido e aggiornato», ma guarda freschezza e integrità — **non
-la coda di revisione**. Interrogando `subsidy_catalog_reviews`:
+✅ **`subsidy:health` ADESSO NOMINA LA CODA DI REVISIONE** (dal 2026-08-01).
+Fino a ieri usciva 0 scrivendo «catalogo valido e aggiornato» mentre sette
+schede aspettavano il giudizio di una persona: non era un difetto della suite —
+faceva esattamente ciò che dichiarava, freschezza e integrità — era un difetto
+di **copertura**, che è peggio, perché chi legge l'esito non ha modo di sapere
+che cosa l'esito non guarda.
+
+Le sette ci sono ancora, e sono tutte della stessa forma: `change_type =
+program_metadata`, `risk_level = low`, una per ciascuno dei 7 programmi, tutte
+del 2026-07-30, tutte con la stessa nota — *«Il contenuto della fonte è cambiato
+(1 campi normalizzati diversi)»*. Non sono un arretrato di lavoro: sono sette
+volte la stessa domanda, «la fonte ufficiale è cambiata: quel che diciamo è
+ancora vero?», che nessun calcolo può chiudere.
+
+Che cosa stampa adesso:
 
 ```
-status = pending → 7   (tutte del 2026-07-30)
+  Revisioni in attesa di una persona: 7 (la più vecchia da 2g, soglie: 30g · 25 in coda)
+
+— In attesa di una persona —
+  7 revisioni del catalogo in stato «pending», la più vecchia da 2 giorni.
+  Nessun controllo automatico può chiuderle: contengono un giudizio, non un calcolo.
+
+Esito: catalogo valido e aggiornato · 7 REVISIONI IN ATTESA DI UNA PERSONA (exit 0)
 ```
 
-Le **sette revisioni in attesa di una persona ci sono ancora**, e nessun
-controllo automatico le nomina. Chi legge solo l'esito della suite non le vede.
+**La riga di esito non può più dire «catalogo valido e aggiornato» e basta**
+mentre qualcosa aspetta: è il vincolo, ed è dove stava la bugia.
+
+**Le soglie oltre le quali diventa un errore di integrità (exit 2), e perché.**
+Una revisione in coda non è un errore — il dato è valido, è la sua conferma che
+manca — e farla diventare subito rossa insegnerebbe a ignorare quel rosso, che
+è il modo più sicuro di rendere inutile anche il rosso vero. Ma una coda che non
+si smaltisce mai smette di essere un arretrato:
+
+| Soglia | Valore | Perché |
+|---|---|---|
+| Età della più vecchia | **30 giorni** | il contenuto `verified` è fresco per 180 giorni, la sospensione per 120. Una revisione è una cosa diversa da entrambe: è il **segnale** che il contenuto potrebbe essere cambiato, e un segnale vale più di una scadenza. Trenta giorni significa «questa coda si guarda almeno una volta al mese». Le finestre di domanda svizzere si misurano in mesi: un mese di ritardo su un cambiamento a rischio basso non fa perdere un bando, due possono |
+| Quante in coda | **25** | il catalogo ha 7 programmi. Una coda tre volte più grande del catalogo non è lavoro arretrato: vuol dire che il rilevatore segnala ripetutamente le stesse cose e nessuno le legge |
+
+Entrambe si spostano da riga di comando (`--review-stale-days=`,
+`--max-pending-reviews=`), e il giudizio è una funzione pura provata su sette
+casi con `npm run subsidy:health:self-test`, che gira dentro `test:unit`.
 
 Segnalato dalla suite stessa, e legittimo: **`ti-lrilocc` è SOSPESO** — attivo
 ma non concedibile, stato verificato 6 giorni fa. Concedibili 6 su 7.
@@ -286,6 +480,34 @@ le fonti e le frasi vietate, non che ogni risposta «suoni bene».
 dello script: zero aziende `Eval Assistant%`, zero utenti di prova, e le due
 aziende vere (Pilota Impianti Sagl, Rossi SA) intatte.
 
+## ⚠️ UN ROSSO APERTO: `test:assistant`, 3 asserzioni su 45
+
+Eseguendo `npm run test:all` la notte del 2026-08-01/02: `quality` **verde** (6
+passi), `unit` **verde** (19 passi), `production` **verde** (3 passi), `db`
+**ROSSO** — una suite su undici, `test:assistant`, con 42 superate e 3 fallite.
+
+```
+✗ un gruppo VUOTO si può scrivere: «ho guardato e non c'era niente»
+   new row for relation "assistant_citations" violates check constraint
+   "assistant_citations_single_or_group"
+✗ rileggendola, la dimensione è ZERO e non NULL      letto: null
+✗ e l'elenco degli identificativi è VUOTO, non assente
+```
+
+**La causa è nota e non è un difetto del codice: la migrazione
+`0036_assistant_empty_group_citation.sql` non è applicata al database.** Il test
+pretende il vincolo nuovo — quello che permette di citare un insieme vuoto, cioè
+di ancorare la risposta «non c'è nulla» — e il database ha ancora quello della
+0027. Le tre asserzioni sono scritte bene: stanno chiedendo una cosa che non
+c'è.
+
+⚠️ **Non è stata applicata di proposito.** Applicare una migrazione cambia la
+produzione: è una decisione, non un passaggio di un lavoro, e `CLAUDE.md` dice
+che si chiede. Finché non viene applicata, questo rosso resta — **dichiarato,
+non nascosto e non aggirato**: le tre controprove della stessa sezione (gruppo
+senza `source_ids`, fonte singola *e* gruppo insieme, dimensione negativa) sono
+verdi, quindi il vincolo vecchio funziona ancora come deve.
+
 ## Come si rimisura questa tabella
 
 ```bash
@@ -298,26 +520,76 @@ spendono credito — con i flag, che non sono facoltativi:
 
 ```bash
 npm run test:production -- --no-skip          # check:auth · subsidy:health · test:functions
-npm run check:auth -- https://app.ai-swisse.com   # ⚠️ senza argomento verifica localhost
-npm run test:integration -- --allow-ai        # ⚠️ senza il flag esce 0 SENZA eseguire
+npm run check:auth -- https://app.ai-swisse.com   # il dominio va INDICATO (senza, exit 2)
+npm run test:integration -- --allow-ai        # senza il flag: exit 3, non 0
 npm run test:eval -- --allow-ai               # idem: eval assistant/admin/subsidy
 ```
 
-⚠️⚠️ **DUE MODI DI OTTENERE UN VERDE CHE NON VALE NIENTE, incontrati entrambi il
-2026-07-31 mentre si rimisurava questa tabella:**
+⚠️ **I flag non sono facoltativi, ma da oggi dimenticarli non produce più un
+verde**: `--allow-ai` mancante fa uscire **3** con `ESITO: NON ESEGUITO`, e
+`check:auth` senza dominio esce **2** senza verificare niente.
 
-1. **`test:integration` / `test:eval` senza `--allow-ai`** escono **0 in un
-   millisecondo** senza eseguire un solo passo, stampando
-   `ESITO: verde sui gruppi eseguiti · 1 SALTATI`. Il salto è dichiarato — ma
-   uscita zero e la parola «verde» sulla stessa riga bastano a far scrivere un
-   risultato inesistente. `--no-skip` trasforma il salto in un rosso.
-2. **`check:auth` senza argomento** verifica `http://localhost:5174` e passa,
-   dicendo che i link porteranno lì. È un verde su un'altra domanda: il dominio
-   che conta va passato a mano.
+## ✅ I DUE VERDI CHE NON VALEVANO NIENTE — chiusi il 2026-08-01
 
-⚠️ **Un esito verde non copre ciò che la suite non guarda.** `subsidy:health`
-esce 0 con «catalogo valido e aggiornato» mentre **sette revisioni aspettano una
-persona** in `subsidy_catalog_reviews`: nessun controllo automatico le nomina.
+Erano due, incontrati entrambi il 2026-07-31 **mentre si rimisurava questa
+tabella**, cioè nel momento in cui fanno più danno. Adesso nessuno dei due è più
+ottenibile, e ciascuno ha un `--self-test` che contiene il difetto vero: se
+qualcuno lo rimettesse a mano, il self-test diventerebbe rosso.
+
+| Difetto | Prima | Adesso |
+|---|---|---|
+| `test:integration` / `test:eval` senza `--allow-ai` | **exit 0** in un millisecondo, `ESITO: verde sui gruppi eseguiti · 1 SALTATI` | **exit 3**, `ESITO: NON ESEGUITO`, e la parola «verde» non compare |
+| `check:auth` senza argomento | verificava `http://localhost:5174` ed **exit 0** | **exit 2**, non verifica niente e spiega che il dominio va indicato |
+
+**La scelta sul runner, e perché non è l'altra.** Le strade erano due —
+invertire il default di `--allow-ai` (eseguire, e chiedere un flag per saltare)
+oppure far uscire non-zero su un salto. È stata scelta la seconda: invertire il
+default avrebbe reso `npm run test:all` una spesa involontaria, e la regola «la
+spesa si chiede, non si eredita» vale più di un flag da digitare. **Ciò che era
+rotto non era il salto — era il verde che lo accompagnava.**
+
+Tre codici invece di due, perché «rotto» e «non misurato» sono due cose:
+
+| Codice | Significa |
+|---|---|
+| 0 | eseguito tutto ciò che era stato chiesto, nessun gruppo rosso |
+| 1 | almeno un gruppo **ROSSO**: un test ha fallito |
+| 3 | nessun rosso, ma **qualcosa non è stato eseguito** |
+
+**La CI non è diventata rossa per la ragione sbagliata**, ed era il vincolo: i
+tre job che eseguono queste suite passano già `--no-skip` esplicito, e
+`npm run ci` esegue `quality`+`unit`, che non hanno requisiti e non possono
+essere saltati. `--no-skip` resta accettato — oggi è il default — perché un flag
+che sparisce trasforma un cancello in un errore di sintassi.
+
+⚠️ **`check:auth` ora ha bisogno che il dominio sia dichiarato**, quindi il
+gruppo `production` lo richiede: `VITE_PUBLIC_SITE_URL` in `.env.test`, che
+segreto non è. Senza, il gruppo non parte **e lo dice** (exit 3) invece di
+verificare la macchina di sviluppo. ⚠️ **Va aggiunto anche ai segreti della CI**:
+il job `production-suites` compone `.env.test` da lì, e senza quella riga
+salterebbe — rumorosamente, che è il punto, ma salterebbe.
+
+### Gli altri script della stessa classe, cercati apposta
+
+Passati in rassegna tutti i comandi di `package.json` con una domanda sola:
+*esiste un modo in cui esce 0 senza aver verificato ciò che il nome promette?*
+Trovati altri tre, tutti corretti:
+
+| Comando | Come usciva 0 senza provare niente | Adesso |
+|---|---|---|
+| `test:functions` | `process.exit(fail ? 1 : 0)` **ignorava `skipped`**: se la pre-popolazione del log fosse fallita, le due asserzioni sul 429 sparivano e la suite stampava «10 passati, 0 falliti, 1 saltati» uscendo 0. In questa tabella sarebbe finito «12/12» per una misura da 10 | exit **3** se qualcosa è stato saltato |
+| `subsidy:seed` | il dry-run è il **default**: senza `--write` non scriveva niente e usciva 0. La CI ci è già cascata — il passo risultava superato e a diventare rossa era la migrazione dopo | exit **3**, con «NON è stato scritto niente» |
+| `subsidy:seed-catalog` | idem | exit **3** |
+
+Passati e trovati **sani**: `verify:deploy` (senza token esce 1 dicendo «un'assenza
+di risposta non è un verde»), `test:subsidy` (senza una versione pubblicata esce 2
+invece di provare zero casi), `db:bundle --check`, `i18n:coverage`,
+`i18n:typography`, `docs:check` e `test:operations` (tutti con autoverifica che
+gira **prima** della scansione vera).
+
+⚠️ Segnalato e **non** corretto: `scripts/dev-user.mjs` esce 0 quando l'utente
+non esiste. Non è in `package.json`, non è un controllo e non entra in nessun
+riepilogo: è un attrezzo da riga di comando, e cambiarlo sarebbe rumore.
 
 ⚠️ **Nessuna riga va aggiornata da un commit message o da un ricordo.** Un
 numero di test scritto in un messaggio di commit descrive l'albero di quel
