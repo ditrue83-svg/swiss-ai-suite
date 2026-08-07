@@ -388,9 +388,29 @@ Deno.serve(async (req: Request) => {
             errorCode,
           }).catch(() => undefined);
         }
-        await auth.sbUser.rpc('finalize_ai_request', {
-          p_id: logId, p_status: 'error', p_error_code: errorCode, p_model: ASSISTANT_MODEL,
-        }).catch(() => undefined);
+        // ⚠️⚠️ NON `.catch()`, E LA RIGA PRECEDENTE LO FACEVA. `sb.rpc(…)` non
+        // restituisce una Promise ma un `PostgrestFilterBuilder`: ha `then` e
+        // **non ha `catch`** (verificato sul pacchetto vero il 2026-08-04,
+        // `typeof builder.catch === 'undefined'`). A runtime questa riga
+        // sollevava `TypeError: … .catch is not a function` — dentro il
+        // gestore d'errore, cioè nel punto in cui non si può più sbagliare.
+        //
+        // Conseguenza misurata leggendo il flusso: il verbale non veniva
+        // finalizzato E il `send({ type: 'error' })` qui sotto **non veniva
+        // mai eseguito**, perché l'eccezione saltava al `finally`. Al client
+        // arrivava il solo `done`: l'assistente si fermava senza dire perché,
+        // che è esattamente il fallback silenzioso che questo prodotto vieta.
+        //
+        // Nessuno se n'era accorto perché questo file non era compilato da
+        // nessuno, e perché il tipo di `rpc` prometteva un `Promise`.
+        try {
+          await auth.sbUser.rpc('finalize_ai_request', {
+            p_id: logId, p_status: 'error', p_error_code: errorCode, p_model: ASSISTANT_MODEL,
+          });
+        } catch {
+          // Finalizzare il verbale è un'ultima cortesia: se fallisce, l'errore
+          // da riferire resta quello vero, non questo.
+        }
         send({ type: 'error', code: 'UNKNOWN_ERROR', message: 'UNKNOWN_ERROR' });
       } finally {
         send({ type: 'done' });

@@ -6,9 +6,11 @@
   "description": "AI-Swisse — SaaS per PMI svizzere (Admin AI + Subsidy AI) su Supabase",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.functions.json --noEmit",
+    "typecheck:app": "tsc --noEmit",
+    "typecheck:functions": "tsc -p tsconfig.functions.json --noEmit",
     "test:phase1": "node --env-file=.env.test scripts/test-phase1.mjs",
     "test:phase2": "node --env-file=.env.test scripts/test-phase2.mjs",
     "test:async": "node --env-file=.env.test scripts/test-async.mjs",

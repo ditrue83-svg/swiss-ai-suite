@@ -326,13 +326,23 @@ Chi avesse impostato i due secret avrebbe visto una coda di consegne fallite con
 un codice opaco, e avrebbe cercato il guasto nella configurazione.
 
 **Perché nessuno l'aveva visto.** `tsconfig.json` include `src` e `scripts`:
-un file di `supabase/functions/` entra nel typecheck **solo se qualcosa là dentro
-lo importa**, e `notify.ts` non era importato da niente. Su 103 file `.ts` sotto
-`supabase/functions/`, **25 non sono typecheckati** — fra cui gli `index.ts` di
-tutte e 19 le Edge Function. Il difetto è comparso nell'istante in cui un test ha
-importato il modulo per eseguirlo: prima è diventato rosso il test, poi
-`npm run typecheck`. **Un percorso che nessun test esegue non è coperto nemmeno
-dal typecheck.**
+un file di `supabase/functions/` entrava nel typecheck **solo se qualcosa là
+dentro lo importava**, e `notify.ts` non era importato da niente. Su 103 file
+`.ts` sotto `supabase/functions/`, **25 non erano typecheckati** — fra cui gli
+`index.ts` di tutte e 19 le Edge Function. Il difetto è comparso nell'istante in
+cui un test ha importato il modulo per eseguirlo: prima è diventato rosso il
+test, poi `npm run typecheck`. **Un percorso che nessun test esegue non era
+coperto nemmeno dal typecheck.**
+
+✅ **LA CLASSE È CHIUSA dal 2026-08-04**, e questa riga si legge al passato per
+quella ragione: `tsconfig.functions.json` compila **103 file su 103**, per
+appartenenza alla cartella e non per raggiungibilità da un import — quindi un
+file nuovo è coperto dal momento in cui esiste, senza che nessuno se ne ricordi.
+`npm run typecheck` esegue **entrambi** i config, e `npm run build` passa da lì.
+Dettagli e limiti in [«Il typecheck delle Edge Function»](../README.md).
+⚠️ Che cosa questo controllo **non** vede, dichiarato: verifica la FORMA, non
+l'ambiente. Il runtime resta quello di Supabase, e la sola prova che una funzione
+GIRA è eseguirla.
 
 ✅ **Corretto**, e coperto da **25 controlli nuovi** (`test:calendar-unit` §12,
 da 188 a 213 asserzioni) che eseguono `deliverEmails` VERA contro un client

@@ -808,7 +808,12 @@ se `SUPABASE_URL` punta a `127.0.0.1`, invece di dare un verde vuoto.
 ```bash
 npm run dev             # server di sviluppo (5174)
 npm run build           # typecheck + build di produzione
-npm run typecheck       # solo type-check
+npm run typecheck       # type-check di TUTTO: app + Edge Function (i due tsconfig)
+npm run typecheck:app        # solo src/ e scripts/ (tsconfig.json)
+npm run typecheck:functions  # solo supabase/functions/ (tsconfig.functions.json).
+                             # ⚠️ Config separato perché le funzioni girano su Deno:
+                             # `"types": []` toglie i globali di Node, che là non
+                             # esistono. Vedi «Il typecheck delle Edge Function».
 npm run test:phase1     # integrazione Fase 1 su DB reale (26 test)
 npm run test:phase2     # immutabilità snapshot + sicurezza + analisi reale (36 test)
 npm run test:async      # processing asincrono reale, non simulato (17 test)
@@ -935,6 +940,41 @@ npm run docs:check -- --self-test      # verifica che il CONTROLLO sappia fallir
 
 Gli script che toccano il DB o l'AI richiedono `.env.test` (copia da `.env.test.example`).
 Creano dati reali e li rimuovono alla fine.
+
+### Il typecheck delle Edge Function
+
+Due `tsconfig`, non uno, e `npm run typecheck` li esegue entrambi.
+
+**Perché due.** `tsconfig.json` descrive i due mondi che esistono davvero nel
+repository — il browser (`src/`) e Node (`scripts/`) — e concede a entrambi i
+tipi di Node. Le Edge Function girano su **Deno**, dove `process`, `Buffer` e
+`require` non esistono: compilarle con i globali di Node avrebbe dichiarato
+valido del codice che a runtime non parte. `tsconfig.functions.json` ha quindi
+`"types": []` e la sola libreria standard del web, che è ciò che Deno offre.
+Misurato prima di scegliere: sotto `supabase/functions/` non c'è un solo
+`node:`, `process.env`, `Buffer` o `require(`.
+
+**Che cosa risolve.** Fino al 2026-08-04 un file di `supabase/functions/` entrava
+nel typecheck **solo se qualcosa in `src/` o `scripts/` lo importava**: 25 file su
+103 non erano compilati da nessuno, fra cui gli `index.ts` di **tutte e 19** le
+Edge Function. È così che è passato inosservato un `composeEmail` senza
+destinatario. Ora la copertura è per **appartenenza alla cartella**, non per
+raggiungibilità: un file nuovo è coperto dal momento in cui esiste.
+
+**I due file di dichiarazioni**, e perché stanno dove stanno:
+- `scripts/deno-modules.d.ts` spiega a TypeScript gli specificatori `jsr:` e
+  `npm:`. È incluso da **entrambi** i config — una seconda copia divergerebbe
+  senza che nulla diventi rosso.
+- `types/deno-globals.d.ts` dichiara `Deno.env.get` e `Deno.serve`, ed è incluso
+  **solo** dal config delle funzioni. Se lo vedesse anche quello principale,
+  scrivere `Deno.env.get(…)` in uno script Node passerebbe il typecheck e
+  fallirebbe a runtime. La superficie è minima di proposito: c'è dentro solo ciò
+  che le funzioni usano davvero.
+
+⚠️ **Che cosa NON prova**, dichiarato: verifica la **forma**, non l'ambiente. Il
+runtime resta quello di Supabase, la versione nello specificatore `npm:…@2` non
+è confrontata con quella di `node_modules`, e la sola prova che una funzione
+GIRA è eseguirla.
 
 ## Test — cosa coprono
 

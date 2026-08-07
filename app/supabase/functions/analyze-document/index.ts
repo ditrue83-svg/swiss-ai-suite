@@ -341,7 +341,19 @@ Deno.serve(async (req: Request) => {
 // funzione — mentre la trascrizione vera vive in `_shared/extract.ts`, condivisa
 // con la sincronizzazione dell'Inbox.
 async function ocrExtract(
-  sb: ReturnType<typeof createClient>,
+  // ⚠️ La forma MINIMA che serve, non il client intero. `ReturnType<typeof
+  // createClient>` stava qui e non combaciava con il client davvero passato:
+  // `createClient(url, key, opts)` produce `SupabaseClient<any, "public", …>`,
+  // mentre `createClient` senza argomenti di tipo ha altri parametri di
+  // default, e i due non sono assegnabili. Descrivere ciò che si usa — qui solo
+  // `storage.from(…).download(…)` — è insieme più vero e più corto.
+  sb: {
+    storage: {
+      from: (bucket: string) => {
+        download: (path: string) => Promise<{ data: Blob | null; error: unknown }>;
+      };
+    };
+  },
   anthropic: Anthropic,
   storagePath: string,
   mimeType: string | null,
