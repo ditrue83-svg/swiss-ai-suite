@@ -818,3 +818,121 @@
    resta quello del badge sopra. */
 .inc-crit-answered { display: flex; align-items: center; gap: var(--sp-2);
   margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--green); }
+
+/* ============================================================================
+   STAMPA — il foglio dei moduli, e la scheda che esiste solo su carta
+   ============================================================================
+   `app.css` decide il FOGLIO (token, cosa sparisce, cosa non si spezza).
+   Qui c'è ciò che riguarda i moduli e il blocco `.print-sheet`, che a schermo
+   non esiste: è la versione stampabile dell'analisi, con dentro le cose che a
+   video sono un COMANDO e su carta devono essere un TESTO.
+
+   ⚠️ La citazione è il caso che giustifica tutto il resto. A schermo «Mostra
+   nel documento» è un pulsante: porta l'occhio sulla frase. Su carta quel
+   pulsante non si può premere, e se la frase non è stampata la verificabilità
+   sparisce proprio nel supporto che finisce nel fascicolo — cioè dove serviva.
+   ========================================================================== */
+@media print {
+  /* Le griglie a due colonne diventano una: su A4 la seconda colonna finisce
+     schiacciata e le due si leggono peggio di una sola. */
+  .grid-2,
+  .crm-kv,
+  .kpi-grid {
+    display: block !important;
+  }
+
+  /* Le tabelle di confronto restano tabelle, ma senza scorrimento laterale. */
+  .ct-cmp,
+  table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    word-break: break-word;
+  }
+
+  /* Le schede dei moduli non si spezzano, come quelle generiche. */
+  .crm-sec,
+  .ax-header,
+  .ax-actions-card,
+  .inc-crit,
+  .ct-doc-row,
+  .ct-ms-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Il visualizzatore del documento e l'anteprima PDF non vanno su carta: sono
+     un modo di guardare il file, non il file. Chi archivia stampa l'ANALISI e
+     conserva il documento originale a parte. */
+  .doc-viewer,
+  .pdf-viewer,
+  .ax-doc {
+    display: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   La scheda di stampa. Fuori dalla stampa non esiste (`.print-only` in
+   app.css); qui c'è solo il suo aspetto quando esiste.
+   ------------------------------------------------------------------------- */
+@media print {
+  .print-sheet {
+    font-size: 10pt;
+    line-height: 1.45;
+    color: #000;
+  }
+
+  .print-sheet h2 {
+    font-size: 13pt;
+    margin: 0 0 2pt;
+  }
+
+  .print-sheet h3 {
+    font-size: 11pt;
+    margin: 10pt 0 3pt;
+    border-bottom: 1px solid #b0b0b0;
+    padding-bottom: 1pt;
+  }
+
+  /* Coppie etichetta/valore: l'etichetta in grigio scuro, il valore in nero.
+     Niente due colonne — su A4 una riga per fatto si legge meglio. */
+  .print-kv { margin: 0 0 2pt; }
+  .print-kv dt { display: inline; font-weight: 600; color: #333; }
+  .print-kv dt::after { content: ' '; }
+  .print-kv dd { display: inline; margin: 0; }
+
+  .print-list { margin: 2pt 0 0; padding-left: 14pt; }
+  .print-list li { margin-bottom: 2pt; }
+
+  /* ⚠️ LA CITAZIONE. Rientrata e con la barra a sinistra perché si veda a colpo
+     d'occhio che è testo DEL DOCUMENTO e non nostro: su carta non c'è nessun
+     colore a dirlo, e confondere le due cose in un fascicolo è grave. */
+  .print-quote {
+    margin: 2pt 0 4pt 10pt;
+    padding-left: 6pt;
+    border-left: 2px solid #6b6b6b;
+    font-style: italic;
+  }
+  /* I caporali li mette il CSS e non il JSX: scritti nel markup sarebbero testo
+     scritto a mano dentro un componente, che `i18n:coverage` vieta. In Svizzera
+     valgono per italiano, tedesco e francese, quindi non servono tre varianti. */
+  .print-quote::before { content: '\00AB\00A0'; }
+  .print-quote::after { content: '\00A0\00BB'; }
+  .print-quote-src { font-style: normal; color: #555; }
+
+  /* L'URL scritto per esteso accanto al collegamento: un link stampato senza
+     indirizzo è un vicolo cieco. */
+  .print-url { color: #333; word-break: break-all; }
+
+  /* Il piè di pagina si stacca e resta unito. */
+  .print-foot {
+    margin-top: 12pt;
+    padding-top: 4pt;
+    border-top: 1px solid #6b6b6b;
+    font-size: 8.5pt;
+    color: #333;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-foot p { margin: 0 0 1pt; }
+  .print-disclaimer { font-weight: 600; }
+}

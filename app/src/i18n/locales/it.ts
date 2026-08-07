@@ -923,6 +923,71 @@ export const it = {
     horizon90: 'Da 31 a 90 giorni',
     horizonBeyond: 'Oltre 90 giorni',
   },
+  // ---- Stampa / esportazione PDF ------------------------------------------
+  // Il foglio finisce nel fascicolo di un cliente: le parole sono quelle di un
+  // documento d'archivio, non quelle di un'interfaccia.
+  print: {
+    button: {
+      label: 'Stampa / Esporta PDF',
+      hint: 'Apre la stampa del browser: da lì si può anche salvare in PDF.',
+    },
+    facts: {
+      authority: 'Ente',
+    },
+
+    section: {
+      identification: 'Identificazione',
+      deadlineAndAmounts: 'Scadenza e importi',
+      actions: 'Azioni',
+      citations: 'Citazioni dal documento',
+      toVerify: 'Da verificare',
+      sources: 'Fonte ufficiale',
+    },
+    deadline: {
+      label: 'Scadenza',
+      explicit: 'data esplicita nel documento',
+      relative: 'termine relativo, calcolato',
+      toVerify: 'da verificare alla fonte',
+    },
+    amount: { label: 'Importo' },
+    amountType: {
+      due: 'dovuto',
+      fine: 'multa',
+      fee: 'tassa o emolumento',
+      contribution: 'contributo',
+      other: 'altro',
+    },
+    actions: {
+      requested: 'Richiesto nel documento',
+      suggested: 'Suggerimento di AI-Swisse',
+    },
+    citations: {
+      intro: 'Frasi riprese dal documento originale, riportate per esteso.',
+      page: 'pagina {n}',
+    },
+    cite: {
+      sender: 'Mittente',
+      deadline: 'Scadenza',
+      amount: 'Importo',
+      action: 'Azione',
+      requestedDocument: 'Documento richiesto',
+      reference: 'Riferimento',
+      legal: 'Riferimento normativo',
+      risk: 'Rischio',
+      contractField: 'Clausola',
+    },
+    footer: {
+      company: 'Azienda: {name}',
+      companyUnknown: 'non indicata',
+      printedAt: 'Stampato il {when}',
+      model: 'Analisi prodotta da: {model}',
+      modelUnknown: 'motore non dichiarato',
+      catalogEngine: 'catalogo degli incentivi',
+      version: 'versione {version}',
+      disclaimer: 'Questo documento è un ausilio alla lettura prodotto automaticamente. Non è consulenza legale, fiscale o fiduciaria e non sostituisce la verifica dei documenti originali.',
+    },
+  },
+
   // ---- Registro attività (0039) -------------------------------------------
   audit: {
     title: 'Registro attività',

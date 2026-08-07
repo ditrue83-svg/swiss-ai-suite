@@ -31,6 +31,10 @@ import {
   READINESS_KEY, RELEVANCE_KEY, TIMING_KEY, deadlineNotice, nextStep, plural,
   subsidyErrorKey, todayISO,
 } from './incentivesModel';
+import { useCompany } from '@/contexts/CompanyContext';
+import { PrintButton } from '@/components/ui/PrintButton';
+import { PrintSheet } from '@/features/print/PrintSheet';
+import { buildFooter } from '@/features/print/printModel';
 
 interface Props {
   companyId: string;
@@ -43,6 +47,7 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
   const t = useT();
   const L = useLabels();
   const { user } = useAuth();
+  const { activeCompany } = useCompany();
   const [criteria, setCriteria] = useState<IncentiveCriterion[]>([]);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,13 +157,19 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
           </div>
           {/* ⚠️ Nessun pulsante «candidati»: si apre una PRATICA, che è lavoro
               di preparazione. Il prodotto non invia domande. */}
-          {o.caseId ? (
-            <span className="badge badge-blue">{t('incentives.caseAlreadyOpen')}</span>
-          ) : (
-            <Button variant="primary" icon="fileSignature" loading={creating} onClick={() => void createCase()}>
-              {t('incentives.openCase')}
-            </Button>
-          )}
+          <div className="row-wrap">
+            {o.caseId ? (
+              <span className="badge badge-blue">{t('incentives.caseAlreadyOpen')}</span>
+            ) : (
+              <Button variant="primary" icon="fileSignature" loading={creating} onClick={() => void createCase()}>
+                {t('incentives.openCase')}
+              </Button>
+            )}
+            {/* Il verdetto di idoneità è la cosa che finisce nel fascicolo:
+                dice se un'impresa può accedere, in base a quale versione del
+                catalogo e a quale fonte. */}
+            <PrintButton />
+          </div>
         </div>
 
         <div className="inc-next mt-8">
@@ -301,6 +312,39 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
           </div>
         )}
       </div>
+
+      {/* ⚠️ LA VERSIONE PER LA CARTA. Qui il foglio non porta citazioni da un
+          documento — non ce n'è uno — ma la cosa che rende verificabile un
+          verdetto d'idoneità: la FONTE ufficiale con l'indirizzo per esteso, la
+          VERSIONE del catalogo su cui il giudizio è stato dato e la data
+          dell'ultima valutazione. Senza quelle tre, in un fascicolo resta
+          un'opinione. */}
+      <PrintSheet
+        title={o.programName}
+        facts={[
+          { labelKey: 'print.facts.authority', value: o.authority },
+          { labelKey: 'incentives.measures.relevance', value: t(RELEVANCE_KEY[o.relevanceLevel]) },
+          { labelKey: 'incentives.measures.eligibility', value: t(ELIGIBILITY_KEY[o.eligibilityStatus]) },
+          { labelKey: 'incentives.measures.completeness', value: t(COMPLETENESS_KEY[o.completeness]) },
+          { labelKey: 'incentives.measures.timing', value: t(TIMING_KEY[o.timing]) },
+          { labelKey: 'incentives.detail.version', value: t('incentives.detail.versionN', { n: o.versionNumber }) },
+        ]}
+        deadline={o.callDeadlineOn
+          ? {
+            value: formatDate(o.callDeadlineOn),
+            // Il bando dichiara la data ma raccomanda di controllarla alla
+            // fonte: su carta quel «verificare» deve restare attaccato alla data.
+            kindKey: notice.verifyOnSource ? 'print.deadline.toVerify' : null,
+          }
+          : null}
+        sources={[{ label: t('incentives.detail.officialPage'), url: o.officialSourceUrl }]}
+        footer={buildFooter({
+          companyName: activeCompany?.legalName,
+          now: new Date(),
+          engine: t('print.footer.catalogEngine'),
+          analysisVersion: o.versionNumber,
+        })}
+      />
     </>
   );
 }

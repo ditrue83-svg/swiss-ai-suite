@@ -911,6 +911,69 @@ export const fr: Dictionary = {
     horizon90: 'De 31 à 90 jours',
     horizonBeyond: 'Plus de 90 jours',
   },
+  // ---- Impression / export PDF ---------------------------------------------
+  print: {
+    button: {
+      label: 'Imprimer / exporter en PDF',
+      hint: 'Ouvre l’impression du navigateur, qui permet aussi d’enregistrer en PDF.',
+    },
+    facts: {
+      authority: 'Autorité',
+    },
+
+    section: {
+      identification: 'Identification',
+      deadlineAndAmounts: 'Échéance et montants',
+      actions: 'Actions',
+      citations: 'Citations du document',
+      toVerify: 'À vérifier',
+      sources: 'Source officielle',
+    },
+    deadline: {
+      label: 'Échéance',
+      explicit: 'date explicite dans le document',
+      relative: 'délai relatif, calculé',
+      toVerify: 'à vérifier à la source',
+    },
+    amount: { label: 'Montant' },
+    amountType: {
+      due: 'dû',
+      fine: 'amende',
+      fee: 'taxe ou émolument',
+      contribution: 'contribution',
+      other: 'autre',
+    },
+    actions: {
+      requested: 'Demandé dans le document',
+      suggested: 'Suggestion d’AI-Swisse',
+    },
+    citations: {
+      intro: 'Phrases reprises du document original, restituées en entier.',
+      page: 'page {n}',
+    },
+    cite: {
+      sender: 'Expéditeur',
+      deadline: 'Échéance',
+      amount: 'Montant',
+      action: 'Action',
+      requestedDocument: 'Document demandé',
+      reference: 'Référence',
+      legal: 'Référence légale',
+      risk: 'Risque',
+      contractField: 'Clause',
+    },
+    footer: {
+      company: 'Entreprise — {name}',
+      companyUnknown: 'non indiquée',
+      printedAt: 'Imprimé le {when}',
+      model: 'Analyse produite par — {model}',
+      modelUnknown: 'moteur non déclaré',
+      catalogEngine: 'catalogue des aides',
+      version: 'version {version}',
+      disclaimer: 'Ce document est une aide à la lecture produite automatiquement. Il ne constitue pas un conseil juridique, fiscal ou fiduciaire et ne remplace pas la vérification des documents originaux.',
+    },
+  },
+
   // ---- Journal d’activité (0039) ------------------------------------------
   audit: {
     title: 'Journal d’activité',

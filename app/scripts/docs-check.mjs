@@ -87,6 +87,11 @@ const FEATURES = {
   // amministratori, che indicizza i fatti degli altri moduli senza possederne
   // nessuno. Sta nel menu accanto a «Impostazioni azienda» per la stessa ragione.
   'audit':         { moduleName: null, why: 'registro trasversale, non un modulo: indicizza i fatti degli altri' },
+  // La stampa non è un modulo e non è una schermata: è una VISTA degli altri —
+  // la versione su carta dell'analisi, del contratto e del verdetto d'idoneità.
+  // Non ha una rotta propria e nessun cliente la sceglie: la si raggiunge dalle
+  // pagine che stampa.
+  'print':         { moduleName: null, why: 'vista di stampa degli altri moduli, non una schermata propria' },
 };
 
 /** Le Edge Function di servizio, che la struttura non elenca una per una. */

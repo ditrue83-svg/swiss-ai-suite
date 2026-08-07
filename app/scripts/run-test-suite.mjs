@@ -255,6 +255,7 @@ const GROUPS = {
       { script: 'test:assistant-unit' },
       { script: 'test:subsidy-unit' },
       { script: 'test:audit-unit' },
+      { script: 'test:print-unit' },
     ],
   },
   // ⚠️ QUESTO GRUPPO NON HA BISOGNO DEL PROGETTO DI PRODUZIONE, e la
