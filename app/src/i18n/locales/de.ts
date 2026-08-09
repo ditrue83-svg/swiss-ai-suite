@@ -821,6 +821,30 @@ export const de: Dictionary = {
 
   errors: {
     generic: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
+    // Die Ursache einer fehlgeschlagenen oder erneut eingereihten Lesung, je
+    // Worker-Code. Nur die URSACHE, ohne Folgen: ob erneut versucht wird, sagt
+    // der STATUS der Zeile, nicht dieses Etikett.
+    cause: {
+      NO_TEXT: 'das Dokument enthält keinen lesbaren Text',
+      SCANNED_NO_TEXT: 'Scan ohne lesbaren Text: erneutes Einlesen mit OCR nötig',
+      NOT_A_CONTRACT: 'das Dokument scheint kein Vertrag zu sein',
+      NOT_FINANCIAL: 'gelesen, aber kein Finanzdokument',
+      AI_REFUSED: 'das Modell hat keine lesbare Antwort geliefert',
+      AI_INVALID_OUTPUT: 'die Antwort des Modells entspricht nicht dem erwarteten Format',
+      AI_OUTPUT_TRUNCATED: 'Antwort des Modells durch die Längenbegrenzung abgeschnitten',
+      AI_UNAVAILABLE: 'KI-Dienst auf diesem Server nicht konfiguriert',
+      AI_NOT_CONFIGURED: 'KI-Dienst auf diesem Server nicht konfiguriert',
+      QUOTA_EXCEEDED: 'KI-Guthaben aufgebraucht',
+      PROVIDER_RATE_LIMITED: 'Anfragelimit des KI-Anbieters erreicht',
+      RATE_LIMITED: 'Anfragelimit des KI-Anbieters erreicht',
+      PROVIDER_ERROR: 'Fehler des KI-Anbieters',
+      TIME_BUDGET: 'Zeitbudget der Ausführung erschöpft',
+      INTERRUPTED: 'Lesung zur Hälfte unterbrochen',
+      STORAGE_MISSING: 'die Datei ist nicht mehr im Archiv',
+      SCHEMA_INVALID: 'die gelesenen Daten entsprechen nicht dem erwarteten Schema',
+      UNKNOWN: 'Ursache nicht erkannt',
+      UNKNOWN_ERROR: 'Ursache nicht erkannt',
+    },
     emailNotSent: 'Die E-Mail konnte nicht versendet werden. Es liegt nicht an Ihnen: Der Mailversand der Anwendung wurde abgelehnt. Versuchen Sie es später erneut und melden Sie es der Betreiberin oder dem Betreiber, falls das Problem bestehen bleibt.',
     badCredentials: 'E-Mail oder Passwort sind nicht korrekt.',
     emailNotConfirmed: 'Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden. Prüfen Sie Ihren Posteingang.',

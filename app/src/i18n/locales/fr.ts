@@ -820,6 +820,30 @@ export const fr: Dictionary = {
 
   errors: {
     generic: 'Une erreur est survenue. Veuillez réessayer.',
+    // La cause d’une lecture échouée ou remise en file, par code du worker.
+    // Uniquement la CAUSE, sans conséquences : si l’on réessaie, c’est le
+    // STATUT de la ligne qui le dit, pas cette étiquette.
+    cause: {
+      NO_TEXT: 'le document ne contient pas de texte lisible',
+      SCANNED_NO_TEXT: 'scan sans texte lisible : relecture par OCR nécessaire',
+      NOT_A_CONTRACT: 'le document ne semble pas être un contrat',
+      NOT_FINANCIAL: 'lu, mais ce n’est pas un document financier',
+      AI_REFUSED: 'le modèle n’a pas renvoyé de réponse lisible',
+      AI_INVALID_OUTPUT: 'la réponse du modèle ne respecte pas le format attendu',
+      AI_OUTPUT_TRUNCATED: 'réponse du modèle coupée par la limite de longueur',
+      AI_UNAVAILABLE: 'service d’IA non configuré sur ce serveur',
+      AI_NOT_CONFIGURED: 'service d’IA non configuré sur ce serveur',
+      QUOTA_EXCEEDED: 'crédit IA épuisé',
+      PROVIDER_RATE_LIMITED: 'limite de requêtes du fournisseur d’IA atteinte',
+      RATE_LIMITED: 'limite de requêtes du fournisseur d’IA atteinte',
+      PROVIDER_ERROR: 'erreur du fournisseur d’IA',
+      TIME_BUDGET: 'temps d’exécution épuisé',
+      INTERRUPTED: 'lecture interrompue en cours de route',
+      STORAGE_MISSING: 'le fichier n’est plus dans l’archive',
+      SCHEMA_INVALID: 'les données lues ne respectent pas le schéma attendu',
+      UNKNOWN: 'cause non reconnue',
+      UNKNOWN_ERROR: 'cause non reconnue',
+    },
     emailNotSent: 'L’e-mail n’a pas pu être envoyé. Cela ne vient pas de vous : le service de messagerie de l’application a refusé l’envoi. Réessayez plus tard et, si le problème persiste, signalez-le à la personne qui gère l’application.',
     badCredentials: 'E-mail ou mot de passe incorrect.',
     emailNotConfirmed: 'Vous devez confirmer votre e-mail avant de vous connecter. Vérifiez votre boîte de réception.',

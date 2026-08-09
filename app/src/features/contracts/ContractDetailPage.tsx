@@ -35,6 +35,7 @@ import { contractService } from '@/services/contractService';
 import { memberService } from '@/services/memberService';
 import { documentService } from '@/services/documentService';
 import { formatDate } from '@/lib/format';
+import { causaDelGuasto } from '@/lib/errorCause';
 import { toUserMessage } from '@/lib/errors';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
@@ -708,6 +709,13 @@ function DocumentRow(props: {
           {d.processingStatus === 'pending' && ` · ${t('contracts.documents.pending')}`}
           {d.processingStatus === 'processing' && ` · ${t('contracts.documents.processing')}`}
           {d.processingStatus === 'failed' && ` · ${t('contracts.documents.failed')}`}
+          {/* La CAUSA accanto allo stato: su `failed` spiega il fallimento, su
+              `pending` l'ultimo rilascio (es. credito esaurito). Al
+              completamento il worker azzera `error_code`, ma il cancello sullo
+              stato resta: un codice residuo su una riga completata sarebbe
+              rumore, non informazione. */}
+          {d.errorCode && d.processingStatus !== 'completed'
+            && ` — ${causaDelGuasto(d.errorCode, t)}`}
         </div>
       </div>
       <div className="row-wrap">

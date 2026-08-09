@@ -25,6 +25,7 @@ import { ErrorState, EmptyCta, SkeletonLine, SkeletonKpiGrid } from '@/component
 import { financeService } from '@/services/financeService';
 import { documentHubService } from '@/services/documentHubService';
 import { formatDate } from '@/lib/format';
+import { causaDelGuasto } from '@/lib/errorCause';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
@@ -682,6 +683,13 @@ function FinanceRow({
           <span className="badge badge-media">{t('finance.filters.flagged')}</span>
         )}
         <span className={badge.cls}>{badge.text}</span>
+        {/* La CAUSA sotto la pastiglia: su `failed` spiega il fallimento, su
+            una riga in coda l'ultimo rilascio (es. credito esaurito). Sugli
+            stati con verifica umana il codice residuo non si mostra: lì parla
+            la revisione, non il worker. */}
+        {item.errorCode && (state === 'failed' || state === 'processing') && (
+          <div className="muted-sm">{causaDelGuasto(item.errorCode, t)}</div>
+        )}
       </div>
     </div>
   );

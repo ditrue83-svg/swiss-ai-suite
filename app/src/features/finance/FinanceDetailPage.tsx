@@ -35,6 +35,7 @@ import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
 import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
 import { useMembers } from '@/features/tasks/useMembers';
 import { formatDate } from '@/lib/format';
+import { causaDelGuasto } from '@/lib/errorCause';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
@@ -322,6 +323,12 @@ export function FinanceDetailPage() {
         <div className="badge-row">
           <span className={stateBadgeClass(state)}>{stateBadgeText(state, t, L)}</span>
           {archived && <span className="badge badge-neutral">{t('finance.filters.archived')}</span>}
+          {/* La CAUSA accanto alla pastiglia, come nell'elenco: il codice del
+              worker tradotto se noto, grezzo se no (mai una categoria
+              inventata). */}
+          {item.errorCode && (state === 'failed' || state === 'processing') && (
+            <span className="muted-sm">{causaDelGuasto(item.errorCode, t)}</span>
+          )}
         </div>
       </div>
 
