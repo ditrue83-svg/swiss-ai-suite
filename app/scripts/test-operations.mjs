@@ -38,6 +38,13 @@
 //                   chiamerebbe periodicamente la NOSTRA produzione.
 //   7. DUPLICATI    due migrazioni non creano lo stesso job: quale definizione
 //                   sopravviva dipenderebbe dall'ordine di applicazione.
+//   8. TYPECHECK    ogni modulo PORTABILE di `supabase/functions/` è raggiunto
+//                   dal typecheck, cioè importato da qualcosa in `src/` o
+//                   `scripts/`. È la stessa domanda dell'invocante — «qualcuno
+//                   lo guarda?» — e la sua assenza ha lasciato per settimane un
+//                   `notify.ts` che mandava ogni promemoria a `to: [null]`.
+//                   I file che usano `Deno.` o `npm:` sono esenti PER
+//                   COSTRUZIONE; il debito noto sta in TYPECHECK_SCOPERTI.
 //
 // ⚠️ COSA QUESTO CONTROLLO NON PUÒ SAPERE, e non finge di sapere: se quei cron
 // esistano DAVVERO nel progetto Supabase. Un file non può interrogare un
@@ -115,6 +122,31 @@ export const INVOCANTI_ESTERNI = {
 
 /** Le cartelle di `supabase/functions/` che non sono funzioni deployabili. */
 const NON_FUNZIONI = new Set(['_shared']);
+
+// ---------------------------------------------------------------------------
+// IL DEBITO DEL TYPECHECK — i moduli PORTABILI che nessun file di `src/` o
+// `scripts/` importa, e che quindi il typecheck non guarda.
+//
+// ⚠️ Questa lista ha la stessa forma e la stessa ragione di `CRON_SOLO_A_MANO`:
+// tiene VISIBILE ciò che manca, invece di lasciarlo sembrare a posto. Una riga
+// qui è debito dichiarato; un modulo nuovo che non compare qui e che nessuno
+// importa fa FALLIRE il controllo — che è il punto.
+//
+// Come si toglie una riga: si importa il modulo da un test che lo ESEGUE. Non
+// basta importarlo per far contento il typechecker — un import senza esecuzione
+// copre le firme e non il comportamento, ed è metà del difetto delle email
+// (là la firma sbagliata c'era, ma nessuno guardava nemmeno quella).
+// ---------------------------------------------------------------------------
+export const TYPECHECK_SCOPERTI = {
+  '_shared/calendar/sync.ts':
+    'la sincronizzazione del calendario: 451 righe che nessun test esegue. '
+    + 'È lo stesso modulo che dovrà essere provato quando esisterà una '
+    + 'connessione OAuth reale — oggi non ne esiste nessuna (2026-08-03)',
+  '_shared/assistant/store.ts':
+    'lo store dell\'assistente: `test:assistant` lo esercita attraverso la '
+    + 'funzione DEPLOYATA via HTTP, non importandolo, quindi il typecheck non '
+    + 'lo vede (2026-08-03)',
+};
 
 // ---------------------------------------------------------------------------
 
@@ -396,6 +428,104 @@ function raccogli() {
   return { funzioni, dichiarati, invocate };
 }
 
+// ---------------------------------------------------------------------------
+// 8. TYPECHECK — un modulo che nessuno typechecka è dead code che compila
+//
+// ⚠️⚠️ PERCHÉ ESISTE, e la data conta: il 2026-08-03 si è scoperto che
+// `_shared/calendar/notify.ts` dichiarava di restituire `{ to, subject, text }`
+// e restituiva `{ subject, text }`. Ogni promemoria sarebbe partito verso
+// `to: [null]`. Il typecheck non l'ha mai visto perché `tsconfig.json` include
+// `src` e `scripts`: un file di `supabase/functions/` entra nel programma SOLO
+// se qualcosa là dentro lo importa, e `notify.ts` non era importato da niente.
+// È bastato che un test lo importasse perché il difetto diventasse rosso in due
+// posti nello stesso minuto.
+//
+// La domanda è la stessa che questo file pone alle Edge Function — «qualcuno lo
+// chiama?» — applicata al typecheck: **qualcuno lo guarda?**
+//
+// ⚠️ NON tutti i file POSSONO essere typecheckati qui, e la distinzione è
+// tecnica, non un'opinione: chi usa `Deno.` o importa `npm:`/`jsr:` non si
+// risolve in Node. Quelli sono ESENTI PER COSTRUZIONE e il controllo lo verifica
+// invece di crederci. Tutti gli altri sono PORTABILI, e un portabile che nessun
+// file di `src/` o `scripts/` raggiunge non è coperto da niente.
+// ---------------------------------------------------------------------------
+
+/** Un file che usa API Deno o specificatori `npm:`/`jsr:` non è typecheckabile qui. */
+export function nonPortabile(sorgente) {
+  return /\bDeno\.\w/.test(sorgente) || /from\s+['"](npm|jsr):/.test(sorgente);
+}
+
+export function checkTypecheck(report, { portabili, raggiunti, scoperti = {} }) {
+  for (const file of portabili) {
+    if (raggiunti.has(file)) continue;
+    if (file in scoperti) continue;          // debito dichiarato: vedi TYPECHECK_SCOPERTI
+    report.add('typecheck',
+      `«${file}» è portabile ma nessun file di src/ o scripts/ lo importa`,
+      'tsconfig.json → include: ["src", "scripts"]',
+      'il typecheck NON lo guarda: una firma sbagliata lì dentro non diventa mai '
+      + 'rossa. Importalo da un test che lo ESEGUE — è così che si è scoperto il '
+      + 'destinatario mancante delle email');
+  }
+}
+
+/**
+ * I file di `supabase/functions/` raggiunti dal typecheck, seguendo gli import
+ * relativi a partire da `src/` e `scripts/`.
+ *
+ * ⚠️ Si segue il grafo invece di chiedere a `tsc --listFiles` perché quel comando
+ * ricompila tutto e costa quanto il typecheck stesso: il controllo verrebbe
+ * tolto dal gruppo veloce, cioè da dove serve.
+ */
+function raggiuntiDalTypecheck() {
+  const radici = [
+    ...listaFileRicorsiva(join(APP, 'src'), '.ts'),
+    ...listaFileRicorsiva(join(APP, 'src'), '.tsx'),
+    ...listaFileRicorsiva(join(APP, 'scripts'), '.ts'),
+  ];
+  const visti = new Set();
+  const coda = [...radici];
+
+  while (coda.length) {
+    const file = coda.pop();
+    if (visti.has(file)) continue;
+    visti.add(file);
+    let sorgente;
+    try { sorgente = readFileSync(file, 'utf8'); } catch { continue; }
+    for (const m of sorgente.matchAll(/(?:from|import)\s*\(?\s*['"](\.[^'"]+)['"]/g)) {
+      const risolto = risolviImport(dirname(file), m[1]);
+      if (risolto && !visti.has(risolto)) coda.push(risolto);
+    }
+  }
+
+  const prefisso = join(APP, 'supabase', 'functions') + '/';
+  return new Set([...visti]
+    .filter((f) => f.startsWith(prefisso))
+    .map((f) => f.slice(prefisso.length)));
+}
+
+function risolviImport(base, specificatore) {
+  const grezzo = resolve(base, specificatore);
+  for (const candidato of [grezzo, `${grezzo}.ts`, `${grezzo}.tsx`,
+    join(grezzo, 'index.ts'), join(grezzo, 'index.tsx')]) {
+    if (existsSync(candidato) && !candidato.endsWith('/')) {
+      try { if (readFileSync(candidato)) return candidato; } catch { /* directory */ }
+    }
+  }
+  return null;
+}
+
+/** Elenco RICORSIVO dei file con una certa estensione. (`listaFile` non scende.) */
+function listaFileRicorsiva(radice, ext) {
+  if (!existsSync(radice)) return [];
+  const out = [];
+  for (const voce of readdirSync(radice, { withFileTypes: true })) {
+    const percorso = join(radice, voce.name);
+    if (voce.isDirectory()) out.push(...listaFileRicorsiva(percorso, ext));
+    else if (voce.name.endsWith(ext)) out.push(percorso);
+  }
+  return out;
+}
+
 function scan() {
   const report = new Report();
   const { funzioni, dichiarati, invocate } = raccogli();
@@ -408,7 +538,16 @@ function scan() {
   checkOrigineCron(report, { dichiarati });
   checkDuplicatiCron(report, { dichiarati });
 
-  return { report, funzioni, dichiarati };
+  const tuttiTs = listaFileRicorsiva(join(APP, 'supabase', 'functions'), '.ts')
+    .map((f) => f.slice((join(APP, 'supabase', 'functions') + '/').length));
+  const portabili = tuttiTs.filter((rel) => {
+    try {
+      return !nonPortabile(readFileSync(join(APP, 'supabase', 'functions', rel), 'utf8'));
+    } catch { return false; }
+  });
+  checkTypecheck(report, { portabili, raggiunti: raggiuntiDalTypecheck(), scoperti: TYPECHECK_SCOPERTI });
+
+  return { report, funzioni, dichiarati, portabili, tuttiTs };
 }
 
 // ---------------------------------------------------------------------------
@@ -582,6 +721,46 @@ const CASES = [
         { nome: 'x', file: 'docs/calendar-notifications.md' },
       ],
     }),
+    expect: 0,
+  },
+
+  // --- IL TYPECHECK ----------------------------------------------------------
+  {
+    name: '⚠️ un modulo portabile che nessuno importa → problema (il caso di notify.ts)',
+    run: (r) => checkTypecheck(r, {
+      portabili: ['_shared/calendar/notify.ts'], raggiunti: new Set(), scoperti: {},
+    }),
+    expect: 1,
+  },
+  {
+    name: 'lo stesso modulo, importato da un test → nessun problema',
+    run: (r) => checkTypecheck(r, {
+      portabili: ['_shared/calendar/notify.ts'],
+      raggiunti: new Set(['_shared/calendar/notify.ts']), scoperti: {},
+    }),
+    expect: 0,
+  },
+  {
+    name: 'un modulo nel debito DICHIARATO → nessun problema, ma resta scritto',
+    run: (r) => checkTypecheck(r, {
+      portabili: ['_shared/calendar/sync.ts'], raggiunti: new Set(),
+      scoperti: { '_shared/calendar/sync.ts': 'debito noto' },
+    }),
+    expect: 0,
+  },
+  {
+    name: '⚠️ `Deno.env` rende un file NON portabile: è esente per costruzione',
+    run: (r) => { if (!nonPortabile('const x = Deno.env.get("A");')) r.add('x', 'y', 'z'); },
+    expect: 0,
+  },
+  {
+    name: '⚠️ un import `npm:` rende un file NON portabile',
+    run: (r) => { if (!nonPortabile("import { createClient } from 'npm:@supabase/supabase-js@2';")) r.add('x', 'y', 'z'); },
+    expect: 0,
+  },
+  {
+    name: 'un modulo puro NON è esente: il typecheck deve guardarlo',
+    run: (r) => { if (nonPortabile("export const somma = (a, b) => a + b;")) r.add('x', 'y', 'z'); },
     expect: 0,
   },
 

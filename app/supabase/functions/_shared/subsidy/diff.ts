@@ -176,7 +176,33 @@ export function detectChanges(input: DetectInput): ChangeProposal[] {
     });
   }
 
-  // Il cambiamento di contenuto in sé, sempre registrato.
+  // ⚠️⚠️ SENZA UN'IMPRONTA PRECEDENTE NON C'È UN CAMBIAMENTO: C'È UNA PRIMA
+  //    LETTURA. Fino al 2026-08-05 questa riga diceva «sempre registrato», e
+  //    quel «sempre» ha prodotto le SETTE revisioni ferme dal 2026-07-30 —
+  //    l'intera coda che il prodotto ha mostrato per una settimana.
+  //
+  //    Misurato riga per riga: in tutte e sette `previousHash` è **null** e
+  //    `unsupported` era `true`, cioè l'adapter non sapeva ancora leggere quella
+  //    pagina. `textLength`, `deadlineCandidateCount` e `declaredUpdatedAt` sono
+  //    IDENTICI prima e dopo. L'unico campo normalizzato «diverso» era
+  //    `unsupported` stesso. Quindi la nota «il contenuto della fonte è
+  //    cambiato» era falsa: **non si è mossa la fonte, ha cominciato a
+  //    funzionare il nostro lettore.**
+  //
+  //    Perché è un difetto e non un fastidio: la revisione chiede a una persona
+  //    di confrontare «prima» e «adesso», e qui il «prima» non esiste. Confronto
+  //    impossibile, decisione impossibile, coda che non si smaltisce. E una coda
+  //    che nessuno smaltisce insegna a non guardarla — la fine di ogni controllo
+  //    utile, come dice il commento in testa a questa funzione.
+  //
+  // ⚠️ Le altre proposte NON sono toccate: una candidata di scadenza o una
+  //    struttura non interpretabile meritano una persona anche alla prima
+  //    lettura, perché non sono confronti — sono cose da leggere.
+  if (input.previousHash === null || input.previousHash === undefined) {
+    return out;
+  }
+
+  // Il cambiamento di contenuto vero e proprio.
   out.push({
     changeType: input.programId ? 'program_metadata' : 'other',
     risk: RISK_BY_CHANGE.program_metadata,

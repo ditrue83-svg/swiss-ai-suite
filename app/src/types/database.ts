@@ -18,6 +18,20 @@ export type DocumentStatus =
   | 'uploaded' | 'extracting' | 'analyzing' | 'completed' | 'needs_review' | 'failed'
   | 'processing' | 'analyzed';
 export type AnalysisStatus = 'pending' | 'completed' | 'needs_review' | 'failed';
+/**
+ * Registro attività (0039). ⚠️ Questi due elenchi sono la copia TypeScript di
+ * due enum SQL: due copie divergono sempre, e il typecheck non può accorgersene
+ * perché guarda solo il TypeScript. La rete è `npm run test:audit-unit`, che
+ * legge gli enum dalla migrazione e li confronta con questi — la stessa cosa che
+ * `test:crm-unit` fa con la 0026.
+ */
+export type AuditAction =
+  | 'document_uploaded' | 'document_deleted'
+  | 'analysis_started' | 'analysis_completed' | 'analysis_failed'
+  | 'correction_saved' | 'reply_generated'
+  | 'task_created' | 'task_updated'
+  | 'member_added' | 'member_removed' | 'member_role_changed';
+export type AuditEntityType = 'document' | 'analysis' | 'correction' | 'reply' | 'task' | 'membership';
 export type ExtractionMethod = 'native_pdf' | 'ocr' | 'text';
 /**
  * Categoria documentale (0017). NON è il tipo di documento: `DocumentType` dice
@@ -623,6 +637,21 @@ export interface Database {
           duration_ms?: number | null; input_tokens?: number | null; output_tokens?: number | null;
         };
         Update: { status?: string };
+        Relationships: [];
+      };
+      // Registro attività (0039). ⚠️ `Insert` e `Update` sono VUOTI di
+      // proposito: il client non scrive qui e non deve poterlo fare nemmeno per
+      // sbaglio. Le righe le scrivono i trigger delle tabelle sorgente, e il
+      // database rifiuta comunque — il tipo serve a fermare la riga prima, in
+      // compilazione, invece di lasciarla arrivare a un errore a runtime.
+      audit_logs: {
+        Row: {
+          id: string; company_id: string; actor_user_id: string | null;
+          action: AuditAction; entity_type: AuditEntityType; entity_id: string;
+          changes: Json; correlation_id: string; created_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
         Relationships: [];
       };
       tasks: {
@@ -2236,6 +2265,30 @@ export interface Database {
       };
       list_subsidy_cases: {
         Args: { p_company_id: string; p_include_archived?: boolean };
+        Returns: Record<string, unknown>[];
+      };
+      /**
+       * ⚠️ LE TRE FUNZIONI DELLA REVISIONE DEL CATALOGO (0037) NON PRENDONO UN
+       * `p_company_id`, e l'assenza è il punto: **il catalogo è globale**, non
+       * appartiene a un'azienda. L'autorità non è `member_role` — che è per
+       * azienda — ma l'appartenenza a `subsidy_catalog_editors`, controllata
+       * DENTRO le funzioni, che sono `security definer`. Le due tabelle restano
+       * con `revoke all`: qui si concede solo l'esecuzione.
+       *
+       * ⚠️ A chi non è operatore rispondono con un ERRORE (42501), non con un
+       * elenco vuoto: un vuoto direbbe «non c'è niente da revisionare», che è
+       * un'altra affermazione, e falsa.
+       */
+      subsidy_is_catalog_editor: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      list_subsidy_catalog_reviews: {
+        Args: { p_include_resolved?: boolean; p_limit?: number };
+        Returns: Record<string, unknown>[];
+      };
+      resolve_subsidy_catalog_review: {
+        Args: { p_id: string; p_decision: string; p_note?: string | null };
         Returns: Record<string, unknown>[];
       };
       /**

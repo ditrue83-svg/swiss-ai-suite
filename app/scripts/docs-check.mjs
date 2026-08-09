@@ -82,6 +82,16 @@ const FEATURES = {
   'dashboard':     { moduleName: null, why: 'la Panoramica: mostra i moduli, non è un modulo' },
   'notifications': { moduleName: null, why: 'la campanella, parte di «Calendario e notifiche»' },
   'pricing':       { moduleName: null, why: 'pagina commerciale' },
+  // Il Registro attività (0039) NON è un modulo di prodotto: è come l'azienda
+  // si guarda da fuori — una schermata sola, riservata a titolari e
+  // amministratori, che indicizza i fatti degli altri moduli senza possederne
+  // nessuno. Sta nel menu accanto a «Impostazioni azienda» per la stessa ragione.
+  'audit':         { moduleName: null, why: 'registro trasversale, non un modulo: indicizza i fatti degli altri' },
+  // La stampa non è un modulo e non è una schermata: è una VISTA degli altri —
+  // la versione su carta dell'analisi, del contratto e del verdetto d'idoneità.
+  // Non ha una rotta propria e nessun cliente la sceglie: la si raggiunge dalle
+  // pagine che stampa.
+  'print':         { moduleName: null, why: 'vista di stampa degli altri moduli, non una schermata propria' },
 };
 
 /** Le Edge Function di servizio, che la struttura non elenca una per una. */
@@ -120,6 +130,23 @@ class Report {
 // `--self-test` può passargli contenuti costruiti apposta invece di scrivere
 // file finti sul disco.
 // ---------------------------------------------------------------------------
+
+/**
+ * 0. L'ESITO — e sta fra i controlli, non in fondo al file, perché è la parte
+ * che ha mentito.
+ *
+ * Fino al 2026-08-03 questa decisione viveva dentro una catena di `if` in coda
+ * allo script: nessuno poteva provarla, e infatti sbagliava. Con il README della
+ * radice assente stampava «Nessuna divergenza» e usciva ZERO, mentre due dei
+ * cinque controlli non erano stati eseguiti.
+ *
+ * `codice`: 0 verde · 1 divergenze · 3 non si è potuto rispondere.
+ */
+export function esitoFinale({ ok, rootMissing, allowPartial }) {
+  if (!ok) return { codice: 1, stato: 'divergenze' };
+  if (rootMissing && !allowPartial) return { codice: 3, stato: 'parziale' };
+  return { codice: 0, stato: rootMissing ? 'parziale-accettato' : 'completo' };
+}
 
 /** 1. MODULI — il controllo che avrebbe intercettato i Contratti. */
 export function checkModules(report, { featureDirs, rootReadme, map }) {
@@ -352,7 +379,18 @@ function scan() {
   // il controllo lo DICHIARA invece di saltarlo in silenzio: un controllo che
   // verifica meno di quanto sembra è il difetto che questo progetto ha già
   // pagato due volte.
-  const rootReadme = read(join(ROOT, 'README.md'));
+  // ⚠️ `--root <percorso>` esiste perché la directory di sviluppo NON è il
+  // monorepo: `~/swiss-ai-suite-app` è una copia di `app/`, e il README della
+  // radice vive in `~/swiss-ai-suite-repo`. Senza questa opzione l'unico modo di
+  // eseguire il controllo COMPLETO era cambiare cartella — e chi non lo faceva
+  // otteneva mezzo controllo. Il percorso si INDICA, non si indovina: cercarlo
+  // da soli in giro per il disco significherebbe verificare un file che non si
+  // sa quale sia.
+  const rootFlag = process.argv.indexOf('--root');
+  const rootDir = rootFlag >= 0 && process.argv[rootFlag + 1]
+    ? resolve(process.argv[rootFlag + 1])
+    : ROOT;
+  const rootReadme = read(join(rootDir, 'README.md'));
   const rootMissing = rootReadme === null;
 
   if (appReadme === null) {
@@ -434,7 +472,7 @@ function scan() {
     checkStatusContradictions(report, { moduli: conAlias, testi });
   }
 
-  return { report, rootMissing };
+  return { report, rootMissing, rootDir };
 }
 
 // ---------------------------------------------------------------------------
@@ -645,11 +683,27 @@ function selfTest() {
     if (!ok) bad++;
     console.log(`  ${ok ? G + '✓' : R + '✗'}${X} ${c.name} ${DIM}— attesi ${c.expect}, trovati ${got}${X}`);
   }
+  // ⚠️ L'ESITO, provato a parte perché non produce «problemi» ma un CODICE DI
+  // USCITA — ed è il codice di uscita ad aver mentito fino al 2026-08-03.
+  const esiti = [
+    ['nessuna divergenza e controllo completo → 0', { ok: true, rootMissing: false, allowPartial: false }, 0],
+    ['⚠️ nessuna divergenza ma PARZIALE → 3, non 0', { ok: true, rootMissing: true, allowPartial: false }, 3],
+    ['parziale accettato esplicitamente → 0', { ok: true, rootMissing: true, allowPartial: true }, 0],
+    ['divergenze → 1', { ok: false, rootMissing: false, allowPartial: false }, 1],
+    ['⚠️ divergenze: --allow-partial NON le perdona', { ok: false, rootMissing: true, allowPartial: true }, 1],
+  ];
+  for (const [nome, input, atteso] of esiti) {
+    const got = esitoFinale(input).codice;
+    const ok = got === atteso;
+    if (!ok) bad++;
+    console.log(`  ${ok ? G + '✓' : R + '✗'}${X} ${nome} ${DIM}— atteso ${atteso}, ottenuto ${got}${X}`);
+  }
+
   if (bad) {
     console.error(`\n${R}${bad} casi di autoverifica falliti: il controllo NON è affidabile.${X}`);
     process.exit(1);
   }
-  console.log(`\n${G}Tutti i ${CASES.length} casi superati.${X}`);
+  console.log(`\n${G}Tutti i ${CASES.length + esiti.length} casi superati.${X}`);
   return true;
 }
 
@@ -679,21 +733,45 @@ const quiet = [];
   }
 }
 
-const { report, rootMissing } = scan();
+const { report, rootMissing, rootDir } = scan();
 
 console.log(`\n${B}Documentazione — descrive il codice che c'è davvero?${X}`);
 console.log(`${DIM}(controllo verificato su ${CASES.length} casi noti)${X}\n`);
 
+// ⚠️⚠️ DICHIARARE IL SALTO NON BASTAVA, ED È LA STESSA LEZIONE DEL RUNNER DELLE
+// SUITE. Fino al 2026-08-03 questo blocco stampava l'avviso giallo e poi, se non
+// c'erano divergenze, il verde «Nessuna divergenza» con USCITA ZERO. Il salto era
+// scritto, ma le due cose che un lettore guarda davvero — la parola «verde» e il
+// codice di uscita — dicevano entrambe «a posto», mentre metà dei controlli
+// (moduli e collegamenti della radice) non era stata eseguita.
+//
+// È il difetto che questo file esiste per intercettare, commesso da questo file.
+// La regola è quella di `check:auth` e di `run-test-suite.mjs`: **uno strumento a
+// cui viene posta una domanda a cui non può rispondere deve fallire, non
+// rispondere a una domanda diversa.**
+const ALLOW_PARTIAL = process.argv.includes('--allow-partial');
+
 if (rootMissing) {
-  // Dichiarato, non silenzioso.
-  console.log(`  ${Y}!${X} README della radice non trovato in ${ROOT}`);
-  console.log(`    ${DIM}i controlli sui MODULI e sui collegamenti della radice non sono stati eseguiti.`);
-  console.log(`    Esegui dal monorepo (~/swiss-ai-suite-repo/app) per la verifica completa.${X}\n`);
+  console.log(`  ${Y}!${X} README della radice non trovato in ${rootDir}`);
+  console.log(`    ${DIM}i controlli sui MODULI e sui collegamenti della radice non sono stati eseguiti.${X}\n`);
+}
+
+const esito = esitoFinale({ ok: report.ok, rootMissing, allowPartial: ALLOW_PARTIAL });
+
+if (esito.stato === 'parziale') {
+  console.log(`  ${Y}PARZIALE — e un controllo parziale non è un verde.${X}`);
+  console.log(`${DIM}    Nessuna divergenza fra quelli ESEGUITI: migrazioni, documenti, comandi, funzioni.`);
+  console.log(`    Non eseguiti: moduli e collegamenti della radice.`);
+  console.log(`    · verifica completa:  npm run docs:check -- --root ~/swiss-ai-suite-repo`);
+  console.log(`    · accetto il parziale: npm run docs:check -- --allow-partial${X}\n`);
+  process.exit(esito.codice);
 }
 
 if (report.ok) {
-  console.log(`  ${G}Nessuna divergenza: moduli, migrazioni, documenti, comandi e funzioni corrispondono.${X}\n`);
-  process.exit(0);
+  console.log(`  ${G}Nessuna divergenza: moduli, migrazioni, documenti, comandi e funzioni corrispondono.${X}`
+    + (rootMissing ? `\n  ${DIM}(parziale, accettato con --allow-partial)${X}` : ''));
+  console.log();
+  process.exit(esito.codice);
 }
 
 const byArea = new Map();

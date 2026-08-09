@@ -4,6 +4,7 @@
 // ============================================================================
 import type {
   MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource, TaskEventKind,
+  AuditAction, AuditEntityType,
   DocumentCategory, DocumentCategorySource,
   EligibilityStatus, SubsidyCaseStatus,
   EmailProvider, EmailConnectionStatus, EmailProcessingStatus, EmailAttentionStatus,
@@ -286,6 +287,28 @@ export interface AnalysisCorrection {
   correctedBy: string | null;
   correctedAt: string;
 }
+
+/**
+ * Una riga del Registro attività (0039).
+ *
+ * `actorUserId` nullo significa UNA cosa sola — ha agito il sistema, senza
+ * utente in sessione — e la schermata deve dirlo così, non «sconosciuto».
+ * `changes` porta solo i campi ammessi dai trigger, nella forma {prima, dopo}.
+ */
+export interface AuditEntry {
+  id: string;
+  companyId: string;
+  actorUserId: string | null;
+  action: AuditAction;
+  entityType: AuditEntityType;
+  entityId: string;
+  changes: AuditChanges;
+  correlationId: string;
+  createdAt: string;
+}
+
+/** { campo: { before, after } } — `null` = il campo non c'era / non c'è più. */
+export type AuditChanges = Record<string, { before: string | null; after: string | null }>;
 
 /** Bozza di risposta generata su richiesta (§35), salvata in document_replies. */
 export interface DocumentReply {

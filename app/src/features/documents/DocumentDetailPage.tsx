@@ -25,6 +25,9 @@ import { CrmLinkPicker } from '@/features/crm/CrmLinkPicker';
 import { useCrmLink } from '@/features/crm/useCrmLink';
 import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
+import { PrintButton } from '@/components/ui/PrintButton';
+import { PrintSheet } from '@/features/print/PrintSheet';
+import { amountTypeKey, buildFooter, collectCitations, deadlineKindKey, splitActions } from '@/features/print/printModel';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { documentHubService } from '@/services/documentHubService';
 import { documentService } from '@/services/documentService';
@@ -406,6 +409,11 @@ export function DocumentDetailPage() {
         <button className="btn" onClick={() => void toggleArchive()} disabled={busy}>
           <Icon name="archive" className="ic-sm" /> {archived ? t('documents.restore') : t('documents.archive')}
         </button>
+        {/* ⚠️ Il comando di stampa compare SOLO quando c'è un'analisi: stampare
+            un documento non analizzato produrrebbe un foglio d'archivio senza
+            niente dentro, e un foglio vuoto in un fascicolo sembra un'analisi
+            che non ha trovato nulla. */}
+        {analysis && analysis.analysisStatus !== 'failed' && <PrintButton />}
       </div>
 
       {/* ---- Origine: da dove è arrivato. Sta subito sotto l'intestazione
@@ -546,6 +554,53 @@ export function DocumentDetailPage() {
           </>
         )}
       </div>
+
+      {/* ⚠️ LA VERSIONE PER LA CARTA. Non compare mai a schermo. Esiste perché
+          il foglio che finisce nel fascicolo del cliente porti ciò che qui
+          sopra è un COMANDO o un dettaglio da aprire: le citazioni per esteso
+          (a schermo sono il pulsante «Mostra nel documento»), il tipo della
+          scadenza, il tipo degli importi, la provenienza delle azioni e il piè
+          di pagina d'archivio. */}
+      {analysis && analysis.analysisStatus !== 'failed' && (
+        <PrintSheet
+          title={doc.title}
+          facts={[
+            { labelKey: 'documents.sender', value: item.sender },
+            { labelKey: 'documents.documentType', value: item.documentType ? L.docType(item.documentType) : null },
+            { labelKey: 'documents.documentDate', value: item.documentDate ? formatDate(item.documentDate) : null },
+            { labelKey: 'documents.references', value: analysis.referenceNumbers.map((r) => `${r.label ? `${r.label}: ` : ''}${r.value}`).join(' · ') },
+          ]}
+          deadline={item.deadline
+            ? { value: formatDate(item.deadline), kindKey: deadlineKindKey(analysis) }
+            : null}
+          amounts={[
+            ...(item.amount !== null ? [{
+              display: formatCurrency(item.amount, item.amountCurrency) ?? String(item.amount),
+              typeKey: amountTypeKey(analysis.amountType),
+              description: null,
+            }] : []),
+            ...analysis.amounts.map((a) => ({
+              display: a.display,
+              typeKey: amountTypeKey(a.type),
+              description: a.description,
+            })),
+          ]}
+          actions={splitActions(analysis.actions)}
+          citations={collectCitations(analysis)}
+          toVerify={analysis.uncertaintyItems.map((u) => u.description)}
+          footer={buildFooter({
+            companyName: activeCompany?.legalName,
+            now: new Date(),
+            // ⚠️ `engine` e non un campo «model»: il modello di dominio non lo
+            // porta, e per il percorso AI `engine` È il nome del modello che ha
+            // scritto lo snapshot (`analyze-document` lo salva così). Si legge
+            // quello che c'è, invece di aggiungere un campo per far tornare una
+            // riga di piè di pagina.
+            engine: analysis.engine,
+            analysisVersion: analysis.analysisVersion,
+          })}
+        />
+      )}
 
       {/* ---- Attività ---------------------------------------------------- */}
       <div className="card mt-16" id="doc-tasks" ref={tasksCardRef}>

@@ -35,6 +35,9 @@ supabase/
                 0033_subsidy_answers_cascade · 0034_subsidy_answers_project_cascade
                 0035_calendar_notification_schedulers
                 0036_assistant_empty_group_citation
+                0037_subsidy_catalog_review
+                0038_subsidy_review_source_url
+                0039_audit_logs
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -86,6 +89,7 @@ src/
   features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing
                   inbox · calendar · notifications · automations · finance · contracts · crm
                   assistant (Chiedi ad AI-Swisse) · incentives (Incentivi, Subsidy AI 2.0)
+                  audit (Registro attività: una schermata, non un modulo — 0039)
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
                   eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
@@ -712,6 +716,42 @@ l'utente deve vedere che cosa sta succedendo e poter interrompere.
 
 Documento completo: [`docs/company-assistant.md`](docs/company-assistant.md).
 
+### Registro attività — migrazione 0039
+
+Chi ha fatto che cosa, in ordine di tempo, per tutta l'azienda: `/registro`,
+riservato a titolari e amministratori. Chiude una promessa che la vetrina faceva
+e che il prodotto manteneva solo a metà — risalire a ciò che il sistema aveva
+letto e a chi ha corretto che cosa era vero per le analisi documento (0010) e
+per l'Inbox (0013), e per nient'altro.
+
+- **Non è una seconda fonte di verità.** `task_events`, `contract_events`,
+  `crm_events`, `email_audit_log` e `analysis_corrections` restano i proprietari
+  dei loro fatti: là c'è il dettaglio, qui l'indice trasversale. Perché non
+  possano divergere, `audit_logs` **non viene scritta da nessun servizio**: la
+  scrivono i TRIGGER delle tabelle che possiedono il fatto, nella stessa
+  transazione della scrittura che lo produce — la regola già adottata dalla 0020.
+- **Il client non ha alcun permesso di scrittura**, e non è una convenzione:
+  `revoke all` precede la sola `grant select`, perché su Supabase i privilegi
+  predefiniti dello schema `public` concedono tutto ad `anon` e `authenticated`.
+- **Non si modifica**, e il divieto vale anche per il service role: è un trigger.
+  Non si **cancella** perché nessun ruolo applicativo ha `delete` — e non per un
+  trigger, che renderebbe le aziende indistruttibili (lezione della 0023). Una
+  riga muore solo con la sua azienda.
+- **Dodici eventi e nient'altro**: documento caricato ed eliminato, analisi
+  avviata / conclusa / fallita, correzione manuale, risposta generata, attività
+  creata e modificata, persona aggiunta e rimossa, ruolo cambiato. L'elenco è un
+  enum, quindi un tredicesimo evento non entra per distrazione.
+- **Che cosa NON entra mai nel payload**: token, password, segreti e contenuto
+  di documenti. I campi pubblicati sono una lista di AMMESSI scritta a mano in
+  ogni trigger, non una lista di vietati: una colonna nuova su una tabella
+  sorvegliata non finisce nel registro perché nessuno l'ha ammessa. Di una
+  correzione si registra **quale campo** è stato corretto, non i due valori —
+  che sono dati letti dal documento e restano in `analysis_corrections`.
+
+Provato da `npm run test:audit-unit` (offline) e `npm run test:audit` (DB reale,
+con i negativi espliciti: né titolare, né membro, né chiave anon, né service role
+modificano o cancellano una riga).
+
 ## Comandi
 
 ### La suite, in un comando solo
@@ -736,14 +776,57 @@ npm run test:eval -- --allow-ai          # eval:subsidy, eval:admin, eval:assist
 npm run suite -- --list                  # i gruppi, i passi e ciò che ciascuno richiede
 ```
 
-⚠️ **Un gruppo che non si può eseguire non è verde e non è rosso: è SALTATO, con
-la ragione scritta.** Senza `.env.test` il gruppo `db` viene dichiarato saltato e
-il riepilogo lo elenca; non viene mai contato come superato. I gruppi che spendono
-credito richiedono `--allow-ai` esplicito: la spesa si chiede, non si eredita.
+⚠️⚠️ **UN GRUPPO SALTATO ESCE NON-ZERO (codice 3), dal 2026-08-01.** Prima
+usciva **0** stampando `ESITO: verde sui gruppi eseguiti · 1 SALTATI`: il salto
+era dichiarato, ma le due cose che un lettore guarda per prime — il codice di
+uscita e la parola «verde» — dicevano entrambe «a posto». Il 2026-07-31
+`npm run test:integration` senza `--allow-ai` è uscito 0 in un millisecondo
+senza eseguire un passo, e quel non-risultato è finito in `product-status.md`
+come se le 71 asserzioni fossero passate. Dichiarare il salto **non bastava**.
+
+I tre codici, e la differenza fra i due non-zero:
+
+| Codice | Significa |
+|---|---|
+| **0** | tutto ciò che era stato chiesto è stato eseguito, e nessun gruppo è rosso |
+| **1** | almeno un gruppo è **ROSSO**: un test ha fallito |
+| **3** | nessun rosso, ma **qualcosa non è stato eseguito**. Non è un difetto del prodotto: è una misura che manca |
+
+La parola «verde» non compare **mai** su una riga di riepilogo che parla di un
+salto — nemmeno con `--allow-skip`, dove l'esito si chiama `INCOMPLETO`.
+`npm run suite -- --self-test` prova questa decisione sui casi che devono farla
+fallire, «gruppo saltato» compreso, e gira dentro `test:unit`.
+
+⚠️ **UN PASSO NON ESEGUIBILE NON È UN PASSO FALLITO, dal 2026-08-03.** Un passo
+che esce 3 dentro un gruppo senza rossi rendeva il gruppo **ROSSO**, con
+`1 su 6 falliti` — mentre nessun controllo aveva fallito. Mandava a cercare un
+difetto dove c'era un ambiente incompleto, che è lo stesso genere di bugia che
+questo runner esiste per non dire. Ora quel gruppo è **`INCOMPL`**, il riepilogo
+nomina il passo, l'uscita resta 3, e gli altri gruppi vengono comunque eseguiti.
+
+```bash
+npm run ci -- --root ~/swiss-ai-suite-repo
+```
+
+⚠️ **Serve perché `docs:check` verifica la tabella dei moduli contro il README
+della RADICE**, che vive nel monorepo: da `~/swiss-ai-suite-app` non esiste, e
+due dei cinque controlli non sono eseguibili. Senza `--root`, `npm run ci` esce
+**3** e lo dichiara; con `--root` il controllo è completo anche dalla directory
+di sviluppo. Dal monorepo non serve niente. ⚠️ Ripiegare sul README dell'app
+**non** è un'opzione: non contiene la tabella dei moduli, e il controllo
+segnalerebbe come mancanti Calendario, Contratti e l'Assistente — falsi rossi al
+posto di un verde falso.
 
 Opzioni: `--continue-on-error` prosegue dopo un rosso (uso locale; senza, ci si
-ferma al primo, che è la modalità CI) · `--no-skip` trasforma un gruppo saltato in
-un fallimento, per i contesti in cui l'ambiente **deve** essere completo.
+ferma al primo, che è la modalità CI) · `--allow-skip` accetta che un gruppo non
+eseguito non faccia uscire non-zero, per chi sa che cosa **non** ha provato ·
+`--no-skip` resta accettato ed è oggi il comportamento predefinito (la CI lo
+passa esplicitamente in tre job).
+
+⚠️ **Non si è invertito il default di `--allow-ai`**, che era l'altra strada
+possibile: eseguire per difetto e chiedere un flag per *non* spendere avrebbe
+reso `npm run test:all` una spesa involontaria. Ciò che era rotto non era il
+salto — era il verde che lo accompagnava.
 
 ⚠️ **Prima di ogni gruppo che scrive, il runner stampa CONTRO QUALE database sta
 per farlo** — l'host, mai le chiavi. Undici di quelle suite creano e cancellano
@@ -765,7 +848,12 @@ se `SUPABASE_URL` punta a `127.0.0.1`, invece di dare un verde vuoto.
 ```bash
 npm run dev             # server di sviluppo (5174)
 npm run build           # typecheck + build di produzione
-npm run typecheck       # solo type-check
+npm run typecheck       # type-check di TUTTO: app + Edge Function (i due tsconfig)
+npm run typecheck:app        # solo src/ e scripts/ (tsconfig.json)
+npm run typecheck:functions  # solo supabase/functions/ (tsconfig.functions.json).
+                             # ⚠️ Config separato perché le funzioni girano su Deno:
+                             # `"types": []` toglie i globali di Node, che là non
+                             # esistono. Vedi «Il typecheck delle Edge Function».
 npm run test:phase1     # integrazione Fase 1 su DB reale (26 test)
 npm run test:phase2     # immutabilità snapshot + sicurezza + analisi reale (36 test)
 npm run test:async      # processing asincrono reale, non simulato (17 test)
@@ -773,6 +861,11 @@ npm run test:functions  # sicurezza di generate-reply e interpret-project (12 te
 npm run test:pipeline   # end-to-end analisi → persistenza → task → bozza (18 test)
 npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:subsidy    # eval interpretazione progetto (14 test)
+npm run eval:contracts             # estrazione contrattuale su TRE CONTRATTI VERI (it/de/fr):
+                                   # tasso di esattezza per campo. Crea un'azienda tecnica,
+                                   # la misura e la cancella verificando la cancellazione.
+                                   # -- --local esegue la pipeline qui invece di attendere il worker
+npm run eval:contracts:self-test   # prova il metro del confronto, offline
 npm run test:validate   # regole di governance del validatore, offline (28 test)
 npm run test:uid        # validazione numero IDI, funzione pura (26 test)
 npm run test:routing    21  NUOVO il 2026-07-30. Le guardie di rotta come funzione PURA
@@ -794,6 +887,9 @@ npm run test:documents       # Documenti su DB: isolamento della RICERCA, catego
 npm run test:calendar-unit   # Calendario e notifiche offline: stato desiderato, promemoria con ora
                              # legale, idempotenza degli adapter, griglia del mese (158 test)
 npm run test:calendar        # Calendario su DB: isolamento fra aziende E FRA PERSONE, coda, trigger
+npm run test:notification-email          # Invio VERO al provider di posta. Esce 3 se i due secret
+                                         # NOTIFICATION_EMAIL_* non ci sono: saltato ≠ verde
+npm run test:notification-email:self-test  # prova il controllo stesso, offline
 npm run test:workflows-unit  # Automazioni offline: registro, validazione, operatori, logica a tre
                              # valori, valute, incertezza, modelli di testo, frase (112 test)
 npm run test:workflows       # Automazioni su DB: esegue il MOTORE VERO — outbox, idempotenza,
@@ -827,6 +923,26 @@ npm run test:subsidy         # Incentivi su DB: isolamento fra aziende anche chi
                              #   CASCATA — una risposta rendeva l'azienda indistruttibile finché
                              #   non sono arrivate la 0033 e la 0034. Dalla sezione 11 esegue anche
                              #   IL MOTORE VERO (runMatching) (richiede 0032+0033+0034)
+npm run test:print-unit      # Stampa offline: che cosa il foglio NON deve avere (navigazione,
+                             #   comandi, scorrimento) e che cosa deve avere (citazioni per
+                             #   esteso). Il controllo che conta è sull'ORDINE delle media
+                             #   query: `@media print` deve venire DOPO il tema scuro, o si
+                             #   stampa un foglio nero. Controprove eseguite: spostando il
+                             #   blocco, togliendo `.sidebar`, lasciando un token scuro,
+                             #   rimettendo un `overflow:hidden` e troncando le citazioni,
+                             #   falliscono 2, 1, 2, 1 e 2 controlli (60 casi)
+npm run test:audit-unit      # Registro attività offline: gli enum scritti due volte in SQL e in
+                             #   TypeScript, ogni azione e ogni campo con la sua etichetta nelle
+                             #   tre lingue, e soprattutto LA SANIFICAZIONE — quali colonne i
+                             #   trigger pubblicano davvero, letta dalla migrazione e non
+                             #   dichiarata a mano (74 casi)
+npm run test:audit           # Registro attività su DB: ogni evento previsto produce la sua riga
+                             #   senza che il client la chieda, i valori di una correzione e il
+                             #   testo di una risposta NON ci entrano, un membro non amministratore
+                             #   legge zero righe, e i negativi espliciti — né titolare, né membro,
+                             #   né chiave anon, né service role modificano o cancellano una riga.
+                             #   Più la cascata: un'azienda con registro resta cancellabile
+                             #   (richiede la 0039)
 npm run subsidy:seed-catalog # scrive il CATALOGO 2.0: fonti ufficiali, versioni immutabili,
                              #   criteri tipizzati e call. Dry-run senza `-- --write`. ⚠️ Non
                              #   sostituisce `subsidy:seed`, che scrive l'identità dei programmi
@@ -841,14 +957,31 @@ npm run test:assistant       # Chiedi ad AI-Swisse su DB: isolamento fra aziende
                              #   persona (richiede la 0027)
 npm run eval:assistant       # valutazione con VERITÀ DI RIFERIMENTO: 16 domande su dati noti,
                              #   esito atteso, fonti attese, frasi vietate. Costa denaro vero
-npm run subsidy:health  # integrità e freschezza del catalogo incentivi
-npm run subsidy:seed    # popola/aggiorna il catalogo (idempotente; --write per scrivere)
+npm run subsidy:health  # integrità e freschezza del catalogo incentivi, E la CODA DI REVISIONE.
+                        #   ⚠️ VERDE VUOL DIRE «NIENTE IN SOSPESO», dal 2026-08-05:
+                        #     exit 0  niente in sospeso
+                        #     exit 1  c'è lavoro per una PERSONA — programmi da ricontrollare
+                        #             o revisioni in coda, a qualunque età
+                        #     exit 2  errori di integrità, o coda oltre 30 giorni / 25 schede
+                        #   Prima la coda veniva solo nominata e l'uscita restava 0: sette
+                        #   revisioni sono rimaste ferme sei giorni sotto la parola «verde».
+npm run subsidy:health:self-test   # verifica che il GIUDIZIO sulla coda e l'ESITO sappiano
+                        #   diventare rossi: 14 casi, compresa la regola vecchia come controprova
+npm run subsidy:seed    # popola/aggiorna il catalogo. ⚠️ Senza --write NON scrive ed esce 3
+                        #   («non eseguito»): un no-op che esce 0 è un fallback silenzioso, e la
+                        #   CI ci è già cascata una volta
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
                         # Rifiuta di generare se una migrazione usa un valore enum appena aggiunto,
                         # o se crea un trigger/una policy senza «drop … if exists» che li preceda —
                         # anche quando il nome è fra virgolette, che è il caso che gli era sfuggito
 npm run db:bundle -- --self-test   # verifica che il CONTROLLO stesso riconosca i propri casi noti
-npm run check:auth      # verifica la configurazione Auth del progetto (redirect dei link email)
+npm run check:auth -- https://app.ai-swisse.com   # configurazione Auth: i link inviati per email
+                        #   portano a QUEL dominio? ⚠️ IL DOMINIO VA INDICATO. Senza argomento
+                        #   esce 2 e non verifica niente: fino al 2026-08-01 ripiegava su
+                        #   http://localhost:5174 e usciva ZERO dicendo «i link porteranno lì» —
+                        #   vero, e su una domanda diversa da quella che conta
+npm run check:auth -- --local      # la macchina di sviluppo, dichiarata invece che indovinata
+npm run check:auth:self-test       # verifica che il CONTROLLO si rifiuti quando non sa rispondere
 npm run inbox:diagnose  # «perché questa casella non si aggiorna»: stati, sync run, conteggi.
                         # Solo metadati tecnici: mai oggetti, mittenti o contenuti
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
@@ -858,6 +991,14 @@ npm run i18n:typography -- --self-test
 npm run test:operations # ogni Edge Function ha un invocante? ogni scheduler è inventariato,
                         #   dichiara il timeout di pg_net e punta a una funzione che esiste?
 npm run test:operations -- --self-test  # verifica che il CONTROLLO sappia fallire (11 casi)
+npm run status               # LO STATO, MISURATO ADESSO, in un file solo (`stato-attuale.md`):
+                             #   quanto viene usato ogni modulo (conteggi dalla produzione),
+                             #   migrazioni sul disco e applicate, bundle servito dal dominio,
+                             #   commit non uniti e PR aperte. ⚠️ Non è un cruscotto e non si
+                             #   aggiorna da sé: ogni foglio porta l'istante della misura. Una
+                             #   misura non presa è marcata «non misurato» e il comando esce 3,
+                             #   mai uno zero di ripiego. Il file è in .gitignore: porta numeri
+                             #   della produzione e si condivide deliberatamente
 npm run verify:deploy   # l'altra metà: quegli scheduler esistono DAVVERO nel progetto?
                         #   Richiede SUPABASE_ACCESS_TOKEN e FALLISCE se non ce l'ha:
                         #   «non ho potuto verificare» non è un verde. Fuori da test:all
@@ -872,7 +1013,58 @@ npm run docs:check -- --self-test      # verifica che il CONTROLLO sappia fallir
 Gli script che toccano il DB o l'AI richiedono `.env.test` (copia da `.env.test.example`).
 Creano dati reali e li rimuovono alla fine.
 
+### Il typecheck delle Edge Function
+
+Due `tsconfig`, non uno, e `npm run typecheck` li esegue entrambi.
+
+**Perché due.** `tsconfig.json` descrive i due mondi che esistono davvero nel
+repository — il browser (`src/`) e Node (`scripts/`) — e concede a entrambi i
+tipi di Node. Le Edge Function girano su **Deno**, dove `process`, `Buffer` e
+`require` non esistono: compilarle con i globali di Node avrebbe dichiarato
+valido del codice che a runtime non parte. `tsconfig.functions.json` ha quindi
+`"types": []` e la sola libreria standard del web, che è ciò che Deno offre.
+Misurato prima di scegliere: sotto `supabase/functions/` non c'è un solo
+`node:`, `process.env`, `Buffer` o `require(`.
+
+**Che cosa risolve.** Fino al 2026-08-04 un file di `supabase/functions/` entrava
+nel typecheck **solo se qualcosa in `src/` o `scripts/` lo importava**: 25 file su
+103 non erano compilati da nessuno, fra cui gli `index.ts` di **tutte e 19** le
+Edge Function. È così che è passato inosservato un `composeEmail` senza
+destinatario. Ora la copertura è per **appartenenza alla cartella**, non per
+raggiungibilità: un file nuovo è coperto dal momento in cui esiste.
+
+**I due file di dichiarazioni**, e perché stanno dove stanno:
+- `scripts/deno-modules.d.ts` spiega a TypeScript gli specificatori `jsr:` e
+  `npm:`. È incluso da **entrambi** i config — una seconda copia divergerebbe
+  senza che nulla diventi rosso.
+- `types/deno-globals.d.ts` dichiara `Deno.env.get` e `Deno.serve`, ed è incluso
+  **solo** dal config delle funzioni. Se lo vedesse anche quello principale,
+  scrivere `Deno.env.get(…)` in uno script Node passerebbe il typecheck e
+  fallirebbe a runtime. La superficie è minima di proposito: c'è dentro solo ciò
+  che le funzioni usano davvero.
+
+⚠️ **Che cosa NON prova**, dichiarato: verifica la **forma**, non l'ambiente. Il
+runtime resta quello di Supabase, la versione nello specificatore `npm:…@2` non
+è confrontata con quella di `node_modules`, e la sola prova che una funzione
+GIRA è eseguirla.
+
 ## Test — cosa coprono
+
+- **`test:audit-unit` (74)** — Registro attività offline. Il controllo per cui il file esiste è
+  **la sanificazione**: quali colonne i trigger della 0039 pubblicano davvero, estratte dalla
+  migrazione invece che dichiarate a mano, e confrontate con una lista di ammessi. Più gli enum
+  scritti due volte (SQL e TypeScript), un'azione dichiarata che nessun trigger produce, le
+  etichette nelle tre lingue, i filtri in URL (un tipo inesistente diventa «tutti», non un elenco
+  vuoto senza spiegazione) e `changes` malformato, che si scarta invece di mostrarsi a metà.
+  Controprove eseguite: aggiungendo una colonna proibita a un trigger falliscono 3 controlli;
+  togliendo un valore all'enum SQL ne fallisce 1; e rinominando `audit_pair` il file dice «la
+  migrazione non pubblica nessun campo» invece di passare a vuoto.
+- **`test:audit` (DB — richiede la 0039)** — che le garanzie siano IN VIGORE, non descritte: ogni
+  evento previsto nasce dal database anche quando il client non fa nulla per registrarlo; i valori
+  di una correzione e il testo di una risposta non entrano nel payload; un membro non
+  amministratore legge zero righe; **nessun utente modifica o cancella** (titolare, membro, chiave
+  anon) e **nemmeno il service role modifica**; e la cascata — un'azienda con registro resta
+  cancellabile, che è la trappola della 0023.
 
 - **`test:phase1` (26)** — onboarding, documenti, Storage privato, task, pratiche, **RLS cross-tenant**
   (B non legge/scarica/scrive nulla di A), cascade delete, nessun accesso senza sessione, persistenza dopo re-login.

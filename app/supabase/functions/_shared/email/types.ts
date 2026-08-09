@@ -134,7 +134,18 @@ export interface EmailProviderAdapter {
   getCurrentCursor(accessToken: string): Promise<string | null>;
 
   createWatch(input: { accessToken: string; notificationUrl: string; clientState: string }): Promise<WatchResult>;
-  renewWatch(input: { accessToken: string; resourceId: string; notificationUrl: string; clientState: string }): Promise<WatchResult>;
+  /**
+   * ⚠️ `resourceId` PUÒ ESSERE NULL, e fino al 2026-08-04 questa riga diceva di
+   * no mentre le due implementazioni dicevano di sì. `email-maintenance`
+   * seleziona di proposito anche le connessioni senza scadenza nota («una
+   * sottoscrizione di cui non si conosce la scadenza è indistinguibile da una
+   * che non c'è»), quindi passa `watch_resource_id` null; Microsoft ci ramifica
+   * sopra (`if (!resourceId) return createWatch(…)`) e Gmail lo ignora, perché
+   * là rinnovare è ricreare. Il tipo contraddiceva il proprio codice, e non si
+   * vedeva perché il CHIAMANTE non era compilato da nessuno.
+   * `stopWatch` qui sotto lo dichiarava già correttamente.
+   */
+  renewWatch(input: { accessToken: string; resourceId: string | null; notificationUrl: string; clientState: string }): Promise<WatchResult>;
   stopWatch(input: { accessToken: string; resourceId: string | null }): Promise<void>;
 
   /** Revoca il consenso presso il provider, dove è supportato (§40). */

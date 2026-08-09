@@ -196,8 +196,19 @@ export function outputLanguage(value: unknown): 'it' | 'de' | 'fr' {
   return value === 'de' ? 'de' : value === 'fr' ? 'fr' : 'it';
 }
 
-/** Log tecnico senza dati personali: mai oggetto, mittente o token (§47). */
-export function logEvent(scope: string, fields: Record<string, string | number | null>): void {
+/**
+ * Log tecnico senza dati personali: mai oggetto, mittente o token (§47).
+ *
+ * ⚠️ `boolean` È NELL'ELENCO, e fino al 2026-08-04 solo qui non c'era. Di questa
+ * funzione esistono TRE copie identiche — `calendar/runtime.ts`,
+ * `automation/runtime.ts` e questa — e le altre due accettavano `boolean` da
+ * sempre. Il chiamante (`email-maintenance`) passa `timeBudgetReached`, che è un
+ * booleano: a runtime funzionava, perché il corpo interpola e basta, ma la firma
+ * era divergente. Tre copie della stessa funzione divergono senza che nulla
+ * diventi rosso — qui l'ha reso rosso il fatto che il chiamante sia finalmente
+ * entrato nel typecheck.
+ */
+export function logEvent(scope: string, fields: Record<string, string | number | boolean | null>): void {
   const safe = Object.entries(fields)
     .map(([k, v]) => `${k}=${v ?? '-'}`)
     .join(' ');

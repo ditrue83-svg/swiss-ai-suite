@@ -21,9 +21,12 @@ const ROLE_KEY: Record<string, TKey> = { owner: 'roles.owner', admin: 'roles.adm
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const t = useT();
+  // Le voci riservate spariscono per chi non è titolare o amministratore. Il
+  // permesso però NON è questo: è la RLS della pagina (vedi nav.ts).
+  const { isAdmin } = useCompany();
   return (
     <nav className="nav" aria-label={t('nav.sectionPlatform')}>
-      {NAV.map((entry, i) =>
+      {NAV.filter((entry) => isSection(entry) || !entry.adminOnly || isAdmin).map((entry, i) =>
         isSection(entry) ? (
           <div className="nav-section" key={`s-${i}`}>{t(entry.sectionKey)}</div>
         ) : (

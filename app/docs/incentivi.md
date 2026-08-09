@@ -154,7 +154,112 @@ resta verde.
   `informative`/`manual` con la divergenza nelle note, **da verificare a mano**.
 - **Le scadenze delle call Innosuisse sono DERIVATE** dalla regola delle sei
   settimane pubblicata, non lette come date esplicite. La nota lo dice.
-- **Sette revisioni del catalogo sono in attesa di una persona**
-  (`subsidy_catalog_reviews`): è lavoro in coda, non un residuo.
+- ✅ **La coda di revisione è VUOTA dal 2026-08-05** — e non perché qualcuno
+  abbia approvato sette schede, ma perché quelle sette **non erano un
+  cambiamento**: vedi § 7. `subsidy:health` esce 0.
+  ⚠️ **`last_checked_at` è rimasto al 2026-07-25 per tutti e sette i programmi**:
+  chiuderle non è stata una verifica, e la data lo dice.
 - **Non ancora fatti**: strumenti dell'assistente sugli incentivi, health-check
   2.0, valutazioni (`eval`) del modulo.
+
+## 7. La revisione del catalogo (0037) — `/incentivi/revisioni`
+
+Il rilevatore di cambiamenti produce una scheda in `subsidy_catalog_reviews`
+ogni volta che una fonte ufficiale si muove. Fino al 2026-08-05 quelle schede
+non erano guardabili da nessuna parte: **sette erano ferme dal 2026-07-30**.
+
+**Chi può decidere, e perché non è un ruolo.** Il catalogo è **globale** — non ha
+`company_id` — e ciò che dice vale per tutti i tenant insieme. `member_role`
+(owner/admin/member) è per AZIENDA, quindi non può esprimere «può modificare il
+catalogo condiviso»: concedere la lettura a `authenticated` avrebbe significato
+che il cliente di un'impresa approva ciò che il prodotto racconta a tutte le
+altre. L'autorità è quindi un elenco esplicito, `subsidy_catalog_editors`, e il
+cancello sta **dentro** le tre RPC `security definer`. Le due tabelle restano
+con `revoke all` e senza policy: dal client non si leggono e non si scrivono.
+
+⚠️ **Chi non è operatore riceve un errore (42501), non un elenco vuoto.** Un
+vuoto direbbe «non c'è niente da revisionare» — un'altra affermazione, e falsa.
+
+**Che cosa contengono davvero queste schede**, perché il disegno dipende da qui.
+I `proposed_values` **non sono campi di catalogo**: le sette reali portano
+`textLength`, `contentHash`, `declaredUpdatedAt`, `deadlineCandidateCount`,
+`unsupported`, `title`. Sono impronte della PAGINA sorgente: dicono «la fonte si
+è mossa», non «il nome del programma adesso è X». Non c'è nulla da applicare.
+
+**I tre gesti**, di conseguenza:
+
+| Gesto | Significa | Effetto |
+|---|---|---|
+| **Approva** | ho aperto la fonte, ciò che diciamo resta vero | `subsidy_programs.last_checked_at = oggi` |
+| **Irrilevante** | il cambiamento non tocca ciò che pubblichiamo | chiude la scheda, **non** tocca la freschezza |
+| **Respingi** | il catalogo è sbagliato — **richiede una nota** | chiude la scheda; la correzione si fa **nel seed** |
+
+Ogni decisione scrive `reviewed_by` e `reviewed_at`. Una scheda già decisa non
+si ridecide: la RPC solleva `REVIEW_ALREADY_RESOLVED`, perché due persone sulla
+stessa coda devono accorgersi di essersi pestate i piedi, non sovrascriversi.
+
+⚠️ **Non è un sistema di redazione, ed è una scelta.** Non esiste un editor di
+catalogo dentro l'app: i contenuti si scrivono nel seed, che è versionato e
+rileggibile. Questa schermata serve a smaltire una coda, non a redigere.
+
+**Provato**: 22 asserzioni nella sezione 17 di `test:subsidy-unit` (confronto,
+campi comparsi e spariti, impronte marcate e non nascoste, nota obbligatoria nel
+rifiuto, «non lo so» diverso da «zero giorni»), con **tre controprove eseguite**
+— nascondere le impronte, rendere la nota facoltativa e trasformare `null` in
+`0` producono tre rossi distinti. La 0037 porta la propria autoverifica, che
+prova che il cancello sia **chiuso**: senza `auth.uid()` la lettura deve
+sollevare, non tornare vuota.
+
+✅ **APPLICATA E PROVATA CONTRO LA PRODUZIONE il 2026-08-05** (0037 + 0038),
+con un JWT vero e non con il service role, che aggirerebbe il cancello:
+- account non operatore → `subsidy_is_catalog_editor` **false**, e
+  `list_subsidy_catalog_reviews` **403 / 42501 NOT_CATALOG_EDITOR** — un errore
+  esplicito, non un elenco vuoto;
+- account operatore → **7 schede, tutte con la fonte ufficiale**;
+- i quattro percorsi d'errore di `resolve` provati su un id inesistente, quindi
+  senza toccare nulla: `INVALID_DECISION`, `NOTE_REQUIRED` (anche con una nota
+  di soli spazi), `REVIEW_NOT_FOUND`;
+- la prova è stata fatta aggiungendo **temporaneamente** l'account dimostrativo
+  agli operatori e **rimuovendolo**, con la riesclusione verificata dopo.
+
+⚠️⚠️ **LA 0038 ESISTE PERCHÉ LA 0037 ERA ROTTA, E IL MODO IN CUI LO ERA VALE PIÙ
+DEL DIFETTO.** `list_subsidy_catalog_reviews` interrogava `subsidy_sources.url`,
+colonna che non esiste — si chiama `canonical_url` — e alla prima chiamata vera
+rispondeva `42703`. L'autoverifica della 0037 **non poteva vederlo**: provava che
+il cancello fosse chiuso, quindi chiamava la funzione senza `auth.uid()`, la
+funzione sollevava in cima al corpo e **l'esecuzione non arrivava mai alla
+query**; e un corpo plpgsql non viene pianificato alla creazione. Un controllo
+che si ferma prima del codice che verifica è un verde falso.
+La 0038 toglie il problema invece di correggere la riga: la query diventa una
+**vista**, e una vista PostgreSQL è validata alla creazione — una colonna
+sbagliata fa fallire la migrazione, subito. La funzione resta il cancello e
+legge dalla vista, così la query sta in un posto solo.
+
+### Le sette schede non erano un cambiamento — misurato il 2026-08-05
+
+⚠️⚠️ **Erano la PRIMA LETTURA riuscita di ciascuna fonte, non il segno che la
+fonte si fosse mossa.** In tutte e sette `previousHash` è **null** e
+`unsupported` era `true` — l'adapter non sapeva ancora leggere quella pagina.
+`textLength`, `declaredUpdatedAt` e `deadlineCandidateCount` sono **identici**
+prima e dopo. L'unico campo normalizzato «diverso» era `unsupported` stesso.
+La nota diceva «il contenuto della fonte è cambiato»: falsa. **Non si è mossa la
+pagina, ha cominciato a funzionare il nostro lettore.**
+
+Il difetto stava in `diff.ts`, dove la proposta `program_metadata` era «sempre
+registrata» — anche senza un termine di paragone. Chiedere a una persona di
+confrontare «prima» e «adesso» quando il «prima» non esiste produce una coda che
+non si può smaltire, e una coda che non si smaltisce insegna a non guardarla:
+la fine di ogni controllo utile. ✅ Corretto: senza impronta precedente non si
+apre più una revisione di contenuto. ⚠️ Le altre proposte **non** sono toccate —
+una candidata di scadenza o una struttura non interpretabile meritano una
+persona anche alla prima lettura, perché non sono confronti, sono cose da
+leggere. Tre casi nella sezione 11 di `test:subsidy-unit`, con controprova.
+
+**Le sette sono state chiuse come `ignored`, non `accepted`**, e la differenza è
+tutto: `accepted` avrebbe scritto `last_checked_at = oggi`, cioè «una persona ha
+confrontato il catalogo con la fonte». Nessuno lo ha fatto. `reviewed_by` è
+**null** perché nessuna persona ha deciso: le ha chiuse il sistema, e la nota su
+ogni riga lo dice per esteso.
+⚠️ **Resta vero che nessuno ha ancora verificato i contenuti contro le fonti**:
+le date di `last_checked_at` sono ferme al 2026-07-25. La coda vuota dice che non
+c'è nulla *in sospeso*, non che il catalogo sia stato ricontrollato.

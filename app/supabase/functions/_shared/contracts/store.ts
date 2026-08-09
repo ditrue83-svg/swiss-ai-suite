@@ -20,7 +20,11 @@ import {
 /** Forma minima del client Supabase usata qui. Identica in Deno e in Node. */
 export interface ServerClient {
   from: (table: string) => any;
-  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+  // ⚠️ `PromiseLike`, NON `Promise`: `sb.rpc(…)` torna un `PostgrestFilterBuilder`,
+  // che ha `then` e NON ha `catch` né `finally`. Dichiararlo `Promise` rendeva il
+  // client vero non assegnabile a questa interfaccia, e ha coperto un `.catch()`
+  // che a runtime sollevava. Vedi `persist.ts` → `SupabaseWithRpc`.
+  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
   storage?: { from: (bucket: string) => any };
 }
 
@@ -225,10 +229,30 @@ export async function loadDocumentText(
 export async function loadCompanyName(
   sb: ServerClient, companyId: string,
 ): Promise<string | null> {
+  // ⚠️⚠️ LA COLONNA È `legal_name`, E QUI C'ERA SCRITTO `name`. Misurato il
+  // 2026-08-03 sui primi tre contratti veri letti da questo modulo.
+  //
+  // `companies.name` NON ESISTE: la select tornava 42703, `if (error) return
+  // null` se lo mangiava, e il nome dell'azienda non è MAI arrivato al modello —
+  // per ogni contratto, dal primo giorno.
+  //
+  // Non era un dettaglio estetico, ed è la parte che vale la pena ricordare. Il
+  // prompt usa quel nome per una cosa sola: distinguere le due parti. Senza, il
+  // modello legge correttamente «Brenta Impianti SA» e «Immobiliare Ceresio SA»
+  // ma non sa QUALE delle due sia il cliente, e — onestamente — abbassa la
+  // fiducia a 0,4–0,6. Sotto `CONTRACT_MIN_CONFIDENCE` (0,65) il validatore
+  // scarta il valore, e la scheda del contratto usciva SENZA CONTROPARTE, con
+  // `missing_counterparty` acceso su ogni singolo contratto. Un errore ingoiato
+  // a monte, un risultato plausibile a valle: esattamente la forma vietata.
   const { data, error } = await sb
-    .from('companies').select('name').eq('id', companyId).maybeSingle();
-  if (error) return null;
-  return (data as { name?: string } | null)?.name ?? null;
+    .from('companies').select('legal_name').eq('id', companyId).maybeSingle();
+  // ⚠️ NON si torna più `null` su errore. Un `null` legittimo è «l'azienda non
+  // ha un nome»; un errore di lettura è «il codice e lo schema non concordano»,
+  // cioè un difetto — e un difetto che si traveste da dato mancante è quello che
+  // ha nascosto questa riga per una settimana. Il tentativo è limitato da
+  // `CONTRACT_MAX_ATTEMPTS`, quindi sollevare non produce un ciclo infinito.
+  if (error) fail('COMPANY_NAME_READ_FAILED', error);
+  return (data as { legal_name?: string } | null)?.legal_name ?? null;
 }
 
 /** L'ultima estrazione riuscita di questo documento, per l'impronta (§112). */

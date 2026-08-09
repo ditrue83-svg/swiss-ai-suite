@@ -962,3 +962,196 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .ct-doc-row, .ct-ms-row { display: grid; gap: var(--sp-2); }
   .ct-toolbar { flex-direction: column; align-items: stretch; }
 }
+
+/* ============================================================================
+   STAMPA — il foglio che finisce nel fascicolo del cliente
+   ============================================================================
+   Il caso d'uso è uno solo e concreto: una fiduciaria stampa (o «salva in PDF»)
+   l'analisi di un documento per archiviarla nel fascicolo. Tutto qui dentro è
+   deciso per QUELLA carta, non per «far funzionare la stampa in generale».
+
+   ⚠️ QUESTO BLOCCO STA IN FONDO AL FILE, E NON È UN CASO. Il tema scuro
+   (riga ~112) ridefinisce i token dentro `@media (prefers-color-scheme: dark)`
+   con la stessa specificità (`:root`). Con un sistema in tema scuro ENTRAMBE le
+   media query sono vere durante la stampa: a decidere è l'ORDINE. Spostare
+   questo blocco più in alto significa stampare un foglio a fondo nero — che è
+   l'errore più probabile di tutta la funzione, e costa un serbatoio di toner
+   prima che qualcuno capisca perché.
+
+   ⚠️ SI RIDEFINISCONO I TOKEN, non le singole regole. Tutta l'interfaccia
+   deriva da `--bg`, `--card`, `--ink`…: cambiarli alla fonte porta al bianco
+   anche le regole che nessuno si ricorda di avere scritto. Le due righe su
+   `html, body` restano come rete di sicurezza per gli stili del browser.
+   ========================================================================== */
+
+/* Fuori dalla stampa, ciò che è SOLO per la carta non esiste. */
+.print-only { display: none; }
+
+@media print {
+  :root {
+    /* Neutri: fondo bianco, inchiostro nero. `--muted` non scende sotto un
+       grigio che una stampante laser rende ancora leggibile: sotto il 45% i
+       metadati spariscono in una retinatura sporca. */
+    --bg: #ffffff;
+    --card: #ffffff;
+    --surface-2: #ffffff;
+    --track: #e6e6e6;
+    --ink: #000000;
+    --on-ink: #ffffff;
+    --ink-soft: #1a1a1a;
+    --muted: #555555;
+    --line: #b0b0b0;
+    --line-strong: #6b6b6b;
+
+    /* Il colore d'azione diventa inchiostro: su carta un link blu chiaro è un
+       grigio slavato, e qui i link portano URL che vanno letti. */
+    --accent: #000000;
+    --accent-dark: #000000;
+    --accent-text: #000000;
+    --accent-soft: #ffffff;
+    --accent-line: #b0b0b0;
+    --on-accent: #ffffff;
+
+    /* Gli stati NON diventano tutti neri: «da verificare» e «scaduto» devono
+       restare distinguibili anche su una stampante in bianco e nero, dove la
+       differenza la fa la LUMINOSITÀ. Fondi bianchi, testo scuro, bordi grigi:
+       la distinzione resta nel testo dell'etichetta, non nel colore. */
+    --red: #000000;
+    --red-dark: #000000;
+    --red-soft: #ffffff;
+    --red-line: #6b6b6b;
+    --red-hover: #ffffff;
+    --green: #000000;
+    --green-soft: #ffffff;
+    --green-line: #6b6b6b;
+    --amber: #000000;
+    --amber-soft: #ffffff;
+    --amber-line: #6b6b6b;
+    --highlight: #ffffff;
+    --on-highlight: #000000;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* ⚠️ CIÒ CHE È COMANDO NON VA SU CARTA. Un pulsante stampato è un invito a
+     premere una cosa che non si può premere: chi legge il foglio nel fascicolo
+     non ha l'applicazione davanti. Restano i CAMPI (input, select), perché
+     stampano il loro VALORE — la categoria, il titolo — e quel valore è
+     contenuto del fascicolo. */
+  .sidebar,
+  .topbar,
+  .drawer,
+  .drawer-overlay,
+  .nav,
+  .nav-btn,
+  .company-switch,
+  .account-box,
+  .toast,
+  .btn,
+  button,
+  [role="tooltip"],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ciò che esiste SOLO per la carta compare qui, e solo qui. */
+  .print-only { display: block !important; }
+
+  /* ⚠️ NIENTE SCROLL, NIENTE ALTEZZE FISSE, NIENTE OVERFLOW CHE TAGLIA.
+     A schermo un pannello alto 100vh con `overflow:auto` è comodo; su carta è
+     una ghigliottina: stampa la prima schermata e butta il resto senza dire
+     niente. È la classe di difetto peggiore per questo caso d'uso, perché il
+     foglio SEMBRA completo. */
+  .app-shell,
+  .main,
+  .ct-narrow {
+    display: block !important;
+    max-width: none !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* La stessa regola per QUALUNQUE contenitore scorrevole, dichiarato dove sia:
+     un `overflow` non neutralizzato qui taglia il contenuto in silenzio. */
+  *,
+  *::before,
+  *::after {
+    overflow: visible !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Un'analisi non si spezza a metà fra due fogli. `page-break-inside` sta
+     accanto alla proprietà moderna perché i motori di stampa non concordano
+     ancora, e qui l'esito si vede solo su carta. */
+  .card,
+  .print-block,
+  .empty-cta,
+  figure,
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Un titolo non resta solo in fondo alla pagina. */
+  .page-title,
+  .card-title,
+  .section-title,
+  h1, h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Le schede perdono il rilievo — su carta l'ombra è sporco — e prendono un
+     filo di bordo per restare unità leggibili. */
+  .card {
+    border: 1px solid var(--line) !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    margin: 0 0 10pt !important;
+    padding: 8pt !important;
+  }
+
+  /* I margini della PAGINA, non del contenitore: il resto lo decide il browser
+     nella sua finestra di stampa. */
+  @page {
+    margin: 14mm 12mm;
+  }
+
+  /* Le pastiglie di stato diventano etichette: fondo bianco, bordo, testo nero.
+     Restano leggibili in bianco e nero perché a distinguerle è la parola. */
+  .badge,
+  .chip,
+  .role-chip {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid var(--line-strong) !important;
+  }
+
+  /* I campi stampano il valore, non il controllo. */
+  input,
+  select,
+  textarea {
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+  }
+
+  a {
+    color: #000000 !important;
+    text-decoration: none !important;
+  }
+}

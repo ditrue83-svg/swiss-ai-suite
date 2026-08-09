@@ -333,27 +333,44 @@ async function composeEmail(
   const subject = st(locale, subjectKeyFor(n.type, kind));
   const isCalendar = n.entity_type === 'calendar_connection';
 
-  return buildReminderEmail({
-    subject,
-    companyName,
-    // Per un guasto del calendario non c'è un titolo di attività: si mette la
-    // frase che spiega cosa è successo, invece di una riga vuota.
-    taskTitle: isCalendar
-      ? st(locale, n.type === 'calendar_reauth_required' ? 'bodyReauth' : 'bodySyncFailed')
-      : title,
-    deadlineLine: isCalendar
-      ? ''
-      : dueDate ? st(locale, 'bodyDeadline', { date: formatDay(dueDate, locale) }) : st(locale, 'bodyNoDeadline'),
-    extraLine: n.type === 'unassigned_task_due_soon' ? st(locale, 'bodyUnassigned') : null,
-    actionLabel: st(locale, isCalendar ? 'bodyOpenCalendar' : 'bodyOpen'),
-    // §88 — l'origine la decide il SERVER. Un collegamento costruito su un host
-    // arrivato dal client sarebbe il modo più diretto per mandare i propri
-    // utenti a inserire le credenziali su un dominio altrui.
-    url: isCalendar
-      ? `${deps.appOrigin}/calendario/impostazioni`
-      : `${deps.appOrigin}/attivita/${n.entity_id}`,
-    footer: st(locale, 'footerWhy', { company: companyName }),
-  });
+  // ⚠️ IL DESTINATARIO VA RIMESSO QUI, e la sua assenza è costata l'intera
+  // funzione. `buildReminderEmail` compone SOLO oggetto e corpo — non conosce
+  // nessun indirizzo, e non deve conoscerlo. Restituendo il suo risultato nudo,
+  // `message.to` era `undefined`, `JSON.stringify` lo trasformava in `null`
+  // dentro l'array, e ogni promemoria sarebbe partito verso `to: [null]`: un
+  // 4xx del provider, una consegna chiusa come `failed`, e nessuna email mai
+  // arrivata a nessuno.
+  //
+  // Perché nessuno se ne era accorto: `tsconfig.json` include `src` e
+  // `scripts`, quindi un file di `supabase/functions/` entra nel typecheck solo
+  // se qualcosa là dentro lo importa — e `notify.ts` non era importato da
+  // niente. Ora lo importa la sezione 12 di `test:calendar-unit`, che esegue
+  // `deliverEmails` per davvero: il typecheck lo vede, e il test verifica che
+  // l'indirizzo arrivi al provider.
+  return {
+    to,
+    ...buildReminderEmail({
+      subject,
+      companyName,
+      // Per un guasto del calendario non c'è un titolo di attività: si mette la
+      // frase che spiega cosa è successo, invece di una riga vuota.
+      taskTitle: isCalendar
+        ? st(locale, n.type === 'calendar_reauth_required' ? 'bodyReauth' : 'bodySyncFailed')
+        : title,
+      deadlineLine: isCalendar
+        ? ''
+        : dueDate ? st(locale, 'bodyDeadline', { date: formatDay(dueDate, locale) }) : st(locale, 'bodyNoDeadline'),
+      extraLine: n.type === 'unassigned_task_due_soon' ? st(locale, 'bodyUnassigned') : null,
+      actionLabel: st(locale, isCalendar ? 'bodyOpenCalendar' : 'bodyOpen'),
+      // §88 — l'origine la decide il SERVER. Un collegamento costruito su un host
+      // arrivato dal client sarebbe il modo più diretto per mandare i propri
+      // utenti a inserire le credenziali su un dominio altrui.
+      url: isCalendar
+        ? `${deps.appOrigin}/calendario/impostazioni`
+        : `${deps.appOrigin}/attivita/${n.entity_id}`,
+      footer: st(locale, 'footerWhy', { company: companyName }),
+    }),
+  };
 }
 
 function subjectKeyFor(type: NotificationType, kind: string | null) {

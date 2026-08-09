@@ -39,13 +39,24 @@ export function requireEnv(name: string): string {
   return value;
 }
 
-/** Client con service role: scrive ciò che il client autenticato non può scrivere. */
-export function adminClient(): ServerClient {
+/**
+ * Client con service role: scrive ciò che il client autenticato non può scrivere.
+ *
+ * ⚠️ IL TIPO È QUELLO VERO, NON `ServerClient`, e fino al 2026-08-04 era il
+ * contrario: `… as unknown as ServerClient` costruiva il client completo e poi
+ * ne buttava via il tipo. Restringere la forma di un oggetto che si è appena
+ * costruiti non protegge nessuno — chi riceve `ServerClient` continua a
+ * riceverlo, perché il client vero lo soddisfa — e costava: `subsidy-worker`
+ * passa questo client a `runMatching`, che chiede il `SupabaseClient` concreto,
+ * e il typecheck lo rifiutava pur essendo a runtime esattamente quell'oggetto.
+ * Un cast che nasconde la verità si paga dove la verità serviva.
+ */
+export function adminClient() {
   return createClient(
     requireEnv('SUPABASE_URL'),
     requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
     { auth: { persistSession: false, autoRefreshToken: false } },
-  ) as unknown as ServerClient;
+  );
 }
 
 /** Client con il JWT dell'utente: è la RLS a decidere cosa può leggere. */

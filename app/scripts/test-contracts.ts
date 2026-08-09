@@ -418,6 +418,52 @@ async function main() {
     .select('id').eq('document_id', docAmend);
   check('e il collegamento sparisce con lui', ((linkGone ?? []) as unknown[]).length === 0);
 
+  // =========================================================================
+  section('12 · Il nome dell\'azienda arriva davvero al modello');
+  // =========================================================================
+  // ⚠️⚠️ QUESTO CONTROLLO NASCE DA UN DIFETTO CHE HA VISSUTO DAL PRIMO GIORNO.
+  // `loadCompanyName` interrogava `companies.name`, colonna che non esiste: la
+  // select tornava 42703, un `if (error) return null` se lo mangiava, e il nome
+  // dell'azienda non arrivava MAI al prompt. Nessuna suite se ne accorgeva,
+  // perché nessuna eseguiva quella funzione contro lo schema vero — e il typecheck
+  // non vede una stringa dentro `.select()`.
+  //
+  // Il costo non era estetico: senza quel nome il modello non sa quale delle due
+  // parti sia il cliente, abbassa la fiducia sotto la soglia del validatore, e la
+  // scheda del contratto esce SENZA CONTROPARTE. Misurato il 2026-08-03 con
+  // `npm run eval:contracts`: fiducia 0,4–0,6 su `company_party` e `counterparty`
+  // contro 0,98 quando il nome c'è.
+  //
+  // ⚠️ Si esegue la FUNZIONE VERA, non una sua imitazione: è l'unico modo per cui
+  // il nome di una colonna sbagliato diventi rosso.
+  {
+    const { loadCompanyName } = await import(
+      '../supabase/functions/_shared/contracts/store.ts'
+    );
+    const letto = await loadCompanyName(
+      admin as unknown as Parameters<typeof loadCompanyName>[0], A.companyId,
+    );
+    check('loadCompanyName restituisce il nome dell\'azienda, non null',
+      typeof letto === 'string' && letto.length > 0, `ottenuto ${JSON.stringify(letto)}`);
+    // La ragione sociale si RILEGGE dal database invece di riscriverla qui: due
+    // copie della stessa stringa divergono, e a divergere sarebbe il test.
+    const { data: reg } = await admin.from('companies')
+      .select('legal_name').eq('id', A.companyId).maybeSingle();
+    const registrata = (reg as { legal_name?: string } | null)?.legal_name ?? null;
+    check('ed è esattamente la ragione sociale registrata',
+      letto === registrata, `ottenuto ${JSON.stringify(letto)}, registrata ${JSON.stringify(registrata)}`);
+
+    // ⚠️ La controprova: su un'azienda che non c'è la funzione deve tornare
+    // `null` — «non l'ho trovata» — e NON sollevare. Distinguere questo caso da
+    // un errore di lettura è tutto il punto della correzione.
+    const assente = await loadCompanyName(
+      admin as unknown as Parameters<typeof loadCompanyName>[0],
+      '00000000-0000-0000-0000-000000000000',
+    );
+    check('un\'azienda inesistente dà null, non un errore', assente === null,
+      `ottenuto ${JSON.stringify(assente)}`);
+  }
+
   await cleanup();
 
   for (const [table, column] of [
