@@ -75,9 +75,13 @@ import {
 } from '../supabase/functions/_shared/finance/validate.ts';
 import { FINANCE_AI_FIELDS, type FinanceAiField } from '../supabase/functions/_shared/finance/prompt.ts';
 import {
-  FINANCE_CORRECTABLE_FIELDS, FINANCE_HIGH_RISK_FIELDS, FINANCE_QUALITY_FLAGS,
-  FINANCE_READY_REQUIREMENTS,
+  FINANCE_CORRECTABLE_FIELDS, FINANCE_ERROR_CODES, FINANCE_HIGH_RISK_FIELDS,
+  FINANCE_QUALITY_FLAGS, FINANCE_READY_REQUIREMENTS,
 } from '../supabase/functions/_shared/finance/contract.ts';
+import { CAUSA_KEY } from '../src/lib/errorCause.ts';
+import { it as dictIt } from '../src/i18n/locales/it.ts';
+import { de as dictDe } from '../src/i18n/locales/de.ts';
+import { fr as dictFr } from '../src/i18n/locales/fr.ts';
 // ⚠️ Si importa il MODELLO, non il servizio: quello tira dentro il client
 // Supabase, che legge le variabili d'ambiente di Vite e fuori dal browser non
 // esiste. È la stessa ragione per cui `runtime.ts` delle Edge Function non va
@@ -1066,6 +1070,28 @@ section('La coda che accetta lavoro e non lo esegue');
   // cron cambiasse frequenza, si cambia in un posto solo.
   ok(QUEUE_STALE_MINUTES >= 15,
     'la soglia lascia margine ad almeno tre cicli dello scheduler');
+}
+
+// ---------------------------------------------------------------------------
+section('La causa del guasto arriva a schermo');
+// ---------------------------------------------------------------------------
+// L'elenco autorevole qui è runtime (`FINANCE_ERROR_CODES`): ogni codice che il
+// worker può scrivere in `error_code` deve avere la sua causa nei tre dizionari
+// e stare nella mappa condivisa. Un codice aggiunto di là e non tradotto di qua
+// rende rossa questa sezione — è il suo mestiere.
+{
+  for (const code of FINANCE_ERROR_CODES) {
+    ok(code in CAUSA_KEY, `${code} è nella mappa delle cause`);
+  }
+  const dizionari = { it: dictIt, de: dictDe, fr: dictFr } as const;
+  for (const [lingua, dict] of Object.entries(dizionari)) {
+    const mancanti = FINANCE_ERROR_CODES.filter((c) => {
+      const testo = (dict.errors.cause as Record<string, string>)[c];
+      return typeof testo !== 'string' || testo.trim() === '';
+    });
+    ok(mancanti.length === 0, `${lingua}: ogni codice di Finanze ha la sua causa`,
+      mancanti.join(', '));
+  }
 }
 
 console.log(`\n${B}Riepilogo${X}  ${G}${pass} superati${X}${fail ? `  ${R}${fail} falliti${X}` : ''}\n`);

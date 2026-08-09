@@ -827,6 +827,31 @@ export const it = {
 
   errors: {
     generic: 'Si è verificato un errore. Riprova.',
+    // La causa di una lettura fallita o rimessa in coda, per codice del worker.
+    // Frasi di sola CAUSA, senza conseguenze: se si ritenta lo dice lo STATO
+    // della riga, non questa etichetta (un «si ritenta» qui mentirebbe sulle
+    // righe arrivate al tetto dei tentativi).
+    cause: {
+      NO_TEXT: 'il documento non ha testo da leggere',
+      SCANNED_NO_TEXT: 'scansione senza testo leggibile: serve la rilettura con l’OCR',
+      NOT_A_CONTRACT: 'il documento non sembra un contratto',
+      NOT_FINANCIAL: 'letto, ma non è un documento finanziario',
+      AI_REFUSED: 'il modello non ha restituito una risposta leggibile',
+      AI_INVALID_OUTPUT: 'la risposta del modello non rispetta il formato atteso',
+      AI_OUTPUT_TRUNCATED: 'risposta del modello tagliata dal limite di lunghezza',
+      AI_UNAVAILABLE: 'servizio AI non configurato su questo server',
+      AI_NOT_CONFIGURED: 'servizio AI non configurato su questo server',
+      QUOTA_EXCEEDED: 'credito AI esaurito',
+      PROVIDER_RATE_LIMITED: 'limite di richieste del fornitore AI raggiunto',
+      RATE_LIMITED: 'limite di richieste del fornitore AI raggiunto',
+      PROVIDER_ERROR: 'errore del fornitore AI',
+      TIME_BUDGET: 'tempo dell’esecuzione esaurito',
+      INTERRUPTED: 'lettura interrotta a metà',
+      STORAGE_MISSING: 'il file non è più nell’archivio',
+      SCHEMA_INVALID: 'i dati letti non rispettano lo schema atteso',
+      UNKNOWN: 'causa non riconosciuta',
+      UNKNOWN_ERROR: 'causa non riconosciuta',
+    },
     emailNotSent: 'Non è stato possibile inviare l’email. Non dipende da te: il servizio di posta dell’applicazione non ha accettato l’invio. Riprova più tardi e, se il problema resta, segnalalo a chi gestisce l’applicazione.',
     badCredentials: 'Email o password non corretti.',
     emailNotConfirmed: 'Devi confermare la tua email prima di accedere. Controlla la posta.',

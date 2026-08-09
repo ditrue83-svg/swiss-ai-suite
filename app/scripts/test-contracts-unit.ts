@@ -33,6 +33,10 @@ import {
 import {
   contentHash, fieldsFromReading, toDateOrNull, toNumberOrNull,
 } from '../supabase/functions/_shared/contracts/process.ts';
+import { CAUSA_KEY, causaDelGuasto } from '../src/lib/errorCause.ts';
+import { it as dictIt } from '../src/i18n/locales/it.ts';
+import { de as dictDe } from '../src/i18n/locales/de.ts';
+import { fr as dictFr } from '../src/i18n/locales/fr.ts';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -475,6 +479,48 @@ check('i warning sono codici, non contenuti',
   `trovati: ${allWarnings.join(', ')}`);
 check('nessun warning contiene testo del documento',
   !allWarnings.some((w) => w.includes('Swisscom') || w.includes('250') || w.includes('31.12')));
+
+// ---------------------------------------------------------------------------
+section('9. La causa del guasto arriva a schermo');
+// ---------------------------------------------------------------------------
+// `error_code` era vero nel database, nei log e nel rapporto del worker, e la
+// schermata diceva solo «Lettura non riuscita»: la causa moriva a un passo
+// dall'unica persona che può agire. La mappa `CAUSA_KEY` deve conoscere OGNI
+// codice che il worker può scrivere — l'elenco autorevole è il TIPO
+// `ContractErrorCode`, che a runtime non esiste: si estrae dal sorgente, come
+// la sezione 7 fa con gli elenchi SQL. Un codice aggiunto là e non tradotto
+// qui rende questa sezione rossa, che è il suo mestiere.
+{
+  const sorgente = readFileSync(
+    join(HERE, '../supabase/functions/_shared/contracts/contract.ts'), 'utf8');
+  const blocco = sorgente.match(/export type ContractErrorCode =([\s\S]*?);/)?.[1] ?? '';
+  const codici = [...blocco.matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]);
+  check('l’estrazione dal sorgente trova i codici (almeno 10)', codici.length >= 10,
+    `trovati: ${codici.length}`);
+  for (const code of codici) {
+    check(`${code} è nella mappa delle cause`, code in CAUSA_KEY);
+  }
+  const dizionari = { it: dictIt, de: dictDe, fr: dictFr } as const;
+  for (const [lingua, dict] of Object.entries(dizionari)) {
+    const mancanti = codici.filter((c) => {
+      const testo = (dict.errors.cause as Record<string, string>)[c];
+      return typeof testo !== 'string' || testo.trim() === '';
+    });
+    check(`${lingua}: ogni codice dei contratti ha la sua causa`, mancanti.length === 0,
+      mancanti.join(', '));
+  }
+
+  // Il traduttore, con un `t` finto e riconoscibile: la funzione è pura e il
+  // traduttore arriva da fuori APPOSTA (tr() di modulo congela la lingua).
+  const t = ((key: string) => `«${key}»`) as Parameters<typeof causaDelGuasto>[1];
+  check('un codice noto passa dal dizionario',
+    causaDelGuasto('SCANNED_NO_TEXT', t) === '«errors.cause.SCANNED_NO_TEXT»');
+  check('un codice IGNOTO resta grezzo — mai una categoria inventata',
+    causaDelGuasto('CODICE_MAI_VISTO', t) === 'CODICE_MAI_VISTO');
+  check('senza codice non c’è causa',
+    causaDelGuasto(null, t) === null && causaDelGuasto('', t) === null
+    && causaDelGuasto(undefined, t) === null);
+}
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);
