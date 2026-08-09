@@ -336,7 +336,20 @@ jobs:
   preflight:
     name: Segreti disponibili?
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # ⚠️ 20 E NON 5, E LA RAGIONE È UN ROSSO CHE NON SIGNIFICAVA NIENTE.
+    # Il 2026-08-06 (run 31127878961) questo job è stato ucciso dopo 4m49s senza
+    # aver mai ricevuto un runner: `runner: ""`, nessun log, nessun passo
+    # eseguito. `timeout-minutes` non conta solo l'esecuzione — l'attesa in coda
+    # se la mangia — e GitHub segna un timeout come «cancelled», che porta la
+    # RUN INTERA a `failure`. Gli altri due job avevano finito, verdi.
+    # Il lavoro vero qui dentro è una `if [ -n "$VAR" ]`: un secondo. Cinque
+    # minuti non erano un limite sul lavoro, erano un limite sulla FORTUNA di
+    # trovare un runner libero — e nello stesso pomeriggio un rilancio è rimasto
+    # in coda più di otto minuti. Un rosso che non dice niente insegna a non
+    # guardare i rossi, ed è il difetto peggiore che possa avere un cancello.
+    # 20 resta un limite vero (un job appeso muore), ma smette di dipendere
+    # dalla congestione dei runner.
+    timeout-minutes: 20
     # ⚠️ Questo job non fa checkout, quindi la cartella `app/` non esiste sul
     # runner: senza questo override il `working-directory` ereditato dai
     # `defaults` farebbe fallire il passo con «no such directory».
