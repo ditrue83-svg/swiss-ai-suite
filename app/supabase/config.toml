@@ -239,3 +239,43 @@ verify_jwt = false
 # di scriverlo: v12 verify_jwt=true.
 [functions.company-assistant]
 verify_jwt = true
+
+# ---------------------------------------------------------------------------
+# ⚠️ LE ULTIME SEI — aggiunte il 2026-08-09, al primo deploy dell'intera
+# pila. Erano le sole funzioni ancora NON dichiarate: il loro gate dipendeva
+# dalla memoria della piattaforma, la stessa trappola chiusa due volte qui
+# sopra. Valori MISURATI con `supabase functions list` prima di scriverli
+# (automation-admin v20 true · automation-worker v20 false ·
+# calendar-disconnect v12 true · generate-reply v24 true · subsidy-worker v9
+# false · lookup-company v25 true). Da oggi OGNI funzione del repository è
+# dichiarata: una funzione nuova senza sezione qui è un difetto, non un
+# default.
+#
+#   automation-admin     la chiama il browser con il JWT dell'utente
+#                        (`authenticate()` nel codice, più il gate).
+#   calendar-disconnect  idem: è un gesto di una persona nelle impostazioni.
+#   generate-reply       la chiama il browser; qui l'autenticazione È il gate
+#                        della piattaforma (nel codice non c'è authenticate()).
+#   lookup-company       la chiama il browser in onboarding (ricerca Zefix).
+#   automation-worker    scheduler, non una persona: si autentica NEL CODICE
+#                        con `x-automation-worker-secret` a tempo costante.
+#                        Gate acceso = 401 al cron per sempre, in silenzio.
+#   subsidy-worker       scheduler, `x-subsidy-worker-secret`, stessa regola.
+# ---------------------------------------------------------------------------
+[functions.automation-admin]
+verify_jwt = true
+
+[functions.calendar-disconnect]
+verify_jwt = true
+
+[functions.generate-reply]
+verify_jwt = true
+
+[functions.lookup-company]
+verify_jwt = true
+
+[functions.automation-worker]
+verify_jwt = false
+
+[functions.subsidy-worker]
+verify_jwt = false

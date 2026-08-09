@@ -25,6 +25,23 @@
 > esaurito** (HTTP 400, misurato con una chiamata vera); bundle servito ancora
 > `index-CkesEDA3.js`. In produzione: 148 messaggi Inbox tutti `done`,
 > `audit_logs` a 0 righe, `contract_extractions` a **0** (§Contratti).
+>
+> **Rimisurato il 2026-08-09, dopo il PRIMO DEPLOY dal 2026-08-01.** In `main`
+> è entrata l'intera pila (merge `f433d1a`, PR #12–#20 tutte chiuse) e il push
+> ha pubblicato il frontend: bundle servito **`index-BSzz4AsB.js`** — verificato
+> che contenga `/registro`, `/incentivi/revisioni` e il blocco `@media print`.
+> Ridistribuite **18 Edge Function su 19** (quelle il cui codice cambiava,
+> calcolato per chiusura degli import; `lookup-company` intatta a v25);
+> `verify_jwt` ora dichiarato in `config.toml` per TUTTE le 19 e confrontato
+> col progetto vivo: **zero divergenze**; `npm run verify:deploy` → «Ambiente
+> allineato al repository». Migrazioni: **nessuna da applicare** (39 = 39,
+> `supabase migration list --linked`). Cancelli riprovati dopo il deploy:
+> `email-sync` senza JWT → **401**, worker senza segreto → **403**;
+> `test:production` VERDE. Prova funzionale su azienda tecnica poi rimossa
+> (§Registro attività). ⚠️ **Il credito Anthropic NON è stato rimisurato oggi**:
+> resta dichiarato esaurito (ultima misura vera: 2026-08-07) e ogni riga di
+> questa pagina che dipende da un percorso AI — lettura contratti dal capo alla
+> coda, eval, classificazione Inbox — resta **non rimisurata**.
 
 ## ⛔ IL CREDITO ANTHROPIC RESTA ESAURITO (rimisurato da ultimo il 2026-08-07)
 
@@ -146,27 +163,27 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). ⚠️⚠️ **Il 2026-08-03 si è scoperto che le email non sarebbero potute partire NEMMENO con i secret impostati**: `composeEmail` non metteva il destinatario nel messaggio, e ogni promemoria sarebbe uscito verso `to: [null]` (§sotto). Corretto e coperto da 25 controlli nuovi. Restano due cose, entrambe **gesti dell'utente**: i due secret del provider email non sono impostati, e **nessuna connessione OAuth reale è mai stata stabilita** — misurato il 2026-08-03, `POST /calendar-oauth/providers` risponde `{"providers":[],"emailConfigured":false}`. Quindi «servizio reale» resta **no** |
 | Automazioni | `/automazioni` | sì | sì | sì | sì | sì | sì | — | nessuna approvazione umana: solo azioni a rischio basso, e per questo non esiste nessuna azione che ne avrebbe bisogno. Le esecuzioni che non corrispondono non lasciano traccia |
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
-| Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ✅ **Letti tre contratti veri il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ⚠️ Le correzioni sono nel repository e **NON sono deployate**: `contract-worker` in produzione porta ancora il codice vecchio. ⚠️ **Al 2026-08-07 la rilettura dal capo alla coda resta non eseguibile** (credito esaurito, misurato): il 88,6 % resta la misura di PRIMA della correzione delle date. In produzione `contract_extractions` è a **0 righe**: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il 2026-08-07 le prove che non spendono credito: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
+| Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ✅ **Letti tre contratti veri il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ✅ **Le correzioni sono DEPLOYATE dal 2026-08-09** (`contract-worker` v19). ⚠️ **La rilettura dal capo alla coda resta non eseguibile** (credito esaurito; ultima misura vera 2026-08-07, non rimisurato il 09): il 88,6 % resta la misura di PRIMA della correzione delle date. In produzione `contract_extractions` è a **0 righe**: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il 2026-08-07 le prove che non spendono credito: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). ⚠️ **Questa riga ha detto «7 revisioni del catalogo in attesa di una persona» fino al 2026-08-06, ed era vero fino al 2026-08-05**: rimisurato interrogando la produzione, la coda è a **ZERO in attesa — 7 `ignored`**, chiuse tutte alle 22:45:42 del 2026-08-05 **dal sistema e non da una persona** (`reviewed_by` nullo su tutte e sette). Non erano un cambiamento della fonte ma la **prima lettura riuscita**, e il difetto è corretto in `diff.ts` (commit `ac0c65e`). ⚠️⚠️ **Una coda vuota NON significa catalogo verificato**: `last_checked_at` è fermo al **2026-07-25** per tutti e sette i programmi — nessuno ha ancora confrontato il catalogo con la fonte, ed è la cosa che quella riga rischiava di far credere fatta. Rimisurato il 2026-08-07: `test:subsidy` **91/91** sul database vero, `subsidy:health` **exit 0 «niente in sospeso»**, `last_checked_at` ancora al 2026-07-25 |
 
-## Registro attività (0039) — applicato e provato sul database vero, NON deployato
+## Registro attività (0039) — applicato, provato sul database vero e DEPLOYATO il 2026-08-09
 
 Non ha una riga nella tabella qui sopra perché **non è un modulo di prodotto**:
 è una schermata sola (`/registro`) che indicizza i fatti degli altri moduli
 senza possederne nessuno. Ma le sei parole valgono lo stesso, e vanno dette
 prima che qualcuno le deduca dal fatto che il codice esiste.
 
-| | Stato al 2026-08-06 (sera) |
+| | Stato al 2026-08-09 |
 |---|---|
 | Implementato | sì — migrazione `0039_audit_logs`, pagina, servizio, due suite |
-| **Migrazione applicata** | **sì**, il 2026-08-06 con `supabase db push --linked`. Produzione a **0001–0039** (riletto da `supabase_migrations.schema_migrations`: 39 righe) |
-| Deployato | **no** — il dominio serve ancora `index-CkesEDA3.js`, quindi la pagina `/registro` **non è raggiungibile da nessun cliente**. I TRIGGER invece sono già in esercizio: da adesso ogni caricamento, analisi, correzione, risposta, attività e cambio di membership scrive la sua riga |
+| **Migrazione applicata** | **sì**, il 2026-08-06 con `supabase db push --linked`. Produzione a **0001–0039** (riletto da `supabase_migrations.schema_migrations`: 39 righe; riconfermato il 2026-08-09 con `supabase migration list --linked`, 39 = 39) |
+| Deployato | **sì, dal 2026-08-09** — il dominio serve `index-BSzz4AsB.js` e la pagina `/registro` è raggiungibile. I TRIGGER erano già in esercizio dal 2026-08-06 |
 | Configurato | non richiede configurazione: nessun segreto, nessuno scheduler |
-| Testato | **sì** — `test:audit-unit` 74/74 offline, `test:audit` **41/41 sul database vero** |
-| Provato contro la cosa reale | **sì**, e vedi sotto quali affermazioni sono diventate misure |
-| Disponibile a clienti esterni | no (manca il deploy) |
+| Testato | **sì** — `test:audit-unit` 74/74 offline, `test:audit` **41/41 sul database vero** (rieseguito il 2026-08-09) |
+| Provato contro la cosa reale | **sì**, anche SUL DOMINIO dopo il deploy: vedi la misura del 2026-08-09 qui sotto |
+| Disponibile a clienti esterni | raggiungibile sì (ruoli titolare/amministratore); usato da un cliente esterno: no |
 
 ⚠️ **Le tre cose che erano affermazioni fino a ieri, e adesso sono misure.** Le
 garanzie del registro sono permessi, policy e trigger: tre cose che si possono
@@ -203,11 +220,29 @@ conferma pratica del motivo per cui il registro sta nei trigger e non in un
 servizio: copre anche i percorsi a cui nessuno ha pensato.
 
 Riconfermato il **2026-08-07**: `test:audit` di nuovo **41/41** sul database
-vero, bundle servito ancora `index-CkesEDA3.js` (il deploy continua a mancare),
+vero, bundle servito ancora `index-CkesEDA3.js` (il deploy allora mancava),
 e `audit_logs` in produzione a **0 righe** — i trigger sono in esercizio dal
 2026-08-06 e nessuna attività reale è avvenuta da allora; le righe scritte
 dalle suite se ne vanno con la cascata delle loro aziende usa-e-getta, che è il
 comportamento provato dalla sezione 7 della suite.
+
+**Misurato il 2026-08-09, DOPO il deploy, sul dominio** — con un'azienda
+tecnica creata apposta e rimossa alla fine (pulizia verificata: zero residui su
+aziende, utenti, programmi, revisioni, operatori):
+
+- la pagina `/registro` servita da `app.ai-swisse.com` mostra **3 eventi su 3**
+  — «Documento caricato» con i campi valorizzati, le due «Persona aggiunta» —
+  scritti dai trigger nel momento in cui l'azienda tecnica li ha compiuti;
+- un utente **member**, sulla stessa pagina deployata, riceve il lucchetto
+  «**Riservato a titolari e amministratori**» e sotto, via PostgREST, la RLS
+  gli restituisce **zero righe**;
+- INSERT e UPDATE su `audit_logs` da utente autenticato (owner E member)
+  ricevono **42501 «permission denied»** — negativo esplicito, rieseguito;
+- ⚠️ osservazione d'interfaccia: per gli utenti tecnici senza profilo
+  l'etichetta dell'autore dice «di una persona non più in azienda» anche se la
+  persona in azienda c'è. Con utenti registrati per la via normale il profilo
+  esiste; il ripiego dell'etichetta però non distingue «senza profilo» da
+  «uscita dall'azienda».
 
 ## I messaggi fermi dell'Inbox — da 11 su 124 a ZERO su 148
 
@@ -396,9 +431,11 @@ accodato la richiesta.** Da oggi `npm run verify:deploy` legge comunque l'esito
 dell'ultima esecuzione di ogni job — prima sapeva solo che il job *esisteva* —
 e i due worker scrivono `phase=start` / `phase=end` con `rid` e `durationMs`.
 
-## ⚠️⚠️ Le email di notifica: non sarebbero partite nemmeno con i secret
+## ⚠️⚠️ Le email di notifica: fino al 2026-08-09 non sarebbero partite nemmeno con i secret
 
 Misurato il **2026-08-03**, scrivendo il primo test che esegue `deliverEmails`.
+(La correzione è **DEPLOYATA dal 2026-08-09** — `notifications-worker` v16,
+`calendar-sync` v18: da oggi i due secret mancanti sono l'UNICO cancello.)
 
 **Il difetto.** `composeEmail` (`_shared/calendar/notify.ts`) dichiarava di
 restituire `{ to, subject, text }` e restituiva il risultato nudo di
@@ -520,14 +557,15 @@ invece di sceglierne una plausibile. **Le perdite erano quasi tutte a valle.**
   codice di prima (10 rossi misurati).
   ⚠️⚠️ **NON rimisurata dal capo alla coda**: il credito Anthropic si è esaurito
   subito dopo. Il 88,6 % qui sopra è la misura di PRIMA di questa correzione. Il
-  numero atteso è ~77/79, ed è una previsione, non una misura.
+  numero atteso è ~77/79, ed è una previsione, non una misura. (Dal 2026-08-09
+  la correzione è DEPLOYATA; la rimisurazione resta bloccata dal credito.)
 - **Due sono `renewal_period` sul contratto italiano**: «di anno in anno» non è
   un numerale e `parsePeriod` torna `null`. È un limite, non un valore sbagliato.
 
-⚠️ **Le due correzioni NON sono deployate**: `contract-worker` in produzione
-porta ancora il codice vecchio. La misura è stata fatta eseguendo la pipeline
-vera (`processContractDocument`, lo stesso modulo del worker) in Node, contro il
-database reale e il modello vivo.
+✅ **Le due correzioni sono DEPLOYATE dal 2026-08-09** (`contract-worker` v19;
+fino ad allora la produzione portava il codice vecchio). La misura del 88,6 %
+era stata fatta eseguendo la pipeline vera (`processContractDocument`, lo
+stesso modulo del worker) in Node, contro il database reale e il modello vivo.
 
 ✅ **Nessun residuo**: quattro esecuzioni dell'eval, ogni volta azienda tecnica
 creata e cancellata, cancellazione verificata. Produzione riletta a fine giro —
