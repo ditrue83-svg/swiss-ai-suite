@@ -213,6 +213,11 @@ const GROUPS = {
       // e ~342 misure a mano in cinque giorni. Un gate che avvisa senza
       // bloccare è un contatore di violazioni, non un argine.
       { script: 'design:lint' },
+      // I file del carattere: che siano quelli verificati, e che coprano il
+      // testo che mostriamo. Il difetto che lo ha motivato stava DENTRO un
+      // binario — il sottoinsieme «latin» di Google non ha U+202F, lo spazio
+      // che tutto il francese usa — dove nessuna rilettura del codice arriva.
+      { script: 'fonts:check' },
       // ⚠️ `--root` viene passato SOLO se chi lancia lo ha indicato. Senza, il
       // passo esce 3 («non eseguito») e il gruppo resta INCOMPLETO invece di
       // sembrare rosso: dalla directory di sviluppo due dei cinque controlli

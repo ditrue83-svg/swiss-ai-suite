@@ -27,6 +27,8 @@
     "check:auth:self-test": "node scripts/check-auth-config.mjs --self-test",
     "i18n:coverage": "node scripts/i18n-coverage.mjs",
     "design:lint": "node scripts/design-lint.mjs",
+    "fonts:check": "node scripts/fonts-check.mjs",
+    "fonts:check:self-test": "node scripts/fonts-check.mjs --self-test",
     "docs:check": "node scripts/docs-check.mjs",
     "i18n:typography": "node scripts/i18n-typography.mjs",
     "test:uid": "node --import tsx scripts/test-uid.ts",

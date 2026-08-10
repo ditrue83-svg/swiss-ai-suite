@@ -996,6 +996,12 @@ npm run design:lint     # regola 1 del sistema di design: misure e colori dai to
                         #   riscontro nel codice fa fallire il controllo)
 npm run design:lint -- --report      # l'elenco riga per riga, col gradino più vicino accanto
 npm run design:lint -- --self-test   # verifica che il RILEVATORE stesso funzioni (31 casi)
+npm run fonts:check     # i .woff2 serviti sono quelli verificati (impronta sha256), coprono
+                        #   ogni carattere dei tre dizionari, e il preload/@font-face puntano
+                        #   ai pesi giusti. Nato da un difetto DENTRO un binario: il
+                        #   sottoinsieme «latin» di Google non contiene U+202F, lo spazio che
+                        #   tutto il francese usa
+npm run fonts:check:self-test        # verifica che il rilevatore sappia fallire (15 casi)
 npm run test:operations # ogni Edge Function ha un invocante? ogni scheduler è inventariato,
                         #   dichiara il timeout di pg_net e punta a una funzione che esiste?
 npm run test:operations -- --self-test  # verifica che il CONTROLLO sappia fallire (11 casi)
