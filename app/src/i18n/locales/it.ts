@@ -3321,8 +3321,8 @@ export const it = {
       milestoneSource: 'Provenienza della data',
     },
     values: {
-      subsidyAvailability: { available: 'SÃ¬', suspended: 'No, oggi sospeso' },
-      subsidyProjectStage: { idea: 'Idea', planned: 'Pianificato', started: 'GiÃ  avviato', completed: 'Concluso', cancelled: 'Annullato' },
+      subsidyAvailability: { available: 'Sì', suspended: 'No, oggi sospeso' },
+      subsidyProjectStage: { idea: 'Idea', planned: 'Pianificato', started: 'Già avviato', completed: 'Concluso', cancelled: 'Annullato' },
       subsidyKind: { project: 'Legata a un progetto', general: 'Legata al profilo aziendale' },
       subsidyRelevance: { high: 'Molto rilevante', medium: 'Rilevante', low: 'Poco rilevante' },
       subsidyEligibility: { not_assessed: 'Non ancora valutata', insufficient_information: 'Dati insufficienti', potentially_eligible: 'Potenzialmente idonea', likely_ineligible: 'Probabilmente non idonea', ineligible: 'Non idonea' },
