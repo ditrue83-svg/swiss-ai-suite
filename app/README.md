@@ -1005,6 +1005,9 @@ npm run status               # LO STATO, MISURATO ADESSO, in un file solo (`stat
                              #   misura non presa è marcata «non misurato» e il comando esce 3,
                              #   mai uno zero di ripiego. Il file è in .gitignore: porta numeri
                              #   della produzione e si condivide deliberatamente
+npm run status:self-test     # le frasi condizionali del foglio (l'avviso sui commit non uniti,
+                             #   la sezione delle PR) provate sui casi che DEVONO farle tacere:
+                             #   l'avviso era fisso, e a lavoro tutto unito mentiva
 npm run verify:deploy   # l'altra metà: quegli scheduler esistono DAVVERO nel progetto?
                         #   Richiede SUPABASE_ACCESS_TOKEN e FALLISCE se non ce l'ha:
                         #   «non ho potuto verificare» non è un verde. Fuori da test:all

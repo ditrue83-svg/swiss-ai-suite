@@ -244,6 +244,10 @@ const GROUPS = {
       // stanno qui e non fra le suite che ne hanno bisogno.
       { script: 'suite', args: ['--self-test'] },
       { script: 'check:auth:self-test' },
+      // Le frasi condizionali del foglio di stato: l'avviso «main non
+      // contiene il lavoro recente» era fisso, e a lavoro tutto unito
+      // mentiva. Funzioni pure, provate sui casi che DEVONO farle tacere.
+      { script: 'status:self-test' },
       // La coda di revisione del catalogo: il giudizio è una funzione pura, e
       // provarlo qui evita di dover invecchiare una riga vera per vederlo
       // reagire.

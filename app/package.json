@@ -63,6 +63,7 @@
     "test:audit": "node --env-file=.env.test --import tsx scripts/test-audit.ts",
     "test:operations": "node scripts/test-operations.mjs",
     "status": "node --env-file=.env.test scripts/status-snapshot.mjs",
+    "status:self-test": "node scripts/status-snapshot.mjs --self-test",
     "verify:deploy": "node scripts/verify-deploy.mjs",
     "subsidy:seed-catalog": "node --env-file=.env.test scripts/seed-subsidy-catalog.mjs",
     "suite": "node scripts/run-test-suite.mjs",
