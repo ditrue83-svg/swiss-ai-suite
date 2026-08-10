@@ -37,6 +37,68 @@ const outArg = args.indexOf('--out');
 const OUT = outArg >= 0 ? args[outArg + 1] : join(APP, 'stato-attuale.md');
 const TO_STDOUT = args.includes('--stdout');
 
+// ---------------------------------------------------------------------------
+// LE FRASI CONDIZIONALI DEL FOGLIO, come funzioni pure.
+//
+// ⚠️ PERCHÉ. Fino al 2026-08-10 l'avviso «main non contiene il lavoro recente»
+// era una riga fissa del modello: stampata anche il giorno in cui la misura
+// diceva ramo `main` e zero commit non uniti — una frase falsa in un foglio
+// costruito per dire solo cose misurate. Stessa malattia per «Le PR aperte»:
+// con l'elenco vuoto ([] è truthy) restava l'intestazione orfana, e una
+// sezione vuota non dice «nessuna», dice «boh». Le frasi che dipendono da una
+// misura si calcolano DALLA misura, e da funzioni pure: così i casi che devono
+// farle tacere si possono provare senza rompere il progetto vero.
+// ---------------------------------------------------------------------------
+
+/** L'avviso di coda: esiste solo se ESISTE lavoro che main non contiene.
+ *  `sopraMain` è l'output di `git log --oneline origin/main..HEAD`:
+ *  '' = allineato, null = non misurato — in entrambi i casi l'affermazione
+ *  non è provata, e una frase non provata non si stampa. */
+export function rigaAvvisoMain(sopraMain) {
+  if (!sopraMain) return '';
+  return '\n⚠️ `main` non contiene il lavoro recente: il ramo aggiornato è quello indicato qui sopra.\n';
+}
+
+/** La sezione delle PR: con l'elenco misurato e vuoto lo DICE («Nessuna»),
+ *  senza misura tace — il blocco ⛔ in testata ha già dichiarato il perché. */
+export function sezionePrAperte(pr) {
+  if (pr === null) return '';
+  if (!pr.length) return '### Le PR aperte\n\nNessuna.\n';
+  return `### Le PR aperte\n\n${pr.map((p) => `- **#${p.number}** ${p.title} → \`${p.baseRefName}\``).join('\n')}\n`;
+}
+
+// Ogni caso porta l'esito atteso; i negativi (la frase che DEVE tacere) sono
+// il motivo per cui queste funzioni esistono — l'avviso fisso li sbagliava
+// tutti, ed è il caso su cui questa autoverifica è stata vista fallire.
+const SELF_TEST_CASES = [
+  { name: 'commit non uniti: l\'avviso c\'è', run: () => rigaAvvisoMain('abc123 improve: x\ndef456 fix: y').includes('⚠️') },
+  { name: 'albero allineato: l\'avviso tace', run: () => rigaAvvisoMain('') === '' },
+  { name: 'monorepo non misurato: l\'avviso tace', run: () => rigaAvvisoMain(null) === '' },
+  { name: 'una PR aperta: compare col suo numero', run: () => sezionePrAperte([{ number: 23, title: 't', baseRefName: 'main' }]).includes('**#23**') },
+  { name: 'elenco misurato e vuoto: «Nessuna», non un\'intestazione orfana', run: () => sezionePrAperte([]).includes('Nessuna.') },
+  { name: 'PR non misurate: la sezione tace', run: () => sezionePrAperte(null) === '' },
+];
+const selfTestFailures = SELF_TEST_CASES.filter((c) => !c.run());
+
+// ⚠️ PRIMA del controllo sull'ambiente: l'autoverifica non ha bisogno di
+// credenziali (come check:auth:self-test), e gira comunque a ogni esecuzione —
+// se le frasi sono rotte, il foglio non va nemmeno scritto.
+if (args.includes('--self-test')) {
+  console.log('\nAutoverifica delle frasi condizionali\n');
+  for (const c of SELF_TEST_CASES) console.log(`  ${selfTestFailures.includes(c) ? '✗' : '✓'} ${c.name}`);
+  if (selfTestFailures.length) {
+    console.error(`\n  ${selfTestFailures.length} casi non superati: il foglio mentirebbe.\n`);
+    process.exit(1);
+  }
+  console.log('\n  Tutti i casi superati.\n');
+  process.exit(0);
+}
+if (selfTestFailures.length) {
+  console.error(`${R}Le frasi condizionali non superano l'autoverifica: niente foglio.${X}`);
+  console.error(`  Esegui: npm run status:self-test`);
+  process.exit(1);
+}
+
 const URL = process.env.SUPABASE_URL;
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!URL || !SERVICE) {
@@ -195,16 +257,14 @@ ${uso.map(riga).join('\n')}
 | commit sopra \`origin/main\` non uniti | ${sopraMain === null ? '**non misurato**' : (sopraMain ? sopraMain.split('\n').length : 0)} |
 
 ${sopraMain ? `### I commit non ancora su \`main\`\n\n${sopraMain.split('\n').map((l) => `- ${l}`).join('\n')}\n` : ''}
-${pr ? `### Le PR aperte\n\n${pr.map((p) => `- **#${p.number}** ${p.title} → \`${p.baseRefName}\``).join('\n')}\n` : ''}
+${sezionePrAperte(pr)}
 ## Dove leggere il resto
 
 - stato dichiarato modulo per modulo: \`docs/product-status.md\` (tabella «I moduli», con le sei parole e la colonna «clienti esterni»)
 - limiti di prodotto: \`README.md\` → «Limitazioni attuali (dichiarate, non nascoste)»
 - che cosa sta cambiando: le PR aperte su https://github.com/ditrue83-svg/swiss-ai-suite/pulls
 - il diario di bordo: i messaggi di commit (non esiste un CHANGELOG: la ragione di ogni riga sta nel suo commit)
-
-⚠️ \`main\` non contiene il lavoro recente: il ramo aggiornato è quello indicato qui sopra.
-`;
+${rigaAvvisoMain(sopraMain)}`;
 
 if (TO_STDOUT) {
   console.log(md);
