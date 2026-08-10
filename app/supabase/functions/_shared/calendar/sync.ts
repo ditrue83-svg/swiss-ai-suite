@@ -434,7 +434,19 @@ export async function reconcileConnection(
     }
 
     if (missing.length) {
-      // Deduplicato: la stessa attività può arrivare da entrambi i controlli.
+      // ⚠️ La deduplicazione è una CINTURA, e oggi non stringe niente: `linked`
+      // raccoglie i task di TUTTI i collegamenti del lotto — compresi quelli
+      // appena cancellati al passo 1 — quindi il passo 2 non può ripescarli e un
+      // duplicato non è costruibile. Il commento diceva il contrario («la stessa
+      // attività può arrivare da entrambi i controlli») ed era falso: corretto il
+      // 2026-08-10, dopo che una revisione ha verificato togliendola che nessuna
+      // asserzione cambia colore.
+      //
+      // Resta, perché costa una riga e perché i due insiemi nascono da due query
+      // che possono cambiare separatamente: se un domani `linked` venisse
+      // costruito DOPO le cancellazioni, sarebbe l'unica difesa — e quel giorno
+      // andrà provata. Nel frattempo `enqueueTasks` scrive comunque in upsert su
+      // `task_id`, quindi un duplicato sarebbe innocuo anche senza.
       const unique = [...new Map(missing.map((m) => [m.taskId, m])).values()];
       await enqueueTasks(deps.sb, unique);
       out.requeued = unique.length;

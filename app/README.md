@@ -885,7 +885,9 @@ npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run test:documents-unit  # Documenti offline: stati, ricerca, estratti, indirizzo (60 test)
 npm run test:documents       # Documenti su DB: isolamento della RICERCA, categorie, etichette, archivio
 npm run test:calendar-unit   # Calendario e notifiche offline: stato desiderato, promemoria con ora
-                             # legale, idempotenza degli adapter, griglia del mese (158 test)
+                             # legale, idempotenza degli adapter, griglia del mese (213 test)
+npm run test:calendar-sync-unit  # Il MOTORE di sincronizzazione eseguito contro finzioni: cambio di
+                                 # responsabile, lease della creazione, token, riconciliazione (75 test)
 npm run test:calendar        # Calendario su DB: isolamento fra aziende E FRA PERSONE, coda, trigger
 npm run test:notification-email          # Invio VERO al provider di posta. Esce 3 se i due secret
                                          # NOTIFICATION_EMAIL_* non ci sono: saltato ≠ verde
@@ -1079,12 +1081,31 @@ GIRA è eseguirla.
   (B non legge/scarica/scrive nulla di A), cascade delete, nessun accesso senza sessione, persistenza dopo re-login.
 - **`test:phase2` (36)** — autorizzazione via membership (403 cross-tenant), 401/400/422, **rate limit** (429),
   analisi reale end-to-end con verifica che **tutte** le citazioni esistano nel testo, persistenza della provenienza.
-- **`test:calendar-unit` (156)** — le decisioni che si sbagliano in silenzio: lo **stato desiderato**
+- **`test:calendar-unit` (213)** — le decisioni che si sbagliano in silenzio: lo **stato desiderato**
   di un evento (compresa la distinzione fra «non deve esserci» e «non si può toccare», che salva il
   calendario di chi ha solo un token scaduto), i **promemoria attraverso il cambio dell'ora legale**,
   la deduplicazione, l'**idempotenza degli adapter** contro un provider finto (un 409 di Google non
   crea un secondo evento), e l'**assenza** dei metodi che leggerebbero i calendari personali.
   Controprove eseguite: rimettendo i difetti, 2, 6 e 1 controlli falliscono.
+- **`test:calendar-sync-unit` (75)** — il **motore di sincronizzazione eseguito**, non riletto: le
+  funzioni vere di `_shared/calendar/sync.ts` contro un client Supabase finto e un adapter a copione,
+  con i segreti cifrati dalla `seal` vera. Il cambio di responsabile (togliere di là e mettere di qua
+  **nella stessa esecuzione**), l'ordine evento-poi-riga, il **lease** della creazione del calendario
+  (scaduto e riprendibile, gara persa con esito buono, gara persa con esito incerto, rilascio anche
+  sul guasto), il rinnovo del token (revoca ≠ scope revocato ≠ provider occupato) e **quale** segreto
+  gli arriva, il **confine di connessione** della pulizia post-creazione, l'equivalenza fra i criteri
+  SQL — in **entrambe** le loro copie, import iniziale e riconciliazione — e
+  `getCalendarDesiredState`, l'ordine del lotto della riconciliazione col suo budget di tempo, e il
+  filo **preferenze → contenuto**: chi ha spento il titolo (§96) non se lo ritrova nel calendario, e
+  la descrizione è nella lingua di chi riceve. È la suite che ha estinto la riga di `sync.ts` in
+  `TYPECHECK_SCOPERTI` (451 righe che nessun test eseguiva).
+  Controprove per mutazione: **25 mutazioni mirate, 25 rosse sull'asserzione giusta**. Due di quelle
+  25 hanno corretto il TEST e non il codice — il caso del lease passava anche senza `finally`, e
+  l'asserzione sul nome del calendario partiva già dal nome atteso, quindi non poteva fallire.
+  ⚠️ **Quattordici delle venticinque sono nate da una revisione avversaria** (2026-08-10): la prima
+  stesura era 59/59 verde e non vedeva, fra le altre, il titolo nascosto che ricompare, lo scope
+  revocato che non chiede di riautorizzare, e la pulizia che cancella i collegamenti di tutta
+  l'azienda. Verde non voleva dire coperto.
 - **`test:calendar` (DB)** — isolamento fra aziende e, per la prima volta, **fra persone della stessa
   azienda**: due colleghi non si leggono le notifiche, non si vedono le connessioni, non si toccano
   le preferenze. Più: token irraggiungibili, notifiche non fabbricabili, coda del solo server,

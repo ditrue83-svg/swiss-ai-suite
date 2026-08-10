@@ -42,6 +42,7 @@
     "test:documents-unit": "node --import tsx scripts/test-documents-unit.ts",
     "test:documents": "node --env-file=.env.test scripts/test-documents.mjs",
     "test:calendar-unit": "node --import tsx scripts/test-calendar-unit.ts",
+    "test:calendar-sync-unit": "node --import tsx scripts/test-calendar-sync-unit.ts",
     "test:calendar": "node --env-file=.env.test scripts/test-calendar.mjs",
     "test:notification-email": "node --env-file=.env.test --import tsx scripts/test-notification-email.ts",
     "test:notification-email:self-test": "node --import tsx scripts/test-notification-email.ts --self-test",

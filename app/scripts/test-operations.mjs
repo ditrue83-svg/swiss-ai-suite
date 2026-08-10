@@ -136,12 +136,13 @@ const NON_FUNZIONI = new Set(['_shared']);
 // basta importarlo per far contento il typechecker — un import senza esecuzione
 // copre le firme e non il comportamento, ed è metà del difetto delle email
 // (là la firma sbagliata c'era, ma nessuno guardava nemmeno quella).
+//
+// E dal 2026-08-10 la rimozione non è affidata alla memoria: una riga il cui
+// modulo è ormai raggiunto (o sparito) fa FALLIRE il controllo 8, come le
+// eccezioni di `design:lint`. Così è uscita la riga di `calendar/sync.ts`,
+// estinta da `test:calendar-sync-unit`.
 // ---------------------------------------------------------------------------
 export const TYPECHECK_SCOPERTI = {
-  '_shared/calendar/sync.ts':
-    'la sincronizzazione del calendario: 451 righe che nessun test esegue. '
-    + 'È lo stesso modulo che dovrà essere provato quando esisterà una '
-    + 'connessione OAuth reale — oggi non ne esiste nessuna (2026-08-03)',
   '_shared/assistant/store.ts':
     'lo store dell\'assistente: `test:assistant` lo esercita attraverso la '
     + 'funzione DEPLOYATA via HTTP, non importandolo, quindi il typecheck non '
@@ -466,6 +467,34 @@ export function checkTypecheck(report, { portabili, raggiunti, scoperti = {} }) 
       + 'rossa. Importalo da un test che lo ESEGUE — è così che si è scoperto il '
       + 'destinatario mancante delle email');
   }
+
+  // Il debito scade da solo: una riga il cui modulo è ormai raggiunto — o non è
+  // più fra i portabili — non descrive più niente, e un debito estinto che resta
+  // scritto insegna a non leggere l'elenco. Stessa regola delle eccezioni di
+  // `design:lint`: una riga senza riscontro fa fallire il controllo.
+  //
+  // ⚠️ L'ORDINE DEI DUE RAMI NON È INDIFFERENTE, ed è stato corretto il
+  // 2026-08-10: un file del debito insieme «raggiunto» e non-portabile riceveva
+  // la diagnosi «ormai qualcuno lo importa», mentre la verità è che non è più
+  // materia di questo controllo — esente per costruzione, non coperto. Il gesto
+  // da fare coincide (togliere la riga), la ragione scritta accanto no, e una
+  // ragione sbagliata è ciò che fa ripetere il guasto fra sei mesi.
+  const vivi = new Set(portabili);
+  for (const file of Object.keys(scoperti)) {
+    if (!vivi.has(file)) {
+      report.add('typecheck',
+        `«${file}» è nel debito dichiarato, ma non è più fra i moduli portabili`,
+        'scripts/test-operations.mjs → TYPECHECK_SCOPERTI',
+        'il file è sparito o è diventato non-portabile — esente per costruzione: '
+        + 'la riga non corrisponde più a niente e va tolta');
+    } else if (raggiunti.has(file)) {
+      report.add('typecheck',
+        `«${file}» è nel debito dichiarato, ma ormai QUALCUNO lo importa: la riga è stantia`,
+        'scripts/test-operations.mjs → TYPECHECK_SCOPERTI',
+        'il debito è estinto: togli la riga. Un elenco con voci morte smette di '
+        + 'essere letto, ed è l\'elenco che deve restare vivo');
+    }
+  }
 }
 
 /**
@@ -491,8 +520,8 @@ function raggiuntiDalTypecheck() {
     visti.add(file);
     let sorgente;
     try { sorgente = readFileSync(file, 'utf8'); } catch { continue; }
-    for (const m of sorgente.matchAll(/(?:from|import)\s*\(?\s*['"](\.[^'"]+)['"]/g)) {
-      const risolto = risolviImport(dirname(file), m[1]);
+    for (const specificatore of importRelativi(sorgente)) {
+      const risolto = risolviImport(dirname(file), specificatore);
       if (risolto && !visti.has(risolto)) coda.push(risolto);
     }
   }
@@ -501,6 +530,89 @@ function raggiuntiDalTypecheck() {
   return new Set([...visti]
     .filter((f) => f.startsWith(prefisso))
     .map((f) => f.slice(prefisso.length)));
+}
+
+/**
+ * Il sorgente senza i commenti.
+ *
+ * ⚠️⚠️ PERCHÉ ESISTE, e la data conta: il 2026-08-10 una revisione avversaria ha
+ * dimostrato con un file di sonda che il rilevatore degli import qui sotto
+ * lavora sul testo GREZZO, quindi un import soltanto CITATO in un commento
+ * («un tempo si valutò di importare …») bastava a far dichiarare RAGGIUNTO un
+ * modulo che nessuno importa.
+ *
+ * Da solo sarebbe stato un falso raggiunto silenzioso. Insieme al controllo che
+ * fa scadere il debito era peggio: la riga VIVA di TYPECHECK_SCOPERTI veniva
+ * segnalata come stantia, e obbedire al suggerimento — toglierla — avrebbe
+ * lasciato quel modulo senza typecheck e senza rosso, per sempre. Il controllo
+ * anti-bugia poteva ordinare la cancellazione che produce la bugia.
+ *
+ * Non è un parser TypeScript e non deve esserlo: riconosce stringhe, template
+ * ed espressioni regolari quanto basta perché un `//` dentro `'https://…'` non
+ * apra un commento e una virgoletta dentro `/['"]/` non apra una stringa.
+ */
+export function senzaCommenti(sorgente) {
+  // I caratteri dopo i quali una `/` comincia un'espressione regolare e non è
+  // una divisione. Sbagliare qui costa un falso NON raggiunto, che è rumoroso;
+  // sbagliare nell'altro senso costerebbe un falso raggiunto, che è muto.
+  const PRIMA_DI_REGEX = '(,=:[!&|?{};+-*%<>~^';
+  let out = '';
+  let precedente = '';                       // ultimo carattere significativo emesso
+
+  for (let i = 0; i < sorgente.length;) {
+    const c = sorgente[i], d = sorgente[i + 1];
+
+    if (c === '/' && d === '/') {
+      while (i < sorgente.length && sorgente[i] !== '\n') i++;
+      continue;                              // il commento sparisce, la riga resta
+    }
+    if (c === '/' && d === '*') {
+      i += 2;
+      while (i < sorgente.length && !(sorgente[i] === '*' && sorgente[i + 1] === '/')) i++;
+      i += 2;
+      out += ' ';
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      const chiusura = c;
+      out += c; i++;
+      while (i < sorgente.length) {
+        if (sorgente[i] === '\\') { out += sorgente.slice(i, i + 2); i += 2; continue; }
+        out += sorgente[i];
+        const finita = sorgente[i] === chiusura;
+        i++;
+        if (finita) break;
+      }
+      precedente = chiusura;
+      continue;
+    }
+    if (c === '/' && precedente !== '' && PRIMA_DI_REGEX.includes(precedente)) {
+      out += c; i++;
+      let inClasse = false;
+      while (i < sorgente.length) {
+        const e = sorgente[i];
+        if (e === '\\') { out += sorgente.slice(i, i + 2); i += 2; continue; }
+        out += e; i++;
+        if (e === '[') inClasse = true;
+        else if (e === ']') inClasse = false;
+        else if (e === '\n') break;           // non era un'espressione regolare
+        else if (e === '/' && !inClasse) break;
+      }
+      precedente = '/';
+      continue;
+    }
+
+    out += c;
+    if (!/\s/.test(c)) precedente = c;
+    i++;
+  }
+  return out;
+}
+
+/** Gli import RELATIVI scritti in un sorgente, i commenti esclusi. */
+export function importRelativi(sorgente) {
+  return [...senzaCommenti(sorgente).matchAll(/(?:from|import)\s*\(?\s*['"](\.[^'"]+)['"]/g)]
+    .map((m) => m[1]);
 }
 
 function risolviImport(base, specificatore) {
@@ -749,6 +861,91 @@ const CASES = [
     expect: 0,
   },
   {
+    name: '⚠️ una riga del debito il cui modulo è ORMAI raggiunto → problema: la riga è stantia',
+    run: (r) => checkTypecheck(r, {
+      portabili: ['_shared/calendar/sync.ts'],
+      raggiunti: new Set(['_shared/calendar/sync.ts']),
+      scoperti: { '_shared/calendar/sync.ts': 'debito estinto che nessuno ha cancellato' },
+    }),
+    expect: 1,
+    contiene: 'ormai QUALCUNO lo importa',
+  },
+  {
+    name: '⚠️ una riga del debito verso un modulo che non è più fra i portabili → problema',
+    run: (r) => checkTypecheck(r, {
+      portabili: [], raggiunti: new Set(),
+      scoperti: { '_shared/calendar/sparito.ts': 'il file non esiste più' },
+    }),
+    expect: 1,
+    contiene: 'non è più fra i moduli portabili',
+  },
+  {
+    name: '⚠️ raggiunto E non-portabile insieme: la diagnosi è «non più portabile», non «lo importano»',
+    run: (r) => checkTypecheck(r, {
+      portabili: [], raggiunti: new Set(['_shared/x/deno-only.ts']),
+      scoperti: { '_shared/x/deno-only.ts': 'diventato non-portabile: usa Deno.env' },
+    }),
+    expect: 1,
+    contiene: 'non è più fra i moduli portabili',
+  },
+
+  // --- IL RILEVATORE DEGLI IMPORT --------------------------------------------
+  // ⚠️ Trovato da una revisione avversaria il 2026-08-10, con un file di sonda:
+  // un import CITATO in un commento faceva dichiarare raggiunto un modulo che
+  // nessuno importa — e il controllo del debito ordinava di togliere la riga
+  // viva, cioè di creare il buco che quella riga teneva visibile.
+  {
+    name: '⚠️⚠️ un import citato in un COMMENTO non rende raggiunto un modulo',
+    run: (r) => {
+      const sorgente = "// un tempo si valutò\n// import '../supabase/functions/_shared/assistant/store.ts'\nexport {};\n";
+      if (importRelativi(sorgente).length !== 0) {
+        r.add('autoverifica', 'un import commentato è stato contato come vero', 'importRelativi');
+      }
+    },
+    expect: 0,
+  },
+  {
+    name: 'lo stesso import, NON commentato, viene invece contato',
+    run: (r) => {
+      const sorgente = "import { x } from '../supabase/functions/_shared/assistant/store.ts';\n";
+      if (importRelativi(sorgente).length !== 1) {
+        r.add('autoverifica', 'un import vero non è stato trovato', 'importRelativi');
+      }
+    },
+    expect: 0,
+  },
+  {
+    name: '⚠️ un `//` dentro una stringa non apre un commento: l’import che segue si vede',
+    run: (r) => {
+      const sorgente = "const u = 'https://app.ai-swisse.com';\nimport './vicino.ts';\n";
+      if (!importRelativi(sorgente).includes('./vicino.ts')) {
+        r.add('autoverifica', 'un URL in una stringa ha mangiato l’import successivo', 'senzaCommenti');
+      }
+    },
+    expect: 0,
+  },
+  {
+    name: '⚠️ una virgoletta dentro un’espressione regolare non apre una stringa',
+    run: (r) => {
+      const sorgente = "const re = /['\"]x/g;\nimport './dopo-la-regex.ts';\n";
+      if (!importRelativi(sorgente).includes('./dopo-la-regex.ts')) {
+        r.add('autoverifica', 'una regex con virgolette ha mangiato l’import successivo', 'senzaCommenti');
+      }
+    },
+    expect: 0,
+  },
+  {
+    name: 'un commento a BLOCCHI che cita un import non conta, e non mangia il codice dopo',
+    run: (r) => {
+      const sorgente = "/* import './finto.ts' */\nimport './vero.ts';\n";
+      const trovati = importRelativi(sorgente);
+      if (trovati.length !== 1 || trovati[0] !== './vero.ts') {
+        r.add('autoverifica', `letti ${JSON.stringify(trovati)}`, 'senzaCommenti');
+      }
+    },
+    expect: 0,
+  },
+  {
     name: '⚠️ `Deno.env` rende un file NON portabile: è esente per costruzione',
     run: (r) => { if (!nonPortabile('const x = Deno.env.get("A");')) r.add('x', 'y', 'z'); },
     expect: 0,
@@ -826,13 +1023,24 @@ const CASES = [
   },
 ];
 
+/**
+ * ⚠️ `contiene` non è un vezzo: contare i problemi prova che QUALCOSA è
+ * scattato, non che sia scattata la diagnosi giusta. Una revisione avversaria
+ * l'ha dimostrato il 2026-08-10 fondendo i due rami del debito in un `if` solo
+ * con un messaggio generico: tutti i casi restavano verdi, e i due suggerimenti
+ * — che guidano gesti diversi — erano diventati uno sbagliato. Dove il ramo
+ * conta, il caso dichiara la frase che deve comparire.
+ */
 function autoverifica(silenziosa = false) {
   const falliti = [];
   for (const c of CASES) {
     const r = new Report();
     c.run(r);
+    const detto = r.problems.map((p) => p.what).join(' | ');
     if (r.problems.length !== c.expect) falliti.push({ c, got: r.problems.length });
-    else if (!silenziosa) console.log(`  ${G}✓${X} ${c.name}`);
+    else if (c.contiene && !detto.includes(c.contiene)) {
+      falliti.push({ c, got: `diagnosi diversa: «${detto}»` });
+    } else if (!silenziosa) console.log(`  ${G}✓${X} ${c.name}`);
   }
   return falliti;
 }
