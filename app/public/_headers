@@ -52,6 +52,17 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# I caratteri non hanno un hash nel nome — stanno in public/, che Vite copia
+# così com'è — quindi la cache lunga vale solo finché il NOME cambia insieme al
+# contenuto. È la stessa disciplina di /assets/*, qui però tocca a una persona:
+# ⚠️ se un giorno si rigenerano questi file, si RINOMINANO (inter-400-v2.woff2 e
+# la riga di preload in index.html). Sostituire i byte lasciando il nome
+# significa lasciare i clienti con il carattere vecchio per un anno.
+# `npm run fonts:check` fissa le impronte dei tre file: cambiarne uno senza
+# accorgersene fa fallire la CI, ed è lì che si legge questa nota.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # index.html invece NON va messo in cache: è il file che indica quale bundle
 # caricare. Se resta in cache, dopo un deploy l'utente continua a vedere la
 # versione vecchia finché non svuota la cache.

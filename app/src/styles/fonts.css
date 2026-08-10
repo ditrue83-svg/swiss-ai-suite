@@ -1,0 +1,61 @@
+/* ============================================================================
+   Il carattere del prodotto: Inter, OSPITATO QUI.
+
+   PERCHÉ NON DA GOOGLE FONTS, e non è una preferenza. Un `<link>` a
+   fonts.googleapis.com farebbe partire, dal browser di ogni cliente, una
+   richiesta verso un servizio estero che ne vede l'indirizzo IP. L'informativa
+   privacy del sito dichiara che l'applicazione non carica risorse esterne, e
+   `_headers` lo mette per iscritto anche alla macchina: la CSP ammette
+   `font-src 'self' data:` e nient'altro. Caricarlo da fuori renderebbe falsa
+   una dichiarazione fatta ai clienti — che è peggio del carattere di sistema.
+
+   PERCHÉ INTER. Le tre lingue del prodotto vivono nella stessa schermata, e i
+   numeri contano quanto le parole: importi, aliquote, termini di disdetta.
+   Inter ha le cifre tabulari (`tnum`, verificato nel file e non dedotto dalla
+   documentazione) e distingue le forme che qui si confondono di più — 1/l/I,
+   0/O — in un testo che si legge di fretta.
+
+   I FILE. Sottoinsieme di `inter-ui@4.1.1` (SIL OFL, licenza in
+   `public/fonts/LICENSE-OFL.txt`), ridotto ai caratteri che il prodotto usa
+   davvero: 445 su 2852, 25 KB per peso invece di 108. Come si rigenera e come
+   si verifica: `npm run fonts:check` e la testata di `scripts/fonts-check.mjs`.
+
+   ⚠️ IL SOTTOINSIEME DI GOOGLE NON ANDAVA BENE, ed è la ragione per cui questi
+   file non vengono da lì: il suo «latin» NON contiene U+202F, lo spazio fine
+   insecabile che tutta l'interfaccia francese usa davanti a : ; ! ? e dentro i
+   guillemets (`i18n:typography` lo impone). Ogni etichetta francese avrebbe
+   avuto quel singolo carattere disegnato da un altro carattere tipografico.
+   Misurato aprendo i file, non letto nella documentazione.
+
+   TRE PESI, PERCHÉ TRE. 400 il corpo del testo, 500 le etichette e le
+   intestazioni di tabella, 600 i titoli e i numeri che vanno visti per primi.
+   Un peso in più è un file in più su una connessione che non conosciamo.
+
+   `font-display: swap`: il testo si legge subito con il carattere di sistema e
+   cambia quando Inter è pronto. Su questa applicazione si leggono scadenze:
+   meglio un secondo di carattere diverso che un secondo di pagina vuota.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/inter-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/inter-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/inter-600.woff2') format('woff2');
+}

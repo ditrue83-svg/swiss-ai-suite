@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CompanyProvider } from './contexts/CompanyContext';
 import { ToastProvider } from './components/ui/Toast';
 import { I18nProvider } from './i18n';
+import './styles/fonts.css';
 import './styles/app.css';
 import './styles/extra.css';
 

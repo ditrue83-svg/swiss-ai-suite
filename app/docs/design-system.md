@@ -20,6 +20,66 @@ L'ultimo punto non era estetico. Chi usa questa applicazione legge importi,
 scadenze e nomi di enti: è spesso il titolare di una PMI o chi le tiene i conti,
 oltre i quarantacinque anni, di fretta.
 
+## Il carattere
+
+**Inter**, ospitato da noi, dal 2026-08-10. Prima c'era lo stack di sistema
+(`-apple-system`, Segoe UI, Helvetica…), che dava un prodotto diverso su ogni
+macchina.
+
+**Non da Google Fonts, e non è una preferenza.** Un `<link>` a
+`fonts.googleapis.com` farebbe partire dal browser di ogni cliente una richiesta
+verso un servizio estero che ne vede l'indirizzo IP. L'informativa privacy
+dichiara che l'applicazione non carica risorse esterne, e `public/_headers` lo
+dice anche alla macchina: la CSP ammette `font-src 'self' data:`. Caricarlo da
+fuori renderebbe falsa una dichiarazione fatta ai clienti.
+
+| | |
+|---|---|
+| Origine | `inter-ui@4.1.1` (SIL OFL, licenza in `public/fonts/`) |
+| Pesi | **400** corpo · **500** etichette e navigazione · **600** titoli e numeri |
+| Peso dei file | 25 KB ciascuno — sottoinsieme di 445 caratteri su 2852 |
+| Caricamento | `font-display: swap`; **precaricato il solo 400**, con `crossorigin` |
+| Controllo | `npm run fonts:check` (impronte, copertura, cablaggio) |
+
+⚠️ **Il sottoinsieme «latin» di Google non andava bene, e il perché vale più
+della scelta**: non contiene **U+202F**, lo spazio fine insecabile che tutta
+l'interfaccia francese usa davanti a `: ; ! ?` e dentro i guillemets — quello che
+`i18n:typography` impone. Ogni etichetta francese avrebbe avuto quel singolo
+carattere disegnato da un altro font. Il difetto stava **dentro un file
+binario**, dove nessuna rilettura del codice arriva: è emerso aprendo i `.woff2`
+e chiedendo loro quali caratteri contenessero. `fonts:check` fa quella domanda a
+ogni esecuzione della CI.
+
+### Che cosa il cambio ha spostato davvero — misurato, non previsto
+
+Confrontando le due famiglie sulla stessa pagina, con le stringhe vere dei tre
+dizionari:
+
+- **Inter è circa il 6 % più largo** dello stack di sistema («Ausgleichskasse»:
+  111,7 px → 118,9 px a 15 px). A 1280, 768 e 375 px, in tutte e tre le lingue:
+  **nessun elemento tagliato, nessuno scorrimento orizzontale**, e la barra
+  laterale, le pastiglie, le intestazioni di tabella, i pulsanti e la scheda
+  dell'incentivo restano dentro i propri riquadri. In colonne molto strette
+  qualche frase lunga prende una riga in più: è riflusso, non troncamento.
+- ⚠️ **`hyphens: auto` è stato provato e SCARTATO.** In una colonna da 66 px
+  spezza «Aus-glei-chs-kas-se» una sillaba per riga e porta l'intestazione da
+  35 px a 128 px: peggiora ciò che dovrebbe risolvere. Le larghezze restano
+  automatiche (regola 6) e non è stata introdotta nessuna misura fissa.
+- ⚠️⚠️ **Le cifre volevano un intervento, e non era prevedibile.** Lo stack di
+  sistema incolonnava le cifre da sé: a 22 px «11 %», «92 %» e «88 %» misuravano
+  tutte **45 px esatti**. Inter usa cifre **proporzionali** per default — il suo
+  «1» è molto più stretto — e le stesse tre danno **39,2 · 48,4 · 48,8**. In una
+  pila di scadenze o di schede incentivo i numeri ballano da una riga all'altra.
+  Aggiunto `font-variant-numeric: tabular-nums` a `.dl-date` (la scadenza) e a
+  `.rb-num` (la percentuale di rilevanza): tornano identiche a **49,1**, e le
+  date passano da uno scarto di 3,6 px a **zero**. Gli importi lo avevano già
+  (`.fin-num`): lì non è cambiato niente.
+- **La stampa è stata provata producendo un PDF vero** con Chrome: i tre pesi
+  sono **incorporati come sottoinsiemi** (`FontFile2` × 3, `Inter-Regular`,
+  `Inter-Medium`, `Inter-SemiBold`) e nel PDF ci sono U+202F, `é à œ « » —`.
+  Il blocco `@media print` non tocca `font-family`: cambia i colori, non il
+  carattere.
+
 ## Scala tipografica
 
 Sei gradini, uno per compito. Se un testo non rientra in nessuno, il problema è
@@ -115,6 +175,15 @@ Verificati con il calcolo WCAG, non a occhio. Tema chiaro:
 Le ultime due erano sotto soglia proprio sulle pastiglie che comunicano
 l'urgenza. Sono state scurite del minimo necessario, mantenendo la tinta: non un
 colore diverso, lo stesso colore reso leggibile.
+
+⚠️ **Ricalcolati il 2026-08-10 dopo il passaggio a Inter, e nessuno è cambiato —
+né poteva.** Il rapporto WCAG è una funzione dei soli colori: il carattere non lo
+sposta di un decimale. Le tredici coppie ricalcolate dai token — comprese quelle
+sui gradini piccoli (`--fs-label` 12 px, `--fs-meta` 13 px: etichette dei KPI,
+RILEVANZA nel riquadro, sezioni della barra laterale) — stanno **tutte a 4,5:1 o
+sopra**. Ciò che il carattere cambia è lo **spessore percepito**, che WCAG 2.1
+non misura: quello è stato guardato a schermo nei due temi, e i gradini piccoli
+restano leggibili perché usano già peso 600–700, non 400.
 
 ## Tema scuro
 

@@ -109,7 +109,12 @@
 
   --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
   --topbar-h: 56px;
-  font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Inter è dichiarato in `fonts.css` e servito da noi. La coda resta quella di
+     prima e non è decorativa: è ciò che si legge nel secondo che precede il
+     caricamento (`font-display: swap`) e ciò che disegna i caratteri che il
+     sottoinsieme non contiene — un nome di azienda in cirillico, un allegato
+     con un ideogramma. */
+  font-family: 'Inter', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 /* ============================================================================
    Tema scuro. Segue la preferenza del sistema operativo: nessun interruttore
@@ -470,7 +475,15 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .deadline-card .dl-ico { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
 .deadline-card .dl-main { flex: 1; min-width: 0; }
 .dl-kicker { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.dl-date { font-size: var(--fs-h2); font-weight: 800; letter-spacing: -0.3px; }
+/* ⚠️ CIFRE TABULARI, e non era necessario prima del 2026-08-10. Lo stack di
+   sistema incolonnava le cifre da sé: misurate a 22px, «11%», «92%» e «88%»
+   davano tutte 45px esatti. Inter di default usa cifre PROPORZIONALI — il suo
+   «1» è molto più stretto — e le stesse tre misurano 39,2 · 48,4 · 48,8. In una
+   pila di scadenze o di schede incentivo i numeri ballano da una riga all'altra.
+   Con `tabular-nums` tornano identiche (49,1), e le date passano da uno scarto
+   di 3,6px a zero. È la stessa dichiarazione che gli importi usano già in
+   `.fin-num`: qui mancava perché il carattere di prima non la richiedeva. */
+.dl-date { font-size: var(--fs-h2); font-weight: 800; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
 .dl-rem { font-size: var(--fs-meta); margin-top: var(--sp-05); }
 .lvl-scaduta .dl-ico { background: var(--red-soft); color: var(--red-dark); } .lvl-scaduta .dl-rem { color: var(--red-dark); font-weight: 600; }
 .lvl-urgente .dl-ico { background: var(--red-soft); color: var(--red-dark); } .lvl-urgente .dl-rem { color: var(--red-dark); font-weight: 600; }
@@ -636,7 +649,9 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .rel-badge { flex-shrink: 0; width: auto; min-width: 66px; text-align: center; border: 2px solid var(--line); border-radius: 10px; padding: var(--sp-2) var(--sp-3); }
 .rel-badge.hi { border-color: var(--accent); }
 .rel-badge.mid { border-color: var(--amber); }
-.rel-badge .rb-num { font-size: var(--fs-h2); font-weight: 800; letter-spacing: -0.5px; color: var(--ink); }
+/* La percentuale di rilevanza sta in una PILA di schede: le cifre tabulari la
+   tengono ferma da una scheda all'altra (vedi la nota estesa su `.dl-date`). */
+.rel-badge .rb-num { font-size: var(--fs-h2); font-weight: 800; letter-spacing: -0.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
 .rel-badge.hi .rb-num { color: var(--accent-text); } .rel-badge.mid .rb-num { color: var(--amber); }
 .rel-badge .rb-lbl { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
 .rel-badge.sm { width: auto; display: inline-flex; align-items: baseline; gap: var(--sp-2); padding: var(--sp-1) var(--sp-3); border-radius: 8px; }
