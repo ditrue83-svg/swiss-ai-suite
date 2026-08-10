@@ -46,13 +46,16 @@ dichiarate nello script, con il motivo accanto.
 ## Spaziature
 
 Multipli di 4: `4px` · `—` · `—` · `—` · `24px` · `—` · `—`
-(`--sp-1` … `--sp-12`).
+(`--sp-1` … `--sp-12`), più un mezzo gradino: **`--sp-05: 2px`**.
 
-Il ritmo lo fa la scala; **sotto il primo gradino la scala non parla**. I 2px
-che danno respiro a una pastiglia o allineano un'icona alla prima riga sono
-anatomia dell'elemento, non ritmo fra gli elementi: vivono come eccezioni
-dichiarate in `design:lint`, una riga e un motivo ciascuna. Se quella lista
-cresce, non mancano eccezioni: manca un gradino.
+Il ritmo fra gli elementi lo fanno i multipli di 4; `--sp-05` è l'anatomia
+**dentro** un elemento — il respiro verticale di una pastiglia, una pila
+fitta, l'allineamento di un'icona alla prima riga. È nato il 2026-08-10 da
+53 eccezioni di `design:lint` che dicevano tutte la stessa cosa: quando una
+lista di eccezioni cresce con lo stesso motivo, non mancano eccezioni, manca
+un gradino. Nominato il gradino, le 53 righe sono tornate scala. Restano
+eccezioni i **negativi** (un margine che risale compensa qualcosa di
+specifico: la scala non parla in negativo) e gli idiomi come `sr-only`.
 
 Nel markup le distanze si scrivono con le utilità in coda a `extra.css`
 (`.m-0`, `.mt-2`, `.py-2`, …): prendono i valori **solo** dalla scala, e un

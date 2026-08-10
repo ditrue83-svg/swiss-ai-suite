@@ -102,16 +102,13 @@ function nearestStep(px, spMap) {
 //
 // Le famiglie, e il loro perché:
 //
-// · SOTTO IL PRIMO GRADINO (1–3px, e i negativi che compensano un bordo).
-//   La scala parte da 4px e governa il RITMO fra gli elementi; questi valori
-//   sono anatomia fine DENTRO un elemento: il respiro verticale di una
-//   pastiglia, l'allineamento ottico di un'icona alla prima riga di testo, il
-//   rientro di un margine che il bordo ha già speso. Arrotondarli a 4px non è
-//   normalizzare: una pastiglia che passa da 2px a 4px di padding verticale
-//   cresce di 6px ed È un'altra pastiglia. Restano scritti in px, dichiarati
-//   qui, finché la scala non deciderà di nominare un gradino sotto --sp-1.
-//   (Segnalato a chi decide il 2026-08-09: 53 valori in questa famiglia sono
-//   il segno che il gradino manca, non che mancano 53 eccezioni.)
+// · NEGATIVI. La scala non parla in negativo: un margine che risale compensa
+//   qualcosa di specifico (un line-height, la scatola da 1px di sr-only) e
+//   si dichiara qui col suo perché.
+//   (La famiglia «sotto il primo gradino» — 53 valori da 1–3px — è vissuta in
+//   questa lista dal 2026-08-09 al 2026-08-10, finché la sua stessa taglia ha
+//   convinto la scala a nominare --sp-05: 2px. Le eccezioni erano il segno che
+//   mancava un gradino: nominato il gradino, sono tornate scala.)
 //
 // · OLTRE 4PX DAL GRADINO. Il mandato era: arrotondare fino a 4px di scarto,
 //   oltre fermarsi e segnalare. Questi sono i segnalati: il controllo li tiene
@@ -123,64 +120,11 @@ function nearestStep(px, spMap) {
 // ---------------------------------------------------------------------------
 const EXCEPTIONS = [
   { file: 'src/styles/app.css', contesto: '.main', frammento: 'padding: var(--sp-8) 40px 64px', motivo: 'i 40px laterali e i 64px in fondo alla tela distano più di 4px da ogni gradino: cambiarli sposta OGNI schermata — segnalato il 2026-08-09, si decide guardando, non arrotondando', occorrenze: 2 },
-  { file: 'src/styles/app.css', contesto: '.demo-pill', frammento: 'padding: 2px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.badge', frammento: 'padding: 2px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.featured-flag', frammento: 'padding: 2px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.uz-fmt', frammento: 'padding: 2px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.risk-tag', frammento: 'padding: 2px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.ds-badge', frammento: 'padding: 2px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.doc-tag', frammento: 'padding: 2px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.origin-badge', frammento: 'padding: 1px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.req-hard-tag', frammento: 'padding: 1px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.req-soft-tag', frammento: 'padding: 1px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/extra.css', contesto: '.role-chip', frammento: 'padding: 1px var(--sp-2)', motivo: 'anatomia della pastiglia: a 4px di respiro verticale è un\'altra pastiglia' },
-  { file: 'src/styles/app.css', contesto: '.sidebar', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.nav', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.drawer', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.kpi', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.inbox-row-main', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.inbox-fields > div', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.doc-side', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.doc-row-main', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.source-grid', frammento: 'gap: 2px 0', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.origin-badge', frammento: 'gap: 3px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/extra.css', contesto: '.fin-row-main', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/extra.css', contesto: '.crm-kv', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/extra.css', contesto: '.check-off', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/extra.css', contesto: '.bell-main', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/extra.css', contesto: '.as-thread-actions', frammento: 'gap: 2px', motivo: 'pila fitta: 2-3px legano le righe in un\'unità, il primo gradino le slegherebbe' },
-  { file: 'src/styles/app.css', contesto: '.brand-sub', frammento: 'margin-top: -1px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.list-sub', frammento: 'margin-top: 1px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.dl-rem', frammento: 'margin-top: 1px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.deadline-none .ic', frammento: 'margin-top: 1px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.action-sub', frammento: 'margin-top: 1px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.action-item input[type=checkbox]', frammento: 'margin-top: 1px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.prog-window .ic', frammento: 'margin-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.ax-callout .co-action', frammento: 'margin-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.ax-callout .co-when', frammento: 'margin-top: 3px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.ax-callout .origin-badge', frammento: 'margin-left: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.sidebar-footer', frammento: 'padding: var(--sp-3) var(--sp-3) 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.inbox-processing', frammento: 'margin-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/app.css', contesto: '.doc-check', frammento: 'padding-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/extra.css', contesto: '.state-error .ic', frammento: 'margin-top: 1px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/extra.css', contesto: '.fin-field-value', frammento: 'margin-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/extra.css', contesto: '.field-hint', frammento: 'margin-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/extra.css', contesto: '.crm-roles', frammento: 'margin-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/extra.css', contesto: '.crm-card-sub', frammento: 'margin-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/extra.css', contesto: '.auth-sub', frammento: 'margin-top: 3px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/extra.css', contesto: '.as-thread + .as-thread', frammento: 'margin-top: 2px', motivo: 'ritocco ottico sotto il primo gradino: allinea all\'occhio, non al ritmo' },
-  { file: 'src/styles/extra.css', contesto: '.cal-cell', frammento: 'padding: 2px', motivo: 'griglia del mese: in una cella di ~90px il primo gradino è già troppo' },
-  { file: 'src/styles/extra.css', contesto: '.cal-grid th', frammento: 'padding: 2px', motivo: 'griglia del mese: in una cella di ~90px il primo gradino è già troppo' },
-  { file: 'src/styles/extra.css', contesto: '.cal-daynum', frammento: 'margin-bottom: 2px', motivo: 'griglia del mese: in una cella di ~90px il primo gradino è già troppo' },
-  { file: 'src/styles/extra.css', contesto: '.cal-item', frammento: 'padding: 2px var(--sp-1)', motivo: 'griglia del mese: in una cella di ~90px il primo gradino è già troppo' },
-  { file: 'src/styles/extra.css', contesto: '.cal-item', frammento: 'margin-bottom: 2px', motivo: 'griglia del mese: in una cella di ~90px il primo gradino è già troppo' },
-  { file: 'src/styles/extra.css', contesto: '.cal-item', frammento: 'margin-bottom: 1px', motivo: 'griglia del mese: in una cella di ~90px il primo gradino è già troppo' },
-  { file: 'src/styles/extra.css', contesto: '.as-group > li', frammento: 'padding: 2px 0', motivo: 'griglia del mese: in una cella di ~90px il primo gradino è già troppo' },
+  { file: 'src/styles/app.css', contesto: '.brand-sub', frammento: 'margin-top: -1px', motivo: 'il sottotitolo risale di un filo contro il line-height del nome: negativo, la scala non parla in negativo' },
   { file: 'src/styles/app.css', contesto: '.dash-inc-stats', frammento: 'margin: -2px 0 var(--sp-3)', motivo: 'compensa il line-height del titolo sopra: valore negativo, la scala non parla in negativo' },
   { file: 'src/styles/extra.css', contesto: '.dash-sorted', frammento: 'margin: -6px 0 var(--sp-2)', motivo: 'risale sotto il titolo che il card-title ha già distanziato: negativo, fuori dal ritmo' },
   { file: 'src/styles/app.css', contesto: '.ct-sr', frammento: 'margin: -1px', motivo: 'idioma sr-only: la scatola da 1px esce dal flusso per i soli lettori di schermo' },
   { file: 'src/styles/extra.css', contesto: '.sr-only', frammento: 'margin: -1px', motivo: 'idioma sr-only: la scatola da 1px esce dal flusso per i soli lettori di schermo' },
-  { file: 'src/styles/app.css', contesto: '.ax-doc-view mark.ev-hl', frammento: 'padding: 0 1px', motivo: 'l\'evidenziazione respira 1px attorno alla citazione; il resto lo fa il box-shadow del suo colore' },
   { file: 'src/styles/app.css', contesto: 'html, body', frammento: 'background: #ffffff !important', motivo: 'stampa: rete di sicurezza contro i default del browser, documentata nel blocco — protegge anche a token rotti' },
   { file: 'src/styles/app.css', contesto: 'html, body', frammento: 'color: #000000 !important', motivo: 'stampa: rete di sicurezza contro i default del browser, documentata nel blocco — protegge anche a token rotti' },
   { file: 'src/styles/extra.css', contesto: '.print-kv dt', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },

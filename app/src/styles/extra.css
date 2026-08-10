@@ -25,7 +25,7 @@
 .company-switch .cs-name { font-weight: 700; font-size: var(--fs-meta); letter-spacing: -0.2px; }
 .company-switch .cs-meta { font-size: var(--fs-meta); color: var(--muted); }
 .company-switch select { width: 100%; margin-top: var(--sp-1); }
-.role-chip { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: 1px var(--sp-2); }
+.role-chip { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: var(--sp-05) var(--sp-2); }
 
 /* ---- Schermate centrate (auth / onboarding / stati globali) ---- */
 .centered-screen { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; padding: var(--sp-8) var(--sp-4); background: var(--bg); }
@@ -36,20 +36,20 @@
 .registry-candidates { list-style: none; padding: 0; margin: var(--sp-2) 0 0; }
 .auth-brand { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 .auth-title { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.4px; }
-.auth-sub { color: var(--muted); font-size: var(--fs-body); margin-top: 3px; margin-bottom: var(--sp-4); }
+.auth-sub { color: var(--muted); font-size: var(--fs-body); margin-top: var(--sp-1); margin-bottom: var(--sp-4); }
 .auth-alt { margin-top: var(--sp-4); font-size: var(--fs-body); color: var(--muted); text-align: center; }
 .auth-alt .btn-link { font-size: var(--fs-body); }
 .auth-actions { margin-top: var(--sp-2); }
 .auth-actions .btn { width: 100%; }
 .form-error { background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: var(--sp-3); font-size: var(--fs-body); margin-bottom: var(--sp-4); display: flex; gap: var(--sp-2); align-items: flex-start; }
 .form-success { background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green); border-radius: var(--radius-sm); padding: var(--sp-3); font-size: var(--fs-body); margin-bottom: var(--sp-4); }
-.field-hint { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
+.field-hint { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
 
 /* ---- Stati globali (loading/error/empty) ---- */
 .app-loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-4); color: var(--muted); }
 .spinner-lg { width: 30px; height: 30px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
 .state-error { display: flex; gap: var(--sp-3); align-items: flex-start; background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); }
-.state-error .ic { flex-shrink: 0; margin-top: 1px; }
+.state-error .ic { flex-shrink: 0; margin-top: var(--sp-05); }
 
 /* ---- Skeleton (loading discreto) ----
    Passa dai token: con tre grigi chiari scritti a mano lo scheletro restava
@@ -122,7 +122,7 @@
   background: var(--accent); margin-top: var(--sp-2);
 }
 .bell-dot.is-problem { background: var(--red); }
-.bell-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bell-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; }
 .bell-row-title { font-size: var(--fs-body); }
 .bell-row-sub { font-size: var(--fs-meta); color: var(--ink); overflow-wrap: anywhere; }
 .bell-row-meta { font-size: var(--fs-label); color: var(--muted); }
@@ -168,7 +168,7 @@
 }
 .cal-daynum {
   display: grid; place-items: center; min-width: 24px; min-height: 24px;
-  margin-bottom: 2px; padding: 0 var(--sp-1);
+  margin-bottom: var(--sp-05); padding: 0 var(--sp-1);
   border: 1px solid transparent; border-radius: 12px;
   background: transparent; color: var(--ink); font-size: var(--fs-meta);
 }
@@ -178,7 +178,7 @@
    Misurato qui a 20 pixel aprendo la griglia, non leggendo il codice. */
 .cal-item {
   display: flex; align-items: center; min-height: 24px;
-  margin-bottom: 1px; padding: 2px var(--sp-1);
+  margin-bottom: var(--sp-05); padding: var(--sp-05) var(--sp-1);
   border-left: 3px solid var(--accent-line); border-radius: var(--radius-sm);
   background: var(--bg); color: var(--ink);
   font-size: var(--fs-label); line-height: 1.35;
@@ -216,7 +216,7 @@
 
 /* Un canale non disponibile non è una casella spenta: è un testo che dice
    perché. Una casella che non si può spuntare sembra un guasto (§79). */
-.check-off { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-1) 0; }
+.check-off { display: flex; flex-direction: column; gap: var(--sp-05); padding: var(--sp-1) 0; }
 .connect-choice { display: flex; flex-direction: column; gap: var(--sp-2); max-width: 460px; }
 
 /* ---- Schermi stretti ------------------------------------------------------
@@ -226,8 +226,8 @@
    predefinita. */
 @media (max-width: 720px) {
   .cal-filters { margin-left: 0; width: 100%; }
-  .cal-cell { height: 62px; padding: 2px; }
-  .cal-grid th { padding: 2px; font-size: var(--fs-label); }
+  .cal-cell { height: 62px; padding: var(--sp-05); }
+  .cal-grid th { padding: var(--sp-05); font-size: var(--fs-label); }
   /* Il numero del giorno è l'UNICO controllo della casella su telefono, quindi
      prende tutta la larghezza: è il bersaglio, e deve essere facile da colpire. */
   .cal-daynum { width: 100%; min-height: 24px; border-radius: var(--radius-sm); }
@@ -235,7 +235,7 @@
      collegamenti, perché tre bersagli da 24 pixel non stanno in una casella
      alta 62 — e un collegamento alto 6 pixel non è un collegamento. */
   .cal-item {
-    display: block; height: 5px; margin-bottom: 2px; padding: 0;
+    display: block; height: 5px; margin-bottom: var(--sp-05); padding: 0;
     border-left-width: 0; border-radius: 3px;
     background: var(--accent-line); font-size: 0; color: transparent;
     pointer-events: none;
@@ -303,7 +303,7 @@
 }
 .fin-row:first-of-type { border-top: none; }
 .fin-row-main {
-  display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;
+  display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1;
   color: var(--ink); text-decoration: none; min-height: 24px;
 }
 .fin-row-main:hover .fin-row-title { text-decoration: underline; }
@@ -343,7 +343,7 @@
 .fin-field-label { font-size: var(--fs-label); color: var(--muted); font-weight: 600; }
 .fin-field-value {
   display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
-  font-size: var(--fs-body); color: var(--ink); margin-top: 2px;
+  font-size: var(--fs-body); color: var(--ink); margin-top: var(--sp-05);
 }
 .fin-num { font-variant-numeric: tabular-nums; }
 /* Il bersaglio minimo di WCAG 2.2: `.btn-sm` da solo resta sotto i 24 pixel. */
@@ -446,7 +446,7 @@
 .crm-search .btn { flex: 0 0 auto; }
 .crm-row-link { display: block; color: var(--ink); text-decoration: none; padding: var(--sp-3) 0; }
 .crm-row-link:hover .list-title { color: var(--accent-text); }
-.crm-roles { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: 2px; }
+.crm-roles { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-05); }
 
 /* La board della pipeline. §54 — colonne semplici, nessun trascinamento:
    il cambio di fase avviene da una tendina, che è accessibile da tastiera
@@ -468,7 +468,7 @@
   color: var(--ink); text-decoration: none; }
 .crm-card:hover { border-color: var(--accent); }
 .crm-card-title { font-weight: 600; font-size: var(--fs-body); }
-.crm-card-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
+.crm-card-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
 .crm-col-empty { font-size: var(--fs-meta); color: var(--muted); padding: var(--sp-2) 0; }
 
 /* Il dettaglio */
@@ -503,7 +503,7 @@
 
 @media (max-width: 720px) {
   .crm-board { grid-template-columns: repeat(5, minmax(70vw, 1fr)); }
-  .crm-kv { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .crm-kv { grid-template-columns: minmax(0, 1fr); gap: var(--sp-05); }
   .crm-kv dd { margin-bottom: var(--sp-2); }
 }
 
@@ -571,7 +571,7 @@
 .as-threads { margin: var(--sp-2) 0 0; padding: 0; }
 .as-thread { display: flex; align-items: stretch; gap: var(--sp-1);
   border-radius: var(--radius-sm); }
-.as-thread + .as-thread { margin-top: 2px; }
+.as-thread + .as-thread { margin-top: var(--sp-05); }
 .as-thread.is-active { background: var(--accent-soft); }
 .as-thread-open { flex: 1 1 auto; min-width: 0; text-align: left;
   background: transparent; color: var(--ink); border: 0; cursor: pointer;
@@ -581,7 +581,7 @@
 .as-thread-title { display: block; font-size: var(--fs-meta); color: var(--ink);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .as-thread-meta { display: block; font-size: var(--fs-label); color: var(--muted); }
-.as-thread-actions { display: flex; align-items: center; gap: 2px; }
+.as-thread-actions { display: flex; align-items: center; gap: var(--sp-05); }
 /* ⚠️ `background` e `color` DICHIARATI: senza, il browser applica `buttonface`
    e in tema scuro il testo diventa illeggibile (lezione di `.ct-kpi`). */
 .as-icon-btn { background: transparent; color: var(--muted); border: 0;
@@ -695,7 +695,7 @@
   overflow-wrap: anywhere; }
 .as-group { list-style: none; margin: var(--sp-2) 0 0; padding: 0;
   font-size: var(--fs-meta); }
-.as-group > li { padding: 2px 0; overflow-wrap: anywhere; }
+.as-group > li { padding: var(--sp-05) 0; overflow-wrap: anywhere; }
 
 /* ---- I pannelli su telefono --------------------------------------------- */
 .as-overlay, .as-drawer { display: none; }
