@@ -199,8 +199,8 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
           <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsManual')}</div><div><ul className="detail-list warn">{p.informativeExclusions.map((r) => <li key={r.id}>{r.text}</li>)}</ul><div className="muted-sm">{t('subsidy.detail.exclusionsManualHint')}</div></div></div>
         )}
         <div className="result-row"><div className="result-label">{t('subsidy.detail.applicationWindow')}</div>
-          <div>{p.applicationWindow} <button className="btn btn-sm" style={{ marginLeft: 8 }} onClick={addReminder}><Icon name="calendar" className="ic-sm" /> {t('subsidy.detail.addReminder')}</button>
-            <div className="muted-sm" style={{ marginTop: 4 }}>{t('subsidy.detail.windowHint')}</div></div>
+          <div>{p.applicationWindow} <button className="btn btn-sm ml-2" onClick={addReminder}><Icon name="calendar" className="ic-sm" /> {t('subsidy.detail.addReminder')}</button>
+            <div className="muted-sm mt-1">{t('subsidy.detail.windowHint')}</div></div>
         </div>
         <div className="result-row"><div className="result-label">{t('subsidy.detail.documents')}</div><div><ul className="detail-list">{p.documentsRequired.map((d, i) => <li key={i}>{d}</li>)}</ul></div></div>
       </div>

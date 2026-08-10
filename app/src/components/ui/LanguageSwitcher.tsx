@@ -7,7 +7,7 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   const { locale, setLocale, t } = useI18n();
 
   return (
-    <div className="field" style={{ margin: 0 }}>
+    <div className="field m-0">
       {!compact && <label htmlFor="lang-select" className="group-label">{t('nav.language')}</label>}
       <select
         id="lang-select"

@@ -208,6 +208,11 @@ const GROUPS = {
       { script: 'typecheck' },
       { script: 'i18n:coverage' },
       { script: 'i18n:typography' },
+      // Bloccante come i18n:coverage, e per la stessa storia: la regola 1 del
+      // sistema di design scritta senza controllo ha prodotto 95 stili inline
+      // e ~342 misure a mano in cinque giorni. Un gate che avvisa senza
+      // bloccare è un contatore di violazioni, non un argine.
+      { script: 'design:lint' },
       // ⚠️ `--root` viene passato SOLO se chi lancia lo ha indicato. Senza, il
       // passo esce 3 («non eseguito») e il gruppo resta INCOMPLETO invece di
       // sembrare rosso: dalla directory di sviluppo due dei cinque controlli

@@ -10,42 +10,45 @@
 @media (max-width: 900px) { .app-shell { flex-direction: column; } }
 
 /* ---- Box account (sidebar/drawer) + logout ---- */
-.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-.account-row { display: flex; align-items: center; gap: 10px; padding: 4px 4px; }
+.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+.account-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1); }
 .account-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; font-weight: 700; font-size: var(--fs-body); flex-shrink: 0; }
 .account-info { min-width: 0; }
 .account-name { font-weight: 600; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .account-email { font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.account-actions { display: flex; gap: 6px; }
+.account-actions { display: flex; gap: var(--sp-2); }
 .account-actions .btn { flex: 1; }
 
 /* ---- Selettore azienda (multi-tenant ready) ---- */
-.company-switch { padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); margin-bottom: 8px; }
+.company-switch { padding: var(--sp-2); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); margin-bottom: var(--sp-2); }
 .company-switch .cs-label { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .company-switch .cs-name { font-weight: 700; font-size: var(--fs-meta); letter-spacing: -0.2px; }
 .company-switch .cs-meta { font-size: var(--fs-meta); color: var(--muted); }
-.company-switch select { width: 100%; margin-top: 4px; }
-.role-chip { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: 1px 6px; }
+.company-switch select { width: 100%; margin-top: var(--sp-1); }
+.role-chip { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: 1px var(--sp-2); }
 
 /* ---- Schermate centrate (auth / onboarding / stati globali) ---- */
-.centered-screen { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; padding: 28px 18px; background: var(--bg); }
-.auth-card { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 28px; }
+.centered-screen { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; padding: var(--sp-8) var(--sp-4); background: var(--bg); }
+.auth-card { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: var(--sp-8); }
 .onboarding-card { max-width: 640px; }
-.auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+/* Candidati Zefix: lista nuda — il segno di lista e i rientri del browser
+   non c'entrano con un elenco di scelte. */
+.registry-candidates { list-style: none; padding: 0; margin: var(--sp-2) 0 0; }
+.auth-brand { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 .auth-title { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.4px; }
-.auth-sub { color: var(--muted); font-size: var(--fs-body); margin-top: 3px; margin-bottom: 18px; }
-.auth-alt { margin-top: 16px; font-size: var(--fs-body); color: var(--muted); text-align: center; }
+.auth-sub { color: var(--muted); font-size: var(--fs-body); margin-top: 3px; margin-bottom: var(--sp-4); }
+.auth-alt { margin-top: var(--sp-4); font-size: var(--fs-body); color: var(--muted); text-align: center; }
 .auth-alt .btn-link { font-size: var(--fs-body); }
-.auth-actions { margin-top: 6px; }
+.auth-actions { margin-top: var(--sp-2); }
 .auth-actions .btn { width: 100%; }
-.form-error { background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: 10px 12px; font-size: var(--fs-body); margin-bottom: 14px; display: flex; gap: 8px; align-items: flex-start; }
-.form-success { background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green); border-radius: var(--radius-sm); padding: 10px 12px; font-size: var(--fs-body); margin-bottom: 14px; }
+.form-error { background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: var(--sp-3); font-size: var(--fs-body); margin-bottom: var(--sp-4); display: flex; gap: var(--sp-2); align-items: flex-start; }
+.form-success { background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green); border-radius: var(--radius-sm); padding: var(--sp-3); font-size: var(--fs-body); margin-bottom: var(--sp-4); }
 .field-hint { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
 
 /* ---- Stati globali (loading/error/empty) ---- */
-.app-loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); }
+.app-loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-4); color: var(--muted); }
 .spinner-lg { width: 30px; height: 30px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
-.state-error { display: flex; gap: 10px; align-items: flex-start; background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: 12px 14px; font-size: var(--fs-body); }
+.state-error { display: flex; gap: var(--sp-3); align-items: flex-start; background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); }
 .state-error .ic { flex-shrink: 0; margin-top: 1px; }
 
 /* ---- Skeleton (loading discreto) ----
@@ -53,17 +56,17 @@
    bianco in tema scuro e la pagina lampeggiava a ogni caricamento. */
 .skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--line) 37%, var(--surface-2) 63%); background-size: 400% 100%; animation: skel 1.3s ease infinite; border-radius: 6px; }
 @keyframes skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
-.skel-line { height: 12px; margin: 8px 0; }
+.skel-line { height: 12px; margin: var(--sp-2) 0; }
 .skel-kpi { height: 96px; border-radius: var(--radius); }
 .skel-card { height: 120px; border-radius: var(--radius); }
 
 /* piccole utility aggiuntive */
-.mt-8 { margin-top: 8px; } .mt-20 { margin-top: 20px; } .mt-24 { margin-top: 24px; }
-.mb-8 { margin-bottom: 8px; } .mb-16 { margin-bottom: 16px; } .mb-18 { margin-bottom: 18px; }
+.mt-8 { margin-top: var(--sp-2); } .mt-20 { margin-top: var(--sp-6); } .mt-24 { margin-top: var(--sp-6); }
+.mb-8 { margin-bottom: var(--sp-2); } .mb-16 { margin-bottom: var(--sp-4); } .mb-18 { margin-bottom: var(--sp-4); }
 .text-center { text-align: center; }
 .w-full { width: 100%; }
 .spin-btn { position: relative; }
-.divider { height: 1px; background: var(--line); margin: 16px 0; }
+.divider { height: 1px; background: var(--line); margin: var(--sp-4) 0; }
 .badge-alta.badge, .badge-media.badge, .badge-bassa.badge { white-space: nowrap; }
 
 /* ============================================================================
@@ -89,14 +92,14 @@
    rimpicciolisce il testo sotto la soglia leggibile (§80). */
 .bell-badge {
   position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px;
-  padding: 0 4px; border-radius: 9px; background: var(--red); color: #fff;
+  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red); color: #fff;
   font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
 }
 .bell-panel {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 70;
   width: 340px; max-width: calc(100vw - 28px);
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: 0 10px 30px rgb(0 0 0 / 12%); max-height: 70vh; overflow-y: auto;
+  box-shadow: var(--shadow-lg); max-height: 70vh; overflow-y: auto;
 }
 .bell-head {
   display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
@@ -116,7 +119,7 @@
 .bell-row.is-unread .bell-row-title { font-weight: 600; }
 .bell-dot {
   flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--accent); margin-top: 6px;
+  background: var(--accent); margin-top: var(--sp-2);
 }
 .bell-dot.is-problem { background: var(--red); }
 .bell-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -165,7 +168,7 @@
 }
 .cal-daynum {
   display: grid; place-items: center; min-width: 24px; min-height: 24px;
-  margin-bottom: 2px; padding: 0 4px;
+  margin-bottom: 2px; padding: 0 var(--sp-1);
   border: 1px solid transparent; border-radius: 12px;
   background: transparent; color: var(--ink); font-size: var(--fs-meta);
 }
@@ -443,7 +446,7 @@
 .crm-search .btn { flex: 0 0 auto; }
 .crm-row-link { display: block; color: var(--ink); text-decoration: none; padding: var(--sp-3) 0; }
 .crm-row-link:hover .list-title { color: var(--accent-text); }
-.crm-roles { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.crm-roles { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: 2px; }
 
 /* La board della pipeline. §54 — colonne semplici, nessun trascinamento:
    il cambio di fase avviene da una tendina, che è accessibile da tastiera
@@ -471,7 +474,7 @@
 /* Il dettaglio */
 .crm-narrow { max-width: 660px; }
 .crm-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr);
-  gap: 4px var(--sp-4); margin: 0; }
+  gap: var(--sp-1) var(--sp-4); margin: 0; }
 .crm-kv dt { font-size: var(--fs-label); color: var(--muted); }
 .crm-kv dd { font-size: var(--fs-body); color: var(--ink); margin: 0; min-width: 0;
   overflow-wrap: anywhere; }
@@ -705,7 +708,7 @@
   .as-only-narrow { display: inline-flex; align-self: flex-start; }
 
   .as-overlay { display: block; position: fixed; inset: 0; z-index: 45;
-    background: rgba(0, 0, 0, .35); opacity: 0; pointer-events: none;
+    background: var(--scrim); opacity: 0; pointer-events: none;
     transition: opacity .18s ease; }
   .as-overlay.open { opacity: 1; pointer-events: auto; }
 
@@ -725,7 +728,7 @@
     background: transparent; color: var(--ink); border: 0; cursor: pointer;
     min-width: 44px; min-height: 44px; border-radius: var(--radius-sm); }
   .as-drawer-close:hover { background: var(--surface-2); }
-  .as-drawer .as-col-head { padding-right: 44px; }
+  .as-drawer .as-col-head { padding-right: var(--sp-12); }
 
   .as-q { max-width: 100%; }
 }
@@ -878,7 +881,7 @@
   .print-sheet {
     font-size: 10pt;
     line-height: 1.45;
-    color: #000;
+    color: var(--ink);
   }
 
   .print-sheet h2 {
@@ -889,7 +892,7 @@
   .print-sheet h3 {
     font-size: 11pt;
     margin: 10pt 0 3pt;
-    border-bottom: 1px solid #b0b0b0;
+    border-bottom: 1px solid var(--line);
     padding-bottom: 1pt;
   }
 
@@ -909,7 +912,7 @@
   .print-quote {
     margin: 2pt 0 4pt 10pt;
     padding-left: 6pt;
-    border-left: 2px solid #6b6b6b;
+    border-left: 2px solid var(--line-strong);
     font-style: italic;
   }
   /* I caporali li mette il CSS e non il JSX: scritti nel markup sarebbero testo
@@ -917,7 +920,7 @@
      valgono per italiano, tedesco e francese, quindi non servono tre varianti. */
   .print-quote::before { content: '\00AB\00A0'; }
   .print-quote::after { content: '\00A0\00BB'; }
-  .print-quote-src { font-style: normal; color: #555; }
+  .print-quote-src { font-style: normal; color: var(--muted); }
 
   /* L'URL scritto per esteso accanto al collegamento: un link stampato senza
      indirizzo è un vicolo cieco. */
@@ -927,7 +930,7 @@
   .print-foot {
     margin-top: 12pt;
     padding-top: 4pt;
-    border-top: 1px solid #6b6b6b;
+    border-top: 1px solid var(--line-strong);
     font-size: 8.5pt;
     color: #333;
     break-inside: avoid;
@@ -936,3 +939,33 @@
   .print-foot p { margin: 0 0 1pt; }
   .print-disclaimer { font-weight: 600; }
 }
+
+/* ============================================================================
+   UTILITÀ DI SPAZIATURA — le uniche righe di stile ammesse nel markup.
+   Esistono perché 80 `style={{ … }}` erano cresciuti nei componenti per dire
+   «margine sopra», «niente margine», «respiro verticale»: ognuno con un numero
+   scritto a mano che i temi e la scala non potevano seguire. Qui i valori
+   vengono SOLO dalla scala --sp-*: un utility con un px dentro non passerebbe
+   design:lint.
+
+   Disciplina d'uso: un'utilità dice UNA distanza presa dalla scala; appena un
+   elemento ne accumula più di due, quello che si sta descrivendo è un
+   componente e va nominato nel CSS (come .ax-field-row).
+
+   STANNO IN FONDO A QUESTO FILE E NON È UN CASO: a parità di specificità vince
+   l'ordine, e queste righe devono vincere sul gap o sul margine dichiarato
+   dalla classe del componente — è il loro mestiere. (Il blocco @media print di
+   app.css resta comunque ultimo nella cascata per la regola dell'ORDINE
+   documentata lì; queste utilità non toccano colori e non lo disturbano.)
+   ========================================================================== */
+.m-0  { margin: 0; }
+.mt-1 { margin-top: var(--sp-1); }
+.mt-2 { margin-top: var(--sp-2); }
+.mt-3 { margin-top: var(--sp-3); }
+.mt-4 { margin-top: var(--sp-4); }
+.mb-1 { margin-bottom: var(--sp-1); }
+.mb-2 { margin-bottom: var(--sp-2); }
+.mb-3 { margin-bottom: var(--sp-3); }
+.ml-2 { margin-left: var(--sp-2); }
+.py-2 { padding: var(--sp-2) 0; }
+.gap-2 { gap: var(--sp-2); }

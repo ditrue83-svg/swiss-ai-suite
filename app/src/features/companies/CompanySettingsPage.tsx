@@ -182,10 +182,10 @@ export function CompanySettingsPage() {
 
       <form className="card" onSubmit={saveCompany}>
         <div className="card-title">{t('companySettings.identityTitle')}</div>
-        <div className="muted-sm" style={{ marginBottom: 12 }}>{t('companySettings.identityDesc')}</div>
+        <div className="muted-sm mb-3">{t('companySettings.identityDesc')}</div>
 
         {!isAdmin && (
-          <div className="hint-accent" role="status" style={{ marginBottom: 12 }}>
+          <div className="hint-accent mb-3" role="status">
             <Icon name="alert" className="ic-sm" /> {t('companySettings.readOnly')}
           </div>
         )}
@@ -213,7 +213,7 @@ export function CompanySettingsPage() {
               aria-describedby={uidInvalid ? 'cs-che-hint' : undefined}
               placeholder={t('onboarding.uidPlaceholder')} />
             {uidInvalid && (
-              <div id="cs-che-hint" className="hint-accent" style={{ marginTop: 4 }}>
+              <div id="cs-che-hint" className="hint-accent mt-1">
                 <Icon name="alert" className="ic-sm" /> {t('onboarding.uidInvalid')}
               </div>
             )}
@@ -250,7 +250,7 @@ export function CompanySettingsPage() {
 
       <form className="card" onSubmit={saveProfile}>
         <div className="card-title">{t('companySettings.profileTitle')}</div>
-        <div className="muted-sm" style={{ marginBottom: 12 }}>{t('companySettings.profileDesc')}</div>
+        <div className="muted-sm mb-3">{t('companySettings.profileDesc')}</div>
 
         <div className="grid-2">
           <div className="field">

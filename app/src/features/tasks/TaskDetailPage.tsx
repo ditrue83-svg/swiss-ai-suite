@@ -303,7 +303,7 @@ export function TaskDetailPage() {
         {/* Dentro `.field`: lo stile di input e textarea del design system è
             legato a quella classe, e senza il campo resta con lo sfondo bianco
             del browser — in tema scuro, testo chiaro su fondo bianco. */}
-        <div className="field" style={{ margin: 0 }}>
+        <div className="field m-0">
           <textarea rows={3} defaultValue={task.description ?? ''} disabled={busy}
             aria-label={t('tasks.description')}
             onBlur={(e) => {
@@ -326,7 +326,7 @@ export function TaskDetailPage() {
 
         {checklist.map((item, i) => (
           <div className="list-row" key={item.id}>
-            <label className="list-main task-check" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <label className="list-main task-check gap-2" style={{ display: 'flex', alignItems: 'center' }}>
               <input type="checkbox" checked={item.done} onChange={(e) => void toggleItem(item, e.target.checked)} />
               <span className={item.done ? 'muted-sm' : ''}>{item.text}</span>
             </label>
@@ -340,7 +340,7 @@ export function TaskDetailPage() {
         ))}
 
         <div className="row-wrap mt-10">
-          <div className="field" style={{ flex: 1, minWidth: 200, margin: 0 }}>
+          <div className="field m-0" style={{ flex: 1, minWidth: 200 }}>
             <input value={newItem} onChange={(e) => setNewItem(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addChecklistItem(); } }}
               placeholder={t('tasks.checklistAdd')} aria-label={t('tasks.checklistAdd')} />
@@ -355,7 +355,7 @@ export function TaskDetailPage() {
       <div className="card mt-16">
         <div className="card-title">{t('tasks.comments')}</div>
         <div className="row-wrap">
-          <div className="field" style={{ flex: 1, minWidth: 220, margin: 0 }}>
+          <div className="field m-0" style={{ flex: 1, minWidth: 220 }}>
             <input value={comment} onChange={(e) => setComment(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addComment(); } }}
               placeholder={t('tasks.commentPlaceholder')} aria-label={t('tasks.commentPlaceholder')} />

@@ -341,7 +341,7 @@ export function FinancePage() {
             </button>
           </span>
           <span className="filter-group fin-tools">
-            <div className="field" style={{ margin: 0 }}>
+            <div className="field m-0">
               <select
                 className="select-inline" value={filters.sort ?? 'default'}
                 aria-label={t('finance.filters.sort')}

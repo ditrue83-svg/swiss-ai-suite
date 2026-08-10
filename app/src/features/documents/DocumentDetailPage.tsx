@@ -758,7 +758,7 @@ export function DocumentDetailPage() {
           </div>
         </div>
         <div className="row-wrap">
-          <div className="field" style={{ margin: 0, minWidth: 200 }}>
+          <div className="field m-0" style={{ minWidth: 200 }}>
             {/* La lista delle etichette esistenti è un `datalist`: propone senza
                 impedire di scriverne una nuova, e non richiede un componente di
                 completamento automatico tutto da rendere accessibile. */}

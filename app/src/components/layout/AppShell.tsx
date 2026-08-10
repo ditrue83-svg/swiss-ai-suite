@@ -107,7 +107,7 @@ function AccountBox() {
         </div>
       </div>
       {/* La lingua si cambia dove l'utente si aspetta le impostazioni personali. */}
-      <div style={{ marginBottom: 8 }}><LanguageSwitcher compact /></div>
+      <div className="mb-2"><LanguageSwitcher compact /></div>
       <div className="account-actions">
         <button className="btn btn-sm" onClick={handleSignOut} disabled={busy} aria-label={t('nav.signOutAria')}>
           {busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="logout" className="ic-sm" />} {t('nav.signOut')}
