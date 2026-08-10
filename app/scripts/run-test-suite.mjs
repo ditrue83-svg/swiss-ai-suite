@@ -257,6 +257,9 @@ const GROUPS = {
       { script: 'test:tasks-unit' },
       { script: 'test:documents-unit' },
       { script: 'test:calendar-unit' },
+      // Il motore di sincronizzazione ESEGUITO contro finzioni: è la suite che
+      // ha estinto la riga di `calendar/sync.ts` in TYPECHECK_SCOPERTI.
+      { script: 'test:calendar-sync-unit' },
       { script: 'test:workflows-unit' },
       { script: 'test:finance-unit' },
       { script: 'test:contracts-unit' },

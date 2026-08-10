@@ -634,11 +634,38 @@ Il controllo 8 segue il grafo degli import da `src/` e `scripts/` e pretende che
 ogni modulo **portabile** sia raggiunto. I file che usano `Deno.` o importano
 `npm:`/`jsr:` sono esenti **per costruzione**, e il controllo lo verifica invece
 di crederci. Il debito noto sta in `TYPECHECK_SCOPERTI`, con la stessa forma di
-`CRON_SOLO_A_MANO`: **due moduli portabili** che nessuno importa —
-`_shared/calendar/sync.ts` (451 righe, nessun test le esegue) e
-`_shared/assistant/store.ts` (provato via HTTP, non importato). Un modulo NUOVO
-non importato fa fallire il controllo: **controprova eseguita** creando un file
-di prova sotto `_shared/`. Autoverifica da 24 a **30 casi**.
+`CRON_SOLO_A_MANO`. Fino al 2026-08-10 le righe erano **due**; **al 2026-08-10
+ne resta una**:
+
+- ✅ `_shared/calendar/sync.ts` (451 righe che nessun test eseguiva) — **estinta
+  il 2026-08-10** da `test:calendar-sync-unit`, che esegue le funzioni vere
+  contro finzioni (**75 asserzioni, 25 controprove per mutazione** tutte rosse
+  sull'asserzione giusta);
+- `_shared/assistant/store.ts` (provato via HTTP attraverso la funzione
+  deployata, non importato) — **resta al 2026-08-10**, ed è debito dichiarato.
+
+Un modulo NUOVO non importato fa fallire il controllo: **controprova eseguita**
+creando un file di prova sotto `_shared/`. E dal 2026-08-10 il debito **scade da
+solo**: una riga il cui modulo è ormai raggiunto — o sparito — fa fallire il
+controllo, come le eccezioni di `design:lint`.
+
+⚠️⚠️ **E il controllo nuovo, appena scritto, poteva ORDINARE la bugia che
+esiste per impedire.** Una revisione avversaria lo ha dimostrato lo stesso
+giorno con un file di sonda: il rilevatore degli import leggeva il testo
+**grezzo**, quindi un import soltanto *citato in un commento* bastava a far
+credere raggiunto un modulo che nessuno importa. Da solo sarebbe stato un falso
+raggiunto silenzioso; insieme alla scadenza del debito era peggio — la riga
+**viva** veniva segnalata come stantia, e obbedire al suggerimento avrebbe
+lasciato quel modulo senza typecheck **e senza rosso, per sempre**. Corretto con
+uno scanner che riconosce commenti, stringhe ed espressioni regolari
+(`senzaCommenti`), e coperto da cinque casi nuovi.
+
+⚠️ Corrette nello stesso giro altre due debolezze dello stesso controllo, ed
+entrambe erano «verdi che non distinguono»: l'**ordine dei rami** dava a un file
+non-portabile la diagnosi «ormai qualcuno lo importa» (gesto giusto, ragione
+falsa), e l'autoverifica contava i problemi **senza mai leggere il messaggio** —
+fondendo i due rami in uno generico passavano tutti i casi. Ora dove il ramo
+conta il caso dichiara la frase attesa. Autoverifica da 30 a **38 casi**.
 
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 
