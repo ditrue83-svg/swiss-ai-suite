@@ -667,6 +667,64 @@ falsa), e l'autoverifica contava i problemi **senza mai leggere il messaggio** �
 fondendo i due rami in uno generico passavano tutti i casi. Ora dove il ramo
 conta il caso dichiara la frase attesa. Autoverifica da 30 a **38 casi**.
 
+## Il carattere dell'interfaccia — deployato il 2026-08-11 e PROVATO SUL DOMINIO
+
+**Inter, ospitato da noi** (`inter-ui@4.1.1`, SIL OFL), al posto dello stack di
+sistema. Il come e il perché stanno in [`design-system.md`](design-system.md);
+qui c'è solo lo stato, con le sei parole.
+
+| | Stato al 2026-08-11 |
+|---|---|
+| Implementato | sì — `src/styles/fonts.css`, tre pesi in `public/fonts/` |
+| Deployato | **sì** — `app.ai-swisse.com` serve i tre `.woff2` con `HTTP 200`, `content-type: font/woff2` e `cache-control: immutable`, e le loro **impronte sha256 coincidono con quelle fissate in `fonts-check.mjs`**: i byte sono arrivati intatti fino al CDN |
+| Configurato | non richiede configurazione: nessun segreto, nessuno scheduler |
+| Testato | **sì** — `npm run fonts:check` in CI (impronte, copertura dei dizionari, cablaggio di preload e `@font-face`), 15 casi di autoverifica |
+| Provato contro la cosa reale | **sì**, sul dominio: vedi la misura qui sotto |
+| Disponibile a clienti esterni | sì — è l'interfaccia che vedono tutti |
+
+⚠️ **La richiesta esterna che NON parte è il punto di tutto il lavoro.** Aprendo
+`app.ai-swisse.com` l'unico host contattato fuori origine è il nostro Supabase:
+nessuna chiamata a `fonts.googleapis.com`, quindi l'informativa privacy — che
+dichiara di non caricare risorse esterne — **resta vera**. Il browser scarica il
+solo 400 e il 600; il 500 resta `unloaded` finché non serve, che è ciò che il
+preload del solo peso del testo doveva ottenere.
+
+### Le schermate INTERNE, provate in produzione il 2026-08-11
+
+La verifica del 2026-08-10 si era fermata al CSS compilato: le schermate dietro
+autenticazione non erano state guardate, e questa pagina lo dichiarava. **Adesso
+lo sono**, sull'app deployata, con i dati veri di un'azienda reale e **senza
+scrivere niente** — nessun dato creato, nessun pulsante di conferma premuto; la
+lingua si cambia in `localStorage` (`swissai.locale`), non sul profilo, ed è
+stata rimessa com'era.
+
+Cinque schermate — Panoramica, Documenti, Finanze, Attività, dettaglio documento
+— in **it/de/fr**, confrontando ogni volta Inter con lo stack precedente sulla
+stessa pagina: **219 elementi misurati, zero tagliati, zero scorrimenti
+orizzontali**. Cambiano altezza due soli elementi, entrambi sottotitoli di KPI
+che prendono una riga in più. Le etichette dei KPI stanno a 32 px in tutte e tre
+le lingue: la riserva di due righe della regola 6 regge anche in tedesco.
+
+⚠️ **Un difetto trovato e corretto**: in tedesco la voce
+«Unternehmenseinstellungen» sporgeva dal proprio pulsante — 7 px già con lo stack
+di sistema, **15 px con Inter** — lasciando 2 px dal bordo della barra invece di
+10. Corretto con `hyphens: auto` sull'etichetta, che dà
+«Unternehmenseinstel-lungen»; la barra resta a 264 px.
+
+⚠️⚠️ **Che cosa resta NON osservato, e va detto invece di essere sottinteso**: i
+due elementi a cui è stato aggiunto `tabular-nums` non compaiono nei dati di
+quell'azienda — `.rb-num` vuole incentivi corrispondenti (l'azienda ne ha
+**zero**) e `.dl-date` un documento con una scadenza estratta. La correzione è
+quindi provata **sulla misura** — nell'app viva, `11.11.2026` e `30.09.2026`
+misurano 102,3 px e 122,3 px senza `tabular-nums` e **122,7 px identiche** con —
+ma **non su un elemento in pagina**. Servirebbe un'azienda con un progetto
+incentivi attivo.
+
+⚠️ Due osservazioni **preesistenti**, verificate con entrambi i caratteri e
+quindi non causate dal cambio: nella riga dei KPI il terzo numero sta 4 px più in
+alto (quella scheda è un link, `.kpi-link`), e le due voci di Finanze mostrano
+«importo non indicato» — sono i due `NOT_FINANCIAL` già dichiarati sopra.
+
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 
 `npm run test:production -- --no-skip` → **VERDE**, 3 passi, 10,8 s. Non provano
