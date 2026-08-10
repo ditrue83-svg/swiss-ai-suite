@@ -61,10 +61,23 @@ dizionari:
   laterale, le pastiglie, le intestazioni di tabella, i pulsanti e la scheda
   dell'incentivo restano dentro i propri riquadri. In colonne molto strette
   qualche frase lunga prende una riga in più: è riflusso, non troncamento.
-- ⚠️ **`hyphens: auto` è stato provato e SCARTATO.** In una colonna da 66 px
-  spezza «Aus-glei-chs-kas-se» una sillaba per riga e porta l'intestazione da
-  35 px a 128 px: peggiora ciò che dovrebbe risolvere. Le larghezze restano
-  automatiche (regola 6) e non è stata introdotta nessuna misura fissa.
+- ⚠️ **`hyphens: auto` nelle CELLE DI TABELLA è stato provato e SCARTATO.** In
+  una colonna da 66 px spezza «Aus-glei-chs-kas-se» una sillaba per riga e porta
+  l'intestazione da 35 px a 128 px: peggiora ciò che dovrebbe risolvere. Le
+  larghezze restano automatiche (regola 6) e non è stata introdotta nessuna
+  misura fissa.
+- ✅ **La stessa dichiarazione è invece GIUSTA nella barra laterale**, ed è la
+  prova che la regola non è la proprietà ma la misura. `Unternehmenseinstellungen`
+  — parola sola di 25 caratteri, nessun punto di rottura naturale — usciva dal
+  proprio pulsante di 7 px già con lo stack di sistema e di **15 px con Inter**,
+  arrivando a 2 px dal bordo della barra invece dei 10 di prima (misurato
+  sull'app in **produzione** il 2026-08-11). Con `hyphens: auto` sull'etichetta
+  la sporgenza va a **zero** e la voce diventa «Unternehmenseinstel-lungen», con
+  il trattino su una sillaba valida; `overflow-wrap: break-word` avrebbe dato
+  «Unternehmenseinstellun|gen», che in tedesco è sbagliato. La larghezza utile è
+  ~179 px contro i 66 della colonna: **la stessa proprietà è giusta di qua e
+  sbagliata di là.** La barra resta a 264 px — è struttura di pagina, non un
+  contenitore di testo.
 - ⚠️⚠️ **Le cifre volevano un intervento, e non era prevedibile.** Lo stack di
   sistema incolonnava le cifre da sé: a 22 px «11 %», «92 %» e «88 %» misuravano
   tutte **45 px esatti**. Inter usa cifre **proporzionali** per default — il suo

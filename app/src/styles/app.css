@@ -236,6 +236,25 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius-sm); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
 .nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+/* ⚠️ L'ETICHETTA DELLA VOCE SI SILLABA, e la barra ha una larghezza fissa (264px)
+   che NON si tocca: è la struttura della pagina, non un contenitore di testo.
+   In tedesco «Unternehmenseinstellungen» è una parola sola di 25 caratteri senza
+   punti di rottura naturali: usciva dal proprio pulsante di 7px già con lo stack
+   di sistema, e con Inter — più largo di circa il 6% — di 15px, arrivando a 2px
+   dal bordo della barra invece dei 10 di prima. Misurato sull'app in produzione
+   il 2026-08-11, non dedotto.
+
+   `hyphens: auto` segue l'attributo `lang`, che `src/i18n` aggiorna a ogni cambio
+   lingua: il risultato è «Unternehmenseinstel-lungen», con il trattino e su una
+   sillaba valida. `overflow-wrap: break-word` avrebbe dato
+   «Unternehmenseinstellun|gen», che in tedesco è sbagliato.
+
+   ⚠️ La stessa dichiarazione è stata PROVATA E SCARTATA nelle celle di tabella
+   (vedi docs/design-system.md § Il carattere): in una colonna da 66px spezza una
+   sillaba per riga e peggiora le cose. Qui la larghezza utile è ~179px e produce
+   UNA rottura pulita. La differenza è la misura, non l'opinione: la stessa
+   proprietà è giusta di là e sbagliata di qua. */
+.nav-btn > span:last-child { hyphens: auto; }
 .nav-btn .ic { color: var(--muted); }
 .nav-btn:hover .ic, .nav-btn.active .ic { color: var(--accent-text); }
 .sidebar-footer { margin-top: auto; padding: var(--sp-3) var(--sp-3) var(--sp-05); font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line); line-height: 1.5; }
