@@ -131,7 +131,7 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
         <label htmlFor="sf-desc">{t('subsidy.profile.description')}</label>
         <textarea id="sf-desc" style={{ minHeight: 120 }} value={description} onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder={t('subsidy.profile.descriptionPlaceholder')} />
-        <div className="row-wrap" style={{ marginTop: 8 }}>
+        <div className="row-wrap mt-2">
           <button type="button" className="btn btn-sm" onClick={interpret} disabled={!canInterpret} aria-busy={interpreting || undefined}>
             {interpreting ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} {t('subsidy.profile.interpret')}
           </button>
@@ -139,18 +139,18 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
         </div>
 
         {interpretation && (
-          <div className="hint-accent" role="status" style={{ marginTop: 10 }}>
-            {interpretation.summary && <div style={{ marginBottom: 6 }}>{interpretation.summary}</div>}
+          <div className="hint-accent mt-3" role="status">
+            {interpretation.summary && <div className="mb-2">{interpretation.summary}</div>}
             {recognized.length > 0
               ? <>{t('subsidy.profile.recognized')} <strong>{recognized.map(L.projectType).join(', ')}</strong></>
               : <>{t('subsidy.profile.noneRecognized')}</>}
             {interpretation.timing.alreadyStarted === true && (
-              <div style={{ marginTop: 6 }}><Icon name="alert" className="ic-sm" /> {t('subsidy.profile.alreadyStarted')}</div>
+              <div className="mt-2"><Icon name="alert" className="ic-sm" /> {t('subsidy.profile.alreadyStarted')}</div>
             )}
 
             {/* Ambiti riconosciuti con poca sicurezza: decide l'utente, non l'AI. */}
             {uncertainTypes.length > 0 && (
-              <div style={{ marginTop: 8 }}>
+              <div className="mt-2">
                 {t('subsidy.profile.uncertainScopes')}{' '}
                 {uncertainTypes.map((p, i) => (
                   <span key={p.type}>
@@ -166,15 +166,15 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
 
             {/* §17 — ciò che l'AI non ha potuto stabilire va detto, non nascosto. */}
             {interpretation.uncertainties.length > 0 && (
-              <div style={{ marginTop: 8 }}>
+              <div className="mt-2">
                 <strong>{t('subsidy.profile.toVerify')}</strong>
-                <ul className="detail-list warn" style={{ marginTop: 4 }}>
+                <ul className="detail-list warn mt-1">
                   {interpretation.uncertainties.map((u, i) => <li key={i}>{u.description}</li>)}
                 </ul>
               </div>
             )}
             {interpretation.meta.droppedEvidence > 0 && (
-              <div className="muted-sm" style={{ marginTop: 4 }}>
+              <div className="muted-sm mt-1">
                 {t('subsidy.profile.droppedEvidence', { n: interpretation.meta.droppedEvidence })}
               </div>
             )}

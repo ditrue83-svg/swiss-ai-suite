@@ -170,7 +170,7 @@ export function TasksPage() {
           onClick={() => setCreating((v) => !v)} aria-expanded={creating}>
           <Icon name="plus" className="ic-sm" /> {t('tasks.newTask')}
         </button>
-        <div className="field" style={{ flex: 1, minWidth: 200, margin: 0 }}>
+        <div className="field m-0" style={{ flex: 1, minWidth: 200 }}>
           {/* Etichetta come `aria-label`: il progetto non ha una classe per
               nascondere visivamente il testo, e inventarne una qui avrebbe
               introdotto CSS fuori dal design system per un solo campo. */}
@@ -208,8 +208,8 @@ export function TasksPage() {
           </span>
         </div>
 
-        <div className="row-wrap" style={{ marginBottom: 12 }}>
-          <div className="field" style={{ margin: 0 }}>
+        <div className="row-wrap mb-3">
+          <div className="field m-0">
             <select id="f-prio" className="select-inline" value={priority}
               aria-label={t('tasks.filterPriority')}
               onChange={(e) => setPriority(e.target.value as TaskPriority | '')}>
@@ -219,7 +219,7 @@ export function TasksPage() {
               <option value="low">{L.urgency('bassa')}</option>
             </select>
           </div>
-          <div className="field" style={{ margin: 0 }}>
+          <div className="field m-0">
             <select id="f-assignee" className="select-inline" value={assignee}
               aria-label={t('tasks.filterAssignee')}
               onChange={(e) => setAssignee(e.target.value)}>
@@ -246,7 +246,7 @@ export function TasksPage() {
         ))}
 
         {!loading && !error && items.length > 0 && (
-          <div className="row-wrap" style={{ justifyContent: 'space-between', marginTop: 12 }}>
+          <div className="row-wrap mt-3" style={{ justifyContent: 'space-between' }}>
             <span className="muted-sm">{t('tasks.countShown', { shown: items.length, total })}</span>
             {items.length < total && (
               <button className="btn btn-sm" onClick={() => setLimit((n) => n + PAGE_SIZE)}>

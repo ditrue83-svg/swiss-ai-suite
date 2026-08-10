@@ -988,6 +988,12 @@ npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
 npm run i18n:typography # spazi insecabili (U+202F) prima dei segni doppi francesi
 npm run i18n:typography -- --self-test
+npm run design:lint     # regola 1 del sistema di design: misure e colori dai token, mai
+                        #   a mano (esce 1 se trova violazioni; le eccezioni sono dichiarate
+                        #   nello script, una riga e un motivo ciascuna, e una riga senza più
+                        #   riscontro nel codice fa fallire il controllo)
+npm run design:lint -- --report      # l'elenco riga per riga, col gradino più vicino accanto
+npm run design:lint -- --self-test   # verifica che il RILEVATORE stesso funzioni (31 casi)
 npm run test:operations # ogni Edge Function ha un invocante? ogni scheduler è inventariato,
                         #   dichiara il timeout di pg_net e punta a una funzione che esiste?
 npm run test:operations -- --self-test  # verifica che il CONTROLLO sappia fallire (11 casi)

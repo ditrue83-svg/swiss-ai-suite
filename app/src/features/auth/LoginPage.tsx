@@ -71,7 +71,7 @@ export function LoginPage() {
         </div>
         {/* La lingua si sceglie PRIMA di accedere: chi non legge l'italiano
             deve poter capire la schermata di accesso. */}
-        <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center' }}>
+        <div className="mt-4" style={{ display: 'flex', justifyContent: 'center' }}>
           <LanguageSwitcher compact />
         </div>
       </div>

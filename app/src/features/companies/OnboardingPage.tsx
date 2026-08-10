@@ -105,7 +105,7 @@ export function OnboardingPage() {
           onApply={applyRegistryFields}
         />
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div className="mb-3" style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <LanguageSwitcher compact />
         </div>
 
@@ -125,7 +125,7 @@ export function OnboardingPage() {
                 aria-describedby={uidInvalid ? 'ob-che-hint' : undefined}
                 placeholder={t('onboarding.uidPlaceholder')} />
               {uidInvalid && (
-                <div id="ob-che-hint" className="hint-accent" style={{ marginTop: 4 }}>
+                <div id="ob-che-hint" className="hint-accent mt-1">
                   <Icon name="alert" className="ic-sm" /> {t('onboarding.uidInvalid')}
                 </div>
               )}

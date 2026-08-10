@@ -34,15 +34,34 @@ la gerarchia, non la scala.
 | `--fs-h2` | 22px | titoli di sezione |
 | `--fs-h1` | 30px | titoli di pagina |
 
-Stato attuale: **113 regole usano i token**, **2 usano ancora pixel** —
-e quelle sono pseudo-elementi la cui misura dipende dal cerchio che le contiene.
+Quante regole rispettino la scala non lo dice questo file: lo dice
+`npm run design:lint`, che fallisce su ogni `font-size` in pixel. Un conteggio
+scritto qui invecchierebbe al primo commit che non lo aggiorna — è già successo
+ai numeri che stavano in questa riga. Le due sole eccezioni ammesse —
+pseudo-elementi la cui misura dipende dal cerchio che le contiene — sono
+dichiarate nello script, con il motivo accanto.
 
 **Nessuna nuova regola deve usare px per il testo.**
 
 ## Spaziature
 
 Multipli di 4: `4px` · `—` · `—` · `—` · `24px` · `—` · `—`
-(`--sp-1` … `--sp-12`).
+(`--sp-1` … `--sp-12`), più un mezzo gradino: **`--sp-05: 2px`**.
+
+Il ritmo fra gli elementi lo fanno i multipli di 4; `--sp-05` è l'anatomia
+**dentro** un elemento — il respiro verticale di una pastiglia, una pila
+fitta, l'allineamento di un'icona alla prima riga. È nato il 2026-08-10 da
+53 eccezioni di `design:lint` che dicevano tutte la stessa cosa: quando una
+lista di eccezioni cresce con lo stesso motivo, non mancano eccezioni, manca
+un gradino. Nominato il gradino, le 53 righe sono tornate scala. Restano
+eccezioni i **negativi** (un margine che risale compensa qualcosa di
+specifico: la scala non parla in negativo) e gli idiomi come `sr-only`.
+
+Nel markup le distanze si scrivono con le utilità in coda a `extra.css`
+(`.m-0`, `.mt-2`, `.py-2`, …): prendono i valori **solo** dalla scala, e un
+`style={{ marginTop: 8 }}` non passa il lint. Quando un elemento ne accumula
+più di due, quello che si sta descrivendo è un componente e va nominato nel
+CSS.
 
 ## Colore
 
@@ -56,6 +75,8 @@ Multipli di 4: `4px` · `—` · `—` · `—` · `24px` · `—` · `—`
 | `--red` / `--amber` / `--green` | `hsl(0, 84%, 60%)` / `hsl(35, 78%, 34%)` / `hsl(151, 48%, 32%)` | urgenza, attenzione, assolto |
 | `--amber-fill` / `--green-fill` | `hsl(35, 92%, 50%)` / `hsl(151, 52%, 40%)` | riempimenti: barre, pallini |
 | `--accent-line` | `hsl(207, 58%, 82%)` | bordo di ciò che sta su `--accent-soft` |
+| `--line-subtle` | `rgba(127, 127, 127, 0.15)` | separatori dentro una scheda; il grigio al 50% con alfa bassa regge su entrambi i temi, e per questo non ha una variante scura |
+| `--scrim` | `rgba(16, 24, 40, 0.4)` | velo dietro un cassetto aperto (era scritto due volte, con due valori diversi) |
 | `--on-highlight` | `hsl(45, 60%, 12%)` | testo sopra l'evidenziazione della citazione |
 | `--focus` | `hsl(207, 88%, 42%)` | anello del focus da tastiera |
 
@@ -169,6 +190,10 @@ altrimenti la regola globale dei collegamenti tinge di blu tutto il contenuto.
 ## Regole che valgono per chi lavora qui dopo
 
 1. **Nessun valore scritto a mano**: misure e colori vengono dai token.
+   Dal 2026-08-09 non è un'esortazione: `npm run design:lint` **blocca la CI**
+   quando trova un pixel o un colore fuori posto. Le eccezioni stanno nello
+   script, una riga e un motivo ciascuna; una riga senza più riscontro nel
+   codice fa fallire il controllo, così la lista non può che dire il vero.
 2. **Il focus da tastiera è già risolto** da una regola `:focus-visible` globale:
    non aggiungerne di locali.
 3. **L'urgenza ha già una forma oltre al colore** (icona con fondo colorato per

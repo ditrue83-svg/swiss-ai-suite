@@ -363,7 +363,7 @@ function ConditionRow({
     <div className="list-row">
       <div className="list-main">
         <div className="row-wrap">
-          <div className="field" style={{ margin: 0, minWidth: 180 }}>
+          <div className="field m-0" style={{ minWidth: 180 }}>
             <label htmlFor={`${id}-field`}>{t('automations.conditionField')}</label>
             <select id={`${id}-field`} value={field.path} onChange={(e) => changeField(e.target.value)}>
               {trigger.fields.map((f) => (
@@ -372,7 +372,7 @@ function ConditionRow({
             </select>
           </div>
 
-          <div className="field" style={{ margin: 0, minWidth: 150 }}>
+          <div className="field m-0" style={{ minWidth: 150 }}>
             <label htmlFor={`${id}-op`}>{t('automations.conditionOperator')}</label>
             <select id={`${id}-op`} value={condition.operator}
               onChange={(e) => onChange({
@@ -409,7 +409,7 @@ function ValueInput({
   if (condition.operator === 'in' && field.options) {
     const selected = Array.isArray(condition.value) ? condition.value.map(String) : [];
     return (
-      <div className="field" style={{ margin: 0, minWidth: 220 }}>
+      <div className="field m-0" style={{ minWidth: 220 }}>
         <span className="group-label">{label}</span>
         <div className="checks">
           {field.options.map((opt) => (
@@ -429,7 +429,7 @@ function ValueInput({
 
   if (field.type === 'enum' && field.options) {
     return (
-      <div className="field" style={{ margin: 0, minWidth: 180 }}>
+      <div className="field m-0" style={{ minWidth: 180 }}>
         <label htmlFor={`${id}-value`}>{label}</label>
         <select id={`${id}-value`} value={String(condition.value ?? '')}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}>
@@ -446,7 +446,7 @@ function ValueInput({
 
   if (field.type === 'user') {
     return (
-      <div className="field" style={{ margin: 0, minWidth: 180 }}>
+      <div className="field m-0" style={{ minWidth: 180 }}>
         <label htmlFor={`${id}-value`}>{label}</label>
         <select id={`${id}-value`} value={String(condition.value ?? '')}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}>
@@ -461,7 +461,7 @@ function ValueInput({
 
   if (field.type === 'boolean') {
     return (
-      <div className="field" style={{ margin: 0, minWidth: 140 }}>
+      <div className="field m-0" style={{ minWidth: 140 }}>
         <label htmlFor={`${id}-value`}>{label}</label>
         <select id={`${id}-value`} value={String(condition.value ?? '')}
           onChange={(e) => onChange({ ...condition, value: e.target.value })}>
@@ -476,7 +476,7 @@ function ValueInput({
   if (field.type === 'number' || condition.operator === 'within_days') {
     return (
       <>
-        <div className="field" style={{ margin: 0, minWidth: 120 }}>
+        <div className="field m-0" style={{ minWidth: 120 }}>
           <label htmlFor={`${id}-value`}>
             {condition.operator === 'within_days' ? t('automations.daysField') : label}
           </label>
@@ -487,7 +487,7 @@ function ValueInput({
         {/* §27 — su un importo la valuta è obbligatoria, e non si converte:
             CHF 5'000 e EUR 5'000 non sono lo stesso importo. */}
         {field.hasCurrency && (
-          <div className="field" style={{ margin: 0, minWidth: 110 }}>
+          <div className="field m-0" style={{ minWidth: 110 }}>
             <label htmlFor={`${id}-cur`}>{t('automations.currencyField')}</label>
             <select id={`${id}-cur`} value={condition.currency ?? 'CHF'}
               onChange={(e) => onChange({ ...condition, currency: e.target.value })}>
@@ -500,7 +500,7 @@ function ValueInput({
   }
 
   return (
-    <div className="field" style={{ margin: 0, minWidth: 200 }}>
+    <div className="field m-0" style={{ minWidth: 200 }}>
       <label htmlFor={`${id}-value`}>{label}</label>
       <input id={`${id}-value`} value={String(condition.value ?? '')} maxLength={200}
         onChange={(e) => onChange({ ...condition, value: e.target.value })} />
@@ -795,7 +795,7 @@ function TestPanel({
       <p className="muted-sm">{t('automations.testIntro')}</p>
 
       <div className="row-wrap">
-        <div className="field" style={{ margin: 0, minWidth: 260, flex: 1 }}>
+        <div className="field m-0" style={{ minWidth: 260, flex: 1 }}>
           <label htmlFor="wf-sample">{t('automations.testEntity')}</label>
           <select id="wf-sample" value={entityId} onChange={(e) => setEntityId(e.target.value)}>
             <option value="">{t('automations.chooseValue')}</option>

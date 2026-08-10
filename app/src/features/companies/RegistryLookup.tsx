@@ -154,24 +154,24 @@ export function RegistryLookup({ current, onApply, idPrefix, disabled, messages 
           {searching ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} {t('common.search')}
         </button>
       </div>
-      <div className="muted-sm" style={{ marginTop: 4 }}>{t(M.hint)}</div>
+      <div className="muted-sm mt-1">{t(M.hint)}</div>
 
-      {message && <div className="hint-accent" role="status" style={{ marginTop: 8 }}>{message}</div>}
+      {message && <div className="hint-accent mt-2" role="status">{message}</div>}
 
       {/* Condizioni d'uso dell'API Zefix: l'origine dei dati va indicata, e va
           detto che non sono vincolanti — chi legge una ragione sociale
           precompilata non deve crederla certificata. */}
-      {imported && <div className="muted-sm" style={{ marginTop: 6 }}>{t('onboarding.registrySource')}</div>}
+      {imported && <div className="muted-sm mt-2">{t('onboarding.registrySource')}</div>}
       {modified && (
-        <div className="hint-accent" role="status" style={{ marginTop: 6 }}>{t('onboarding.registryModified')}</div>
+        <div className="hint-accent mt-2" role="status">{t('onboarding.registryModified')}</div>
       )}
 
       {candidates.length > 0 && (
-        <ul role="listbox" aria-label={t('onboarding.registryResultsAria')} style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
+        <ul role="listbox" aria-label={t('onboarding.registryResultsAria')} className="registry-candidates">
           {candidates.map((c, i) => (
             <li key={c.uid ?? i}>
-              <button type="button" className="btn btn-sm" onClick={() => void applyCandidate(c)}
-                style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', marginBottom: 6 }}>
+              <button type="button" className="btn btn-sm mb-2" onClick={() => void applyCandidate(c)}
+                style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left' }}>
                 <span>
                   <strong>{c.name}</strong>
                   {c.municipality ? ` · ${c.municipality}` : ''}{c.canton ? ` (${c.canton})` : ''}

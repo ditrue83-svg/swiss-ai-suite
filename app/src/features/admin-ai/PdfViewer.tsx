@@ -117,31 +117,31 @@ export function PdfViewer({ storagePath, highlight }: {
   return (
     <>
       {highlight && (
-        <div className="hint-accent" style={{ marginBottom: 8 }}>
+        <div className="hint-accent mb-2">
           <Icon name="fileSearch" className="ic-sm" />{' '}
           {highlight.pageNumber ? <><strong>{t('adminAi.result.quoteOnPage', { n: highlight.pageNumber })}</strong>{' '}</> : <>{t('adminAi.result.quoteCited')}{' '}</>}
           «{highlight.quote}»
-          <div className="muted-sm" style={{ marginTop: 4 }}>
+          <div className="muted-sm mt-1">
             {t('adminAi.result.pdfPageNote')}
           </div>
         </div>
       )}
 
-      {error && <div className="muted-sm" style={{ marginBottom: 8 }}>{error}</div>}
+      {error && <div className="muted-sm mb-2">{error}</div>}
 
       {!error && pageCount > 0 && rendered < Math.min(pageCount, MAX_RENDERED_PAGES) && (
-        <div className="muted-sm" style={{ marginBottom: 8 }}>
+        <div className="muted-sm mb-2">
           <span className="spinner" aria-hidden="true" /> {t('adminAi.result.renderingPage', { n: rendered + 1, total: Math.min(pageCount, MAX_RENDERED_PAGES) })}
         </div>
       )}
       {!error && pageCount === 0 && (
-        <div className="muted-sm" style={{ marginBottom: 8 }}><span className="spinner" aria-hidden="true" /> {t('adminAi.result.loadingDocument')}</div>
+        <div className="muted-sm mb-2"><span className="spinner" aria-hidden="true" /> {t('adminAi.result.loadingDocument')}</div>
       )}
 
       <div className="ax-doc-view" ref={containerRef} />
 
       {truncated && (
-        <div className="muted-sm" style={{ marginTop: 6 }}>
+        <div className="muted-sm mt-2">
           {t('adminAi.result.previewLimited', { max: MAX_RENDERED_PAGES, total: pageCount })}
         </div>
       )}

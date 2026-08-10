@@ -252,7 +252,7 @@ export function CalendarPage() {
           )}
 
           <div className="cal-filters">
-            <div className="field" style={{ margin: 0 }}>
+            <div className="field m-0">
               <select className="select-inline" value={priority} aria-label={t('calendar.filterPriority')}
                 onChange={(e) => setPriority(e.target.value as TaskPriority | '')}>
                 {/* ⚠️ I due punti stanno DENTRO la traduzione e non nel JSX: in
@@ -265,7 +265,7 @@ export function CalendarPage() {
                 <option value="low">{L.urgency('bassa')}</option>
               </select>
             </div>
-            <div className="field" style={{ margin: 0 }}>
+            <div className="field m-0">
               <select className="select-inline" value={status} aria-label={t('calendar.filterStatus')}
                 onChange={(e) => setStatus(e.target.value as TaskStatus | '')}>
                 <option value="">{t('calendar.filterStatusAny')}</option>
@@ -276,7 +276,7 @@ export function CalendarPage() {
               </select>
             </div>
             {!mine && (
-              <div className="field" style={{ margin: 0 }}>
+              <div className="field m-0">
                 <select className="select-inline" value={assignee} aria-label={t('calendar.filterAssignee')}
                   onChange={(e) => setAssignee(e.target.value)}>
                   <option value="">{t('calendar.filterAssigneeAny')}</option>

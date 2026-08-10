@@ -283,7 +283,7 @@ export function DocumentsPage() {
                 </button>
               </span>
               <span className="filter-group">
-                <div className="field" style={{ margin: 0 }}>
+                <div className="field m-0">
                   <select className="select-inline" value={filters.sort ?? 'recent'}
                     aria-label={t('documents.sortLabel')}
                     onChange={(e) => update({ sort: e.target.value as DocumentSort })}>
@@ -356,7 +356,7 @@ export function DocumentsPage() {
                 <span className="muted-sm">
                   {ids.length === 1 ? t('documents.selectedOne') : t('documents.selectedMany', { n: ids.length })}
                 </span>
-                <div className="field" style={{ margin: 0 }}>
+                <div className="field m-0">
                   <select className="select-inline" value="" disabled={busy}
                     aria-label={t('documents.bulkCategory')}
                     onChange={(e) => {
@@ -368,7 +368,7 @@ export function DocumentsPage() {
                   </select>
                 </div>
                 {tags.length > 0 && (
-                  <div className="field" style={{ margin: 0 }}>
+                  <div className="field m-0">
                     <select className="select-inline" value="" disabled={busy}
                       aria-label={t('documents.bulkTag')}
                       onChange={(e) => {
@@ -435,7 +435,7 @@ export function DocumentsPage() {
             ))}
 
             {list.items.length > 0 && (
-              <div className="row-wrap" style={{ justifyContent: 'space-between', marginTop: 12 }}>
+              <div className="row-wrap mt-3" style={{ justifyContent: 'space-between' }}>
                 <span className="muted-sm">
                   {t('documents.countShown', { shown: list.items.length, total: list.total })}
                 </span>

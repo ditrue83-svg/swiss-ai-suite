@@ -256,7 +256,7 @@ export function AdminAIPage() {
           <div className="info-box mt-12" role="alert">
             <div>{error}</div>
             {retrySrc && !analyzing && (
-              <div style={{ marginTop: 10 }}>
+              <div className="mt-3">
                 <button className="btn btn-sm" onClick={retryAnalysis}><Icon name="fileSearch" className="ic-sm" /> {t('common.retry')}</button>
               </div>
             )}

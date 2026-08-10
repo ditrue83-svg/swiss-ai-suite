@@ -124,9 +124,9 @@ export function AuditLogPage() {
       <div className="page-title">{t('audit.title')}</div>
       <p className="muted-sm">{t('audit.intro')}</p>
 
-      <div className="row-wrap" style={{ marginBottom: 12 }}>
+      <div className="row-wrap mb-3">
         {/* ⚠️ Ogni campo dentro `.field`, o in tema scuro è bianco su bianco. */}
-        <div className="field" style={{ margin: 0 }}>
+        <div className="field m-0">
           <label htmlFor="f-periodo">{t('audit.filter.period')}</label>
           <select
             id="f-periodo"
@@ -140,7 +140,7 @@ export function AuditLogPage() {
           </select>
         </div>
 
-        <div className="field" style={{ margin: 0 }}>
+        <div className="field m-0">
           <label htmlFor="f-tipo">{t('audit.filter.action')}</label>
           <select
             id="f-tipo"
@@ -215,7 +215,7 @@ export function AuditLogPage() {
           </div>
 
           {entries.length < total && (
-            <div className="row-wrap" style={{ marginTop: 12 }}>
+            <div className="row-wrap mt-3">
               <Button loading={loadingMore} onClick={() => void loadMore()}>
                 {t('audit.loadMore', { count: String(Math.min(AUDIT_PAGE_SIZE, total - entries.length)) })}
               </Button>

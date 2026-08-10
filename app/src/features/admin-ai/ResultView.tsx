@@ -74,7 +74,7 @@ function DocViewer({ text, pages, highlight }: { text: string | null | undefined
           const onThisPage = !!q && (target == null || target === p.pageNumber) && p.text.toLowerCase().includes(q.trim().toLowerCase());
           return (
             <div key={p.pageNumber}>
-              {pages.length > 1 && <div className="muted-sm" style={{ fontWeight: 600, marginTop: p.pageNumber > first ? 14 : 0, marginBottom: 4 }}>— {t('adminAi.result.page', { n: p.pageNumber })} —</div>}
+              {pages.length > 1 && <div className={`muted-sm mb-1${p.pageNumber > first ? ' mt-4' : ''}`} style={{ fontWeight: 600 }}>— {t('adminAi.result.page', { n: p.pageNumber })} —</div>}
               <div>{onThisPage ? renderHighlighted(p.text, q) : p.text}</div>
             </div>
           );
@@ -119,8 +119,8 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
   }
 
   return (
-    <div style={{ padding: '8px 0', borderTop: '1px solid rgba(127,127,127,0.15)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+    <div className="ax-field-row">
+      <div className="ax-field-head">
         <div><b>{label}:</b>{' '}
           {current != null
             ? <span>{current} <span className="badge badge-neutral">{tt('adminAi.result.correctedByHand')}</span></span>
@@ -134,7 +134,7 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
       </div>
       {current != null && <div className="muted-sm">{tt('adminAi.result.aiDetectedValue', { value: aiDisplay || '—' })}</div>}
       {editing && (
-        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+        <div className="ax-field-edit">
           <input type={inputType ?? 'text'} className="select-inline" value={value} onChange={(e) => setValue(e.target.value)} style={{ flex: 1, minWidth: 150 }} aria-label={tt('adminAi.result.correctAria', { label })} />
           <button className="btn btn-sm btn-primary" onClick={save} disabled={saving} aria-busy={saving || undefined}>{saving ? <span className="spinner" aria-hidden="true" /> : null} {tt('common.save')}</button>
           <button className="btn btn-sm" onClick={() => setEditing(false)}>{tt('common.cancel')}</button>
@@ -455,7 +455,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             {t(r.engine.startsWith('claude') ? 'adminAi.result.engineAi' : 'adminAi.result.engineLocal')}
           </span>
         </div>
-        {r.subject && <div className="ax-subject muted-sm" style={{ marginTop: 6 }}><b>{t('adminAi.result.subjectLabel')}:</b> {r.subject}</div>}
+        {r.subject && <div className="ax-subject muted-sm mt-2"><b>{t('adminAi.result.subjectLabel')}:</b> {r.subject}</div>}
         {r.senderEvidence && <div><EvidenceButton evidence={r.senderEvidence} label={t('adminAi.result.senderShowInDocument')} onShow={setHighlight} /></div>}
       </div>
 
@@ -476,7 +476,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             <div className="card-title">
               <Icon name="document" className="ic-sm" /> {t('adminAi.result.originalDocument')}
               {isPdf && (
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+                <span className="gap-2" style={{ marginLeft: 'auto', display: 'inline-flex' }}>
                   <button type="button" className={`btn btn-sm${docMode === 'pdf' ? ' btn-primary' : ''}`}
                     aria-pressed={docMode === 'pdf'} onClick={() => setDocMode('pdf')}>PDF</button>
                   <button type="button" className={`btn btn-sm${docMode === 'text' ? ' btn-primary' : ''}`}
@@ -504,7 +504,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               </div>
               <EvidenceButton evidence={r.deadlineEvidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />
               {r.deadlineRequiresVerification && (
-                <div className="muted-sm" style={{ marginTop: 8 }}>
+                <div className="muted-sm mt-2">
                   <Icon name="alert" className="ic-sm" /> {r.deadlineType === 'relative'
                     ? t('adminAi.result.deadlineRelative')
                     : t('adminAi.result.deadlineIndicative')}
@@ -559,7 +559,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
 
           <div className="card"><div className="card-title">{t('adminAi.result.requestedDocumentsTitle')}</div>
             {r.requestedDocuments.length > 0 ? r.requestedDocuments.map((d, i) => (
-              <div className="action-item" style={{ padding: '9px 0' }} key={i}>
+              <div className="action-item py-2" key={i}>
                 <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{d.label}</span>
                   {d.evidence && <div className="ai-meta"><EvidenceButton evidence={d.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                 </span>
@@ -570,7 +570,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
           {r.amounts.length > 0 && (
             <div className="card"><div className="card-title"><Icon name="banknote" className="ic-sm" /> {t('adminAi.result.amountsFound')}</div>
               {r.amounts.map((m, i) => (
-                <div className="action-item" style={{ padding: '9px 0' }} key={`amt-${i}`}>
+                <div className="action-item py-2" key={`amt-${i}`}>
                   <span className="ai-main">
                     <span className="ai-text"><b>{m.display}</b>{m.description ? ` — ${m.description}` : ''} <span className="badge badge-neutral">{L.amountType(m.type)}</span></span>
                     {m.evidence && <div className="ai-meta"><EvidenceButton evidence={m.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
@@ -583,14 +583,14 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
           {(r.referenceNumbers.length > 0 || r.legalReferences.length > 0) && (
             <div className="card"><div className="card-title">{t('adminAi.result.referencesAndLegal')}</div>
               {r.referenceNumbers.map((ref, i) => (
-                <div className="action-item" style={{ padding: '7px 0' }} key={`ref-${i}`}>
+                <div className="action-item py-2" key={`ref-${i}`}>
                   <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{ref.label ? `${ref.label}: ` : ''}<b>{ref.value}</b></span>
                     {ref.evidence && <div className="ai-meta"><EvidenceButton evidence={ref.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                   </span>
                 </div>
               ))}
               {r.legalReferences.map((leg, i) => (
-                <div className="action-item" style={{ padding: '7px 0' }} key={`leg-${i}`}>
+                <div className="action-item py-2" key={`leg-${i}`}>
                   <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{leg.text}</span>
                     {leg.evidence && <div className="ai-meta"><EvidenceButton evidence={leg.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                   </span>

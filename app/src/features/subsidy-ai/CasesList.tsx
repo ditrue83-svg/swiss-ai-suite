@@ -101,7 +101,7 @@ export function CasesList({ onGoResults }: { onGoResults: () => void }) {
               <div className="meter-track" style={{ flex: 1 }}><div className="meter-fill" style={{ width: `${pct}%` }} /></div></div>
             <div>
               {items.map((it) => (
-                <label className="action-item" style={{ padding: '8px 0' }} key={it.id}>
+                <label className="action-item py-2" key={it.id}>
                   <input type="checkbox" checked={it.completed} onChange={(e) => toggleItem(c.id, it.id, e.target.checked)} />
                   <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400, ...(it.completed ? { textDecoration: 'line-through', color: 'var(--muted)' } : {}) }}>{it.title}</span></span>
                 </label>
