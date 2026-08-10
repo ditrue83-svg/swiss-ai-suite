@@ -263,7 +263,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .drawer-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink-soft); }
 }
 
-.main { flex: 1; padding: var(--sp-8) 40px 64px; max-width: 1160px; width: 100%; }
+/* La cornice della tela: lati più larghi del sopra (in orizzontale il vuoto
+   si percepisce più stretto), fondo a --sp-12 come nei breakpoint stretti —
+   era un 64px solo-desktop, deciso a schermo il 2026-08-10. */
+.main { flex: 1; padding: var(--sp-8) var(--sp-12) var(--sp-12); max-width: 1160px; width: 100%; }
 .page { display: none; }
 .page.active { display: block; animation: fade-in .18s ease; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }

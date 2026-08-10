@@ -110,16 +110,17 @@ function nearestStep(px, spMap) {
 //   convinto la scala a nominare --sp-05: 2px. Le eccezioni erano il segno che
 //   mancava un gradino: nominato il gradino, sono tornate scala.)
 //
-// · OLTRE 4PX DAL GRADINO. Il mandato era: arrotondare fino a 4px di scarto,
-//   oltre fermarsi e segnalare. Questi sono i segnalati: il controllo li tiene
-//   in vista senza forzarli.
+// · OLTRE 4PX DAL GRADINO. Il mandato resta: fino a 4px di scarto si
+//   arrotonda, oltre ci si ferma e si decide GUARDANDO la schermata, mai
+//   forzando. La famiglia oggi è vuota: l'ultimo caso — i 40/64px della
+//   cornice .main — è stato deciso a schermo il 2026-08-10 (lati a --sp-12,
+//   fondo allineato al 48 dei breakpoint stretti).
 //
 // · CARATTERE LEGATO AL CERCHIO. Le due pseudo-classi documentate in
 //   docs/design-system.md: la misura dipende dal cerchio che le contiene, non
 //   dalla gerarchia del testo.
 // ---------------------------------------------------------------------------
 const EXCEPTIONS = [
-  { file: 'src/styles/app.css', contesto: '.main', frammento: 'padding: var(--sp-8) 40px 64px', motivo: 'i 40px laterali e i 64px in fondo alla tela distano più di 4px da ogni gradino: cambiarli sposta OGNI schermata — segnalato il 2026-08-09, si decide guardando, non arrotondando', occorrenze: 2 },
   { file: 'src/styles/app.css', contesto: '.brand-sub', frammento: 'margin-top: -1px', motivo: 'il sottotitolo risale di un filo contro il line-height del nome: negativo, la scala non parla in negativo' },
   { file: 'src/styles/app.css', contesto: '.dash-inc-stats', frammento: 'margin: -2px 0 var(--sp-3)', motivo: 'compensa il line-height del titolo sopra: valore negativo, la scala non parla in negativo' },
   { file: 'src/styles/extra.css', contesto: '.dash-sorted', frammento: 'margin: -6px 0 var(--sp-2)', motivo: 'risale sotto il titolo che il card-title ha già distanziato: negativo, fuori dal ritmo' },
