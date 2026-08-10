@@ -41,6 +41,10 @@ const NBSP = ' ';  // espace insécable
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TARGET = resolve(ROOT, 'src/i18n/locales/fr.ts');
 
+// ⚠️ La CODIFICA riguarda tutte e tre le lingue, non solo il francese: qui il
+// controllo si allarga, e la ragione è un difetto vero trovato il 2026-08-10.
+const DIZIONARI = ['it', 'de', 'fr'].map((l) => resolve(ROOT, `src/i18n/locales/${l}.ts`));
+
 /** Stringhe letterali in apici singoli, con `\'` gestito. */
 const LITERAL = /'((?:[^'\\\n]|\\.)*)'/g;
 
@@ -67,6 +71,46 @@ export function violazioniDelTesto(testo) {
     r.re.lastIndex = 0;
     let m;
     while ((m = r.re.exec(testo)) !== null) out.push(r.nome);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// LA CODIFICA CORROTTA (mojibake)
+//
+// ⚠️⚠️ PERCHÉ ESISTE, e la data conta. Il 2026-08-10, cercando quali caratteri
+// dovessero stare nel carattere tipografico, è saltato fuori che 17 righe dei
+// tre dizionari erano UTF-8 rilette come Latin-1: «TrÃ¨s pertinente» invece di
+// «Très pertinente», «SÃ¬» invece di «Sì», «MÃ¶glicherweise» invece di
+// «Möglicherweise». Tutte nella sezione degli incentivi, tutte visibili a
+// schermo, entrate con un commit di allineamento dello specchio (450de6b).
+//
+// Nessun controllo le vedeva: `i18n:coverage` salta i dizionari di proposito
+// (sono testo per definizione) e questo file guardava solo la spaziatura del
+// francese. Una parola sbagliata in tre lingue è passata per settimane sotto
+// due controlli verdi.
+//
+// COME LO RICONOSCE, senza indovinare: si cercano le sequenze di due caratteri
+// che nascono da quella doppia codifica — `Ã`/`Â` seguiti da un carattere
+// U+0080–U+00BF — e si tiene solo quelle che, ricodificate, tornano un
+// carattere UTF-8 valido. Una sequenza che non torna indietro NON viene
+// segnalata: sarebbe un'ipotesi, non una misura.
+// ---------------------------------------------------------------------------
+const MOJIBAKE = /[ÃÂ][-¿]/g;
+
+/** Le sequenze di `testo` che sono con ogni evidenza una doppia codifica. */
+export function sequenzeMojibake(testo) {
+  const out = [];
+  MOJIBAKE.lastIndex = 0;
+  let m;
+  while ((m = MOJIBAKE.exec(testo)) !== null) {
+    const grezzo = m[0];
+    // Ricodifica: i due caratteri come byte Latin-1, riletti come UTF-8.
+    const byte = Uint8Array.from([grezzo.charCodeAt(0), grezzo.charCodeAt(1)]);
+    const tornato = new TextDecoder('utf-8', { fatal: true });
+    let riparato;
+    try { riparato = tornato.decode(byte); } catch { continue; }
+    if (riparato.length === 1 && riparato !== '�') out.push({ grezzo, riparato });
   }
   return out;
 }
@@ -101,11 +145,32 @@ const CASI = [
   { nome: 'testo senza segni doppi', src: `const a = 'Aucune ponctuation double ici';`, deveFallire: false },
 ];
 
+// ⚠️ I casi della CODIFICA. I negativi contano quanto i positivi: «Ç», «©» e
+// ««» sono caratteri legittimi, e un rilevatore che li scambiasse per
+// corruzione riscriverebbe testo giusto.
+const CASI_CODIFICA = [
+  { nome: 'francese corrotto (Ã¨ → è)', testo: `'TrÃ¨s pertinente'`, deveFallire: true },
+  { nome: 'italiano corrotto (Ã¬ → ì)', testo: `'SÃ¬'`, deveFallire: true },
+  { nome: 'tedesco corrotto (Ã¶ → ö)', testo: `'MÃ¶glicherweise fÃ¶rderfÃ¤hig'`, deveFallire: true },
+  { nome: 'francese CORRETTO', testo: `'Très pertinente'`, deveFallire: false },
+  { nome: 'italiano CORRETTO', testo: `'Sì, già avviato'`, deveFallire: false },
+  { nome: 'tedesco CORRETTO', testo: `'Möglicherweise förderfähig'`, deveFallire: false },
+  { nome: '⚠️ la cediglia maiuscola non è corruzione', testo: `'Ça ne se corrige pas'`, deveFallire: false },
+  { nome: '⚠️ il simbolo di copyright non è corruzione', testo: `'© AI-Swisse'`, deveFallire: false },
+  { nome: '⚠️ i guillemets non sono corruzione', testo: `'Voir « le document »'`, deveFallire: false },
+  { nome: '⚠️ la A con tilde portoghese, da sola, non è corruzione', testo: `'São Paulo'`, deveFallire: false },
+];
+
 function eseguiCasi() {
-  return CASI.map((c) => {
+  const punteggiatura = CASI.map((c) => {
     const fallito = violazioniDelSorgente(c.src).length > 0;
     return { ...c, ok: fallito === c.deveFallire };
   });
+  const codifica = CASI_CODIFICA.map((c) => {
+    const fallito = sequenzeMojibake(c.testo).length > 0;
+    return { ...c, ok: fallito === c.deveFallire };
+  });
+  return [...punteggiatura, ...codifica];
 }
 
 const soloSelfTest = process.argv.includes('--self-test');
@@ -126,11 +191,36 @@ if (soloSelfTest) {
   process.exit(0);
 }
 
+// --- La codifica, in tutte e tre le lingue ----------------------------------
+const corrotti = [];
+for (const percorso of DIZIONARI) {
+  const testo = readFileSync(percorso, 'utf8');
+  testo.split('\n').forEach((riga, i) => {
+    const seq = sequenzeMojibake(riga);
+    if (seq.length) corrotti.push({ percorso, riga: i + 1, testo: riga.trim(), seq });
+  });
+}
+
+if (corrotti.length) {
+  console.error(`\n  ✗ ${corrotti.length} righe con la CODIFICA CORROTTA (UTF-8 riletto come Latin-1):\n`);
+  for (const c of corrotti.slice(0, 20)) {
+    const nome = c.percorso.slice(c.percorso.indexOf('src/'));
+    const esempi = [...new Set(c.seq.map((s) => `${s.grezzo} → ${s.riparato}`))].join(' · ');
+    console.error(`    ${nome}:${c.riga}  ${esempi}`);
+    console.error(`      ${c.testo.slice(0, 110)}`);
+  }
+  if (corrotti.length > 20) console.error(`\n    …e altre ${corrotti.length - 20}.`);
+  console.error('\n  Non è un dettaglio tipografico: è una parola sbagliata sotto gli occhi'
+    + '\n  di chi legge. Ricodificare le sequenze, non riscriverle a mano.\n');
+  process.exit(1);
+}
+
 const src = readFileSync(TARGET, 'utf8');
 const violazioni = violazioniDelSorgente(src);
 
 if (violazioni.length === 0) {
-  console.log(`\n  Nessuna: la tipografia francese usa U+202F ovunque (${esiti.length} casi di autoverifica superati).\n`);
+  console.log(`\n  Nessuna: la tipografia francese usa U+202F ovunque e le tre lingue hanno`
+    + ` la codifica intatta\n  (${esiti.length} casi di autoverifica superati).\n`);
   process.exit(0);
 }
 
