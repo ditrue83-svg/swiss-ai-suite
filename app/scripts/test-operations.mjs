@@ -229,10 +229,13 @@ export const FUNZIONI_SCOPERTE = {
   '_shared/email/http.ts#backoffDelay': 'la politica di ritentativo verso il provider: nessun test la esegue',
   '_shared/email/http.ts#codeForStatus': 'la politica di ritentativo verso il provider: nessun test la esegue',
 
-  // --- automazioni: i rami di GUASTO della coda eventi ----------------------
-  '_shared/automation/store.ts#eventRetry': 'ramo di guasto della coda eventi: test:workflows percorre il cammino che riesce',
-  '_shared/automation/store.ts#eventFailed': 'ramo di guasto della coda eventi: test:workflows percorre il cammino che riesce',
-  '_shared/automation/store.ts#eventDeadLetter': 'ramo di guasto della coda eventi: test:workflows percorre il cammino che riesce',
+  // --- automazioni ----------------------------------------------------------
+  // ⚠️ QUI STAVANO `eventRetry`, `eventFailed` e `eventDeadLetter`, i tre rami
+  // di guasto della coda eventi. Sono usciti il 2026-08-11 con la sezione 15 di
+  // `test:workflows-unit`, che li esegue contro un client che fallisce le
+  // scritture — ed è la prova che serviva, perché il difetto era proprio la
+  // scrittura fallita e taciuta. Anche stavolta non le ha tolte la memoria di
+  // nessuno: il controllo 9 ha detto «la riga è stantia» e ha fatto rosso.
 
   // --- denaro, contratti, finanze -------------------------------------------
   '_shared/finance/money.ts#decimal': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',

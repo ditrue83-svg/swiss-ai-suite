@@ -55,7 +55,10 @@ import { planAction, type ActionContext } from '../supabase/functions/_shared/au
 // era raggiunta solo di rimbalzo, attraverso `engine.ts` importata da
 // `test:workflows` — cioè sul database vero e sul solo cammino felice: nessun
 // test le ha mai iniettato un guasto, che è esattamente ciò che era rotto.
-import { loadFacts, type ClaimedEvent } from '../supabase/functions/_shared/automation/store.ts';
+import {
+  eventDeadLetter, eventDone, eventFailed, eventRetry, loadFacts, recordWorkflowFailure,
+  type ClaimedEvent,
+} from '../supabase/functions/_shared/automation/store.ts';
 // ⚠️ L'ORIGINALE dell'urgenza: la copia portabile del motore deve coincidere
 // con questa, e la sezione 9 lo verifica su una matrice. Vedi il commento in
 // cima a `urgencyFrom`.
@@ -939,6 +942,96 @@ section('14 · I FATTI non nascono da un guasto: `loadFacts` solleva, non invent
   ok(codici.every((c) => /^[a-z_]{3,40}$/.test(c)),
     '⚠️ ogni codice è un identificatore che `codeOf()` sa estrarre: altrimenti il log direbbe «unknown»',
     codici.filter((c) => !/^[a-z_]{3,40}$/.test(c)).join(', '));
+}
+
+// ===========================================================================
+section('15 · La CODA e il contatore: nessuna scrittura di esito può tacere');
+// ===========================================================================
+//
+// Le quattro scritture che chiudono un evento — fatto, ritenta, fallito,
+// lettera morta — scartavano l'errore. Ognuna lasciava la riga `processing`
+// con il lease vecchio: riprenotata alla scadenza, rilavorata, per sempre,
+// mentre il worker aveva già contato l'esito e risposto 200. La coda non si
+// svuotava e il report diceva che si era svuotata.
+//
+// ⚠️ E il contatore della pausa automatica era battuto dallo stesso silenzio,
+// che è più grave: il commento di `recordWorkflowFailure` chiama «fallire
+// diecimila volte» il difetto peggiore possibile su questo progetto, e la
+// lettura del contatore scartava l'errore — quindi `failures` ripartiva da 1 a
+// ogni giro e la soglia non arrivava mai.
+{
+  type Riga = Record<string, unknown>;
+  /** Un client che fallisce le scritture (o le letture) su richiesta. */
+  const sbScritture = (opts: { rompiUpdate?: boolean; rompiSelect?: boolean; riga?: Riga } = {}) => ({
+    from: () => {
+      const chain: Record<string, unknown> = {};
+      let scrivendo = false;
+      for (const m of ['select', 'order', 'limit']) chain[m] = () => chain;
+      for (const m of ['eq', 'neq', 'in', 'is']) chain[m] = () => chain;
+      chain.update = () => { scrivendo = true; return chain; };
+      chain.insert = () => { scrivendo = true; return chain; };
+      chain.maybeSingle = async () => (opts.rompiSelect
+        ? { data: null, error: { code: '57014', message: 'timeout' } }
+        : { data: opts.riga ?? null, error: null });
+      chain.then = (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => {
+        const rotto = scrivendo ? opts.rompiUpdate : opts.rompiSelect;
+        return Promise.resolve(rotto
+          ? { data: null, error: { code: '57014', message: 'timeout' } }
+          : { data: [], error: null }).then(res, rej);
+      };
+      return chain;
+    },
+    rpc: async () => ({ data: null, error: null }),
+  });
+
+  const solleva = async (fn: () => Promise<unknown>): Promise<Error | null> => {
+    try { await fn(); return null; } catch (e) { return e as Error; }
+  };
+
+  const quattro: [string, string, (sb: never) => Promise<void>][] = [
+    ['eventDone', 'queue_done', (sb) => eventDone(sb, 'e-1', 'l-1')],
+    ['eventRetry', 'queue_retry', (sb) => eventRetry(sb, 'e-1', 'l-1', 60, 'x')],
+    ['eventFailed', 'queue_failed', (sb) => eventFailed(sb, 'e-1', 'l-1', 'x')],
+    ['eventDeadLetter', 'queue_dead_letter', (sb) => eventDeadLetter(sb, 'e-1', 'l-1', 'x')],
+  ];
+  for (const [nome, codice, chiama] of quattro) {
+    const e = await solleva(() => chiama(sbScritture({ rompiUpdate: true }) as never));
+    ok(e !== null && e.message.startsWith(`${codice}:`),
+      `⚠️ \`${nome}\` solleva con «${codice}» invece di lasciare la riga in coda a girare per sempre`,
+      e ? e.message : 'nessuna eccezione: la scrittura fallita è passata inosservata');
+    const buono = await solleva(() => chiama(sbScritture() as never));
+    ok(buono === null, `…e sul cammino normale \`${nome}\` non solleva`, buono?.message);
+  }
+
+  // --- Il contatore della pausa automatica ---------------------------------
+  {
+    const e = await solleva(() => recordWorkflowFailure(sbScritture({ rompiSelect: true }) as never, 'w-1', 'x', 3));
+    ok(e !== null && e.message.startsWith('workflow_failures_read:'),
+      '⚠️⚠️ la LETTURA del contatore solleva: se tacesse, `failures` ripartirebbe da 1 a ogni giro e la pausa automatica non arriverebbe MAI — il difetto che quel meccanismo esiste per impedire',
+      e ? e.message : 'nessuna eccezione');
+  }
+  {
+    const e = await solleva(() => recordWorkflowFailure(
+      sbScritture({ rompiUpdate: true, riga: { consecutive_failures: 0, status: 'active' } }) as never,
+      'w-1', 'x', 3));
+    ok(e !== null && e.message.startsWith('workflow_failures_write:'),
+      '⚠️ e anche l\'INCREMENTO: perderlo in silenzio ferma il contatore sotto la soglia per sempre',
+      e ? e.message : 'nessuna eccezione');
+  }
+  {
+    // Alla soglia il gesto è un altro — la messa in pausa — e ha il suo codice.
+    const e = await solleva(() => recordWorkflowFailure(
+      sbScritture({ rompiUpdate: true, riga: { consecutive_failures: 5, status: 'active' } }) as never,
+      'w-1', 'x', 3));
+    ok(e !== null && e.message.startsWith('workflow_pause:'),
+      '⚠️ alla soglia, la MESSA IN PAUSA fallita solleva: restituire «paused» su una regola rimasta attiva è peggio del guasto che descrive',
+      e ? e.message : 'nessuna eccezione');
+  }
+  {
+    const esito = await recordWorkflowFailure(
+      sbScritture({ riga: { consecutive_failures: 0, status: 'active' } }) as never, 'w-1', 'x', 3);
+    ok(esito === 'attention', 'e sul cammino normale il contatore sale e la regola chiede attenzione', esito);
+  }
 }
 
 console.log(`\n${B}Risultato${X}  ${pass} superati, ${fail} falliti\n`);

@@ -60,6 +60,12 @@ Deno.serve(async (req: Request) => {
     crmSuggestionsCreated: 0,
     crmSuggestionsError: null as string | null,
     claimed: 0, processed: 0, retried: 0, failed: 0, deadLettered: 0,
+    // ⚠️ Quante volte NON siamo riusciti a scrivere l'esito nella coda. Quegli
+    // eventi restano `processing` e torneranno da soli alla scadenza del lease:
+    // finché questo numero non è zero, `retried` e `deadLettered` sono un
+    // minimo e non un totale. Senza, un giro che non riesce a scrivere niente
+    // riporta gli stessi zeri di un giro senza lavoro da fare.
+    queueWriteFailed: 0,
     ...emptyReport(),
     // Dichiarato nella risposta: chi legge deve poter distinguere «non c'era
     // altro da fare» da «il tempo è finito prima del lavoro».
@@ -161,12 +167,31 @@ Deno.serve(async (req: Request) => {
         // DICHIARA: la lettera morta è visibile nella schermata, non è un
         // silenzio (§63).
         const code = codeOf(error);
-        if (event.attempts >= MAX_EVENT_ATTEMPTS) {
-          await eventDeadLetter(sb, event.id, event.lock_id, code);
-          report.deadLettered++;
-        } else {
-          await eventRetry(sb, event.id, event.lock_id, eventBackoffSeconds(event.attempts), code);
-          report.retried++;
+        // ⚠️ QUESTE DUE SCRITTURE VIVONO DENTRO IL `catch`, e dal 2026-08-11
+        // SOLLEVANO quando falliscono. Senza questa guardia il loro guasto
+        // uscirebbe dal `catch` per evento e arriverebbe a quello esterno, che
+        // risponde 500 e ABBANDONA il resto del lotto: un evento andato storto
+        // ne trascinerebbe con sé altri ventiquattro che non c'entrano niente.
+        //
+        // Si conta invece di propagare, come per le scritture di servizio di
+        // `deliverEmails`: un guasto che diventa un numero è esplicito quanto
+        // un'eccezione, e non costa il lotto. `queueWriteFailed > 0` significa
+        // che quell'evento è rimasto `processing` e tornerà da sé alla scadenza
+        // del lease — quindi `retried` e `deadLettered` sono un minimo.
+        try {
+          if (event.attempts >= MAX_EVENT_ATTEMPTS) {
+            await eventDeadLetter(sb, event.id, event.lock_id, code);
+            report.deadLettered++;
+          } else {
+            await eventRetry(sb, event.id, event.lock_id, eventBackoffSeconds(event.attempts), code);
+            report.retried++;
+          }
+        } catch (scritturaFallita) {
+          report.queueWriteFailed++;
+          logEvent('automation-worker', {
+            eventId: event.id, companyId: event.company_id,
+            code: codeOf(scritturaFallita), phase: 'queue_write',
+          });
         }
         logEvent('automation-worker', { eventId: event.id, companyId: event.company_id, code });
       }

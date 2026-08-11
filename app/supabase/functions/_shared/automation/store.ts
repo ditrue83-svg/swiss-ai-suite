@@ -67,21 +67,34 @@ export async function claimEvents(
  * lavoro di quello che nel frattempo ha preso la riga.
  */
 export async function eventDone(sb: ServerClient, id: string, lockId: string): Promise<void> {
-  await sb.from('automation_events').update({
+  // ⚠️ L'ERRORE SI LEGGE. Senza, la riga restava `processing` con il lease
+  // vecchio, veniva riprenotata alla scadenza e RILAVORATA — mentre il worker
+  // aveva già contato `processed++` e risposto 200. La coda non si svuotava e
+  // il report diceva che si era svuotata.
+  //
+  // Sollevare qui non costa il lotto: siamo dentro il `try` per evento del
+  // worker, quindi diventa un ritentativo — che è la verità, perché l'evento
+  // verrà davvero rilavorato.
+  const { error } = await sb.from('automation_events').update({
     processing_status: 'done', processed_at: new Date().toISOString(),
     locked_until: null, lock_id: null, error_code: null,
   }).eq('id', id).eq('lock_id', lockId);
+  if (error) throw new Error('queue_done: scrittura fallita');
 }
 
 /** Guasto TRANSITORIO: si riprova più tardi, con attesa crescente (§62). */
 export async function eventRetry(
   sb: ServerClient, id: string, lockId: string, delaySeconds: number, code: string,
 ): Promise<void> {
-  await sb.from('automation_events').update({
+  // ⚠️ Perdere questa scrittura significa perdere l'attesa crescente E il
+  // codice che diceva PERCHÉ era fallito: l'evento riparte senza backoff appena
+  // scade il lease, e la ragione non la sa più nessuno.
+  const { error } = await sb.from('automation_events').update({
     processing_status: 'pending',
     next_attempt_at: new Date(Date.now() + delaySeconds * 1000).toISOString(),
     locked_until: null, lock_id: null, error_code: code,
   }).eq('id', id).eq('lock_id', lockId);
+  if (error) throw new Error('queue_retry: scrittura fallita');
 }
 
 /**
@@ -91,20 +104,26 @@ export async function eventRetry(
 export async function eventFailed(
   sb: ServerClient, id: string, lockId: string, code: string,
 ): Promise<void> {
-  await sb.from('automation_events').update({
+  const { error } = await sb.from('automation_events').update({
     processing_status: 'failed', processed_at: new Date().toISOString(),
     locked_until: null, lock_id: null, error_code: code,
   }).eq('id', id).eq('lock_id', lockId);
+  if (error) throw new Error('queue_failed: scrittura fallita');
 }
 
 /** Tetto dei tentativi raggiunto: si smette, e si DICHIARA (§63). */
 export async function eventDeadLetter(
   sb: ServerClient, id: string, lockId: string, code: string,
 ): Promise<void> {
-  await sb.from('automation_events').update({
+  // ⚠️ È IL MECCANISMO CHE ESISTE PER RENDERE VISIBILE UN FALLIMENTO (§63). Se
+  // fallisce in silenzio, la lettera morta non viene scritta, la schermata non
+  // la mostra, e l'evento resta `processing` a girare per sempre: il gesto che
+  // doveva dichiarare un guasto fallirebbe invisibilmente.
+  const { error } = await sb.from('automation_events').update({
     processing_status: 'dead_letter', processed_at: new Date().toISOString(),
     locked_until: null, lock_id: null, error_code: code,
   }).eq('id', id).eq('lock_id', lockId);
+  if (error) throw new Error('queue_dead_letter: scrittura fallita');
 }
 
 // ---------------------------------------------------------------------------
@@ -1145,19 +1164,32 @@ export async function markWorkflowRun(
 export async function recordWorkflowFailure(
   sb: ServerClient, workflowId: string, code: string, autoPauseAfter: number,
 ): Promise<'attention' | 'paused'> {
-  const { data } = await sb.from('workflow_definitions')
-    .select('consecutive_failures, status').eq('id', workflowId).maybeSingle();
-  const failures = Number((data as { consecutive_failures?: number } | null)?.consecutive_failures ?? 0) + 1;
+  // ⚠️⚠️ IL MECCANISMO CONTRO «FALLIRE DIECIMILA VOLTE» ERA BATTUTO DA UN
+  // GUASTO INVISIBILE, cioè dalla cosa stessa che il commento qui sopra chiama
+  // il difetto peggiore possibile su questo progetto. Con l'errore scartato,
+  // una lettura fallita dava `data: null`, e il conteggio ripartiva da
+  // `0 + 1 = 1` **a ogni giro**: una regola che falliva per sempre non
+  // raggiungeva mai `autoPauseAfter`, e la pausa automatica non arrivava.
+  // Il contatore diceva sempre «primo fallimento», e nessuno lo smentiva.
+  const letta = letto(await sb.from('workflow_definitions')
+    .select('consecutive_failures, status').eq('id', workflowId).maybeSingle(),
+  'workflow_failures_read');
+  const failures = Number((letta as { consecutive_failures?: number } | null)?.consecutive_failures ?? 0) + 1;
 
   if (failures >= autoPauseAfter) {
     // ⚠️ `updated_by: null` NON è una svista: questa pausa non l'ha decisa
     // nessuno. Il trigger dello storico legge `coalesce(auth.uid(), updated_by)`
     // e senza questa riga attribuirebbe la pausa all'ultima persona che aveva
     // toccato la regola — una riga di registro che dice il falso.
-    await sb.from('workflow_definitions').update({
+    // La MESSA IN PAUSA. Se questa scrittura fallisce e taciamo, la funzione
+    // restituisce 'paused' al chiamante — che lo riporta e lo registra — su una
+    // regola rimasta attiva. Un report che dichiara fermata una regola che
+    // continua a girare è peggio del guasto che descrive.
+    const { error: pausaErr } = await sb.from('workflow_definitions').update({
       consecutive_failures: failures, attention_code: code, status: 'paused',
       updated_by: null,
     }).eq('id', workflowId);
+    if (pausaErr) throw new Error('workflow_pause: scrittura fallita');
     // Lo storico deve dire che a metterla in pausa è stato il SISTEMA e
     // perché: il trigger scriverebbe solo «messa in pausa», che sembrerebbe la
     // decisione di una persona.
@@ -1173,9 +1205,12 @@ export async function recordWorkflowFailure(
     return 'paused';
   }
 
-  await sb.from('workflow_definitions').update({
+  // L'INCREMENTO. Perderlo in silenzio è la stessa cosa di perdere la lettura:
+  // il contatore non sale, e la soglia della pausa automatica non arriva mai.
+  const { error: contaErr } = await sb.from('workflow_definitions').update({
     consecutive_failures: failures, attention_code: code,
   }).eq('id', workflowId);
+  if (contaErr) throw new Error('workflow_failures_write: scrittura fallita');
   return 'attention';
 }
 
