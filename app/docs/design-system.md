@@ -181,6 +181,11 @@ di `--amber` usato sia per scrivere sia per riempire, che aveva prodotto il
 marrone della barra «Media» che nessuno aveva scelto. Il riempimento ora si
 chiama **`--fill-subtle`**, che è quello che è.
 
+⚠️⚠️ **E quel rename è costato una riparazione, perché i token di questo file
+non sono solo dell'app**: la vetrina li deriva, e il suo `style.css` usava
+`--surface-2` in cinque punti come fondo — che dopo il rename valeva
+`transparent`. Come si evita la prossima volta: **regola 12**, in fondo.
+
 ## Colonna di lettura
 
 Due misure diverse, e confonderle è ciò che faceva correre il riassunto di
@@ -437,3 +442,29 @@ altrimenti la regola globale dei collegamenti tinge di blu tutto il contenuto.
     blocco che le pastiglie di destra spingevano avanti e indietro: allineate
     «a destra» dentro un contenitore che si muove non sono allineate. Ora hanno
     il bordo destro della riga.
+12. **Prima di rinominare un token, cercarne i consumatori — ANCHE fuori da
+    questo repository.** `:root` di `app.css` non è solo dell'app: la vetrina
+    (`site/` nel monorepo) **deriva** quel blocco con `sync-tokens.mjs`, e il
+    suo `style.css` consuma i token come tutti gli altri. Da qui dentro non si
+    vede: è una base di codice separata, e nello specchio non esiste affatto.
+
+    ```bash
+    grep -rn -- "--nome-del-token" ~/swiss-ai-suite-repo/site
+    ```
+
+    ⚠️ **Il pericolo non è rinominare: è RIUSARE il nome vecchio per un'altra
+    cosa.** Un token cancellato lascia una dichiarazione invalida — brutta, ma
+    inerte e prima o poi visibile. Un token *riusato* lascia una dichiarazione
+    **valida che disegna la cosa sbagliata**, e non lo dice nessuno. Il
+    2026-08-11 `--surface-2` è passato da «riempimento grigio» a «livello di
+    superficie», che vale `transparent`: la vetrina lo usava in cinque punti
+    come fondo, e sarebbe stata pubblicata con cinque fondi spariti. Un
+    controllo dei `var()` orfani non l'avrebbe visto — il token c'era ancora.
+
+    ⚠️ E il controllo che c'è **non gira sulle pull request**: `site.yml` ha
+    solo `push: branches: [main]`, quindi il rosso arriva a cose fatte. Prima di
+    aprire la PR si esegue a mano il comando esatto della CI:
+
+    ```bash
+    cd ~/swiss-ai-suite-repo/site && APP_CSS=../app/src/styles/app.css node sync-tokens.mjs --check
+    ```
