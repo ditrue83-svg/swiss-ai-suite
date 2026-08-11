@@ -124,6 +124,7 @@ const EXCEPTIONS = [
   { file: 'src/styles/app.css', contesto: '.brand-sub', frammento: 'margin-top: -1px', motivo: 'il sottotitolo risale di un filo contro il line-height del nome: negativo, la scala non parla in negativo' },
   { file: 'src/styles/app.css', contesto: '.dash-inc-stats', frammento: 'margin: -2px 0 var(--sp-3)', motivo: 'compensa il line-height del titolo sopra: valore negativo, la scala non parla in negativo' },
   { file: 'src/styles/extra.css', contesto: '.dash-sorted', frammento: 'margin: -6px 0 var(--sp-2)', motivo: 'risale sotto il titolo che il card-title ha già distanziato: negativo, fuori dal ritmo' },
+  { file: 'src/styles/app.css', contesto: '.segmented .btn + .btn', frammento: 'margin-left: -1px', motivo: 'i due estremi di un interruttore condividono UN bordo: risale esattamente 1px, cioè lo spessore del bordo che sta sovrapponendo — negativo, e la scala non parla in negativo' },
   { file: 'src/styles/app.css', contesto: '.ct-sr', frammento: 'margin: -1px', motivo: 'idioma sr-only: la scatola da 1px esce dal flusso per i soli lettori di schermo' },
   { file: 'src/styles/extra.css', contesto: '.sr-only', frammento: 'margin: -1px', motivo: 'idioma sr-only: la scatola da 1px esce dal flusso per i soli lettori di schermo' },
   { file: 'src/styles/app.css', contesto: 'html, body', frammento: 'background: #ffffff !important', motivo: 'stampa: rete di sicurezza contro i default del browser, documentata nel blocco — protegge anche a token rotti' },

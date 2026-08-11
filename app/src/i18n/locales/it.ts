@@ -375,6 +375,7 @@ export const it = {
     notFoundSub: 'Il documento non esiste, oppure non appartiene all’azienda attiva.',
     openFile: 'Apri originale',
     openAnalysis: 'Apri analisi completa',
+    moreActions: 'Altre azioni',
     analyzeNow: 'Analizza',
     retryAnalysis: 'Riprova analisi',
     organization: 'Organizzazione',
@@ -890,6 +891,12 @@ export const it = {
   },
   home: {
     greetingMorning: 'Buongiorno', greetingAfternoon: 'Buon pomeriggio', greetingEvening: 'Buonasera',
+    // Con il nome, quando il profilo è stato letto. Frasi INTERE e non
+    // «{saluto}, {nome}» composto nel codice: la virgola cade dove la lingua
+    // vuole, non dove capita.
+    greetingMorningNamed: 'Buongiorno, {name}',
+    greetingAfternoonNamed: 'Buon pomeriggio, {name}',
+    greetingEveningNamed: 'Buonasera, {name}',
     subtitle: 'Ecco cosa richiede attenzione nella tua azienda.',
     analyzeDoc: 'Analizza un documento',
     findSubsidies: 'Trova incentivi',

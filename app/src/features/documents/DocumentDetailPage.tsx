@@ -25,7 +25,7 @@ import { CrmLinkPicker } from '@/features/crm/CrmLinkPicker';
 import { useCrmLink } from '@/features/crm/useCrmLink';
 import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
-import { PrintButton } from '@/components/ui/PrintButton';
+import { ActionMenu, type ActionMenuItem } from '@/components/ui/ActionMenu';
 import { PrintSheet } from '@/features/print/PrintSheet';
 import { amountTypeKey, buildFooter, collectCitations, deadlineKindKey, splitActions } from '@/features/print/printModel';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
@@ -40,7 +40,7 @@ import {
 } from '@/features/tasks/taskCreateModel';
 import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
 import { useMembers } from '@/features/tasks/useMembers';
-import { NextStepCard } from './NextStepCard';
+import { NextStepCard, NextStepPrimary, NextStepSecondary, type NextStepActionProps } from './NextStepCard';
 import { nextStepFor, proposedTaskTitle } from './nextStep';
 import { formatBytes, formatCurrency, formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
@@ -359,8 +359,56 @@ export function DocumentDetailPage() {
   // è l'unico caso in cui la deduzione è certa.
   const actionsNotConverted = detail.tasks.length === 0 ? step.facts.openActions : 0;
 
+  // I comandi che rendono l'azione del prossimo passo, in UN posto solo. Prima
+  // il riquadro «Prossimo passo» aveva la sua riga di pulsanti e la testata ne
+  // aveva un'altra: due punti che rendono la stessa decisione prima o poi ne
+  // rendono due diverse.
+  const stepActions: NextStepActionProps = {
+    step, documentId: doc.id, busy, progress,
+    onAnalyze: () => void analyze(),
+    onCreateTask: openTaskForm,
+  };
+
+  // ---- il menu di trabocco --------------------------------------------------
+  // Qui dentro finisce ciò che è raro o irreversibile. ⚠️ Nessuna di queste voci
+  // deve poter competere con la primaria: non sono pulsanti, sono righe di un
+  // menu che si apre solo se lo si chiede.
+  const menuItems: ActionMenuItem[] = [
+    {
+      key: 'archive',
+      label: archived ? t('documents.restore') : t('documents.archive'),
+      icon: 'archive',
+      disabled: busy,
+      onSelect: () => void toggleArchive(),
+    },
+  ];
+  // ⚠️ Il comando di stampa compare SOLO quando c'è un'analisi: stampare un
+  // documento non analizzato produrrebbe un foglio d'archivio senza niente
+  // dentro, e un foglio vuoto in un fascicolo sembra un'analisi che non ha
+  // trovato nulla.
+  if (analysis && analysis.analysisStatus !== 'failed') {
+    menuItems.push({
+      key: 'print',
+      label: t('print.button.label'),
+      icon: 'document',
+      onSelect: () => window.print(),
+    });
+  }
+  // La voce resta VISIBILE anche a chi non può cancellare, spenta e con il
+  // motivo accanto: un comando che sparisce non si distingue da un comando che
+  // non esiste, e la differenza qui è «non ti è permesso», che è un'informazione.
+  menuItems.push({
+    key: 'delete',
+    label: t('documents.deleteConfirm'),
+    icon: 'trash',
+    danger: true,
+    disabled: !canDelete || busy,
+    hint: canDelete ? undefined : t('documents.deleteNotAllowed'),
+    onSelect: () => setArmedDelete(true),
+  });
+
   return (
-    <>
+    <div className="reading-col">
       <div className="page-head">
         <Link className="btn btn-sm btn-ghost mb-8" to="/documenti">
           <Icon name="arrowLeft" className="ic-sm" /> {t('documents.back')}
@@ -382,10 +430,6 @@ export function DocumentDetailPage() {
             ].filter(Boolean).join(' · ');
           })()}
         </div>
-        <div className="row-wrap mt-12">
-          {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
-          <AskAbout type="document" id={doc.id} label={doc.title} />
-        </div>
       </div>
 
       {archived && (
@@ -395,103 +439,126 @@ export function DocumentDetailPage() {
         </div>
       )}
 
-      <div className="row-wrap mt-12">
-        {doc.storagePath && (
-          <button className="btn btn-primary" onClick={() => void openFile()} disabled={busy}>
-            <Icon name="eye" className="ic-sm" /> {t('documents.openFile')}
-          </button>
-        )}
-        {analysis && (
-          <Link className="btn" to={`/admin?doc=${doc.id}`}>
-            <Icon name="fileSearch" className="ic-sm" /> {t('documents.openAnalysis')}
-          </Link>
-        )}
-        <button className="btn" onClick={() => void toggleArchive()} disabled={busy}>
-          <Icon name="archive" className="ic-sm" /> {archived ? t('documents.restore') : t('documents.archive')}
-        </button>
-        {/* ⚠️ Il comando di stampa compare SOLO quando c'è un'analisi: stampare
-            un documento non analizzato produrrebbe un foglio d'archivio senza
-            niente dentro, e un foglio vuoto in un fascicolo sembra un'analisi
-            che non ha trovato nulla. */}
-        {analysis && analysis.analysisStatus !== 'failed' && <PrintButton />}
+      {/* ---- La riga delle azioni: UNA primaria -------------------------
+           L'azione del momento è quella che «Prossimo passo» indica, e la
+           rende lo stesso codice che spiega perché. Accanto, in second'ordine,
+           le due cose che si fanno su QUALUNQUE documento a prescindere dallo
+           stato dell'analisi. In fondo, staccato dal margine automatico, il
+           trabocco: archivia, stampa, elimina. ------------------------- */}
+      <div className="action-bar mt-12">
+        <NextStepPrimary {...stepActions} />
+        <div className="action-bar-secondary">
+          <NextStepSecondary {...stepActions} />
+          {doc.storagePath && (
+            <button className="btn btn-sm" onClick={() => void openFile()} disabled={busy}>
+              <Icon name="eye" className="ic-sm" /> {t('documents.openFile')}
+            </button>
+          )}
+          {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
+          <AskAbout type="document" id={doc.id} label={doc.title} />
+        </div>
+        <div className="action-bar-more">
+          <ActionMenu label={t('documents.moreActions')} items={menuItems} />
+        </div>
       </div>
 
-      {/* ---- Origine: da dove è arrivato. Sta subito sotto l'intestazione
-           perché «che cos'è questo documento» viene prima di «che cosa devo
-           farne»: senza sapere da quale comunicazione è nato, il resto della
-           pagina è un foglio senza mittente. ---------------------------- */}
-      <div className="card mt-16">
-        <div className="card-title">{t('documents.origin')}</div>
+      {/* La conferma dell'eliminazione compare QUI, sotto la riga che l'ha
+          chiesta, e non in fondo alla pagina: chi ha appena scelto «Elimina»
+          nel menu deve trovare la domanda dove stava guardando. Finché non si
+          arma, di questo blocco non c'è traccia — un riquadro rosso permanente
+          in fondo a ogni documento è un avvertimento che si smette di leggere. */}
+      {armedDelete && (
+        <div className="warn-box mt-12" role="alert">
+          <Icon name="alert" className="ic-sm" />
+          <div>
+            <div><b>{t('documents.dangerZone')}</b></div>
+            <div className="prose">{t('documents.deleteExplain')}</div>
+            <div className="row-wrap mt-10">
+              <span>{t('documents.deleteAsk')}</span>
+              <button className="btn btn-sm btn-danger" onClick={() => void removeForever()} disabled={busy}
+                aria-busy={busy || undefined}>
+                {busy ? <span className="spinner" aria-hidden="true" /> : null} {t('documents.deleteConfirm')}
+              </button>
+              <button className="btn btn-sm" onClick={() => setArmedDelete(false)}>{t('common.cancel')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Origine: da dove è arrivato -------------------------------
+           Livello 3, riga di metadati inline. Occupava una scheda intera per
+           una riga di testo, e una scheda dice «questo conta quanto l'analisi»
+           — che non è vero: dice da dove arriva il foglio, non che cosa
+           contiene. Resta prima di tutto perché «che cos'è questo documento»
+           viene comunque prima di «che cosa devo farne». --------------- */}
+      <div className="surface-3 mt-16">
+        <span className="sf-k">{t('documents.origin')}</span>
         {doc.sourceType === 'email' || detail.emails.length > 0 ? (
           detail.emails.length === 0 ? (
-            <div className="muted-sm">{t('documents.sources.email')}</div>
+            <span className="sf-v">{t('documents.sources.email')}</span>
           ) : (
             detail.emails.map((mail) => (
-              <div className="list-row" key={`${mail.messageId}-${mail.relation}`}>
-                <div className="list-main">
-                  <div className="list-title">{mail.subject || t('documents.sources.email')}</div>
-                  <div className="list-sub">
-                    {[
-                      mail.senderName || mail.senderEmail,
-                      formatDate(mail.receivedAt),
-                      mail.relation === 'attachment' ? t('documents.originAttachment') : t('documents.originBody'),
-                      mail.accountEmail ? t('documents.originAccount', { email: mail.accountEmail }) : null,
-                    ].filter(Boolean).join(' · ')}
-                  </div>
-                </div>
-                <Link className="btn btn-sm" to={`/inbox?msg=${mail.messageId}`}>{t('documents.openInInbox')}</Link>
-              </div>
+              <span className="sf-v" key={`${mail.messageId}-${mail.relation}`}>
+                {[
+                  mail.subject || t('documents.sources.email'),
+                  mail.senderName || mail.senderEmail,
+                  formatDate(mail.receivedAt),
+                  mail.relation === 'attachment' ? t('documents.originAttachment') : t('documents.originBody'),
+                  mail.accountEmail ? t('documents.originAccount', { email: mail.accountEmail }) : null,
+                ].filter(Boolean).join(' · ')}
+                {' '}
+                <Link to={`/inbox?msg=${mail.messageId}`}>{t('documents.openInInbox')}</Link>
+              </span>
             ))
           )
         ) : (
-          <div className="muted-sm">
+          <span className="sf-v">
             {doc.sourceType === 'pasted_text'
               ? t('documents.originText')
               : t('documents.originUploadUnknown')}
             {' · '}{t('documents.originOn', { date: formatDate(doc.createdAt) })}
-          </div>
-        )}
-        {detail.sameContentIds.length > 0 && (
-          <div className="info-box mt-12">
-            <div><b>{t('documents.sameContent')}</b></div>
-            <div className="muted-sm">{t('documents.sameContentSub')}</div>
-            <Link className="btn btn-sm mt-8" to={`/documenti/${detail.sameContentIds[0]}`}>
-              {t('documents.sameContentOpen')}
-            </Link>
-          </div>
+          </span>
         )}
       </div>
 
+      {/* Il duplicato NON è un metadato: è una cosa da decidere, e resta un
+          avviso a sé. */}
+      {detail.sameContentIds.length > 0 && (
+        <div className="info-box mt-12">
+          <div><b>{t('documents.sameContent')}</b></div>
+          <div className="muted-sm prose">{t('documents.sameContentSub')}</div>
+          <Link className="btn btn-sm mt-8" to={`/documenti/${detail.sameContentIds[0]}`}>
+            {t('documents.sameContentOpen')}
+          </Link>
+        </div>
+      )}
+
       {/* ---- Prossimo passo -------------------------------------------
-           Sta QUI, sopra l'analisi, perché è la domanda a cui una persona
-           vuole rispondere aprendo un documento: che cosa devo fare? Non
-           introduce dati nuovi — legge quelli che la pagina ha già — e
-           mette in primo piano UNA azione sola. -------------------- */}
-      <NextStepCard
-        step={step}
-        documentId={doc.id}
-        busy={busy}
-        progress={progress}
-        onAnalyze={() => void analyze()}
-        onCreateTask={openTaskForm}
-      />
+           Sta QUI, sotto la riga delle azioni e sopra l'analisi, perché è la
+           domanda a cui una persona vuole rispondere aprendo un documento: che
+           cosa devo fare? Non introduce dati nuovi — legge quelli che la pagina
+           ha già — e ora non porta più pulsanti: quelli sono là sopra, uno
+           solo primario. ---------------------------------------------- */}
+      <NextStepCard step={step} />
 
       {/* ---- Analisi ---------------------------------------------------- */}
-      <div className="card mt-16">
+      <div className="surface-1 mt-16">
         <div className="card-title">{t('documents.analysis')}</div>
 
         {item.lastAttemptFailed && (
           <div className="warn-box" role="status">{t('documents.lastAttemptFailed')}</div>
         )}
 
+        {/* ⚠️ QUI NON C'È PIÙ UN PULSANTE «Analizza» / «Riprova», e non è una
+            dimenticanza: in questi due stati l'azione primaria della schermata
+            È quella, e sta nella riga in cima — che su questa pagina resta
+            visibile poco sopra. Un secondo pulsante identico a mezzo schermo di
+            distanza non offre una seconda possibilità, moltiplica soltanto i
+            posti in cui la stessa cosa può divergere. */}
         {item.state === 'none' && (
           <div className="empty">
             <div>{t('documents.analysisNone')}</div>
             <div className="muted-sm mt-10">{t('documents.analysisNoneSub')}</div>
-            <button className="btn btn-sm btn-primary mt-10" onClick={() => void analyze()} disabled={busy}
-              aria-busy={busy || undefined}>
-              {busy ? <span className="spinner" aria-hidden="true" /> : null} {progress ?? t('documents.analyzeNow')}
-            </button>
           </div>
         )}
 
@@ -505,10 +572,6 @@ export function DocumentDetailPage() {
                 mittente, niente tipo, niente scadenza — sarebbero valori di
                 ripiego, non dati estratti da questo documento. */}
             <div>{analysis?.errorMessageSafe ?? t('documents.analysisFailedSub')}</div>
-            <button className="btn btn-sm mt-10" onClick={() => void analyze()} disabled={busy}
-              aria-busy={busy || undefined}>
-              {busy ? <span className="spinner" aria-hidden="true" /> : null} {progress ?? t('documents.retryAnalysis')}
-            </button>
           </div>
         )}
 
@@ -537,14 +600,29 @@ export function DocumentDetailPage() {
               <Field label={t('documents.confidence')} value={item.confidence ? L.confidence(item.confidence) : null} />
             </dl>
 
-            {analysis?.summary && <p className="muted-sm">{analysis.summary}</p>}
+            {/* ⚠️ `prose`: il riassunto è testo CORRENTE, e correva per tutta la
+                larghezza della schermata — oltre cento caratteri per riga, dove
+                l'occhio perde il capo della riga successiva. Le tabelle e gli
+                elenchi qui sopra restano larghi: sono strutture, e la misura di
+                lettura non li riguarda. */}
+            {analysis?.summary && <p className="muted-sm prose mt-12">{analysis.summary}</p>}
 
             {analysis && analysis.uncertaintyItems.length > 0 && (
-              <div className="warn-box">
-                <b>{t('documents.uncertainties')}</b>
-                <ul>
-                  {analysis.uncertaintyItems.map((u, i) => <li key={i}>{u.description}</li>)}
-                </ul>
+              /* ⚠️ Il titolo e l'elenco stanno in UN figlio solo, e non è un
+                 involucro di troppo: `.warn-box` è `display: flex`, e due figli
+                 diretti diventano due COLONNE — «Dichiarato incerto» finiva
+                 accanto ai punti elenco invece che sopra. Visto guardando la
+                 schermata, non rileggendo il codice: il markup è sempre stato
+                 legittimo, era il contenitore a interpretarlo. Il primo figlio
+                 di un `.warn-box` è l'icona (dove c'è), il secondo è tutto il
+                 resto. */
+              <div className="warn-box mt-12">
+                <div>
+                  <b>{t('documents.uncertainties')}</b>
+                  <ul>
+                    {analysis.uncertaintyItems.map((u, i) => <li key={i}>{u.description}</li>)}
+                  </ul>
+                </div>
               </div>
             )}
 
@@ -602,8 +680,12 @@ export function DocumentDetailPage() {
         />
       )}
 
-      {/* ---- Attività ---------------------------------------------------- */}
-      <div className="card mt-16" id="doc-tasks" ref={tasksCardRef}>
+      {/* ---- Attività ----------------------------------------------------
+           Livello 2: blocco piano, separato da un filetto. Non è una scheda
+           perché non si LEGGE come l'analisi — si consulta, e a volte ci si
+           lavora dentro. La differenza fra le due cose è tutto ciò che questa
+           pagina non diceva quando erano sette schede uguali. -------- */}
+      <div className="surface-2" id="doc-tasks" ref={tasksCardRef}>
         <div className="card-title">{t('documents.tasks')}</div>
 
         {/* L'esito della creazione appena fatta. Resta a schermo con il
@@ -706,6 +788,7 @@ export function DocumentDetailPage() {
           aggiunge di CHI parla quel documento. Il mittente effettivo — analisi
           più correzioni — resta del Document Hub e si mostra accanto. */}
       <CrmLinkPicker
+        className="surface-2"
         linkedId={crmLink.linked?.id ?? null}
         linkedName={crmLink.linked?.displayName ?? null}
         extractedName={item.sender}
@@ -715,9 +798,9 @@ export function DocumentDetailPage() {
       />
 
       {/* ---- Organizzazione ---------------------------------------------- */}
-      <div className="card mt-16">
+      <div className="surface-2">
         <div className="card-title">{t('documents.organization')}</div>
-        <div className="muted-sm">{t('documents.organizationHint')}</div>
+        <div className="muted-sm prose">{t('documents.organizationHint')}</div>
 
         <div className="grid-2 mt-12">
           <div className="field">
@@ -791,7 +874,7 @@ export function DocumentDetailPage() {
       </div>
 
       {/* ---- Informazioni tecniche --------------------------------------- */}
-      <details className="card mt-16">
+      <details className="surface-2">
         <summary className="card-title">{t('documents.technical')}</summary>
         <dl className="detail-list mt-10">
           <Field label={t('documents.techFilename')} value={doc.originalFilename} />
@@ -820,34 +903,15 @@ export function DocumentDetailPage() {
         )}
       </details>
 
-      {/* ---- Eliminazione definitiva -------------------------------------
-          Separata da «Archivia» e in fondo: archiviare è la cosa che si fa
-          tutti i giorni, cancellare è quella che non si può disfare. */}
-      <div className="card mt-16">
-        <div className="card-title">{t('documents.dangerZone')}</div>
-        {!canDelete ? (
-          <div className="muted-sm">{t('documents.deleteNotAllowed')}</div>
-        ) : (
-          <>
-            <div className="muted-sm">{t('documents.deleteExplain')}</div>
-            {armedDelete ? (
-              <div className="row-wrap mt-10">
-                <span>{t('documents.deleteAsk')}</span>
-                <button className="btn btn-sm btn-danger" onClick={() => void removeForever()} disabled={busy}
-                  aria-busy={busy || undefined}>
-                  {busy ? <span className="spinner" aria-hidden="true" /> : null} {t('documents.deleteConfirm')}
-                </button>
-                <button className="btn btn-sm" onClick={() => setArmedDelete(false)}>{t('common.cancel')}</button>
-              </div>
-            ) : (
-              <button className="btn btn-sm btn-danger mt-10" onClick={() => setArmedDelete(true)}>
-                <Icon name="trash" className="ic-sm" /> {t('documents.deleteConfirm')}
-              </button>
-            )}
-          </>
-        )}
-      </div>
-    </>
+      {/* ⚠️ QUI C'ERA LA SCHEDA «Eliminazione definitiva», ed è sparita.
+          Era una scheda con un pulsante rosso in fondo a OGNI documento, anche
+          a quelli che nessuno vuole cancellare: un avvertimento permanente si
+          smette di leggere, e un pulsante distruttivo sempre a schermo compete
+          con l'azione del momento (regola 8 del sistema di design — un solo
+          colore forte per riga). Il comando ora sta nel menu di trabocco, e la
+          conferma — con la stessa spiegazione, `deleteExplain`, e la stessa
+          domanda, `deleteAsk` — compare in cima, dove è stata chiesta. */}
+    </div>
   );
 }
 

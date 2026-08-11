@@ -375,6 +375,7 @@ export const fr: Dictionary = {
     notFoundSub: 'Le document n’existe pas, ou il n’appartient pas à l’entreprise active.',
     openFile: 'Ouvrir l’original',
     openAnalysis: 'Ouvrir l’analyse complète',
+    moreActions: 'Autres actions',
     analyzeNow: 'Analyser',
     retryAnalysis: 'Relancer l’analyse',
     organization: 'Classement',
@@ -882,6 +883,9 @@ export const fr: Dictionary = {
   },
   home: {
     greetingMorning: 'Bonjour', greetingAfternoon: 'Bon après-midi', greetingEvening: 'Bonsoir',
+    greetingMorningNamed: 'Bonjour {name}',
+    greetingAfternoonNamed: 'Bon après-midi {name}',
+    greetingEveningNamed: 'Bonsoir {name}',
     subtitle: 'Voici ce qui requiert votre attention.',
     analyzeDoc: 'Analyser un document',
     findSubsidies: 'Trouver des subventions',
