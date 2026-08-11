@@ -888,12 +888,24 @@ section('12 · La CONSEGNA: `deliverEmails` eseguita davvero (§44/§79/§144)')
   type Row = Record<string, unknown>;
   interface Scritto { tabella: string; id: unknown; patch: Row }
 
-  function sbFinto(tabelle: Record<string, Row[]>, scritti: Scritto[]) {
+  interface Errore { code: string; message: string }
+  /**
+   * Il guasto è deciso da una FUNZIONE, non da un elenco di tabelle, e serviva
+   * così: dentro `deliverEmails` la stessa tabella viene letta e poi scritta
+   * più volte con significati diversi, e le asserzioni interessanti sono
+   * proprio quelle che distinguono un `update` dall'altro — «la lettura del
+   * lotto riesce, ma la scrittura che segna `sent` fallisce» non è esprimibile
+   * con una tabella sola.
+   */
+  type Guasto = (ctx: { tabella: string; op: 'select' | 'update'; patch: Row | null }) => Errore | null;
+
+  function sbFinto(tabelle: Record<string, Row[]>, scritti: Scritto[], guasto?: Guasto) {
     const from = (tabella: string) => {
       const filtri: ((r: Row) => boolean)[] = [];
       let patch: Row | null = null;
       let tetto = Number.POSITIVE_INFINITY;
       const righe = () => (tabelle[tabella] ?? []).filter((r) => filtri.every((f) => f(r)));
+      const errore = () => guasto?.({ tabella, op: patch ? 'update' : 'select', patch }) ?? null;
       const api = {
         select: () => api,
         eq: (c: string, v: unknown) => { filtri.push((r) => r[c] === v); return api; },
@@ -902,8 +914,16 @@ section('12 · La CONSEGNA: `deliverEmails` eseguita davvero (§44/§79/§144)')
         order: () => api,
         limit: (n: number) => { tetto = n; return api; },
         update: (p: Row) => { patch = p; return api; },
-        maybeSingle: () => Promise.resolve({ data: righe()[0] ?? null, error: null }),
+        maybeSingle: () => {
+          const e = errore();
+          return Promise.resolve(e ? { data: null, error: e } : { data: righe()[0] ?? null, error: null });
+        },
         then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => {
+          const e = errore();
+          // ⚠️ Un guasto NON scrive: è il punto. Se la finzione applicasse la
+          // patch e poi restituisse l'errore, ogni asserzione «la riga è
+          // rimasta com'era» sarebbe verde per il motivo sbagliato.
+          if (e) return Promise.resolve({ data: null, error: e }).then(res, rej);
           const colpite = righe().slice(0, tetto);
           if (patch) {
             for (const r of colpite) {
@@ -970,8 +990,10 @@ section('12 · La CONSEGNA: `deliverEmails` eseguita davvero (§44/§79/§144)')
   const provider = (impl: typeof fetch) =>
     createResendProvider({ apiKey: 're_chiave_finta', from: 'AI-Swisse <notifiche@ai-swisse.com>', fetchImpl: impl });
 
-  const deps = (tabelle: Record<string, Row[]>, scritti: Scritto[], p: NotifyDeps['emailProvider']): NotifyDeps => ({
-    sb: sbFinto(tabelle, scritti), appOrigin: 'https://app.ai-swisse.com', emailProvider: p,
+  const deps = (
+    tabelle: Record<string, Row[]>, scritti: Scritto[], p: NotifyDeps['emailProvider'], guasto?: Guasto,
+  ): NotifyDeps => ({
+    sb: sbFinto(tabelle, scritti, guasto), appOrigin: 'https://app.ai-swisse.com', emailProvider: p,
   });
 
   const FUTURO = Date.now() + 60_000;
@@ -1095,6 +1117,121 @@ section('12 · La CONSEGNA: `deliverEmails` eseguita davvero (§44/§79/§144)')
       String(f.viste[0]?.body.subject));
     ok(String(f.viste[0]?.body.text).includes('Sie erhalten diese Nachricht'),
       'e anche la riga che spiega perché il messaggio arriva');
+  }
+
+  // --- 12.9 QUANDO È IL DATABASE A CEDERE ----------------------------------
+  //
+  // ⚠️ Fino al 2026-08-11 `deliverEmails` scartava l'errore di SEI scritture.
+  // Tutte e sei producevano lo stesso `{attempted:0, sent:0, retried:0,
+  // failed:0}` di una coda vuota — che su questo prodotto è la risposta
+  // NORMALE, perché `notification_deliveries` è a zero righe in produzione.
+  //
+  // Qui `throw` non è la risposta giusta ovunque, e la differenza è il lotto:
+  // la lettura del lotto solleva (senza lotto non c'è niente da scorrere), le
+  // scritture di servizio dentro il ciclo si CONTANO (morire sulla prima
+  // abbandonerebbe le altre ventiquattro consegne, che non hanno colpa).
+  {
+    const solleva = async (fn: () => Promise<unknown>): Promise<Error | null> => {
+      try { await fn(); return null; } catch (e) { return e as Error; }
+    };
+    /** Fallisce solo le scritture su `notification_deliveries` che portano una certa chiave. */
+    const guastoSuPatch = (chiave: string, valore?: unknown): Guasto => ({ op, patch }) =>
+      (op === 'update' && patch && chiave in patch && (valore === undefined || patch[chiave] === valore))
+        ? { code: '57014', message: 'statement timeout' } : null;
+
+    // La LETTURA del lotto: solleva.
+    {
+      const e = await solleva(() => deliverEmails(
+        deps(scenario(), [], provider(fetchFinta([{ status: 200 }]).impl),
+          ({ tabella, op }) => (tabella === 'notification_deliveries' && op === 'select'
+            ? { code: 'PGRST200', message: 'could not resolve notifications(...)' } : null)),
+        FUTURO,
+      ));
+      ok(e !== null && /coda di consegna/i.test(e.message),
+        '⚠️⚠️ la lettura del LOTTO fallita SOLLEVA: un elenco vuoto per guasto è identico a una coda vuota, e la coda vuota è lo stato normale',
+        e ? e.message : 'nessuna eccezione: il guasto è diventato una coda vuota');
+    }
+    {
+      const rep = await deliverEmails(deps({ notification_deliveries: [], profiles: [], companies: [], notification_preferences: [] }, [], provider(fetchFinta([{ status: 200 }]).impl)), FUTURO);
+      ok(rep.attempted === 0 && rep.bookkeepingFailed === 0,
+        '…e una coda DAVVERO vuota non solleva e non conta niente: è l\'altra metà della coppia', JSON.stringify(rep));
+    }
+
+    // L'EMAIL È PARTITA e non riusciamo a scriverlo: il caso più grave.
+    {
+      const t = scenario(); const f = fetchFinta([{ status: 200 }]);
+      const rep = await deliverEmails(deps(t, [], provider(f.impl), guastoSuPatch('sent_at')), FUTURO);
+      ok(f.chiamate() === 1,
+        '⚠️⚠️ l\'email È PARTITA: il provider è stato chiamato prima che la scrittura fallisse', `chiamate: ${f.chiamate()}`);
+      ok(rep.sentUnrecorded === 1,
+        '…e il report lo DICHIARA con un numero suo: `sentUnrecorded` è l\'unico stato in cui il database dice meno di quel che è successo nel mondo',
+        JSON.stringify(rep));
+      ok(rep.sent === 1,
+        '…mentre `sent` resta 1, perché l\'invio è riuscito davvero: trattarlo come guasto sarebbe falso quanto tacerlo', JSON.stringify(rep));
+      ok(t.notification_deliveries[0].status === 'sending',
+        'la riga infatti NON è passata a `sent`: è lo scarto fra il mondo e il database, ed è misurabile',
+        String(t.notification_deliveries[0].status));
+    }
+
+    // La PRENOTAZIONE: contesa e guasto non sono la stessa cosa.
+    {
+      const t = scenario(); const f = fetchFinta([{ status: 200 }]);
+      const rep = await deliverEmails(deps(t, [], provider(f.impl), guastoSuPatch('status', 'sending')), FUTURO);
+      ok(rep.bookkeepingFailed === 1 && rep.attempted === 0,
+        '⚠️ una PRENOTAZIONE fallita si conta: prima finiva nello stesso `continue` della contesa, e un database che rifiutava ogni scrittura sembrava una coda molto trafficata',
+        JSON.stringify(rep));
+      ok(f.chiamate() === 0, '…e senza prenotazione non si manda niente', `chiamate: ${f.chiamate()}`);
+    }
+
+    // L'ANNULLAMENTO di una consegna orfana.
+    {
+      const t = scenario({ notifica: null });
+      const rep = await deliverEmails(deps(t, [], provider(fetchFinta([{ status: 200 }]).impl),
+        guastoSuPatch('error_code', 'NOTIFICATION_GONE')), FUTURO);
+      ok(rep.bookkeepingFailed === 1,
+        '⚠️ l\'annullamento di una consegna ORFANA fallito si conta: la riga resta in testa alla coda — non ha ancora avanzato `next_attempt_at` — e si ripresenterebbe a ogni giro, per sempre',
+        JSON.stringify(rep));
+    }
+
+    // La REGISTRAZIONE di un guasto d'invio: è il meccanismo che rende visibili i guasti.
+    {
+      const t = scenario(); const f = fetchFinta([{ status: 400, body: '{"message":"indirizzo rifiutato"}' }]);
+      const rep = await deliverEmails(deps(t, [], provider(f.impl), guastoSuPatch('error_code')), FUTURO);
+      ok(rep.bookkeepingFailed === 1 && rep.failed === 1,
+        '⚠️ la scrittura che REGISTRA un guasto d\'invio, fallita, si conta: senza, «quante consegne sono fallite e perché» risponde zero — la stessa risposta di un sistema in salute',
+        JSON.stringify(rep));
+    }
+
+    // composeEmail: qui invece SOLLEVARE è obbligatorio.
+    {
+      const t = scenario(); const f = fetchFinta([{ status: 200 }]);
+      const rep = await deliverEmails(deps(t, [], provider(f.impl),
+        ({ tabella, op }) => (tabella === 'profiles' && op === 'select' ? { code: '57014', message: 'timeout' } : null)),
+        FUTURO);
+      ok(f.chiamate() === 0, '⚠️⚠️ destinatario ILLEGGIBILE: non si manda niente', `chiamate: ${f.chiamate()}`);
+      ok(t.notification_deliveries[0].status === 'pending' && rep.retried === 1,
+        '…e la consegna torna in coda invece di essere ANNULLATA per sempre: è il difetto del 2026-08-03 — il promemoria che non arriva e nessuno lo sa — che rientrava da un\'altra porta',
+        `stato: ${t.notification_deliveries[0].status}, ${JSON.stringify(rep)}`);
+      ok(t.notification_deliveries[0].error_code !== 'NO_RECIPIENT',
+        '…e NON viene marcata «nessun destinatario»: quella ragione è riservata a chi un indirizzo non ce l\'ha davvero',
+        String(t.notification_deliveries[0].error_code));
+    }
+    {
+      const t = scenario({ profilo: null }); const f = fetchFinta([{ status: 200 }]);
+      await deliverEmails(deps(t, [], provider(f.impl)), FUTURO);
+      ok(t.notification_deliveries[0].error_code === 'NO_RECIPIENT',
+        '…mentre un profilo DAVVERO senza indirizzo resta annullato come `NO_RECIPIENT`: è l\'altra metà della coppia',
+        String(t.notification_deliveries[0].error_code));
+    }
+    {
+      const t = scenario(); const f = fetchFinta([{ status: 200 }]);
+      const rep = await deliverEmails(deps(t, [], provider(f.impl),
+        ({ tabella, op }) => (tabella === 'companies' && op === 'select' ? { code: '57014', message: 'timeout' } : null)),
+        FUTURO);
+      ok(f.chiamate() === 0 && rep.retried === 1,
+        '⚠️ azienda illeggibile: l\'email NON parte con il nome vuoto. Un promemoria che non dice per conto di chi parla somiglia a posta non richiesta, e non si richiama indietro',
+        `chiamate: ${f.chiamate()}, ${JSON.stringify(rep)}`);
+    }
   }
 }
 
