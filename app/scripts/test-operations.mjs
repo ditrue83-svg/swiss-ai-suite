@@ -1145,6 +1145,27 @@ const CASES = [
     expect: 0,
   },
   {
+    // Se questo caso sparisse, la camminata del 9 si fermerebbe agli import per
+    // solo effetto e lascerebbe scoperto tutto ciò che sta oltre, senza dirlo.
+    name: '⚠️ rilevatore: `import \'./x\'` (per solo effetto) è raccolto, con zero nomi',
+    run: (r) => {
+      const got = importConNomi("import './effetti.ts';\nimport { a } from './y';");
+      const effetti = got.find((x) => x.spec === './effetti.ts');
+      if (!effetti) r.add('autoverifica', 'l\'import per solo effetto non è stato visto: la camminata si fermerebbe lì', '', '');
+      else if (effetti.nomi.length) r.add('autoverifica', `porta nomi che non ha: «${effetti.nomi.join(',')}»`, '', '');
+      if (got.length !== 2) r.add('autoverifica', `import letti: ${got.length}, attesi 2`, '', '');
+    },
+    expect: 0,
+  },
+  {
+    name: '…e `import x from \'./y\'` NON viene contato due volte',
+    run: (r) => {
+      const got = importConNomi("import x from './y';");
+      if (got.length !== 1) r.add('autoverifica', `import letti: ${got.length}, atteso 1`, '', '');
+    },
+    expect: 0,
+  },
+  {
     name: '⚠️ una riga del debito il cui modulo è ORMAI raggiunto → problema: la riga è stantia',
     run: (r) => checkTypecheck(r, {
       portabili: ['_shared/calendar/sync.ts'],
@@ -1346,6 +1367,18 @@ export function importConNomi(sorgente) {
   }
   for (const m of puro.matchAll(/export\s+(?:\{([^}]*)\}|\*)\s*from\s*['"](\.[^'"]+)['"]/g)) {
     out.push({ spec: m[2], nomi: spezzaNomi(m[1]), stella: m[1] === undefined });
+  }
+  // ⚠️ L'IMPORT PER SOLO EFFETTO — `import './x'`, senza `from`. Non nomina
+  // niente, ed è proprio per questo che va raccolto: `importRelativi` lo vede
+  // (quindi il controllo 8 considera raggiunto ciò che sta oltre), e se qui non
+  // lo vedessimo la camminata del controllo 9 si fermerebbe lì, IN SILENZIO,
+  // lasciando scoperto un sottoalbero senza dirlo. Oggi nel repository ce ne
+  // sono tre e sono tutti fogli di stile: il buco è teorico, e si chiude adesso
+  // che costa una riga invece che il giorno in cui qualcuno scrive
+  // `import './registrazione.ts'`. Porta `nomi: []`, che è la verità: un import
+  // per effetto non esercita nessuna funzione.
+  for (const m of puro.matchAll(/(?:^|[;{}\n])\s*import\s*['"](\.[^'"]+)['"]/g)) {
+    out.push({ spec: m[1], nomi: [], stella: false });
   }
   return out;
 }
