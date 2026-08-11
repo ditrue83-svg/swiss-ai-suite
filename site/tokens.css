@@ -8,6 +8,12 @@
    Per aggiornarli: cambiare il valore NELL'APP, poi rilanciare lo script.
    `node sync-tokens.mjs --check` dice se questo file è rimasto indietro.
 
+   IL CARATTERE NON È QUI, ED È VOLUTO: la vetrina compone in Inter Tight
+   (`@font-face` e `--ms-font` in style.css, file self-hostati in static/fonts/),
+   l'app in Inter. Due scelte di disegno distinte della stessa superfamiglia,
+   quindi la `font-family` del `:root` dell'app non viene sincronizzata. La
+   ragione per esteso sta in sync-tokens.mjs.
+
    La documentazione delle scelte sta in docs/design-system.md del progetto
    principale.
    ========================================================================== */
@@ -32,6 +38,10 @@
   --muted: hsl(213, 12%, 42%);         /* metadati, didascalie                  */
   --line: hsl(210, 20%, 90%);
   --line-strong: hsl(210, 20%, 78%);   /* bordi marcati: hover, stati attivi */
+  /* Separatore più tenue di --line, per righe DENTRO una scheda. Il grigio al
+     50% con un'alfa bassa regge su chiaro e scuro senza bisogno di un valore
+     per tema: per questo NON è ridefinito nel blocco scuro, ed è voluto. */
+  --line-subtle: rgba(127, 127, 127, 0.15);
   --bg: hsl(210, 20%, 98%);
   --card: #ffffff;
   --on-accent: #ffffff;               /* testo sopra i fondi pieni colorati */
@@ -88,7 +98,12 @@
   --ls-title: -0.01em; /* i titoli grandi respirano meglio stretti */
 
   /* --- Ritmo delle spaziature ----------------------------------------------
-     Multipli di 4: sette valori coprono tutta l'interfaccia. */
+     Multipli di 4 per il ritmo FRA gli elementi. --sp-05 è il mezzo gradino
+     per l'anatomia DENTRO un elemento — il respiro di una pastiglia, una pila
+     fitta, un ritocco ottico: nominato il 2026-08-10, quando 53 eccezioni di
+     design:lint con lo stesso genere di motivo hanno dimostrato che alla
+     scala mancava un gradino, non che mancavano 53 eccezioni. */
+  --sp-05: 2px;
   --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
   --sp-6: 24px;  --sp-8: 32px;  --sp-12: 48px;
 
@@ -99,9 +114,13 @@
   --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.12);  /* pannelli sospesi (popover) */
+
+  /* Il velo dietro un cassetto aperto. Era scritto due volte, con due valori
+     diversi (0,0,0/.35 e 16,24,40/.4): stesso ruolo, una voce sola. */
+  --scrim: rgba(16, 24, 40, 0.4);
 
   --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
-  font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
