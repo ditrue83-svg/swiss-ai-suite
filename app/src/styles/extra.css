@@ -54,7 +54,7 @@
 /* ---- Skeleton (loading discreto) ----
    Passa dai token: con tre grigi chiari scritti a mano lo scheletro restava
    bianco in tema scuro e la pagina lampeggiava a ogni caricamento. */
-.skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--line) 37%, var(--surface-2) 63%); background-size: 400% 100%; animation: skel 1.3s ease infinite; border-radius: 6px; }
+.skeleton { background: linear-gradient(90deg, var(--fill-subtle) 25%, var(--line) 37%, var(--fill-subtle) 63%); background-size: 400% 100%; animation: skel 1.3s ease infinite; border-radius: 6px; }
 @keyframes skel { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 .skel-line { height: 12px; margin: var(--sp-2) 0; }
 .skel-kpi { height: 96px; border-radius: var(--radius); }
@@ -453,7 +453,7 @@
    senza alcun lavoro in più. */
 .crm-board { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr));
   gap: var(--sp-3); overflow-x: auto; padding-bottom: var(--sp-2); }
-.crm-col { background: var(--surface-2); border: 1px solid var(--line);
+.crm-col { background: var(--fill-subtle); border: 1px solid var(--line);
   border-radius: 10px; padding: var(--sp-3); min-width: 180px; }
 .crm-col-head { display: flex; align-items: baseline; justify-content: space-between;
   gap: var(--sp-2); margin-bottom: var(--sp-2); }
@@ -495,7 +495,7 @@
 
 /* Suggerimenti e duplicati: due riquadri che chiedono una decisione. */
 .crm-ask { border: 1px solid var(--line); border-radius: 10px; padding: var(--sp-3);
-  background: var(--surface-2); margin-top: var(--sp-4); }
+  background: var(--fill-subtle); margin-top: var(--sp-4); }
 .crm-ask-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2);
   padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
 .crm-ask-row:first-of-type { border-top: none; }
@@ -576,7 +576,7 @@
 .as-thread-open { flex: 1 1 auto; min-width: 0; text-align: left;
   background: transparent; color: var(--ink); border: 0; cursor: pointer;
   padding: var(--sp-2); border-radius: var(--radius-sm); min-height: 26px; }
-.as-thread-open:hover { background: var(--surface-2); }
+.as-thread-open:hover { background: var(--fill-subtle); }
 .as-thread.is-active .as-thread-open:hover { background: var(--accent-soft); }
 .as-thread-title { display: block; font-size: var(--fs-meta); color: var(--ink);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -587,7 +587,7 @@
 .as-icon-btn { background: transparent; color: var(--muted); border: 0;
   cursor: pointer; padding: var(--sp-1); border-radius: var(--radius-sm);
   min-width: 26px; min-height: 26px; }
-.as-icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+.as-icon-btn:hover { background: var(--fill-subtle); color: var(--ink); }
 
 /* ---- La conversazione --------------------------------------------------- */
 /* A scorrere è il FLUSSO, non la pagina: il composer resta sempre a schermo. */
@@ -631,7 +631,7 @@
 .as-chip { display: inline-flex; align-items: center; gap: var(--sp-1);
   border: 1px solid var(--line); border-radius: 99px;
   padding: var(--sp-1) var(--sp-3); font-size: var(--fs-meta);
-  background: var(--surface-2); color: var(--ink); text-decoration: none;
+  background: var(--fill-subtle); color: var(--ink); text-decoration: none;
   min-height: 26px; max-width: 100%; cursor: pointer; }
 .as-chip:hover { border-color: var(--accent-line); }
 .as-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis;
@@ -727,7 +727,7 @@
     display: inline-flex; align-items: center; justify-content: center;
     background: transparent; color: var(--ink); border: 0; cursor: pointer;
     min-width: 44px; min-height: 44px; border-radius: var(--radius-sm); }
-  .as-drawer-close:hover { background: var(--surface-2); }
+  .as-drawer-close:hover { background: var(--fill-subtle); }
   .as-drawer .as-col-head { padding-right: var(--sp-12); }
 
   .as-q { max-width: 100%; }

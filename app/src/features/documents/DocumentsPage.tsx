@@ -25,7 +25,8 @@ import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, SORTS, SOURCES, STATES,
-  filtersFromParams, hasActiveFilters, paramsFromFilters, splitSnippet,
+  filtersFromParams, hasActiveFilters, paramsFromFilters, rowBadgeTones, splitSnippet,
+  type BadgeTone,
 } from './documentModel';
 import type {
   DocumentCategory, DocumentHubFilters, DocumentHubItem, DocumentSort, DocumentSourceType,
@@ -117,11 +118,13 @@ const SOURCE_KEY: Record<DocumentSourceType, TKey> = {
   pasted_text: 'documents.sources.pasted_text',
 };
 
-/** Lo stato è testo, non solo colore: un badge rosso non dice niente a chi non distingue i colori. */
-function stateBadgeClass(state: DocumentState): string {
-  if (state === 'failed') return 'badge badge-alta';
-  if (state === 'to_verify') return 'badge badge-media';
-  return 'badge badge-neutral';
+/**
+ * Lo stato è testo, non solo colore: un badge rosso non dice niente a chi non
+ * distingue i colori. QUALE colore lo decide `rowBadgeTones`, che guarda la
+ * riga intera — vedi `documentModel.ts`.
+ */
+function badgeClass(tone: BadgeTone): string {
+  return `badge badge-${tone}`;
 }
 
 export function DocumentsPage() {
@@ -272,12 +275,19 @@ export function DocumentsPage() {
         <div className="doc-main">
           <div className="card">
             <div className="card-title">
-              <span className="filter-group">
-                <button className={`btn btn-sm${!filters.archived ? ' btn-primary' : ''}`}
+              {/* ⚠️ NON `btn-primary`. «Attivi/Archiviati» in blu d'azione
+                  competeva con «Carica documento», che è l'unica azione
+                  primaria di questa pagina: due pulsanti blu chiedevano la
+                  stessa attenzione per due cose che non si somigliano — uno
+                  CARICA, l'altro cambia soltanto quello che si sta guardando.
+                  Qui lo stato premuto è una superficie (`btn-toggle`), e i due
+                  estremi si toccano perché sono UN interruttore. */}
+              <span className="segmented">
+                <button className="btn btn-sm btn-toggle"
                   aria-pressed={!filters.archived} onClick={() => update({ archived: false })}>
                   {t('documents.viewActive')}
                 </button>
-                <button className={`btn btn-sm${filters.archived ? ' btn-primary' : ''}`}
+                <button className="btn btn-sm btn-toggle"
                   aria-pressed={filters.archived === true} onClick={() => update({ archived: true })}>
                   {t('documents.viewArchived')}
                 </button>
@@ -290,8 +300,9 @@ export function DocumentsPage() {
                     {SORTS.map((s) => <option key={s} value={s}>{t(SORT_KEY[s])}</option>)}
                   </select>
                 </div>
-                <button className={`btn btn-sm${showFilters ? ' btn-primary' : ''}`}
-                  aria-expanded={showFilters} onClick={() => setShowFilters((v) => !v)}>
+                <button className="btn btn-sm btn-toggle"
+                  aria-expanded={showFilters} aria-pressed={showFilters}
+                  onClick={() => setShowFilters((v) => !v)}>
                   {showFilters ? t('documents.filtersHide') : t('documents.filtersShow')}
                 </button>
               </span>
@@ -457,9 +468,19 @@ export function DocumentsPage() {
 
 /**
  * Una riga dice quello che serve a RICONOSCERE un documento, non tutto quello
- * che se ne sa: categoria, controparte, provenienza, data. Il nome del file
- * originale sta nel dettaglio — «documento_29387.pdf» non ha mai aiutato
+ * che se ne sa: controparte, tipo, categoria, provenienza, data. Il nome del
+ * file originale sta nel dettaglio — «documento_29387.pdf» non ha mai aiutato
  * nessuno a ritrovare niente.
+ *
+ * ⚠️ NON È PIÙ UNA CATENA «A · B · C · D · E», e la differenza non è estetica.
+ * Cinque valori separati da punti mediani hanno tutti lo stesso peso: per
+ * trovare il mittente — che è quasi sempre il modo in cui una persona cerca un
+ * documento — bisognava leggere la riga intera, e in una colonna stretta quella
+ * riga andava a capo cinque volte. Ora la riga ha una STRUTTURA: il mittente in
+ * evidenza, il tipo come marcatura, la data allineata a destra con cifre
+ * tabulari (le date si incolonnano solo così: Inter usa cifre proporzionali per
+ * default). Restano nella catena i due valori davvero secondari, categoria e
+ * provenienza.
  */
 function DocumentRow({
   item, t, category, docType, selected, onSelect,
@@ -473,13 +494,13 @@ function DocumentRow({
   // schermata con documenti veri: nessun test poteva accorgersene, perché
   // entrambi i valori erano quelli giusti.
   const categoryLabel = item.category ? category : null;
-  const parts = [
-    categoryLabel,
-    item.sender,
-    docType && docType !== categoryLabel ? docType : null,
-    t(SOURCE_KEY[item.sourceType]),
-    formatDate(item.documentDate ?? item.createdAt),
-  ].filter(Boolean);
+  const typeMark = docType && docType !== categoryLabel ? docType : null;
+  const rest = [categoryLabel, t(SOURCE_KEY[item.sourceType])].filter(Boolean);
+  // ⚠️ I toni si chiedono UNA volta per la riga, non una per pastiglia: la
+  // regola «un solo colore forte per riga» parla della riga, e due pastiglie
+  // che scelgono per conto proprio non possono rispettarla — è così che sono
+  // nate due ambre affiancate su un documento «da verificare» con scadenza.
+  const tones = rowBadgeTones(item);
 
   const snippet = splitSnippet(item.snippet);
 
@@ -491,7 +512,11 @@ function DocumentRow({
       </label>
       <Link className="doc-row-main" to={`/documenti/${item.id}`} aria-label={t('documents.openAria', { title: item.title })}>
         <div className="doc-row-title">{item.title}</div>
-        <div className="doc-row-sub">{parts.join(' · ')}</div>
+        <div className="doc-row-meta">
+          {item.sender && <span className="doc-sender">{item.sender}</span>}
+          {typeMark && <span className="doc-type">{typeMark}</span>}
+          {rest.length > 0 && <span className="doc-row-sub">{rest.join(' · ')}</span>}
+        </div>
         {snippet.length > 0 && (
           // L'estratto arriva dal database come TESTO: i punti trovati
           // diventano elementi, non HTML da interpretare.
@@ -500,25 +525,36 @@ function DocumentRow({
           </div>
         )}
       </Link>
+      {/* ⚠️ LA DATA STA QUI, e non accanto al titolo: dentro il collegamento
+          finiva dopo un titolo di lunghezza variabile, e siccome le pastiglie
+          di destra sono più larghe in una riga che nell'altra, le date NON si
+          incolonnavano — cioè le cifre tabulari non servivano a niente. Visto
+          aprendo la schermata con tre righe di larghezze diverse: allineata «a
+          destra» dentro un contenitore che si muove non è allineata. Il prezzo
+          è che la data non fa parte del bersaglio cliccabile; il bersaglio
+          restano il titolo e il mittente, che è quello che si legge. */}
       <div className="doc-row-side">
-        {item.deadline && (
-          <span className={`badge ${item.deadlineRequiresVerification ? 'badge-neutral' : 'badge-media'}`}>
-            {item.deadlineRequiresVerification
-              ? t('documents.deadlineToVerify')
-              : t('documents.deadlineOn', { date: formatDate(item.deadline) })}
-          </span>
-        )}
-        {item.state !== 'analyzed' && (
-          <span className={stateBadgeClass(item.state)}>{t(STATE_KEY[item.state])}</span>
-        )}
-        {item.openTaskCount > 0 && (
-          <span className="badge badge-neutral">
-            {item.openTaskCount === 1
-              ? t('documents.tasksOpenOne')
-              : t('documents.tasksOpenMany', { n: item.openTaskCount })}
-          </span>
-        )}
-        {item.tags.slice(0, 2).map((tag) => <span className="doc-tag" key={tag.id}>{tag.name}</span>)}
+        <span className="doc-row-date">{formatDate(item.documentDate ?? item.createdAt)}</span>
+        <div className="doc-row-badges">
+          {item.deadline && tones.deadline && (
+            <span className={badgeClass(tones.deadline)}>
+              {item.deadlineRequiresVerification
+                ? t('documents.deadlineToVerify')
+                : t('documents.deadlineOn', { date: formatDate(item.deadline) })}
+            </span>
+          )}
+          {tones.state && (
+            <span className={badgeClass(tones.state)}>{t(STATE_KEY[item.state])}</span>
+          )}
+          {item.openTaskCount > 0 && (
+            <span className="badge badge-neutral">
+              {item.openTaskCount === 1
+                ? t('documents.tasksOpenOne')
+                : t('documents.tasksOpenMany', { n: item.openTaskCount })}
+            </span>
+          )}
+          {item.tags.slice(0, 2).map((tag) => <span className="doc-tag" key={tag.id}>{tag.name}</span>)}
+        </div>
       </div>
     </div>
   );

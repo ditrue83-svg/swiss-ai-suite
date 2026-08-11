@@ -107,6 +107,16 @@ la gerarchia, non la scala.
 | `--fs-h2` | 22px | titoli di sezione |
 | `--fs-h1` | 30px | titoli di pagina |
 
+⚠️ **Una gerarchia si dichiara CON i sei gradini, non aggiungendone un settimo.**
+La Panoramica aveva cinque schede numeriche identiche su una griglia da quattro
+colonne — un 3+2 con un buco in fondo, una forma che nessuno aveva scelto — e
+cinque numeri della stessa misura non dicono quale guardare per primo. La
+tentazione era un gradino «display» per il numero che conta di più. Non serve:
+la metrica principale tiene `--fs-h1` e le altre quattro **scendono** a
+`--fs-h2`. Trenta contro ventidue, più il doppio di superficie, e «il numero più
+grande della schermata» diventa un fatto misurabile. Il gradino che manca è
+quasi sempre un gradino di troppo da qualche altra parte.
+
 Quante regole rispettino la scala non lo dice questo file: lo dice
 `npm run design:lint`, che fallisce su ogni `font-size` in pixel. Un conteggio
 scritto qui invecchierebbe al primo commit che non lo aggiorna — è già successo
@@ -135,6 +145,102 @@ Nel markup le distanze si scrivono con le utilità in coda a `extra.css`
 `style={{ marginTop: 8 }}` non passa il lint. Quando un elemento ne accumula
 più di due, quello che si sta descrivendo è un componente e va nominato nel
 CSS.
+
+## Superfici
+
+Tre livelli, e la regola è che si sceglie **uno per blocco**, non «scheda o
+niente».
+
+| Token | Che cos'è | Per che cosa |
+|---|---|---|
+| `--surface-1` | fondo proprio (`--card`), bordo, ombra, angoli | ciò che si **legge**: l'analisi, il prossimo passo |
+| `--surface-2` | nessun fondo, un filetto (`--surface-rule`) sopra | ciò che si **consulta**: attività, CRM, organizzazione |
+| `--surface-3` | nessun contenitore | ciò che si **scorre**: una riga di metadati |
+
+Le classi si chiamano come i token; `.card` **è** `.surface-1` — lo stesso
+selettore, non una copia, perché due regole con gli stessi valori sono due
+verità che divergono al primo ritocco.
+
+⚠️ **Il livello 2 e il livello 3 sono trasparenti di proposito.** Un terzo
+grigio appena diverso sarebbe un valore da mantenere in due temi per non dire
+niente in più. Un blocco piano si stacca dal precedente con un **filetto**, una
+riga inline non si stacca affatto: è testo con un'etichetta accanto.
+
+Il perché di tutto questo sta in una schermata sola. Il dettaglio di un
+documento metteva in una `.card` l'analisi, il prossimo passo, le attività, il
+CRM, l'organizzazione, le informazioni tecniche, l'eliminazione **e** l'origine
+— quest'ultima una scheda intera per una riga di testo. Sette contenitori
+identici non fanno gerarchia: la fanno sparire, e a quel punto a dire che cosa
+conta resta solo la posizione, che è un ripiego.
+
+⚠️ **`--surface-2` è un nome riciclato, e la storia è la solita.** Fino al
+2026-08-11 quel nome apparteneva al riempimento tenue delle pastiglie neutre e
+degli hover — un **colore**, non un livello. Nominando i tre livelli sarebbe
+diventato il secondo `--surface-2` della stessa palette: esattamente il guasto
+di `--amber` usato sia per scrivere sia per riempire, che aveva prodotto il
+marrone della barra «Media» che nessuno aveva scelto. Il riempimento ora si
+chiama **`--fill-subtle`**, che è quello che è.
+
+## Colonna di lettura
+
+Due misure diverse, e confonderle è ciò che faceva correre il riassunto di
+un'analisi per tutta la larghezza dello schermo:
+
+| Token | Valore | Che cosa limita |
+|---|---|---|
+| `--measure` | `52ch` | il **testo corrente** (`.prose`): circa settanta caratteri |
+| `--content-max` | `880px` | la **colonna di contenuto** (`.reading-col`) di una pagina di lettura |
+
+Tabelle ed elenchi possono superare la prima — sono strutture, non prosa — ma
+non la seconda.
+
+⚠️ **`52ch` e non `70ch`, ed è misurato, non stimato.** `ch` è la larghezza
+dello **zero**, e in Inter lo zero misura 9,46 px a 15 px mentre il carattere
+medio di una frase italiana vera ne misura 6,83. Scrivere `70ch` per «settanta
+caratteri» dà una riga da **94** caratteri: ventiquattro in più di quelli
+voluti, cioè il difetto che si stava correggendo. `52ch` = 492 px = **72
+caratteri**, contati sul riassunto di un'analisi con il font servito. Il
+conteggio dipende dal **carattere**, non dalla lingua: vale uguale in de e fr.
+Se un giorno cambia il font, questo numero va **rimisurato**, non tradotto.
+
+## Una sola azione primaria per schermata
+
+Il dettaglio di un documento aveva **sei pulsanti prima del contenuto**, su tre
+righe, tutti dello stesso peso: fra «Analizza» e «Elimina» non c'era nessuna
+differenza visiva. Un pulsante distruttivo con lo stesso peso di quello che si
+deve premere non è una scelta offerta, è una trappola lasciata aperta.
+
+La riga delle azioni (`.action-bar`) ha tre posti, e l'ordine significa:
+
+1. **la primaria**, una sola — l'azione del momento, quella che «Prossimo passo»
+   indica;
+2. **le secondarie**, in una riga, `btn-sm`;
+3. **il trabocco** (`ActionMenu`, il pulsante `⋯`), staccato da un margine
+   automatico: ciò che è raro (archivia, stampa) o irreversibile (elimina).
+
+⚠️ **La decisione si rende in un posto solo.** La primaria è la stessa che il
+riquadro «Prossimo passo» spiega, e la disegna lo stesso codice
+(`NextStepPrimary`/`NextStepSecondary` in `NextStepCard.tsx`): riordinare i
+pulsanti senza unificarli avrebbe solo spostato il problema, perché due punti
+che rendono la stessa decisione prima o poi ne rendono due diverse. Per la
+stessa ragione «Analizza» è sparito dal riquadro dell'analisi e «Apri analisi
+completa» — che compariva **due volte** nella pagina — vive solo dentro la
+scheda Analisi.
+
+⚠️ **Una voce distruttiva nel menu è testo rosso, mai un fondo pieno.** Dentro
+un menu una riga rossa piena grida quanto un avviso, e lì non c'è nessuna
+emergenza: c'è un comando che non si può disfare, e a dirlo è la conferma che
+segue. La conferma compare **dove è stata chiesta**, in cima; la vecchia scheda
+«Eliminazione definitiva» in fondo a ogni documento era un avvertimento
+permanente, e un avvertimento permanente si smette di leggere.
+
+⚠️ **Un interruttore non è un'azione primaria.** «Attivi/Archiviati» e
+«Mostra filtri» usavano `btn-primary`, cioè il blu d'azione, sulla stessa
+schermata di «Carica documento»: due pulsanti blu che chiedevano la stessa
+attenzione per due cose che non si somigliano — uno **carica**, l'altro cambia
+soltanto quello che si sta guardando. Lo stato premuto ora è una superficie
+(`.btn-toggle[aria-pressed="true"]`), e i due estremi si toccano (`.segmented`)
+perché sono un interruttore, non due pulsanti vicini.
 
 ## Colore
 
@@ -298,3 +404,36 @@ altrimenti la regola globale dei collegamenti tinge di blu tutto il contenuto.
    presentata prima di iniziare; il resto è testo.
 8. **Un solo colore forte per riga.** Due avvisi rossi affiancati non dicono
    «due volte urgente», dicono «non guardare».
+
+   ⚠️ **È una regola sulla RIGA, e per questo non può vivere dentro le singole
+   pastiglie.** Nell'elenco dei documenti le due pastiglie sceglievano il tono
+   ognuna guardando solo il proprio dato, e un documento «da verificare» con una
+   scadenza dichiarata ne mostrava **due ambra affiancate**: nessuna delle due
+   era sbagliata presa da sola — la scadenza è ambra perché dice quanto manca,
+   lo stato è ambra perché la lettura è incerta — ed è precisamente per questo
+   che nessuna rilettura del markup l'avrebbe trovato. Ora la decisione è una
+   funzione pura che guarda la riga intera (`rowBadgeTones`), con una precedenza
+   dichiarata — **guasto › scadenza › stato** — e l'invariante è provato sul
+   prodotto cartesiano di stato × scadenza × «scadenza da verificare», non su
+   tre casi scelti a mano (`npm run test:documents-unit`, sezione 11).
+
+   Chi perde **non sparisce**: scende a neutro e tiene il suo testo. Togliere il
+   colore è togliere una classificazione; togliere la pastiglia sarebbe togliere
+   un'informazione. E quando è la scadenza stessa a essere incerta la precedenza
+   si rovescia da sé, senza bisogno di un caso in più: quella pastiglia scende a
+   neutro per conto proprio (§36) e l'ambra resta libera per lo stato.
+9. **Prima di scrivere `.card`, scegliere il livello.** I livelli sono tre e
+   stanno in `--surface-1/2/3`: mettere tutto in una scheda non è una scelta
+   neutra, è la rinuncia a dire che cosa conta.
+10. **Una riga di elenco ha una struttura, non una catena.** «A · B · C · D · E»
+    dà lo stesso peso a cinque valori: per trovare il mittente — che è quasi
+    sempre il modo in cui si cerca un documento — bisogna leggere tutto, e in
+    una colonna stretta quella riga va a capo cinque volte. Nell'elenco dei
+    documenti restano una catena solo i due valori davvero secondari.
+11. **Cifre tabulari e allineamento a destra sono DUE cose.** `tabular-nums`
+    rende le cifre della stessa larghezza; non basta se la colonna che le
+    contiene cambia larghezza da una riga all'altra. Le date dell'elenco
+    documenti stavano in coda a un titolo di lunghezza variabile, dentro un
+    blocco che le pastiglie di destra spingevano avanti e indietro: allineate
+    «a destra» dentro un contenitore che si muove non sono allineate. Ora hanno
+    il bordo destro della riga.

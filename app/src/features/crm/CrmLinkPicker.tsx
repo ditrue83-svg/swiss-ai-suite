@@ -45,6 +45,15 @@ interface Props {
   onLink: (organizationId: string) => Promise<void>;
   onUnlink: () => Promise<void>;
   disabled?: boolean;
+  /**
+   * Il LIVELLO di superficie su cui il selettore si appoggia, deciso da chi lo
+   * ospita. Il default resta `crm-ask` — il riquadro pieno che le altre tre
+   * schermate usano da sempre — e il dettaglio di un documento passa
+   * `surface-2`, perché là il CRM è uno dei blocchi che si consultano e non
+   * deve pesare quanto l'analisi. ⚠️ Non è una scorciatoia per stili arbitrari:
+   * i valori ammessi sono i livelli dichiarati in `:root`.
+   */
+  className?: string;
 }
 
 export function CrmLinkPicker(props: Props) {
@@ -108,7 +117,7 @@ export function CrmLinkPicker(props: Props) {
   if (!company) return null;
 
   return (
-    <div className="crm-ask">
+    <div className={props.className ?? 'crm-ask'}>
       <div className="crm-sec-head">
         <strong>{t('crm.link.toOrganization')}</strong>
         {props.linkedId && (

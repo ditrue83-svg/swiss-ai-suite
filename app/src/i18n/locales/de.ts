@@ -376,6 +376,7 @@ export const de: Dictionary = {
     notFoundSub: 'Das Dokument existiert nicht oder gehört nicht zum aktiven Unternehmen.',
     openFile: 'Original öffnen',
     openAnalysis: 'Vollständige Analyse öffnen',
+    moreActions: 'Weitere Aktionen',
     analyzeNow: 'Analysieren',
     retryAnalysis: 'Analyse wiederholen',
     organization: 'Ablage',
@@ -883,6 +884,9 @@ export const de: Dictionary = {
   },
   home: {
     greetingMorning: 'Guten Morgen', greetingAfternoon: 'Guten Tag', greetingEvening: 'Guten Abend',
+    greetingMorningNamed: 'Guten Morgen, {name}',
+    greetingAfternoonNamed: 'Guten Tag, {name}',
+    greetingEveningNamed: 'Guten Abend, {name}',
     subtitle: 'Das erfordert derzeit Ihre Aufmerksamkeit.',
     analyzeDoc: 'Dokument analysieren',
     findSubsidies: 'Fördermittel finden',
@@ -905,7 +909,16 @@ export const de: Dictionary = {
     docsByType: 'Dokumente nach Typ',
     docLanguages: 'Sprachen der Dokumente',
     noDocsAnalyzed: 'Noch kein Dokument analysiert.',
-    kpiOpenActions: 'Offene Aufgaben',
+    // ⚠️ «Massnahmen» e non «Aufgaben»: fino al 2026-08-11 questa chiave e
+    // `kpiTasksOpen` erano ENTRAMBE «Offene Aufgaben», e le due schede vicine
+    // della Panoramica portavano lo stesso titolo su due numeri diversi — 40 e
+    // 17 — senza che niente dicesse in che cosa differissero. Sono due cose
+    // distinte: qui le azioni che l'ANALISI di un documento ha richiesto, là le
+    // attività del Work Hub. Il resto del dizionario tedesco già chiamava le
+    // prime `Massnahmen` (labels.analysis); mancava solo qui. Visto aprendo la
+    // schermata in tedesco: in italiano e in francese i due nomi erano diversi
+    // e il difetto non si vedeva.
+    kpiOpenActions: 'Offene Massnahmen',
     kpiOpenActionsDocsOne: '{n} Dokument betroffen',
     kpiOpenActionsDocsMany: '{n} Dokumente betroffen',
     kpiTasksOpen: 'Offene Aufgaben',

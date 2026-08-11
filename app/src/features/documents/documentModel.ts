@@ -63,6 +63,66 @@ export function needsAttention(item: DocumentHubItem): boolean {
   return item.state === 'failed' || item.state === 'to_verify';
 }
 
+// ---------------------------------------------------------------------------
+// UN SOLO COLORE FORTE PER RIGA (regola 8 del sistema di design).
+//
+// PERCHÉ È UNA FUNZIONE E NON DUE `className` NEL MARKUP. Fino al 2026-08-11 le
+// due pastiglie della riga sceglievano il proprio tono da sole, ognuna
+// guardando solo il proprio dato: un documento «da verificare» con una scadenza
+// dichiarata ne mostrava DUE ambra affiancate. Nessuna delle due era sbagliata
+// presa da sola — ed è esattamente il motivo per cui il difetto è sopravvissuto:
+// la regola non parla di una pastiglia, parla della RIGA, e una regola sulla
+// riga non può vivere in due posti che non si conoscono.
+//
+// LA PRECEDENZA, e il perché di quest'ordine:
+//   1. GUASTO (rosso). Se l'analisi non è riuscita, niente in questa riga è
+//      affidabile — nemmeno una data che per qualche ragione fosse rimasta lì.
+//   2. SCADENZA (ambra). «Dice quanto manca»: è il mestiere dell'ambra secondo
+//      il sistema di design, ed è la cosa che ha conseguenze fuori dall'app.
+//   3. STATO (ambra). «Da verificare» è un giudizio sulla LETTURA, non
+//      un'urgenza. ⚠️ Quando è la scadenza stessa a essere incerta la
+//      precedenza si rovescia da sé, senza un caso in più: la pastiglia della
+//      scadenza scende a neutro per conto proprio (§36) e l'ambra resta libera
+//      per lo stato — che a quel punto è l'unica cosa vera da dire.
+//
+// Chi perde NON sparisce: scende a neutro e tiene il suo testo. È il testo a
+// dire la cosa; il colore la classifica soltanto, e un badge colorato non dice
+// niente a chi i colori non li distingue.
+// ---------------------------------------------------------------------------
+/** `alta` e `media` sono i toni FORTI; `neutral` non compete con niente. */
+export type BadgeTone = 'alta' | 'media' | 'neutral';
+
+export function isStrongTone(tone: BadgeTone | null): boolean {
+  return tone === 'alta' || tone === 'media';
+}
+
+/** A neutro, conservando l'assenza: `null` è «la pastiglia non c'è». */
+function toNeutral(tone: BadgeTone | null): BadgeTone | null {
+  return tone === null ? null : 'neutral';
+}
+
+export interface RowBadgeTones {
+  /** `null` quando non c'è scadenza da mostrare. */
+  deadline: BadgeTone | null;
+  /** `null` quando lo stato è «analizzato», che non è una notizia. */
+  state: BadgeTone | null;
+}
+
+export function rowBadgeTones(
+  item: Pick<DocumentHubItem, 'state' | 'deadline' | 'deadlineRequiresVerification'>,
+): RowBadgeTones {
+  // Che tono CHIEDEREBBE ciascuna pastiglia guardando solo il proprio dato.
+  const state: BadgeTone | null = item.state === 'analyzed' ? null
+    : item.state === 'failed' ? 'alta'
+      : item.state === 'to_verify' ? 'media' : 'neutral';
+  const deadline: BadgeTone | null = item.deadline === null ? null
+    : item.deadlineRequiresVerification ? 'neutral' : 'media';
+
+  if (state === 'alta') return { deadline: toNeutral(deadline), state };
+  if (deadline === 'media') return { deadline, state: toNeutral(state) };
+  return { deadline, state };
+}
+
 /** Un'etichetta ripulita. Stessa regola in creazione e in confronto. */
 export function normalizeTagName(raw: string): string {
   return raw.replace(/\s+/g, ' ').trim().slice(0, MAX_TAG_LENGTH);

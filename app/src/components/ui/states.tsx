@@ -51,7 +51,24 @@ export function SkeletonLine({ width }: { width?: string }) {
   return <div className="skeleton skel-line" style={width ? { width } : undefined} />;
 }
 
-export function SkeletonKpiGrid() {
+/**
+ * Lo scheletro dei numeri. `lead` è la forma della Panoramica — una metrica
+ * grande e quattro piccole — e le altre quattro schermate che lo usano restano
+ * sulla griglia da quattro. ⚠️ Lo scheletro deve avere la FORMA di ciò che
+ * arriverà: se mostra quattro riquadri uguali e poi compare una scheda grande,
+ * la pagina salta, ed è proprio il salto che uno scheletro serve a evitare.
+ */
+export function SkeletonKpiGrid({ lead }: { lead?: boolean }) {
+  if (lead) {
+    return (
+      <div className="kpi-lead">
+        <div className="skeleton skel-kpi" />
+        <div className="kpi-lead-rest">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton skel-kpi" />)}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="kpi-grid">
       {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton skel-kpi" />)}
