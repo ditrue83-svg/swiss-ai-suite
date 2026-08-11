@@ -218,6 +218,22 @@ const GROUPS = {
       // binario — il sottoinsieme «latin» di Google non ha U+202F, lo spazio
       // che tutto il francese usa — dove nessuna rilettura del codice arriva.
       { script: 'fonts:check' },
+      // Fratello di `fonts:check`, e nato dallo stesso genere di difetto: là il
+      // buco stava DENTRO un binario, qui un byte solo rendeva binario un file
+      // di CODICE. Un NUL crudo in `email/store.ts` lo faceva saltare in
+      // silenzio da grep(1), e il conteggio dei fallback silenziosi girava da
+      // un giorno su un perimetro con un buco dentro. Sta prima di `docs:check`
+      // perché una pagina di stato che cita numeri misurati con una scansione
+      // vale quanto la scansione: se un file è invisibile, il numero è falso.
+      { script: 'bytes:check' },
+      // Il conteggio dei fallback silenziosi, che è una CRICCA e non un
+      // rapporto: esce rosso se ne compare uno nuovo, e rosso anche se ne
+      // sparisce uno senza che il numero dichiarato scenda con lui. È l'unico
+      // modo perché una misura scritta non invecchi — in una pagina sarebbe una
+      // frase vecchia, qui è un test rosso. ⚠️ Legge i byte con Node di
+      // proposito: la misura di prima la faceva `grep`, e `grep` saltava in
+      // silenzio l'unico file con un byte NUL dentro.
+      { script: 'fallback:scan' },
       // ⚠️ `--root` viene passato SOLO se chi lancia lo ha indicato. Senza, il
       // passo esce 3 («non eseguito») e il gruppo resta INCOMPLETO invece di
       // sembrare rosso: dalla directory di sviluppo due dei cinque controlli
@@ -257,6 +273,17 @@ const GROUPS = {
       // provarlo qui evita di dover invecchiare una riga vera per vederlo
       // reagire.
       { script: 'subsidy:health:self-test' },
+      // ⚠️ E il controllo dei byte si prova sui byte VERI che lo hanno
+      // motivato: il NUL della riga 282 di `email/store.ts` e i due BEL di
+      // `test-finance-unit.ts`, scritti dentro l'autoverifica come buffer.
+      // Un controllo che gira su un repository già pulito è verde per
+      // costruzione — non dice se morde.
+      { script: 'bytes:check:self-test' },
+      // Le regole del contatore provate sui casi che DEVONO reagire — e sulle
+      // CONTROPROVE, che qui contano il doppio: se la forma corretta
+      // (`const { data, error } = …`) venisse contata come un punto, correggere
+      // non farebbe scendere il numero e la cricca sarebbe inservibile.
+      { script: 'fallback:scan:self-test' },
       { script: 'test:ai-json-parser-unit' },
       { script: 'test:inbox-unit' },
       { script: 'test:tasks-unit' },

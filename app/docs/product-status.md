@@ -1024,23 +1024,103 @@ riga per riga di `supabase/functions/`:
 
 ⚠️ **Questo numero è una misura, non una promessa di correzione.**
 
-⚠️⚠️ **E VA LETTO INSIEME A UN SECONDO CONTEGGIO, perché i due non coincidono.**
-Il 189 viene dalla scansione a otto letture parallele, con i loro criteri. Un
-`grep` coerente sullo stesso perimetro — le due forme, `const { data } = await`
-e la chiamata il cui risultato non viene catturato — ne contava **193** alla
-partenza del 2026-08-11. Non si mescolano: da qui in avanti vale il grep, che
-chiunque può rifare in un secondo.
+### ⚠️⚠️ E IL NUMERO CHE DICHIARAVA DI ESSERE RIFACIBILE NON SI RIFACEVA
 
-| | Punti |
+Fino al 2026-08-11 questa pagina diceva «**147 restanti**», e aggiungeva che
+quel conteggio vale «perché chiunque può rifarlo in un secondo e ottenere lo
+stesso numero». Rifacendolo si ottiene un numero diverso. Le ragioni sono due, e
+sono lezioni distinte.
+
+**1. Il comando non era scritto da nessuna parte.** La pagina descriveva il
+criterio a parole — «le due forme» — e non riportava la riga da eseguire. Un
+criterio a parole non è rifacibile: chi lo rifà ottiene un numero vicino e
+diverso, e nessuno può dire quale dei due sia sbagliato.
+
+**2. ⚠️⚠️ Il comando era `grep`, e `grep` non vedeva tutto.**
+`supabase/functions/_shared/email/store.ts` conteneva un **byte NUL scritto
+crudo** (riga 282, dentro un `.join(…)` che separa i campi di un'impronta). Per
+`grep(1)` di macOS un file con un NUL è **binario**: lo salta, non lo cerca, e
+non lo dice. Ventisettemila byte — il modulo della posta, **l'unico con uso
+reale in produzione**, 148 email sincronizzate — erano fuori da ogni scansione
+fatta con grep. Il numero autorevole era il numero di un perimetro con un buco
+dentro.
+
+E il byte era invisibile anche a chi leggeva: un NUL stampato si vede come uno
+**spazio**, quindi la riga diceva `.join(' ')`. Chi l'avesse «ripulita» mettendo
+uno spazio vero avrebbe cambiato l'impronta di ogni email già acquisita, e
+nessuna rilettura del diff se ne sarebbe accorta.
+
+Corretto il 2026-08-11 scrivendo il separatore come escape (`'\0'`, stesso
+valore a runtime, stessa impronta — verificato) e presidiato da
+**`npm run bytes:check`**, che fa fallire la CI se un byte di controllo crudo
+rientra in un file tracciato.
+
+### Il conteggio, adesso: un comando, non una frase
+
+```bash
+npm run fallback:scan              # il numero, per forma e per file
+npm run fallback:scan -- --report  # riga per riga
+```
+
+Legge i byte con Node e li analizza con **il parser TypeScript vero**
+(`ts.createSourceFile`): niente grep, niente espressioni regolari sul sorgente.
+**La misura non può più essere azzoppata dal difetto che sta misurando**, non si
+fa ingannare da un commento che cita la forma sbagliata, e dà lo stesso numero
+su macOS e in CI. Le regole — e ciò che dichiaratamente NON vedono — stanno in
+testa a `scripts/fallback-scan.mjs`.
+
+La definizione è una sola, e meccanica: **una chiamata al database il cui errore
+non viene MAI consultato.** PostgREST non solleva — restituisce `{data, error}`
+— quindi se `error` non viene legato a un nome, o viene legato e mai letto, il
+guasto sparisce e `data` vale `null` esattamente come quando la riga non c'è.
+
+| Forma | Punti |
 |---|---|
-| all'inizio del 2026-08-11 (commit `6cd9cd3`) | **193** |
-| corretti in cinque interventi | **46** |
-| **restanti** | **147** |
+| **l'errore non viene nemmeno chiesto** — la destrutturazione non prende `error`: è irraggiungibile | 87 |
+| **il risultato non viene raccolto** — `await sb…` come istruzione a sé: l'oggetto `{data, error}` è distrutto appena creato | 86 |
+| **l'errore è lì e non lo guarda nessuno** — il risultato è legato per intero, ma in tutta la funzione non c'è una lettura di `.error` | 17 |
+| **TOTALE**, in 35 file su 103 | **190** |
 
-I cinque: generazione dei promemoria (4) · consegna e composizione dell'email
-(8) · sincronizzazione del calendario (4) · i caricatori di fatti delle
-automazioni (20) · la coda delle automazioni e il contatore della pausa (7),
-più le letture dello store del calendario.
+⚠️ **Dodici punti restano FUORI da questo numero, ed è una scelta.** Sono quelli
+in cui l'errore *è* letto e poi collassato su un valore plausibile — `if (error
+|| !data) return null`, `if (!res.error) { … }` senza `else`, un ternario che
+ripiega sul fuso predefinito. Per la regola di casa sono fallback silenziosi
+eccome, ma deciderli richiede di sapere se quel `null` è un esito legittimo per
+*quella* funzione: è una lettura, non una misura, e un numero con dentro dei
+falsi positivi non lo si può usare come cricca. Fuori anche l'errore guardato
+solo attraverso un campo (`if (code && code !== '23505')`), di cui ce n'è uno
+vero in `upsertMessage`.
+
+⚠️⚠️ **E QUESTO 190 NON SI SOTTRAE AL 147, né al 189.** Sono misure con criteri
+diversi, e mescolarle sarebbe il terzo errore della stessa famiglia:
+
+| | Punti | |
+|---|---|---|
+| triage a otto letture parallele | 189 | criteri di ciascun lettore |
+| un `grep`, il 2026-08-11 | 193 → 147 | **cieco su `email/store.ts`** |
+| la prima stesura di `fallback:scan`, a regex | 137 | ne mancava circa il 28% |
+| **`npm run fallback:scan`, col parser** | **190** | regole scritte ed eseguibili |
+
+⚠️ **La stesura a regex è durata mezz'ora e va raccontata, perché ha ripetuto lo
+stesso errore in piccolo.** Contava 137 e ne mancava più di un quarto: non vedeva
+`const { count } = await …` (pretendeva la parola `data`), non vedeva le
+destrutturazioni dentro `Promise.all`, e soprattutto non *poteva* vedere la forma
+«il risultato è legato per intero e `.error` non lo legge nessuno» — per
+deciderla bisogna sapere che cosa succede nel resto della funzione, cioè serve un
+albero sintattico, non una riga di testo. Una misura è affidabile quanto lo
+strumento che la prende, ed è la terza volta in due giorni che questo progetto lo
+impara sulla stessa domanda.
+
+⚠️ **E non è più una frase che invecchia: è una cricca.** `fallback:scan` sta nel
+gruppo `quality` e confronta il numero misurato con quello dichiarato in
+`ATTESI`. Esce rosso se ne compare uno nuovo, **e rosso anche se ne sparisce uno
+senza che il numero dichiarato scenda con lui**: correggere un punto e
+aggiornare il conteggio diventano lo stesso commit, per forza.
+
+I cinque interventi già fatti (misurati con il grep di allora): generazione dei
+promemoria (4) · consegna e composizione dell'email (8) · sincronizzazione del
+calendario (4) · i caricatori di fatti delle automazioni (20) · la coda delle
+automazioni e il contatore della pausa (7).
 
 #### ⚠️⚠️ Il peggiore dei sedici non era fra i promemoria: faceva PERDERE lavoro
 
@@ -1074,6 +1154,57 @@ scartando l'errore, quindi `failures` ripartiva da 1 a ogni giro e la soglia
 della pausa automatica non arrivava mai. Il commento sopra quella funzione
 chiama «fallire diecimila volte» il difetto peggiore possibile su questo
 progetto.
+
+#### ⚠️⚠️ Il file che nessuna scansione aveva letto: 22 punti nel modulo della posta
+
+Tolto il byte NUL, `_shared/email/store.ts` è entrato per la prima volta in una
+scansione: **22 punti**, il file più carico del perimetro. Ed è il modulo con
+l'uso reale più alto del prodotto — 148 email sincronizzate, contro zero
+promemoria e zero conversazioni dell'assistente.
+
+**Il peggiore è `listLinkedDocuments` (riga 544), e non produce un'omissione:
+produce una RISPOSTA SBAGLIATA presentata come completa.** La lettura di
+`email_message_documents` scarta l'errore, `data` è `null`, `rows` diventa `[]`
+e la funzione ritorna «per questo messaggio non è mai stato creato alcun
+documento». Il chiamante (`importAndAnalyze`) non trova né allegati freschi né
+documenti collegati, ricade su `{kind:'body'}`, e manda alla pipeline **il corpo
+del messaggio** mentre la fattura PDF già importata resta in archivio, collegata
+e non letta.
+
+La pipeline gira davvero, la quota si consuma davvero, l'analisi si salva
+davvero, e il messaggio si chiude `done` con `error_code` null. L'utente legge
+un'analisi completa e sicura di sé — scadenza, importi, citazioni — estratta
+dalle due righe di accompagnamento invece che dal documento. Le citazioni sono
+perfino verificabili: contro il documento sbagliato. È la regola di casa
+violata alla lettera: *un guasto è un errore esplicito, mai un risultato
+plausibile.*
+
+⚠️ E c'è l'aggravante scritta nella docstring della funzione stessa:
+`listLinkedDocuments` **esiste** per impedire che un documento già creato venga
+scambiato per lavoro già fatto, dopo che quattordici messaggi reali erano
+rimasti con il documento in archivio e nessuna analisi. Il presidio scritto per
+quel difetto lo reintroduce, in forma peggiore, appena la sua lettura fallisce —
+e proprio nel momento per cui è stato scritto, il ritentativo dopo
+un'interruzione, cioè quando i documenti esistono già.
+
+Gli altri tre che meritano il nome per esteso:
+
+- **`readSecrets` (98)** — un guasto di lettura non si distingue da «non ci sono
+  segreti», e `getValidAccessToken` ne deduce `AUTH_EXPIRED`: la connessione
+  passa a `reauth_required` e la posta si ferma **finché una persona non rifà
+  l'OAuth**. Un singolo guasto transitorio richiede un intervento umano.
+- **`createOrReuseDocument` (497)** — l'update che scrive `storage_path` è
+  scartato e la funzione ritorna comunque `{ storagePath }`: il valore di
+  ritorno **afferma** che il percorso è registrato mentre nel database è `NULL`.
+  Il conto arriva al ritentativo, come `ANALYSIS_FAILED` per sempre su un file
+  che in archivio è intatto.
+- **`startSyncRun` (205)** — nessuna riga in `email_sync_runs`: la
+  sincronizzazione avviene per intero, e il registro non dice che è andata male,
+  dice che **non è successo niente**.
+
+Nessuno di questi è ancora corretto: sono il perimetro dell'intervento
+successivo. `releaseLease` (181) è l'unico del file che si autoripara — il lease
+scade da sé dopo 300 secondi.
 
 #### Che cosa hanno insegnato i cinque interventi
 
