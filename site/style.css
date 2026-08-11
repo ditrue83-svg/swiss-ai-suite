@@ -219,7 +219,7 @@ p, li { text-wrap: pretty; }
    cambiare la resa visiva (26px resi + 9px sopra e sotto). */
 .lang-link { position: relative; }
 .lang-link::after { content: ''; position: absolute; inset: -9px 0; }
-.lang-link:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
+.lang-link:hover { background: var(--fill-subtle); color: var(--ink); text-decoration: none; }
 .lang-current { color: var(--accent-text); font-weight: 600; background: var(--accent-soft); }
 
 .btn {
@@ -517,7 +517,7 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 .ticks .ic { width: 18px; height: 18px; margin-top: 3px; color: var(--ink-soft); stroke-width: 2.25; }
 .trust-card { display: grid; gap: var(--sp-2); }
 .trust-card h3 { font-size: var(--ms-fs-h3); }
-.trust-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-soft); display: grid; place-items: center; }
+.trust-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--fill-subtle); color: var(--ink-soft); display: grid; place-items: center; }
 .trust-ico .ic { width: 18px; height: 18px; }
 
 /* ---------- 02 · esempio di risultato: il dossier ----------
@@ -642,7 +642,7 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 /* Chip di stato ed etichette dell'estratto. */
 .chip {
   display: inline-flex; align-items: center; gap: 5px; font-size: var(--ms-fs-label); font-weight: 600;
-  padding: 2px var(--sp-2); border-radius: 99px; background: var(--surface-2); color: var(--ink-soft);
+  padding: 2px var(--sp-2); border-radius: 99px; background: var(--fill-subtle); color: var(--ink-soft);
   white-space: nowrap;
 }
 /* Rosso solo per l'urgenza, con il colore del TESTO e non del riempimento. */
@@ -679,7 +679,7 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
    differenzieranno, e una nota che dice come stanno le cose. */
 .axes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4) var(--sp-6); margin-top: var(--sp-6); }
 .axis { display: flex; gap: var(--sp-3); align-items: flex-start; border-top: 1px solid var(--line); padding-top: var(--sp-4); }
-.axis-ico { width: 30px; height: 30px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-soft); display: grid; place-items: center; }
+.axis-ico { width: 30px; height: 30px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--fill-subtle); color: var(--ink-soft); display: grid; place-items: center; }
 .axis-ico .ic { width: 17px; height: 17px; }
 .axis h3 { font-size: var(--ms-fs-body); font-weight: 600; }
 .axis p { color: var(--muted); font-size: var(--ms-fs-meta); margin-top: 2px; }
@@ -695,7 +695,7 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
 /* ---------- 08 · contatti ---------- */
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); margin-top: var(--ms-sp-half); max-width: 960px; }
 .contact-item { display: flex; gap: var(--sp-3); align-items: flex-start; border-top: 1px solid var(--line); padding-top: var(--sp-4); }
-.contact-ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-soft); display: grid; place-items: center; }
+.contact-ico { width: 34px; height: 34px; flex-shrink: 0; border-radius: var(--radius-sm); background: var(--fill-subtle); color: var(--ink-soft); display: grid; place-items: center; }
 .contact-ico .ic { width: 18px; height: 18px; }
 .contact-label { font-size: var(--ms-fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ms-ls-label); color: var(--muted); }
 .contact-value { font-weight: 600; margin-top: 1px; }
