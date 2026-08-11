@@ -17,7 +17,19 @@ export const SCHEMA_VERSION = 2;
 export const PROMPT_VERSION = 'admin-ai-2026-07-25-multilang';
 
 // ---- Enum normalizzati ------------------------------------------------------
-export const LANGUAGES = ['it', 'de', 'fr'] as const;
+// ⚠️⚠️ `en` e `other` ci sono dal 2026-08-11, e la loro assenza era un DIFETTO,
+// non una semplificazione. L'elenco era `it | de | fr`: un documento inglese non
+// era rappresentabile, quindi la validazione ripiegava sul primo valore e
+// scriveva «italiano». Misurato in produzione: **19 analisi su 19 dichiarate
+// `it`**, con i titoli in inglese sotto gli occhi di chiunque aprisse l'elenco.
+// Il rilevatore girava: non aveva un posto dove mettere la risposta giusta.
+//
+// `other` non è un ripiego di comodo: è la risposta onesta per una lingua che
+// non sappiamo nominare, e vale più di una lingua sbagliata detta con sicurezza.
+// ⚠️ La lingua del DOCUMENTO e la lingua della RISPOSTA restano due cose
+// diverse: le bozze si scrivono in it/de/fr, e chi le compone ripiega da sé,
+// dichiarandolo sul posto.
+export const LANGUAGES = ['it', 'de', 'fr', 'en', 'other'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 export const DOCUMENT_TYPES = [
@@ -68,6 +80,14 @@ export interface AiAnalysis {
   deadline: {
     date: string | null;
     type: DeadlineType;
+    /**
+     * L'azienda deve fare qualcosa entro quella data, o è una data del mittente?
+     *
+     * ⚠️ Facoltativo di proposito, e i tre stati contano. `undefined` è
+     * «non chiesto» — le analisi precedenti al 2026-08-11 non hanno questo campo
+     * e le loro scadenze restano valide. Solo un `false` esplicito declassa.
+     */
+    obligesCompany?: boolean;
     sourceText: string | null;
     confidence: number;
     evidence: AiEvidence | null;
@@ -142,6 +162,7 @@ export const ANALYSIS_JSON_SCHEMA = obj({
   deadline: obj({
     date: nullable({ type: 'string' }),
     type: { type: 'string', enum: [...DEADLINE_TYPES] },
+    obligesCompany: { type: 'boolean' },
     sourceText: nullable({ type: 'string' }),
     confidence: { type: 'number' },
     evidence: evidenceSchema,

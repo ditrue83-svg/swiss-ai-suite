@@ -128,6 +128,52 @@ console.log('1) Scadenza (§11/§20)');
   const r = validateAndNormalize(ai as never, EXTRACTION);
   ok(r.deadline.date === null, 'data inesistente (31 febbraio) → azzerata');
 }
+// ---------------------------------------------------------------------------
+// ⚠️⚠️ CHI IMPONE LA DATA — il caso REALE del 2026-08-11.
+// Un'email di Stripe sulle nuove tariffe di Radar ha prodotto «Scadenza
+// 22.01.2027» nel cruscotto operativo. La data c'era, scritta a chiare lettere,
+// e la citazione era verificabile: nessuna delle guardie esistenti poteva
+// vederla, perché guardavano tutte la FORMA della data. Mancava la domanda su
+// CHI fosse obbligato — e l'azienda, entro quel giorno, non doveva fare niente.
+{
+  const TESTO = 'Nuove tariffe di Radar a partire dal 22 gennaio 2027. '
+    + 'Ti verrà addebitato CHF 0.05 per transazione.';
+  const estrazione: ExtractionResult = {
+    fullText: TESTO, pages: [{ pageNumber: 1, text: TESTO }], extractionMethod: 'text',
+  };
+  const listino = () => {
+    const ai = base();
+    ai.language = 'it' as never;
+    ai.deadline = {
+      date: '2027-01-22', type: 'explicit', obligesCompany: false,
+      sourceText: 'a partire dal 22 gennaio 2027', confidence: 0.9,
+      evidence: { quote: 'Nuove tariffe di Radar a partire dal 22 gennaio 2027', pageNumber: 1 },
+    } as never;
+    return ai;
+  };
+
+  const r = validateAndNormalize(listino() as never, estrazione);
+  ok(r.deadline.date === null && r.deadline.type === 'none',
+    'entrata in vigore di un listino di un fornitore: NON è una scadenza dell’azienda', String(r.deadline.date));
+
+  // ⚠️ LA COPPIA. La stessa data, la stessa forma, la stessa citazione: cambia
+  // solo CHI è obbligato. Se questa cadesse, la correzione starebbe cancellando
+  // scadenze vere invece di distinguerle.
+  const vera = listino();
+  (vera.deadline as unknown as { obligesCompany: boolean }).obligesCompany = true;
+  const rv = validateAndNormalize(vera as never, estrazione);
+  ok(rv.deadline.date === '2027-01-22' && rv.deadline.type === 'explicit',
+    'CONTROPROVA: identica in tutto, ma se obbliga l’azienda resta una scadenza', String(rv.deadline.date));
+
+  // ⚠️ IL TERZO STATO: le analisi prodotte prima che il campo esistesse non
+  // hanno `obligesCompany`. Il silenzio NON declassa, o una correzione di oggi
+  // cancellerebbe le scadenze di ieri.
+  const vecchia = listino();
+  delete (vecchia.deadline as unknown as Record<string, unknown>).obligesCompany;
+  const rvv = validateAndNormalize(vecchia as never, estrazione);
+  ok(rvv.deadline.date === '2027-01-22',
+    'campo assente (analisi anteriori al campo): la scadenza resta — il silenzio non è un «no»');
+}
 {
   const ai = base();
   ai.deadline = { date: null, type: 'none', sourceText: null, confidence: 0, evidence: { quote: '', pageNumber: null } } as never;
@@ -221,7 +267,27 @@ console.log('\n6) Valori fuori range e campi malformati (§19)');
   const r = validateAndNormalize(ai as never, EXTRACTION);
   ok(r.overallConfidence >= 0 && r.overallConfidence <= 1, 'confidence riportata nell\'intervallo 0..1', String(r.overallConfidence));
   ok(r.documentType.value === 'other', 'tipo documento non ammesso → "other"', r.documentType.value);
-  ok(['it', 'de', 'fr'].includes(r.language), 'lingua non ammessa → valore di ripiego valido', r.language);
+  // ⚠️⚠️ QUESTA ASSERZIONE È CAMBIATA IL 2026-08-11, e prima era complice del
+  // difetto: chiedeva solo che il ripiego fosse «uno dei tre», ed era `it`.
+  // Siccome l'inglese non era nell'elenco, OGNI documento inglese cadeva lì:
+  // 19 analisi su 19 in produzione dichiaravano «italiano» su testi inglesi.
+  // Un ripiego che coincide con una risposta legittima è indistinguibile da
+  // essa — la regola di casa, applicata a un enum.
+  ok(r.language === 'other',
+    'lingua non riconosciuta → «other», MAI una lingua vera: un ripiego non deve somigliare a una risposta', r.language);
+}
+{
+  // ⚠️ LA COPPIA che tiene onesto il ripiego: l'inglese ora è rappresentabile,
+  // quindi un documento inglese NON deve più finire in `other` né in `it`.
+  const ai = base();
+  ai.language = 'en' as never;
+  ok(validateAndNormalize(ai as never, EXTRACTION).language === 'en',
+    'un documento inglese si dichiara «en»: il rilevatore ha dove mettere la risposta giusta');
+
+  const de = base();
+  de.language = 'de' as never;
+  ok(validateAndNormalize(de as never, EXTRACTION).language === 'de',
+    'CONTROPROVA: le tre lingue del prodotto continuano a passare intatte');
 }
 {
   const r = validateAndNormalize({} as never, EXTRACTION);

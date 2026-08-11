@@ -27,6 +27,7 @@ import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
 import { nextStepFor } from '../src/features/documents/nextStep';
+import { titoloDocumento, nomeFileInformativo } from '../src/lib/documentTitle';
 import { documentTaskDraft, runCreateFromDocument } from '../src/features/tasks/documentToTask';
 import type {
   ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
@@ -515,6 +516,56 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
       });
     } catch { sollevato = true; }
     ok(sollevato, 'se l’attività non si crea, l’errore arriva a chi ha premuto');
+  }
+}
+
+// ===========================================================================
+console.log(`\n${B}Il titolo che non si sa non si inventa${X}`);
+// ===========================================================================
+// ⚠️⚠️ IL CASO REALE del 2026-08-11: nel Document Hub c'era un documento
+// intitolato «2.5». Il file era `2.5.pdf`, il titolo veniva dal nome del file
+// meno l'estensione, e l'analisi aveva risposto onestamente `subject: null`.
+// Un fallimento presentato come un risultato: chi leggeva l'elenco non aveva
+// modo di sapere che nessuno era riuscito a dire di che documento si trattasse.
+{
+  const r = titoloDocumento({ nomeFile: '2.5.pdf' });
+  ok(r.origine === 'non_determinato',
+    '«2.5.pdf»: l’oggetto NON è determinato, e l’esito lo dice invece di far finta');
+  ok(r.nomeFile === '2.5.pdf',
+    '…e il nome del file resta, perché è l’unica cosa che permette di riconoscere la riga');
+}
+{
+  // LE CONTROPROVE: se un nome dice qualcosa, non lo si butta via.
+  const veri = ['Fattura Swisscom marzo.pdf', 'Lohnausweis 2025.pdf', 'decisione-AFC.pdf', 'contratto affitto.docx'];
+  for (const n of veri) {
+    ok(titoloDocumento({ nomeFile: n }).origine === 'nome_file',
+      `«${n}» dice qualcosa: resta il titolo`);
+  }
+}
+{
+  // ⚠️ Non basta chiedersi «è un numero?»: questi hanno lettere e non dicono
+  // niente lo stesso. Sono i nomi che mettono scanner, fotocamere e sistemi.
+  const muti = ['2.5.pdf', 'IMG_4821.jpg', 'Scan_2026-08-11.pdf', 'documento (3).pdf', 'Nuovo documento.pdf', 'untitled.pdf', '20260811.pdf', '2.5'];
+  for (const n of muti) {
+    ok(!nomeFileInformativo(n), `«${n}» non dice niente sul contenuto`);
+  }
+}
+{
+  // La precedenza, provata nell’ordine che conta.
+  ok(titoloDocumento({ titoloScritto: 'Disdetta locazione', oggettoAnalisi: 'Altro', nomeFile: 'x.pdf' }).origine === 'persona',
+    'chi scrive il titolo vince su tutto: nessuno sa meglio di lei');
+  ok(titoloDocumento({ oggettoAnalisi: 'Lohndeklaration 2025', nomeFile: '2.5.pdf' }).titolo === 'Lohndeklaration 2025',
+    'l’oggetto letto DAL DOCUMENTO batte il nome del file, che l’ha scelto un apparecchio');
+  ok(titoloDocumento({ oggettoAnalisi: '   ', nomeFile: '2.5.pdf' }).origine === 'non_determinato',
+    'un oggetto fatto di spazi non è un oggetto');
+}
+{
+  // ⚠️ La frase esiste nelle tre lingue e porta il segnaposto del file: senza,
+  // la riga direbbe che qualcosa non si sa senza dire DI CHE COSA.
+  for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
+    const frase = (dict as Record<string, any>).adminAi?.titleUndetermined as string | undefined;
+    ok(typeof frase === 'string' && frase.includes('{file}'),
+      `${lang}: la frase dell’oggetto non determinato esiste e nomina il file`);
   }
 }
 

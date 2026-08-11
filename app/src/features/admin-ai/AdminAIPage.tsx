@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import { titoloDocumento } from '../../lib/documentTitle';
 import { documentService } from '@/services/documentService';
 import { analysisService } from '@/services/analysisService';
 import { sha256Hex } from '@/lib/hash';
@@ -37,6 +38,20 @@ export function AdminAIPage() {
   const { showToast } = useToast();
   const { locale } = useI18n();   // §42 — i testi generati seguono la lingua dell'app
   const t = useT();
+
+  // ⚠️ UN SOLO POSTO dove nasce il titolo di un documento caricato. Le due
+  // strade — il caricamento diretto e quello con anteprima — lo derivavano
+  // ciascuna per conto suo con lo stesso `replace(/\.[^.]+$/, '')`, ed è così
+  // che `2.5.pdf` è diventato un documento intitolato «2.5» mentre l'analisi
+  // dichiarava onestamente `subject: null`. Quando il nome del file non dice
+  // niente, il titolo lo DICHIARA invece di fingere — e la frase la danno i
+  // dizionari, perché il prodotto è trilingue.
+  const titoloPerFile = (nomeFile: string, scritto: string): string => {
+    const esito = titoloDocumento({ titoloScritto: scritto, nomeFile });
+    return esito.origine === 'non_determinato'
+      ? t('adminAi.titleUndetermined', { file: esito.nomeFile ?? nomeFile })
+      : esito.titolo;
+  };
   const companyId = activeCompanyId as string;
   const companyName = activeCompany?.legalName ?? null;
 
@@ -130,7 +145,7 @@ export function AdminAIPage() {
 
       const doc = existing ?? await documentService.create({
         companyId, userId: user.id,
-        title: docTitle || src.file.name.replace(/\.[^.]+$/, ''),
+        title: titoloPerFile(src.file.name, docTitle),
         sourceType: 'upload',
         file: src.file,
         fileHash,
@@ -197,7 +212,7 @@ export function AdminAIPage() {
     // cui si può dare un nome al documento: nell'archivio non si rinomina.
     // Prima questo campo lo leggeva solo l'analisi del testo incollato; tolta
     // quella, senza questa riga il campo resterebbe lì a non fare nulla.
-    const derivedTitle = title.trim() || file.name.replace(/\.[^.]+$/, '');
+    const derivedTitle = titoloPerFile(file.name, title);
     try {
       const outcome = await extractFromFile(file);
       setTitle(derivedTitle);
