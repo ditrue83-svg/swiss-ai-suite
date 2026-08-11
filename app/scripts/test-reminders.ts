@@ -1,6 +1,13 @@
 // ============================================================================
-// AI-Swisse — Il MOTORE dei promemoria, eseguito contro il DATABASE REALE.
+// AI-Swisse — Il MOTORE dei promemoria, ESEGUITO contro un database vero.
 //   npm run test:reminders
+//
+// ⚠️ QUALE database dipende da `.env.test`, e la differenza va detta invece che
+// lasciata intendere: in locale è la PRODUZIONE (regola di casa), nella CI è un
+// database EFFIMERO appena migrato. Le asserzioni qui sotto non nominano nessuno
+// dei due — l'host lo stampa l'intestazione, prima di ogni esecuzione. Una riga
+// verde che dichiara «contro la produzione» mentre gira contro un database
+// vuoto sarebbe un'etichetta che mente.
 //
 // ⚠️ PERCHÉ ESISTE. `notifications-worker` è in esercizio dal 2026-07-27, il suo
 // scheduler riesce ogni quindici minuti, e in produzione `notifications` è a
@@ -11,7 +18,7 @@
 // Lo zero, misurato, è CORRETTO: le quattro attività vere scadono a settembre,
 // e la finestra dei promemoria arriva a otto giorni. Ma «corretto» e «rotto»
 // avevano lo stesso aspetto, ed è la ragione per cui questo file esiste: qui il
-// motore gira sul database di produzione e la riga o compare o non compare.
+// motore gira davvero, e la riga o compare o non compare.
 //
 // ⚠️⚠️ LA PRUDENZA CHE QUESTO FILE DEVE AVERE. `generateReminders` NON filtra
 // per azienda: legge le attività di TUTTI dentro la finestra. Eseguirla con
@@ -22,7 +29,8 @@
 //     qualcosa che non è nostro il test si FERMA invece di scrivere;
 //   · l'azienda è usa-e-getta, e una pulizia incompleta fa fallire il test.
 //
-// Regola di casa: il database di `.env.test` è la PRODUZIONE.
+// Le tre precauzioni valgono anche quando il database è effimero: una di esse
+// che si accendesse solo «in produzione» sarebbe provata solo dove non serve.
 // ============================================================================
 import WebSocket from 'ws';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -31,14 +39,14 @@ import type { NotifyDeps } from '../supabase/functions/_shared/calendar/notify.t
 
 if (!globalThis.WebSocket) (globalThis as { WebSocket?: unknown }).WebSocket = WebSocket;
 
-const URL = process.env.SUPABASE_URL;
+const DB_URL = process.env.SUPABASE_URL;
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!URL || !SERVICE) {
+if (!DB_URL || !SERVICE) {
   console.error('Mancano SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY in .env.test');
   process.exit(2);
 }
 
-const admin = createClient(URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
+const admin = createClient(DB_URL, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -58,7 +66,13 @@ const SCADENZA = '2028-06-15';
 const FINESTRA = { da: '2028-05-09', a: '2028-06-16' };
 
 async function main() {
-  console.log(`${B}AI-Swisse — Il motore dei promemoria sul database reale${X}`);
+  console.log(`${B}AI-Swisse — Il motore dei promemoria, eseguito${X}`);
+  // ⚠️ L'HOST si stampa, e non è un vezzo: «ho lanciato test:reminders» e «ho
+  // lanciato test:reminders contro la produzione» sono due frasi diverse. È la
+  // stessa ragione per cui lo stampa `run-test-suite` prima di ogni gruppo che
+  // scrive. L'host non è un segreto: sta nel bundle pubblicato come
+  // VITE_SUPABASE_URL.
+  console.log(`${DIM}database: ${new URL(DB_URL!).host}${X}`);
   console.log(`${DIM}istante simulato: ${ISTANTE.toISOString()} · finestra ${FINESTRA.da} → ${FINESTRA.a}${X}\n`);
 
   // ---- 0. Il cancello: la finestra è nostra? ------------------------------
@@ -76,7 +90,7 @@ async function main() {
     console.error(`  di questo file (ISTANTE e SCADENZA) su un intervallo vuoto, e rileggi il perché in cima.${X}`);
     process.exit(2);
   }
-  check('la finestra scelta è VUOTA in produzione: nessun promemoria vero verrà toccato', true);
+  check('la finestra scelta è VUOTA su questo database: nessuna attività che non sia nostra verrà toccata', true);
 
   // ---- 1. L'azienda usa-e-getta -------------------------------------------
   const email = `promemoria+${Date.now()}@example.com`;
@@ -114,7 +128,13 @@ async function main() {
     primo.tasksScanned === 1,
     `lette: ${primo.tasksScanned} — se è più di una qualcosa è entrato nella finestra fra il cancello e adesso`);
 
-  check('⚠️⚠️ IL MOTORE DEI PROMEMORIA GENERA — prima volta contro il database di produzione, dal 2026-07-27',
+  // ⚠️ L'etichetta NON nomina la produzione, e non è una sfumatura: questa
+  // suite gira anche nella CI, dove `.env.test` punta a un database EFFIMERO.
+  // Una riga verde che dichiara «contro la produzione» mentre gira contro un
+  // database vuoto è un'etichetta che mente, ed è la cosa che questo
+  // repository combatte in ogni suo controllo. Quale database sia lo dice
+  // l'intestazione, che stampa l'host prima di ogni esecuzione.
+  check('⚠️⚠️ IL MOTORE DEI PROMEMORIA GENERA — la funzione che dal 2026-07-27 non aveva mai prodotto una riga',
     primo.created === 1, JSON.stringify(primo));
 
   const { data: nate, error: nateErr } = await admin.from('notifications')
