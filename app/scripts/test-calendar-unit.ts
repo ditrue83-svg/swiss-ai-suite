@@ -41,7 +41,7 @@ import { buildReminderEmail, createResendProvider } from '../supabase/functions/
 // ⚠️ `notify.ts` è PORTABILE: importa solo store/reminders/i18n/email, mai
 // `runtime.ts`. È ciò che permette di eseguire qui la funzione di consegna vera
 // invece di una sua imitazione.
-import { deliverEmails, type NotifyDeps } from '../supabase/functions/_shared/calendar/notify.ts';
+import { deliverEmails, generateReminders, type NotifyDeps } from '../supabase/functions/_shared/calendar/notify.ts';
 import {
   MAX_PER_DAY, addDays, agendaGroups, buildMonthGrid, gridRange, groupByDay,
   overdueByDays, overdueItems, shiftMonth, shortTitle, todayISO,
@@ -1095,6 +1095,307 @@ section('12 · La CONSEGNA: `deliverEmails` eseguita davvero (§44/§79/§144)')
       String(f.viste[0]?.body.subject));
     ok(String(f.viste[0]?.body.text).includes('Sie erhalten diese Nachricht'),
       'e anche la riga che spiega perché il messaggio arriva');
+  }
+}
+
+// ===========================================================================
+section('13 · La GENERAZIONE: `generateReminders` eseguita per la prima volta');
+// ===========================================================================
+//
+// ⚠️ PERCHÉ QUESTA SEZIONE ESISTE, e perché arriva con tre settimane di
+// ritardo. `generateReminders` è il motore dei promemoria: decide se
+// un'attività merita un avviso e lo scrive. All'11 agosto 2026 non l'aveva mai
+// eseguita NESSUNO — né un test né la produzione, dove `notifications` è a
+// zero righe da quando lo scheduler è acceso, il 2026-07-27.
+//
+// Era invisibile due volte:
+//   · al controllo 8 di `test:operations`, che ragiona per FILE: la sezione 12
+//     importa `deliverEmails` dallo stesso `notify.ts`, e tanto bastava a farlo
+//     sembrare coperto. È il difetto che il controllo 9 è nato per vedere;
+//   · a chi guardava la produzione, perché lo zero è CORRETTO — le quattro
+//     attività vere scadono il 10 e il 30 settembre, fuori dalla finestra.
+//
+// E qui sta il punto di tutta la sezione: finché la funzione scartava l'errore
+// del database, **lo zero giusto e lo zero rotto erano la stessa riga di
+// report**. I casi 13.3 e 13.4 sono la coppia che li separa, e vanno letti
+// insieme: uno pretende un'eccezione, l'altro pretende che NON ce ne sia.
+{
+  type Row = Record<string, unknown>;
+
+  /**
+   * PostgREST finto, con una differenza rispetto a quello della sezione 12: sa
+   * FALLIRE. `guasti` associa a una tabella l'errore che ogni sua query
+   * restituisce — è l'unico modo per provare che un guasto non diventi uno zero.
+   */
+  function sbFinto(
+    tabelle: Record<string, Row[]>,
+    opts: {
+      guasti?: Record<string, { code: string; message: string }>;
+      inseriti?: Row[];
+      /** Millisecondi di attesa ATTIVA su una tabella. Vedi 13.6. */
+      ritardo?: Record<string, number>;
+      /** Quante volte ogni tabella è stata interrogata. Vedi 13.6. */
+      letture?: Record<string, number>;
+    } = {},
+  ) {
+    const guasti = opts.guasti ?? {};
+    const inseriti = opts.inseriti ?? [];
+    const ritardo = opts.ritardo ?? {};
+    const letture = opts.letture ?? {};
+    // ⚠️ Attesa ATTIVA, non `setTimeout`. Serve una garanzia monotòna — «da qui
+    // in poi sono passati almeno N ms» — non una promessa dello scheduler: un
+    // test sul budget di tempo che dipende da un timer è un test che ogni tanto
+    // è verde per fortuna.
+    const attendi = (ms: number) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { /* attesa attiva */ } };
+    const from = (tabella: string) => {
+      letture[tabella] = (letture[tabella] ?? 0) + 1;
+      if (ritardo[tabella]) attendi(ritardo[tabella]);
+      const filtri: ((r: Row) => boolean)[] = [];
+      let inserita: Row | null = null;
+      const errore = guasti[tabella] ?? null;
+      const righe = () => (tabelle[tabella] ?? []).filter((r) => filtri.every((f) => f(r)));
+      const api = {
+        select: () => api,
+        eq: (c: string, v: unknown) => { filtri.push((r) => r[c] === v); return api; },
+        neq: (c: string, v: unknown) => { filtri.push((r) => r[c] !== v); return api; },
+        is: (c: string, v: unknown) => { filtri.push((r) => (r[c] ?? null) === v); return api; },
+        gte: (c: string, v: string) => { filtri.push((r) => String(r[c]) >= v); return api; },
+        lte: (c: string, v: string) => { filtri.push((r) => String(r[c]) <= v); return api; },
+        in: (c: string, vs: unknown[]) => { filtri.push((r) => vs.includes(r[c])); return api; },
+        limit: () => api,
+        insert: (p: Row) => { inserita = p; return api; },
+        upsert: (p: Row) => { inserita = p; return api; },
+        maybeSingle: () => {
+          if (errore) return Promise.resolve({ data: null, error: errore });
+          if (inserita) {
+            // Il vincolo unico del database, imitato: stessa (user_id,
+            // dedupe_key) → 23505, che `insertNotification` legge come «c'era già».
+            const gia = (tabelle.notifications ?? []).some((r) =>
+              r.user_id === inserita!.user_id && r.dedupe_key === inserita!.dedupe_key
+              && inserita!.dedupe_key !== null);
+            if (gia) return Promise.resolve({ data: null, error: { code: '23505', message: 'duplicato' } });
+            const riga = { id: `notif-${inseriti.length + 1}`, ...inserita };
+            (tabelle.notifications ??= []).push(riga);
+            inseriti.push(riga);
+            return Promise.resolve({ data: { id: riga.id }, error: null });
+          }
+          return Promise.resolve({ data: righe()[0] ?? null, error: null });
+        },
+        then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => {
+          if (errore) return Promise.resolve({ data: null, error: errore }).then(res, rej);
+          if (inserita) {
+            (tabelle[tabella] ??= []).push(inserita);
+            return Promise.resolve({ data: [inserita], error: null }).then(res, rej);
+          }
+          return Promise.resolve({ data: righe(), error: null }).then(res, rej);
+        },
+      };
+      return api;
+    };
+    return { from } as unknown as NotifyDeps['sb'];
+  }
+
+  const COMPANY = 'comp-1', UTENTE = 'user-1', CAPO = 'user-capo';
+
+  // Un mercoledì alle 10:00 a Zurigo: dopo le otto locali, così i promemoria
+  // possono scattare. L'istante è FISSO — nessun test di questo file dipende
+  // dall'orologio o dal fuso della macchina.
+  const ADESSO = new Date('2026-08-12T08:00:00.000Z');
+  const FRA_SETTE_GIORNI = '2026-08-19';
+  const FUTURO = Date.now() + 60_000;
+
+  const prefRiga = (over: Row = {}): Row => ({
+    company_id: COMPANY, user_id: UTENTE, in_app_enabled: true, email_enabled: false,
+    remind_7_days: true, remind_1_day: true, remind_due_day: true, remind_overdue: true,
+    timezone: 'Europe/Zurich', locale: 'it', show_task_title: true, ...over,
+  });
+
+  const attivita = (over: Row = {}): Row => ({
+    id: 'task-1', company_id: COMPANY, title: 'Trasmettere il rendiconto IVA',
+    due_date: FRA_SETTE_GIORNI, priority: 'medium', status: 'open',
+    archived_at: null, assignee_user_id: UTENTE, ...over,
+  });
+
+  const mondo = (over: Record<string, Row[]> = {}): Record<string, Row[]> => ({
+    tasks: [attivita()], company_members: [{ company_id: COMPANY, user_id: CAPO, role: 'owner' }],
+    notification_preferences: [prefRiga()], notifications: [], notification_deliveries: [], ...over,
+  });
+
+  const deps = (sb: NotifyDeps['sb'], provider: NotifyDeps['emailProvider'] = null): NotifyDeps =>
+    ({ sb, appOrigin: 'https://app.ai-swisse.com', emailProvider: provider });
+
+  const provider = () => createResendProvider({
+    apiKey: 're_chiave_finta', from: 'AI-Swisse <notifiche@ai-swisse.com>',
+    fetchImpl: (() => Promise.resolve(new Response('{"id":"x"}', { status: 200 }))) as unknown as typeof fetch,
+  });
+
+  /** Esegue e restituisce l'eccezione invece di lasciarla propagare. */
+  const solleva = async (fn: () => Promise<unknown>): Promise<Error | null> => {
+    try { await fn(); return null; } catch (e) { return e as Error; }
+  };
+
+  // --- 13.1 Il caso nominale: un promemoria viene GENERATO ------------------
+  {
+    const t = mondo();
+    const rep = await generateReminders(deps(sbFinto(t)), ADESSO, FUTURO);
+    ok(rep.tasksScanned === 1 && rep.created === 1,
+      '⚠️ un\'attività assegnata a sette giorni dalla scadenza produce UN promemoria — la prima volta che questa funzione gira',
+      JSON.stringify(rep));
+    ok(t.notifications.length === 1 && t.notifications[0].user_id === UTENTE,
+      'la notifica è del RESPONSABILE, non dell\'azienda', JSON.stringify(t.notifications));
+    ok(t.notifications[0].dedupe_key === 'task:task-1:d7',
+      'e porta la chiave della finestra dei sette giorni', String(t.notifications[0].dedupe_key));
+    ok((t.notifications[0].payload as Row).title === 'Trasmettere il rendiconto IVA',
+      'il titolo viaggia nel payload, che è ciò che compone la frase');
+  }
+
+  // --- 13.2 La COPPIA che separa lo zero giusto dallo zero rotto ------------
+  // ⚠️ Questi due casi sono uno solo, spezzato in due. Prima del 2026-08-11
+  // erano indistinguibili: entrambi davano `tasksScanned: 0` e il worker
+  // rispondeva `ok`. Se un giorno tornassero a coincidere, questa coppia
+  // diventa rossa.
+  {
+    const guasto = await solleva(() => generateReminders(
+      deps(sbFinto(mondo(), { guasti: { tasks: { code: '57014', message: 'statement timeout' } } })),
+      ADESSO, FUTURO,
+    ));
+    ok(guasto !== null && /attività/i.test(guasto.message),
+      '⚠️⚠️ un GUASTO nella lettura delle attività SOLLEVA: non restituisce zero attività',
+      guasto ? guasto.message : 'nessuna eccezione: il guasto è diventato uno zero');
+  }
+  {
+    const t = mondo({ tasks: [] });
+    const rep = await solleva(() => generateReminders(deps(sbFinto(t)), ADESSO, FUTURO));
+    ok(rep === null,
+      '…mentre ZERO attività davvero in finestra NON solleva: è la risposta giusta, ed è quella che dà la produzione oggi',
+      rep ? `ha sollevato: ${rep.message}` : '');
+  }
+
+  // --- 13.3 Gli altri tre guasti che ripiegavano in silenzio ----------------
+  {
+    const e = await solleva(() => generateReminders(
+      deps(sbFinto(mondo(), { guasti: { notification_preferences: { code: '42501', message: 'permission denied' } } })),
+      ADESSO, FUTURO,
+    ));
+    ok(e !== null && /preferenze/i.test(e.message),
+      '⚠️ un guasto sulle PREFERENZE solleva invece di ripiegare sui default: i default dicono «email spente, fuso di Zurigo», e sarebbero una risposta plausibile e falsa',
+      e ? e.message : 'nessuna eccezione');
+  }
+  {
+    const t = mondo({ tasks: [attivita({ assignee_user_id: null, priority: 'high' })] });
+    const e = await solleva(() => generateReminders(
+      deps(sbFinto(t, { guasti: { company_members: { code: '57014', message: 'timeout' } } })),
+      ADESSO, FUTURO,
+    ));
+    ok(e !== null && /titolari/i.test(e.message),
+      '⚠️ un guasto sulla lettura dei TITOLARI solleva: «nessun titolare» e «non ho potuto chiedere» non possono avere lo stesso silenzio',
+      e ? e.message : 'nessuna eccezione');
+  }
+  {
+    const t = mondo({ notification_preferences: [prefRiga({ email_enabled: true })] });
+    const e = await solleva(() => generateReminders(
+      deps(sbFinto(t, { guasti: { notification_deliveries: { code: '23514', message: 'check violation' } } }), provider()),
+      ADESSO, FUTURO,
+    ));
+    ok(e !== null && /accodamento/i.test(e.message),
+      '⚠️ un guasto sull\'ACCODAMENTO solleva: il report contava `emailsQueued`, e un\'email dichiarata accodata che non esiste è un numero inventato',
+      e ? e.message : 'nessuna eccezione');
+  }
+
+  // --- 13.4 Le decisioni che il motore prende -------------------------------
+  {
+    const t = mondo({ notification_preferences: [prefRiga({ in_app_enabled: false })] });
+    const rep = await generateReminders(deps(sbFinto(t)), ADESSO, FUTURO);
+    ok(rep.created === 0 && t.notifications.length === 0,
+      'in-app spento: nessun canale, nessuna notifica — l\'email è una copia dell\'avviso, non un canale a sé', JSON.stringify(rep));
+  }
+  {
+    const t = mondo({ notification_preferences: [prefRiga({ email_enabled: true })] });
+    const rep = await generateReminders(deps(sbFinto(t), provider()), ADESSO, FUTURO);
+    ok(rep.created === 1 && rep.emailsQueued === 1 && t.notification_deliveries.length === 1,
+      'email accese e provider configurato: la consegna viene accodata', JSON.stringify(rep));
+  }
+  {
+    const t = mondo({ notification_preferences: [prefRiga({ email_enabled: true })] });
+    const rep = await generateReminders(deps(sbFinto(t), null), ADESSO, FUTURO);
+    ok(rep.created === 1 && rep.emailsQueued === 0,
+      '⚠️ email accese ma NESSUN provider: la notifica in-app si crea lo stesso e nessuna email si accoda (§79) — è lo stato della produzione oggi',
+      JSON.stringify(rep));
+  }
+  {
+    const t = mondo({ tasks: [attivita({ assignee_user_id: null, priority: 'medium' })] });
+    const rep = await generateReminders(deps(sbFinto(t)), ADESSO, FUTURO);
+    ok(rep.created === 0 && rep.unassignedAlerts === 0,
+      'senza responsabile e non urgente: nessuno viene svegliato', JSON.stringify(rep));
+  }
+  {
+    const t = mondo({
+      tasks: [attivita({ assignee_user_id: null, priority: 'high' })],
+      notification_preferences: [prefRiga({ user_id: CAPO })],
+    });
+    const rep = await generateReminders(deps(sbFinto(t)), ADESSO, FUTURO);
+    ok(rep.unassignedAlerts === 1 && t.notifications[0]?.user_id === CAPO,
+      '⚠️ urgente e senza responsabile: lo sa chi guida l\'azienda (§32), e non sparisce nel vuoto',
+      JSON.stringify(rep));
+  }
+  {
+    const t = mondo({ notification_preferences: [prefRiga({ timezone: 'Marte/Olympus' })] });
+    const rep = await generateReminders(deps(sbFinto(t)), ADESSO, FUTURO);
+    ok(rep.skippedNoTimezone === 1 && rep.created === 0,
+      '⚠️ un fuso inutilizzabile SALTA la persona e lo CONTA: non si ripiega su un altro fuso, perché un promemoria all\'ora sbagliata sembra funzionare (§36)',
+      JSON.stringify(rep));
+  }
+
+  // --- 13.5 L'idempotenza, che è la ragione della chiave --------------------
+  {
+    const t = mondo();
+    const primo = await generateReminders(deps(sbFinto(t)), ADESSO, FUTURO);
+    const secondo = await generateReminders(deps(sbFinto(t)), ADESSO, FUTURO);
+    ok(primo.created === 1 && secondo.created === 0 && t.notifications.length === 1,
+      '⚠️ il worker eseguito due volte crea UNA notifica: il duplicato lo respinge il vincolo del database, non un controllo scritto nel codice',
+      `primo: ${primo.created}, secondo: ${secondo.created}, righe: ${t.notifications.length}`);
+  }
+  {
+    const t = mondo({ notification_preferences: [prefRiga({ email_enabled: true })] });
+    await generateReminders(deps(sbFinto(t), provider()), ADESSO, FUTURO);
+    const secondo = await generateReminders(deps(sbFinto(t), provider()), ADESSO, FUTURO);
+    ok(secondo.emailsQueued === 0,
+      '…e la seconda esecuzione non accoda una seconda email: `created` nullo significa «c\'era già», e si passa oltre PRIMA di accodare',
+      JSON.stringify(secondo));
+  }
+
+  // --- 13.6 Il budget di tempo, e le sue DUE guardie ------------------------
+  // ⚠️ QUESTA COPPIA È NATA DA UNA MUTAZIONE. La prima stesura aveva un solo
+  // caso, con il budget già scaduto in partenza: era verde anche togliendo la
+  // guardia dell'anello INTERNO, perché quella dell'anello esterno fermava
+  // tutto prima. Un'asserzione che resta verde mentre il codice perde una
+  // guardia non copre quella guardia — copre l'altra, e lo nasconde.
+  //
+  // I due casi separano i due anelli: il primo scade PRIMA di entrare nelle
+  // aziende, il secondo scade DENTRO, mentre si leggono le preferenze.
+  {
+    // ⚠️ L'asserzione guarda le LETTURE, non le notifiche. Sulle notifiche le
+    // due guardie si coprono a vicenda — togliendo questa, l'altra dà comunque
+    // zero creati — e una coppia di guardie che si coprono a vicenda è una
+    // coppia che nessuna asserzione distingue. Ciò che solo l'anello esterno
+    // evita è il LAVORO: senza di lui, preferenze e titolari verrebbero
+    // interrogati per un'azienda che non si potrà comunque servire.
+    const t = mondo();
+    const letture: Record<string, number> = {};
+    const rep = await generateReminders(deps(sbFinto(t, { letture })), ADESSO, Date.now() - 1);
+    ok(rep.tasksScanned === 1 && rep.created === 0 && !letture.notification_preferences,
+      '⚠️ budget già esaurito: l\'anello sulle AZIENDE si ferma PRIMA di interrogare le preferenze — non si spende tempo per un\'azienda che non si servirà',
+      `${JSON.stringify(rep)} · letture: ${JSON.stringify(letture)}`);
+  }
+  {
+    const t = mondo();
+    // Il budget scade fra 10 ms; la lettura delle preferenze — che avviene
+    // DOPO la guardia esterna e PRIMA di quella interna — ne brucia 40.
+    const sb = sbFinto(t, { ritardo: { notification_preferences: 40 } });
+    const rep = await generateReminders(deps(sb), ADESSO, Date.now() + 10);
+    ok(rep.tasksScanned === 1 && rep.created === 0 && t.notifications.length === 0,
+      '⚠️ budget scaduto DENTRO l\'azienda: l\'anello sulle ATTIVITÀ si ferma prima di scrivere — la notifica non generata oggi ha perso la sua finestra, ma non ne nasce una a metà',
+      JSON.stringify(rep));
   }
 }
 

@@ -318,7 +318,14 @@ jobs:
 
       # `--no-skip`: qui l'ambiente è completo per costruzione, quindi un
       # gruppo «saltato» sarebbe un guasto travestito da verde.
-      - name: Le undici suite su database
+      #
+      # ⚠️ IL NOME NON PORTA UN NUMERO, e non è una svista. Si è chiamato «Le
+      # undici suite su database» mentre le suite erano dodici, e poi tredici:
+      # nel log l'etichetta contraddiceva la riga stampata due righe più sotto
+      # («VERDE db 13 passi»). Un conteggio scritto a mano in un nome di passo
+      # invecchia al primo passo aggiunto, e nessun controllo lo vede. Il numero
+      # vero lo dice l'esecuzione — qui sotto, e con `npm run suite -- --list`.
+      - name: Le suite su database
         run: npm run test:db -- --no-skip
 
       - name: Spegnere Supabase

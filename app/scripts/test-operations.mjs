@@ -45,6 +45,23 @@
 //                   `notify.ts` che mandava ogni promemoria a `to: [null]`.
 //                   I file che usano `Deno.` o `npm:` sono esenti PER
 //                   COSTRUZIONE; il debito noto sta in TYPECHECK_SCOPERTI.
+//   9. FUNZIONI     ogni funzione ESPORTATA da quei moduli è importata per
+//                   nome da qualcuno. Il debito noto sta in FUNZIONI_SCOPERTE.
+//
+// ⚠️ PERCHÉ IL 9 ESISTE, E PERCHÉ IL 8 NON BASTAVA. Il controllo 8 ragiona per
+// FILE, e un file ha più porte. `test:calendar-unit` importa `deliverEmails` da
+// `_shared/calendar/notify.ts`: da quel momento il file risulta «raggiunto», e
+// `generateReminders` — l'altra funzione esportata dallo STESSO file, quella che
+// decide se un'attività merita un promemoria — è diventata invisibile al
+// controllo nato per vederla. Il 2026-08-11 non la eseguiva nessuno: né un test
+// né la produzione, dove `notifications` è a zero righe dal 2026-07-27.
+//
+// Il 8 è nato da `notify.ts` e non poteva più vedere metà di `notify.ts`. È la
+// forma esatta del difetto che questo file combatte: non un rosso nascosto, ma
+// un verde che ha misurato la cosa accanto. Misurato il 2026-08-11 passando alla
+// granularità di funzione: 337 funzioni esportate nei 67 moduli portabili
+// raggiunti, di cui **48 che nessuno importa per nome**, nemmeno per via
+// transitiva.
 //
 // ⚠️ COSA QUESTO CONTROLLO NON PUÒ SAPERE, e non finge di sapere: se quei cron
 // esistano DAVVERO nel progetto Supabase. Un file non può interrogare un
@@ -147,6 +164,101 @@ export const TYPECHECK_SCOPERTI = {
     'lo store dell\'assistente: `test:assistant` lo esercita attraverso la '
     + 'funzione DEPLOYATA via HTTP, non importandolo, quindi il typecheck non '
     + 'lo vede (2026-08-03)',
+};
+
+// ---------------------------------------------------------------------------
+// IL DEBITO DELLE FUNZIONI — le funzioni ESPORTATE che nessuno importa per
+// nome, nei moduli che il controllo 8 considera già raggiunti.
+//
+// ⚠️ PERCHÉ QUESTA LISTA È NATA. Il controllo 8 guarda i FILE, e un file ha più
+// porte: `test:calendar-unit` importa `deliverEmails` da `notify.ts`, e da quel
+// momento tutto `notify.ts` risulta coperto — `generateReminders` compresa, che
+// nessuno eseguiva. La chiave qui è `file#funzione` proprio per questo: la
+// granularità del debito deve essere quella del difetto.
+//
+// La misura del 2026-08-11, alla nascita della lista: 337 funzioni esportate
+// nei 67 moduli portabili raggiunti, 48 senza nessuno che le importi. Sono
+// queste. Non è un elenco di colpe: è la superficie che nessun rosso protegge,
+// tenuta VISIBILE invece di essere lasciata sembrare a posto.
+//
+// Come si toglie una riga: si importa la funzione da un test che la ESEGUE.
+// Una riga il cui debito è estinto fa FALLIRE il controllo, come le eccezioni
+// di `design:lint` e come TYPECHECK_SCOPERTI: un elenco con voci morte smette
+// di essere letto, ed è l'elenco che deve restare vivo.
+// ---------------------------------------------------------------------------
+const RPC_DIRETTA = 'il test del modulo chiama la RPC/SQL corrispondente '
+  + 'direttamente: copre il database e NON il codice TypeScript che lo chiama';
+const OAUTH_MAI = 'vive nel percorso OAuth, che nessun test esegue — al '
+  + '2026-08-11 nessuna connessione OAuth reale è mai stata stabilita';
+
+export const FUNZIONI_SCOPERTE = {
+  // --- calendario: i wrapper del percorso di sincronizzazione ---------------
+  '_shared/calendar/store.ts#findConnectionByAccount': RPC_DIRETTA,
+  '_shared/calendar/store.ts#markConnectionError': `${RPC_DIRETTA}; l'unica menzione nei test è in un COMMENTO di test:calendar-sync-unit`,
+  '_shared/calendar/store.ts#readSecrets': OAUTH_MAI,
+  '_shared/calendar/store.ts#writeSecrets': OAUTH_MAI,
+  '_shared/calendar/store.ts#deleteSecrets': OAUTH_MAI,
+  '_shared/calendar/store.ts#markLinkFailed': RPC_DIRETTA,
+  '_shared/calendar/store.ts#claimQueue': `${RPC_DIRETTA} (test:calendar chiama calendar_queue_claim)`,
+  '_shared/calendar/store.ts#queueDone': RPC_DIRETTA,
+  '_shared/calendar/store.ts#queueRetry': RPC_DIRETTA,
+  '_shared/calendar/store.ts#startRun': RPC_DIRETTA,
+  '_shared/calendar/store.ts#finishRun': RPC_DIRETTA,
+
+  // --- calendario: il resto -------------------------------------------------
+  // ⚠️ QUI STAVA `generateReminders`, la riga che ha fatto nascere questa
+  // lista: il motore dei promemoria, che al 2026-08-11 non aveva mai eseguito
+  // nessuno — né un test né la produzione. È uscita lo stesso giorno, coperta
+  // dalla sezione 13 di `test:calendar-unit`, e non l'ha tolta la memoria di
+  // qualcuno: il controllo ha detto «la riga è stantia» e ha fatto rosso.
+  // Il debito scade da solo, ed è la sola ragione per cui un elenco così
+  // continua a dire il vero.
+  '_shared/calendar/notify.ts#notifyCalendarProblem': 'la chiama solo calendar-sync nel proprio ramo di errore, che nessun test percorre',
+  '_shared/calendar/http.ts#calFetch': 'l\'involucro HTTP verso Google/Microsoft: esce in rete, nessun test lo esegue',
+
+  // --- posta ----------------------------------------------------------------
+  '_shared/email/store.ts#findConnectionByAccount': RPC_DIRETTA,
+  '_shared/email/store.ts#deleteSecrets': OAUTH_MAI,
+  '_shared/email/store.ts#recordAudit': RPC_DIRETTA,
+  '_shared/email/store.ts#claimWebhookEvent': 'il percorso del webhook Gmail: nessun test lo esegue',
+  '_shared/email/store.ts#closeWebhookEvent': 'il percorso del webhook Gmail: nessun test lo esegue',
+  '_shared/email/crypto.ts#randomBytes': OAUTH_MAI,
+  '_shared/email/crypto.ts#toBase64Url': OAUTH_MAI,
+  '_shared/email/crypto.ts#randomToken': OAUTH_MAI,
+  '_shared/email/crypto.ts#createPkcePair': OAUTH_MAI,
+  '_shared/email/http.ts#backoffDelay': 'la politica di ritentativo verso il provider: nessun test la esegue',
+  '_shared/email/http.ts#codeForStatus': 'la politica di ritentativo verso il provider: nessun test la esegue',
+
+  // --- automazioni: i rami di GUASTO della coda eventi ----------------------
+  '_shared/automation/store.ts#eventRetry': 'ramo di guasto della coda eventi: test:workflows percorre il cammino che riesce',
+  '_shared/automation/store.ts#eventFailed': 'ramo di guasto della coda eventi: test:workflows percorre il cammino che riesce',
+  '_shared/automation/store.ts#eventDeadLetter': 'ramo di guasto della coda eventi: test:workflows percorre il cammino che riesce',
+
+  // --- denaro, contratti, finanze -------------------------------------------
+  '_shared/finance/money.ts#decimal': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
+  '_shared/finance/money.ts#negate': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
+  '_shared/finance/money.ts#toNumber': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
+  '_shared/finance/prompt.ts#clampDocumentText': 'la costruzione della richiesta AI: spende credito Anthropic, esaurito dal 2026-08-02',
+  '_shared/contracts/periods.ts#normalizeUnit': 'helper della normalizzazione dei periodi: nessun test lo importa per nome',
+  '_shared/contracts/validate.ts#normalizeCurrency': 'helper della validazione: nessun test lo importa per nome',
+
+  // --- il percorso AI, che oggi non si può eseguire --------------------------
+  '_shared/persist.ts#reserveAiSlot': 'il cancello di frequenza delle chiamate AI: spende credito Anthropic, esaurito dal 2026-08-02',
+  '_shared/persist.ts#recentRequestCount': 'il cancello di frequenza delle chiamate AI: spende credito Anthropic, esaurito dal 2026-08-02',
+  '_shared/extract.ts#bytesToBase64': 'il percorso OCR: spende credito Anthropic, esaurito dal 2026-08-02',
+  '_shared/extract.ts#buildOcrRequest': 'il percorso OCR: spende credito Anthropic, esaurito dal 2026-08-02',
+  '_shared/assistant/runtime.ts#classifyProviderFailure': 'classifica un guasto del provider AI: nessun test lo importa per nome',
+  '_shared/assistant/contract.ts#isAssistantLocale': 'guardia di tipo del contratto dell\'assistente: nessun test la importa per nome',
+  '_shared/assistant/contract.ts#isUnverified': 'guardia di tipo del contratto dell\'assistente: nessun test la importa per nome',
+  '_shared/assistant/dates.ts#isNamedPeriod': 'interpretazione delle date parlate: nessun test la importa per nome',
+  '_shared/assistant/dates.ts#asConcreteDate': 'interpretazione delle date parlate: nessun test la importa per nome',
+
+  // --- incentivi: il percorso delle FONTI, già dichiarato scoperto -----------
+  '_shared/subsidy/fetchGuard.ts#hostOf': 'il percorso delle fonti (`runSourceChecks`) esce in rete ed è dichiarato scoperto in docs/product-status.md',
+  '_shared/subsidy/fetchGuard.ts#fetchSource': 'il percorso delle fonti (`runSourceChecks`) esce in rete ed è dichiarato scoperto in docs/product-status.md',
+  '_shared/subsidy/adapters.ts#extractDeclaredDates': 'adattatore di una fonte ufficiale: vive nel percorso delle fonti, scoperto',
+  '_shared/subsidy/facts.ts#findFact': 'helper del motore di abbinamento: nessun test lo importa per nome',
+  '_shared/subsidy/hash.ts#sha256Bytes': 'variante binaria dell\'impronta: quella testuale (`normalizeForHash`) è coperta',
 };
 
 // ---------------------------------------------------------------------------
@@ -533,6 +645,47 @@ function raggiuntiDalTypecheck() {
 }
 
 /**
+ * Come `raggiuntiDalTypecheck`, ma registra i NOMI e non solo i file.
+ *
+ * ⚠️ La chiusura è TRANSITIVA, e non è un dettaglio: una funzione che nessun
+ * test importa direttamente ma che un modulo intermedio importa È eseguita. Una
+ * prima misura fatta sui soli import diretti diceva 129 funzioni scoperte; la
+ * misura transitiva — la stessa nozione che usa il controllo 8 — ne dice 48.
+ * Il numero grande non era più severo, era sbagliato.
+ */
+function nomiRaggiunti() {
+  const radici = [
+    ...listaFileRicorsiva(join(APP, 'src'), '.ts'),
+    ...listaFileRicorsiva(join(APP, 'src'), '.tsx'),
+    ...listaFileRicorsiva(join(APP, 'scripts'), '.ts'),
+  ];
+  const prefisso = join(APP, 'supabase', 'functions') + '/';
+  const raggiunte = {};
+  const stella = new Set();
+  const visti = new Set();
+  const coda = [...radici];
+
+  while (coda.length) {
+    const file = coda.pop();
+    if (visti.has(file)) continue;
+    visti.add(file);
+    let sorgente;
+    try { sorgente = readFileSync(file, 'utf8'); } catch { continue; }
+    for (const { spec, nomi, stella: viaStella } of importConNomi(sorgente)) {
+      const risolto = risolviImport(dirname(file), spec);
+      if (!risolto) continue;
+      if (risolto.startsWith(prefisso)) {
+        const rel = risolto.slice(prefisso.length);
+        raggiunte[rel] = [...new Set([...(raggiunte[rel] ?? []), ...nomi])];
+        if (viaStella) stella.add(rel);
+      }
+      if (!visti.has(risolto)) coda.push(risolto);
+    }
+  }
+  return { raggiunte, stella };
+}
+
+/**
  * Il sorgente senza i commenti.
  *
  * ⚠️⚠️ PERCHÉ ESISTE, e la data conta: il 2026-08-10 una revisione avversaria ha
@@ -659,7 +812,17 @@ function scan() {
   });
   checkTypecheck(report, { portabili, raggiunti: raggiuntiDalTypecheck(), scoperti: TYPECHECK_SCOPERTI });
 
-  return { report, funzioni, dichiarati, portabili, tuttiTs };
+  const esportate = {};
+  for (const rel of portabili) {
+    try {
+      const nomi = funzioniEsportate(readFileSync(join(APP, 'supabase', 'functions', rel), 'utf8'));
+      if (nomi.length) esportate[rel] = nomi;
+    } catch { /* illeggibile: se ne occupa il controllo 8 */ }
+  }
+  const { raggiunte, stella } = nomiRaggiunti();
+  checkFunzioniProvate(report, { esportate, raggiunte, scoperte: FUNZIONI_SCOPERTE, stella });
+
+  return { report, funzioni, dichiarati, portabili, tuttiTs, esportate, raggiunte };
 }
 
 // ---------------------------------------------------------------------------
@@ -860,6 +1023,148 @@ const CASES = [
     }),
     expect: 0,
   },
+  // --- IL CONTROLLO 9: LE FUNZIONI -------------------------------------------
+  // ⚠️ Il primo caso è il difetto vero, in miniatura: il file è raggiunto da
+  // UNA delle sue funzioni, e l'altra non la esegue nessuno. È la situazione
+  // esatta di notify.ts l'11 agosto 2026, ed è ciò che il controllo 8 — che
+  // guarda i file — non poteva vedere.
+  {
+    name: '⚠️ due funzioni nello stesso file, una sola importata → problema per l\'altra (il caso di generateReminders)',
+    run: (r) => checkFunzioniProvate(r, {
+      esportate: { '_shared/calendar/notify.ts': ['deliverEmails', 'generateReminders'] },
+      raggiunte: { '_shared/calendar/notify.ts': ['deliverEmails'] },
+    }),
+    expect: 1,
+    contiene: '«generateReminders»',
+  },
+  {
+    name: '…e il controllo 8, sugli stessi dati, non vede niente: è la prova che il 9 serve',
+    run: (r) => checkTypecheck(r, {
+      portabili: ['_shared/calendar/notify.ts'],
+      raggiunti: new Set(['_shared/calendar/notify.ts']),
+    }),
+    expect: 0,
+  },
+  {
+    name: 'entrambe importate → nessun problema',
+    run: (r) => checkFunzioniProvate(r, {
+      esportate: { '_shared/calendar/notify.ts': ['deliverEmails', 'generateReminders'] },
+      raggiunte: { '_shared/calendar/notify.ts': ['deliverEmails', 'generateReminders'] },
+    }),
+    expect: 0,
+  },
+  {
+    name: 'una funzione nel debito DICHIARATO → nessun problema, ma resta scritta',
+    run: (r) => checkFunzioniProvate(r, {
+      esportate: { '_shared/calendar/notify.ts': ['deliverEmails', 'generateReminders'] },
+      raggiunte: { '_shared/calendar/notify.ts': ['deliverEmails'] },
+      scoperte: { '_shared/calendar/notify.ts#generateReminders': 'debito noto' },
+    }),
+    expect: 0,
+  },
+  {
+    name: '⚠️ una riga di debito la cui funzione è ORMAI importata → problema: la riga è stantia',
+    run: (r) => checkFunzioniProvate(r, {
+      esportate: { '_shared/calendar/notify.ts': ['generateReminders'] },
+      raggiunte: { '_shared/calendar/notify.ts': ['generateReminders'] },
+      scoperte: { '_shared/calendar/notify.ts#generateReminders': 'debito estinto che nessuno ha cancellato' },
+    }),
+    expect: 1,
+    contiene: 'la riga è stantia',
+  },
+  {
+    // Il gesto coincide con il caso sopra — togliere la riga — la ragione no.
+    name: '⚠️ una riga di debito la cui funzione NON ESISTE PIÙ → problema, e con l\'altra diagnosi',
+    run: (r) => checkFunzioniProvate(r, {
+      esportate: { '_shared/calendar/notify.ts': ['generateReminders'] },
+      raggiunte: { '_shared/calendar/notify.ts': ['generateReminders'] },
+      scoperte: { '_shared/calendar/notify.ts#funzioneRinominata': 'riga rimasta dopo un rinomino' },
+    }),
+    expect: 1,
+    contiene: 'non è più una funzione esportata',
+  },
+  {
+    name: 'un file dietro `export *` è ESCLUSO: i nomi non si vedono e non si deducono',
+    run: (r) => checkFunzioniProvate(r, {
+      esportate: { '_shared/calendar/notify.ts': ['deliverEmails', 'generateReminders'] },
+      raggiunte: { '_shared/calendar/notify.ts': [] },
+      stella: new Set(['_shared/calendar/notify.ts']),
+    }),
+    expect: 0,
+  },
+  {
+    name: 'un file NON raggiunto non è materia del 9: lo dice il controllo 8, e una volta sola',
+    run: (r) => checkFunzioniProvate(r, {
+      esportate: { '_shared/calendar/notify.ts': ['deliverEmails', 'generateReminders'] },
+      raggiunte: {},
+    }),
+    expect: 0,
+  },
+  // --- I DUE RILEVATORI, provati sui casi che DEVONO farli sbagliare ---------
+  {
+    name: 'rilevatore: riconosce `export function`, `export async function` e `export const f = () =>`',
+    run: (r) => {
+      const trovate = funzioniEsportate(
+        'export function a() {}\n'
+        + 'export async function b() {}\n'
+        + 'export const c = (x: number) => x;\n'
+        + 'export const d = async () => {};\n'
+        + 'export const NON_UNA_FUNZIONE = 3;\n'
+        + 'function privata() {}\n',
+      ).sort().join(',');
+      if (trovate !== 'a,b,c,d') r.add('autoverifica', `funzioniEsportate: «${trovate}»`, '', '');
+    },
+    expect: 0,
+  },
+  {
+    name: '⚠️ rilevatore: una funzione esportata dentro un COMMENTO non conta',
+    run: (r) => {
+      const trovate = funzioniEsportate('// export function finta() {}\n/* export function altra() {} */\nexport function vera() {}\n');
+      if (trovate.join(',') !== 'vera') r.add('autoverifica', `funzioniEsportate sui commenti: «${trovate.join(',')}»`, '', '');
+    },
+    expect: 0,
+  },
+  {
+    name: 'rilevatore: `export * from` è marcato stella, `export { a } from` no',
+    run: (r) => {
+      const s = importConNomi("export * from './x';");
+      const n = importConNomi("export { a } from './y';");
+      if (!(s.length === 1 && s[0].stella === true)) r.add('autoverifica', 'la stella non è riconosciuta', '', '');
+      if (!(n.length === 1 && n[0].stella === false && n[0].nomi[0] === 'a')) {
+        r.add('autoverifica', 'il ri-esporto per nome è letto male', '', '');
+      }
+    },
+    expect: 0,
+  },
+  {
+    name: 'rilevatore: `import { type T, a as b }` porta i nomi ORIGINALI',
+    run: (r) => {
+      const got = importConNomi("import { type T, a as b, c } from './z';")[0];
+      if (got.nomi.join(',') !== 'T,a,c') r.add('autoverifica', `nomi letti: «${got.nomi.join(',')}»`, '', '');
+    },
+    expect: 0,
+  },
+  {
+    // Se questo caso sparisse, la camminata del 9 si fermerebbe agli import per
+    // solo effetto e lascerebbe scoperto tutto ciò che sta oltre, senza dirlo.
+    name: '⚠️ rilevatore: `import \'./x\'` (per solo effetto) è raccolto, con zero nomi',
+    run: (r) => {
+      const got = importConNomi("import './effetti.ts';\nimport { a } from './y';");
+      const effetti = got.find((x) => x.spec === './effetti.ts');
+      if (!effetti) r.add('autoverifica', 'l\'import per solo effetto non è stato visto: la camminata si fermerebbe lì', '', '');
+      else if (effetti.nomi.length) r.add('autoverifica', `porta nomi che non ha: «${effetti.nomi.join(',')}»`, '', '');
+      if (got.length !== 2) r.add('autoverifica', `import letti: ${got.length}, attesi 2`, '', '');
+    },
+    expect: 0,
+  },
+  {
+    name: '…e `import x from \'./y\'` NON viene contato due volte',
+    run: (r) => {
+      const got = importConNomi("import x from './y';");
+      if (got.length !== 1) r.add('autoverifica', `import letti: ${got.length}, atteso 1`, '', '');
+    },
+    expect: 0,
+  },
   {
     name: '⚠️ una riga del debito il cui modulo è ORMAI raggiunto → problema: la riga è stantia',
     run: (r) => checkTypecheck(r, {
@@ -1022,6 +1327,118 @@ const CASES = [
     expect: 0,
   },
 ];
+
+/**
+ * I nomi ESPORTATI da un sorgente: `export function`, `export async function`
+ * e `export const f = (…) =>`.
+ *
+ * ⚠️ IL PERIMETRO È DICHIARATO, non dimenticato. Restano fuori le classi, i
+ * tipi e le costanti che non sono funzioni: la domanda del controllo 9 è «c'è
+ * del COMPORTAMENTO che nessuno esegue», e un tipo non ha comportamento. Come
+ * per `design:lint`, allargare il perimetro è un intervento a sé, con i suoi
+ * numeri prima e dopo — non una riga aggiunta di straforo.
+ */
+export function funzioniEsportate(sorgente) {
+  const puro = senzaCommenti(sorgente);
+  const nomi = new Set();
+  for (const m of puro.matchAll(/^export\s+(?:async\s+)?function\s+(\w+)/gm)) nomi.add(m[1]);
+  for (const m of puro.matchAll(/^export\s+const\s+(\w+)\s*(?::[^=]+)?=\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*(?::[^=]+)?=>/gm)) {
+    nomi.add(m[1]);
+  }
+  return [...nomi];
+}
+
+/**
+ * Gli import RELATIVI con i NOMI che portano: `{ a, b }`, `{ type T }`,
+ * `export { a } from`, e la stella — che è il caso interessante.
+ *
+ * ⚠️ `export * from './x'` non nomina niente: chi importa il ri-esportatore
+ * raggiunge il modulo senza che questo controllo possa dire QUALE funzione.
+ * Non si finge di saperlo: i moduli dietro una stella vengono ESCLUSI dal
+ * controllo 9 e restano affare del controllo 8. Un «coperto» dedotto è
+ * esattamente il verde che questo file esiste per impedire.
+ */
+export function importConNomi(sorgente) {
+  const puro = senzaCommenti(sorgente);
+  const out = [];
+  const named = /import\s+(?:(?:type\s+)?\{([^}]*)\}\s*|[\w*]+(?:\s*,\s*\{([^}]*)\})?\s+)?from\s*['"](\.[^'"]+)['"]/g;
+  for (const m of puro.matchAll(named)) {
+    out.push({ spec: m[3], nomi: spezzaNomi(m[1] ?? m[2]), stella: false });
+  }
+  for (const m of puro.matchAll(/export\s+(?:\{([^}]*)\}|\*)\s*from\s*['"](\.[^'"]+)['"]/g)) {
+    out.push({ spec: m[2], nomi: spezzaNomi(m[1]), stella: m[1] === undefined });
+  }
+  // ⚠️ L'IMPORT PER SOLO EFFETTO — `import './x'`, senza `from`. Non nomina
+  // niente, ed è proprio per questo che va raccolto: `importRelativi` lo vede
+  // (quindi il controllo 8 considera raggiunto ciò che sta oltre), e se qui non
+  // lo vedessimo la camminata del controllo 9 si fermerebbe lì, IN SILENZIO,
+  // lasciando scoperto un sottoalbero senza dirlo. Oggi nel repository ce ne
+  // sono tre e sono tutti fogli di stile: il buco è teorico, e si chiude adesso
+  // che costa una riga invece che il giorno in cui qualcuno scrive
+  // `import './registrazione.ts'`. Porta `nomi: []`, che è la verità: un import
+  // per effetto non esercita nessuna funzione.
+  for (const m of puro.matchAll(/(?:^|[;{}\n])\s*import\s*['"](\.[^'"]+)['"]/g)) {
+    out.push({ spec: m[1], nomi: [], stella: false });
+  }
+  return out;
+}
+
+function spezzaNomi(grezzo) {
+  if (!grezzo) return [];
+  return grezzo.split(',')
+    .map((r) => r.replace(/^\s*type\s+/, '').split(/\s+as\s+/)[0].trim())
+    .filter(Boolean);
+}
+
+/**
+ * 9. Ogni funzione esportata da un modulo portabile è importata per nome.
+ *
+ * Stessa forma del controllo 8 e stessa disciplina del debito: una riga di
+ * `FUNZIONI_SCOPERTE` il cui debito è estinto — la funzione è ormai importata,
+ * oppure non esiste più — fa fallire il controllo. Le due diagnosi sono
+ * distinte di proposito: il gesto coincide (togliere la riga), la ragione no,
+ * e una ragione sbagliata è ciò che fa ripetere il guasto fra sei mesi.
+ */
+export function checkFunzioniProvate(report, { esportate, raggiunte, scoperte = {}, stella = new Set() }) {
+  const vive = new Set();
+  for (const [file, nomi] of Object.entries(esportate)) {
+    if (stella.has(file)) continue;         // ri-esportato in blocco: vedi importConNomi
+    const viste = raggiunte[file];
+    if (!viste) continue;                   // file non raggiunto: è il controllo 8 a dirlo
+    for (const nome of nomi) {
+      const chiave = `${file}#${nome}`;
+      vive.add(chiave);
+      if (viste.includes(nome)) continue;
+      if (chiave in scoperte) continue;     // debito dichiarato
+      report.add('funzioni',
+        `«${nome}» è esportata da «${file}» e nessuno la importa per nome`,
+        `supabase/functions/${file}`,
+        'il file risulta coperto perché un\'ALTRA sua funzione è importata: '
+        + 'nessun test esegue questa, e nessun rosso protegge ciò che fa. '
+        + 'Importala da un test che la ESEGUE, oppure dichiarala in '
+        + 'FUNZIONI_SCOPERTE con il motivo');
+    }
+  }
+
+  for (const chiave of Object.keys(scoperte)) {
+    if (!vive.has(chiave)) {
+      report.add('funzioni',
+        `«${chiave}» è nel debito dichiarato, ma non è più una funzione esportata da un modulo raggiunto`,
+        'scripts/test-operations.mjs → FUNZIONI_SCOPERTE',
+        'la funzione è stata rinominata, tolta, o il suo file non è più materia '
+        + 'di questo controllo: la riga non corrisponde più a niente e va tolta');
+      continue;
+    }
+    const [file, nome] = chiave.split('#');
+    if ((raggiunte[file] ?? []).includes(nome)) {
+      report.add('funzioni',
+        `«${chiave}» è nel debito dichiarato, ma ormai QUALCUNO la importa: la riga è stantia`,
+        'scripts/test-operations.mjs → FUNZIONI_SCOPERTE',
+        'il debito è estinto: togli la riga. Un elenco con voci morte smette di '
+        + 'essere letto, ed è l\'elenco che deve restare vivo');
+    }
+  }
+}
 
 /**
  * ⚠️ `contiene` non è un vezzo: contare i problemi prova che QUALCOSA è

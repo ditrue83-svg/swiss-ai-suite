@@ -885,10 +885,15 @@ npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run test:documents-unit  # Documenti offline: stati, ricerca, estratti, indirizzo (60 test)
 npm run test:documents       # Documenti su DB: isolamento della RICERCA, categorie, etichette, archivio
 npm run test:calendar-unit   # Calendario e notifiche offline: stato desiderato, promemoria con ora
-                             # legale, idempotenza degli adapter, griglia del mese (213 test)
+                             # legale, idempotenza degli adapter, griglia del mese, e il MOTORE dei
+                             # promemoria eseguito contro un PostgREST finto che sa fallire (232 test)
 npm run test:calendar-sync-unit  # Il MOTORE di sincronizzazione eseguito contro finzioni: cambio di
                                  # responsabile, lease della creazione, token, riconciliazione (75 test)
 npm run test:calendar        # Calendario su DB: isolamento fra aziende E FRA PERSONE, coda, trigger
+npm run test:reminders       # Il motore dei promemoria eseguito sul DATABASE REALE, con azienda
+                             # usa-e-getta. Sceglie una finestra vuota nel 2028 e si FERMA se non lo
+                             # è: `generateReminders` non filtra per azienda, e con l'istante di
+                             # adesso scriverebbe promemoria a persone vere (11 controlli)
 npm run test:notification-email          # Invio VERO al provider di posta. Esce 3 se i due secret
                                          # NOTIFICATION_EMAIL_* non ci sono: saltato ≠ verde
 npm run test:notification-email:self-test  # prova il controllo stesso, offline
