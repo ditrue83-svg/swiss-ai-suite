@@ -65,7 +65,16 @@ function sbFinto(
   tabelle: Record<string, Row[]>,
   scritti: Scritto[],
   diario: string[],
-  ganci: { primaDi?: (op: string, tabella: string, patch: Row | null) => void } = {},
+  ganci: {
+    primaDi?: (op: string, tabella: string, patch: Row | null) => void;
+    /**
+     * Il DATABASE CEDE. Restituendo un errore da qui, la finzione risponde come
+     * risponde `supabase-js` quando qualcosa va storto — `{ data: null, error }`
+     * — e non solleva. È l'unico modo per provare che il codice di produzione
+     * lo LEGGA, quell'errore, invece di proseguire con un elenco vuoto.
+     */
+    guasto?: (op: string, tabella: string, patch: Row | null) => { code: string; message: string } | null;
+  } = {},
 ) {
   const from = (tabella: string) => {
     const filtri: ((r: Row) => boolean)[] = [];
@@ -110,6 +119,11 @@ function sbFinto(
 
     const esegui = () => {
       ganci.primaDi?.(op, tabella, patch);
+      // ⚠️ Il guasto si valuta PRIMA di qualunque scrittura: se la finzione
+      // applicasse la patch e poi restituisse l'errore, ogni asserzione «la
+      // riga è rimasta com'era» sarebbe verde per il motivo sbagliato.
+      const rotto = ganci.guasto?.(op, tabella, patch);
+      if (rotto) return { data: null, error: rotto };
       if (op === 'select') {
         return { data: righe().slice(0, tetto).map(copia), error: null };
       }
@@ -167,8 +181,14 @@ function sbFinto(
         return api;
       },
       maybeSingle: () => {
-        const { data } = esegui() as { data: Row[] | null };
-        return Promise.resolve({ data: data?.[0] ?? null, error: null });
+        // ⚠️ L'ERRORE SI PROPAGA, e questa riga è stata scritta sbagliata due
+        // volte — la seconda l'11 agosto 2026. Diceva `error: null` fisso, cioè
+        // la finzione riproduceva esattamente il fallback silenzioso che la
+        // suite esiste per stanare: la prima asserzione sulla lettura
+        // dell'attività restava verde a codice di produzione ROTTO, perché il
+        // guasto non arrivava mai al codice.
+        const { data, error } = esegui() as { data: Row[] | null; error: unknown };
+        return Promise.resolve({ data: error ? null : (data?.[0] ?? null), error });
       },
       then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) =>
         Promise.resolve().then(esegui).then(res, rej),
@@ -517,6 +537,95 @@ section('4 · I casi vuoti: attività sparita, nessuna connessione');
   const esito = await syncTask(s.deps, 't-1');
   ok(esito.upserted === 0 && s.chiamate.length === 0,
     'nessuna connessione attiva e nessun collegamento: niente da fare, niente fatto');
+}
+
+// ---------------------------------------------------------------------------
+// 4bis · ⚠️⚠️ …E GLI STESSI CASI VUOTI QUANDO È IL DATABASE A CEDERE
+// ---------------------------------------------------------------------------
+// Il difetto più costoso trovato nella scansione dell'11 agosto, e stava
+// proprio sotto i due casi qui sopra.
+//
+// `syncTask` scartava l'errore di tre letture. Se una falliva, l'esito era
+// `failures: 0` — cioè ESATTAMENTE quello dei due casi legittimi sopra — e il
+// ciclo di `calendar-sync` legge proprio quel numero:
+//
+//     if (outcome.failures === 0) { await queueDone(...); continue; }
+//
+// Quindi la riga USCIVA DALLA CODA come se fosse stata sincronizzata. L'evento
+// non veniva creato, la coda se ne dimenticava, e il report diceva
+// `claimed: 1, upserted: 0`. Non un promemoria in ritardo: un lavoro perso per
+// sempre, senza una riga rossa da nessuna parte.
+//
+// Queste asserzioni sono la coppia dei casi sopra: là `failures: 0` è giusto,
+// qui deve essere diverso da zero. Se un giorno tornassero a coincidere,
+// diventano rosse.
+const guastoSu = (tabellaRotta: string, opRotta = 'select') =>
+  ({ guasto: (op: string, tabella: string) =>
+    (tabella === tabellaRotta && op === opRotta ? { code: '57014', message: 'statement timeout' } : null) });
+
+{
+  const s = scena({ tasks: [attivita()], companies: AZIENDE, calendar_connections: [], calendar_event_links: [] },
+    {}, guastoSu('tasks'));
+  const esito = await syncTask(s.deps, 't-1');
+  ok(esito.failures === 1,
+    '⚠️⚠️ lettura dell\'ATTIVITÀ fallita: l\'esito porta un guasto, e il worker RIPROVA invece di chiamare `queueDone`',
+    JSON.stringify(esito));
+  ok(esito.errorCode !== null,
+    '…e porta un codice: senza, `declareFailure` scriverebbe «UNKNOWN» su un guasto che un nome ce l\'aveva',
+    String(esito.errorCode));
+  ok(esito.fatal === false,
+    '…ma NON è fatale: un database che cede è passeggero, e la politica dei tentativi resta quella di sempre',
+    String(esito.fatal));
+  ok(s.chiamate.length === 0, 'e non si tocca il provider su un\'attività che non abbiamo potuto leggere');
+}
+{
+  // ⚠️ LA SCENA HA I SEGRETI, e la prima stesura no. Senza, la connessione non
+  // otteneva un token, il ciclo per connessione contava GIÀ un guasto suo, e
+  // `failures === 1` era vero anche a correzione rimossa: l'asserzione era
+  // verde per il motivo sbagliato, e una mutazione l'ha smascherata. Con i
+  // segreti al loro posto, l'unico guasto possibile è quello iniettato.
+  const s = scena({
+    tasks: [attivita()], companies: AZIENDE,
+    calendar_connections: [connessione()], calendar_event_links: [],
+    calendar_connection_secrets: [await segreti('c-1')], notification_preferences: [],
+  }, {}, guastoSu('calendar_event_links'));
+  const esito = await syncTask(s.deps, 't-1');
+  ok(esito.failures === 1 && esito.upserted === 0,
+    '⚠️ lettura dei COLLEGAMENTI fallita: guasto contato. Un elenco vuoto avrebbe fatto CREARE un evento accanto a uno che esiste già',
+    JSON.stringify(esito));
+  ok(s.chiamate.length === 0,
+    '…e il provider non viene toccato: senza sapere quali eventi esistono non si scrive niente');
+}
+{
+  const s = scena({
+    tasks: [attivita()], companies: AZIENDE,
+    calendar_connections: [connessione()], calendar_event_links: [],
+    calendar_connection_secrets: [await segreti('c-1')], notification_preferences: [],
+  }, {}, guastoSu('calendar_connections'));
+  const esito = await syncTask(s.deps, 't-1');
+  ok(esito.failures === 1 && esito.upserted === 0,
+    '⚠️ lettura delle CONNESSIONI fallita: guasto contato. Zero connessioni è la risposta normale su questo prodotto — in produzione la tabella è a zero righe — quindi i due zeri erano indistinguibili sempre',
+    JSON.stringify(esito));
+  ok(s.chiamate.length === 0, 'e nessuna chiamata al provider');
+}
+{
+  // La coppia dell'ultima: il guasto colpisce SOLO la seconda lettura delle
+  // connessioni, quella che cerca le non più attive — ed è la lettura da cui
+  // passa la RIMOZIONE degli eventi orfani.
+  let viste = 0;
+  const s = scena(
+    { tasks: [attivita()], companies: AZIENDE, calendar_connections: [], calendar_event_links: [collegamento()] },
+    {},
+    { guasto: (op, tabella) => {
+      if (tabella !== 'calendar_connections' || op !== 'select') return null;
+      viste++;
+      return viste >= 2 ? { code: '57014', message: 'statement timeout' } : null;
+    } },
+  );
+  const esito = await syncTask(s.deps, 't-1');
+  ok(esito.failures === 1,
+    '⚠️ lettura delle connessioni NON PIÙ ATTIVE fallita: guasto contato. È la lettura da cui passa la rimozione degli eventi orfani, e perderla lascerebbe eventi sul calendario di qualcuno',
+    JSON.stringify(esito));
 }
 
 // ===========================================================================

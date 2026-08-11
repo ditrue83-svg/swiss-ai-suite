@@ -93,10 +93,41 @@ const toDesiredConnection = (c: CalendarConnectionRow): DesiredStateConnection =
  * attività, dove potrebbe dover sparire. Guardare solo le prime lascerebbe per
  * sempre l'evento sul calendario di chi non è più responsabile.
  */
+/**
+ * Un guasto del database PRIMA del ciclo per connessione.
+ *
+ * ⚠️ Perché un guasto contato e non un'eccezione: il ciclo del worker non ha un
+ * `try` attorno a `syncTask`, quindi sollevare abbatterebbe il lotto intero per
+ * colpa di una sola attività. E perché non `failures: 0`: quel numero decide se
+ * il worker chiama `queueDone` — cioè se la riga esce dalla coda. Un guasto che
+ * uscisse con zero farebbe dimenticare il lavoro invece di riprovarlo.
+ *
+ * `fatal` resta falso di proposito: un database che cede è passeggero, e la
+ * politica dei tentativi la applica il chiamante come per ogni altro guasto.
+ */
+function fallita(out: SyncOutcome, _perche: string): SyncOutcome {
+  out.failures++;
+  out.errorCode = out.errorCode ?? 'UNKNOWN';
+  return out;
+}
+
 export async function syncTask(deps: SyncDeps, taskId: string): Promise<SyncOutcome> {
   const out: SyncOutcome = { upserted: 0, deleted: 0, failures: 0, untouchable: 0, errorCode: null, fatal: false };
 
-  const { data: taskData } = await deps.sb.from('tasks').select(TASK_COLUMNS).eq('id', taskId).maybeSingle();
+  // ⚠️⚠️ IL PUNTO PIÙ COSTOSO DI TUTTA LA SINCRONIZZAZIONE, e fino al
+  // 2026-08-11 taceva. Se questa lettura falliva, `task` era `null`, la
+  // funzione usciva con `failures: 0`, e il worker — che legge proprio quel
+  // numero — chiamava `queueDone`: **la riga usciva dalla coda come se fosse
+  // stata sincronizzata**. L'evento sul calendario non veniva creato, la coda
+  // se ne dimenticava, e il report diceva `claimed: 1, upserted: 0`, che è
+  // anche la risposta giusta quando non c'è niente da fare.
+  //
+  // Non un promemoria in ritardo: un lavoro PERSO, per sempre, senza una riga
+  // rossa da nessuna parte. E il caso legittimo che gli somiglia è scritto
+  // qui sotto — un'attività sparita — il che rendeva i due indistinguibili.
+  const { data: taskData, error: taskErr } = await deps.sb.from('tasks')
+    .select(TASK_COLUMNS).eq('id', taskId).maybeSingle();
+  if (taskErr) return fallita(out, 'lettura dell\'attività fallita');
   const task = taskData as TaskRow | null;
   // Attività sparita: i collegamenti sono già spariti con lei (cascata sulla
   // chiave esterna). Gli eventi presso il provider restano orfani, e questo è
@@ -105,17 +136,33 @@ export async function syncTask(deps: SyncDeps, taskId: string): Promise<SyncOutc
   // l'archiviazione passa dal percorso normale, che l'evento lo rimuove.
   if (!task) return out;
 
-  const links = await linksForTask(deps.sb, taskId);
-  const active = await activeConnections(deps.sb, task.company_id);
+  // ⚠️ Le stesse due uscite silenziose, per un'altra strada. `linksForTask` e
+  // `activeConnections` ora SOLLEVANO quando il database cede (vedi store.ts):
+  // prima restituivano un elenco vuoto, `known` restava vuoto, si usciva con
+  // `failures: 0` e il worker faceva `queueDone`. Qui l'eccezione viene
+  // convertita in un GUASTO CONTATO invece di essere lasciata salire: il ciclo
+  // del worker non ha un `try` attorno a `syncTask`, e sollevare gli
+  // abbatterebbe l'intero lotto per colpa di una sola attività.
+  let links, active;
+  try {
+    links = await linksForTask(deps.sb, taskId);
+    active = await activeConnections(deps.sb, task.company_id);
+  } catch {
+    return fallita(out, 'lettura di collegamenti e connessioni fallita');
+  }
 
   // Le connessioni dei collegamenti esistenti che non sono più fra le attive.
   const known = new Map<string, CalendarConnectionRow>();
   for (const c of active) known.set(c.id, c);
   const missingIds = [...new Set(links.map((l) => l.connection_id))].filter((id) => !known.has(id));
   if (missingIds.length) {
-    const { data } = await deps.sb.from('calendar_connections')
+    const { data, error: mancantiErr } = await deps.sb.from('calendar_connections')
       .select('id, company_id, user_id, provider, provider_account_id, email_address, provider_calendar_id, calendar_name, status, sync_enabled, initial_sync_completed_at, last_sync_at, last_successful_sync_at, sync_lease_id, sync_lease_until')
       .in('id', missingIds);
+    // Sono le connessioni non più attive che hanno però ancora un collegamento:
+    // è da qui che passa la RIMOZIONE degli eventi orfani. Perderle in silenzio
+    // significa lasciare eventi su calendari altrui e chiudere la coda.
+    if (mancantiErr) return fallita(out, 'lettura delle connessioni non più attive fallita');
     for (const c of (data ?? []) as CalendarConnectionRow[]) known.set(c.id, c);
   }
 

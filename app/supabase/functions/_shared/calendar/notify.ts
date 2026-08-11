@@ -226,6 +226,26 @@ export interface DeliverReport {
   sent: number;
   retried: number;
   failed: number;
+  /**
+   * ⚠️ L'EMAIL È PARTITA E NON SIAMO RIUSCITI A SCRIVERLO. Non è un dettaglio
+   * contabile: è l'unico stato in cui il database dice meno di quello che è
+   * successo nel mondo. La riga resta `sending`, il giro dopo la riprende e
+   * richiama il provider — che la scarta, perché la chiave di idempotenza è la
+   * stessa — e se l'aggiornamento continua a fallire quella consegna riuscita
+   * può finire registrata come `failed`. Chi poi chiede «l'email è partita?»
+   * legge di no.
+   *
+   * Se questo numero non è zero, `sent` è un minimo e non un totale.
+   */
+  sentUnrecorded: number;
+  /**
+   * Le altre scritture di servizio fallite: la prenotazione, l'annullamento di
+   * una consegna orfana o senza destinatario, la registrazione di un guasto.
+   * Nessuna di esse manda un'email, e nessuna può essere lasciata in silenzio:
+   * senza questo numero un giro che non è riuscito a scrivere NIENTE riporta
+   * esattamente lo stesso `{0,0,0,0}` di una coda vuota.
+   */
+  bookkeepingFailed: number;
 }
 
 interface DeliveryRow {
@@ -248,19 +268,42 @@ interface DeliveryRow {
  * messaggio partirebbe una seconda volta. Registrando prima, il peggio che può
  * succedere è un'email in meno, mai una in più. La chiave di idempotenza del
  * provider copre il caso simmetrico.
+ *
+ * ⚠️ QUI `throw` NON È LA RISPOSTA GIUSTA OVUNQUE, e la differenza è il lotto.
+ * `generateReminders` legge una volta e decide: se quella lettura fallisce non
+ * c'è niente da fare, e sollevare è l'unica cosa onesta. Questa funzione invece
+ * scorre fino a venticinque consegne indipendenti: morire sulla prima
+ * abbandonerebbe le altre ventiquattro, che non hanno nessuna colpa. Quindi:
+ *
+ *   · la lettura del LOTTO solleva — senza lotto non c'è niente da scorrere, e
+ *     un elenco vuoto per guasto è identico a una coda vuota;
+ *   · le scritture di SERVIZIO dentro il ciclo non sollevano e non tacciono:
+ *     si CONTANO. Un guasto che diventa un numero nel report è un guasto
+ *     esplicito quanto un'eccezione, e non fa perdere il resto del lotto.
+ *
+ * Il divieto di casa è il fallback SILENZIOSO, non l'eccezione mancante.
  */
 export async function deliverEmails(
   deps: NotifyDeps, deadlineMs: number, batch = 25,
 ): Promise<DeliverReport> {
-  const report: DeliverReport = { attempted: 0, sent: 0, retried: 0, failed: 0 };
+  const report: DeliverReport = {
+    attempted: 0, sent: 0, retried: 0, failed: 0, sentUnrecorded: 0, bookkeepingFailed: 0,
+  };
   if (!deps.emailProvider) return report;
 
-  const { data } = await deps.sb.from('notification_deliveries')
+  const { data, error } = await deps.sb.from('notification_deliveries')
     .select('id, attempts, notification_id, notifications(company_id, user_id, type, entity_type, entity_id, payload)')
     .in('status', ['pending', 'sending'])
     .lte('next_attempt_at', new Date().toISOString())
     .order('next_attempt_at', { ascending: true })
     .limit(batch);
+
+  // ⚠️ Basta che PostgREST non risolva la select innestata `notifications(...)`
+  // — succede dopo una modifica di schema — perché questa riga dia zero
+  // consegne. Zero consegne è anche la risposta giusta quando la coda è vuota,
+  // ed è la risposta normale su questo prodotto: `notification_deliveries` è a
+  // zero righe in produzione. Due zeri identici, di nuovo.
+  if (error) throw new CalendarProviderError('UNKNOWN', 'lettura della coda di consegna fallita');
 
   for (const raw of (data ?? []) as DeliveryRow[]) {
     if (Date.now() >= deadlineMs) break;
@@ -269,8 +312,15 @@ export async function deliverEmails(
       // La notifica non c'è più: la consegna non ha più un contenuto da
       // consegnare. Si chiude come annullata, non come fallita — non è andato
       // storto niente.
-      await deps.sb.from('notification_deliveries')
+      //
+      // ⚠️ Se l'annullamento fallisce, la riga resta `pending` con il proprio
+      // `next_attempt_at` NON avanzato: la prenotazione non è ancora passata di
+      // qui. Il lotto è ordinato per `next_attempt_at` crescente, quindi quella
+      // riga si ripresenta in TESTA a ogni giro, per sempre, occupando uno dei
+      // venticinque posti. Un guasto che si auto-alimenta e non si vede.
+      const { error: annullaErr } = await deps.sb.from('notification_deliveries')
         .update({ status: 'cancelled', error_code: 'NOTIFICATION_GONE' }).eq('id', raw.id);
+      if (annullaErr) report.bookkeepingFailed++;
       continue;
     }
 
@@ -279,11 +329,20 @@ export async function deliverEmails(
 
     // Prenotazione: se un'altra esecuzione l'ha già presa, `data` è vuoto e si
     // passa oltre invece di mandare la stessa email due volte.
-    const { data: claimed } = await deps.sb.from('notification_deliveries').update({
+    const { data: claimed, error: claimErr } = await deps.sb.from('notification_deliveries').update({
       status: 'sending',
       attempts,
       next_attempt_at: new Date(Date.now() + emailBackoffSeconds(attempts) * 1000).toISOString(),
     }).eq('id', raw.id).in('status', ['pending', 'sending']).select('id');
+
+    // ⚠️ DUE ESITI CHE SI SOMIGLIANO E NON SONO LA STESSA COSA. Zero righe
+    // aggiornate significa «un'altra esecuzione l'ha presa prima»: è il
+    // funzionamento voluto della prenotazione, e si passa oltre in silenzio
+    // perché non è successo niente. Un ERRORE significa che non abbiamo potuto
+    // nemmeno chiedere. Prima del 2026-08-11 finivano nello stesso `continue`,
+    // e un database che rifiutava ogni scrittura era indistinguibile da una
+    // coda molto trafficata.
+    if (claimErr) { report.bookkeepingFailed++; continue; }
     if (!Array.isArray(claimed) || !claimed.length) continue;
 
     report.attempted++;
@@ -291,8 +350,15 @@ export async function deliverEmails(
     try {
       const message = await composeEmail(deps, notification);
       if (!message) {
-        await deps.sb.from('notification_deliveries')
+        // ⚠️ `null` da `composeEmail` significa UNA cosa sola: quella persona
+        // non ha un indirizzo. Non più «non ho potuto leggerlo» — vedi il throw
+        // in `composeEmail` — ed è la differenza che rende lecito chiudere qui
+        // DEFINITIVAMENTE. Chiudere una consegna per sempre a causa di un
+        // singhiozzo del database sarebbe il difetto del 2026-08-03 raggiunto
+        // per un'altra strada.
+        const { error: annullaErr } = await deps.sb.from('notification_deliveries')
           .update({ status: 'cancelled', error_code: 'NO_RECIPIENT' }).eq('id', raw.id);
+        if (annullaErr) report.bookkeepingFailed++;
         continue;
       }
       const result = await deps.emailProvider.send({
@@ -303,12 +369,18 @@ export async function deliverEmails(
         // provider deduplica quando la nostra richiesta si perde per strada.
         idempotencyKey: `delivery:${raw.id}`,
       });
-      await deps.sb.from('notification_deliveries').update({
+      // ⚠️⚠️ DA QUI IN POI L'EMAIL È PARTITA. È l'unico punto della funzione in
+      // cui una scrittura fallita lascia il database a dire MENO di quello che
+      // è successo nel mondo: il messaggio è nella casella di qualcuno e noi
+      // non ne abbiamo traccia. Non si solleva — l'invio è riuscito, e trattarlo
+      // come un guasto sarebbe falso quanto tacerlo — ma non si tace nemmeno.
+      const { error: segnaErr } = await deps.sb.from('notification_deliveries').update({
         status: 'sent',
         sent_at: new Date().toISOString(),
         provider_message_id: result.providerMessageId,
         error_code: null,
       }).eq('id', raw.id);
+      if (segnaErr) report.sentUnrecorded++;
       report.sent++;
     } catch (error) {
       const err = error instanceof CalendarProviderError
@@ -318,10 +390,16 @@ export async function deliverEmails(
       // chiave revocata — non migliora riprovando: si chiude subito, invece di
       // occupare la coda per giorni.
       const permanent = !err.retryable || giveUp;
-      await deps.sb.from('notification_deliveries').update({
+      // ⚠️ È LA SCRITTURA CHE REGISTRA IL GUASTO. Se fallisce, `error_code` non
+      // viene mai scritto e nessuna consegna assume mai lo stato `failed`: chi
+      // interroga «quante consegne sono fallite, e perché» ottiene zero, che è
+      // la stessa risposta di un sistema in perfetta salute. Il meccanismo che
+      // esiste per rendere visibile un fallimento fallirebbe invisibilmente.
+      const { error: registraErr } = await deps.sb.from('notification_deliveries').update({
         status: permanent ? 'failed' : 'pending',
         error_code: err.code,
       }).eq('id', raw.id);
+      if (registraErr) report.bookkeepingFailed++;
       if (permanent) report.failed++; else report.retried++;
     }
   }
@@ -334,11 +412,49 @@ async function composeEmail(
   deps: NotifyDeps,
   n: NonNullable<DeliveryRow['notifications']>,
 ): Promise<{ to: string; subject: string; text: string } | null> {
-  const [{ data: profile }, { data: company }, prefs] = await Promise.all([
+  const [
+    { data: profile, error: profileErr },
+    { data: company, error: companyErr },
+    prefs,
+  ] = await Promise.all([
     deps.sb.from('profiles').select('email').eq('id', n.user_id).maybeSingle(),
     deps.sb.from('companies').select('legal_name').eq('id', n.company_id).maybeSingle(),
     preferencesFor(deps.sb, n.company_id, [n.user_id]),
   ]);
+
+  // ⚠️⚠️ QUI SOLLEVARE È OBBLIGATORIO, ed è il difetto del 2026-08-03 che prova
+  // a rientrare da un'altra porta. Allora `composeEmail` non metteva il
+  // destinatario nel messaggio e ogni promemoria usciva verso `to: [null]`.
+  // Oggi il destinatario c'è — ma se la lettura di `profiles` fallisce,
+  // `profile` è `null`, `to` è `null`, la funzione restituisce `null`, e il
+  // chiamante chiude la consegna **DEFINITIVAMENTE** come `NO_RECIPIENT`.
+  // Stesso esito: il promemoria non arriva e nessuno lo saprà mai. La causa
+  // sarebbe un singhiozzo del database di tre secondi.
+  //
+  // Sollevando, il `catch` del chiamante lo tratta come un invio non riuscito e
+  // lo RIPROVA — che è esattamente ciò che merita un guasto passeggero. Il
+  // `null` resta riservato all'unico caso che lo giustifica: quella persona un
+  // indirizzo non ce l'ha.
+  // ⚠️ `retryable: true` NON è decorativo, e il test lo ha dimostrato prima che
+  // qualcuno lo scoprisse in esercizio. Il default di `CalendarProviderError`
+  // segue il codice, e `UNKNOWN` non è ritentabile: senza questo flag il
+  // chiamante calcola `permanent = true` e chiude la consegna come `failed`
+  // PER SEMPRE — cioè lo stesso danno che questo throw esiste per evitare,
+  // con un'altra etichetta sopra. Un guasto del database è transitorio: la
+  // consegna deve tornare in coda.
+  if (profileErr) {
+    throw new CalendarProviderError('UNKNOWN', 'lettura del destinatario fallita', { retryable: true });
+  }
+
+  // ⚠️ E l'azienda non è cosmetica. Con `companyErr` scartato, `companyName`
+  // diventa stringa vuota e l'email PARTE LO STESSO verso un cliente vero, con
+  // l'azienda mancante dal corpo e dalla riga che spiega perché il messaggio
+  // arriva. Un promemoria che non dice per conto di chi parla somiglia a posta
+  // non richiesta, e non si può richiamare indietro. Meglio ritentare fra
+  // qualche minuto.
+  if (companyErr) {
+    throw new CalendarProviderError('UNKNOWN', 'lettura dell\'azienda fallita', { retryable: true });
+  }
 
   const to = (profile as { email?: string | null } | null)?.email ?? null;
   if (!to) return null;

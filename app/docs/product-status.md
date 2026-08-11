@@ -1023,9 +1023,40 @@ riga per riga di `supabase/functions/`:
 | **TOTALE**, in 25 file | **189** |
 
 ⚠️ **Questo numero è una misura, non una promessa di correzione.** Di quei 189
-punti ne sono corretti **4**, quelli del percorso di generazione dei
-promemoria. Gli altri 185 restano, e sono scritti qui perché una superficie
-misurata e dichiarata è un'altra cosa da una superficie ignota.
+punti ne sono corretti **16** in tre interventi — generazione dei promemoria
+(4), consegna (8), sincronizzazione del calendario (4). Gli altri **173**
+restano, e sono scritti qui perché una superficie misurata e dichiarata è
+un'altra cosa da una superficie ignota.
+
+#### ⚠️⚠️ Il peggiore dei sedici non era fra i promemoria: faceva PERDERE lavoro
+
+`syncTask` scartava l'errore di tre letture. Con `failures: 0` come esito, e il
+ciclo di `calendar-sync` che legge proprio quel numero
+(`if (outcome.failures === 0) await queueDone(...)`), una lettura fallita faceva
+**uscire l'attività dalla coda come se fosse stata sincronizzata**: evento mai
+creato, coda che se ne dimentica, report che dice `claimed: 1, upserted: 0`.
+
+Non un promemoria in ritardo — un lavoro perso, per sempre, senza una riga
+rossa. E i due casi legittimi che escono con `failures: 0` a ragione — attività
+sparita, nessuna connessione attiva — erano nella suite da sempre, il che
+rendeva i tre esiti indistinguibili. Corretto il 2026-08-11; le asserzioni
+nuove sono scritte come **coppia** di quelle vecchie.
+
+#### Che cosa hanno insegnato i tre interventi
+
+- **`throw` non è la risposta giusta ovunque, e il discrimine è il LOTTO.** Chi
+  legge una volta e decide deve sollevare; chi scorre venticinque elementi
+  indipendenti no — morire sul primo abbandona gli altri ventiquattro. Lì il
+  guasto diventa un **numero nel report**, che è esplicito quanto un'eccezione.
+  Il divieto di casa è il fallback SILENZIOSO, non l'eccezione mancante.
+- **Uno store solleva sempre**, perché non ha un report in cui contare: la
+  politica la decide il chiamante, che è l'unico a sapere se sta in un lotto.
+- **`sentUnrecorded`** è l'unico stato in cui il database dice MENO del mondo:
+  l'email è partita e non ne abbiamo traccia. Se non è zero, `sent` è un minimo.
+- ⚠️ **Un doppio di prova può avere il difetto che si sta cacciando.** Il
+  `maybeSingle()` del finto PostgREST restituiva `error: null` fisso: il guasto
+  iniettato non arrivava al codice, e la prova restava verde a correzione
+  rimossa.
 
 ⚠️ **E il numero ha i suoi limiti, dichiarati.** La scansione è stata fatta da
 otto letture parallele; la nona — quella che doveva contestare le
