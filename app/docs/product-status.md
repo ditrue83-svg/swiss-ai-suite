@@ -1022,11 +1022,25 @@ riga per riga di `supabase/functions/`:
 | **innocuo** | 3 |
 | **TOTALE**, in 25 file | **189** |
 
-⚠️ **Questo numero è una misura, non una promessa di correzione.** Di quei 189
-punti ne sono corretti **16** in tre interventi — generazione dei promemoria
-(4), consegna (8), sincronizzazione del calendario (4). Gli altri **173**
-restano, e sono scritti qui perché una superficie misurata e dichiarata è
-un'altra cosa da una superficie ignota.
+⚠️ **Questo numero è una misura, non una promessa di correzione.**
+
+⚠️⚠️ **E VA LETTO INSIEME A UN SECONDO CONTEGGIO, perché i due non coincidono.**
+Il 189 viene dalla scansione a otto letture parallele, con i loro criteri. Un
+`grep` coerente sullo stesso perimetro — le due forme, `const { data } = await`
+e la chiamata il cui risultato non viene catturato — ne contava **193** alla
+partenza del 2026-08-11. Non si mescolano: da qui in avanti vale il grep, che
+chiunque può rifare in un secondo.
+
+| | Punti |
+|---|---|
+| all'inizio del 2026-08-11 (commit `6cd9cd3`) | **193** |
+| corretti in cinque interventi | **46** |
+| **restanti** | **147** |
+
+I cinque: generazione dei promemoria (4) · consegna e composizione dell'email
+(8) · sincronizzazione del calendario (4) · i caricatori di fatti delle
+automazioni (20) · la coda delle automazioni e il contatore della pausa (7),
+più le letture dello store del calendario.
 
 #### ⚠️⚠️ Il peggiore dei sedici non era fra i promemoria: faceva PERDERE lavoro
 
@@ -1042,7 +1056,26 @@ sparita, nessuna connessione attiva — erano nella suite da sempre, il che
 rendeva i tre esiti indistinguibili. Corretto il 2026-08-11; le asserzioni
 nuove sono scritte come **coppia** di quelle vecchie.
 
-#### Che cosa hanno insegnato i tre interventi
+#### ⚠️⚠️ E nelle automazioni non era un'azione mancata: era quella SBAGLIATA
+
+Da una lettura fallita esce `null`, e da `null` nasce un `missing()` — un fatto
+dichiarato assente. Ma in `conditions.ts` gli operatori `exists`/`not_exists`
+rispondono anche sui fatti non noti, di proposito, e l'elenco che li mette in
+guardia contiene `low_confidence` e `unverified_quote` — **non `missing`**.
+
+Quindi una regola scritta «campo non_esiste» diventava **vera** perché il
+database aveva singhiozzato, e l'azione partiva davvero: un'attività creata, un
+avviso spedito. Il caso più chiaro è `addFinanceFacts`, dove un `if (!item)`
+mette **undici fatti** a `missing()` in un colpo solo.
+
+E il meccanismo che dovrebbe impedire a una regola guasta di girare per sempre
+era battuto dallo stesso silenzio: `recordWorkflowFailure` leggeva il contatore
+scartando l'errore, quindi `failures` ripartiva da 1 a ogni giro e la soglia
+della pausa automatica non arrivava mai. Il commento sopra quella funzione
+chiama «fallire diecimila volte» il difetto peggiore possibile su questo
+progetto.
+
+#### Che cosa hanno insegnato i cinque interventi
 
 - **`throw` non è la risposta giusta ovunque, e il discrimine è il LOTTO.** Chi
   legge una volta e decide deve sollevare; chi scorre venticinque elementi
