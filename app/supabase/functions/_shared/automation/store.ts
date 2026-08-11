@@ -182,6 +182,36 @@ export interface EntityFacts {
  * payload serve solo per i fatti che ADESSO non esistono più — il valore
  * PRECEDENTE di una categoria, lo stato da cui un'attività è uscita.
  */
+/**
+ * Una lettura andata a buon fine, oppure un guasto ESPLICITO.
+ *
+ * ⚠️⚠️ PERCHÉ QUESTA FUNZIONE ESISTE, e perché sta proprio davanti ai fatti.
+ * Fino al 2026-08-11 le letture dei caricatori scartavano `error`. Il risultato
+ * era `null`, e da `null` nasce un `missing()` — cioè un fatto DICHIARATO
+ * assente. Ma `missing()` non è un ignoto per tutti gli operatori: in
+ * `conditions.ts`, `exists` e `not_exists` rispondono anche sui fatti non noti,
+ * di proposito («c'è una scadenza?» ha una risposta anche quando non c'è). E
+ * l'elenco che li mette in guardia contiene `low_confidence` e
+ * `unverified_quote` — non `missing`.
+ *
+ * Quindi una regola scritta «campo non_esiste» diventava **vera** perché il
+ * database aveva singhiozzato, e l'automazione PARTIVA. Non un'automazione
+ * mancata: quella sbagliata, eseguita davvero, per un guasto di tre secondi.
+ *
+ * Sollevare è la risposta giusta e non costa il lotto: il ciclo di
+ * `automation-worker` ha un `try` per evento, e un'eccezione diventa un
+ * ritentativo con attesa crescente. Il codice segue la convenzione del modulo
+ * — prima parola, che `codeOf()` estrae — e NON porta il messaggio del
+ * database, che può contenere dati.
+ */
+function letto<T>(risposta: { data: T; error: unknown }, codice: string): T {
+  if (risposta.error) throw new Error(`${codice}: lettura fallita`);
+  return risposta.data;
+}
+
+/** La forma di una risposta PostgREST dentro un `.then()`, dove non si deduce. */
+type Risposta = { data: unknown; error: unknown };
+
 export async function loadFacts(
   sb: ServerClient, event: ClaimedEvent, now: Date = new Date(),
 ): Promise<EntityFacts | null> {
@@ -235,26 +265,32 @@ function subsidyProjectFactMap(pr: Record<string, unknown> | null): Facts {
 async function subsidyOpportunityFacts(
   sb: ServerClient, event: ClaimedEvent,
 ): Promise<EntityFacts | null> {
-  const { data: opp } = await sb.from('subsidy_opportunities')
+  const opp = letto(await sb.from('subsidy_opportunities')
     .select('id, company_id, project_id, program_id, kind, relevance_level, eligibility_status, '
       + 'completeness, timing, source_freshness, readiness, open_criteria_count, '
       + 'missing_fact_count, assessment_stale, call_id')
-    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_subsidy_opportunity');
   // ⚠️ Un'opportunità che non c'è più NON è un errore: il motore la ricalcola,
   //    e fra l'emissione dell'evento e adesso può essere sparita. Si scarta.
+  //    ⚠️ Ed è proprio il caso legittimo da cui il guasto era indistinguibile:
+  //    `null` per assenza e `null` per errore chiudevano l'evento come
+  //    `entity_missing`, cioè dichiaravano sparita un'opportunità al suo posto.
   if (!opp) return null;
   const o = opp as Record<string, unknown>;
 
-  const [{ data: prog }, { data: proj }, { data: call }] = await Promise.all([
+  const [prog, proj, call] = await Promise.all([
     sb.from('subsidy_programs').select('id, name, authority, support_type, availability')
-      .eq('id', o.program_id).maybeSingle(),
+      .eq('id', o.program_id).maybeSingle().then((r: Risposta) => letto(r, 'facts_subsidy_program')),
     o.project_id
       ? sb.from('subsidy_projects').select('title, stage, location_canton')
         .eq('id', o.project_id).eq('company_id', event.company_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+        .then((r: Risposta) => letto(r, 'facts_subsidy_project'))
+      : Promise.resolve(null),
     o.call_id
       ? sb.from('subsidy_calls').select('deadline_on').eq('id', o.call_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+        .then((r: Risposta) => letto(r, 'facts_subsidy_call'))
+      : Promise.resolve(null),
   ]);
 
   return {
@@ -294,22 +330,28 @@ async function subsidyOpportunityFacts(
 async function subsidyCaseFacts(
   sb: ServerClient, event: ClaimedEvent,
 ): Promise<EntityFacts | null> {
-  const { data: kase } = await sb.from('subsidy_cases')
+  const kase = letto(await sb.from('subsidy_cases')
     .select('id, company_id, project_id, program_id, status, outcome, owner_user_id, '
       + 'official_deadline, internal_deadline, amount_requested, currency, '
       + 'legacy_snapshot, source_changed_at')
-    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_subsidy_case');
   if (!kase) return null;
   const k = kase as Record<string, unknown>;
 
-  const [{ data: prog }, { data: proj }, { data: items }] = await Promise.all([
+  const [prog, proj, items] = await Promise.all([
     sb.from('subsidy_programs').select('id, name, authority, support_type, availability')
-      .eq('id', k.program_id).maybeSingle(),
+      .eq('id', k.program_id).maybeSingle().then((r: Risposta) => letto(r, 'facts_subsidy_program')),
     k.project_id
       ? sb.from('subsidy_projects').select('title, stage, location_canton')
         .eq('id', k.project_id).eq('company_id', event.company_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-    sb.from('subsidy_case_items').select('required, completed').eq('subsidy_case_id', k.id),
+        .then((r: Risposta) => letto(r, 'facts_subsidy_project'))
+      : Promise.resolve(null),
+    // ⚠️ Da qui esce `case.required_steps_open`. Un elenco vuoto per guasto
+    // darebbe ZERO passi aperti — cioè «la pratica è completa» — su una
+    // pratica che potrebbe averne dieci.
+    sb.from('subsidy_case_items').select('required, completed').eq('subsidy_case_id', k.id)
+      .then((r: Risposta) => letto(r, 'facts_subsidy_case_items')),
   ]);
 
   const requiredOpen = ((items ?? []) as Record<string, unknown>[])
@@ -370,26 +412,36 @@ async function subsidyCaseFacts(
 async function crmOrganizationFacts(
   sb: ServerClient, event: ClaimedEvent,
 ): Promise<EntityFacts | null> {
-  const { data: org } = await sb.from('crm_organizations')
+  const org = letto(await sb.from('crm_organizations')
     .select('id, company_id, display_name, account_owner_user_id, relationship_status, '
       + 'canton, city, source, last_contact_at')
-    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_crm_organization');
   if (!org) return null;
   const o = org as Record<string, unknown>;
 
-  const { data: roleRows } = await sb.from('crm_organization_roles')
-    .select('role').eq('organization_id', o.id).eq('company_id', event.company_id);
+  // ⚠️ Da qui escono i booleani per RUOLO. Un elenco vuoto per guasto li
+  // spegnerebbe tutti — «non è un cliente», «non è un fornitore» — e una regola
+  // scritta al negativo scatterebbe su un'organizzazione che quel ruolo ce l'ha.
+  const roleRows = letto(await sb.from('crm_organization_roles')
+    .select('role').eq('organization_id', o.id).eq('company_id', event.company_id),
+  'facts_crm_roles');
   const roles = new Set(((roleRows ?? []) as Record<string, unknown>[]).map((r) => r.role as string));
 
-  const { data: opps } = await sb.from('crm_opportunities')
+  const opps = letto(await sb.from('crm_opportunities')
     .select('id, stage').eq('organization_id', o.id).eq('company_id', event.company_id)
-    .is('archived_at', null);
+    .is('archived_at', null),
+  'facts_crm_opportunities');
   const openOpportunities = ((opps ?? []) as Record<string, unknown>[])
     .filter((p) => p.stage !== 'won' && p.stage !== 'lost').length;
 
-  const { data: tasks } = await sb.from('tasks')
+  // ⚠️ Un elenco vuoto per guasto darebbe ZERO attività aperte: «non c'è niente
+  // in sospeso su questo cliente», che è esattamente la condizione con cui si
+  // scrivono le regole di sollecito.
+  const tasks = letto(await sb.from('tasks')
     .select('id, status').eq('crm_organization_id', o.id).eq('company_id', event.company_id)
-    .is('archived_at', null);
+    .is('archived_at', null),
+  'facts_crm_tasks');
   const openTasks = ((tasks ?? []) as Record<string, unknown>[])
     .filter((k) => k.status !== 'completed').length;
 
@@ -459,33 +511,38 @@ function crmOrganizationFactMap(
 async function crmOpportunityFacts(
   sb: ServerClient, event: ClaimedEvent,
 ): Promise<EntityFacts | null> {
-  const { data: opp } = await sb.from('crm_opportunities')
+  const opp = letto(await sb.from('crm_opportunities')
     .select('id, company_id, organization_id, title, stage, owner_user_id, value_amount, '
       + 'value_currency, expected_close_date, next_step, next_step_due_date')
-    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_crm_opportunity');
   if (!opp) return null;
   const p = opp as Record<string, unknown>;
 
-  const { data: org } = await sb.from('crm_organizations')
+  const org = letto(await sb.from('crm_organizations')
     .select('id, company_id, display_name, account_owner_user_id, relationship_status, '
       + 'canton, city, source, last_contact_at')
-    .eq('id', p.organization_id).eq('company_id', event.company_id).maybeSingle();
+    .eq('id', p.organization_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_crm_organization');
   if (!org) return null;
   const o = org as Record<string, unknown>;
 
-  const { data: roleRows } = await sb.from('crm_organization_roles')
-    .select('role').eq('organization_id', o.id).eq('company_id', event.company_id);
+  const roleRows = letto(await sb.from('crm_organization_roles')
+    .select('role').eq('organization_id', o.id).eq('company_id', event.company_id),
+  'facts_crm_roles');
   const roles = new Set(((roleRows ?? []) as Record<string, unknown>[]).map((r) => r.role as string));
 
-  const { data: opps } = await sb.from('crm_opportunities')
+  const opps = letto(await sb.from('crm_opportunities')
     .select('id, stage').eq('organization_id', o.id).eq('company_id', event.company_id)
-    .is('archived_at', null);
+    .is('archived_at', null),
+  'facts_crm_opportunities');
   const openOpportunities = ((opps ?? []) as Record<string, unknown>[])
     .filter((x) => x.stage !== 'won' && x.stage !== 'lost').length;
 
-  const { data: tasks } = await sb.from('tasks')
+  const tasks = letto(await sb.from('tasks')
     .select('id, status').eq('crm_organization_id', o.id).eq('company_id', event.company_id)
-    .is('archived_at', null);
+    .is('archived_at', null),
+  'facts_crm_tasks');
   const openTasks = ((tasks ?? []) as Record<string, unknown>[])
     .filter((k) => k.status !== 'completed').length;
 
@@ -548,27 +605,33 @@ async function crmOpportunityFacts(
 async function contractFacts(
   sb: ServerClient, event: ClaimedEvent,
 ): Promise<EntityFacts | null> {
-  const { data: contract } = await sb.from('contracts')
+  const contract = letto(await sb.from('contracts')
     .select('id, company_id, display_name, contract_type, counterparty_name, owner_user_id, '
       + 'lifecycle_status, review_status, quality_flags, current_term_version_id')
-    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_contract');
   if (!contract) return null;
   const c = contract as Record<string, unknown>;
 
   // I termini in vigore; in mancanza, la bozza — dichiarata come tale.
-  const { data: versions } = await sb.from('contract_term_versions')
+  // ⚠️ Un elenco vuoto per guasto lascerebbe `current` a `null`: importo,
+  // valuta e rinnovo automatico diventerebbero fatti mancanti su un contratto
+  // che li ha, e una regola «rinnovo automatico non_esiste» scatterebbe.
+  const versions = letto(await sb.from('contract_term_versions')
     .select('id, status, auto_renewal, cost_amount, cost_currency, cost_frequency, '
       + 'counterparty_name')
     .eq('contract_id', c.id).eq('company_id', event.company_id)
     .in('status', ['verified', 'draft'])
-    .order('version', { ascending: false });
+    .order('version', { ascending: false }),
+  'facts_contract_versions');
   const rows = ((versions ?? []) as Record<string, unknown>[]);
   const current = c.current_term_version_id
     ? rows.find((v) => v.id === c.current_term_version_id) ?? null
     : rows.find((v) => v.status === 'draft') ?? null;
 
-  const { data: docs } = await sb.from('contract_documents')
-    .select('id').eq('contract_id', c.id).eq('company_id', event.company_id);
+  const docs = letto(await sb.from('contract_documents')
+    .select('id').eq('contract_id', c.id).eq('company_id', event.company_id),
+  'facts_contract_documents');
   const documentCount = ((docs ?? []) as unknown[]).length;
 
   const flags = (c.quality_flags as string[] | null) ?? [];
@@ -598,9 +661,10 @@ async function contractFacts(
   // I fatti della DATA, solo se l'evento ne porta una.
   const milestoneId = (event.payload.milestoneId as string | null) ?? null;
   if (milestoneId) {
-    const { data: ms } = await sb.from('contract_milestones')
+    const ms = letto(await sb.from('contract_milestones')
       .select('id, kind, due_date, source, status')
-      .eq('id', milestoneId).eq('company_id', event.company_id).maybeSingle();
+      .eq('id', milestoneId).eq('company_id', event.company_id).maybeSingle(),
+    'facts_contract_milestone');
     const m = ms as Record<string, unknown> | null;
     // ⚠️ Si RILEGGE lo stato invece di fidarsi del payload: fra l'emissione e
     // adesso una persona può aver scartato quella data, e far nascere
@@ -651,23 +715,33 @@ async function contractFacts(
 async function documentFacts(
   sb: ServerClient, event: ClaimedEvent, now: Date,
 ): Promise<EntityFacts | null> {
-  const { data: doc } = await sb.from('documents')
+  const rigaDoc = letto(await sb.from('documents')
     .select('id, company_id, title, source_type, category, category_source')
-    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
-  if (!doc) return null;
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_document');
+  if (!rigaDoc) return null;
+  const doc = rigaDoc as Record<string, unknown>;
 
-  const { data: analyses } = await sb.from('document_analyses')
+  // ⚠️ Senza analisi, TUTTI i fatti del documento — tipo, mittente, scadenza,
+  // importo — diventano mancanti. Una regola «scadenza non_esiste» scatterebbe
+  // su un documento analizzato che una scadenza ce l'ha.
+  const analyses = letto(await sb.from('document_analyses')
     .select('id, document_type, sender, sender_authority_type, deadline, amount, amount_currency, '
       + 'confidence, overall_confidence, reply_needed, analysis_status, created_at, amount_evidence')
     .eq('document_id', doc.id).eq('company_id', event.company_id)
     .neq('analysis_status', 'failed')
-    .order('created_at', { ascending: false }).limit(1);
+    .order('created_at', { ascending: false }).limit(1),
+  'facts_document_analyses');
   const analysis = ((analyses ?? []) as Record<string, unknown>[])[0] ?? null;
 
-  const { data: corrections } = await sb.from('analysis_corrections')
+  // ⚠️ Le correzioni UMANE scavalcano l'analisi e sono certe per definizione.
+  // Perderle in silenzio significa decidere sul valore che una persona ha già
+  // dichiarato sbagliato.
+  const corrections = letto(await sb.from('analysis_corrections')
     .select('field, corrected_value, corrected_at')
     .eq('document_id', doc.id).eq('company_id', event.company_id)
-    .order('corrected_at', { ascending: true });
+    .order('corrected_at', { ascending: true }),
+  'facts_document_corrections');
 
   const corrected = new Map<string, string>();
   for (const c of (corrections ?? []) as { field: string; corrected_value: string }[]) {
@@ -768,11 +842,18 @@ async function documentFacts(
 async function addFinanceFacts(
   sb: ServerClient, facts: Facts, documentId: string, companyId: string,
 ): Promise<void> {
-  const { data: rows } = await sb.from('finance_items')
+  // ⚠️⚠️ LA DIMOSTRAZIONE PIÙ CHIARA del perché questa lettura non può tacere:
+  // undici righe più sotto, `if (!item)` mette **undici fatti** a `missing()`
+  // in un colpo solo. Con l'errore scartato, un singhiozzo del database
+  // dichiarava che un documento non ha importo, non ha fornitore, non ha
+  // scadenza, non ha numero di fattura — e ogni regola scritta al negativo su
+  // uno di quegli undici campi partiva.
+  const rows = letto(await sb.from('finance_items')
     .select('id, type, review_status, dup_key, quality_flags, '
       + 'eff_supplier_name, eff_invoice_number, eff_currency, '
       + 'eff_gross_amount, eff_vat_amount, eff_due_date, eff_invoice_date')
-    .eq('document_id', documentId).eq('company_id', companyId).limit(1);
+    .eq('document_id', documentId).eq('company_id', companyId).limit(1),
+  'facts_finance_item');
   const item = ((rows ?? []) as Record<string, unknown>[])[0] ?? null;
 
   if (!item) {
@@ -793,11 +874,14 @@ async function addFinanceFacts(
 
   let duplicates = 0;
   if (item.dup_key) {
-    const { data: dups } = await sb.from('finance_items')
+    // Zero duplicati per guasto significa «questa fattura non è sospetta»: è
+    // proprio la risposta che l'automazione userebbe per NON avvisare nessuno.
+    const dups = letto(await sb.from('finance_items')
       .select('id')
       .eq('company_id', companyId).eq('dup_key', item.dup_key)
-      .neq('id', item.id).is('archived_at', null);
-    duplicates = (dups ?? []).length;
+      .neq('id', item.id).is('archived_at', null),
+    'facts_finance_duplicates');
+    duplicates = ((dups ?? []) as unknown[]).length;
   }
 
   facts['finance.type'] = known(item.type as string);
@@ -820,15 +904,18 @@ async function addFinanceFacts(
 }
 
 async function emailFacts(sb: ServerClient, event: ClaimedEvent): Promise<EntityFacts | null> {
-  const { data: msg } = await sb.from('email_messages')
+  const rigaMsg = letto(await sb.from('email_messages')
     .select('id, company_id, subject, sender_name, sender_email, relevance, attention_status, '
       + 'has_attachments, attachment_count')
-    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
-  if (!msg) return null;
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_email_message');
+  if (!rigaMsg) return null;
+  const msg = rigaMsg as Record<string, unknown>;
 
-  const { data: links } = await sb.from('email_message_documents')
+  const links = letto(await sb.from('email_message_documents')
     .select('document_id, relation')
-    .eq('email_message_id', msg.id).eq('company_id', event.company_id);
+    .eq('email_message_id', msg.id).eq('company_id', event.company_id),
+  'facts_email_documents');
   const rows = (links ?? []) as { document_id: string; relation: string }[];
 
   const facts: Facts = {
@@ -856,11 +943,15 @@ async function emailFacts(sb: ServerClient, event: ClaimedEvent): Promise<Entity
 }
 
 async function taskFacts(sb: ServerClient, event: ClaimedEvent): Promise<EntityFacts | null> {
-  const { data: task } = await sb.from('tasks')
+  const riga = letto(await sb.from('tasks')
     .select('id, company_id, title, priority, status, source, assignee_user_id, due_date, '
       + 'authority, document_id')
-    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle();
-  if (!task) return null;
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_task');
+  if (!riga) return null;
+  // Il cast esplicito come nelle funzioni sorelle: `letto` restituisce ciò che
+  // la risposta dichiara, e la riga si legge per nome come altrove nel file.
+  const task = riga as Record<string, unknown>;
 
   const facts: Facts = {
     'task.title': optional(task.title as string | null),

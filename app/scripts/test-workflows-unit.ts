@@ -51,6 +51,11 @@ import {
   formatAmount, formatDate, placeholdersIn, renderRequired, renderTemplate,
 } from '../supabase/functions/_shared/automation/templates.ts';
 import { planAction, type ActionContext } from '../supabase/functions/_shared/automation/executors.ts';
+// ⚠️ `loadFacts` importata per NOME e per essere ESEGUITA (sezione 14). Prima
+// era raggiunta solo di rimbalzo, attraverso `engine.ts` importata da
+// `test:workflows` — cioè sul database vero e sul solo cammino felice: nessun
+// test le ha mai iniettato un guasto, che è esattamente ciò che era rotto.
+import { loadFacts, type ClaimedEvent } from '../supabase/functions/_shared/automation/store.ts';
 // ⚠️ L'ORIGINALE dell'urgenza: la copia portabile del motore deve coincidere
 // con questa, e la sezione 9 lo verifica su una matrice. Vedi il commento in
 // cima a `urgencyFrom`.
@@ -814,6 +819,126 @@ section('13 · Il CRM dentro le automazioni (0026 — §136–§139)');
   ok(withText.length === 0,
     'nessun modello scrive testo in una lingua sola dentro un titolo o un messaggio',
     withText.join(' | '));
+}
+
+// ===========================================================================
+section('14 · I FATTI non nascono da un guasto: `loadFacts` solleva, non inventa');
+// ===========================================================================
+//
+// ⚠️⚠️ PERCHÉ QUESTA SEZIONE ESISTE, e perché è la più importante del file.
+// Fino al 2026-08-11 i caricatori di `loadFacts` scartavano l'errore delle loro
+// letture. Il risultato era `null`, e da `null` nasce un `missing()` — un fatto
+// DICHIARATO assente.
+//
+// Ma `missing()` non è un ignoto per tutti gli operatori. Il primo caso qui
+// sotto lo dimostra invece di affermarlo: con `not_exists`, un fatto mancante
+// rende la condizione **vera**. Quindi una regola scritta «campo non_esiste»
+// partiva perché il database aveva singhiozzato — non un'automazione mancata,
+// quella SBAGLIATA, eseguita davvero.
+{
+  // --- 14.1 La conseguenza, provata e non asserita -------------------------
+  ok(evaluateCondition({ field: 'x.s', operator: 'not_exists' }, { 'x.s': missing() }, NOW).outcome === 'true',
+    '⚠️⚠️ un fatto MANCANTE rende vera una condizione `not_exists`: è la ragione per cui un guasto non può diventare un fatto');
+  ok(evaluateCondition({ field: 'x.s', operator: 'not_exists' }, { 'x.s': uncertain('v') }, NOW).outcome === 'unknown',
+    '…mentre un fatto INCERTO resta «non lo so»: la salvaguardia esiste, e `missing` non è nel suo elenco');
+
+  // --- Un PostgREST finto che sa fallire su una tabella scelta -------------
+  type Riga = Record<string, unknown>;
+  const sbFinto = (tabelle: Record<string, Riga[]>, rotta?: string) => ({
+    from: (tabella: string) => {
+      const filtri: ((r: Riga) => boolean)[] = [];
+      const righe = () => (tabelle[tabella] ?? []).filter((r) => filtri.every((f) => f(r)));
+      const errore = () => (tabella === rotta ? { code: '57014', message: 'statement timeout' } : null);
+      const chain: Record<string, unknown> = {};
+      const self = () => chain;
+      for (const m of ['select', 'order', 'limit']) chain[m] = self;
+      chain.eq = (c: string, v: unknown) => { filtri.push((r) => r[c] === v); return chain; };
+      chain.neq = (c: string, v: unknown) => { filtri.push((r) => r[c] !== v); return chain; };
+      chain.in = (c: string, vs: unknown[]) => { filtri.push((r) => vs.includes(r[c])); return chain; };
+      chain.is = (c: string, v: unknown) => { filtri.push((r) => (v === null ? r[c] == null : r[c] === v)); return chain; };
+      chain.maybeSingle = async () => {
+        const e = errore();
+        return e ? { data: null, error: e } : { data: righe()[0] ?? null, error: null };
+      };
+      chain.then = (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) => {
+        const e = errore();
+        return Promise.resolve(e ? { data: null, error: e } : { data: righe(), error: null }).then(res, rej);
+      };
+      return chain;
+    },
+    rpc: async () => ({ data: null, error: null }),
+  });
+
+  const evento = (over: Partial<ClaimedEvent> = {}): ClaimedEvent => ({
+    id: 'e-1', company_id: 'A', event_type: 'task_created', entity_type: 'task',
+    entity_id: 't-1', payload: {}, occurred_at: NOW.toISOString(), origin: 'system',
+    correlation_id: 'k-1', root_event_id: null, chain_depth: 0, attempts: 0, lock_id: 'l-1',
+    ...over,
+  } as ClaimedEvent);
+
+  const solleva = async (fn: () => Promise<unknown>): Promise<Error | null> => {
+    try { await fn(); return null; } catch (e) { return e as Error; }
+  };
+
+  const MONDO: Record<string, Riga[]> = {
+    tasks: [{ id: 't-1', company_id: 'A', title: 'Rendiconto', priority: 'high', status: 'open',
+      source: 'manual', assignee_user_id: 'u-1', due_date: '2026-09-01', authority: null, document_id: 'd-1' }],
+    documents: [{ id: 'd-1', company_id: 'A', title: 'Fattura', source_type: 'upload',
+      category: 'invoice', category_source: 'ai' }],
+    document_analyses: [], analysis_corrections: [], finance_items: [],
+    crm_organizations: [{ id: 'o-1', company_id: 'A', display_name: 'Rossi SA',
+      account_owner_user_id: 'u-1', relationship_status: 'active', canton: 'TI', city: 'Lugano',
+      source: 'manual', last_contact_at: null }],
+    crm_organization_roles: [], crm_opportunities: [],
+  };
+
+  // --- 14.2 Ogni caricatore SOLLEVA sul proprio guasto ---------------------
+  const casi: { nome: string; rotta: string; codice: string; evt: ClaimedEvent }[] = [
+    { nome: 'l\'ATTIVITÀ', rotta: 'tasks', codice: 'facts_task', evt: evento() },
+    { nome: 'il DOCUMENTO', rotta: 'documents', codice: 'facts_document',
+      evt: evento({ entity_type: 'document', entity_id: 'd-1', event_type: 'document_analysis_completed' }) },
+    { nome: 'le ANALISI del documento', rotta: 'document_analyses', codice: 'facts_document_analyses',
+      evt: evento({ entity_type: 'document', entity_id: 'd-1', event_type: 'document_analysis_completed' }) },
+    { nome: 'le CORREZIONI umane', rotta: 'analysis_corrections', codice: 'facts_document_corrections',
+      evt: evento({ entity_type: 'document', entity_id: 'd-1', event_type: 'document_analysis_completed' }) },
+    { nome: 'la VOCE FINANZIARIA', rotta: 'finance_items', codice: 'facts_finance_item',
+      evt: evento({ entity_type: 'document', entity_id: 'd-1', event_type: 'document_analysis_completed' }) },
+    { nome: 'l\'ORGANIZZAZIONE del CRM', rotta: 'crm_organizations', codice: 'facts_crm_organization',
+      evt: evento({ entity_type: 'crm_organization', entity_id: 'o-1', event_type: 'crm_organization_created' }) },
+    { nome: 'i RUOLI del CRM', rotta: 'crm_organization_roles', codice: 'facts_crm_roles',
+      evt: evento({ entity_type: 'crm_organization', entity_id: 'o-1', event_type: 'crm_organization_created' }) },
+  ];
+
+  for (const c of casi) {
+    const e = await solleva(() => loadFacts(sbFinto(MONDO, c.rotta) as never, c.evt, NOW));
+    ok(e !== null && e.message.startsWith(`${c.codice}:`),
+      `⚠️ guasto su ${c.nome}: solleva con il codice «${c.codice}», invece di produrre fatti mancanti`,
+      e ? e.message : 'nessuna eccezione: il guasto è diventato un fatto');
+  }
+
+  // --- 14.3 …e l'ASSENZA legittima resta un `null`, senza sollevare --------
+  // È l'altra metà della coppia. Se un giorno tornassero a coincidere — se cioè
+  // qualcuno facesse sollevare anche l'assenza, o tacere di nuovo il guasto —
+  // una di queste due asserzioni diventa rossa.
+  {
+    const e = await solleva(() => loadFacts(sbFinto({ ...MONDO, tasks: [] }) as never, evento(), NOW));
+    ok(e === null, 'un\'attività DAVVERO sparita non solleva: il motore la ricalcola, ed è un caso legittimo',
+      e ? `ha sollevato: ${e.message}` : '');
+  }
+  {
+    const facts = await loadFacts(sbFinto(MONDO) as never, evento(), NOW);
+    ok(facts !== null && facts.facts['task.priority']?.known === true,
+      'e sul cammino normale i fatti si costruiscono come sempre', JSON.stringify(facts?.facts['task.priority']));
+  }
+
+  // --- 14.4 Il codice è quello che il worker registra ----------------------
+  // `codeOf()` prende la PRIMA PAROLA del messaggio: se un codice contenesse
+  // uno spazio o un carattere fuori dall'identificatore, il log direbbe
+  // «unknown» su un guasto che un nome ce l'aveva.
+  const codici = casi.map((c) => c.codice);
+  ok(codici.every((c) => /^[a-z_]{3,40}$/.test(c)),
+    '⚠️ ogni codice è un identificatore che `codeOf()` sa estrarre: altrimenti il log direbbe «unknown»',
+    codici.filter((c) => !/^[a-z_]{3,40}$/.test(c)).join(', '));
 }
 
 console.log(`\n${B}Risultato${X}  ${pass} superati, ${fail} falliti\n`);
