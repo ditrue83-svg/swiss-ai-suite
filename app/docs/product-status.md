@@ -160,7 +160,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Inbox | `/inbox` | sì | sì | sì | sì | sì | **no** | Google Gmail API | scope riservato: fuori dalla modalità Test Google impone la verifica CASA, quindi **un cliente reale non può collegare la propria casella**. Microsoft implementato e non configurato. ✅ **148 messaggi, TUTTI `done`, zero in `failed`** — rimisurato il 2026-08-05 interrogando la produzione. ⚠️ Questa riga ha detto «3 su 141 in `failed`» fino al 2026-08-05: era vero il 2026-08-01 e ha smesso di esserlo da sé, perché il ritentativo ha ripescato quei tre quando il credito è tornato. **Il meccanismo ha funzionato senza che nessuno lo toccasse**, ed è la prova che quella riga aspettava. Il numero qui si RIMISURA prima di unire una PR: `docs:check` confronta i documenti con il codice, non con il database, quindi su questa colonna non può aiutare (§sotto) |
 | Attività | `/attivita` | sì | — | sì | sì | — | sì | — | nessuna |
 | Documenti | `/documenti` | sì | — | sì | sì | — | sì | — | nessuna politica di conservazione delle analisi |
-| Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). ⚠️⚠️ **Il 2026-08-03 si è scoperto che le email non sarebbero potute partire NEMMENO con i secret impostati**: `composeEmail` non metteva il destinatario nel messaggio, e ogni promemoria sarebbe uscito verso `to: [null]` (§sotto). Corretto e coperto da 25 controlli nuovi. Restano due cose, entrambe **gesti dell'utente**: i due secret del provider email non sono impostati, e **nessuna connessione OAuth reale è mai stata stabilita** — misurato il 2026-08-03, `POST /calendar-oauth/providers` risponde `{"providers":[],"emailConfigured":false}`. Quindi «servizio reale» resta **no** |
+| Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). ⚠️⚠️ **Il 2026-08-03 si è scoperto che le email non sarebbero potute partire NEMMENO con i secret impostati**: `composeEmail` non metteva il destinatario nel messaggio, e ogni promemoria sarebbe uscito verso `to: [null]` (§sotto). Corretto e coperto da 25 controlli nuovi. Restano due cose, entrambe **gesti dell'utente**: i due secret del provider email non sono impostati, e **nessuna connessione OAuth reale è mai stata stabilita** — misurato il 2026-08-03, `POST /calendar-oauth/providers` risponde `{"providers":[],"emailConfigured":false}`. Quindi «servizio reale» resta **no**. ✅ **Il 2026-08-11 il MOTORE dei promemoria è stato eseguito contro il database vero e ha prodotto la sua riga** (`npm run test:reminders`, 11 controlli, azienda usa-e-getta rimossa e rimozione verificata rileggendo). Prima esisteva solo la verifica manuale del 2026-07-31: vera, ma non ripetibile. ⚠️ **E in produzione lo zero è CORRETTO, misurato e non più dedotto**: le quattro attività scadono il 10 e il 30 settembre, la finestra arriva a otto giorni, il primo avviso è a sette — non c'è ancora niente da ricordare (§sotto) |
 | Automazioni | `/automazioni` | sì | sì | sì | sì | sì | sì | — | nessuna approvazione umana: solo azioni a rischio basso, e per questo non esiste nessuna azione che ne avrebbe bisogno. Le esecuzioni che non corrispondono non lasciano traccia |
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
 | Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ✅ **Letti tre contratti veri il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ✅ **Le correzioni sono DEPLOYATE dal 2026-08-09** (`contract-worker` v19). ⚠️ **La rilettura dal capo alla coda resta non eseguibile** (credito esaurito; ultima misura vera 2026-08-07, non rimisurato il 09): il 88,6 % resta la misura di PRIMA della correzione delle date. In produzione `contract_extractions` è a **0 righe**: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il 2026-08-07 le prove che non spendono credito: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
@@ -964,6 +964,88 @@ restano verdi anch'esse: un gruppo senza `source_ids` resta vietato, fonte
 singola *e* gruppo insieme restano vietati, una dimensione negativa resta
 vietata. Il vincolo nuovo permette ciò che doveva permettere senza smettere di
 vietare ciò che vietava.
+
+## ✅ Perché `notifications` è a ZERO — misurato il 2026-08-11, non più dedotto
+
+`notifications-worker` è l'esempio che CLAUDE.md usa per spiegare le sei
+parole: «implementata, deployata e testata, e non ha mai generato un
+promemoria». Lo scheduler gira ogni quindici minuti e `cron.job_run_details`
+dice `succeeded` ogni volta. La tabella `notifications` è a **0 righe**.
+
+Fino a oggi «lo zero è corretto» era una **deduzione dal codice**. Ora è una
+misura, presa interrogando la produzione:
+
+| Che cosa | Misura del 2026-08-11 |
+|---|---|
+| attività non completate, non archiviate | **4** |
+| le loro scadenze | **2026-09-10** (tre) e **2026-09-30** (una) |
+| finestra che il worker legge oggi | `reminderWindow(oggi)` = **2026-07-12 → 2026-08-19** (da −30 giorni a +8) |
+| attività dentro la finestra | **0** |
+| righe in `notification_preferences` | **0** (valgono i default: in-app acceso, email spente) |
+| attività con un responsabile | **0** — tutte e quattro sono senza |
+
+Il primo promemoria scatta a **sette giorni** dalla scadenza. La più vicina è a
+trenta. **Non c'è ancora niente da ricordare, e lo zero è la risposta giusta.**
+
+### ⚠️⚠️ E QUI STAVA IL DIFETTO: lo zero giusto e lo zero rotto erano la stessa riga
+
+`generateReminders` scartava l'errore della lettura delle attività. Un guasto
+del database — un timeout, una politica RLS cambiata, la cache dello schema —
+dava `data: null`, e la funzione restituiva `tasksScanned: 0`. Il worker
+rispondeva `{"status":"ok"}` e lo scheduler segnava `succeeded`.
+
+Che è **esattamente** ciò che accade quando va tutto bene.
+
+Su un sistema in cui lo zero è la risposta normale, quel guasto non sarebbe
+stato invisibile: sarebbe stato invisibile **due volte**. Nessun rosso, nessun
+numero fuori posto, nessuna riga di registro diversa — per sempre.
+
+Corretto il 2026-08-11 in quattro punti (lettura delle attività e dei titolari
+in `notify.ts`, lettura delle preferenze e accodamento della consegna in
+`store.ts`) e coperto dalla sezione 13 di `test:calendar-unit`, il cui cuore è
+una **coppia**: un guasto DEVE sollevare, e zero attività davvero in finestra
+NON deve sollevare. Se un giorno i due zeri tornassero a coincidere, quella
+coppia diventa rossa.
+
+### Che cosa resta scoperto, e quanto è grande
+
+Lo stesso difetto — l'errore di una query scartato — è stato **cercato in tutte
+le Edge Function** il 2026-08-11, non solo qui. Il conteggio, da una scansione
+riga per riga di `supabase/functions/`:
+
+| Categoria | Punti |
+|---|---|
+| **no-op invisibile** — l'elenco vuoto fa concludere «niente da fare» e il worker riporta successo avendo lavorato zero | 109 |
+| **perdita di dato** — una registrazione (un verbale, un esito, un id) non viene scritta | 48 |
+| **autorizzazione** — fallisce chiuso, ma il codice restituito mente sulla causa | 17 |
+| **duplicato** — la ricerca di «esiste già» dà null e si crea una seconda riga | 12 |
+| **innocuo** | 3 |
+| **TOTALE**, in 25 file | **189** |
+
+⚠️ **Questo numero è una misura, non una promessa di correzione.** Di quei 189
+punti ne sono corretti **4**, quelli del percorso di generazione dei
+promemoria. Gli altri 185 restano, e sono scritti qui perché una superficie
+misurata e dichiarata è un'altra cosa da una superficie ignota.
+
+⚠️ **E il numero ha i suoi limiti, dichiarati.** La scansione è stata fatta da
+otto letture parallele; la nona — quella che doveva contestare le
+classificazioni «innocuo» e cercare le forme non previste — **è morta con un
+errore del servizio**, quindi le tre voci «innocuo» non sono state contestate e
+nessuno ha cercato le forme diverse da `const { data } = await …`. Un controllo
+a campione su quattro punti (`eventDone`, `eventRetry`, `eventFailed`,
+`eventDeadLetter` in `automation/store.ts`) li ha confermati alla lettera. Un
+quinto — un presunto invio doppio di email in `deliverEmails` — **era
+sbagliato**: la chiave di idempotenza passata al provider lo impedisce, e il
+danno vero è un altro e minore (una consegna riuscita che finisce registrata
+come `failed`).
+
+I nove punti più vicini a quello appena corretto stanno nello STESSO file, nel
+percorso di CONSEGNA: `deliverEmails` e `composeEmail`. Fra questi, uno merita
+di essere scritto per esteso perché è la ricaduta di un difetto già pagato: un
+guasto sulla lettura di `profiles` dà `profile = null`, `composeEmail`
+restituisce `null`, e la consegna viene chiusa **definitivamente** come
+`NO_RECIPIENT`. È lo stesso esito del difetto del 2026-08-03 — il promemoria
+che usciva verso `to: [null]` — raggiunto per un'altra strada.
 
 ## Come si rimisura questa tabella
 
