@@ -691,6 +691,12 @@ preload del solo peso del testo doveva ottenere.
 
 ### Le schermate INTERNE, provate in produzione il 2026-08-11
 
+> ⚠️ **Questa verifica riguarda il layout di quel momento.** Lo stesso giorno,
+> più tardi, tre delle cinque schermate qui sotto — Panoramica, Documenti,
+> dettaglio documento — sono state ristrutturate: vedi «Gerarchia e densità»
+> più avanti. Le misure che seguono restano vere di ciò che erano, e non
+> descrivono più ciò che c'è.
+
 La verifica del 2026-08-10 si era fermata al CSS compilato: le schermate dietro
 autenticazione non erano state guardate, e questa pagina lo dichiarava. **Adesso
 lo sono**, sull'app deployata, con i dati veri di un'azienda reale e **senza
@@ -724,6 +730,46 @@ incentivi attivo.
 quindi non causate dal cambio: nella riga dei KPI il terzo numero sta 4 px più in
 alto (quella scheda è un link, `.kpi-link`), e le due voci di Finanze mostrano
 «importo non indicato» — sono i due `NOT_FINANCIAL` già dichiarati sopra.
+
+## ⚠️ Gerarchia e densità — scritto e provato a schermo, NON ancora in produzione
+
+Tre livelli di superficie (`--surface-1/2/3`), una sola azione primaria per
+schermata con menu di trabocco, colonna di lettura (`--measure`,
+`--content-max`), elenco documenti ristrutturato, Panoramica con una gerarchia
+dichiarata. Il come e il perché stanno in
+[`design-system.md`](design-system.md); qui c'è solo lo stato.
+
+| | Stato al 2026-08-11 |
+|---|---|
+| Implementato | sì — `app.css`, `ActionMenu.tsx`, `documentModel.ts`, tre schermate |
+| Deployato | **no** — PR aperta, non unita |
+| Configurato | non richiede configurazione |
+| Testato | **in parte**: la regola «un solo colore forte per riga» è una funzione pura con 20 combinazioni provate (`test:documents-unit`, sez. 11) e `design:lint` resta verde. Il **layout** non ha test: si guarda |
+| Provato contro la cosa reale | **NO** — vedi qui sotto |
+| Disponibile a clienti esterni | no |
+
+⚠️⚠️ **LA VERIFICA DEL 2026-08-11 QUI SOPRA RIGUARDA IL LAYOUT PRECEDENTE, e
+dirlo è metà del valore di questa pagina.** Le «cinque schermate provate in
+produzione con i dati veri di un'azienda reale» sono state misurate su
+Panoramica, Documenti e dettaglio documento **com'erano prima di questo
+lavoro** — cioè su tre delle cinque schermate che questo lavoro riscrive. Quelle
+219 misure restano vere di ciò che erano, e **non dicono niente** di ciò che
+c'è adesso.
+
+Che cosa è stato guardato davvero, e con che strumento: 375/768/1280, chiaro e
+scuro, nelle tre lingue, su un **banco di prova usa-e-getta** fuori da `src/`
+che monta il foglio di stile VERO e i componenti puri veri
+(`NextStepCard`, `ActionMenu`, `rowBadgeTones`) dentro la cornice vera, **con
+dati inventati**. Prova il CSS e il riflusso; non prova che i dati veri abbiano
+quelle forme — un mittente più lungo di quelli inventati, una pastiglia in più,
+un titolo che va a capo tre volte sono cose che solo i dati veri mostrano.
+
+⚠️ Le schermate interne stanno dietro autenticazione e da questa postazione non
+si aprono senza credenziali: **il banco di prova non è una scorciatoia scelta,
+è l'unico strumento disponibile**. Per chiudere il divario serve il gesto che è
+già stato fatto per il carattere — aprire `app.ai-swisse.com` dopo il merge, con
+i dati di un'azienda reale, e guardare. Finché non succede, questa riga dice
+«no» alla quinta parola.
 
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 
