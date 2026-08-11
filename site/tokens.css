@@ -32,13 +32,60 @@
   --muted: hsl(213, 12%, 42%);         /* metadati, didascalie                  */
   --line: hsl(210, 20%, 90%);
   --line-strong: hsl(210, 20%, 78%);   /* bordi marcati: hover, stati attivi */
+  /* Separatore più tenue di --line, per righe DENTRO una scheda. Il grigio al
+     50% con un'alfa bassa regge su chiaro e scuro senza bisogno di un valore
+     per tema: per questo NON è ridefinito nel blocco scuro, ed è voluto. */
+  --line-subtle: rgba(127, 127, 127, 0.15);
   --bg: hsl(210, 20%, 98%);
   --card: #ffffff;
   --on-accent: #ffffff;               /* testo sopra i fondi pieni colorati */
-  --surface-2: hsl(210, 20%, 94%);     /* superficie tenue: pastiglie neutre */
+  /* Riempimento tenue di una pastiglia neutra o di un hover. ⚠️ Si chiamava
+     `--surface-2` fino al 2026-08-11, e il nome mentiva: non è un LIVELLO di
+     superficie, è un colore di riempimento. Quando i tre livelli sono stati
+     nominati (--surface-1/2/3, qui sotto) il nome vecchio sarebbe stato il
+     secondo `--surface-2` della stessa palette — lo stesso guasto di --amber
+     usato sia per scrivere sia per riempire, che ha prodotto il marrone della
+     barra «Media» che nessuno aveva scelto. */
+  --fill-subtle: hsl(210, 20%, 94%);
   --track: hsl(210, 20%, 92%);         /* fondo delle barre di avanzamento  */
   --highlight: hsl(48, 100%, 78%);     /* evidenziazione della citazione     */
   --on-highlight: hsl(45, 60%, 12%);   /* testo sopra l'evidenziazione       */
+
+  /* --- Livelli di superficie -----------------------------------------------
+     Tre livelli, non «scheda o niente». Il livello dichiara QUANTO pesa ciò che
+     contiene, e si sceglie una volta per blocco: sette schede identiche nella
+     stessa pagina non fanno gerarchia, la fanno sparire — a quel punto a dire
+     cosa conta resta solo la posizione, che è un ripiego.
+       --surface-1  elevata · fondo proprio, bordo, ombra → si LEGGE   (Analisi)
+       --surface-2  piana   · nessun fondo, filetto sopra → si CONSULTA (Attività)
+       --surface-3  inline  · nessun contenitore          → si SCORRE   (Origine)
+     ⚠️ 2 e 3 sono TRASPARENTI di proposito, e non è una svista: un terzo grigio
+     appena diverso sarebbe un valore da mantenere in due temi per non dire
+     niente in più. Ciò che separa un blocco piano dal successivo è il filetto
+     (--surface-rule), non un fondo; ciò che distingue una riga inline è che non
+     ha contenitore affatto. Le tre classe-livello stanno accanto a `.card`. */
+  --surface-1: var(--card);
+  --surface-2: transparent;
+  --surface-3: transparent;
+  --surface-rule: var(--line);
+
+  /* --- Colonna di lettura ---------------------------------------------------
+     `--measure` è la lunghezza di riga del testo CORRENTE — circa settanta
+     caratteri, la misura oltre la quale l'occhio perde il capo della riga
+     successiva. `--content-max` è la colonna che contiene una pagina di
+     lettura. Sono due cose diverse: tabelle ed elenchi possono superare la
+     prima (sono strutture, non prosa) ma non la seconda. */
+  /* ⚠️ 52ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
+     ZERO, e in Inter lo zero è largo 9,46px a 15px mentre il carattere medio di
+     una frase italiana vera ne misura 6,83. Scrivere `70ch` per «settanta
+     caratteri» dà una riga da 94 caratteri — trentaquattro in più di quelli
+     voluti, cioè esattamente il difetto che si stava correggendo. 52ch = 492px
+     = ~72 caratteri del testo reale, contati sul riassunto di un'analisi con il
+     font servito. Il conteggio dipende dal FONT, non dalla lingua: vale uguale
+     in de e fr. Se un giorno cambia il carattere, questo numero va rimisurato,
+     non tradotto. */
+  --measure: 52ch;
+  --content-max: 880px;
 
   /* --- Colori di stato -----------------------------------------------------
      NON sono decorazione: dicono quanto manca a una scadenza e se un'azione è
@@ -88,7 +135,12 @@
   --ls-title: -0.01em; /* i titoli grandi respirano meglio stretti */
 
   /* --- Ritmo delle spaziature ----------------------------------------------
-     Multipli di 4: sette valori coprono tutta l'interfaccia. */
+     Multipli di 4 per il ritmo FRA gli elementi. --sp-05 è il mezzo gradino
+     per l'anatomia DENTRO un elemento — il respiro di una pastiglia, una pila
+     fitta, un ritocco ottico: nominato il 2026-08-10, quando 53 eccezioni di
+     design:lint con lo stesso genere di motivo hanno dimostrato che alla
+     scala mancava un gradino, non che mancavano 53 eccezioni. */
+  --sp-05: 2px;
   --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
   --sp-6: 24px;  --sp-8: 32px;  --sp-12: 48px;
 
@@ -99,9 +151,19 @@
   --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.12);  /* pannelli sospesi (popover) */
+
+  /* Il velo dietro un cassetto aperto. Era scritto due volte, con due valori
+     diversi (0,0,0/.35 e 16,24,40/.4): stesso ruolo, una voce sola. */
+  --scrim: rgba(16, 24, 40, 0.4);
 
   --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
-  font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Inter è dichiarato in `fonts.css` e servito da noi. La coda resta quella di
+     prima e non è decorativa: è ciò che si legge nel secondo che precede il
+     caricamento (`font-display: swap`) e ciò che disegna i caratteri che il
+     sottoinsieme non contiene — un nome di azienda in cirillico, un allegato
+     con un ideogramma. */
+  font-family: 'Inter', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -113,7 +175,7 @@
        pulsanti), che infatti usano --line-strong, portato a 48%. */
     --bg: hsl(213, 30%, 6%);
     --card: hsl(213, 22%, 14%);
-    --surface-2: hsl(213, 18%, 20%);
+    --fill-subtle: hsl(213, 18%, 20%);
     --track: hsl(213, 18%, 22%);
     --line: hsl(213, 16%, 28%);
     --line-strong: hsl(213, 14%, 48%);   /* 3.31:1 su --card: bordo dei controlli */
