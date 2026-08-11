@@ -332,9 +332,84 @@ const msg = (over: Partial<NormalizedEmailMessage> = {}): NormalizedEmailMessage
   const r = prescreen({ message: msg({ isBulk: true, attachments: [att()] }) });
   ok(!r.skipAi && r.signals.hasDocumentAttachment, 'invio massivo con un PDF allegato: NON si ferma');
 }
+// ⚠️⚠️ QUESTA REGOLA È STATA CAMBIATA IL 2026-08-11, E IL TEST DICEVA IL
+// CONTRARIO. Fino a quel giorno «importo + data» bastava a far proseguire anche
+// un invio massivo, e l'asserzione qui sotto era `ok(!r.skipAi)`.
+//
+// La misura che l'ha smentita: al primo collegamento Gmail reale, 18 documenti
+// su 19 nel Document Hub erano fatturazione SaaS, e 40 azioni ne discendevano.
+// Una ricevuta di servizio ha SEMPRE un importo e SEMPRE una data: quell'indizio
+// non distingue niente, e prometteva una prudenza che non stava dando.
+//
+// Il cambio è difendibile solo perché è cambiato anche il COSTO dell'errore:
+// non si finisce più in `clearly_irrelevant` («ignorato», nascosto) ma in
+// `service_notification` → `informational`, che resta in elenco con «Analizza
+// comunque» a un clic. Restano tre vie d'uscita, e sono provate qui sotto.
 {
   const r = prescreen({ message: msg({ isBulk: true, textBody: 'Importo CHF 4’280.00 da versare entro il 31.08.2026.' }) });
-  ok(!r.skipAi, 'invio massivo con importo E data: NON si ferma');
+  ok(r.skipAi && r.prescreen === 'service_notification',
+    'invio massivo con importo E data: NON diventa un documento — ogni ricevuta SaaS ha entrambi');
+  ok(r.prescreen !== 'bulk_only',
+    '…ma nemmeno «ignorato»: resta leggibile in Inbox, che è il prezzo per poter stringere la soglia');
+}
+{
+  // I mittenti VERI misurati in produzione il 2026-08-11. Nessuno dei due è
+  // posta di massa — `is_bulk` era false su tutte e quattordici le Stripe — e
+  // per questo il segnale che li coglie è l'INDIRIZZO, non l'intestazione.
+  const stripe = prescreen({
+    message: msg({
+      from: { name: 'Stripe', email: 'notifications@stripe.com' }, isBulk: false,
+      subject: '[Intervento necessario] Rivedi il rappresentante dell’account',
+      textBody: 'Intervieni per garantire la regolare operatività di THD entro il 22.01.2027. CHF 0.05 per transazione.',
+    }),
+  });
+  ok(stripe.signals.senderIsServiceAddress, 'notifications@ è una casella che non riceve risposte: fatto della busta');
+  ok(stripe.skipAi && stripe.prescreen === 'service_notification',
+    'la Stripe che è diventata 14 documenti: si ferma prima di diventarne uno');
+
+  const anthropic = prescreen({
+    message: msg({
+      from: { name: 'Anthropic', email: 'no-reply-yodwbdd4o5cr4rgezpq0vq@mail.anthropic.com' }, isBulk: true,
+      subject: '[Action needed] Your Claude API access is turned off',
+      textBody: 'Your access has been disabled because your organization is out of usage credits. CHF 21.62 on 2026-07-18.',
+    }),
+  });
+  ok(anthropic.skipAi && anthropic.prescreen === 'service_notification',
+    'no-reply con suffisso casuale: riconosciuto lo stesso, la forma è nel prefisso');
+}
+{
+  // ⚠️ LE TRE VIE D'USCITA, ciascuna da sola, su un mittente che ha TUTTI i
+  // segnali del servizio. Se una sola smettesse di funzionare, una lettera vera
+  // da una casella automatica smetterebbe di diventare un documento.
+  const servizio = { name: null, email: 'no-reply@fornitore.ch' };
+  const base = { from: servizio, isBulk: true, textBody: 'CHF 100.00 entro il 31.08.2026.' };
+
+  ok(!prescreen({ message: msg({ ...base, from: { name: null, email: 'no-reply@estv.admin.ch' } }) }).skipAi,
+    'via d’uscita 1 — dominio istituzionale: una casella automatica dell’AFC prosegue');
+  ok(!prescreen({ message: msg({ ...base, attachments: [att()] }) }).skipAi,
+    'via d’uscita 2 — allegato trattabile: un PDF fa proseguire anche una casella automatica');
+  ok(!prescreen({ message: msg(base), senderKnown: true }).skipAi,
+    'via d’uscita 3 — mittente con precedenti amministrativi: prosegue');
+}
+{
+  // La CONTROPROVA che tiene onesta la regola: una persona vera che scrive da un
+  // indirizzo normale non viene toccata da niente di tutto questo.
+  const r = prescreen({
+    message: msg({
+      from: { name: 'Maria Rossi', email: 'm.rossi@studio-fiduciario.ch' }, isBulk: false,
+      textBody: 'Le invio il conteggio: CHF 4’280.00 entro il 31.08.2026.',
+    }),
+  });
+  ok(!r.skipAi && !r.signals.senderIsServiceAddress,
+    'una persona che scrive da un indirizzo normale: prosegue, e non è una notifica di servizio');
+}
+{
+  // ⚠️ `billing@` e `invoice@` NON sono caselle di servizio: una fattura vera
+  // arriva spesso da lì, ed è esattamente ciò che non va declassato.
+  for (const casella of ['billing@fornitore.ch', 'invoice@fornitore.ch', 'fatture@fornitore.ch']) {
+    const r = prescreen({ message: msg({ from: { name: null, email: casella }, isBulk: true, textBody: 'CHF 100.00 entro il 31.08.2026.' }) });
+    ok(!r.signals.senderIsServiceAddress, `«${casella}» non è una casella automatica: una fattura vera arriva da lì`);
+  }
 }
 {
   const r = prescreen({ message: msg({ isBulk: true }), senderKnown: true });

@@ -284,6 +284,9 @@ const GROUPS = {
       // (`const { data, error } = …`) venisse contata come un punto, correggere
       // non farebbe scendere il numero e la cricca sarebbe inservibile.
       { script: 'fallback:scan:self-test' },
+      // La matematica della dispersione, provata senza spendere: la misura vera
+      // sta in `eval` perché ripete la stessa domanda N volte a pagamento.
+      { script: 'eval:stability:self-test' },
       { script: 'test:ai-json-parser-unit' },
       { script: 'test:inbox-unit' },
       { script: 'test:tasks-unit' },
@@ -372,6 +375,9 @@ const GROUPS = {
       { script: 'eval:subsidy' },
       { script: 'eval:admin' },
       { script: 'eval:assistant' },
+      // ⚠️ Non misura l'ESATTEZZA come le altre tre: misura se la stessa domanda
+      // riceve la stessa risposta. Era la domanda che mancava.
+      { script: 'eval:stability' },
     ],
   },
 };

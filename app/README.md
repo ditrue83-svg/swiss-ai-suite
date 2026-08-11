@@ -1030,6 +1030,15 @@ npm run fallback:scan   # QUANTI fallback silenziosi restano nelle Edge Function
 npm run fallback:scan -- --report    # riga per riga, con la forma di ciascun punto
 npm run fallback:scan:self-test      # le regole provate sui casi che DEVONO reagire, e
                         #   soprattutto sulle CONTROPROVE: la forma corretta non deve contare
+npm run eval:stability  # LA STESSA domanda N volte, e quanto le risposte divergono. Le
+                        #   altre valutazioni misurano l'ESATTEZZA; questa la STABILITÀ, che
+                        #   era già rossa senza che nessuno la ponesse: 14 email quasi
+                        #   identiche di notifications@stripe.com hanno prodotto TRE tipi di
+                        #   documento diversi (11 «richiesta di documenti», 1 «informativa»,
+                        #   1 «altro»). Quota modale, valori distinti ed entropia per ogni
+                        #   campo enumerato. ⚠️ SPENDE credito: sta nel gruppo `eval`
+npm run eval:stability -- --n 10     # più ripetizioni, più costo
+npm run eval:stability:self-test     # la matematica della dispersione, senza spendere niente
 npm run test:operations # ogni Edge Function ha un invocante? ogni scheduler è inventariato,
                         #   dichiara il timeout di pg_net e punta a una funzione che esiste?
 npm run test:operations -- --self-test  # verifica che il CONTROLLO sappia fallire (11 casi)

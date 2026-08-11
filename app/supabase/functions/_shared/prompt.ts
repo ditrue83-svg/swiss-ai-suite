@@ -10,7 +10,7 @@ export const ANALYSIS_EFFORT = 'high'; // §1: correttezza sopra ogni cosa
 // dell'API (troppo grande per questo schema annidato): guidiamo con lo schema
 // nel prompt e validiamo tutto in validate.ts (§19). L'output resta strutturato.
 const SCHEMA_SKELETON = `{
-  "language": "it" | "de" | "fr",
+  "language": "it" | "de" | "fr" | "en" | "other",
   "documentType": { "value": "information|request_for_documents|payment_request|reminder|invoice|declaration_request|official_decision|inspection_notice|tax_document|social_insurance|employment|permit|contract_related|other", "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } },
   "sender": { "name": string|null, "authorityType": "federal|cantonal|municipal|social_insurance|insurance|pension|private|unknown", "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } },
   "recipient": string|null,
@@ -18,7 +18,7 @@ const SCHEMA_SKELETON = `{
   "documentDate": "YYYY-MM-DD"|null,
   "referenceNumbers": [ { "label": "", "value": "", "evidence": { "quote": "", "pageNumber": 0 } } ],
   "summaryShort": "2-3 frasi nella LINGUA DI RISPOSTA richiesta",
-  "deadline": { "date": "YYYY-MM-DD"|null, "type": "explicit|relative|inferred|none", "sourceText": string|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } },
+  "deadline": { "date": "YYYY-MM-DD"|null, "type": "explicit|relative|inferred|none", "obligesCompany": true|false, "sourceText": string|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } },
   "amounts": [ { "amount": number, "currency": "CHF", "type": "due|fine|fee|contribution|other", "description": "", "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } } ],
   "requestedActions": [ { "title": "", "description": "", "sourceType": "extracted|suggested", "required": true|false|null, "deadlineReference": string|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } } ],
   "requestedDocuments": [ { "name": "", "required": true|false|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } } ],
@@ -83,9 +83,26 @@ Fornisci evidence, quando disponibile, per: mittente, tipo documento, scadenza, 
 richieste, documenti richiesti, rischi espliciti, data del documento, numeri di riferimento.
 
 ## Campi
-- language: lingua del DOCUMENTO (non della tua risposta).
+- language: lingua del DOCUMENTO (non della tua risposta). Se il documento è in
+  inglese scrivi "en"; se è in una lingua che non è fra queste, scrivi "other".
+  NON ripiegare su "it" perché l'interfaccia è in italiano: qui si dichiara che
+  cosa c'è scritto nel documento, non in che lingua rispondiamo.
 - documentType.value: categoria normalizzata più pertinente; se non c'è abbastanza informazione usa
   "other" con confidence bassa e una uncertainty. Non forzare una categoria.
+  ⚠️ "request_for_documents" ha un significato STRETTO: qualcuno chiede all'azienda di
+  CONSEGNARE o TRASMETTERE dei documenti — certificati di salario, bilanci, formulari
+  compilati, giustificativi, contratti. Deve esserci una richiesta di consegna, e la
+  citazione deve mostrarla.
+  NON è "request_for_documents":
+    · un invito ad accedere a un portale, rivedere un'impostazione, confermare un
+      dato o aggiornare un profilo — lì non si consegna niente;
+    · una comunicazione che ALLEGA documenti invece di chiederli;
+    · un avviso di servizio, per quanto perentorio nel tono («intervento necessario»,
+      «azione richiesta»): il tono non è una richiesta di documenti.
+  Se qualcuno chiede un'azione che non è la consegna di un documento, la categoria è
+  "information" — oppure quella specifica se calza. Nel dubbio fra
+  "request_for_documents" e un'altra, scegli l'altra: questa categoria fa comparire
+  l'azienda in un elenco di adempimenti che non le competono.
 - sender.name: nome dell'ente ESATTAMENTE come nel documento, o null se non chiaramente identificabile
   (in tal caso authorityType "unknown" e una uncertainty). Non inventare l'ente.
   sender.authorityType: federal | cantonal | municipal | social_insurance | insurance | pension |
@@ -101,6 +118,22 @@ richieste, documenti richiesti, rischi espliciti, data del documento, numeri di 
   SEMPRE nella lingua originale del documento, copiate alla lettera: tradurle le renderebbe
   impossibili da ritrovare nel testo e la verifica automatica le scarterebbe.
 - deadline: la scadenza principale.
+  ⚠️ PRIMA DEL TIPO, LA DOMANDA CHE DECIDE: **chi è obbligato da quella data?**
+  Una scadenza è una data entro cui QUESTA AZIENDA deve fare qualcosa, o subisce
+  una conseguenza. Non è una scadenza una data che riguarda chi scrive:
+    · l'entrata in vigore di un listino o di nuove condizioni di un fornitore;
+    · la data in cui un servizio cambia prezzo, si rinnova o si aggiorna da sé;
+    · una data storica, di emissione, di pagamento GIÀ avvenuto;
+    · una data che il mittente si impegna a rispettare (vi risponderemo entro…).
+  Se l'azienda non deve fare NIENTE entro quella data, allora
+  "obligesCompany": false e "type": "none", anche se la data è scritta a chiare
+  lettere nel documento. La presenza di una data non basta: la stessa frase
+  «a partire dal 22 gennaio 2027» è una scadenza per chi deve agire e una
+  semplice informazione per chi la subisce e basta.
+  Se invece l'azienda deve pagare, rispondere, consegnare, iscriversi, opporsi o
+  disdire entro quella data, "obligesCompany": true.
+  Nel dubbio su CHI sia obbligato, "obligesCompany": true e una uncertainty: una
+  scadenza vera persa costa più di una data in più da guardare.
   type "explicit": data assoluta scritta nel documento → compila "date" (YYYY-MM-DD).
   type "relative": termine relativo (es. "entro 30 giorni dalla ricezione") → "date" NULL, metti il
   testo in "sourceText", e imposta requiresVerification lato sistema. NON calcolare una data assoluta.

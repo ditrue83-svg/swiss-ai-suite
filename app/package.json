@@ -63,6 +63,8 @@
     "test:assistant-unit": "node --import tsx scripts/test-assistant-unit.ts",
     "test:assistant": "node --env-file=.env.test --import tsx scripts/test-assistant.ts",
     "eval:assistant": "node --env-file=.env.test --import tsx scripts/eval-assistant.ts",
+    "eval:stability": "node --env-file=.env.test --import tsx scripts/eval-stability.ts",
+    "eval:stability:self-test": "node --import tsx scripts/eval-stability.ts --self-test",
     "test:crm": "node --env-file=.env.test --import tsx scripts/test-crm.ts",
     "test:subsidy-unit": "node --import tsx scripts/test-subsidy-unit.ts",
     "test:subsidy": "node --env-file=.env.test --import tsx scripts/test-subsidy.ts",

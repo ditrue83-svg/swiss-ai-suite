@@ -345,12 +345,18 @@ async function processMessage(
   const screening = prescreen({ message, cleanBody: null, senderKnown });
 
   if (screening.skipAi) {
+    // ⚠️ DUE ESITI DIVERSI, e la differenza è ciò che l'utente vede.
+    // `bulk_only` è pubblicità: `clearly_irrelevant` → «ignorato».
+    // `service_notification` è una comunicazione VERA che non chiede niente:
+    // `informational` → resta in elenco, leggibile, con «Analizza comunque».
+    // Scriverle allo stesso modo significherebbe nascondere una ricevuta.
+    const notifica = screening.prescreen === 'service_notification';
     await setMessageClassification(deps.sb, upserted.id, {
-      relevance: 'clearly_irrelevant',
+      relevance: notifica ? 'informational' : 'clearly_irrelevant',
       confidence: null,
       // La motivazione resta una CHIAVE, non una frase: va letta nella lingua
       // dell'utente, e questa riga la scrive un processo che non ha una lingua.
-      reason: 'prescreen:bulk_no_administrative_signal',
+      reason: notifica ? 'prescreen:service_notification' : 'prescreen:bulk_no_administrative_signal',
       classifierVersion: CLASSIFIER_VERSION,
       provider: null, model: null, promptVersion: null,
     });
@@ -954,9 +960,14 @@ export async function drainPendingClassifications(
     const screening = prescreen({ message, cleanBody: null, senderKnown });
     if (screening.skipAi) {
       // Il filtro deterministico basta: non si spende per saperlo.
+      // ⚠️ La stessa distinzione della strada principale: una notifica di
+      // servizio è `informational` e resta leggibile, non `clearly_irrelevant`.
+      // Le due strade devono concordare, o lo stesso messaggio finirebbe in due
+      // stati diversi a seconda di chi l'ha classificato per primo.
+      const notifica = screening.prescreen === 'service_notification';
       await setMessageClassification(deps.sb, row.id, {
-        relevance: 'clearly_irrelevant', confidence: null,
-        reason: 'prescreen:bulk_no_administrative_signal',
+        relevance: notifica ? 'informational' : 'clearly_irrelevant', confidence: null,
+        reason: notifica ? 'prescreen:service_notification' : 'prescreen:bulk_no_administrative_signal',
         classifierVersion: CLASSIFIER_VERSION,
         provider: null, model: null, promptVersion: null,
       });

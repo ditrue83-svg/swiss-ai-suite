@@ -327,7 +327,7 @@ if (process.argv.includes('--self-test')) {
     { nome: 'la forma citata in una stringa', src: "const nota = \"const { data } = await sb.from('t')\";", atteso: [] },
     // ⚠️ E il caso che ha motivato tutto: un file con un byte NUL crudo dentro.
     // grep lo saltava; qui si conta.
-    { nome: 'un file con un NUL crudo si conta lo stesso', src: "const sep = 'a b';\nasync function f(sb) { const { data } = await sb.from('t').select(); return data; }", atteso: ['error-non-legato'] },
+    { nome: 'un file con un NUL crudo si conta lo stesso', src: "const sep = 'a\u0000b';\nasync function f(sb) { const { data } = await sb.from('t').select(); return data; }", atteso: ['error-non-legato'] },
   ];
 
   let falliti = 0, eseguite = 0;
