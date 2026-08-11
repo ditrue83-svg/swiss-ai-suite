@@ -289,6 +289,13 @@ const GROUPS = {
       { script: 'test:tasks' },
       { script: 'test:inbox' },
       { script: 'test:calendar' },
+      // ⚠️ Distinto da `test:calendar`, che prova le GARANZIE del database
+      // (RLS, vincoli, trigger). Questo esegue il MOTORE: `generateReminders`,
+      // la funzione che dal 2026-07-27 non aveva mai prodotto una riga né in
+      // produzione né in un test. Sceglie una finestra vuota nel 2028 e si
+      // FERMA se non lo è, perché il motore non filtra per azienda e con
+      // l'istante di adesso scriverebbe promemoria a persone reali.
+      { script: 'test:reminders' },
       { script: 'test:contracts' },
       { script: 'test:assistant' },
       { script: 'test:documents' },
