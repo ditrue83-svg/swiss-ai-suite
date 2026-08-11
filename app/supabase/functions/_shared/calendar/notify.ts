@@ -80,13 +80,29 @@ export async function generateReminders(
   };
   const window = reminderWindow(now);
 
-  const { data } = await deps.sb.from('tasks')
+  // ⚠️ L'ERRORE SI LEGGE, e la ragione è misurata. Fino al 2026-08-11 questa
+  // riga scartava `error`: un guasto del database dava `data: null`, la
+  // funzione restituiva `tasksScanned: 0`, e il worker rispondeva `ok`. Cioè
+  // ESATTAMENTE ciò che risponde quando non c'è davvero niente da ricordare.
+  //
+  // E in produzione non c'è davvero niente da ricordare: l'11 agosto 2026 le
+  // quattro attività scadono il 10 e il 30 settembre, fuori dalla finestra. Lo
+  // zero giusto e lo zero rotto erano la stessa riga di report, sullo stesso
+  // sistema, ogni quindici minuti. Un guasto qui non sarebbe stato invisibile:
+  // sarebbe stato invisibile DUE VOLTE.
+  const { data, error } = await deps.sb.from('tasks')
     .select('id, company_id, title, due_date, priority, assignee_user_id')
     .neq('status', 'completed')
     .is('archived_at', null)
     .gte('due_date', window.from)
     .lte('due_date', window.to)
     .limit(maxTasks);
+
+  // Morire qui salta anche la consegna delle email già in coda: è il prezzo, ed
+  // è il prezzo giusto. Se la lettura delle attività fallisce, il database non
+  // è in condizione di sostenere nemmeno la consegna, e lo scheduler ripassa
+  // fra quindici minuti. Un report che dice `ok` non ripassa mai.
+  if (error) throw new CalendarProviderError('UNKNOWN', 'lettura delle attività fallita');
 
   const tasks = (data ?? []) as ReminderTaskRow[];
   report.tasksScanned = tasks.length;
@@ -193,8 +209,13 @@ export async function generateReminders(
 
 /** Chi guida l'azienda: owner e amministratori. */
 async function companyLeaders(sb: ServerClient, companyId: string): Promise<string[]> {
-  const { data } = await sb.from('company_members')
+  const { data, error } = await sb.from('company_members')
     .select('user_id').eq('company_id', companyId).in('role', ['owner', 'admin']);
+  // Un elenco vuoto qui significa «un'attività urgente senza responsabile non
+  // viene segnalata a nessuno». Se è perché l'azienda non ha titolari è un
+  // fatto; se è perché la query è fallita è un guasto, e i due non possono
+  // condividere lo stesso silenzio.
+  if (error) throw new CalendarProviderError('UNKNOWN', 'lettura dei titolari fallita');
   return ((data ?? []) as { user_id: string }[]).map((m) => m.user_id);
 }
 

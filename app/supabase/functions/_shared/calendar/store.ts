@@ -465,9 +465,15 @@ export async function preferencesFor(
   for (const id of userIds) out.set(id, defaultPreferences(companyId, id));
   if (!userIds.length) return out;
 
-  const { data } = await sb.from('notification_preferences')
+  const { data, error } = await sb.from('notification_preferences')
     .select('company_id, user_id, in_app_enabled, email_enabled, remind_7_days, remind_1_day, remind_due_day, remind_overdue, timezone, locale, show_task_title')
     .eq('company_id', companyId).in('user_id', userIds);
+
+  // ⚠️ Un guasto qui NON deve ripiegare sui default. I default dicono «email
+  // spente, fuso di Zurigo»: chi ha acceso le email non le riceverebbe, e chi
+  // lavora da un altro fuso riceverebbe il promemoria all'ora sbagliata — che
+  // §36 chiama peggio di un promemoria mancante, perché sembra funzionare.
+  if (error) throw new CalendarProviderError('UNKNOWN', 'lettura delle preferenze fallita');
 
   for (const row of (data ?? []) as PreferencesRow[]) {
     out.set(row.user_id, { ...row, locale: asServerLocale(row.locale) });
@@ -520,10 +526,15 @@ export async function insertNotification(
 
 /** Accoda una consegna email. Il vincolo unico impedisce la seconda. */
 export async function enqueueEmailDelivery(sb: ServerClient, notificationId: string): Promise<void> {
-  await sb.from('notification_deliveries').upsert({
+  const { error } = await sb.from('notification_deliveries').upsert({
     notification_id: notificationId,
     channel: 'email',
     status: 'pending',
     next_attempt_at: new Date().toISOString(),
   }, { onConflict: 'notification_id,channel', ignoreDuplicates: true });
+  // Il chiamante conta questa riga in `emailsQueued`. Se l'accodamento
+  // fallisce e taciamo, il report dichiara accodata un'email che non esiste:
+  // un numero inventato è peggio di un numero mancante, perché nessuno andrà
+  // a cercare la consegna che non c'è.
+  if (error) throw new CalendarProviderError('UNKNOWN', 'accodamento della consegna fallito');
 }

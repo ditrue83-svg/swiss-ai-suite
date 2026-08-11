@@ -206,12 +206,13 @@ export const FUNZIONI_SCOPERTE = {
   '_shared/calendar/store.ts#finishRun': RPC_DIRETTA,
 
   // --- calendario: il resto -------------------------------------------------
-  // ⚠️ LA RIGA CHE HA FATTO NASCERE QUESTA LISTA. È il motore dei promemoria:
-  // decide se un'attività merita un avviso e lo scrive. Al 2026-08-11 non
-  // l'aveva mai eseguita nessuno — né un test né la produzione, dove
-  // `notifications` è a zero righe dallo 2026-07-27. Il controllo 8 la
-  // considerava coperta perché `deliverEmails`, nello stesso file, è importata.
-  '_shared/calendar/notify.ts#generateReminders': 'il motore dei promemoria: nessun test lo esegue, e in produzione non ha mai prodotto una riga (misurato il 2026-08-11)',
+  // ⚠️ QUI STAVA `generateReminders`, la riga che ha fatto nascere questa
+  // lista: il motore dei promemoria, che al 2026-08-11 non aveva mai eseguito
+  // nessuno — né un test né la produzione. È uscita lo stesso giorno, coperta
+  // dalla sezione 13 di `test:calendar-unit`, e non l'ha tolta la memoria di
+  // qualcuno: il controllo ha detto «la riga è stantia» e ha fatto rosso.
+  // Il debito scade da solo, ed è la sola ragione per cui un elenco così
+  // continua a dire il vero.
   '_shared/calendar/notify.ts#notifyCalendarProblem': 'la chiama solo calendar-sync nel proprio ramo di errore, che nessun test percorre',
   '_shared/calendar/http.ts#calFetch': 'l\'involucro HTTP verso Google/Microsoft: esce in rete, nessun test lo esegue',
 
