@@ -17,17 +17,20 @@ import { TONI } from '@/features/admin-ai/engine';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { PdfViewer } from '@/features/admin-ai/PdfViewer';
+import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
+import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
+import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import type { ActionSource, AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence } from '@/types/models';
 
 /** Tono predefinito della bozza, come prima della 0010 (era il default di reply_tone). */
 const DEFAULT_TONE = 'formale';
 
-function OriginBadge({ source, ctx }: { source: ActionSource; ctx?: 'callout' }) {
-  const t = useT();
-  if (source === 'extracted') {
-    return <span className="origin-badge ob-ex"><Icon name="fileSearch" className="ic-sm" />{t(ctx === 'callout' ? 'adminAi.result.originBadgeExtractedCallout' : 'adminAi.result.originBadgeExtracted')}</span>;
-  }
-  return <span className="origin-badge ob-sg">{t(ctx === 'callout' ? 'adminAi.result.originBadgeSuggestedCallout' : 'adminAi.result.originBadgeSuggested')}</span>;
+/** LA coppia di provenienza del prodotto, resa col filetto di famiglia:
+ *  pieno = il documento lo chiede, doppio = lo suggeriamo noi. Era una
+ *  pastiglia (`origin-badge`) con quattro varianti di testo; il segno ora è
+ *  lo stesso ovunque, ed è quello che la legenda insegna. */
+function OriginMark({ source }: { source: ActionSource }) {
+  return <ProvenanceMark kind={source === 'extracted' ? 'document' : 'suggestion'} />;
 }
 
 function EvidenceButton({ evidence, label, onShow }: { evidence: Evidence | null; label?: string; onShow: (ev: Evidence) => void }) {
@@ -437,13 +440,13 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
         <div className="ax-head-top">
           <div className="ax-title">{document.title}</div>
           <div className="ax-badges">
-            {r.analysisStatus === 'needs_review' && <span className="badge badge-media">{t('adminAi.result.needsReview')}</span>}
+            {r.analysisStatus === 'needs_review' && <ProvenanceMark kind="toVerify" />}
             <span className={`badge badge-${r.urgency}`}>{t('adminAi.result.urgencyChip', { level: L.urgency(r.urgency) })}</span>
-            <span className="badge badge-neutral">{t('adminAi.result.confidenceChip', { level: L.confidence(r.confidence) })}</span>
+            <ConfidenceBadge level={r.confidence} />
           </div>
         </div>
         <div className="ax-meta">
-          <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{r.sender ?? L.authorityType('unknown')}</b>{r.senderUncertain ? ` · ${t('common.verify')}` : ''}</span>
+          <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{r.sender ?? L.authorityType('unknown')}</b>{r.senderUncertain && <ProvenanceMark kind="toVerify" />}</span>
           {r.senderAuthorityType && <span className="ax-chip">{L.authorityType(r.senderAuthorityType)}</span>}
           <span className="ax-chip"><Icon name="document" className="ic-sm" /> {r.documentTypeLabel}</span>
           <span className="ax-chip">{r.languageLabel}</span>
@@ -471,7 +474,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
         <div className="co-ico"><Icon name="checkCircle" /></div>
         <div className="co-main">
           <div className="co-kicker">{t('adminAi.result.whatToDoNow')}</div>
-          <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <OriginBadge source={r.primaryActionSource} ctx="callout" /></div>
+          <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <OriginMark source={r.primaryActionSource} /></div>
           <div className="co-when">{r.deadline ? <>{t('adminAi.result.by')} <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</> : t('adminAi.result.noDeadlineFound')}</div>
         </div>
         <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || document.title)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}</button>
@@ -507,7 +510,9 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                   <div className="dl-date">{formatDate(r.deadline)}</div>
                   <div className="dl-rem">{remaining}</div>
                 </div>
-                <span className={`badge badge-${lvl === 'scaduta' || lvl === 'urgente' ? 'alta' : lvl === 'prossima' ? 'media' : 'bassa'}`}>{L.deadlineLevel(lvl)}</span>
+                {/* ⚠️ Qui c'era una pastiglia che RIPETEVA il livello già scritto
+                    nel kicker due righe sopra: colore in più, informazione in
+                    meno di zero. Il termine parla con le sue cifre. */}
               </div>
               <EvidenceButton evidence={r.deadlineEvidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />
               {r.deadlineRequiresVerification && (
@@ -535,7 +540,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                 <div className={`action-item${c.done ? ' done' : ''}`} key={c.id}>
                   <input type="checkbox" id={`act-${r.id}-${c.id}`} checked={c.done} onChange={(e) => toggleAction(c.id, e.target.checked)} />
                   <div className="ai-main">
-                    <div className="ai-text"><label htmlFor={`act-${r.id}-${c.id}`}>{c.text}</label> <OriginBadge source={c.sourceType} /></div>
+                    <div className="ai-text"><label htmlFor={`act-${r.id}-${c.id}`}>{c.text}</label> <OriginMark source={c.sourceType} /></div>
                     <div className="ai-meta">
                       {c.sourceType === 'extracted' && c.evidence && <EvidenceButton evidence={c.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />}
                       <button type="button" className="mini-btn" onClick={() => createTask(c.text)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.addToTasks')}</button>
@@ -547,8 +552,14 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
           </div>
 
           {r.uncertainties.length ? (
-            <div className="card"><div className="card-title"><Icon name="alert" className="ic-sm" /> {t('adminAi.result.needsReview')} <span className="badge badge-neutral">{t('adminAi.result.confidenceChip', { level: L.confidence(r.confidence) })}</span></div>
-              <ul className="verify-box">{r.uncertainties.map((v, i) => <li key={i}>{v}</li>)}</ul>
+            /* ⚠️ NON è un guasto: è il prodotto che dichiara ciò che non ha
+               potuto determinare. Superficie neutra, segno «da verificare» —
+               niente icona d'allarme, niente lista col «?» ambra in cerchio. */
+            <div className="card">
+              <div className="verify-note" role="note">
+                <span className="vn-title"><MarkGlyph name="question" />{t('adminAi.result.needsReview')}</span>
+                <ul>{r.uncertainties.map((v, i) => <li key={i}>{v}</li>)}</ul>
+              </div>
             </div>
           ) : (
             <div className="card"><div className="verify-ok"><Icon name="checkCircle" className="ic-sm" /> {t('adminAi.result.mainInfoConfirmed', { level: L.confidence(r.confidence) })}</div></div>
@@ -557,8 +568,14 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
           {/* Il tag sta nella riga del titolo: quando il rischio non è
               determinabile la scheda diceva «non determinabile» su una riga
               tutta sua, occupando lo spazio di un'informazione che non c'è. */}
+          {/* Il livello del rischio È una provenienza: esplicito nel documento
+              (filetto pieno), inferenza (tratteggiato), non determinabile
+              (puntinato «da verificare»). Le parole restano quelle del rischio;
+              il filetto lo classifica nella stessa grammatica di tutto il resto. */}
           <div className="card"><div className="card-title">{t('adminAi.result.risk')}
-            <span className={`risk-tag risk-${r.risk.level}`}><Icon name={r.risk.level === 'explicit' ? 'alert' : 'fileSearch'} className="ic-sm" /> {r.risk.level === 'explicit' ? t('adminAi.result.riskExplicit') : r.risk.level === 'possible' ? t('adminAi.result.riskInferred') : t('adminAi.result.riskUnknown')}</span>
+            <span className={`mark mark-prov ${r.risk.level === 'explicit' ? 'mp-doc' : r.risk.level === 'possible' ? 'mp-inf' : 'mp-verify'}`}>
+              {r.risk.level === 'explicit' ? t('adminAi.result.riskExplicit') : r.risk.level === 'possible' ? t('adminAi.result.riskInferred') : t('adminAi.result.riskUnknown')}
+            </span>
           </div>
             {r.risk.level !== 'unknown' && <div className="risk-text">{r.risk.text}</div>}
             <EvidenceButton evidence={r.risk.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />

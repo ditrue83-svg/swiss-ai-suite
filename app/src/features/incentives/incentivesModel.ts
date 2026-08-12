@@ -21,6 +21,8 @@
 //    metterebbe un rosso su una scadenza che non controlliamo da mesi.
 // ============================================================================
 import type { TKey } from '@/i18n';
+import { ELIGIBILITY_STATES } from '@/components/ui/EligibilityMark';
+import type { MarkGlyphName } from '@/components/ui/MarkGlyph';
 import type {
   SubsidyCaseStatus, SubsidyCompleteness, SubsidyEligibilityStatus,
   SubsidyFreshness, SubsidyProjectStage, SubsidyReadiness, SubsidyRelevanceLevel,
@@ -197,12 +199,16 @@ export const RELEVANCE_KEY: Record<SubsidyRelevanceLevel, TKey> = {
   low: 'incentives.relevance.low',
 };
 
+// ⚠️ DERIVATA dalla mappa del componente EligibilityMark, che è la fonte unica
+// di segno+etichetta per l'idoneità: questa resta per i contesti SOLO TESTO
+// (la stampa, le frasi composte). Due mappe indipendenti con le stesse chiavi
+// prima o poi direbbero due cose.
 export const ELIGIBILITY_KEY: Record<SubsidyEligibilityStatus, TKey> = {
-  not_assessed: 'incentives.eligibility.notAssessed',
-  insufficient_information: 'incentives.eligibility.insufficient',
-  potentially_eligible: 'incentives.eligibility.potentially',
-  likely_ineligible: 'incentives.eligibility.likelyIneligible',
-  ineligible: 'incentives.eligibility.ineligible',
+  not_assessed: ELIGIBILITY_STATES.not_assessed.labelKey,
+  insufficient_information: ELIGIBILITY_STATES.insufficient_information.labelKey,
+  potentially_eligible: ELIGIBILITY_STATES.potentially_eligible.labelKey,
+  likely_ineligible: ELIGIBILITY_STATES.likely_ineligible.labelKey,
+  ineligible: ELIGIBILITY_STATES.ineligible.labelKey,
 };
 
 export const COMPLETENESS_KEY: Record<SubsidyCompleteness, TKey> = {
@@ -306,20 +312,20 @@ export const DISMISSAL_KEY: Record<SubsidyDismissalReason, TKey> = {
 //    Il secondo colore forte della riga è riservato alla scadenza, e solo
 //    quando `computeDeadline` la dichiara urgente — cioè quasi mai.
 // ---------------------------------------------------------------------------
-export const ELIGIBILITY_TONE: Record<SubsidyEligibilityStatus, string> = {
-  not_assessed: 'badge-neutral',
-  insufficient_information: 'badge-media',
-  potentially_eligible: 'badge-blue',
-  likely_ineligible: 'badge-media',
-  ineligible: 'badge-neutral',
-};
-
-export const CRITERION_TONE: Record<SubsidyCriterionState, string> = {
-  satisfied: 'badge-bassa',
-  not_satisfied: 'badge-alta',
-  unknown: 'badge-neutral',
-  conflicting: 'badge-media',
-  not_evaluable: 'badge-neutral',
+// ⚠️ Fino al 2026-08-12 qui c'erano ELIGIBILITY_TONE e CRITERION_TONE: mappe
+// stato → classe di pastiglia (badge-bassa per «soddisfatto», badge-alta per
+// «non soddisfatto» — i NOMI dicevano confidenza, i COLORI dicevano esito).
+// L'idoneità ora è EligibilityMark (glifo + parola); per lo stato di UN
+// criterio resta questa mappa, nella stessa grammatica: il glifo dà la classe
+// a colpo d'occhio, l'etichetta (CRITERION_STATE_KEY) il giudizio fine.
+export const CRITERION_MARK: Record<SubsidyCriterionState, { cls: string; glyph: MarkGlyphName }> = {
+  satisfied: { cls: 'me-yes', glyph: 'check' },
+  not_satisfied: { cls: 'me-no', glyph: 'cross' },
+  unknown: { cls: 'me-verify', glyph: 'question' },
+  // Fonti in disaccordo: attenzione misurata, non un guasto.
+  conflicting: { cls: 'me-verify', glyph: 'bang' },
+  // Non valutabile in automatico: il cerchio che solo una persona può chiudere.
+  not_evaluable: { cls: 'me-verify', glyph: 'circleDashed' },
 };
 
 // ---------------------------------------------------------------------------

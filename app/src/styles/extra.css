@@ -678,12 +678,6 @@
   gap: var(--sp-1); margin-bottom: var(--sp-1); }
 .as-source-type { font-size: var(--fs-label); color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; }
-/* ⚠️ Qui il livello di verifica è una FRASE, non una sigla — «Proposto dal
-   sistema, non ancora verificato» — e `.origin-badge` nasce `white-space:
-   nowrap` perché altrove è corto. In una colonna da 300px sfondava di 41px:
-   misurato il 2026-07-30, con il pannello che si guadagnava una barra
-   orizzontale sotto quella verticale. Qui la pastiglia va a capo. */
-.as-source-head .origin-badge { max-width: 100%; white-space: normal; }
 /* ⚠️ `color` riportato: la regola globale `a { color: var(--accent-text) }`
    tingerebbe di blu un titolo che qui deve leggersi come testo. */
 .as-source-title { display: block; font-size: var(--fs-meta); color: var(--ink);

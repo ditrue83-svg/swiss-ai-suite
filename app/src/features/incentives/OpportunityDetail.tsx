@@ -26,11 +26,15 @@ import { formatDate } from '@/lib/format';
 import { incentivesService } from '@/services/incentivesService';
 import type { IncentiveCriterion, IncentiveOpportunity } from '@/types/models';
 import {
-  CALL_STATUS_KEY, COMPLETENESS_KEY, CRITERION_STATE_KEY, CRITERION_TONE,
-  ELIGIBILITY_KEY, ELIGIBILITY_TONE, FRESHNESS_KEY, HARDNESS_KEY, NEXT_STEP_KEY,
+  CALL_STATUS_KEY, COMPLETENESS_KEY, CRITERION_MARK, CRITERION_STATE_KEY,
+  ELIGIBILITY_KEY, HARDNESS_KEY, NEXT_STEP_KEY,
   READINESS_KEY, RELEVANCE_KEY, TIMING_KEY, deadlineNotice, nextStep, plural,
   subsidyErrorKey, todayISO,
 } from './incentivesModel';
+import { EligibilityMark } from '@/components/ui/EligibilityMark';
+import { SourceStamp } from '@/components/ui/SourceStamp';
+import { MarkGlyph } from '@/components/ui/MarkGlyph';
+import { MarkLegend } from '@/components/ui/MarkLegend';
 import { useCompany } from '@/contexts/CompanyContext';
 import { PrintButton } from '@/components/ui/PrintButton';
 import { PrintSheet } from '@/features/print/PrintSheet';
@@ -186,11 +190,7 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
             <dt>{t('incentives.measures.relevance')}</dt>
             <dd>{t(RELEVANCE_KEY[o.relevanceLevel])}</dd>
             <dt>{t('incentives.measures.eligibility')}</dt>
-            <dd>
-              <span className={`badge ${ELIGIBILITY_TONE[o.eligibilityStatus]}`}>
-                {t(ELIGIBILITY_KEY[o.eligibilityStatus])}
-              </span>
-            </dd>
+            <dd><EligibilityMark status={o.eligibilityStatus} /></dd>
             <dt>{t('incentives.measures.completeness')}</dt>
             <dd>
               {t(COMPLETENESS_KEY[o.completeness])}
@@ -208,7 +208,7 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
                 due cose possono essere lontane mesi, ed è esattamente la
                 distinzione che questo modulo esiste per non perdere. */}
             <dt>{t('incentives.measures.freshness')}</dt>
-            <dd>{t(FRESHNESS_KEY[o.sourceFreshness])}</dd>
+            <dd><SourceStamp state={o.sourceFreshness} /></dd>
             <dt>{t('incentives.measures.readiness')}</dt>
             <dd>{t(READINESS_KEY[o.readiness])}</dd>
             <dt>{t('incentives.detail.lastAssessment')}</dt>
@@ -311,6 +311,10 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
             ))}
           </div>
         )}
+
+        {/* La legenda dei segni: identica a quella del dettaglio documento —
+            il sistema si impara una volta sola. */}
+        <div className="mt-12"><MarkLegend /></div>
       </div>
 
       {/* ⚠️ LA VERSIONE PER LA CARTA. Qui il foglio non porta citazioni da un
@@ -366,7 +370,10 @@ function CriterionRow({
     <div className="inc-criterion">
       <div className="inc-crit-head">
         <div className="inc-crit-label">{c.label}</div>
-        <span className={`badge ${CRITERION_TONE[c.state]}`}>{t(CRITERION_STATE_KEY[c.state])}</span>
+        <span className={`mark mark-elig ${CRITERION_MARK[c.state].cls}`}>
+          <MarkGlyph name={CRITERION_MARK[c.state].glyph} />
+          {t(CRITERION_STATE_KEY[c.state])}
+        </span>
       </div>
 
       <div className="inc-crit-meta">

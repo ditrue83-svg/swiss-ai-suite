@@ -20,10 +20,13 @@
 // ============================================================================
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, MAX_QUERY_LENGTH, SORTS, SOURCES, STATES,
-  filtersFromParams, findExistingTag, hasActiveFilters, isStrongTone, needsAttention,
-  normalizeTagName, paramsFromFilters, rowBadgeTones, sameTagName, splitSnippet, stateOf,
+  filtersFromParams, findExistingTag, hasActiveFilters, needsAttention,
+  normalizeTagName, paramsFromFilters, rowMarks, sameTagName, splitSnippet, stateOf,
   toListArgs,
 } from '../src/features/documents/documentModel';
+// La logica pura del termine vive col componente che la rende: si prova qui
+// perché è il Document Hub il primo posto dove una data sbagliata costa.
+import { deadlineState } from '../src/components/ui/DeadlineMark';
 import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
@@ -571,65 +574,99 @@ console.log(`\n${B}Il titolo che non si sa non si inventa${X}`);
 }
 
 // ===========================================================================
-section('11 · Un solo colore forte per riga');
+section('11 · I marcatori della riga');
 // ===========================================================================
-// Regola 8 del sistema di design. Il difetto che questa sezione inchioda: un
-// documento «da verificare» con una scadenza dichiarata mostrava DUE pastiglie
-// ambra affiancate. Nessuna delle due era sbagliata presa da sola — la
-// scadenza è ambra perché dice quanto manca, lo stato è ambra perché la
-// lettura è incerta — ed è per questo che nessuna rilettura del markup lo
-// avrebbe trovato: la regola parla della RIGA, e le due pastiglie sceglievano
-// ognuna per conto proprio.
+// L'erede della regola 8. La versione precedente («un solo colore forte per
+// riga», rowBadgeTones) demoteva a neutro la pastiglia perdente: era il
+// rimedio a un vocabolario in cui termine e stato di fiducia erano la stessa
+// pastiglia ambra. Dal 2026-08-12 le famiglie si distinguono per FORMA
+// (cifre per il termine, filetto puntinato per «da verificare») e la regola
+// diventa: la sola pastiglia PIENA è il guasto; su un guasto la scadenza non
+// si mostra affatto; il marcatore epistemico non convive mai con una
+// pastiglia di stato (direbbero due cose sulla stessa lettura).
 {
-  const tones = (over: Partial<DocumentHubItem>) => rowBadgeTones(item(over));
+  const marks = (over: Partial<DocumentHubItem>) => rowMarks(item(over));
 
   // ---- l'invariante, provato su TUTTE le combinazioni ---------------------
-  // Non tre casi scelti a mano: il prodotto cartesiano di stato × scadenza ×
+  // Non casi scelti a mano: il prodotto cartesiano di stato × scadenza ×
   // «scadenza da verificare». Un'invariante provata sugli esempi a cui si
   // pensa è provata proprio dove non serve.
-  const strongPerRow: { combo: string; n: number }[] = [];
+  const violazioni: string[] = [];
+  let provate = 0;
   for (const state of STATES) {
     for (const deadline of [null, '2026-09-28']) {
       for (const requires of [false, true]) {
-        const t2 = tones({ state, deadline, deadlineRequiresVerification: requires });
-        const n = [t2.deadline, t2.state].filter(isStrongTone).length;
-        strongPerRow.push({ combo: `${state}/${deadline ? 'scadenza' : 'senza'}/${requires ? 'daVerificare' : 'certa'}`, n });
+        const m = marks({ state, deadline, deadlineRequiresVerification: requires });
+        const combo = `${state}/${deadline ? 'scadenza' : 'senza'}/${requires ? 'daVerificare' : 'certa'}`;
+        provate++;
+        if (state === 'failed' && m.deadline) violazioni.push(`${combo}: scadenza mostrata su un guasto`);
+        if (deadline === null && m.deadline) violazioni.push(`${combo}: scadenza mostrata senza una scadenza`);
+        if (m.toVerify && m.state !== null) violazioni.push(`${combo}: marcatore epistemico E pastiglia di stato insieme`);
       }
     }
   }
-  const troppi = strongPerRow.filter((r) => r.n > 1);
-  ok(strongPerRow.length === STATES.length * 4, `provate tutte le ${STATES.length * 4} combinazioni stato × scadenza`);
-  ok(troppi.length === 0, 'nessuna combinazione produce due colori forti nella stessa riga',
-    troppi.map((r) => `${r.combo}: ${r.n} forti`).join(' · '));
+  ok(provate === STATES.length * 4, `provate tutte le ${STATES.length * 4} combinazioni stato × scadenza`);
+  ok(violazioni.length === 0, 'nessuna combinazione viola le tre regole della riga', violazioni.join(' · '));
 
-  // ---- e la precedenza è QUELLA dichiarata, non una qualsiasi -------------
-  // L'invariante da sola sarebbe soddisfatta anche spegnendo tutti i colori:
-  // «zero forti per riga» non viola «al massimo uno». Questi casi dicono CHI
-  // vince, che è la metà della regola che l'invariante non copre.
-  const conScadenza = tones({ state: 'to_verify', deadline: '2026-09-28' });
-  ok(conScadenza.deadline === 'media' && conScadenza.state === 'neutral',
-    'da verificare + scadenza certa: l’ambra va alla SCADENZA, lo stato scende a neutro');
+  // ---- e la decisione è QUELLA dichiarata, non una qualsiasi --------------
+  // L'invariante da sola sarebbe soddisfatta anche non mostrando mai niente:
+  // questi casi dicono che cosa DEVE esserci, che è la metà che manca.
+  const guasto = marks({ state: 'failed', deadline: '2026-09-28' });
+  ok(guasto.state === 'failed' && !guasto.deadline && !guasto.toVerify,
+    'il guasto batte tutto: pastiglia rossa e NIENTE scadenza — se l’analisi non è riuscita, nemmeno la data è affidabile');
 
-  const scadenzaIncerta = tones({ state: 'to_verify', deadline: '2026-09-28', deadlineRequiresVerification: true });
-  ok(scadenzaIncerta.deadline === 'neutral' && scadenzaIncerta.state === 'media',
-    'quando è la scadenza a essere incerta la precedenza si rovescia da sé: l’ambra torna allo stato');
+  const daVerificare = marks({ state: 'to_verify', deadline: '2026-09-28' });
+  ok(daVerificare.toVerify && daVerificare.deadline && daVerificare.state === null,
+    'da verificare + scadenza: convivono, perché non si somigliano più — filetto epistemico e cifre del termine');
 
-  const guasto = tones({ state: 'failed', deadline: '2026-09-28' });
-  ok(guasto.state === 'alta' && guasto.deadline === 'neutral',
-    'il guasto batte tutto: se l’analisi non è riuscita, nemmeno la data è affidabile');
+  const analizzato = marks({ state: 'analyzed', deadline: '2026-09-28' });
+  ok(analizzato.state === null && !analizzato.toVerify && analizzato.deadline,
+    '«analizzato» non è una notizia: resta solo il termine');
 
-  const soloScadenza = tones({ state: 'analyzed', deadline: '2026-09-28' });
-  ok(soloScadenza.deadline === 'media' && soloScadenza.state === null,
-    'senza niente con cui competere la scadenza tiene la sua ambra');
+  const inCorso = marks({ state: 'processing' });
+  ok(inCorso.state === 'processing' && !inCorso.toVerify,
+    'gli stati funzionali (in elaborazione) restano pastiglie neutre');
 
-  const soloStato = tones({ state: 'to_verify' });
-  ok(soloStato.state === 'media' && soloStato.deadline === null,
-    'e lo stato la tiene quando è l’unica cosa da dire');
+  ok(!marks({ state: 'analyzed' }).deadline, 'senza scadenza, nessun marcatore di termine');
+}
 
-  // ⚠️ Chi perde NON sparisce: scende di tono e tiene il suo posto. Una
-  // pastiglia nascosta sarebbe un'informazione tolta, non un colore tolto.
-  ok(conScadenza.state !== null && guasto.deadline !== null,
-    'la pastiglia che perde il colore resta a schermo: si toglie il tono, non il testo');
+// ===========================================================================
+section('12 · Lo stato del termine (deadlineState)');
+// ===========================================================================
+// La funzione pura dietro DeadlineMark: decide che cosa dice la marcatura del
+// termine in TUTTA l'app (documenti, attività, contratti, fatture, incentivi).
+// Il caso che l'ha resa necessaria: i contratti CONTAVANO i giorni anche su
+// date «candidate» mai verificate da una persona — `toVerify` deve vincere
+// sul conteggio, sempre.
+{
+  const giorno = (n: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  ok(deadlineState(null).state === 'none', 'senza data: «nessuna scadenza», non un vuoto');
+  ok(deadlineState(null, true).state === 'none', 'senza data non c’è niente da verificare: vince l’assenza');
+
+  // ⚠️ IL CASO DEI CONTRATTI: la data c'è ma non è verificata — si dichiara,
+  // NON si conta. Un conto alla rovescia su una data incerta è un'invenzione.
+  const daVerificare = deadlineState(giorno(5), true);
+  ok(daVerificare.state === 'toVerify' && daVerificare.days === null,
+    'data da verificare: niente conteggio — «fra 5 giorni» su una data incerta sarebbe un’invenzione');
+
+  ok(deadlineState(giorno(0)).state === 'today', 'oggi è «oggi», non «fra 0 giorni»');
+  const domani = deadlineState(giorno(1));
+  ok(domani.state === 'soon' && domani.days === 1, 'domani: vicino, 1 giorno');
+  ok(deadlineState(giorno(7)).state === 'soon', 'il settimo giorno è ancora «vicino» (soglia inclusa)');
+  ok(deadlineState(giorno(8)).state === 'days', 'l’ottavo no: la soglia predefinita è 7');
+  ok(deadlineState(giorno(30), false, 30).state === 'soon',
+    'la soglia si può allargare (il preavviso dei contratti guarda 30 giorni)');
+  ok(deadlineState(giorno(31), false, 30).state === 'days', 'e il trentunesimo resta fuori');
+
+  const ieri = deadlineState(giorno(-1));
+  ok(ieri.state === 'over' && ieri.days === 1, 'ieri: scaduto da 1 — i giorni di ritardo sono positivi');
+  const treGiorniFa = deadlineState(giorno(-3));
+  ok(treGiorniFa.state === 'over' && treGiorniFa.days === 3, 'tre giorni fa: scaduto da 3');
 }
 
 // ===========================================================================

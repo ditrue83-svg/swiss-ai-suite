@@ -47,7 +47,12 @@ import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { CATEGORIES } from './documentModel';
-import type { AnalysisCorrection, DocumentCategory, DocumentDetail, DocumentTag } from '@/types/models';
+import { EvidenceLink } from '@/components/ui/EvidenceLink';
+import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { MarkGlyph } from '@/components/ui/MarkGlyph';
+import { MarkLegend } from '@/components/ui/MarkLegend';
+import type { AnalysisCorrection, Confidence, DocumentCategory, DocumentDetail, DocumentTag, Evidence } from '@/types/models';
 import { AskAbout } from '@/features/assistant/AskAbout';
 
 const TECH_METHOD_KEY: Record<string, TKey> = {
@@ -577,27 +582,44 @@ export function DocumentDetailPage() {
 
         {(item.state === 'analyzed' || item.state === 'to_verify' || item.lastAttemptFailed) && (
           <>
+            {/* ⚠️ Ogni campo che AFFERMA qualcosa sul documento porta la sua
+                evidenza in linea (EvidenceLink): la frase originale si apre
+                qui, senza cambiare pagina. Dove il modello non registra
+                un'evidenza (tipo, data del documento) la riga LO DICE con
+                `evidence={null}` — dichiarato, non taciuto. La confidenza non
+                ha evidenza perché non è un'affermazione sul documento: è un
+                giudizio di sintesi dell'analisi. */}
             <dl className="detail-list">
               <Field label={t('documents.sender')} value={item.sender}
-                corrected={item.senderCorrected} aiValue={aiValueOf(detail.corrections, 'sender')} />
+                corrected={item.senderCorrected} aiValue={aiValueOf(detail.corrections, 'sender')}
+                evidence={analysis ? (analysis.senderEvidence ?? null) : undefined} />
               <Field label={t('documents.documentType')} value={item.documentType ? L.docType(item.documentType) : null}
-                corrected={item.documentTypeCorrected} aiValue={aiValueOf(detail.corrections, 'document_type')} />
-              <Field label={t('documents.documentDate')} value={item.documentDate ? formatDate(item.documentDate) : null} />
+                corrected={item.documentTypeCorrected} aiValue={aiValueOf(detail.corrections, 'document_type')}
+                evidence={analysis ? null : undefined} />
+              <Field label={t('documents.documentDate')} value={item.documentDate ? formatDate(item.documentDate) : null}
+                evidence={analysis ? null : undefined} />
               <Field
                 label={t('documents.deadline')}
                 // §36 — se l'analisi dichiara che la scadenza va verificata, non
-                // la si presenta come un fatto: si dice che va verificata.
-                value={item.deadline
-                  ? `${formatDate(item.deadline)}${item.deadlineRequiresVerification ? ` · ${t('documents.deadlineToVerify')}` : ''}`
+                // la si presenta come un fatto: la marcatura del termine lo dice
+                // con il segno «?» e senza contare giorni su una data incerta.
+                value={item.deadline ? formatDate(item.deadline) : null}
+                mark={item.deadline
+                  ? <DeadlineMark date={item.deadline} display={formatDate(item.deadline)} toVerify={item.deadlineRequiresVerification} />
                   : null}
-                corrected={item.deadlineCorrected} aiValue={aiValueOf(detail.corrections, 'deadline')} />
+                corrected={item.deadlineCorrected} aiValue={aiValueOf(detail.corrections, 'deadline')}
+                evidence={analysis ? (analysis.deadlineEvidence ?? null) : undefined} />
               <Field label={t('documents.amount')} value={formatCurrency(item.amount, item.amountCurrency)}
-                corrected={item.amountCorrected} aiValue={aiValueOf(detail.corrections, 'amount')} />
+                corrected={item.amountCorrected} aiValue={aiValueOf(detail.corrections, 'amount')}
+                evidence={analysis ? (analysis.amountEvidence ?? null) : undefined} />
               {analysis?.referenceNumbers.length ? (
                 <Field label={t('documents.references')}
                   value={analysis.referenceNumbers.map((r) => `${r.label ? `${r.label}: ` : ''}${r.value}`).join(' · ')} />
               ) : null}
-              <Field label={t('documents.confidence')} value={item.confidence ? L.confidence(item.confidence) : null} />
+              <Field label={t('documents.confidence')} value={item.confidence ? L.confidence(item.confidence) : null}
+                mark={item.confidence === 'alta' || item.confidence === 'media' || item.confidence === 'bassa'
+                  ? <ConfidenceBadge level={item.confidence as Confidence} />
+                  : null} />
             </dl>
 
             {/* ⚠️ `prose`: il riassunto è testo CORRENTE, e correva per tutta la
@@ -608,27 +630,30 @@ export function DocumentDetailPage() {
             {analysis?.summary && <p className="muted-sm prose mt-12">{analysis.summary}</p>}
 
             {analysis && analysis.uncertaintyItems.length > 0 && (
-              /* ⚠️ Il titolo e l'elenco stanno in UN figlio solo, e non è un
-                 involucro di troppo: `.warn-box` è `display: flex`, e due figli
-                 diretti diventano due COLONNE — «Dichiarato incerto» finiva
-                 accanto ai punti elenco invece che sopra. Visto guardando la
-                 schermata, non rileggendo il codice: il markup è sempre stato
-                 legittimo, era il contenitore a interpretarlo. Il primo figlio
-                 di un `.warn-box` è l'icona (dove c'è), il secondo è tutto il
-                 resto. */
-              <div className="warn-box mt-12">
-                <div>
-                  <b>{t('documents.uncertainties')}</b>
-                  <ul>
-                    {analysis.uncertaintyItems.map((u, i) => <li key={i}>{u.description}</li>)}
-                  </ul>
-                </div>
+              /* ⚠️ NON è un guasto, e fino al 2026-08-12 era vestito da guasto:
+                 `.warn-box` rosso, il linguaggio dell'analisi fallita, per il
+                 blocco in cui il prodotto DICHIARA ciò che non ha potuto
+                 determinare — cioè per il prodotto che funziona. Ora sta su
+                 `.verify-note`: superficie neutra, filetto puntinato «da
+                 verificare», il rosso resta a ciò che è andato storto davvero. */
+              <div className="verify-note mt-12" role="note">
+                <span className="vn-title">
+                  <MarkGlyph name="question" />
+                  {t('documents.uncertainties')}
+                </span>
+                <ul>
+                  {analysis.uncertaintyItems.map((u, i) => <li key={i}>{u.description}</li>)}
+                </ul>
               </div>
             )}
 
             <Link className="btn btn-sm mt-10" to={`/admin?doc=${doc.id}`}>
               {t('documents.openAnalysis')} <Icon name="arrowRight" className="ic-sm" />
             </Link>
+
+            {/* La legenda dei segni: la stessa in ogni schermata che li usa,
+                si impara una volta e si richiude. */}
+            <div className="mt-12"><MarkLegend /></div>
           </>
         )}
       </div>
@@ -919,17 +944,27 @@ export function DocumentDetailPage() {
  * Una riga di scheda. Quando il valore è stato corretto da una persona lo dice,
  * e mostra accanto quello che l'analisi aveva rilevato: la correzione non
  * cancella l'originale, gli si affianca — l'analisi resta verificabile.
+ *
+ * `evidence`: la citazione che sostiene il valore, mostrabile IN LINEA senza
+ * cambiare pagina. Passare `null` significa «per questo campo un'evidenza non
+ * esiste», e la riga LO DICE — tacere lascerebbe credere che la prova ci sia
+ * ma non sia stata mostrata. `undefined` = la riga non parla di evidenza
+ * (contatori, giudizi di sintesi come la confidenza).
+ * `mark`: una marcatura al posto del testo piano (scadenza, confidenza).
  */
 function Field({
-  label, value, corrected, aiValue,
-}: { label: string; value: string | null; corrected?: boolean; aiValue?: string | null }) {
+  label, value, corrected, aiValue, evidence, mark,
+}: {
+  label: string; value: string | null; corrected?: boolean; aiValue?: string | null;
+  evidence?: Evidence | null; mark?: React.ReactNode;
+}) {
   const t = useT();
   if (!value && !corrected) return null;
   return (
     <>
       <dt>{label}</dt>
       <dd>
-        {value ?? '—'}
+        {mark ?? value ?? '—'}
         {corrected && (
           <>
             {' '}<span className="badge badge-blue">{t('documents.correctedBadge')}</span>
@@ -937,6 +972,11 @@ function Field({
               {aiValue ? t('documents.aiValue', { value: aiValue }) : t('documents.aiValueEmpty')}
             </div>
           </>
+        )}
+        {evidence !== undefined && (
+          <div>
+            <EvidenceLink quote={evidence?.quote ?? null} page={evidence?.pageNumber ?? null} />
+          </div>
         )}
       </dd>
     </>

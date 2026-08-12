@@ -23,6 +23,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { CrmLinkPicker } from '@/features/crm/CrmLinkPicker';
@@ -314,14 +316,13 @@ export function FinanceDetailPage() {
         </Link>
         <div className="page-title">{who}</div>
         <div className="page-desc">
-          {[
-            L.financeType(item.type),
-            amount,
-            item.dueDate ? t('finance.row.dueOn', { date: formatDate(item.dueDate) }) : null,
-          ].filter(Boolean).join(' · ')}
+          {[L.financeType(item.type), amount].filter(Boolean).join(' · ')}
+          {item.dueDate && <> · <DeadlineMark date={item.dueDate} display={formatDate(item.dueDate)} /></>}
         </div>
         <div className="badge-row">
-          <span className={stateBadgeClass(state)}>{stateBadgeText(state, t, L)}</span>
+          {state === 'to_verify'
+            ? <ProvenanceMark kind="toVerify" />
+            : <span className={stateBadgeClass(state)}>{stateBadgeText(state, t, L)}</span>}
           {archived && <span className="badge badge-neutral">{t('finance.filters.archived')}</span>}
           {/* La CAUSA accanto alla pastiglia, come nell'elenco: il codice del
               worker tradotto se noto, grezzo se no (mai una categoria

@@ -2,6 +2,7 @@
 // Persiste il match (idoneità valutata) e permette di creare la pratica.
 import { useEffect, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { SourceStamp } from '@/components/ui/SourceStamp';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { subsidyService, type CaseKind } from '@/services/subsidyService';
@@ -218,9 +219,18 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
           <div className="src-k">{t('subsidy.detail.sourceTitle')}</div><div className="src-v">{p.sourceTitle}</div>
           <div className="src-k">{t('subsidy.detail.sourceUrl')}</div><div className="src-v"><a href={p.officialSourceUrl} target="_blank" rel="noreferrer">{p.officialSourceUrl}</a></div>
           <div className="src-k">{t('subsidy.detail.lastChecked')}</div><div className="src-v">{p.lastCheckedAt ? <>{p.lastCheckedAt} <span className="muted-sm">({t('subsidy.detail.lastCheckedHint')})</span></> : <span className="muted-sm">{t('subsidy.detail.notAvailable')}</span>}</div>
-          <div className="src-k">{t('subsidy.detail.dataStatus')}</div><div className="src-v"><span className={`ds-badge ds-${p.dataStatus === 'verified' ? 'ok' : p.dataStatus === 'recheck' ? 'warn' : 'demo'}`}>{L.dataStatus(p.dataStatus)}</span></div>
+          <div className="src-k">{t('subsidy.detail.dataStatus')}</div>
+          {/* Il timbro della famiglia FONTE, al posto della pastiglia ds-badge:
+              i tre stati dell'1.0 mappati sui segni condivisi con il 2.0. */}
+          <div className="src-v"><SourceStamp state={p.dataStatus === 'verified' ? 'fresh' : p.dataStatus === 'recheck' ? 'aging' : 'demo'} /></div>
         </div>
-        <div className="info-box mt-12"><Icon name="alert" className="ic-sm" /> <strong>{t('subsidy.detail.demoData')}</strong> — {t('subsidy.detail.demoDataNote')}</div>
+        {/* ⚠️ Fino al 2026-08-12 questo avviso compariva INCONDIZIONATAMENTE:
+            anche un programma con dati verificati dichiarava «dati
+            dimostrativi». Un avviso che non guarda il dato non avvisa: mente.
+            Si mostra solo quando il dato È dimostrativo. */}
+        {p.dataStatus === 'demo' && (
+          <div className="info-box mt-12"><Icon name="alert" className="ic-sm" /> <strong>{t('subsidy.detail.demoData')}</strong> — {t('subsidy.detail.demoDataNote')}</div>
+        )}
       </div>
 
       <div className="card">

@@ -753,11 +753,17 @@ function SourceCard({ citation }: { citation: AssistantCitation }) {
       <div className="as-source-head">
         <Icon name={sourceIcon(citation.sourceType)} className="ic-sm" />
         <span className="as-source-type">{t(sourceTypeKey(citation.sourceType))}</span>
+        {/* Il grado di verifica della fonte, nella grammatica della famiglia
+            provenienza: verificata da una persona = filetto pieno, non
+            verificata = puntinato «da verificare». Le PAROLE restano quelle
+            dell'assistente. ⚠️ 'deterministic', 'ai_with_evidence' e null non
+            hanno mai avuto un marcatore: dargliene uno è una decisione di
+            prodotto, non un refactoring — restano senza. */}
         {citation.verification === 'human_verified' && (
-          <span className="origin-badge ob-ex">{t('assistant.sources.verified')}</span>
+          <span className="mark mark-prov mp-doc">{t('assistant.sources.verified')}</span>
         )}
         {citation.verification === 'ai_unverified' && (
-          <span className="origin-badge ob-sg">{t('assistant.sources.unverified')}</span>
+          <span className="mark mark-prov mp-verify">{t('assistant.sources.unverified')}</span>
         )}
       </div>
 

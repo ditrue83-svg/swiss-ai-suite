@@ -272,8 +272,6 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .brand-mark .ic { width: 18px; height: 18px; stroke-width: 2.25; }
 .brand-name { font-weight: 700; font-size: var(--fs-body); letter-spacing: -0.2px; }
 .brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: -1px; }
-.demo-pill { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber-line); padding: var(--sp-05) var(--sp-2); border-radius: 99px; }
-.demo-pill.block { margin: 0 var(--sp-2) var(--sp-2); }
 .nav { display: flex; flex-direction: column; gap: var(--sp-05); }
 .nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; padding: var(--sp-4) var(--sp-3) var(--sp-2); }
 .nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius-sm); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
@@ -395,6 +393,114 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .badge .ic { width: 13px; height: 13px; stroke-width: 2; }
 .btn-link { background: none; border: none; color: var(--accent-text); font-weight: 600; font-size: inherit; padding: var(--sp-1) var(--sp-2); border-radius: 6px; text-decoration: underline; cursor: pointer; }
 .btn-link:hover { color: var(--accent-dark); }
+
+/* ============================================================================
+   MARCATURE DI PROVENIENZA — i segni tipografici delle affermazioni.
+
+   Il vantaggio del prodotto è dire DA DOVE viene ogni affermazione, e fino a
+   oggi lo diceva con pastiglie colorate indistinguibili: «Da verificare» (uno
+   stato di fiducia) e «Scadenza 10.09» (un termine) erano la stessa forma
+   ambra. Qui ogni FAMIGLIA ha una forma propria, e il colore è RINFORZO, mai
+   unico portatore — le famiglie si distinguono a stampa in bianco e nero:
+
+     PROVENIENZA  filetto verticale a sinistra (la barra di revisione dei
+                  documenti amministrativi): pieno = dal documento,
+                  doppio = suggerimento AI-Swisse, tratteggiato = inferenza,
+                  puntinato = da verificare.
+     CONFIDENZA   triade di punti ●●● / ●●○ / ●○○ — la quantità è il segno.
+     IDONEITÀ     glifo di giudizio (? ✓ ✕) + etichetta SEMPRE presente:
+                  il giudizio fine lo porta la parola, il glifo la classe.
+     FONTE        il timbro d'archivio: maiuscoletto + data in cifre tabellari.
+     TERMINE      le CIFRE sono il segno: data tabellare + distanza in giorni.
+
+   I glifi sono SVG interni ai componenti (src/components/ui/*Mark*.tsx), non
+   caratteri: il sottoinsieme del font non c'entra e `fonts:check` nemmeno.
+   ⚠️ L'INCERTEZZA NON È UN GUASTO: «da verificare» vive su superfici neutre
+   con l'ambra come rinforzo. Il rosso resta a ciò che è andato storto davvero
+   (analisi fallita, permesso negato): quello NON è una marcatura, è un errore.
+   ========================================================================== */
+.mark { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); vertical-align: baseline; }
+/* ⚠️ La taglia del glifo è GLOBALE, non solo dentro `.mark`: un SVG senza
+   larghezza prende quella naturale del viewBox — visto a schermo come un «?»
+   alto sessanta pixel dentro «senza evidenza verificata». */
+.mk-glyph { width: 14px; height: 14px; flex: none; }
+
+/* -- PROVENIENZA: il filetto verticale. Lo STILE del bordo è il segno. ------ */
+.mark-prov { border-left-width: 3px; border-left-style: solid; padding-left: var(--sp-2); font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-label); }
+.mark-prov.mp-doc { border-left-color: var(--ink-soft); color: var(--ink-soft); }
+.mark-prov.mp-sugg { border-left-style: double; border-left-color: var(--accent-text); color: var(--accent-text); }
+.mark-prov.mp-inf { border-left-style: dashed; border-left-color: var(--ink-soft); color: var(--ink-soft); }
+.mark-prov.mp-verify { border-left-style: dotted; border-left-color: var(--amber); color: var(--amber); }
+
+/* Il filetto a scala di BLOCCO: stessa grammatica, applicata a un intero
+   riquadro (es. i punti dichiarati incerti di un'analisi). Sostituisce il
+   rosso di `.warn-box` per l'incertezza dichiarata: il prodotto che dice
+   «questo non l'ho potuto determinare» sta FUNZIONANDO, e non deve vestirsi
+   da guasto. Fondo neutro di pagina, non allarme. */
+.verify-note { border-left: 3px dotted var(--amber); background: var(--bg); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); color: var(--ink-soft); }
+.verify-note .vn-title { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--amber); white-space: nowrap; }
+.verify-note ul { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
+.verify-note li { padding: var(--sp-1) 0; }
+.verify-note li + li { border-top: 1px solid var(--line-subtle); }
+
+/* -- CONFIDENZA: la triade di punti. Quanti sono pieni È il segno. ----------
+   26px e non 22: a 22 il foro del punto vuoto scendeva sotto i due pixel e
+   pieno e vuoto diventavano indistinguibili — visto a schermo, in tema scuro. */
+.mark-conf .mk-glyph { width: 26px; }
+.mark-conf.mc-alta { color: var(--green); }
+.mark-conf.mc-media { color: var(--ink-soft); }
+.mark-conf.mc-bassa { color: var(--amber); }
+
+/* -- IDONEITÀ: glifo di giudizio + parola. Mai il glifo da solo: fra
+   «probabilmente non idoneo» e «non idoneo» decide l'etichetta, e il peso
+   del glifo la accompagna. Il definitivo è pieno, il probabile è a tratto. -- */
+.mark-elig { gap: var(--sp-2); }
+.mark-elig.me-verify { color: var(--amber); }
+.mark-elig.me-yes { color: var(--green); }
+.mark-elig.me-unlikely { color: var(--ink-soft); }
+.mark-elig.me-no { color: var(--ink); font-weight: 700; }
+
+/* -- FONTE: il timbro d'archivio. Maiuscoletto spaziato + data tabellare.
+   «Dimostrativa» è un timbro a cornice: dichiara il dato finto senza urlare. */
+.mark-src { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-label); }
+.mark-src .ms-date { font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mark-src.ms-fresh { color: var(--green); }
+.mark-src.ms-aging { color: var(--amber); }
+.mark-src.ms-stale { color: var(--amber); }
+.mark-src.ms-unverified { color: var(--muted); }
+.mark-src.ms-demo { color: var(--amber); border: 1px solid var(--amber-line); border-radius: 3px; padding: var(--sp-05) var(--sp-2); }
+
+/* -- TERMINE: le cifre sono il segno. Data in cifre tabellari + distanza.
+   Un termine non somiglia mai a uno stato di fiducia: là punti o filetti,
+   qui SEMPRE numeri (o il tratto lungo di «nessuna scadenza»). Lo scaduto
+   in rosso non è un'eccezione alla regola del guasto: un termine mancato È
+   qualcosa che è andato storto nel mondo, non nell'interfaccia. ----------- */
+.mark-due { font-variant-numeric: tabular-nums; }
+.mark-due.md-days { color: var(--ink-soft); }
+.mark-due.md-soon { color: var(--amber); }
+.mark-due.md-over { color: var(--red-dark); font-weight: 700; }
+.mark-due.md-none { color: var(--muted); }
+.mark-due.md-verify { color: var(--amber); }
+
+/* -- EVIDENZA: la citazione in linea, senza cambiare pagina. ----------------
+   Il pulsante è testo, non pastiglia; la citazione aperta porta il filetto
+   PIENO della provenienza «dal documento» — è la stessa grammatica.
+   Un campo senza evidenza verificata LO DICE, in maiuscoletto muto. */
+.evidence-toggle { display: inline-flex; align-items: center; gap: var(--sp-1); background: none; border: none; padding: 0; cursor: pointer; color: var(--accent-text); font-size: var(--fs-meta); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.evidence-toggle:hover { color: var(--accent-dark); }
+.evidence-toggle .mk-glyph { width: 12px; height: 12px; }
+.evidence-quote { margin: var(--sp-2) 0 0; border-left: 3px solid var(--ink-soft); padding: var(--sp-1) 0 var(--sp-1) var(--sp-3); font-size: var(--fs-meta); color: var(--ink-soft); max-width: var(--measure); }
+.evidence-quote .eq-page { display: block; margin-top: var(--sp-05); font-size: var(--fs-label); color: var(--muted); font-variant-numeric: tabular-nums; }
+.evidence-none { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); white-space: nowrap; }
+
+/* -- LEGENDA: compatta, apribile, la stessa ovunque. ------------------------ */
+.mark-legend { border-top: 1px solid var(--surface-rule); padding-top: var(--sp-3); font-size: var(--fs-meta); color: var(--ink-soft); }
+.mark-legend summary { cursor: pointer; display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); }
+.mark-legend summary:hover { color: var(--ink-soft); }
+.mark-legend[open] summary { margin-bottom: var(--sp-3); }
+.ml-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--sp-3) var(--sp-6); }
+.ml-fam-title { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); margin-bottom: var(--sp-1); }
+.ml-item { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-05) 0; }
 
 /* ---- Interruttore a due stati (Attivi/Archiviati, Mostra/Nascondi filtri) ---
    ⚠️ NON `btn-primary`. Un filtro premuto in blu d'azione compete con l'unica
@@ -585,12 +691,6 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ev-btn .ic { width: 13px; height: 13px; }
 .ev-quote { margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); background: var(--bg); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: var(--sp-2) var(--sp-3); font-style: italic; display: none; }
 .ev-quote.show { display: block; }
-/* origine azione: estratta dal documento vs suggerita */
-.origin-badge { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 700; letter-spacing: .02em; padding: var(--sp-05) var(--sp-2); border-radius: 5px; vertical-align: middle; white-space: nowrap; }
-.origin-badge .ic { width: 11px; height: 11px; }
-.ob-ex { color: var(--accent-text); background: var(--accent-soft); }
-.ob-sg { color: var(--muted); background: var(--fill-subtle); }
-.ax-callout .origin-badge { margin-left: var(--sp-05); }
 
 /* card scadenza dedicata */
 .deadline-card { display: flex; align-items: center; gap: var(--sp-4); }
@@ -633,11 +733,6 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .mini-btn:hover { border-color: var(--accent); color: var(--accent-text); }
 .mini-btn .ic { width: 13px; height: 13px; }
 
-/* da verificare */
-.verify-box { list-style: none; }
-.verify-box li { position: relative; padding: var(--sp-2) 0 var(--sp-2) var(--sp-6); font-size: var(--fs-body); color: var(--ink-soft); border-top: 1px solid var(--line); }
-.verify-box li:first-child { border-top: none; }
-.verify-box li::before { content: '?'; position: absolute; left: 4px; top: 7px; width: 16px; height: 16px; font-size: 11px; font-weight: 800; color: var(--amber); background: var(--amber-soft); border-radius: 50%; display: grid; place-items: center; }
 .verify-ok { display: flex; align-items: center; gap: var(--sp-2); color: var(--green); font-size: var(--fs-body); }
 
 /* rischio etichettato */
@@ -828,10 +923,6 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 @media (max-width: 600px) { .source-grid { grid-template-columns: 1fr; gap: var(--sp-05) 0; } .source-grid .src-k { margin-top: var(--sp-2); } }
 .src-k { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
 .src-v { font-size: var(--fs-body); word-break: break-word; }
-.ds-badge { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 700; padding: var(--sp-05) var(--sp-2); border-radius: 99px; }
-.ds-ok { background: var(--green-soft); color: var(--green); }
-.ds-warn { background: var(--amber-soft); color: var(--amber); }
-.ds-demo { background: var(--accent-soft); color: var(--accent-text); }
 
 .req-hard-tag { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--red-dark); background: var(--red-soft); padding: var(--sp-05) var(--sp-2); border-radius: 5px; }
 .req-soft-tag { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); background: var(--fill-subtle); padding: var(--sp-05) var(--sp-2); border-radius: 5px; }
@@ -1145,7 +1236,6 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    non a occhio). Non corsivo-e-basta: il corsivo da solo sparisce. */
 .ct-unverified { font-style: normal; color: var(--amber); font-weight: 600; }
 
-.ct-alert { color: var(--red-dark); font-weight: 600; margin-top: var(--sp-1); }
 
 /* Titolo a sinistra, azione a destra: senza `flex` il pulsante finisce sotto
    il sottotitolo, largo quanto la pagina. Visto aprendo la schermata. */

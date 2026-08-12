@@ -24,6 +24,7 @@
 // ============================================================================
 import { Link } from 'react-router-dom';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import type { NextStep, NextStepAction, NextStepChoice, NextStepKind } from './nextStep';
@@ -171,11 +172,11 @@ export function NextStepCard({ step }: { step: NextStep }) {
           {facts.deadline && (
             <>
               <dt>{t('documents.deadline')}</dt>
+              {/* La marcatura del termine: una data da verificare lo DICE con
+                  il segno «?» e non conta giorni su una data incerta. */}
               <dd>
-                {formatDate(facts.deadline)}
-                {facts.deadlineRequiresVerification
-                  ? <> · <span className="badge badge-media">{t('documents.deadlineToVerify')}</span></>
-                  : null}
+                <DeadlineMark date={facts.deadline} display={formatDate(facts.deadline)}
+                  toVerify={facts.deadlineRequiresVerification} />
               </dd>
             </>
           )}

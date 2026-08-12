@@ -26,7 +26,8 @@ import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
-import { dueLabel, eventLabelKey, isOverdue, sourceLabelKey, statusLabelKey } from './taskFormat';
+import { dueLabel, eventLabelKey, sourceLabelKey, statusLabelKey } from './taskFormat';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import type { Task, TaskChecklistItem, TaskPriority, TaskStatus } from '@/types/models';
 
 export function TaskDetailPage() {
@@ -190,7 +191,6 @@ export function TaskDetailPage() {
 
   const { task, checklist, comments, events } = data;
   const due = dueLabel(task.dueDate);
-  const late = isOverdue(task);
   const doneCount = checklist.filter((c) => c.done).length;
 
   return (
@@ -248,7 +248,13 @@ export function TaskDetailPage() {
             <label htmlFor="d-due">{t('tasks.dueLabel')}</label>
             <input id="d-due" type="date" value={task.dueDate ?? ''} disabled={busy}
               onChange={(e) => void patch({ dueDate: e.target.value || null })} />
-            <div className={late ? 'hint-accent mt-10' : 'muted-sm mt-10'}>{t(due.key, due.params)}</div>
+            {/* La lettura del termine, nella grammatica della sua famiglia; per
+                una conclusa resta testo muto (vedi isOverdue). */}
+            <div className="mt-10">
+              {task.status === 'completed'
+                ? <span className="muted-sm">{t(due.key, due.params)}</span>
+                : <DeadlineMark date={task.dueDate} />}
+            </div>
           </div>
 
           {task.completedAt && (

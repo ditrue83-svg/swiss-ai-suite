@@ -26,11 +26,13 @@ import { incentivesService } from '@/services/incentivesService';
 import type { SubsidyDismissalReason } from '@/types/database';
 import type { IncentiveOpportunity, IncentiveProject } from '@/types/models';
 import {
-  COMPLETENESS_KEY, DISMISSAL_KEY, DISMISSAL_REASONS, ELIGIBILITY_KEY, ELIGIBILITY_TONE,
-  FRESHNESS_KEY, NEXT_STEP_KEY, OPPORTUNITY_PAGE_SIZE, OPPORTUNITY_VIEWS, READINESS_KEY,
+  COMPLETENESS_KEY, DISMISSAL_KEY, DISMISSAL_REASONS,
+  NEXT_STEP_KEY, OPPORTUNITY_PAGE_SIZE, OPPORTUNITY_VIEWS, READINESS_KEY,
   RELEVANCE_KEY, TIMING_KEY, VIEW_KEY, deadlineNotice, nextStep, plural, subsidyErrorKey, todayISO,
   type IncentiveFilters, type OpportunityView,
 } from './incentivesModel';
+import { EligibilityMark } from '@/components/ui/EligibilityMark';
+import { SourceStamp } from '@/components/ui/SourceStamp';
 import { OpportunityDetail } from './OpportunityDetail';
 
 interface Props {
@@ -250,14 +252,14 @@ function OpportunityRow({
             domande diverse e nessuna è una probabilità. */}
         <dl className="inc-measures">
           <Measure label={t('incentives.measures.relevance')} value={t(RELEVANCE_KEY[o.relevanceLevel])} />
-          <Measure
-            label={t('incentives.measures.eligibility')}
-            value={t(ELIGIBILITY_KEY[o.eligibilityStatus])}
-            tone={ELIGIBILITY_TONE[o.eligibilityStatus]}
-          />
+          {/* Idoneità e freschezza portano il SEGNO della loro famiglia
+              (giudizio, timbro): le altre quattro misure restano testo — non
+              appartengono a nessuna famiglia di marcature, e un segno inventato
+              per simmetria direbbe meno di una parola. */}
+          <Measure label={t('incentives.measures.eligibility')} value={<EligibilityMark status={o.eligibilityStatus} />} />
           <Measure label={t('incentives.measures.completeness')} value={t(COMPLETENESS_KEY[o.completeness])} />
           <Measure label={t('incentives.measures.timing')} value={t(TIMING_KEY[o.timing])} />
-          <Measure label={t('incentives.measures.freshness')} value={t(FRESHNESS_KEY[o.sourceFreshness])} />
+          <Measure label={t('incentives.measures.freshness')} value={<SourceStamp state={o.sourceFreshness} />} />
           <Measure label={t('incentives.measures.readiness')} value={t(READINESS_KEY[o.readiness])} />
         </dl>
 
@@ -322,11 +324,11 @@ function OpportunityRow({
   );
 }
 
-function Measure({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function Measure({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="inc-measure">
       <dt>{label}</dt>
-      <dd>{tone ? <span className={`badge ${tone}`}>{value}</span> : value}</dd>
+      <dd>{value}</dd>
     </div>
   );
 }
