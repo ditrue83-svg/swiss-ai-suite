@@ -2,9 +2,9 @@
 // AI-Swisse — La testata (marchio e campanella): test OFFLINE.
 //   npm run test:shell-unit
 //
-// Niente database, niente rete, niente credito. Prova le due regole della
+// Niente database, niente rete, niente credito. Prova le tre regole della
 // testata che nessun altro controllo vede — il design-lint guarda carattere,
-// colore e spaziatura, non le forme né i contenitori:
+// colore e spaziatura dentro src/, non le forme, i contenitori né index.html:
 //
 //   1. FORME — nella famiglia di icone nessuna forma appartiene a due nomi.
 //      La regola è già scritta tre volte nei commenti di Icon.tsx (banknote/
@@ -17,6 +17,11 @@
 //      non ha né bordo né fondo propri. Una scatola bordata di 40px accanto a
 //      un marchio di 32px sono due scatole affiancate, cioè due pari grado.
 //      L'hover può colorare: il feedback non è un contenitore.
+//
+//   3. FAVICON — il marchio è uno: il campo della favicon è `--accent` e il
+//      tratto della S è `--on-accent`, letti dal token e pretesi letterali
+//      nell'SVG. La favicon è nata dal prototipo con un gradiente suo
+//      (#00A3FF→#4DEAFF): due blu per lo stesso segno sono due marchi.
 //
 // ⚠️ Il CSS si LEGGE DAI FILE, non si descrive a mano: un elenco di proprietà
 // copiato qui dentro invecchia al primo ritocco del foglio di stile e comincia
@@ -85,6 +90,33 @@ section('2. Campanella — accessorio, non pari grado');
     !boxSurface,
     "un fondo da scheda fa della campanella una scheda: il fondo appartiene all'hover",
   );
+}
+
+// ---------------------------------------------------------------------------
+section('3. Favicon — il marchio è uno');
+
+{
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const uri = html.match(/href="data:image\/svg\+xml,([^"]*)"/)?.[1] ?? '';
+  check('la favicon esiste in index.html', uri !== '');
+
+  // Si decodifica come fa il browser: il confronto giusto è sul documento SVG,
+  // non sulla sua forma percent-encoded. Un URI malformato qui ESPLODE, ed è
+  // giusto così: è un guasto, non un caso da assorbire.
+  const svg = decodeURIComponent(uri);
+
+  // Il colore canonico vive in app.css e un data URI non può dire var(--accent):
+  // il valore si LEGGE dal token — il PRIMO `--accent:` del file, cioè il tema
+  // chiaro, perché la favicon è una e la scheda del browser non segue il tema
+  // del sito — e si pretende letterale nell'SVG. Se un giorno l'accento cambia,
+  // questo rosso è il promemoria che la favicon non si aggiorna da sola.
+  const appCss = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
+  const accent = appCss.match(/--accent:\s*([^;]+);/)?.[1].trim() ?? '';
+  const onAccent = appCss.match(/--on-accent:\s*([^;]+);/)?.[1].trim() ?? '';
+  check('i token --accent e --on-accent esistono in app.css', accent !== '' && onAccent !== '');
+  check(`il campo della favicon è --accent`, svg.includes(`fill='${accent}'`), `atteso fill='${accent}'`);
+  check(`il tratto della S è --on-accent`, svg.includes(`stroke='${onAccent}'`), `atteso stroke='${onAccent}'`);
+  check('nessun gradiente residuo', !svg.includes('linearGradient'));
 }
 
 // ---------------------------------------------------------------------------
