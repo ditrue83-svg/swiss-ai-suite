@@ -938,6 +938,13 @@ npm run test:print-unit      # Stampa offline: che cosa il foglio NON deve avere
                              #   blocco, togliendo `.sidebar`, lasciando un token scuro,
                              #   rimettendo un `overflow:hidden` e troncando le citazioni,
                              #   falliscono 2, 1, 2, 1 e 2 controlli (60 casi)
+npm run test:shell-unit      # Testata offline: nella famiglia di icone nessuna forma appartiene
+                             #   a due nomi (il marchio è nato con lo STESSO path di `plus`, cioè
+                             #   un comando nella posizione del logo), la campanella a riposo
+                             #   resta un accessorio — niente bordo, niente fondo di superficie —
+                             #   e la favicon porta i colori del token (`--accent`/`--on-accent`,
+                             #   letti da app.css: il marchio è uno). Il CSS si legge dai file,
+                             #   non si descrive a mano (9 casi)
 npm run test:audit-unit      # Registro attività offline: gli enum scritti due volte in SQL e in
                              #   TypeScript, ogni azione e ogni campo con la sua etichetta nelle
                              #   tre lingue, e soprattutto LA SANIFICAZIONE — quali colonne i

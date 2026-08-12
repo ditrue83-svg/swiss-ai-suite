@@ -69,6 +69,7 @@
     "test:subsidy-unit": "node --import tsx scripts/test-subsidy-unit.ts",
     "test:subsidy": "node --env-file=.env.test --import tsx scripts/test-subsidy.ts",
     "test:print-unit": "node --import tsx scripts/test-print-unit.ts",
+    "test:shell-unit": "node --import tsx scripts/test-shell-unit.ts",
     "test:audit-unit": "node --import tsx scripts/test-audit-unit.ts",
     "test:audit": "node --env-file=.env.test --import tsx scripts/test-audit.ts",
     "test:operations": "node scripts/test-operations.mjs",

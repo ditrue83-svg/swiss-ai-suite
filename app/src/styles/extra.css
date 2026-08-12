@@ -81,17 +81,23 @@
 
 /* ---- Campanella ---------------------------------------------------------- */
 .bell-wrap { position: relative; margin-left: auto; }
+/* Un ACCESSORIO, non un pari grado del marchio: a riposo niente bordo e niente
+   fondo — la scatola bordata da 40px accanto al marchio da 32 erano due scatole
+   affiancate, cioè due pari grado. I 36px sono l'area di tocco, non un peso
+   visivo: quello che si vede a riposo è il solo glifo in --muted. Il fondo
+   appartiene all'hover, che è feedback e non contenitore (test:shell-unit). */
 .bell-btn {
   position: relative; display: grid; place-items: center;
-  width: 40px; height: 40px; border: 1px solid var(--line);
-  border-radius: var(--radius-sm); background: var(--card); color: var(--ink);
+  width: 36px; height: 36px; border: 0;
+  border-radius: var(--radius-sm); background: transparent; color: var(--muted);
 }
-.bell-btn:hover { background: var(--bg); }
+.bell-btn:hover { background: var(--bg); color: var(--ink); }
+.bell-btn .ic { width: 18px; height: 18px; }
 /* Il pallino non contiene mai più di due caratteri: oltre il nove diventa «9+»,
    perché un pallino che deve stare dietro a «147» o cresce quanto una parola o
    rimpicciolisce il testo sotto la soglia leggibile (§80). */
 .bell-badge {
-  position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px;
+  position: absolute; top: 0; right: 0; min-width: 18px; height: 18px;
   padding: 0 var(--sp-1); border-radius: 9px; background: var(--red); color: #fff;
   font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
 }

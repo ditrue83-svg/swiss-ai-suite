@@ -303,6 +303,9 @@ const GROUPS = {
       { script: 'test:subsidy-unit' },
       { script: 'test:audit-unit' },
       { script: 'test:print-unit' },
+      // La testata: le forme delle icone (una forma, un nome — il marchio è
+      // nato con lo stesso path di `plus`) e la campanella senza scatola.
+      { script: 'test:shell-unit' },
     ],
   },
   // ⚠️ QUESTO GRUPPO NON HA BISOGNO DEL PROGETTO DI PRODUZIONE, e la
