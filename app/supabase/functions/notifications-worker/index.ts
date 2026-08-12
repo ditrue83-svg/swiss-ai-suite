@@ -52,6 +52,12 @@ Deno.serve(async (req: Request) => {
   const report = {
     tasksScanned: 0, created: 0, emailsQueued: 0, unassignedAlerts: 0, skippedNoTimezone: 0,
     attempted: 0, sent: 0, retried: 0, failed: 0,
+    // ⚠️ Questi due non sono contabilità in più: sono la differenza fra un
+    // giro che non ha avuto niente da fare e un giro che non è RIUSCITO a
+    // fare niente. Senza, entrambi riportano `{0,0,0,0}` e rispondono `ok`.
+    // `sentUnrecorded > 0` è il più grave: l'email è partita e il database non
+    // lo sa, quindi `sent` è un minimo e non un totale.
+    sentUnrecorded: 0, bookkeepingFailed: 0,
     // Dichiarato: chi legge il report deve sapere che le email non partono
     // perché non è configurato niente, e non perché qualcosa è rotto (§79).
     emailProviderConfigured: !!emailProvider,
@@ -82,6 +88,8 @@ Deno.serve(async (req: Request) => {
     report.sent = delivered.sent;
     report.retried = delivered.retried;
     report.failed = delivered.failed;
+    report.sentUnrecorded = delivered.sentUnrecorded;
+    report.bookkeepingFailed = delivered.bookkeepingFailed;
 
     report.timeBudgetReached = Date.now() >= deadline;
   } catch (error) {

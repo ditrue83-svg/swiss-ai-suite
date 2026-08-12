@@ -32,10 +32,53 @@
   --bg: hsl(210, 20%, 98%);
   --card: #ffffff;
   --on-accent: #ffffff;               /* testo sopra i fondi pieni colorati */
-  --surface-2: hsl(210, 20%, 94%);     /* superficie tenue: pastiglie neutre */
+  /* Riempimento tenue di una pastiglia neutra o di un hover. ⚠️ Si chiamava
+     `--surface-2` fino al 2026-08-11, e il nome mentiva: non è un LIVELLO di
+     superficie, è un colore di riempimento. Quando i tre livelli sono stati
+     nominati (--surface-1/2/3, qui sotto) il nome vecchio sarebbe stato il
+     secondo `--surface-2` della stessa palette — lo stesso guasto di --amber
+     usato sia per scrivere sia per riempire, che ha prodotto il marrone della
+     barra «Media» che nessuno aveva scelto. */
+  --fill-subtle: hsl(210, 20%, 94%);
   --track: hsl(210, 20%, 92%);         /* fondo delle barre di avanzamento  */
   --highlight: hsl(48, 100%, 78%);     /* evidenziazione della citazione     */
   --on-highlight: hsl(45, 60%, 12%);   /* testo sopra l'evidenziazione       */
+
+  /* --- Livelli di superficie -----------------------------------------------
+     Tre livelli, non «scheda o niente». Il livello dichiara QUANTO pesa ciò che
+     contiene, e si sceglie una volta per blocco: sette schede identiche nella
+     stessa pagina non fanno gerarchia, la fanno sparire — a quel punto a dire
+     cosa conta resta solo la posizione, che è un ripiego.
+       --surface-1  elevata · fondo proprio, bordo, ombra → si LEGGE   (Analisi)
+       --surface-2  piana   · nessun fondo, filetto sopra → si CONSULTA (Attività)
+       --surface-3  inline  · nessun contenitore          → si SCORRE   (Origine)
+     ⚠️ 2 e 3 sono TRASPARENTI di proposito, e non è una svista: un terzo grigio
+     appena diverso sarebbe un valore da mantenere in due temi per non dire
+     niente in più. Ciò che separa un blocco piano dal successivo è il filetto
+     (--surface-rule), non un fondo; ciò che distingue una riga inline è che non
+     ha contenitore affatto. Le tre classe-livello stanno accanto a `.card`. */
+  --surface-1: var(--card);
+  --surface-2: transparent;
+  --surface-3: transparent;
+  --surface-rule: var(--line);
+
+  /* --- Colonna di lettura ---------------------------------------------------
+     `--measure` è la lunghezza di riga del testo CORRENTE — circa settanta
+     caratteri, la misura oltre la quale l'occhio perde il capo della riga
+     successiva. `--content-max` è la colonna che contiene una pagina di
+     lettura. Sono due cose diverse: tabelle ed elenchi possono superare la
+     prima (sono strutture, non prosa) ma non la seconda. */
+  /* ⚠️ 52ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
+     ZERO, e in Inter lo zero è largo 9,46px a 15px mentre il carattere medio di
+     una frase italiana vera ne misura 6,83. Scrivere `70ch` per «settanta
+     caratteri» dà una riga da 94 caratteri — trentaquattro in più di quelli
+     voluti, cioè esattamente il difetto che si stava correggendo. 52ch = 492px
+     = ~72 caratteri del testo reale, contati sul riassunto di un'analisi con il
+     font servito. Il conteggio dipende dal FONT, non dalla lingua: vale uguale
+     in de e fr. Se un giorno cambia il carattere, questo numero va rimisurato,
+     non tradotto. */
+  --measure: 52ch;
+  --content-max: 880px;
 
   /* --- Colori di stato -----------------------------------------------------
      NON sono decorazione: dicono quanto manca a una scadenza e se un'azione è
@@ -136,7 +179,7 @@
        pulsanti), che infatti usano --line-strong, portato a 48%. */
     --bg: hsl(213, 30%, 6%);
     --card: hsl(213, 22%, 14%);
-    --surface-2: hsl(213, 18%, 20%);
+    --fill-subtle: hsl(213, 18%, 20%);
     --track: hsl(213, 18%, 22%);
     --line: hsl(213, 16%, 28%);
     --line-strong: hsl(213, 14%, 48%);   /* 3.31:1 su --card: bordo dei controlli */
@@ -299,8 +342,28 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .page-desc { color: var(--muted); margin-top: var(--sp-1); max-width: 640px; font-size: var(--fs-body); }
 .demo-banner { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-line); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); font-size: var(--fs-body); margin-bottom: var(--sp-6); }
 
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-6); box-shadow: var(--shadow-xs); }
+/* ---- I tre livelli di superficie (token in :root) --------------------------
+   `.card` È il livello 1: lo stesso selettore, non una copia. Due regole con
+   gli stessi valori sarebbero due verità che divergono al primo ritocco. */
+.card, .surface-1 { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-6); box-shadow: var(--shadow-xs); }
 .card + .card { margin-top: var(--sp-4); }
+/* Livello 2 — blocco piano. Nessun fondo, nessuna ombra, nessun angolo: dal
+   precedente lo separa un filetto. Il primo della pila non lo porta (non c'è
+   niente da separare), esattamente come `.list-row:first-of-type`. */
+.surface-2 { background: var(--surface-2); border-top: 1px solid var(--surface-rule); padding: var(--sp-6) 0 0; margin-top: var(--sp-6); }
+.surface-2:first-of-type { border-top: none; }
+/* Livello 3 — riga inline. Non ha contenitore: è testo con un'etichetta
+   accanto. Una scheda intera per una riga sola dice «questo conta quanto
+   l'analisi», e non è vero. */
+.surface-3 { background: var(--surface-3); display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-meta); }
+.surface-3 .sf-k { color: var(--muted); font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--ls-label); flex: none; }
+.surface-3 .sf-v { color: var(--ink-soft); min-width: 0; }
+
+/* La colonna di lettura e la misura del testo corrente. Le tabelle e gli
+   elenchi possono uscire dalla misura — sono strutture, non prosa — ma non
+   dalla colonna. */
+.reading-col { max-width: var(--content-max); }
+.prose { max-width: var(--measure); }
 .card-title { font-size: var(--fs-body); font-weight: 700; letter-spacing: -0.1px; margin-bottom: var(--sp-4); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .section-title { font-size: var(--fs-strong); font-weight: 700; letter-spacing: -0.2px; margin: var(--sp-1) 0 var(--sp-3); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
@@ -327,11 +390,51 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .badge-alta { background: var(--red-soft); color: var(--red-dark); }
 .badge-media { background: var(--amber-soft); color: var(--amber); }
 .badge-bassa { background: var(--green-soft); color: var(--green); }
-.badge-neutral { background: var(--surface-2); color: var(--ink-soft); }
+.badge-neutral { background: var(--fill-subtle); color: var(--ink-soft); }
 .badge-blue { background: var(--accent-soft); color: var(--accent-text); }
 .badge .ic { width: 13px; height: 13px; stroke-width: 2; }
 .btn-link { background: none; border: none; color: var(--accent-text); font-weight: 600; font-size: inherit; padding: var(--sp-1) var(--sp-2); border-radius: 6px; text-decoration: underline; cursor: pointer; }
 .btn-link:hover { color: var(--accent-dark); }
+
+/* ---- Interruttore a due stati (Attivi/Archiviati, Mostra/Nascondi filtri) ---
+   ⚠️ NON `btn-primary`. Un filtro premuto in blu d'azione compete con l'unica
+   azione primaria della pagina — su Documenti, «Carica documento» — e la
+   schermata finisce con due pulsanti blu che chiedono la stessa attenzione per
+   due cose che non si somigliano: una CARICA, l'altra GUARDA. Lo stato premuto
+   qui è una superficie, non un colore d'azione. */
+.btn-toggle[aria-pressed="true"] { background: var(--fill-subtle); border-color: var(--line-strong); color: var(--ink); font-weight: 700; }
+.btn-toggle[aria-pressed="true"]:hover { background: var(--fill-subtle); border-color: var(--line-strong); }
+/* I due estremi si toccano: è UN interruttore, non due pulsanti vicini. */
+.segmented { display: inline-flex; }
+.segmented .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.segmented .btn + .btn { margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.segmented .btn[aria-pressed="true"] { position: relative; z-index: 1; }
+
+/* ---- Menu di trabocco ------------------------------------------------------
+   Dove va ciò che è raro (archivia, stampa) o irreversibile (elimina): fuori
+   dalla riga delle azioni, mai accanto alla primaria. */
+.menu-wrap { position: relative; display: inline-flex; }
+.menu-panel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 70;
+  min-width: 232px; max-width: calc(100vw - var(--sp-8));
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg); padding: var(--sp-1); text-align: left;
+}
+.menu-item {
+  display: flex; align-items: center; gap: var(--sp-2); width: 100%;
+  padding: var(--sp-2) var(--sp-3); border: none; border-radius: 6px;
+  background: none; color: var(--ink); font: inherit; font-size: var(--fs-body);
+  font-weight: 500; text-align: left; cursor: pointer; min-height: 34px;
+}
+.menu-item:hover:not(:disabled) { background: var(--bg); }
+.menu-item:disabled { opacity: 0.5; cursor: not-allowed; }
+/* ⚠️ Colore del TESTO, non un fondo pieno: dentro un menu una voce rossa piena
+   grida quanto un avviso, e qui non c'è nessuna emergenza — c'è un comando che
+   non si può disfare, e lo dice la conferma che segue, non il colore. */
+.menu-item.is-danger { color: var(--red-dark); }
+.menu-item.is-danger .ic { color: var(--red-dark); }
+.menu-item.is-danger:hover:not(:disabled) { background: var(--red-soft); }
+.menu-hint { padding: 0 var(--sp-3) var(--sp-2); font-size: var(--fs-meta); color: var(--muted); }
 
 .field { display: flex; flex-direction: column; gap: var(--sp-1); margin-bottom: var(--sp-4); }
 .field label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); }
@@ -394,7 +497,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .quiz-opt { padding: var(--sp-2) var(--sp-4); border-radius: 8px; border: 1px solid var(--line); background: var(--card); font-size: var(--fs-body); font-weight: 600; }
 .quiz-opt.sel-si { background: var(--green-soft); border-color: var(--green); color: var(--green); }
 .quiz-opt.sel-no { background: var(--red-soft); border-color: var(--red); color: var(--red-dark); }
-.quiz-opt.sel-ns { background: var(--surface-2); border-color: var(--line-strong); color: var(--ink-soft); }
+.quiz-opt.sel-ns { background: var(--fill-subtle); border-color: var(--line-strong); color: var(--ink-soft); }
 
 .price-card { position: relative; display: flex; flex-direction: column; }
 .price-card.featured { border-color: var(--accent); box-shadow: var(--shadow-md); }
@@ -486,7 +589,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .origin-badge { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 700; letter-spacing: .02em; padding: var(--sp-05) var(--sp-2); border-radius: 5px; vertical-align: middle; white-space: nowrap; }
 .origin-badge .ic { width: 11px; height: 11px; }
 .ob-ex { color: var(--accent-text); background: var(--accent-soft); }
-.ob-sg { color: var(--muted); background: var(--surface-2); }
+.ob-sg { color: var(--muted); background: var(--fill-subtle); }
 .ax-callout .origin-badge { margin-left: var(--sp-05); }
 
 /* card scadenza dedicata */
@@ -541,7 +644,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .risk-tag { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: var(--sp-05) var(--sp-2); border-radius: 6px; }
 .risk-explicit { background: var(--red-soft); color: var(--red-dark); }
 .risk-possible { background: var(--amber-soft); color: var(--amber); }
-.risk-unknown { background: var(--surface-2); color: var(--ink-soft); }
+.risk-unknown { background: var(--fill-subtle); color: var(--ink-soft); }
 .risk-text { font-size: var(--fs-body); margin-top: var(--sp-2); }
 
 /* editor bozza */
@@ -562,6 +665,35 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* ---------- Dashboard ---------- */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
 @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---- Gerarchia dichiarata: una metrica grande e quattro piccole ------------
+   Cinque schede su una griglia da quattro colonne davano un 3+2 con un buco in
+   fondo — una forma che nessuno ha scelto e che il lettore prova comunque a
+   interpretare. Le alternative erano due: una griglia coerente (cinque schede
+   uguali, e allora nessuna conta più delle altre) o una gerarchia detta a voce
+   alta. Qui è la seconda: il numero che il prodotto insegue sta da solo a
+   sinistra, gli altri quattro gli stanno accanto in un 2×2. */
+.kpi-lead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--sp-4); }
+.kpi-lead-rest { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); }
+/* ⚠️ La differenza NON la fa un settimo gradino tipografico: la scala ha sei
+   gradini, uno per compito, e «il numero che domina la schermata» non è un
+   compito nuovo — è --fs-h1, che le altre quattro lasciano libero scendendo a
+   --fs-h2. Trenta contro ventidue più il doppio di superficie: la gerarchia è
+   un fatto misurabile, non un modo di dire. */
+.kpi-sm .kpi-value { font-size: var(--fs-h2); }
+/* ⚠️ La scheda grande è alta quanto le quattro piccole messe insieme, e senza
+   queste due righe il numero restava incollato in cima e la sua didascalia in
+   fondo — `.kpi-sub` ha `margin-top: auto`, che nelle schede piccole allinea le
+   didascalie di una fila e qui apriva un vuoto di duecento pixel in mezzo.
+   Visto aprendo la schermata: un buco così non si legge come gerarchia, si
+   legge come un difetto. Il gruppo si centra e la didascalia torna sotto il
+   numero, dove appartiene. L'etichetta non riserva più due righe perché qui non
+   c'è nessuna fila con cui allinearsi: la scheda è sola nella sua colonna. */
+.kpi-hero { justify-content: center; }
+.kpi-hero .kpi-sub { margin-top: var(--sp-1); }
+.kpi-hero .kpi-label { min-height: 0; }
+@media (max-width: 900px) { .kpi-lead { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .kpi-lead-rest { grid-template-columns: minmax(0, 1fr); } }
 .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); }
 /* Due righe di spazio riservate all'etichetta: le traduzioni non hanno la
    stessa lunghezza — «Scadenze prossimi 7 giorni» diventa «Fristen in den
@@ -581,7 +713,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    finiva sotto la barra. */
 .bar-row { display: grid; grid-template-columns: 148px 1fr 42px; align-items: center; gap: var(--sp-3); padding: var(--sp-2) 0; }
 .bar-cat { font-size: var(--fs-meta); color: var(--ink-soft); font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); overflow-wrap: anywhere; }
-.bar-track { background: var(--surface-2); border-radius: 6px; height: 22px; overflow: hidden; }
+.bar-track { background: var(--fill-subtle); border-radius: 6px; height: 22px; overflow: hidden; }
 /* Niente `min-width`: una barra larga tre pixel su un valore zero disegna una
    quantità che non esiste. A zero la barra non c'è, e il numero accanto lo
    dice. */
@@ -641,6 +773,14 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .mt-10 { margin-top: var(--sp-3); } .mt-12 { margin-top: var(--sp-3); } .mt-14 { margin-top: var(--sp-4); } .mt-16 { margin-top: var(--sp-4); } .mt-28 { margin-top: var(--sp-8); }
 .mb-12 { margin-bottom: var(--sp-3); } .mb-14 { margin-bottom: var(--sp-4); }
 .row-wrap { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
+/* La riga delle azioni di una schermata: UNA primaria, le secondarie accanto,
+   il trabocco in fondo. Non è `.row-wrap` con altri pulsanti dentro — la
+   differenza è che qui l'ordine SIGNIFICA qualcosa, e il margine automatico
+   davanti al trabocco lo tiene lontano dalla primaria anche quando le
+   secondarie sono zero. */
+.action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.action-bar-secondary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.action-bar-more { margin-left: auto; }
 .push-right { margin-left: auto; }
 .filter-group { margin-left: auto; display: flex; gap: var(--sp-2); }
 .muted-sm { color: var(--muted); font-size: var(--fs-body); }
@@ -694,7 +834,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ds-demo { background: var(--accent-soft); color: var(--accent-text); }
 
 .req-hard-tag { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--red-dark); background: var(--red-soft); padding: var(--sp-05) var(--sp-2); border-radius: 5px; }
-.req-soft-tag { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); background: var(--surface-2); padding: var(--sp-05) var(--sp-2); border-radius: 5px; }
+.req-soft-tag { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); background: var(--fill-subtle); padding: var(--sp-05) var(--sp-2); border-radius: 5px; }
 
 .quiz-progress { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .quiz-question { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.2px; margin: var(--sp-2) 0 var(--sp-3); }
@@ -753,7 +893,20 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .page-title { font-size: var(--fs-h1); }
   .greeting { font-size: var(--fs-h1); }
   .hero h1 { font-size: var(--fs-h1); }
-  .card { padding: var(--sp-4); }
+  .card, .surface-1 { padding: var(--sp-4); }
+  .surface-2 { padding-top: var(--sp-4); margin-top: var(--sp-4); }
+  /* L'azione del momento prende tutta la riga: a 375px tre pulsanti affiancati
+     diventano tre pulsanti stretti, e nessuno dei tre è più «quello da
+     premere». Le secondarie restano in riga sotto, e si dividono lo spazio. */
+  .action-bar > .btn-primary { width: 100%; }
+  .action-bar-secondary { flex: 1; }
+  .action-bar-secondary .btn { flex: 1 1 auto; }
+  /* ⚠️ Il trabocco si aggancia in ALTO. Con le etichette tedesche le tre
+     secondarie diventano tre righe, e un `...` centrato verticalmente finiva
+     accanto a quella di mezzo: sembrava appartenerle. In alto sta accanto alla
+     prima, cioè dove comincia il gruppo di cui è la coda. */
+  .action-bar { align-items: flex-start; }
+  .action-bar-more { align-self: flex-start; }
   .result-row { grid-template-columns: 1fr; gap: var(--sp-1); padding: var(--sp-3) 0; }
   .result-label { color: var(--muted); }
   .bar-row { grid-template-columns: 96px 1fr 34px; gap: var(--sp-2); }
@@ -793,7 +946,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   text-align: left; cursor: pointer; color: var(--ink); font: inherit;
 }
 .inbox-list li:first-child .inbox-row { border-top: none; }
-.inbox-row:hover { background: var(--surface-2); }
+.inbox-row:hover { background: var(--fill-subtle); }
 .inbox-row-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1; }
 .inbox-row-side { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
 /* Il grassetto NON è l'unico segnale del non letto: la pastiglia di stato dice
@@ -821,7 +974,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .inbox-body {
   white-space: pre-wrap; overflow-wrap: anywhere;
   font-size: var(--fs-body); line-height: var(--lh); color: var(--ink);
-  background: var(--surface-2); border: 1px solid var(--line);
+  background: var(--fill-subtle); border: 1px solid var(--line);
   border-radius: var(--radius-sm); padding: var(--sp-4);
   max-height: 32em; overflow-y: auto;
 }
@@ -871,7 +1024,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 
 /* Barra delle categorie a sinistra sul desktop, striscia scorrevole sul
    telefono: le stesse voci, senza un secondo componente da mantenere. */
-.doc-layout { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: var(--sp-4); }
+/* ⚠️ 184px e non 232: la colonna prendeva il 30% della larghezza utile per tre
+   o quattro voci — e quel 30% lo pagava l'elenco, che è ciò per cui si apre
+   questa pagina. Non è larghezza a caso: «Sozialversicherungen» a 184 sta su
+   una riga con il suo conteggio accanto (verificato nelle tre lingue), e sotto
+   i 900px la colonna diventa comunque una striscia orizzontale. */
+.doc-layout { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: var(--sp-4); }
 .doc-side { display: flex; flex-direction: column; gap: var(--sp-05); }
 .doc-cat {
   display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
@@ -879,7 +1037,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   border: 1px solid transparent; border-radius: 8px; background: none;
   color: var(--ink); font: inherit; font-size: var(--fs-meta); text-align: left; cursor: pointer;
 }
-.doc-cat:hover { background: var(--surface-2); }
+.doc-cat:hover { background: var(--fill-subtle); }
 .doc-cat.is-active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); font-weight: 600; }
 .doc-cat-n { color: var(--muted); font-variant-numeric: tabular-nums; }
 .doc-cat.is-active .doc-cat-n { color: var(--accent-text); }
@@ -904,18 +1062,40 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    trackpad è una prova di mira. */
 .doc-row-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1; color: var(--ink); text-decoration: none; }
 .doc-row-main:hover .doc-row-title { text-decoration: underline; }
-.doc-row-title { font-size: var(--fs-body); font-weight: 600; }
+.doc-row-title { font-size: var(--fs-body); font-weight: 600; min-width: 0; }
+/* ⚠️ `tabular-nums`, e non è un vezzo: Inter usa cifre PROPORZIONALI per
+   default — il suo «1» è molto più stretto — e in una pila di venticinque date
+   «11.03.2026» e «28.09.2026» non si incolonnano. È la stessa correzione già
+   fatta a `.dl-date` e a `.rb-num`, documentata in docs/design-system.md.
+   ⚠️ Le cifre tabulari da sole NON bastano: la data deve anche stare in una
+   colonna che non si muove da una riga all'altra — per questo vive nella
+   colonna di destra e non in coda a un titolo di lunghezza variabile. */
+.doc-row-date { flex: none; font-size: var(--fs-meta); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* La riga dei metadati ha una struttura, non una catena di punti mediani. */
+.doc-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-05) var(--sp-2); }
+.doc-sender { font-size: var(--fs-meta); font-weight: 600; color: var(--ink); }
+/* Il tipo è una MARCATURA, non una pastiglia di stato: nessun colore forte —
+   quelli restano alle pastiglie di destra, che dicono scadenza e stato
+   (regola 8: un solo colore forte per riga). */
+.doc-type {
+  font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--ink-soft); background: var(--fill-subtle); padding: var(--sp-05) var(--sp-2); border-radius: 5px;
+}
 .doc-row-sub { font-size: var(--fs-meta); color: var(--muted); }
 .doc-snippet {
   font-size: var(--fs-meta); color: var(--ink-soft); margin-top: var(--sp-1);
   padding-left: var(--sp-3); border-left: 2px solid var(--line-strong);
 }
-.doc-row-side { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); flex-shrink: 0; max-width: 50%; }
+/* La colonna di destra: la data sulla riga del titolo, le pastiglie sotto.
+   40% e non 50: metà riga alle pastiglie lasciava all'elenco — cioè al titolo e
+   al mittente — l'altra metà, ed è il titolo che si legge per primo. */
+.doc-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex-shrink: 0; max-width: 40%; }
+.doc-row-badges { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
 
 .doc-tag {
   display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 26px;
   padding: var(--sp-05) var(--sp-2); border-radius: 999px;
-  background: var(--surface-2); color: var(--ink-soft); font-size: var(--fs-label);
+  background: var(--fill-subtle); color: var(--ink-soft); font-size: var(--fs-label);
 }
 .doc-tag-x {
   display: inline-flex; align-items: center; justify-content: center;
@@ -934,7 +1114,14 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
      pulsanti, stesso stato premuto, nessun menu nascosto da imparare. */
   .doc-side { flex-direction: row; overflow-x: auto; padding-bottom: var(--sp-2); }
   .doc-cat { flex: none; }
-  .doc-row-side { max-width: none; justify-content: flex-start; }
+  /* Sotto i 900px la riga va a capo: la colonna di destra diventa una fascia
+     larga quanto la riga, con data e pastiglie allineate a sinistra come tutto
+     il resto — a destra non c'è più niente con cui incolonnarsi.
+     ⚠️ `flex-basis: 100%` e non «va a capo se non ci sta»: senza, una riga
+     senza pastiglie teneva la data in cima accanto al titolo mentre quella
+     accanto ce l'aveva sotto, e la stessa informazione cambiava posto da una
+     riga all'altra. */
+  .doc-row-side { max-width: none; flex: 1 0 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--sp-2); }
   .doc-row { flex-wrap: wrap; }
 }
 
@@ -978,7 +1165,8 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    sfondo dichiarato prende `buttonface` dal browser — bianco — e con il testo
    chiaro del tema scuro il numero diventa ILLEGGIBILE. Trovato aprendo la
    schermata, non rileggendo il codice: la stessa trappola dei campi senza
-   `.field`. ⚠️ Il token è `--card`: `--surface` NON esiste, e una custom
+   `.field`. ⚠️ Il token è `--card`: `--surface` NUDO non esiste (esistono
+   `--surface-1/2/3`, che sono LIVELLI), e una custom
    property inesistente rende la dichiarazione invalida, cioè silenziosa. */
 .ct-kpi { text-align: left; cursor: pointer; background: var(--card); color: var(--ink); font: inherit; }
 .ct-kpi.is-active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -1051,7 +1239,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
        metadati spariscono in una retinatura sporca. */
     --bg: #ffffff;
     --card: #ffffff;
-    --surface-2: #ffffff;
+    --fill-subtle: #ffffff;
     --track: #e6e6e6;
     --ink: #000000;
     --on-ink: #ffffff;

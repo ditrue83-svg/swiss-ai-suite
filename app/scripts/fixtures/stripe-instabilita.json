@@ -1,0 +1,218 @@
+{
+  "raccolteIl": "2026-08-11",
+  "provenienza": "produzione — casella Gmail collegata, mittente notifications@stripe.com",
+  "perche": "Tredici messaggi quasi identici classificati in tre tipi di documento diversi. Sono la PROVA di instabilita del classificatore, non un campione scelto.",
+  "casi": [
+    {
+      "id": "stripe-01",
+      "ricevutoIl": "2026-07-16",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di Azienda Esempio SA\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nGli addebiti in ingresso sono sospesi dal giorno 2 lug 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nI bonifici alla tua banca sono sospesi dal giorno 2 lug 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe Azienda Esempio SA.\n\nID account: acct_1ToiabCSJZ9vNhGg\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_aypoftbrjml7w1xih6ii6xwtkizgvr\n\nStripe Payments UK Limited è una società registrata in Inghilterra e Galles. Numero di iscrizione: 08480771. Sede legale: 9th Floor, 107 Cheapside, London, EC2V 6DN\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "information",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-02",
+      "ricevutoIl": "2026-07-16",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di SmartCam\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 20 mar 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe SmartCam.\n\nID account: acct_1NexYzDA9yZUZq3O\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_guluogpyep3oou8acyt4h4w3nzp9oi\n\nStripe Payments UK Limited è una società registrata in Inghilterra e Galles. Numero di iscrizione: 08480771. Sede legale: 9th Floor, 107 Cheapside, London, EC2V 6DN\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-03",
+      "ricevutoIl": "2026-07-16",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di SmartCam\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 19 mar 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe SmartCam.\n\nID account: acct_1KqHZFDRoOQYsc0E\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_owj0wsto0qfadse76amnwacx4o1hpf\n\nStripe Payments UK Limited è una società registrata in Inghilterra e Galles. Numero di iscrizione: 08480771. Sede legale: 9th Floor, 107 Cheapside, London, EC2V 6DN\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-04",
+      "ricevutoIl": "2026-07-16",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di Azienda Esempio SA\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 17 giu 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe Azienda Esempio SA.\n\nID account: acct_1MMURCBW6nrHR0Wj\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_2ehkwmkigts7mqgnarmowcj3fbkshr\n\nStripe Payments UK Limited è una società registrata in Inghilterra e Galles. Numero di iscrizione: 08480771. Sede legale: 9th Floor, 107 Cheapside, London, EC2V 6DN\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-05",
+      "ricevutoIl": "2026-07-16",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di RtopR\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 7 apr 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe RtopR.\n\nID account: acct_1LXi9IDSQ6ikoOuh\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_6whelhvqjev2ypx8uaxe2zgpy9medi\n\nStripe Technology Europe, Limited è una società a responsabilità limitata irlandese. Numero di iscrizione: 0599050. Sede legale: 25/28 North Wall Quay, Dublin 1, D01H104\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-06",
+      "ricevutoIl": "2026-07-16",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di RtopR\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 7 apr 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe RtopR.\n\nID account: acct_1M0MIGLVQp4PK9SU\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_lo5fvxz8auifjeveamgxzuipsshzn8\n\nStripe Technology Europe, Limited è una società a responsabilità limitata irlandese. Numero di iscrizione: 0599050. Sede legale: 25/28 North Wall Quay, Dublin 1, D01H104\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-07",
+      "ricevutoIl": "2026-07-16",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di AES\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 1 apr 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe AES.\n\nID account: acct_1Lgri7HfiaHLl8dG\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_r95wac9bhd0stpyy26aa0nekogoqrn\n\nStripe Technology Europe, Limited è una società a responsabilità limitata irlandese. Numero di iscrizione: 0599050. Sede legale: 25/28 North Wall Quay, Dublin 1, D01H104\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-08",
+      "ricevutoIl": "2026-07-18",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di Azienda Esempio SA\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nGli addebiti in ingresso sono sospesi dal giorno 2 lug 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nI bonifici alla tua banca sono sospesi dal giorno 2 lug 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe Azienda Esempio SA.\n\nID account: acct_1ToiabCSJZ9vNhGg\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_iityrpj0vnko2qrhuuepppu6rae3yw\n\nStripe Payments UK Limited è una società registrata in Inghilterra e Galles. Numero di iscrizione: 08480771. Sede legale: 9th Floor, 107 Cheapside, London, EC2V 6DN\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": null,
+        "language": null,
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-09",
+      "ricevutoIl": "2026-07-18",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di SmartCam\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 20 mar 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe SmartCam.\n\nID account: acct_1NexYzDA9yZUZq3O\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_61xzhgvipclelyfw1kdlgczmvnl00e\n\nStripe Payments UK Limited è una società registrata in Inghilterra e Galles. Numero di iscrizione: 08480771. Sede legale: 9th Floor, 107 Cheapside, London, EC2V 6DN\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-10",
+      "ricevutoIl": "2026-07-18",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di SmartCam\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 19 mar 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe SmartCam.\n\nID account: acct_1KqHZFDRoOQYsc0E\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_ami8yu5rwem7csq1tfel100xtvmyvz\n\nStripe Payments UK Limited è una società registrata in Inghilterra e Galles. Numero di iscrizione: 08480771. Sede legale: 9th Floor, 107 Cheapside, London, EC2V 6DN\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-11",
+      "ricevutoIl": "2026-07-18",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di Azienda Esempio SA\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 17 giu 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe Azienda Esempio SA.\n\nID account: acct_1MMURCBW6nrHR0Wj\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_logjdc8hrca07na64xnpebgjlqg6mp\n\nStripe Payments UK Limited è una società registrata in Inghilterra e Galles. Numero di iscrizione: 08480771. Sede legale: 9th Floor, 107 Cheapside, London, EC2V 6DN\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "other",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-12",
+      "ricevutoIl": "2026-07-18",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di RtopR\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 7 apr 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe RtopR.\n\nID account: acct_1M0MIGLVQp4PK9SU\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_wfc4o6m8oovpjnxuandrjq4mvwowjw\n\nStripe Technology Europe, Limited è una società a responsabilità limitata irlandese. Numero di iscrizione: 0599050. Sede legale: 25/28 North Wall Quay, Dublin 1, D01H104\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-13",
+      "ricevutoIl": "2026-07-18",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di RtopR\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 7 apr 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe RtopR.\n\nID account: acct_1LXi9IDSQ6ikoOuh\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_wjcqxunz32sxiursggtoiazis90cxm\n\nStripe Technology Europe, Limited è una società a responsabilità limitata irlandese. Numero di iscrizione: 0599050. Sede legale: 25/28 North Wall Quay, Dublin 1, D01H104\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    },
+    {
+      "id": "stripe-14",
+      "ricevutoIl": "2026-07-18",
+      "mittente": "notifications@stripe.com",
+      "nomeMittente": "Stripe",
+      "oggetto": "[Intervento necessario] Rivedi il rappresentante dell'account",
+      "isBulk": false,
+      "corpo": "Intervieni per garantire la regolare operatività di AES\n\n           \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n                       \n           \n \n \n \n \n \n\nStripe\n\nSul tuo account è presente un'attività aperta che richiede attenzione. Per mantenere il tuo account in regola, ti invitiamo a dedicare qualche minuto alla sua revisione.\n\nVerifica l'identità di Andrea Cavalieri\n\nScadenza:\n\nScaduto\n\nImpatto:\n\nI bonifici alla tua banca sono sospesi dal giorno 1 apr 2026 e lo saranno fino a quando i dati richiesti non saranno stati revisionati.\n\nVisualizza attività\n\nGarantire che le informazioni sulla tua attività siano sempre aggiornate aiuta a prevenire le frodi, proteggere il tuo account e soddisfare i requisiti legali.\n\nSe hai domande, visita il nostro sito dell'assistenza: siamo qui per aiutarti.\n\n— Il team di Stripe\n\nQuesta email si riferisce al tuo account Stripe AES.\n\nID account: acct_1Lgri7HfiaHLl8dG\n\nHai bisogno di fare riferimento a questo messaggio? Utilizza questo ID: em_kiu1qyqgnbbokr9fslqfwtnerrenfx\n\nStripe Technology Europe, Limited è una società a responsabilità limitata irlandese. Numero di iscrizione: 0599050. Sede legale: 25/28 North Wall Quay, Dublin 1, D01H104\n\nAttualmente hai un abbonamento alle email di \"Richieste di informazioni sullo stato dell'account\". Per annullare l'iscrizione, gestisci le tue preferenze di comunicazione o annulla l'abbonamento.",
+      "esitoOsservato": {
+        "relevance": "likely_actionable",
+        "documentType": "request_for_documents",
+        "language": "it",
+        "deadline": null
+      }
+    }
+  ],
+  "nota": "Il nome dell'azienda e le sue sigle sono sostituiti con «Azienda Esempio SA» / «AES»: a provare l'instabilita serve il TESTO del messaggio, non l'identita di chi lo ha ricevuto (§52). Tutto il resto e il byte esatto arrivato dal fornitore."
+}

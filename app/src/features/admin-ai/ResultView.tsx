@@ -171,7 +171,14 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
   const [reply, setReply] = useState<DocumentReply | null>(null);
   // 0010 — lingua e tono non stanno più sull'analisi: si parte dalla lingua del
   // documento e dal tono predefinito, poi vince la bozza salvata se esiste.
-  const defaultLang = String(analysis.language ?? 'it');
+  // ⚠️ La lingua del DOCUMENTO non è la lingua della RISPOSTA, e da quando
+  // `language` può valere `en` o `other` (2026-08-11) le due possono divergere:
+  // di un documento inglese si dice la verità, ma la bozza si scrive comunque in
+  // una delle tre lingue del prodotto. Il ripiego è QUI, dove si sa perché —
+  // non nella validazione, dove diventava «ogni documento è italiano».
+  const REPLY_LANGS = ['it', 'de', 'fr'] as const;
+  const docLang = String(analysis.language ?? '');
+  const defaultLang = (REPLY_LANGS as readonly string[]).includes(docLang) ? docLang : 'it';
   const [draft, setDraft] = useState('');
   const [lang, setLang] = useState(defaultLang);
   const [tone, setTone] = useState(DEFAULT_TONE);

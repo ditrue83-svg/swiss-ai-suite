@@ -375,6 +375,7 @@ export const it = {
     notFoundSub: 'Il documento non esiste, oppure non appartiene all’azienda attiva.',
     openFile: 'Apri originale',
     openAnalysis: 'Apri analisi completa',
+    moreActions: 'Altre azioni',
     analyzeNow: 'Analizza',
     retryAnalysis: 'Riprova analisi',
     organization: 'Organizzazione',
@@ -703,6 +704,7 @@ export const it = {
     fileImageOcr: 'immagine · OCR lato server',
     fileScanOcr: 'scansione · OCR lato server',
     stepDoc: '1 · Documento da analizzare',
+    titleUndetermined: 'Oggetto non determinato — {file}',
     dropzone: 'Trascina qui un file o clicca per selezionarlo',
     dropzoneAria: 'Carica un PDF, un’email o un file di testo da analizzare',
     ocrNote: 'Scansioni e foto — riconoscimento del testo (OCR) lato server',
@@ -889,6 +891,12 @@ export const it = {
   },
   home: {
     greetingMorning: 'Buongiorno', greetingAfternoon: 'Buon pomeriggio', greetingEvening: 'Buonasera',
+    // Con il nome, quando il profilo è stato letto. Frasi INTERE e non
+    // «{saluto}, {nome}» composto nel codice: la virgola cade dove la lingua
+    // vuole, non dove capita.
+    greetingMorningNamed: 'Buongiorno, {name}',
+    greetingAfternoonNamed: 'Buon pomeriggio, {name}',
+    greetingEveningNamed: 'Buonasera, {name}',
     subtitle: 'Ecco cosa richiede attenzione nella tua azienda.',
     analyzeDoc: 'Analizza un documento',
     findSubsidies: 'Trova incentivi',
@@ -1838,6 +1846,8 @@ export const it = {
       attentionNone: 'Nessuna analisi disponibile per questa comunicazione.',
       attentionPending: 'L’analisi è in corso.',
       reason: 'Perché è in questa categoria',
+      reasonServiceNotification: 'Notifica di servizio di un fornitore: nessuna richiesta amministrativa. Non è stato creato un documento — «Analizza» lo fa comunque.',
+      reasonBulkNoAdministrative: 'Invio di massa senza alcun elemento amministrativo.',
       analyze: 'Analizza',
       analyzing: 'Analisi in corso…',
       analyzed: 'Analisi completata',
@@ -2807,7 +2817,7 @@ export const it = {
       ai: 'Analisi automatica',
       human: 'Corretto da una persona',
     },
-    languages: { it: 'Italiano', de: 'Tedesco', fr: 'Francese' },
+    languages: { it: 'Italiano', de: 'Tedesco', fr: 'Francese', en: 'Inglese', other: 'Altra lingua' },
     tones: { formale: 'Formale', conciso: 'Conciso', cordiale: 'Cordiale' },
     urgency: { alta: 'alta', media: 'media', bassa: 'bassa' },
     confidence: { alta: 'alta', media: 'media', bassa: 'bassa' },

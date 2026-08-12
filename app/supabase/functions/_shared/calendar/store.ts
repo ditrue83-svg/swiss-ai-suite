@@ -50,23 +50,42 @@ const CONNECTION_COLUMNS =
   'calendar_name, status, sync_enabled, initial_sync_completed_at, last_sync_at, ' +
   'last_successful_sync_at, sync_lease_id, sync_lease_until';
 
+// ⚠️ LE LETTURE DI QUESTO FILE SOLLEVANO, e la scelta è di STRATO. Uno store non
+// ha un report in cui contare: quello vive nel chiamante, che è l'unico a sapere
+// se sta scorrendo un lotto e se può permettersi di perdere l'elemento corrente.
+// Il compito dello store è dire la verità — «non ho potuto leggere» ≠ «non c'è
+// niente» — e lasciare la politica a chi la può decidere. `syncTask` infatti
+// converte queste eccezioni in un guasto CONTATO, così il lotto non muore.
+const guasto = (cosa: string) => new CalendarProviderError('UNKNOWN', `${cosa} fallita`);
+
 export async function getConnection(sb: ServerClient, id: string): Promise<CalendarConnectionRow | null> {
-  const { data } = await sb.from('calendar_connections').select(CONNECTION_COLUMNS).eq('id', id).maybeSingle();
+  const { data, error } = await sb.from('calendar_connections').select(CONNECTION_COLUMNS).eq('id', id).maybeSingle();
+  if (error) throw guasto('lettura della connessione');
   return (data as CalendarConnectionRow) ?? null;
 }
 
 /** Le connessioni ATTIVE di un'azienda: quelle che possono ricevere eventi. */
 export async function activeConnections(sb: ServerClient, companyId: string): Promise<CalendarConnectionRow[]> {
-  const { data } = await sb.from('calendar_connections').select(CONNECTION_COLUMNS)
+  const { data, error } = await sb.from('calendar_connections').select(CONNECTION_COLUMNS)
     .eq('company_id', companyId).eq('sync_enabled', true).eq('status', 'active');
+  // Un elenco vuoto è la risposta normale — quasi nessuna azienda ha un
+  // calendario collegato, e in produzione `calendar_connections` è a zero
+  // righe. Se il guasto desse anch'esso un elenco vuoto, non ci sarebbe modo
+  // di distinguerli in nessun momento della vita di questo prodotto.
+  if (error) throw guasto('lettura delle connessioni attive');
   return (data ?? []) as CalendarConnectionRow[];
 }
 
 export async function findConnectionByAccount(
   sb: ServerClient, companyId: string, userId: string, provider: string,
 ): Promise<CalendarConnectionRow | null> {
-  const { data } = await sb.from('calendar_connections').select(CONNECTION_COLUMNS)
+  const { data, error } = await sb.from('calendar_connections').select(CONNECTION_COLUMNS)
     .eq('company_id', companyId).eq('user_id', userId).eq('provider', provider).maybeSingle();
+  // Qui `null` significa «questa persona non ha ancora collegato questo
+  // provider», ed è ciò che decide se il collegamento OAuth crea una
+  // connessione nuova o ne aggiorna una esistente: un guasto scambiato per
+  // «non c'è» produrrebbe un doppione.
+  if (error) throw guasto('ricerca della connessione');
   return (data as CalendarConnectionRow) ?? null;
 }
 
@@ -259,7 +278,12 @@ const LINK_COLUMNS =
   'id, company_id, user_id, connection_id, task_id, provider_event_id, provider_calendar_id, sync_status, content_hash';
 
 export async function linksForTask(sb: ServerClient, taskId: string): Promise<EventLinkRow[]> {
-  const { data } = await sb.from('calendar_event_links').select(LINK_COLUMNS).eq('task_id', taskId);
+  const { data, error } = await sb.from('calendar_event_links').select(LINK_COLUMNS).eq('task_id', taskId);
+  // Un elenco vuoto qui dice a `syncTask` «questa attività non ha ancora
+  // nessun evento»: si CREA. Un guasto scambiato per elenco vuoto farebbe
+  // creare un secondo evento accanto a uno che esiste già — e l'unicità su
+  // (connection_id, task_id) lo impedirebbe solo per la stessa connessione.
+  if (error) throw guasto('lettura dei collegamenti');
   return (data ?? []) as EventLinkRow[];
 }
 

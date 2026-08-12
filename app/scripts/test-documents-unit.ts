@@ -20,13 +20,15 @@
 // ============================================================================
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, MAX_QUERY_LENGTH, SORTS, SOURCES, STATES,
-  filtersFromParams, findExistingTag, hasActiveFilters, needsAttention, normalizeTagName,
-  paramsFromFilters, sameTagName, splitSnippet, stateOf, toListArgs,
+  filtersFromParams, findExistingTag, hasActiveFilters, isStrongTone, needsAttention,
+  normalizeTagName, paramsFromFilters, rowBadgeTones, sameTagName, splitSnippet, stateOf,
+  toListArgs,
 } from '../src/features/documents/documentModel';
 import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
 import { nextStepFor } from '../src/features/documents/nextStep';
+import { titoloDocumento, nomeFileInformativo } from '../src/lib/documentTitle';
 import { documentTaskDraft, runCreateFromDocument } from '../src/features/tasks/documentToTask';
 import type {
   ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
@@ -516,6 +518,118 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
     } catch { sollevato = true; }
     ok(sollevato, 'se l’attività non si crea, l’errore arriva a chi ha premuto');
   }
+}
+
+// ===========================================================================
+console.log(`\n${B}Il titolo che non si sa non si inventa${X}`);
+// ===========================================================================
+// ⚠️⚠️ IL CASO REALE del 2026-08-11: nel Document Hub c'era un documento
+// intitolato «2.5». Il file era `2.5.pdf`, il titolo veniva dal nome del file
+// meno l'estensione, e l'analisi aveva risposto onestamente `subject: null`.
+// Un fallimento presentato come un risultato: chi leggeva l'elenco non aveva
+// modo di sapere che nessuno era riuscito a dire di che documento si trattasse.
+{
+  const r = titoloDocumento({ nomeFile: '2.5.pdf' });
+  ok(r.origine === 'non_determinato',
+    '«2.5.pdf»: l’oggetto NON è determinato, e l’esito lo dice invece di far finta');
+  ok(r.nomeFile === '2.5.pdf',
+    '…e il nome del file resta, perché è l’unica cosa che permette di riconoscere la riga');
+}
+{
+  // LE CONTROPROVE: se un nome dice qualcosa, non lo si butta via.
+  const veri = ['Fattura Swisscom marzo.pdf', 'Lohnausweis 2025.pdf', 'decisione-AFC.pdf', 'contratto affitto.docx'];
+  for (const n of veri) {
+    ok(titoloDocumento({ nomeFile: n }).origine === 'nome_file',
+      `«${n}» dice qualcosa: resta il titolo`);
+  }
+}
+{
+  // ⚠️ Non basta chiedersi «è un numero?»: questi hanno lettere e non dicono
+  // niente lo stesso. Sono i nomi che mettono scanner, fotocamere e sistemi.
+  const muti = ['2.5.pdf', 'IMG_4821.jpg', 'Scan_2026-08-11.pdf', 'documento (3).pdf', 'Nuovo documento.pdf', 'untitled.pdf', '20260811.pdf', '2.5'];
+  for (const n of muti) {
+    ok(!nomeFileInformativo(n), `«${n}» non dice niente sul contenuto`);
+  }
+}
+{
+  // La precedenza, provata nell’ordine che conta.
+  ok(titoloDocumento({ titoloScritto: 'Disdetta locazione', oggettoAnalisi: 'Altro', nomeFile: 'x.pdf' }).origine === 'persona',
+    'chi scrive il titolo vince su tutto: nessuno sa meglio di lei');
+  ok(titoloDocumento({ oggettoAnalisi: 'Lohndeklaration 2025', nomeFile: '2.5.pdf' }).titolo === 'Lohndeklaration 2025',
+    'l’oggetto letto DAL DOCUMENTO batte il nome del file, che l’ha scelto un apparecchio');
+  ok(titoloDocumento({ oggettoAnalisi: '   ', nomeFile: '2.5.pdf' }).origine === 'non_determinato',
+    'un oggetto fatto di spazi non è un oggetto');
+}
+{
+  // ⚠️ La frase esiste nelle tre lingue e porta il segnaposto del file: senza,
+  // la riga direbbe che qualcosa non si sa senza dire DI CHE COSA.
+  for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
+    const frase = (dict as Record<string, any>).adminAi?.titleUndetermined as string | undefined;
+    ok(typeof frase === 'string' && frase.includes('{file}'),
+      `${lang}: la frase dell’oggetto non determinato esiste e nomina il file`);
+  }
+}
+
+// ===========================================================================
+section('11 · Un solo colore forte per riga');
+// ===========================================================================
+// Regola 8 del sistema di design. Il difetto che questa sezione inchioda: un
+// documento «da verificare» con una scadenza dichiarata mostrava DUE pastiglie
+// ambra affiancate. Nessuna delle due era sbagliata presa da sola — la
+// scadenza è ambra perché dice quanto manca, lo stato è ambra perché la
+// lettura è incerta — ed è per questo che nessuna rilettura del markup lo
+// avrebbe trovato: la regola parla della RIGA, e le due pastiglie sceglievano
+// ognuna per conto proprio.
+{
+  const tones = (over: Partial<DocumentHubItem>) => rowBadgeTones(item(over));
+
+  // ---- l'invariante, provato su TUTTE le combinazioni ---------------------
+  // Non tre casi scelti a mano: il prodotto cartesiano di stato × scadenza ×
+  // «scadenza da verificare». Un'invariante provata sugli esempi a cui si
+  // pensa è provata proprio dove non serve.
+  const strongPerRow: { combo: string; n: number }[] = [];
+  for (const state of STATES) {
+    for (const deadline of [null, '2026-09-28']) {
+      for (const requires of [false, true]) {
+        const t2 = tones({ state, deadline, deadlineRequiresVerification: requires });
+        const n = [t2.deadline, t2.state].filter(isStrongTone).length;
+        strongPerRow.push({ combo: `${state}/${deadline ? 'scadenza' : 'senza'}/${requires ? 'daVerificare' : 'certa'}`, n });
+      }
+    }
+  }
+  const troppi = strongPerRow.filter((r) => r.n > 1);
+  ok(strongPerRow.length === STATES.length * 4, `provate tutte le ${STATES.length * 4} combinazioni stato × scadenza`);
+  ok(troppi.length === 0, 'nessuna combinazione produce due colori forti nella stessa riga',
+    troppi.map((r) => `${r.combo}: ${r.n} forti`).join(' · '));
+
+  // ---- e la precedenza è QUELLA dichiarata, non una qualsiasi -------------
+  // L'invariante da sola sarebbe soddisfatta anche spegnendo tutti i colori:
+  // «zero forti per riga» non viola «al massimo uno». Questi casi dicono CHI
+  // vince, che è la metà della regola che l'invariante non copre.
+  const conScadenza = tones({ state: 'to_verify', deadline: '2026-09-28' });
+  ok(conScadenza.deadline === 'media' && conScadenza.state === 'neutral',
+    'da verificare + scadenza certa: l’ambra va alla SCADENZA, lo stato scende a neutro');
+
+  const scadenzaIncerta = tones({ state: 'to_verify', deadline: '2026-09-28', deadlineRequiresVerification: true });
+  ok(scadenzaIncerta.deadline === 'neutral' && scadenzaIncerta.state === 'media',
+    'quando è la scadenza a essere incerta la precedenza si rovescia da sé: l’ambra torna allo stato');
+
+  const guasto = tones({ state: 'failed', deadline: '2026-09-28' });
+  ok(guasto.state === 'alta' && guasto.deadline === 'neutral',
+    'il guasto batte tutto: se l’analisi non è riuscita, nemmeno la data è affidabile');
+
+  const soloScadenza = tones({ state: 'analyzed', deadline: '2026-09-28' });
+  ok(soloScadenza.deadline === 'media' && soloScadenza.state === null,
+    'senza niente con cui competere la scadenza tiene la sua ambra');
+
+  const soloStato = tones({ state: 'to_verify' });
+  ok(soloStato.state === 'media' && soloStato.deadline === null,
+    'e lo stato la tiene quando è l’unica cosa da dire');
+
+  // ⚠️ Chi perde NON sparisce: scende di tono e tiene il suo posto. Una
+  // pastiglia nascosta sarebbe un'informazione tolta, non un colore tolto.
+  ok(conScadenza.state !== null && guasto.deadline !== null,
+    'la pastiglia che perde il colore resta a schermo: si toglie il tono, non il testo');
 }
 
 // ===========================================================================

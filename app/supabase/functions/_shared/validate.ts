@@ -155,8 +155,31 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
   })).filter((u) => u.description);
 
   // §11 — scadenza: la data assoluta è ammessa SOLO per il tipo explicit e se valida.
-  const dType = oneOf<DeadlineType>(ai.deadline?.type, DEADLINE_TYPES, 'none');
+  let dType = oneOf<DeadlineType>(ai.deadline?.type, DEADLINE_TYPES, 'none');
   let dDate = cleanStr(ai.deadline?.date);
+
+  // ⚠️⚠️ CHI È OBBLIGATO DA QUELLA DATA — la domanda che mancava, aggiunta il
+  // 2026-08-11 su un caso reale. Un'email di Stripe sulle nuove tariffe di Radar
+  // ha prodotto «Scadenza 22.01.2027»: la data c'era davvero, scritta a chiare
+  // lettere, ma era l'entrata in vigore di un LISTINO DI UN FORNITORE. L'azienda
+  // non doveva fare niente entro quel giorno, e si è ritrovata una scadenza nel
+  // cruscotto operativo.
+  //
+  // Il tipo di scadenza non può dipendere dalla FORMA della data — quella dice
+  // solo se è assoluta o relativa. Deve dipendere da CHI la impone. Una data che
+  // non obbliga nessuno non è una scadenza: è una notizia.
+  //
+  // ⚠️ Il campo è a TRE stati, non due, e il terzo conta: `undefined` significa
+  // «il modello non ha risposto alla domanda» — un'analisi prodotta prima che
+  // questo campo esistesse, o un output monco. Lì non si declassa niente, perché
+  // trattare il silenzio come «non obbliga» cancellerebbe di colpo le scadenze
+  // vere di ogni analisi vecchia. Solo un `false` ESPLICITO declassa.
+  const obliga = ai.deadline?.obligesCompany;
+  if (obliga === false && dType !== 'none') {
+    warnings.push('deadline: data che non obbliga l\'azienda (termine del mittente) → non è una scadenza');
+    dType = 'none';
+    dDate = null;
+  }
   if (dType === 'explicit') {
     if (!isIsoDate(dDate)) {
       warnings.push('deadline.date non valida per un tipo explicit: azzerata');
@@ -271,7 +294,10 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
   const docDate = cleanStr(ai.documentDate);
 
   const normalized: NormalizedAnalysis = {
-    language: oneOf<Language>(ai.language, LANGUAGES, 'it'),
+    // ⚠️ Il ripiego è `other`, non `it`. Prima era `it`, e siccome l'elenco non
+    // conteneva l'inglese, OGNI documento inglese usciva «italiano»: un dato
+    // sbagliato prodotto con la stessa faccia di uno giusto.
+    language: oneOf<Language>(ai.language, LANGUAGES, 'other'),
     documentType: {
       value: oneOf<DocumentType>(ai.documentType?.value, DOCUMENT_TYPES, 'other'),
       confidence: clamp01(ai.documentType?.confidence),

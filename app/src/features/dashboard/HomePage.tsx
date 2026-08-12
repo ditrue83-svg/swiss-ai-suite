@@ -33,14 +33,31 @@ import { daysUntil } from '@/lib/format';
 // dal Calendario — tre definizioni di «oggi» sarebbero tre schermate che prima
 // o poi si contraddicono.
 import { calendarDaysUntil } from '@/features/tasks/taskFormat';
-import { useT } from '@/i18n';
+import { useAuth } from '@/contexts/AuthContext';
+import { useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 
-function greetingKey(): 'home.greetingMorning' | 'home.greetingAfternoon' | 'home.greetingEvening' {
+/**
+ * Il saluto, con il nome quando lo sappiamo.
+ *
+ * ⚠️ DUE CHIAVI PER FASCIA E NON UNA CON IL SEGNAPOSTO VUOTO: «Buongiorno, »
+ * con la virgola e il vuoto dopo è la forma che si ottiene interpolando un nome
+ * che non c'è, e in tedesco e francese la punteggiatura non cade nello stesso
+ * posto. Il profilo può mancare — arriva da `profiles`, che è leggibile solo
+ * dal proprietario e in una frazione di secondo dopo il login non c'è ancora —
+ * e in quel caso si saluta senza nome, che è una frase intera lo stesso.
+ */
+const GREETING: Record<'morning' | 'afternoon' | 'evening', { plain: TKey; named: TKey }> = {
+  morning: { plain: 'home.greetingMorning', named: 'home.greetingMorningNamed' },
+  afternoon: { plain: 'home.greetingAfternoon', named: 'home.greetingAfternoonNamed' },
+  evening: { plain: 'home.greetingEvening', named: 'home.greetingEveningNamed' },
+};
+
+function greetingSlot(): keyof typeof GREETING {
   const h = new Date().getHours();
-  if (h < 12) return 'home.greetingMorning';
-  if (h < 18) return 'home.greetingAfternoon';
-  return 'home.greetingEvening';
+  if (h < 12) return 'morning';
+  if (h < 18) return 'afternoon';
+  return 'evening';
 }
 
 interface BarRow { cat: string; val: number; cls?: string; dotCls?: string }
@@ -157,57 +174,68 @@ function OverviewBody({ data }: { data: OverviewData }) {
 
   return (
     <>
-      <div className="kpi-grid">
-        <div className="kpi">
+      {/* ---- I numeri, con una gerarchia DICHIARATA -----------------------
+           Cinque schede uguali su una griglia da quattro colonne facevano un
+           3+2 con un buco in fondo: una forma che nessuno ha scelto, e cinque
+           numeri della stessa misura che non dicono quale guardare per primo.
+           Ora ce n'è UNO grande — le azioni da completare, che è il conto su
+           cui questo prodotto lavora — e quattro piccoli accanto.
+           ⚠️ Nessun settimo gradino tipografico: la differenza fra --fs-h1 e
+           --fs-h2 (30 e 22px) basta a dichiarare la gerarchia, e la scala resta
+           di sei gradini come dice docs/design-system.md. ---------------- */}
+      <div className="kpi-lead">
+        <div className="kpi kpi-hero">
           <div className="kpi-ico ok"><Icon name="checkCircle" className="ic-sm" /></div>
           <div className="kpi-label">{t('dashboard.kpiOpenActions')}</div>
           <div className="kpi-value">{openActions}</div>
           <div className="kpi-sub">{t(docsWithOpen === 1 ? 'dashboard.kpiOpenActionsDocsOne' : 'dashboard.kpiOpenActionsDocsMany', { n: docsWithOpen })}</div>
         </div>
-        <div className="kpi">
-          <div className={`kpi-ico ${counts.overdue ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
-          <div className="kpi-label">{t('dashboard.kpiTasksOpen')}</div>
-          <div className={`kpi-value ${counts.overdue ? 'hot' : ''}`}>{counts.open}</div>
-          <div className="kpi-sub">
-            {counts.overdue
-              ? t(counts.overdue === 1 ? 'dashboard.kpiOverdueOne' : 'dashboard.kpiOverdueMany', { n: counts.overdue })
-              : t('dashboard.kpiNoneOverdue')}
-            {counts.inProgress ? ` · ${t('dashboard.kpiTasksInProgress', { n: counts.inProgress })}` : ''}
+        <div className="kpi-lead-rest">
+          <div className="kpi kpi-sm">
+            <div className={`kpi-ico ${counts.overdue ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
+            <div className="kpi-label">{t('dashboard.kpiTasksOpen')}</div>
+            <div className={`kpi-value ${counts.overdue ? 'hot' : ''}`}>{counts.open}</div>
+            <div className="kpi-sub">
+              {counts.overdue
+                ? t(counts.overdue === 1 ? 'dashboard.kpiOverdueOne' : 'dashboard.kpiOverdueMany', { n: counts.overdue })
+                : t('dashboard.kpiNoneOverdue')}
+              {counts.inProgress ? ` · ${t('dashboard.kpiTasksInProgress', { n: counts.inProgress })}` : ''}
+            </div>
           </div>
-        </div>
-        {/* §92 — UNA scheda, non una dashboard nuova. «Scadute» c'era già nella
-            scheda accanto: qui si aggiunge ciò che mancava, cioè oggi e la
-            settimana. I due numeri escono dalle STESSE attività, contate con
-            `calendarDaysUntil` — la stessa funzione che usano Attività e il
-            Calendario — perché tre definizioni di «oggi» sono tre schermate che
-            prima o poi si contraddicono. */}
-        <Link className="kpi kpi-link" to="/calendario">
-          <div className={`kpi-ico ${dueToday ? 'warn' : ''}`}><Icon name="calendar" className="ic-sm" /></div>
-          <div className="kpi-label">{t('dashboard.kpiDueToday')}</div>
-          <div className={`kpi-value ${dueToday ? 'hot' : ''}`}>{dueToday}</div>
-          <div className="kpi-sub">{t('dashboard.kpiDueWeek', { n: dueWeek })}</div>
-        </Link>
-        <div className="kpi">
-          <div className={`kpi-ico ${toVerify.length ? 'amb' : ''}`}><Icon name="fileSearch" className="ic-sm" /></div>
-          <div className="kpi-label">{t('dashboard.kpiToVerify')}</div>
-          <div className="kpi-value">{toVerify.length}</div>
-          <div className="kpi-sub">{t('dashboard.kpiToVerifySub')}</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-ico"><Icon name="star" className="ic-sm" /></div>
-          <div className="kpi-label">{t('dashboard.kpiSubsidies')}</div>
-          <div className="kpi-value">{highRelevance ?? '—'}</div>
-          {/* ⚠️ TRE frasi e non due, perché le situazioni sono tre e portano a
-              gesti diversi: non lo sappiamo · non c'è ancora un progetto (e
-              senza progetto il motore non ha una domanda a cui rispondere) ·
-              ci sono opportunità. Un «completa il profilo» indistinto le
-              confondeva tutte. */}
-          <div className="kpi-sub">
-            {highRelevance === null
-              ? t('dashboard.kpiSubsidiesUnknown')
-              : activeProjects === 0
-                ? t('dashboard.kpiSubsidiesNoProject')
-                : t('dashboard.kpiSubsidiesSub')}
+          {/* §92 — UNA scheda, non una dashboard nuova. «Scadute» c'era già nella
+              scheda accanto: qui si aggiunge ciò che mancava, cioè oggi e la
+              settimana. I due numeri escono dalle STESSE attività, contate con
+              `calendarDaysUntil` — la stessa funzione che usano Attività e il
+              Calendario — perché tre definizioni di «oggi» sono tre schermate che
+              prima o poi si contraddicono. */}
+          <Link className="kpi kpi-sm kpi-link" to="/calendario">
+            <div className={`kpi-ico ${dueToday ? 'warn' : ''}`}><Icon name="calendar" className="ic-sm" /></div>
+            <div className="kpi-label">{t('dashboard.kpiDueToday')}</div>
+            <div className={`kpi-value ${dueToday ? 'hot' : ''}`}>{dueToday}</div>
+            <div className="kpi-sub">{t('dashboard.kpiDueWeek', { n: dueWeek })}</div>
+          </Link>
+          <div className="kpi kpi-sm">
+            <div className={`kpi-ico ${toVerify.length ? 'amb' : ''}`}><Icon name="fileSearch" className="ic-sm" /></div>
+            <div className="kpi-label">{t('dashboard.kpiToVerify')}</div>
+            <div className="kpi-value">{toVerify.length}</div>
+            <div className="kpi-sub">{t('dashboard.kpiToVerifySub')}</div>
+          </div>
+          <div className="kpi kpi-sm">
+            <div className="kpi-ico"><Icon name="star" className="ic-sm" /></div>
+            <div className="kpi-label">{t('dashboard.kpiSubsidies')}</div>
+            <div className="kpi-value">{highRelevance ?? '—'}</div>
+            {/* ⚠️ TRE frasi e non due, perché le situazioni sono tre e portano a
+                gesti diversi: non lo sappiamo · non c'è ancora un progetto (e
+                senza progetto il motore non ha una domanda a cui rispondere) ·
+                ci sono opportunità. Un «completa il profilo» indistinto le
+                confondeva tutte. */}
+            <div className="kpi-sub">
+              {highRelevance === null
+                ? t('dashboard.kpiSubsidiesUnknown')
+                : activeProjects === 0
+                  ? t('dashboard.kpiSubsidiesNoProject')
+                  : t('dashboard.kpiSubsidiesSub')}
+            </div>
           </div>
         </div>
       </div>
@@ -301,25 +329,32 @@ function OverviewBody({ data }: { data: OverviewData }) {
 
 export function HomePage() {
   const t = useT();
+  const { profile } = useAuth();
   const { loading, error, data, reload } = useOverview();
+
+  const slot = GREETING[greetingSlot()];
+  const name = profile?.firstName?.trim();
 
   return (
     <div id="home-body">
       <div className="page-head">
-        <div className="greeting">{t(greetingKey())}</div>
+        <div className="greeting">{name ? t(slot.named, { name }) : t(slot.plain)}</div>
         <div className="greeting-sub">{t('home.subtitle')}</div>
       </div>
 
+      {/* ⚠️ DUE SCORCIATOIE, NON CINQUE. «Attività», «Documenti» e «Finanze»
+          erano tre pulsanti che portavano dove porta la barra laterale, sempre
+          visibile a due centimetri di distanza: una striscia che ripete la
+          navigazione insegna che le scorciatoie non servono a niente, e le due
+          che invece INIZIANO qualcosa — analizzare un documento, cercare
+          incentivi — sparivano in mezzo. */}
       <div className="row-wrap">
         <Link className="btn btn-primary btn-block-mobile" to="/admin"><Icon name="document" className="ic-sm" /> {t('home.analyzeDoc')}</Link>
         <Link className="btn" to="/incentivi"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
-        <Link className="btn btn-ghost" to="/attivita"><Icon name="calendar" className="ic-sm" /> {t('nav.tasks')}</Link>
-        <Link className="btn btn-ghost" to="/documenti"><Icon name="archive" className="ic-sm" /> {t('nav.documents')}</Link>
-        <Link className="btn btn-ghost" to="/finanze"><Icon name="receipt" className="ic-sm" /> {t('nav.finance')}</Link>
       </div>
 
       <div className="mt-16">
-        {loading && <><SkeletonKpiGrid /><div className="mt-16"><SkeletonCard /></div></>}
+        {loading && <><SkeletonKpiGrid lead /><div className="mt-16"><SkeletonCard /></div></>}
         {/* Il guasto viene PRIMA di qualunque interpretazione: senza questo ramo
             una panoramica che non ha potuto leggere niente sembrerebbe una
             panoramica senza niente da fare. */}

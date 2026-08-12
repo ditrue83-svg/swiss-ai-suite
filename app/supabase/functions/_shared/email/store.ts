@@ -279,7 +279,7 @@ export async function upsertMessage(
   const { companyId, connectionId, message } = input;
   const cleaned = stripQuotedAndSignature(message.textBody);
   const fingerprint = await sha256Hex(
-    [message.externalId, message.subject ?? '', message.from?.email ?? '', message.receivedAt, message.textBody].join(' '),
+    [message.externalId, message.subject ?? '', message.from?.email ?? '', message.receivedAt, message.textBody].join('\0'),
   );
 
   const row = {

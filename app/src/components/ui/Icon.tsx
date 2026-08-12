@@ -20,6 +20,11 @@ const ICONS = {
   star: '<path d="m12 4 2.35 4.76 5.25.76-3.8 3.7.9 5.23L12 16.9l-4.7 2.47.9-5.23-3.8-3.7 5.25-.76z"/>',
   alert: '<path d="M12 4.8 20.5 19.5a1 1 0 0 1-.87 1.5H4.37a1 1 0 0 1-.87-1.5Z"/><path d="M12 10v4.2M12 17.5h.01"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  // Trabocco: i tre punti. ⚠️ `fill`/`stroke` espliciti perché `.ic` impone
+  // `fill: none` a tutta la famiglia — tre cerchi con il solo contorno a
+  // stroke-width 1.75 e raggio 1.6 sarebbero tre anelli quasi pieni, cioè un
+  // disegno diverso da quello voluto a una misura e uguale a un'altra.
+  more: '<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   trash: '<path d="M4 6.5h16M9.5 6.5V4.5h5v2M6 6.5 7 20a1 1 0 0 0 1 .9h8a1 1 0 0 0 1-.9l1-13.5M10 10v7M14 10v7"/>',
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.6"/>',

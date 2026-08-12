@@ -23,7 +23,11 @@
 import type { NormalizedEmailMessage } from './types.ts';
 import { classifyProviderError } from '../validate.ts';
 
-export const CLASSIFIER_VERSION = 'prescreen-1';
+// ⚠️ `prescreen-2` dal 2026-08-11: il filtro deterministico ora distingue le
+// notifiche di servizio e blocca la loro promozione a documento. La versione
+// cambia perché il VERDETTO cambia — un messaggio classificato da `prescreen-1`
+// e uno classificato oggi non sono confrontabili, e la colonna lo deve dire.
+export const CLASSIFIER_VERSION = 'prescreen-2';
 
 // ============================================================================
 // PERCHÉ UNA CLASSIFICAZIONE FALLISCE — e perché la differenza conta
@@ -123,13 +127,38 @@ export function codeAfterRetry(precedente: string | null | undefined, nuovo: str
     : nuovo;
 }
 
-export type Prescreen = 'administrative' | 'unclear' | 'bulk_only';
+/**
+ * ⚠️ `service_notification` è nato il 2026-08-11 da una misura, non da un'idea.
+ * Al primo collegamento Gmail reale il Document Hub conteneva 19 documenti, e
+ * **18 erano fatturazione e notifiche di servizio** — Stripe, Anthropic, Coop.
+ * Da lì 40 azioni proposte, e una dashboard che misurava rumore.
+ *
+ * Perché passavano: gli indizi amministrativi si accontentano di `importo +
+ * data`, e una notifica SaaS li ha SEMPRE. Quattordici volte lo stesso messaggio
+ * di `notifications@stripe.com` è diventato un documento amministrativo.
+ *
+ * ⚠️ E NON ERANO POSTA DI MASSA: `is_bulk` era **false** su tutte e quattordici.
+ * Il segnale che le distingue non è l'intestazione di massa — è l'INDIRIZZO: una
+ * casella che non riceve risposte (`notifications@`, `no-reply-…@`) è, per
+ * convenzione di posta, un emittente automatico. È un fatto della busta, come il
+ * dominio cantonale: non un dizionario di parole del contenuto (§30).
+ *
+ * ⚠️⚠️ E IL COSTO DELL'ERRORE QUI È UN ALTRO, per questo la soglia può stringersi.
+ * `bulk_only` scrive `clearly_irrelevant`, che in Inbox è «ignorato»: un falso
+ * negativo lì NASCONDE. `service_notification` scrive `informational` — il
+ * messaggio resta in elenco, leggibile, con «Analizza comunque» a un clic.
+ * Un errore costa una decisione all'utente, non una scadenza persa. È l'unica
+ * ragione per cui `importo + data` smette di bastare a promuovere un messaggio.
+ */
+export type Prescreen = 'administrative' | 'unclear' | 'bulk_only' | 'service_notification';
 
 export interface PrescreenSignals {
   /** Il dominio del mittente è quello di un'amministrazione svizzera. */
   senderIsSwissAuthority: boolean;
   /** Mittente da cui questa azienda ha già ricevuto posta amministrativa. */
   senderKnown: boolean;
+  /** La casella del mittente è un emittente automatico che non riceve risposte. */
+  senderIsServiceAddress: boolean;
   /** Almeno un allegato non incorporato e di tipo trattabile. */
   hasDocumentAttachment: boolean;
   hasReferenceNumber: boolean;
@@ -167,6 +196,21 @@ const AUTHORITY_DOMAIN = new RegExp(`(^|\\.)admin\\.ch$|(^|\\.)(${CANTONS})\\.ch
 /** Istituti di previdenza e assicurazioni sociali: dominio di secondo livello dedicato. */
 const SOCIAL_INSURANCE_DOMAIN = /(^|\.)(ahv-iv|avs-ai|akbern|svazurich|suva|ausgleichskasse|caisseavs)\.[a-z.]{2,10}$/i;
 
+/**
+ * Caselle che per convenzione NON ricevono risposte: emittenti automatici.
+ *
+ * ⚠️ È una convenzione della BUSTA, non un dizionario del contenuto. La parte
+ * locale di un indirizzo dice chi scrive — un ufficio o un automa — nello stesso
+ * modo in cui `admin.ch` dice che scrive la Confederazione, e non dipende dalla
+ * lingua né invecchia con il vocabolario commerciale.
+ *
+ * Le forme sono quelle viste in produzione il 2026-08-11 (`notifications@stripe.com`,
+ * `no-reply-yodwbdd4o5cr4rgezpq0vq@mail.anthropic.com`) più le convenzioni RFC
+ * di servizio. ⚠️ NON contiene `billing`, `invoice`, `fattura`: una fattura vera
+ * arriva spesso da lì, ed è esattamente ciò che NON va declassato.
+ */
+const SERVICE_LOCALPART = /^(?:no-?reply|do-?not-?reply|noreply|notifications?|alerts?|mailer(?:-daemon)?|bounce|postmaster|automated?|système|system)\b|^no-?reply[-_.]/i;
+
 /** Numero di riferimento: forma tipica delle pratiche amministrative. */
 const REFERENCE_RE = /\b(?:CHE-\d{3}\.\d{3}\.\d{3}|[A-Z]{2,5}[-/ ]?\d{4,12}|\d{2}-\d{3,7}-\d)\b/;
 /** Importo: la separazione svizzera delle migliaia con apostrofo è distintiva. */
@@ -193,6 +237,11 @@ function domainOf(email: string | null | undefined): string {
   return at < 0 ? '' : email!.slice(at + 1).toLowerCase();
 }
 
+function localPartOf(email: string | null | undefined): string {
+  const at = (email ?? '').lastIndexOf('@');
+  return at < 0 ? '' : email!.slice(0, at).toLowerCase();
+}
+
 export interface PrescreenInput {
   message: NormalizedEmailMessage;
   /** Testo già depurato di storico e firma; se assente si usa il corpo intero. */
@@ -214,6 +263,7 @@ export function prescreen(input: PrescreenInput): PrescreenResult {
   const signals: PrescreenSignals = {
     senderIsSwissAuthority: !!domain && (AUTHORITY_DOMAIN.test(domain) || SOCIAL_INSURANCE_DOMAIN.test(domain)),
     senderKnown: !!input.senderKnown,
+    senderIsServiceAddress: SERVICE_LOCALPART.test(localPartOf(message.from?.email)),
     hasDocumentAttachment: message.attachments.some(
       (a) => !a.isInline && DOCUMENT_MIME.test(a.declaredMimeType ?? ''),
     ),
@@ -249,6 +299,23 @@ export function prescreen(input: PrescreenInput): PrescreenResult {
   // spendere. Se anche uno solo degli indizi fosse presente non si fermerebbe.
   if (signals.isBulk && !administrativeHints) {
     return { prescreen: 'bulk_only', skipAi: true, signals, cautionSignals, reasons };
+  }
+
+  // ---- Notifica di servizio: NON si promuove a documento, e NON si nasconde --
+  //
+  // Le tre vie d'uscita sono deliberate e sono le uniche tre che un ente vero
+  // non può non avere: il dominio istituzionale, un allegato trattabile, o una
+  // storia di posta amministrativa con questo mittente. Chi le ha, prosegue.
+  //
+  // ⚠️ Qui `importo + data` NON basta più, ed è tutta la correzione: è l'indizio
+  // che ogni ricevuta SaaS soddisfa per costruzione, ed è quello che ha portato
+  // 18 documenti di fatturazione su 19 nel Document Hub. Un ente che scrive da
+  // una casella automatica senza allegato e senza precedenti resta comunque
+  // LEGGIBILE in Inbox, e basta un clic per analizzarlo: il prezzo dell'errore
+  // è una decisione, non una scadenza persa.
+  const viaDUscita = signals.senderIsSwissAuthority || signals.hasDocumentAttachment || signals.senderKnown;
+  if ((signals.senderIsServiceAddress || signals.isBulk) && !viaDUscita) {
+    return { prescreen: 'service_notification', skipAi: true, signals, cautionSignals, reasons };
   }
 
   return {

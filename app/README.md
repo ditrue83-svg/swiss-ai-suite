@@ -1007,6 +1007,38 @@ npm run fonts:check     # i .woff2 serviti sono quelli verificati (impronta sha2
                         #   sottoinsieme «latin» di Google non contiene U+202F, lo spazio che
                         #   tutto il francese usa
 npm run fonts:check:self-test        # verifica che il rilevatore sappia fallire (15 casi)
+npm run bytes:check     # ogni file tracciato è ancora LEGGIBILE agli strumenti che lo leggono:
+                        #   UTF-8, senza BOM, senza byte di controllo crudi. Nato il 2026-08-11
+                        #   da un NUL scritto crudo dentro `email/store.ts`: per grep(1) quel
+                        #   file era BINARIO, veniva saltato in silenzio, e il conteggio dei
+                        #   fallback silenzioso girava da un giorno su un perimetro con un buco
+                        #   dentro. Il rimedio è sempre lo stesso escape («\0», «\x07»): stesso
+                        #   valore a runtime, file di nuovo testo
+npm run bytes:check:self-test        # verifica che il rilevatore sappia fallire, sui byte VERI
+                        #   che lo hanno motivato (18 prove, controprove comprese)
+npm run fallback:scan   # QUANTI fallback silenziosi restano nelle Edge Function — un guasto
+                        #   del database che diventa un risultato plausibile. Non è un
+                        #   rapporto ma una CRICCA: rosso se ne compare uno nuovo, rosso
+                        #   anche se ne sparisce uno senza che il numero dichiarato scenda
+                        #   con lui (`ATTESI` nello script). ⚠️ Legge i byte con Node e li
+                        #   analizza col PARSER TypeScript: la misura precedente la faceva
+                        #   grep, che saltava in silenzio `email/store.ts` per via di un byte
+                        #   NUL, e la prima stesura di questo script era a regex e ne mancava
+                        #   un quarto. Il numero NON si confronta con il 189 del triage né
+                        #   con il 147 del grep: regole diverse, e sottrarre sarebbe un conto
+                        #   a memoria
+npm run fallback:scan -- --report    # riga per riga, con la forma di ciascun punto
+npm run fallback:scan:self-test      # le regole provate sui casi che DEVONO reagire, e
+                        #   soprattutto sulle CONTROPROVE: la forma corretta non deve contare
+npm run eval:stability  # LA STESSA domanda N volte, e quanto le risposte divergono. Le
+                        #   altre valutazioni misurano l'ESATTEZZA; questa la STABILITÀ, che
+                        #   era già rossa senza che nessuno la ponesse: 14 email quasi
+                        #   identiche di notifications@stripe.com hanno prodotto TRE tipi di
+                        #   documento diversi (11 «richiesta di documenti», 1 «informativa»,
+                        #   1 «altro»). Quota modale, valori distinti ed entropia per ogni
+                        #   campo enumerato. ⚠️ SPENDE credito: sta nel gruppo `eval`
+npm run eval:stability -- --n 10     # più ripetizioni, più costo
+npm run eval:stability:self-test     # la matematica della dispersione, senza spendere niente
 npm run test:operations # ogni Edge Function ha un invocante? ogni scheduler è inventariato,
                         #   dichiara il timeout di pg_net e punta a una funzione che esiste?
 npm run test:operations -- --self-test  # verifica che il CONTROLLO sappia fallire (11 casi)

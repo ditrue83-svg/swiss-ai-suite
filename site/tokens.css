@@ -45,10 +45,53 @@
   --bg: hsl(210, 20%, 98%);
   --card: #ffffff;
   --on-accent: #ffffff;               /* testo sopra i fondi pieni colorati */
-  --surface-2: hsl(210, 20%, 94%);     /* superficie tenue: pastiglie neutre */
+  /* Riempimento tenue di una pastiglia neutra o di un hover. ⚠️ Si chiamava
+     `--surface-2` fino al 2026-08-11, e il nome mentiva: non è un LIVELLO di
+     superficie, è un colore di riempimento. Quando i tre livelli sono stati
+     nominati (--surface-1/2/3, qui sotto) il nome vecchio sarebbe stato il
+     secondo `--surface-2` della stessa palette — lo stesso guasto di --amber
+     usato sia per scrivere sia per riempire, che ha prodotto il marrone della
+     barra «Media» che nessuno aveva scelto. */
+  --fill-subtle: hsl(210, 20%, 94%);
   --track: hsl(210, 20%, 92%);         /* fondo delle barre di avanzamento  */
   --highlight: hsl(48, 100%, 78%);     /* evidenziazione della citazione     */
   --on-highlight: hsl(45, 60%, 12%);   /* testo sopra l'evidenziazione       */
+
+  /* --- Livelli di superficie -----------------------------------------------
+     Tre livelli, non «scheda o niente». Il livello dichiara QUANTO pesa ciò che
+     contiene, e si sceglie una volta per blocco: sette schede identiche nella
+     stessa pagina non fanno gerarchia, la fanno sparire — a quel punto a dire
+     cosa conta resta solo la posizione, che è un ripiego.
+       --surface-1  elevata · fondo proprio, bordo, ombra → si LEGGE   (Analisi)
+       --surface-2  piana   · nessun fondo, filetto sopra → si CONSULTA (Attività)
+       --surface-3  inline  · nessun contenitore          → si SCORRE   (Origine)
+     ⚠️ 2 e 3 sono TRASPARENTI di proposito, e non è una svista: un terzo grigio
+     appena diverso sarebbe un valore da mantenere in due temi per non dire
+     niente in più. Ciò che separa un blocco piano dal successivo è il filetto
+     (--surface-rule), non un fondo; ciò che distingue una riga inline è che non
+     ha contenitore affatto. Le tre classe-livello stanno accanto a `.card`. */
+  --surface-1: var(--card);
+  --surface-2: transparent;
+  --surface-3: transparent;
+  --surface-rule: var(--line);
+
+  /* --- Colonna di lettura ---------------------------------------------------
+     `--measure` è la lunghezza di riga del testo CORRENTE — circa settanta
+     caratteri, la misura oltre la quale l'occhio perde il capo della riga
+     successiva. `--content-max` è la colonna che contiene una pagina di
+     lettura. Sono due cose diverse: tabelle ed elenchi possono superare la
+     prima (sono strutture, non prosa) ma non la seconda. */
+  /* ⚠️ 52ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
+     ZERO, e in Inter lo zero è largo 9,46px a 15px mentre il carattere medio di
+     una frase italiana vera ne misura 6,83. Scrivere `70ch` per «settanta
+     caratteri» dà una riga da 94 caratteri — trentaquattro in più di quelli
+     voluti, cioè esattamente il difetto che si stava correggendo. 52ch = 492px
+     = ~72 caratteri del testo reale, contati sul riassunto di un'analisi con il
+     font servito. Il conteggio dipende dal FONT, non dalla lingua: vale uguale
+     in de e fr. Se un giorno cambia il carattere, questo numero va rimisurato,
+     non tradotto. */
+  --measure: 52ch;
+  --content-max: 880px;
 
   /* --- Colori di stato -----------------------------------------------------
      NON sono decorazione: dicono quanto manca a una scadenza e se un'azione è
@@ -132,7 +175,7 @@
        pulsanti), che infatti usano --line-strong, portato a 48%. */
     --bg: hsl(213, 30%, 6%);
     --card: hsl(213, 22%, 14%);
-    --surface-2: hsl(213, 18%, 20%);
+    --fill-subtle: hsl(213, 18%, 20%);
     --track: hsl(213, 18%, 22%);
     --line: hsl(213, 16%, 28%);
     --line-strong: hsl(213, 14%, 48%);   /* 3.31:1 su --card: bordo dei controlli */

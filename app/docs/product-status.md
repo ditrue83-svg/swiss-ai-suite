@@ -691,6 +691,12 @@ preload del solo peso del testo doveva ottenere.
 
 ### Le schermate INTERNE, provate in produzione il 2026-08-11
 
+> ⚠️ **Questa verifica riguarda il layout di quel momento.** Lo stesso giorno,
+> più tardi, tre delle cinque schermate qui sotto — Panoramica, Documenti,
+> dettaglio documento — sono state ristrutturate: vedi «Gerarchia e densità»
+> più avanti. Le misure che seguono restano vere di ciò che erano, e non
+> descrivono più ciò che c'è.
+
 La verifica del 2026-08-10 si era fermata al CSS compilato: le schermate dietro
 autenticazione non erano state guardate, e questa pagina lo dichiarava. **Adesso
 lo sono**, sull'app deployata, con i dati veri di un'azienda reale e **senza
@@ -724,6 +730,46 @@ incentivi attivo.
 quindi non causate dal cambio: nella riga dei KPI il terzo numero sta 4 px più in
 alto (quella scheda è un link, `.kpi-link`), e le due voci di Finanze mostrano
 «importo non indicato» — sono i due `NOT_FINANCIAL` già dichiarati sopra.
+
+## ⚠️ Gerarchia e densità — scritto e provato a schermo, NON ancora in produzione
+
+Tre livelli di superficie (`--surface-1/2/3`), una sola azione primaria per
+schermata con menu di trabocco, colonna di lettura (`--measure`,
+`--content-max`), elenco documenti ristrutturato, Panoramica con una gerarchia
+dichiarata. Il come e il perché stanno in
+[`design-system.md`](design-system.md); qui c'è solo lo stato.
+
+| | Stato al 2026-08-11 |
+|---|---|
+| Implementato | sì — `app.css`, `ActionMenu.tsx`, `documentModel.ts`, tre schermate |
+| Deployato | **no** — PR aperta, non unita |
+| Configurato | non richiede configurazione |
+| Testato | **in parte**: la regola «un solo colore forte per riga» è una funzione pura con 20 combinazioni provate (`test:documents-unit`, sez. 11) e `design:lint` resta verde. Il **layout** non ha test: si guarda |
+| Provato contro la cosa reale | **NO** — vedi qui sotto |
+| Disponibile a clienti esterni | no |
+
+⚠️⚠️ **LA VERIFICA DEL 2026-08-11 QUI SOPRA RIGUARDA IL LAYOUT PRECEDENTE, e
+dirlo è metà del valore di questa pagina.** Le «cinque schermate provate in
+produzione con i dati veri di un'azienda reale» sono state misurate su
+Panoramica, Documenti e dettaglio documento **com'erano prima di questo
+lavoro** — cioè su tre delle cinque schermate che questo lavoro riscrive. Quelle
+219 misure restano vere di ciò che erano, e **non dicono niente** di ciò che
+c'è adesso.
+
+Che cosa è stato guardato davvero, e con che strumento: 375/768/1280, chiaro e
+scuro, nelle tre lingue, su un **banco di prova usa-e-getta** fuori da `src/`
+che monta il foglio di stile VERO e i componenti puri veri
+(`NextStepCard`, `ActionMenu`, `rowBadgeTones`) dentro la cornice vera, **con
+dati inventati**. Prova il CSS e il riflusso; non prova che i dati veri abbiano
+quelle forme — un mittente più lungo di quelli inventati, una pastiglia in più,
+un titolo che va a capo tre volte sono cose che solo i dati veri mostrano.
+
+⚠️ Le schermate interne stanno dietro autenticazione e da questa postazione non
+si aprono senza credenziali: **il banco di prova non è una scorciatoia scelta,
+è l'unico strumento disponibile**. Per chiudere il divario serve il gesto che è
+già stato fatto per il carattere — aprire `app.ai-swisse.com` dopo il merge, con
+i dati di un'azienda reale, e guardare. Finché non succede, questa riga dice
+«no» alla quinta parola.
 
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 
@@ -1022,10 +1068,205 @@ riga per riga di `supabase/functions/`:
 | **innocuo** | 3 |
 | **TOTALE**, in 25 file | **189** |
 
-⚠️ **Questo numero è una misura, non una promessa di correzione.** Di quei 189
-punti ne sono corretti **4**, quelli del percorso di generazione dei
-promemoria. Gli altri 185 restano, e sono scritti qui perché una superficie
-misurata e dichiarata è un'altra cosa da una superficie ignota.
+⚠️ **Questo numero è una misura, non una promessa di correzione.**
+
+### ⚠️⚠️ E IL NUMERO CHE DICHIARAVA DI ESSERE RIFACIBILE NON SI RIFACEVA
+
+Fino al 2026-08-11 questa pagina diceva «**147 restanti**», e aggiungeva che
+quel conteggio vale «perché chiunque può rifarlo in un secondo e ottenere lo
+stesso numero». Rifacendolo si ottiene un numero diverso. Le ragioni sono due, e
+sono lezioni distinte.
+
+**1. Il comando non era scritto da nessuna parte.** La pagina descriveva il
+criterio a parole — «le due forme» — e non riportava la riga da eseguire. Un
+criterio a parole non è rifacibile: chi lo rifà ottiene un numero vicino e
+diverso, e nessuno può dire quale dei due sia sbagliato.
+
+**2. ⚠️⚠️ Il comando era `grep`, e `grep` non vedeva tutto.**
+`supabase/functions/_shared/email/store.ts` conteneva un **byte NUL scritto
+crudo** (riga 282, dentro un `.join(…)` che separa i campi di un'impronta). Per
+`grep(1)` di macOS un file con un NUL è **binario**: lo salta, non lo cerca, e
+non lo dice. Ventisettemila byte — il modulo della posta, **l'unico con uso
+reale in produzione**, 148 email sincronizzate — erano fuori da ogni scansione
+fatta con grep. Il numero autorevole era il numero di un perimetro con un buco
+dentro.
+
+E il byte era invisibile anche a chi leggeva: un NUL stampato si vede come uno
+**spazio**, quindi la riga diceva `.join(' ')`. Chi l'avesse «ripulita» mettendo
+uno spazio vero avrebbe cambiato l'impronta di ogni email già acquisita, e
+nessuna rilettura del diff se ne sarebbe accorta.
+
+Corretto il 2026-08-11 scrivendo il separatore come escape (`'\0'`, stesso
+valore a runtime, stessa impronta — verificato) e presidiato da
+**`npm run bytes:check`**, che fa fallire la CI se un byte di controllo crudo
+rientra in un file tracciato.
+
+### Il conteggio, adesso: un comando, non una frase
+
+```bash
+npm run fallback:scan              # il numero, per forma e per file
+npm run fallback:scan -- --report  # riga per riga
+```
+
+Legge i byte con Node e li analizza con **il parser TypeScript vero**
+(`ts.createSourceFile`): niente grep, niente espressioni regolari sul sorgente.
+**La misura non può più essere azzoppata dal difetto che sta misurando**, non si
+fa ingannare da un commento che cita la forma sbagliata, e dà lo stesso numero
+su macOS e in CI. Le regole — e ciò che dichiaratamente NON vedono — stanno in
+testa a `scripts/fallback-scan.mjs`.
+
+La definizione è una sola, e meccanica: **una chiamata al database il cui errore
+non viene MAI consultato.** PostgREST non solleva — restituisce `{data, error}`
+— quindi se `error` non viene legato a un nome, o viene legato e mai letto, il
+guasto sparisce e `data` vale `null` esattamente come quando la riga non c'è.
+
+| Forma | Punti |
+|---|---|
+| **l'errore non viene nemmeno chiesto** — la destrutturazione non prende `error`: è irraggiungibile | 87 |
+| **il risultato non viene raccolto** — `await sb…` come istruzione a sé: l'oggetto `{data, error}` è distrutto appena creato | 86 |
+| **l'errore è lì e non lo guarda nessuno** — il risultato è legato per intero, ma in tutta la funzione non c'è una lettura di `.error` | 17 |
+| **TOTALE**, in 35 file su 103 | **190** |
+
+⚠️ **Dodici punti restano FUORI da questo numero, ed è una scelta.** Sono quelli
+in cui l'errore *è* letto e poi collassato su un valore plausibile — `if (error
+|| !data) return null`, `if (!res.error) { … }` senza `else`, un ternario che
+ripiega sul fuso predefinito. Per la regola di casa sono fallback silenziosi
+eccome, ma deciderli richiede di sapere se quel `null` è un esito legittimo per
+*quella* funzione: è una lettura, non una misura, e un numero con dentro dei
+falsi positivi non lo si può usare come cricca. Fuori anche l'errore guardato
+solo attraverso un campo (`if (code && code !== '23505')`), di cui ce n'è uno
+vero in `upsertMessage`.
+
+⚠️⚠️ **E QUESTO 190 NON SI SOTTRAE AL 147, né al 189.** Sono misure con criteri
+diversi, e mescolarle sarebbe il terzo errore della stessa famiglia:
+
+| | Punti | |
+|---|---|---|
+| triage a otto letture parallele | 189 | criteri di ciascun lettore |
+| un `grep`, il 2026-08-11 | 193 → 147 | **cieco su `email/store.ts`** |
+| la prima stesura di `fallback:scan`, a regex | 137 | ne mancava circa il 28% |
+| **`npm run fallback:scan`, col parser** | **190** | regole scritte ed eseguibili |
+
+⚠️ **La stesura a regex è durata mezz'ora e va raccontata, perché ha ripetuto lo
+stesso errore in piccolo.** Contava 137 e ne mancava più di un quarto: non vedeva
+`const { count } = await …` (pretendeva la parola `data`), non vedeva le
+destrutturazioni dentro `Promise.all`, e soprattutto non *poteva* vedere la forma
+«il risultato è legato per intero e `.error` non lo legge nessuno» — per
+deciderla bisogna sapere che cosa succede nel resto della funzione, cioè serve un
+albero sintattico, non una riga di testo. Una misura è affidabile quanto lo
+strumento che la prende, ed è la terza volta in due giorni che questo progetto lo
+impara sulla stessa domanda.
+
+⚠️ **E non è più una frase che invecchia: è una cricca.** `fallback:scan` sta nel
+gruppo `quality` e confronta il numero misurato con quello dichiarato in
+`ATTESI`. Esce rosso se ne compare uno nuovo, **e rosso anche se ne sparisce uno
+senza che il numero dichiarato scenda con lui**: correggere un punto e
+aggiornare il conteggio diventano lo stesso commit, per forza.
+
+I cinque interventi già fatti (misurati con il grep di allora): generazione dei
+promemoria (4) · consegna e composizione dell'email (8) · sincronizzazione del
+calendario (4) · i caricatori di fatti delle automazioni (20) · la coda delle
+automazioni e il contatore della pausa (7).
+
+#### ⚠️⚠️ Il peggiore dei sedici non era fra i promemoria: faceva PERDERE lavoro
+
+`syncTask` scartava l'errore di tre letture. Con `failures: 0` come esito, e il
+ciclo di `calendar-sync` che legge proprio quel numero
+(`if (outcome.failures === 0) await queueDone(...)`), una lettura fallita faceva
+**uscire l'attività dalla coda come se fosse stata sincronizzata**: evento mai
+creato, coda che se ne dimentica, report che dice `claimed: 1, upserted: 0`.
+
+Non un promemoria in ritardo — un lavoro perso, per sempre, senza una riga
+rossa. E i due casi legittimi che escono con `failures: 0` a ragione — attività
+sparita, nessuna connessione attiva — erano nella suite da sempre, il che
+rendeva i tre esiti indistinguibili. Corretto il 2026-08-11; le asserzioni
+nuove sono scritte come **coppia** di quelle vecchie.
+
+#### ⚠️⚠️ E nelle automazioni non era un'azione mancata: era quella SBAGLIATA
+
+Da una lettura fallita esce `null`, e da `null` nasce un `missing()` — un fatto
+dichiarato assente. Ma in `conditions.ts` gli operatori `exists`/`not_exists`
+rispondono anche sui fatti non noti, di proposito, e l'elenco che li mette in
+guardia contiene `low_confidence` e `unverified_quote` — **non `missing`**.
+
+Quindi una regola scritta «campo non_esiste» diventava **vera** perché il
+database aveva singhiozzato, e l'azione partiva davvero: un'attività creata, un
+avviso spedito. Il caso più chiaro è `addFinanceFacts`, dove un `if (!item)`
+mette **undici fatti** a `missing()` in un colpo solo.
+
+E il meccanismo che dovrebbe impedire a una regola guasta di girare per sempre
+era battuto dallo stesso silenzio: `recordWorkflowFailure` leggeva il contatore
+scartando l'errore, quindi `failures` ripartiva da 1 a ogni giro e la soglia
+della pausa automatica non arrivava mai. Il commento sopra quella funzione
+chiama «fallire diecimila volte» il difetto peggiore possibile su questo
+progetto.
+
+#### ⚠️⚠️ Il file che nessuna scansione aveva letto: 22 punti nel modulo della posta
+
+Tolto il byte NUL, `_shared/email/store.ts` è entrato per la prima volta in una
+scansione: **22 punti**, il file più carico del perimetro. Ed è il modulo con
+l'uso reale più alto del prodotto — 148 email sincronizzate, contro zero
+promemoria e zero conversazioni dell'assistente.
+
+**Il peggiore è `listLinkedDocuments` (riga 544), e non produce un'omissione:
+produce una RISPOSTA SBAGLIATA presentata come completa.** La lettura di
+`email_message_documents` scarta l'errore, `data` è `null`, `rows` diventa `[]`
+e la funzione ritorna «per questo messaggio non è mai stato creato alcun
+documento». Il chiamante (`importAndAnalyze`) non trova né allegati freschi né
+documenti collegati, ricade su `{kind:'body'}`, e manda alla pipeline **il corpo
+del messaggio** mentre la fattura PDF già importata resta in archivio, collegata
+e non letta.
+
+La pipeline gira davvero, la quota si consuma davvero, l'analisi si salva
+davvero, e il messaggio si chiude `done` con `error_code` null. L'utente legge
+un'analisi completa e sicura di sé — scadenza, importi, citazioni — estratta
+dalle due righe di accompagnamento invece che dal documento. Le citazioni sono
+perfino verificabili: contro il documento sbagliato. È la regola di casa
+violata alla lettera: *un guasto è un errore esplicito, mai un risultato
+plausibile.*
+
+⚠️ E c'è l'aggravante scritta nella docstring della funzione stessa:
+`listLinkedDocuments` **esiste** per impedire che un documento già creato venga
+scambiato per lavoro già fatto, dopo che quattordici messaggi reali erano
+rimasti con il documento in archivio e nessuna analisi. Il presidio scritto per
+quel difetto lo reintroduce, in forma peggiore, appena la sua lettura fallisce —
+e proprio nel momento per cui è stato scritto, il ritentativo dopo
+un'interruzione, cioè quando i documenti esistono già.
+
+Gli altri tre che meritano il nome per esteso:
+
+- **`readSecrets` (98)** — un guasto di lettura non si distingue da «non ci sono
+  segreti», e `getValidAccessToken` ne deduce `AUTH_EXPIRED`: la connessione
+  passa a `reauth_required` e la posta si ferma **finché una persona non rifà
+  l'OAuth**. Un singolo guasto transitorio richiede un intervento umano.
+- **`createOrReuseDocument` (497)** — l'update che scrive `storage_path` è
+  scartato e la funzione ritorna comunque `{ storagePath }`: il valore di
+  ritorno **afferma** che il percorso è registrato mentre nel database è `NULL`.
+  Il conto arriva al ritentativo, come `ANALYSIS_FAILED` per sempre su un file
+  che in archivio è intatto.
+- **`startSyncRun` (205)** — nessuna riga in `email_sync_runs`: la
+  sincronizzazione avviene per intero, e il registro non dice che è andata male,
+  dice che **non è successo niente**.
+
+Nessuno di questi è ancora corretto: sono il perimetro dell'intervento
+successivo. `releaseLease` (181) è l'unico del file che si autoripara — il lease
+scade da sé dopo 300 secondi.
+
+#### Che cosa hanno insegnato i cinque interventi
+
+- **`throw` non è la risposta giusta ovunque, e il discrimine è il LOTTO.** Chi
+  legge una volta e decide deve sollevare; chi scorre venticinque elementi
+  indipendenti no — morire sul primo abbandona gli altri ventiquattro. Lì il
+  guasto diventa un **numero nel report**, che è esplicito quanto un'eccezione.
+  Il divieto di casa è il fallback SILENZIOSO, non l'eccezione mancante.
+- **Uno store solleva sempre**, perché non ha un report in cui contare: la
+  politica la decide il chiamante, che è l'unico a sapere se sta in un lotto.
+- **`sentUnrecorded`** è l'unico stato in cui il database dice MENO del mondo:
+  l'email è partita e non ne abbiamo traccia. Se non è zero, `sent` è un minimo.
+- ⚠️ **Un doppio di prova può avere il difetto che si sta cacciando.** Il
+  `maybeSingle()` del finto PostgREST restituiva `error: null` fisso: il guasto
+  iniettato non arrivava al codice, e la prova restava verde a correzione
+  rimossa.
 
 ⚠️ **E il numero ha i suoi limiti, dichiarati.** La scansione è stata fatta da
 otto letture parallele; la nona — quella che doveva contestare le

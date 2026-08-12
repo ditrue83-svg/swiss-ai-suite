@@ -156,6 +156,21 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
   const handled = message.attentionStatus === 'handled';
   const canAnalyze = !analysis && message.processingStatus !== 'analyzing' && message.processingStatus !== 'importing';
 
+  // ⚠️ `relevance_reason` porta DUE cose diverse nella stessa colonna: una frase
+  // scritta dal modello, già nella lingua dell'utente, oppure una CHIAVE scritta
+  // dal filtro deterministico — che una lingua non ce l'ha, perché a scriverla è
+  // un processo. Fino al 2026-08-11 la chiave finiva a schermo così com'era:
+  // l'utente leggeva «prescreen:bulk_no_administrative_signal».
+  // Una chiave sconosciuta si mostra com'è invece di sparire: un testo grezzo è
+  // brutto, un motivo scomparso è una spiegazione che non c'è (§58).
+  const reasonText = (raw: string): string => {
+    switch (raw) {
+      case 'prescreen:service_notification': return t('inbox.detail.reasonServiceNotification');
+      case 'prescreen:bulk_no_administrative_signal': return t('inbox.detail.reasonBulkNoAdministrative');
+      default: return raw;
+    }
+  };
+
   return (
     <>
       <div className="page-head">
@@ -290,7 +305,7 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
         )}
         {message.relevanceReason && (
           <p className="muted-sm">
-            <strong>{t('inbox.detail.reason')}</strong> — {message.relevanceReason}
+            <strong>{t('inbox.detail.reason')}</strong> — {reasonText(message.relevanceReason)}
           </p>
         )}
       </div>
