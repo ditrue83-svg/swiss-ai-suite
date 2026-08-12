@@ -70,16 +70,54 @@ function darkRootBlock(text) {
   return rootBlock(inside);
 }
 
+// ----------------------------------------------------------------------------
+// IL CARATTERE NON PASSA DI QUI
+//
+// Fino al 2026-08-11 questo script copiava anche la `font-family` del `:root`
+// dell'app. Quando l'app è passata a Inter, il `--check` ha fermato la
+// pubblicazione della vetrina dal 10 all'11 agosto 2026, per tre merge: gli
+// altri token si riallineavano da soli, questa riga no — chiedeva una
+// decisione, e nessuno se n'era accorto perché il rosso era su main.
+//
+// La vetrina compone in **Inter Tight**: un solo file variabile self-hostato in
+// static/fonts/, dichiarato con `@font-face` e usato via `--ms-font` in
+// style.css. È una scelta di disegno («Protocollo»: titoli grandi e stretti,
+// asse di peso limitato a 400–600), non una copia rimasta indietro. L'app, che
+// è un'interfaccia densa e non un manifesto, compone in Inter. Stessa
+// superfamiglia: chi passa dal sito all'app non cambia prodotto.
+//
+// Sincronizzare quella riga non ha nemmeno effetto: `body` in style.css imposta
+// `font-family: var(--ms-font)`, quindi il valore del `:root` non raggiunge
+// nessun elemento che disegni testo — verificato sulle 8 pagine costruite. Ma
+// scriverebbe in un file generato una frase falsa per la vetrina («Inter è
+// dichiarato in fonts.css e servito da noi»: in site/ non c'è nessun fonts.css
+// e Inter non viene servito), e rifarebbe fallire la pubblicazione a ogni
+// ritocco del carattere nell'app. Quindi resta fuori, come `--topbar-h`.
+//
+// Se un giorno la vetrina dovrà seguire il carattere dell'app, non si fa da
+// qui: si aggiungono i file di Inter a static/fonts/ con la loro licenza, si
+// cambiano gli `@font-face` e `--ms-font` in style.css, e si guarda la pagina.
+// È una decisione di disegno, non una sincronizzazione.
+// ----------------------------------------------------------------------------
+
 /**
- * Tiene solo le dichiarazioni di custom property e la famiglia di caratteri,
- * conservando i commenti che le spiegano: sono la ragione dei valori, e senza
- * di essi il file diventa una lista di numeri.
- * Scarta ciò che riguarda solo l'app (per ora `--topbar-h`, che nella vetrina
- * non esiste).
+ * Tiene solo le dichiarazioni di custom property, conservando i commenti che
+ * le spiegano: sono la ragione dei valori, e senza di essi il file diventa una
+ * lista di numeri.
+ *
+ * Scarta ciò che riguarda solo l'app: `--topbar-h` (nella vetrina non esiste) e
+ * la `font-family` del `:root`, che non è una custom property e quindi non
+ * passa più il filtro — vedi il blocco qui sopra.
+ *
+ * Un commento introduce la dichiarazione che lo segue, quindi entra nel file
+ * solo INSIEME a una dichiarazione tenuta: un commento in coda al blocco, che
+ * spiegherebbe una riga scartata, resterebbe a descrivere qualcosa che nel file
+ * non c'è — ed è esattamente il caso della `font-family`.
  */
 const SOLO_APP = new Set(['--topbar-h']);
 function keepTokens(block) {
   const out = [];
+  let attesa = [];                    // commenti in attesa della loro dichiarazione
   let inComment = false;
   for (const line of block.split('\n')) {
     const code = line.trim();
@@ -88,19 +126,20 @@ function keepTokens(block) {
     // in CSS un commento aperto si chiude al primo `*/` che incontra: si
     // mangiava la dichiarazione di --accent.
     if (inComment) {
-      out.push(line);
+      attesa.push(line);
       if (code.includes('*/')) inComment = false;
       continue;
     }
-    if (!code) { out.push(line); continue; }                    // righe vuote: ritmo
     if (code.startsWith('/*')) {
-      out.push(line);
+      attesa.push(line);
       if (!code.includes('*/')) inComment = true;
       continue;
     }
+    // Righe vuote: ritmo. Se un commento è in attesa la riga vuota è parte del
+    // suo gruppo e lo segue, dentro o fuori dal file.
+    if (!code) { (attesa.length ? attesa : out).push(line); continue; }
     const prop = /^(--[\w-]+)\s*:/.exec(code);
-    if (prop) { if (!SOLO_APP.has(prop[1])) out.push(line); continue; }
-    if (/^font-family\s*:/.test(code)) out.push(line);
+    if (prop && !SOLO_APP.has(prop[1])) { out.push(...attesa, line); attesa = []; }
   }
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
 }
@@ -117,6 +156,12 @@ const out = `/* ================================================================
 
    Per aggiornarli: cambiare il valore NELL'APP, poi rilanciare lo script.
    \`node sync-tokens.mjs --check\` dice se questo file è rimasto indietro.
+
+   IL CARATTERE NON È QUI, ED È VOLUTO: la vetrina compone in Inter Tight
+   (\`@font-face\` e \`--ms-font\` in style.css, file self-hostati in static/fonts/),
+   l'app in Inter. Due scelte di disegno distinte della stessa superfamiglia,
+   quindi la \`font-family\` del \`:root\` dell'app non viene sincronizzata. La
+   ragione per esteso sta in sync-tokens.mjs.
 
    La documentazione delle scelte sta in docs/design-system.md del progetto
    principale.
@@ -151,6 +196,13 @@ for (const atteso of ['--accent:', '--ink:', '--fs-body:', '--sp-4:', '--amber-f
     console.error(`\n  Estrazione non valida: manca ${atteso}\n`);
     process.exit(1);
   }
+}
+// E il contrario: il carattere dell'app non deve arrivare fin qui. Era già
+// successo una volta, in silenzio, e la vetrina è rimasta ferma tre giorni.
+if (/font-family\s*:/.test(visibile)) {
+  console.error('\n  Estrazione non valida: è entrata una font-family.');
+  console.error('  La vetrina compone in Inter Tight — vedi IL CARATTERE NON PASSA DI QUI.\n');
+  process.exit(1);
 }
 
 if (checkOnly) {

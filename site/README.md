@@ -180,6 +180,22 @@ node sync-tokens.mjs --check   # esce 1 se tokens.css è rimasto indietro
 Per cambiare un colore: si cambia **nell'app**, poi si rilancia lo script.
 `tokens.css` non va modificato a mano.
 
+### Il carattere è l'eccezione, ed è dichiarata
+
+Lo script sincronizza i token, **non la `font-family`**. L'app compone in Inter,
+la vetrina in Inter Tight: due scelte di disegno della stessa superfamiglia, non
+una copia rimasta indietro. Il valore dell'app non avrebbe comunque effetto —
+`body` qui impone `var(--ms-font)`, quindi la `font-family` del `:root` non
+raggiunge nessun elemento che disegni testo — ma sincronizzarla scriveva in un
+file generato una frase vera per l'app e falsa per la vetrina, e soprattutto
+faceva fallire la pubblicazione a ogni ritocco del carattere nell'app: è quello
+che ha tenuto ferma la vetrina dal 2026-08-10 al 2026-08-11.
+
+Se un giorno la vetrina dovrà seguire il carattere dell'app, non si fa da
+`sync-tokens.mjs`: si aggiungono i file di Inter a `static/fonts/` con la
+licenza, si cambiano gli `@font-face` e `--ms-font` in `style.css`, e si guarda
+la pagina.
+
 ## L'anteprima social
 
 `static/og.png` (1200×630) viene copiata in `dist/` dal build. X e Facebook non

@@ -48,7 +48,14 @@
   /* Colonna delle pagine legali; la pagina principale usa la griglia --ms-. */
   --wrap-narrow: 720px;
 
+  /* Il carattere della vetrina, e l'unico. L'app compone in Inter e lo dichiara
+     nel proprio `:root`; `sync-tokens.mjs` non porta più quella riga qui (il
+     perché sta lì dentro), quindi il carattere del documento lo fissa QUESTO
+     file, sull'elemento radice: `body` da solo copriva tutto ciò che la vetrina
+     disegna oggi, ma lasciava la radice al ripiego del browser — il Times con
+     le grazie — in attesa del primo elemento che non erediti da `body`. */
   --ms-font: 'Inter Tight', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--ms-font);
 
   /* Scala tipografica del manifesto: il salto H1/corpo è ~4:1, contro il
      2:1 della scala applicativa. */

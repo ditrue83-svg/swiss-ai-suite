@@ -8,6 +8,12 @@
    Per aggiornarli: cambiare il valore NELL'APP, poi rilanciare lo script.
    `node sync-tokens.mjs --check` dice se questo file è rimasto indietro.
 
+   IL CARATTERE NON È QUI, ED È VOLUTO: la vetrina compone in Inter Tight
+   (`@font-face` e `--ms-font` in style.css, file self-hostati in static/fonts/),
+   l'app in Inter. Due scelte di disegno distinte della stessa superfamiglia,
+   quindi la `font-family` del `:root` dell'app non viene sincronizzata. La
+   ragione per esteso sta in sync-tokens.mjs.
+
    La documentazione delle scelte sta in docs/design-system.md del progetto
    principale.
    ========================================================================== */
@@ -158,12 +164,6 @@
   --scrim: rgba(16, 24, 40, 0.4);
 
   --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
-  /* Inter è dichiarato in `fonts.css` e servito da noi. La coda resta quella di
-     prima e non è decorativa: è ciò che si legge nel secondo che precede il
-     caricamento (`font-display: swap`) e ciò che disegna i caratteri che il
-     sottoinsieme non contiene — un nome di azienda in cirillico, un allegato
-     con un ideogramma. */
-  font-family: 'Inter', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
