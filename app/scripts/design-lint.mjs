@@ -134,7 +134,9 @@ const EXCEPTIONS = [
   { file: 'src/styles/extra.css', contesto: '.print-foot', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
   { file: 'src/styles/extra.css', contesto: '.bell-badge', frammento: 'color: #fff', motivo: 'bianco sul riempimento --red in tutt\'e due i temi; unico fondo pieno rosso dell\'app: il token nascerà col secondo caso' },
   { file: 'src/styles/app.css', contesto: '.state-list li::before', frammento: 'font-size: 11px', motivo: 'la spunta segue il cerchio che la contiene, non la gerarchia del testo (documentato nella scala tipografica)' },
-  { file: 'src/styles/app.css', contesto: '.verify-box li::before', frammento: 'font-size: 11px', motivo: 'la spunta segue il cerchio che la contiene, non la gerarchia del testo (documentato nella scala tipografica)' },
+  // `.verify-box li::before` non è più qui: il blocco «da verificare» è la
+  // `.verify-note` delle marcature (2026-08-12), e il «?» è un glifo SVG, non
+  // un carattere da dimensionare a mano.
 ];
 
 // ---------------------------------------------------------------------------

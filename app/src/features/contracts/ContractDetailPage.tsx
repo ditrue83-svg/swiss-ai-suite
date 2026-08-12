@@ -44,8 +44,9 @@ import { PrintButton } from '@/components/ui/PrintButton';
 import { PrintSheet } from '@/features/print/PrintSheet';
 import { CONTRACT_EVIDENCE_LABELS, buildFooter, contractCitations } from '@/features/print/printModel';
 import {
-  canCreateTask, compareTerms, daysUntil, noticeUnavailableReason, openMilestones,
+  canCreateTask, compareTerms, noticeUnavailableReason, openMilestones,
 } from './contractModel';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import type {
   AssignableMember, ContractDetail, ContractDocumentLink, ContractDocumentRelation,
   ContractEvidence, ContractExtraction, ContractMilestone, ContractTermVersion,
@@ -148,7 +149,13 @@ export function ContractDetailPage() {
           <p className="page-desc">
             {L.contractType(c.contractType)}
             {c.counterpartyName ? ` · ${c.counterpartyName}` : ''}
-            {' · '}{L.contractReview(c.reviewStatus)}
+            {' · '}
+            {/* Lo stato di verifica con il segno di famiglia: le PAROLE restano
+                quelle precise del dominio («modifica da riverificare» non è
+                «da verificare»), il filetto puntinato le classifica. */}
+            {c.reviewStatus === 'verified'
+              ? L.contractReview(c.reviewStatus)
+              : <span className="mark mark-prov mp-verify">{L.contractReview(c.reviewStatus)}</span>}
           </p>
         </div>
         <div className="row-wrap">
@@ -630,23 +637,17 @@ function MilestoneList(props: {
   return (
     <ul className="ct-ms">
       {props.milestones.map((m) => {
-        const days = daysUntil(m.dueDate);
         return (
           <li key={m.id} className="ct-ms-row">
             <div>
               <strong>{L.milestoneKind(m.kind)}</strong>
-              {' · '}{formatDate(m.dueDate)}
-              {/* ⚠️ Lo stato ACCANTO alla data: staccarli renderebbe la
-                  distinzione decorativa. */}
-              {/* ⚠️ Lo STATO, non l'azione: usare qui il testo del pulsante
-                  faceva leggere «30.09.2026 · Verifica data … Verifica data»,
-                  cioè la stessa parola due volte a due centimetri di distanza. */}
-              {m.status === 'candidate' && (
-                <em className="ct-unverified"> · {t('contracts.row.toVerify')}</em>
-              )}
-              {days !== null && days >= 0 && days <= 60 && (
-                <span className="muted-sm"> · {t('tasks.dueInDays', { n: days })}</span>
-              )}
+              {/* ⚠️ Lo stato DENTRO la marcatura del termine, accanto alla data:
+                  una data 'candidate' dice «Data da verificare» e NON conta i
+                  giorni — prima il conteggio girava anche su date mai
+                  verificate da una persona, senza cancello sullo status. */}
+              {' '}
+              <DeadlineMark date={m.dueDate} display={formatDate(m.dueDate)}
+                toVerify={m.status === 'candidate'} soonDays={60} />
               <div className="muted-sm">
                 {L.milestoneSource(m.source)}
                 {/* §42 — perché proprio questa data. */}

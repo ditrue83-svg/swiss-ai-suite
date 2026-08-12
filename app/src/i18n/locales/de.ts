@@ -43,6 +43,39 @@ export const de: Dictionary = {
     error: 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
   },
 
+  marks: {
+    provenance: {
+      document: 'Aus dem Dokument',
+      suggestion: 'Vorschlag von AI-Swisse',
+      inference: 'Inferenz',
+      toVerify: 'Zu prüfen',
+    },
+    source: { demo: 'Demodaten' },
+    deadline: {
+      inDays: 'in {n} Tagen',
+      tomorrow: 'läuft morgen ab',
+      today: 'läuft heute ab',
+      overdue: 'seit {n} Tagen überfällig',
+      yesterday: 'seit gestern überfällig',
+      none: 'Keine Frist',
+      toVerify: 'Datum zu prüfen',
+    },
+    evidence: {
+      show: 'Im Dokument zeigen',
+      hide: 'Zitat ausblenden',
+      none: 'Ohne geprüften Beleg',
+      page: 'S. {n}',
+    },
+    legend: {
+      title: 'Zeichenlegende',
+      provenance: 'Herkunft',
+      confidence: 'Konfidenz',
+      eligibility: 'Eignung',
+      source: 'Quelle',
+      deadline: 'Frist',
+    },
+  },
+
   brand: {
     name: 'AI-Swisse',
     tagline: 'für Schweizer KMU',
@@ -354,8 +387,6 @@ export const de: Dictionary = {
     openAria: 'Dokument öffnen: {title}',
     fileAria: 'Originaldatei öffnen: {title}',
     selectAria: 'Auswählen: {title}',
-    deadlineOn: 'Frist {date}',
-    deadlineToVerify: 'Frist zu prüfen',
     corrected: 'korrigiert',
     tasksOpenOne: '1 offene Aufgabe',
     tasksOpenMany: '{n} offene Aufgaben',
@@ -416,7 +447,7 @@ export const de: Dictionary = {
     aiValue: 'Die Analyse sagte: {value}',
     aiValueEmpty: 'Die Analyse hatte es nicht erkannt',
     correctedBadge: 'Von einer Person korrigiert',
-    uncertainties: 'Als unsicher deklariert',
+    uncertainties: 'Zu prüfende Punkte',
     // ---- Herkunft ----
     origin: 'Herkunft',
     originUploadBy: 'Hochgeladen von {name}',
@@ -723,10 +754,6 @@ export const de: Dictionary = {
     savedOk: 'Dokument analysiert und im Archiv gespeichert',
     analysisDone: 'Analyse abgeschlossen',
     result: {
-      originBadgeExtracted: 'Aus dem Dokument',
-      originBadgeExtractedCallout: 'Im Dokument verlangt',
-      originBadgeSuggested: 'Vorschlag von AI-Swisse',
-      originBadgeSuggestedCallout: 'Von AI-Swisse vorgeschlagen',
       showInDocument: 'Im Dokument anzeigen',
       quoteOnPage: 'Stelle auf Seite {n}:',
       quoteCited: 'Zitierte Stelle:',
@@ -1997,7 +2024,6 @@ export const de: Dictionary = {
     },
     row: {
       invoiceNumber: 'Nr. {value}',
-      dueOn: 'Fällig am {date}',
       expenseOn: 'Ausgabe vom {date}',
       noAmount: 'Betrag nicht angegeben',
       processing: 'Wird ausgelesen',
@@ -2190,7 +2216,6 @@ export const de: Dictionary = {
       noOwner: 'Keine verantwortliche Person',
       documents: 'Dokumente',
       noDate: 'kein Datum',
-      toVerify: 'zu prüfen',
     },
     detail: {
       back: 'Zurück zu den Verträgen',

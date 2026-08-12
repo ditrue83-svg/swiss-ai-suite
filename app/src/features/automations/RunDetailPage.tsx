@@ -149,12 +149,16 @@ export function RunDetailPage() {
                 </div>
                 {reason && <div className="list-sub">{t(reason)}</div>}
               </div>
-              <span className={`badge ${c.outcome === 'true' ? 'badge-bassa'
-                : c.outcome === 'false' ? 'badge-neutral' : 'badge-media'}`}>
-                {t(c.outcome === 'true' ? 'automations.outcomeTrue'
-                  : c.outcome === 'false' ? 'automations.outcomeFalse'
-                  : 'automations.outcomeUnknown')}
-              </span>
+              {/* §26 — «unknown» non è un «no»: è un valore che non si è potuto
+                  determinare (fiducia bassa, citazione non verificata). È il
+                  segno epistemico di famiglia, non una pastiglia ambra. */}
+              {c.outcome === 'unknown'
+                ? <span className="mark mark-prov mp-verify">{t('automations.outcomeUnknown')}</span>
+                : (
+                  <span className={`badge ${c.outcome === 'true' ? 'badge-bassa' : 'badge-neutral'}`}>
+                    {t(c.outcome === 'true' ? 'automations.outcomeTrue' : 'automations.outcomeFalse')}
+                  </span>
+                )}
             </div>
           );
         })}

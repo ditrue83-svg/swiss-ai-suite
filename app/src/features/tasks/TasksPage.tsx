@@ -24,7 +24,8 @@ import { toUserMessage } from '@/lib/errors';
 import { useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
-import { dueLabel, isOverdue, sourceLabelKey, statusLabelKey } from './taskFormat';
+import { dueLabel, sourceLabelKey, statusLabelKey } from './taskFormat';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { TaskCreateForm } from './TaskCreateForm';
 import {
   EMPTY_TASK_FORM, createSubmitLatch, safeDatePrefill, taskFormSubmission, type TaskFormValues,
@@ -269,7 +270,6 @@ function TaskRow({ task, assigneeName }: { task: TaskWithPeople; assigneeName: s
   const t = useT();
   const L = useLabels();
   const due = dueLabel(task.dueDate);
-  const late = isOverdue(task);
   const priorityWord = task.priority === 'high' ? 'alta' : task.priority === 'medium' ? 'media' : 'bassa';
 
   return (
@@ -288,9 +288,13 @@ function TaskRow({ task, assigneeName }: { task: TaskWithPeople; assigneeName: s
           non distingue i colori. */}
       <span className="badge badge-neutral">{t(statusLabelKey(task.status))}</span>
       <span className={`badge badge-${priorityWord}`}>{L.urgency(priorityWord)}</span>
-      <span className={late ? 'badge badge-alta' : 'badge badge-neutral'}>
-        {t(due.key, due.params)}
-      </span>
+      {/* Il termine parla con le cifre della sua famiglia. ⚠️ Un'attività
+          CONCLUSA non è «in ritardo» (regola di isOverdue): la sua scadenza
+          passata torna testo muto, non un segno rosso che chiede attenzione
+          per un lavoro già fatto. */}
+      {task.status === 'completed'
+        ? <span className="muted-sm">{t(due.key, due.params)}</span>
+        : <DeadlineMark date={task.dueDate} />}
     </Link>
   );
 }

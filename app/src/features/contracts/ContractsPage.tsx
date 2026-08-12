@@ -33,9 +33,11 @@ import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import {
   CONTRACT_PAGE_SIZE, DEFAULT_WINDOW_DAYS, MAX_QUERY_LENGTH, SORTS, VIEWS,
-  contractState, daysUntil, filtersFromParams, hasActiveFilters, paramsFromFilters,
+  contractState, filtersFromParams, hasActiveFilters, paramsFromFilters,
   type ContractState,
 } from './contractModel';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import type {
   AssignableMember, ContractAutoRenewal, ContractFilters, ContractLifecycleStatus,
   ContractListItem, ContractReviewStatus, ContractSort, ContractSummary, ContractType,
@@ -72,10 +74,14 @@ const STATE_KEY: Record<ContractState, TKey> = {
   to_verify: 'contracts.states.to_verify',
   verified: 'contracts.states.verified',
 };
-/** Il colore della pastiglia. Il testo dice già tutto: il colore accompagna. */
+/** Il colore della pastiglia. Il testo dice già tutto: il colore accompagna.
+ *  ⚠️ `notice_soon` era ROSSO: un preavviso vicino è urgente, non guasto — il
+ *  rosso resta a `failed` (lettura non riuscita) e allo scaduto delle cifre.
+ *  `to_verify` non è più qui: è il segno epistemico di famiglia (filetto
+ *  puntinato), reso a parte nella riga. */
 const STATE_TONE: Record<ContractState, string> = {
   archived: 'badge-neutral', failed: 'badge-alta', processing: 'badge-neutral',
-  notice_soon: 'badge-alta', renewal_soon: 'badge-media', amendment: 'badge-media',
+  notice_soon: 'badge-media', renewal_soon: 'badge-media', amendment: 'badge-media',
   to_verify: 'badge-media', verified: 'badge-blue',
 };
 
@@ -420,14 +426,15 @@ function ContractRow(props: {
 }) {
   const { contract: c, t, L } = props;
   const state = contractState(c);
-  const noticeDays = daysUntil(c.nextNoticeDate);
 
   return (
     <li className="list-row">
       <Link to={`/contratti/${c.id}`} className="ct-row-link">
         <div className="list-main">
           <span className="list-title">{c.displayName}</span>
-          <span className={`badge ${STATE_TONE[state]}`}>{t(STATE_KEY[state])}</span>
+          {state === 'to_verify'
+            ? <ProvenanceMark kind="toVerify" />
+            : <span className={`badge ${STATE_TONE[state]}`}>{t(STATE_KEY[state])}</span>}
         </div>
 
         <div className="list-sub">
@@ -439,13 +446,17 @@ function ContractRow(props: {
         </div>
 
         <div className="list-sub">
+          {/* ⚠️ IL DIFETTO CHIUSO QUI: i giorni si contavano anche su date
+              «candidate», cioè mai verificate da una persona (nessun cancello
+              su nextNoticeStatus/nextRenewalStatus). La marcatura del termine
+              lo decide da sé: data verificata → cifre e distanza (ambra entro
+              i 30 giorni del preavviso), data candidate → «Data da
+              verificare», e NESSUN conteggio su una data non verificata. */}
           {c.nextRenewalDate && (
             <span>
               <strong>{t('contracts.row.renewal')}:</strong>{' '}
-              {formatDate(c.nextRenewalDate)}
-              {c.nextRenewalStatus === 'candidate' && (
-                <em className="ct-unverified"> · {t('contracts.row.toVerify')}</em>
-              )}
+              <DeadlineMark date={c.nextRenewalDate} display={formatDate(c.nextRenewalDate)}
+                toVerify={c.nextRenewalStatus === 'candidate'} />
             </span>
           )}
           {c.noticePeriodValue && c.noticePeriodUnit && (
@@ -458,10 +469,9 @@ function ContractRow(props: {
                 <em className="ct-unverified"> · {t('contracts.row.noDate')}</em>
               ) : (
                 <>
-                  {' · '}{formatDate(c.nextNoticeDate)}
-                  {c.nextNoticeStatus === 'candidate' && (
-                    <em className="ct-unverified"> · {t('contracts.row.toVerify')}</em>
-                  )}
+                  {' '}
+                  <DeadlineMark date={c.nextNoticeDate} display={formatDate(c.nextNoticeDate)}
+                    toVerify={c.nextNoticeStatus === 'candidate'} soonDays={30} />
                 </>
               )}
             </span>
@@ -471,12 +481,6 @@ function ContractRow(props: {
             {props.ownerName ?? <em>{t('contracts.row.noOwner')}</em>}
           </span>
         </div>
-
-        {noticeDays !== null && noticeDays >= 0 && noticeDays <= 30 && (
-          <p className="muted-sm ct-alert">
-            {t('tasks.dueInDays', { n: noticeDays })}
-          </p>
-        )}
       </Link>
     </li>
   );

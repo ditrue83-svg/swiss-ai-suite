@@ -4,6 +4,7 @@
 // deterministico a valle. L'idoneità NON è mai dichiarata qui.
 import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { companyService } from '@/services/companyService';
 import { interpretService } from '@/services/interpretService';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -164,11 +165,13 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
               </div>
             )}
 
-            {/* §17 — ciò che l'AI non ha potuto stabilire va detto, non nascosto. */}
+            {/* §17 — ciò che l'AI non ha potuto stabilire va detto, non nascosto.
+                Stessa grammatica del blocco incertezze dei documenti: superficie
+                neutra e segno «da verificare» — dichiarare non è fallire. */}
             {interpretation.uncertainties.length > 0 && (
-              <div className="mt-2">
-                <strong>{t('subsidy.profile.toVerify')}</strong>
-                <ul className="detail-list warn mt-1">
+              <div className="verify-note mt-2" role="note">
+                <span className="vn-title"><MarkGlyph name="question" />{t('subsidy.profile.toVerify')}</span>
+                <ul>
                   {interpretation.uncertainties.map((u, i) => <li key={i}>{u.description}</li>)}
                 </ul>
               </div>

@@ -1,5 +1,6 @@
 import { Icon } from '@/components/ui/Icon';
 import { EmptyCta } from '@/components/ui/states';
+import { EligibilityMark } from '@/components/ui/EligibilityMark';
 import type { ProgramModel } from './programs';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
@@ -89,7 +90,10 @@ export function ResultsList({
                       l'idoneità» per qualcosa che comunque non viene concesso. */}
                   {p.availability === 'suspended'
                     ? <span className="badge badge-alta"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.suspended')}</span>
-                    : <span className="badge badge-media">{t('subsidy.results.eligibilityToVerify')}</span>}
+                    /* Prima del questionario l'idoneità è per definizione da
+                       verificare: è il segno di famiglia, non una pastiglia
+                       ambra identica a quella delle scadenze. */
+                    : <EligibilityMark status="unknown" />}
                   {p.mustApplyBeforeStart && <span className="badge badge-media"><Icon name="alert" className="ic-sm" /> {t('subsidy.results.applyBeforeStart')}</span>}
                 </div>
                 <div className="prog-meta">

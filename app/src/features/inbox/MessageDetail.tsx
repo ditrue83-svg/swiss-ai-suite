@@ -18,6 +18,10 @@ import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, ErrorState, SkeletonLine } from '@/components/ui/states';
+import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { MarkGlyph } from '@/components/ui/MarkGlyph';
+import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { useCompany } from '@/contexts/CompanyContext';
 import { CrmLinkPicker } from '@/features/crm/CrmLinkPicker';
 import { useCrmLink } from '@/features/crm/useCrmLink';
@@ -252,10 +256,7 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
               {analysis.deadline && (
                 <div>
                   <dt>{t('adminAi.result.deadline')}</dt>
-                  <dd>
-                    {formatDate(analysis.deadline)}
-                    {' '}<span className={`badge badge-neutral lvl-${analysis.deadlineLevel}`}>{L.deadlineLevel(analysis.deadlineLevel)}</span>
-                  </dd>
+                  <dd><DeadlineMark date={analysis.deadline} display={formatDate(analysis.deadline)} /></dd>
                 </div>
               )}
               {analysis.amountDisplay && (
@@ -268,15 +269,16 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
                 <div><dt>{t('adminAi.result.whatToDoNow')}</dt><dd>{analysis.primaryAction}</dd></div>
               )}
               <div><dt>{t('adminAi.result.urgencyChip', { level: '' }).trim()}</dt><dd>{L.urgency(analysis.urgency)}</dd></div>
-              <div><dt>{t('adminAi.result.confidenceChip', { level: '' }).trim()}</dt><dd>{L.confidence(analysis.confidence)}</dd></div>
+              <div><dt>{t('adminAi.result.confidenceChip', { level: '' }).trim()}</dt><dd><ConfidenceBadge level={analysis.confidence} /></dd></div>
             </dl>
 
             {/* §13/§119 — l'incertezza non è una nota a piè di pagina: sta
-                accanto alla conclusione a cui si riferisce. */}
+                accanto alla conclusione a cui si riferisce. E NON è un guasto:
+                superficie neutra col segno «da verificare», non il rosso. */}
             {analysis.uncertaintyItems.length > 0 && (
-              <div className="warn-box">
-                <Icon name="alert" className="ic-sm" />
-                <ul className="stack-sm">
+              <div className="verify-note" role="note">
+                <span className="vn-title"><MarkGlyph name="question" />{t('documents.uncertainties')}</span>
+                <ul>
                   {analysis.uncertaintyItems.map((u, i) => <li key={i}>{u.description}</li>)}
                 </ul>
               </div>
@@ -341,9 +343,13 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
                 {/* La pastiglia compare solo se lo stato si SA: vedi
                     `messageDocuments.ts`. Un'etichetta plausibile e sbagliata
                     è peggio di un'etichetta assente. */}
-                {d.state && (
-                  <span className="badge badge-neutral">{t(`documents.states.${d.state}` as const)}</span>
-                )}
+                {/* «Da verificare» è il segno epistemico di famiglia, come nel
+                    Document Hub; gli altri stati restano pastiglie neutre. */}
+                {d.state === 'to_verify'
+                  ? <ProvenanceMark kind="toVerify" />
+                  : d.state && (
+                    <span className="badge badge-neutral">{t(`documents.states.${d.state}` as const)}</span>
+                  )}
                 <Link className="btn btn-sm" to={`/documenti/${d.documentId}`}>
                   <Icon name="document" className="ic-sm" /> {t('inbox.detail.openDocument')}
                 </Link>

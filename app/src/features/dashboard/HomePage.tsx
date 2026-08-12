@@ -24,9 +24,8 @@ import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard, SkeletonKpiGrid } from '@/components/ui/states';
 import { useOverview, type OverviewData } from './useOverview';
 import { collectPriorities, type PriorityItem } from './overview';
-import {
-  ELIGIBILITY_KEY, ELIGIBILITY_TONE, RELEVANCE_KEY,
-} from '@/features/incentives/incentivesModel';
+import { RELEVANCE_KEY } from '@/features/incentives/incentivesModel';
+import { EligibilityMark } from '@/components/ui/EligibilityMark';
 import { daysUntil } from '@/lib/format';
 // ⚠️ I giorni di CALENDARIO, non i millisecondi: alle 23:30 una scadenza di
 // domani non deve contare come «oggi». È la stessa funzione usata da Attività e
@@ -292,9 +291,7 @@ function OverviewBody({ data }: { data: OverviewData }) {
               </div>
               {o.programAvailability === 'suspended'
                 ? <span className="badge badge-media">{t('incentives.catalog.suspended')}</span>
-                : <span className={`badge ${ELIGIBILITY_TONE[o.eligibilityStatus]}`}>
-                  {t(ELIGIBILITY_KEY[o.eligibilityStatus])}
-                </span>}
+                : <EligibilityMark status={o.eligibilityStatus} />}
             </div>
           ))}
           <Link className="btn btn-sm mt-10" to="/incentivi">{t('dashboard.allSubsidies')} <Icon name="arrowRight" className="ic-sm" /></Link>

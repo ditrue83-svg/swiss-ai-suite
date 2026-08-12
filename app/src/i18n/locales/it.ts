@@ -35,6 +35,45 @@ export const it = {
     error: 'Si è verificato un errore. Riprova.',
   },
 
+  // ---- Marcature di provenienza --------------------------------------------
+  // Il sistema dei segni tipografici (src/components/ui/*Mark*): ogni
+  // affermazione dichiara da dove viene. Le etichette di dominio già esistenti
+  // (labels.confidence, incentives.freshness, incentives.eligibility,
+  // subsidy.labels.eligibility) NON si duplicano qui: i componenti le leggono
+  // da lì — lo stato si dichiara in un posto solo.
+  marks: {
+    provenance: {
+      document: 'Dal documento',
+      suggestion: 'Suggerimento AI-Swisse',
+      inference: 'Inferenza',
+      toVerify: 'Da verificare',
+    },
+    source: { demo: 'Dimostrativa' },
+    deadline: {
+      inDays: 'fra {n} giorni',
+      tomorrow: 'scade domani',
+      today: 'scade oggi',
+      overdue: 'scaduto da {n} giorni',
+      yesterday: 'scaduto ieri',
+      none: 'Nessuna scadenza',
+      toVerify: 'Data da verificare',
+    },
+    evidence: {
+      show: 'Mostra nel documento',
+      hide: 'Nascondi la citazione',
+      none: 'Senza evidenza verificata',
+      page: 'pag. {n}',
+    },
+    legend: {
+      title: 'Legenda dei segni',
+      provenance: 'Provenienza',
+      confidence: 'Confidenza',
+      eligibility: 'Idoneità',
+      source: 'Fonte',
+      deadline: 'Termine',
+    },
+  },
+
   // ---- Marchio e navigazione ----------------------------------------------
   brand: {
     name: 'AI-Swisse',
@@ -353,8 +392,6 @@ export const it = {
     openAria: 'Apri il documento: {title}',
     fileAria: 'Apri il file originale: {title}',
     selectAria: 'Seleziona: {title}',
-    deadlineOn: 'Scadenza {date}',
-    deadlineToVerify: 'Scadenza da verificare',
     corrected: 'corretto',
     tasksOpenOne: '1 attività aperta',
     tasksOpenMany: '{n} attività aperte',
@@ -415,7 +452,10 @@ export const it = {
     aiValue: 'L’analisi diceva: {value}',
     aiValueEmpty: 'L’analisi non l’aveva rilevato',
     correctedBadge: 'Corretto da una persona',
-    uncertainties: 'Dichiarato incerto',
+    // ⚠️ Era «Dichiarato incerto», che alla larghezza del blocco si spezzava in
+    // «Dichiarato / incerto». Il blocco ora porta il segno «da verificare»:
+    // l'etichetta dice che cosa sono le righe, il segno dice lo stato.
+    uncertainties: 'Punti da verificare',
     // ---- origine ----
     origin: 'Origine',
     originUploadBy: 'Caricato da {name}',
@@ -727,10 +767,6 @@ export const it = {
     savedOk: 'Documento analizzato e salvato in archivio',
     analysisDone: 'Analisi completata',
     result: {
-      originBadgeExtracted: 'Dal documento',
-      originBadgeExtractedCallout: 'Richiesto nel documento',
-      originBadgeSuggested: 'Suggerimento AI-Swisse',
-      originBadgeSuggestedCallout: 'Suggerito da AI-Swisse',
       showInDocument: 'Mostra nel documento',
       quoteOnPage: 'Passaggio a pagina {n}:',
       quoteCited: 'Passaggio citato:',
@@ -2014,7 +2050,6 @@ export const it = {
     },
     row: {
       invoiceNumber: 'N. {value}',
-      dueOn: 'Scadenza {date}',
       expenseOn: 'Spesa del {date}',
       noAmount: 'Importo non indicato',
       processing: 'Lettura in corso',
@@ -2229,7 +2264,6 @@ export const it = {
       noDate: 'nessuna data',
       // ⚠️ È il testo che distingue una proposta da un fatto, e compare
       // ACCANTO alla data: staccarlo dalla data lo renderebbe decorativo.
-      toVerify: 'da verificare',
     },
     detail: {
       back: 'Torna ai contratti',

@@ -19,6 +19,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
 import { ErrorState, EmptyCta, SkeletonLine, SkeletonKpiGrid } from '@/components/ui/states';
@@ -668,8 +670,11 @@ function FinanceRow({
             numero inventato, e su una fattura è il tipo di invenzione che
             nessuno verifica. */}
         {amount ?? <span className="muted-sm">{t('finance.row.noAmount')}</span>}
+        {/* Il termine della fattura nella grammatica della famiglia: cifre e
+            distanza. Una fattura oltre la data è SCADUTA, e le cifre rosse lo
+            dicono — il testo muto di prima non lo diceva a nessuno. */}
         {tab === 'invoices' && item.dueDate && (
-          <div className="muted-sm">{t('finance.row.dueOn', { date: formatDate(item.dueDate) })}</div>
+          <div><DeadlineMark date={item.dueDate} display={formatDate(item.dueDate)} /></div>
         )}
       </div>
 
@@ -682,7 +687,11 @@ function FinanceRow({
         {item.qualityFlags.length > 0 && state !== 'failed' && (
           <span className="badge badge-media">{t('finance.filters.flagged')}</span>
         )}
-        <span className={badge.cls}>{badge.text}</span>
+        {/* «Da verificare» è il segno epistemico di famiglia; guasti e stati
+            di lavorazione restano pastiglie (il rosso resta al guasto). */}
+        {state === 'to_verify'
+          ? <ProvenanceMark kind="toVerify" />
+          : <span className={badge.cls}>{badge.text}</span>}
         {/* La CAUSA sotto la pastiglia: su `failed` spiega il fallimento, su
             una riga in coda l'ultimo rilascio (es. credito esaurito). Sugli
             stati con verifica umana il codice residuo non si mostra: lì parla

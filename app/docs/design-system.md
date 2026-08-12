@@ -380,6 +380,48 @@ un `<label>` legato alla casella: si spunta cliccando la frase.
 ⚠️ Quando una riga diventa un `<a>`, il colore va riportato a `var(--ink)`:
 altrimenti la regola globale dei collegamenti tinge di blu tutto il contenuto.
 
+## Marcature di provenienza
+
+Il vantaggio del prodotto è dire **da dove viene ogni affermazione** — e fino
+al 2026-08-12 lo diceva con pastiglie colorate indistinguibili: «Da verificare»
+(uno stato di fiducia) e «Scadenza 10.09.2026» (un termine) erano la stessa
+forma ambra. Da quel giorno ogni famiglia semantica ha **una forma propria**,
+e il colore è **rinforzo, mai unico portatore**: le famiglie si distinguono a
+stampa in bianco e nero. Il riferimento è la marginalia dei documenti
+amministrativi, non il badge da dashboard.
+
+| Famiglia | Forma | Stati |
+|---|---|---|
+| **Provenienza** | filetto verticale (barra di revisione): pieno · doppio · tratteggiato · puntinato | dal documento · suggerimento AI-Swisse · inferenza · da verificare |
+| **Confidenza** | triade di punti: quanti sono PIENI è il segno | alta ●●● · media ●●○ · bassa ●○○ |
+| **Idoneità** | glifo di giudizio + parola, sempre insieme | ? · ✓ · ✕ a tratto · ✕ pieno (definitivo) |
+| **Fonte** | timbro d'archivio: maiuscoletto + data tabellare | verificata di recente · da ricontrollare · vecchia · mai verificata · demo (a cornice) |
+| **Termine** | le CIFRE sono il segno: data tabellare + distanza | fra N giorni · scade oggi/domani · scaduto da N · nessuna scadenza · data da verificare |
+
+I componenti stanno in `src/components/ui/` (ProvenanceMark, ConfidenceBadge,
+EligibilityMark, SourceStamp, DeadlineMark, EvidenceLink, MarkLegend), le
+classi in `app.css`, sezione «MARCATURE». **Aggiungere uno stato è una riga
+nella mappa del componente**: la legenda itera sulle stesse mappe e si
+aggiorna da sola. I glifi sono SVG interni, non caratteri: il sottoinsieme del
+font non c'entra e `fonts:check` nemmeno.
+
+Le regole che il sistema incorpora:
+
+- **L'incertezza non è un guasto.** «Dichiarato incerto» è il prodotto che
+  funziona: dichiara ciò che non può determinare. Sta su `.verify-note` —
+  superficie neutra, filetto puntinato — mai su un fondo rosso. Il **rosso
+  resta a ciò che è andato storto davvero**: analisi fallita, permesso negato,
+  connessione rotta. (Unica eccezione voluta: lo *scaduto* del termine, perché
+  un termine mancato è qualcosa che è andato storto **nel mondo**.)
+- **Un termine non conta i giorni su una data non verificata.** `toVerify`
+  vince sul conteggio: «fra 5 giorni» su una data incerta è un'invenzione
+  (era il difetto dei contratti sulle date `candidate`).
+- **La verificabilità sta in linea.** Ogni campo con evidenza mostra la frase
+  originale senza cambiare pagina (`EvidenceLink`); un campo **senza** evidenza
+  verificata lo dichiara in maiuscoletto muto, non tace.
+- **La legenda è la stessa ovunque** (dettaglio documento, scheda incentivo):
+  si impara una volta, si richiude.
+
 ## Regole che valgono per chi lavora qui dopo
 
 1. **Nessun valore scritto a mano**: misure e colori vengono dai token.

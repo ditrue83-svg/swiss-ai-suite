@@ -18,6 +18,8 @@ import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
 import { ErrorState, EmptyCta, SkeletonLine } from '@/components/ui/states';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { documentHubService } from '@/services/documentHubService';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
@@ -25,8 +27,7 @@ import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, SORTS, SOURCES, STATES,
-  filtersFromParams, hasActiveFilters, paramsFromFilters, rowBadgeTones, splitSnippet,
-  type BadgeTone,
+  filtersFromParams, hasActiveFilters, paramsFromFilters, rowMarks, splitSnippet,
 } from './documentModel';
 import type {
   DocumentCategory, DocumentHubFilters, DocumentHubItem, DocumentSort, DocumentSourceType,
@@ -118,13 +119,9 @@ const SOURCE_KEY: Record<DocumentSourceType, TKey> = {
   pasted_text: 'documents.sources.pasted_text',
 };
 
-/**
- * Lo stato è testo, non solo colore: un badge rosso non dice niente a chi non
- * distingue i colori. QUALE colore lo decide `rowBadgeTones`, che guarda la
- * riga intera — vedi `documentModel.ts`.
- */
-function badgeClass(tone: BadgeTone): string {
-  return `badge badge-${tone}`;
+/** La pastiglia piena di stato: rossa solo per il guasto (vedi `rowMarks`). */
+function stateBadgeClass(state: 'failed' | 'processing' | 'none'): string {
+  return state === 'failed' ? 'badge badge-alta' : 'badge badge-neutral';
 }
 
 export function DocumentsPage() {
@@ -496,11 +493,10 @@ function DocumentRow({
   const categoryLabel = item.category ? category : null;
   const typeMark = docType && docType !== categoryLabel ? docType : null;
   const rest = [categoryLabel, t(SOURCE_KEY[item.sourceType])].filter(Boolean);
-  // ⚠️ I toni si chiedono UNA volta per la riga, non una per pastiglia: la
-  // regola «un solo colore forte per riga» parla della riga, e due pastiglie
-  // che scelgono per conto proprio non possono rispettarla — è così che sono
-  // nate due ambre affiancate su un documento «da verificare» con scadenza.
-  const tones = rowBadgeTones(item);
+  // ⚠️ I marcatori si chiedono UNA volta per la riga, non uno per pastiglia:
+  // la regola parla della riga (su un guasto la scadenza non si mostra), e due
+  // marcatori che scelgono per conto proprio non possono rispettarla.
+  const marks = rowMarks(item);
 
   const snippet = splitSnippet(item.snippet);
 
@@ -536,15 +532,16 @@ function DocumentRow({
       <div className="doc-row-side">
         <span className="doc-row-date">{formatDate(item.documentDate ?? item.createdAt)}</span>
         <div className="doc-row-badges">
-          {item.deadline && tones.deadline && (
-            <span className={badgeClass(tones.deadline)}>
-              {item.deadlineRequiresVerification
-                ? t('documents.deadlineToVerify')
-                : t('documents.deadlineOn', { date: formatDate(item.deadline) })}
-            </span>
+          {marks.deadline && item.deadline && (
+            <DeadlineMark
+              date={item.deadline}
+              display={formatDate(item.deadline)}
+              toVerify={item.deadlineRequiresVerification}
+            />
           )}
-          {tones.state && (
-            <span className={badgeClass(tones.state)}>{t(STATE_KEY[item.state])}</span>
+          {marks.toVerify && <ProvenanceMark kind="toVerify" />}
+          {marks.state && (
+            <span className={stateBadgeClass(marks.state)}>{t(STATE_KEY[item.state])}</span>
           )}
           {item.openTaskCount > 0 && (
             <span className="badge badge-neutral">

@@ -64,63 +64,51 @@ export function needsAttention(item: DocumentHubItem): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// UN SOLO COLORE FORTE PER RIGA (regola 8 del sistema di design).
+// I MARCATORI DELLA RIGA — l'erede di «un solo colore forte per riga».
 //
-// PERCHÉ È UNA FUNZIONE E NON DUE `className` NEL MARKUP. Fino al 2026-08-11 le
-// due pastiglie della riga sceglievano il proprio tono da sole, ognuna
-// guardando solo il proprio dato: un documento «da verificare» con una scadenza
-// dichiarata ne mostrava DUE ambra affiancate. Nessuna delle due era sbagliata
-// presa da sola — ed è esattamente il motivo per cui il difetto è sopravvissuto:
-// la regola non parla di una pastiglia, parla della RIGA, e una regola sulla
-// riga non può vivere in due posti che non si conoscono.
+// LA STORIA, perché spiega la forma. Fino al 2026-08-11 le due pastiglie della
+// riga sceglievano il tono da sole e un «da verificare» con scadenza mostrava
+// DUE ambre affiancate: da lì `rowBadgeTones`, una precedenza che demoteva il
+// perdente a neutro. Quella precedenza era il RIMEDIO a un vocabolario in cui
+// «Da verificare» (uno stato di fiducia) e «Scadenza 10.09» (un termine) erano
+// la stessa identica pastiglia: due colori uguali non dicevano due cose,
+// dicevano «guarda qui» due volte. Dal 2026-08-12 il vocabolario distingue le
+// famiglie per FORMA (marcature tipografiche: cifre per il termine, filetto
+// puntinato per il «da verificare»), e il rimedio può andare in pensione.
 //
-// LA PRECEDENZA, e il perché di quest'ordine:
-//   1. GUASTO (rosso). Se l'analisi non è riuscita, niente in questa riga è
-//      affidabile — nemmeno una data che per qualche ragione fosse rimasta lì.
-//   2. SCADENZA (ambra). «Dice quanto manca»: è il mestiere dell'ambra secondo
-//      il sistema di design, ed è la cosa che ha conseguenze fuori dall'app.
-//   3. STATO (ambra). «Da verificare» è un giudizio sulla LETTURA, non
-//      un'urgenza. ⚠️ Quando è la scadenza stessa a essere incerta la
-//      precedenza si rovescia da sé, senza un caso in più: la pastiglia della
-//      scadenza scende a neutro per conto proprio (§36) e l'ambra resta libera
-//      per lo stato — che a quel punto è l'unica cosa vera da dire.
-//
-// Chi perde NON sparisce: scende a neutro e tiene il suo testo. È il testo a
-// dire la cosa; il colore la classifica soltanto, e un badge colorato non dice
-// niente a chi i colori non li distingue.
+// LA REGOLA NUOVA, che questa funzione decide per tutta la riga:
+//   1. La sola PASTIGLIA PIENA rimasta è il GUASTO (rosso) e gli stati
+//      funzionali neutri (in elaborazione, non analizzato). «Analizzato» resta
+//      non-notizia: nessun marcatore.
+//   2. Su un GUASTO la scadenza NON si mostra: se l'analisi non è riuscita,
+//      niente nella riga è affidabile — nemmeno una data che per qualche
+//      ragione fosse rimasta lì. (Prima scendeva a neutro; era comunque un
+//      numero non affidabile, mostrato.)
+//   3. «Da verificare» è il marcatore epistemico della famiglia provenienza
+//      (filetto puntinato), il termine è la marcatura a cifre: possono
+//      convivere perché non si somigliano più — è il testo a dire la cosa,
+//      la forma la classifica, e nessuna delle due è un riempimento pieno.
 // ---------------------------------------------------------------------------
-/** `alta` e `media` sono i toni FORTI; `neutral` non compete con niente. */
-export type BadgeTone = 'alta' | 'media' | 'neutral';
-
-export function isStrongTone(tone: BadgeTone | null): boolean {
-  return tone === 'alta' || tone === 'media';
+export interface RowMarks {
+  /** La pastiglia PIENA di stato: guasto rosso o stati funzionali neutri. */
+  state: 'failed' | 'processing' | 'none' | null;
+  /** Il marcatore epistemico «da verificare» della lettura. */
+  toVerify: boolean;
+  /** La scadenza si mostra? Su un guasto no. */
+  deadline: boolean;
 }
 
-/** A neutro, conservando l'assenza: `null` è «la pastiglia non c'è». */
-function toNeutral(tone: BadgeTone | null): BadgeTone | null {
-  return tone === null ? null : 'neutral';
-}
-
-export interface RowBadgeTones {
-  /** `null` quando non c'è scadenza da mostrare. */
-  deadline: BadgeTone | null;
-  /** `null` quando lo stato è «analizzato», che non è una notizia. */
-  state: BadgeTone | null;
-}
-
-export function rowBadgeTones(
+export function rowMarks(
   item: Pick<DocumentHubItem, 'state' | 'deadline' | 'deadlineRequiresVerification'>,
-): RowBadgeTones {
-  // Che tono CHIEDEREBBE ciascuna pastiglia guardando solo il proprio dato.
-  const state: BadgeTone | null = item.state === 'analyzed' ? null
-    : item.state === 'failed' ? 'alta'
-      : item.state === 'to_verify' ? 'media' : 'neutral';
-  const deadline: BadgeTone | null = item.deadline === null ? null
-    : item.deadlineRequiresVerification ? 'neutral' : 'media';
-
-  if (state === 'alta') return { deadline: toNeutral(deadline), state };
-  if (deadline === 'media') return { deadline, state: toNeutral(state) };
-  return { deadline, state };
+): RowMarks {
+  const failed = item.state === 'failed';
+  return {
+    state: failed ? 'failed'
+      : item.state === 'processing' ? 'processing'
+        : item.state === 'none' ? 'none' : null,
+    toVerify: item.state === 'to_verify',
+    deadline: item.deadline !== null && !failed,
+  };
 }
 
 /** Un'etichetta ripulita. Stessa regola in creazione e in confronto. */

@@ -4,6 +4,7 @@
 // stato di un messaggio — e perché due copie di questa risposta diventerebbero
 // due verità diverse nella stessa schermata.
 import { Icon } from '@/components/ui/Icon';
+import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { useT, type TFunction } from '@/i18n';
 import type { EmailAttentionStatus, EmailMessageSummary } from '@/types/models';
 
@@ -31,12 +32,19 @@ const ATTENTION_KEY: Record<EmailAttentionStatus, `inbox.attention.${EmailAttent
  */
 function attentionClass(status: EmailAttentionStatus, urgent: boolean): string {
   if (status === 'needs_attention') return urgent ? 'badge-alta' : 'badge-media';
-  if (status === 'to_verify') return 'badge-blue';
   return 'badge-neutral';
 }
 
+/**
+ * ⚠️ Fino al 2026-08-12 questa pastiglia mescolava DUE assi: il valore
+ * EPISTEMICO «da verificare» (un giudizio sulla lettura) e il tono scalato
+ * dal livello di scadenza (un'urgenza operativa). Ora «da verificare» è il
+ * segno della famiglia provenienza — il filetto puntinato, lo stesso di
+ * documenti e analisi — e la pastiglia resta all'attenzione operativa.
+ */
 export function AttentionBadge({ message }: { message: EmailMessageSummary }) {
   const t = useT();
+  if (message.attentionStatus === 'to_verify') return <ProvenanceMark kind="toVerify" />;
   const urgent = message.deadlineLevel === 'scaduta' || message.deadlineLevel === 'urgente';
   return (
     <span className={`badge ${attentionClass(message.attentionStatus, urgent)}`}>
