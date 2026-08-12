@@ -693,9 +693,9 @@ preload del solo peso del testo doveva ottenere.
 
 > ⚠️ **Questa verifica riguarda il layout di quel momento.** Lo stesso giorno,
 > più tardi, tre delle cinque schermate qui sotto — Panoramica, Documenti,
-> dettaglio documento — sono state ristrutturate: vedi «Gerarchia e densità»
-> più avanti. Le misure che seguono restano vere di ciò che erano, e non
-> descrivono più ciò che c'è.
+> dettaglio documento — sono state ristrutturate **e deployate**: vedi
+> «Gerarchia e densità» più avanti. Le misure che seguono restano vere di ciò
+> che erano, e non descrivono più ciò che i clienti vedono adesso.
 
 La verifica del 2026-08-10 si era fermata al CSS compilato: le schermate dietro
 autenticazione non erano state guardate, e questa pagina lo dichiarava. **Adesso
@@ -731,7 +731,7 @@ quindi non causate dal cambio: nella riga dei KPI il terzo numero sta 4 px più 
 alto (quella scheda è un link, `.kpi-link`), e le due voci di Finanze mostrano
 «importo non indicato» — sono i due `NOT_FINANCIAL` già dichiarati sopra.
 
-## ⚠️ Gerarchia e densità — scritto e provato a schermo, NON ancora in produzione
+## ⚠️ Gerarchia e densità — DEPLOYATO il 2026-08-11, e non ancora guardato da nessuno
 
 Tre livelli di superficie (`--surface-1/2/3`), una sola azione primaria per
 schermata con menu di trabocco, colonna di lettura (`--measure`,
@@ -742,11 +742,18 @@ dichiarata. Il come e il perché stanno in
 | | Stato al 2026-08-11 |
 |---|---|
 | Implementato | sì — `app.css`, `ActionMenu.tsx`, `documentModel.ts`, tre schermate |
-| Deployato | **no** — PR aperta, non unita |
+| Deployato | **sì** — PR #34 unita, e gli asset serviti da `app.ai-swisse.com` portano i marcatori del cambio: nel CSS `--surface-1`, `--surface-2: transparent`, `--fill-subtle`, `--measure`, `--content-max`, `.action-bar`, `.btn-toggle`, `.menu-panel`, `.doc-row-badges`; nel JS `action-bar-secondary`, `menu-panel`, `moreActions`, `greetingMorningNamed`, `Offene Massnahmen` |
 | Configurato | non richiede configurazione |
 | Testato | **in parte**: la regola «un solo colore forte per riga» è una funzione pura con 20 combinazioni provate (`test:documents-unit`, sez. 11) e `design:lint` resta verde. Il **layout** non ha test: si guarda |
-| Provato contro la cosa reale | **NO** — vedi qui sotto |
-| Disponibile a clienti esterni | no |
+| Provato contro la cosa reale | **NO** — è deployato, e non l'ha ancora guardato nessuno. Vedi qui sotto |
+| Disponibile a clienti esterni | sì — è l'interfaccia che vedono tutti |
+
+⚠️ **«Deployato» e «provato» sono due parole diverse, e questa riga è il caso in
+cui la distinzione morde.** Il lavoro è in esercizio per tutti i clienti da
+questo pomeriggio, e nessuno l'ha ancora aperto con dati veri: sono i marcatori
+negli asset a dire che è arrivato, non un occhio. La quinta parola resta NO
+finché quell'occhio non c'è — e proprio perché la prima è diventata sì, il
+divario adesso conta più di prima.
 
 ⚠️⚠️ **LA VERIFICA DEL 2026-08-11 QUI SOPRA RIGUARDA IL LAYOUT PRECEDENTE, e
 dirlo è metà del valore di questa pagina.** Le «cinque schermate provate in
@@ -767,9 +774,16 @@ un titolo che va a capo tre volte sono cose che solo i dati veri mostrano.
 ⚠️ Le schermate interne stanno dietro autenticazione e da questa postazione non
 si aprono senza credenziali: **il banco di prova non è una scorciatoia scelta,
 è l'unico strumento disponibile**. Per chiudere il divario serve il gesto che è
-già stato fatto per il carattere — aprire `app.ai-swisse.com` dopo il merge, con
-i dati di un'azienda reale, e guardare. Finché non succede, questa riga dice
-«no» alla quinta parola.
+già stato fatto per il carattere — aprire `app.ai-swisse.com` con i dati di
+un'azienda reale, e guardare. **Adesso si può**: il lavoro è deployato, quindi
+quel gesto non aspetta più niente. Finché non succede, questa riga dice «no»
+alla quinta parola.
+
+⚠️ **E c'è una decisione di prodotto in sospeso, che nessun controllo può
+chiudere**: nella Panoramica la metrica grande è «Azioni da completare», scelta
+leggendo la richiesta come una conferma. Se la metrica che conta di più è
+un'altra, è una classe da spostare (`kpi-hero` / `kpi-sm`) — ma va deciso da una
+persona, non dedotto.
 
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 
