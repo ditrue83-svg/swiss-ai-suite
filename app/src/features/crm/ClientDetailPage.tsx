@@ -20,6 +20,7 @@
 // sono le trattative.
 // ============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Link, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -182,9 +183,12 @@ export function ClientDetailPage() {
           <div className="page-title">{org.displayName}</div>
           {legal && <div className="page-desc">{legal}</div>}
           <div className="crm-roles">
-            <span className="badge badge-neutral">{t(organizationStateKey(state))}</span>
+            <Tag>{t(organizationStateKey(state))}</Tag>
+            {/* Neutro, non blu: gli stessi ruoli erano neutri nell'elenco e blu
+                qui — due pesi per lo stesso fatto. E `badge-blue` è il blu
+                d'AZIONE, che dal 2026-08-13 non marca più uno stato. */}
             {org.roles.map((r) => (
-              <span key={r} className="badge badge-blue">{L.crmRole(r)}</span>
+              <Tag key={r}>{L.crmRole(r)}</Tag>
             ))}
           </div>
         </div>
@@ -384,10 +388,16 @@ function OverviewTab(props: {
           <div className="crm-roles">
             {ALL_ROLES.map((r) => {
               const on = o.roles.includes(r);
+              // ⚠️ `.check-pill` e NON `.badge`: questo si CLICCA. Un badge su
+              // un <button> non porta né bordo né stato di hover — sembra
+              // un'etichetta e invece è il comando che aggiunge o toglie un
+              // ruolo. Lo stesso gesto usa già `.check-pill` in ClientCreatePage
+              // e nei filtri dell'elenco: erano tre vestiti per la stessa
+              // scelta, dentro lo stesso modulo.
               return (
                 <button
                   key={r} type="button" disabled={props.busy}
-                  className={`badge ${on ? 'badge-blue' : 'badge-neutral'}`}
+                  className="check-pill"
                   aria-pressed={on}
                   onClick={() => (on ? props.onRemoveRole(r) : props.onAddRole(r))}
                 >
@@ -522,10 +532,10 @@ function PeopleTab(props: {
                 <div className="list-main">
                   <span className="list-title">{p.contact.displayName}</span>
                   {rel?.isPrimary && (
-                    <span className="badge badge-blue">{t('crm.people.primary')}</span>
+                    <Tag tone="info">{t('crm.people.primary')}</Tag>
                   )}
                   {p.contact.archivedAt && (
-                    <span className="badge badge-neutral">{t('crm.states.archived')}</span>
+                    <Tag>{t('crm.states.archived')}</Tag>
                   )}
                   <div className="list-sub">
                     {rel?.jobTitle ?? <em>—</em>}
@@ -565,9 +575,9 @@ function OpportunitiesTab(props: {
             <Link className="crm-row-link" to={`/clienti/${props.orgId}/opportunita/${d.id}`}>
               <div className="list-main">
                 <span className="list-title">{d.title}</span>
-                <span className="badge badge-neutral">{L.crmStage(d.stage)}</span>
+                <Tag>{L.crmStage(d.stage)}</Tag>
                 {(st === 'overdue_step' || st === 'no_step') && (
-                  <span className="badge badge-media">{t(opportunityStateKey(st))}</span>
+                  <Tag tone="attention">{t(opportunityStateKey(st))}</Tag>
                 )}
               </div>
               <div className="list-sub">
@@ -685,7 +695,7 @@ function DocumentsTab(props: {
           <Link className="crm-row-link" to={`/documenti/${d.documentId}`}>
             <div className="list-main">
               <span className="list-title">{d.title ?? <em>—</em>}</span>
-              <span className="badge badge-neutral">{L.crmRelation(d.relation)}</span>
+              <Tag>{L.crmRelation(d.relation)}</Tag>
             </div>
             <div className="list-sub">
               {d.category && <span>{L.category(d.category)}</span>}
@@ -723,8 +733,8 @@ function ContractsTab(props: {
           <Link className="crm-row-link" to={`/contratti/${c.id}`}>
             <div className="list-main">
               <span className="list-title">{c.displayName}</span>
-              <span className="badge badge-neutral">{L.contractType(c.contractType)}</span>
-              <span className="badge badge-neutral">{L.contractLifecycle(c.lifecycleStatus)}</span>
+              <Tag>{L.contractType(c.contractType)}</Tag>
+              <Tag>{L.contractLifecycle(c.lifecycleStatus)}</Tag>
             </div>
             <div className="list-sub">
               {c.counterpartyName && (

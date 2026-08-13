@@ -13,6 +13,7 @@
 // sempre e solo venticinque righe.
 // ============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -549,11 +550,11 @@ function DocumentRow({
             <span className={stateBadgeClass(marks.state)}>{t(STATE_KEY[item.state])}</span>
           )}
           {item.openTaskCount > 0 && (
-            <span className="badge badge-neutral">
+            <Tag>
               {item.openTaskCount === 1
                 ? t('documents.tasksOpenOne')
                 : t('documents.tasksOpenMany', { n: item.openTaskCount })}
-            </span>
+            </Tag>
           )}
           {item.tags.slice(0, 2).map((tag) => <span className="doc-tag" key={tag.id}>{tag.name}</span>)}
         </div>

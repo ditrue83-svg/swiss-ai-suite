@@ -24,6 +24,7 @@
 //    cascata — il legame delle pratiche che ne sono nate.
 // ============================================================================
 import { useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import { Button, EmptyCta, ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useT, type TKey } from '@/i18n';
@@ -126,7 +127,7 @@ export function ProjectsTab({
                 <div className="list-title">
                   {p.title}
                   {p.status === 'archived' && (
-                    <> <span className="badge badge-neutral">{t('incentives.projects.archived')}</span></>
+                    <> <Tag>{t('incentives.projects.archived')}</Tag></>
                   )}
                 </div>
                 <div className="list-sub">
@@ -150,7 +151,7 @@ export function ProjectsTab({
                 {p.projectTypes.length > 0 && (
                   <div className="badge-row">
                     {p.projectTypes.map((tp) => (
-                      <span key={tp} className="badge badge-neutral">{L.projectType(tp)}</span>
+                      <Tag key={tp}>{L.projectType(tp)}</Tag>
                     ))}
                   </div>
                 )}

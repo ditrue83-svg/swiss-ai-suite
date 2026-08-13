@@ -17,6 +17,7 @@
 //    superato, ed è `not_evaluable` — non «soddisfatto».
 // ============================================================================
 import { useEffect, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import { Button, ErrorState, SkeletonLine } from '@/components/ui/states';
 import { useAuth } from '@/contexts/AuthContext';
@@ -164,7 +165,7 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
               di preparazione. Il prodotto non invia domande. */}
           <div className="row-wrap">
             {o.caseId ? (
-              <span className="badge badge-blue">{t('incentives.caseAlreadyOpen')}</span>
+              <Tag tone="info">{t('incentives.caseAlreadyOpen')}</Tag>
             ) : (
               <Button variant="primary" icon="fileSignature" loading={creating} onClick={() => void createCase()}>
                 {t('incentives.openCase')}

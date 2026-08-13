@@ -817,6 +817,47 @@ stessa forma, ma su fondi di **due blu diversi** — `--accent` nell'app,
 vetrina tiene i colori del marchio per scelta. Se il marchio cambia, i posti da
 toccare a mano sono due.
 
+## Le etichette — COMMITTATO il 2026-08-14, non ancora deployato
+
+Le pastiglie che **classificano** (ruolo, tipo, fase, valuta) passano da un
+componente solo, `components/ui/Tag.tsx`, invece di essere scritte a mano in
+ogni modulo. Il come e il perché stanno in
+[`design-system.md`](design-system.md); qui c'è lo stato.
+
+| | Stato al 2026-08-14 |
+|---|---|
+| Implementato | sì — `Tag.tsx` più 27 file toccati; 57 pastiglie scritte a mano tolte da 17 moduli |
+| Deployato | **NO** — commit `658a2ae` nello specchio, PR aperta, nessun merge |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 116 casi: §9 (nessuna pastiglia a mano nei moduli) e §7 estesa ai toni di `Tag`. Entrambi provati sul rosso che devono dare |
+| Provato contro la cosa reale | **NO, e va detto per intero**: le schermate toccate — CRM, Incentivi, Automazioni, Inbox, Contratti — stanno **tutte dietro auth**. La verifica è stata `typecheck`, `build` e la pagina di accesso. Nessuno ha ancora guardato una pastiglia con dati veri |
+| Disponibile a clienti esterni | **no** — finché non è unito |
+
+⚠️ **Tre difetti che questo lavoro CORREGGE, e che nessun controllo vedeva** —
+perché non c'era niente da controllare: erano stringhe.
+
+1. Lo **stesso** stato di relazione era rosso/ambra/blu nell'elenco clienti e
+   **grigio neutro** nella scheda dello stesso cliente. Un'azienda con attività
+   scadute gridava in un posto e taceva nell'altro.
+2. Gli **stessi** ruoli erano neutri nell'elenco e **blu** nella scheda — e
+   `badge-blue` è il blu d'**azione**, che dal 2026-08-13 non marca più stati.
+3. Lo stato di un'opportunità portava l'**ambra**, il colore che ovunque nel
+   prodotto significa «attenzione», su un fatto del tutto normale.
+
+⚠️ **Quattro cose restano senza famiglia**, dichiarate in `design-system.md`:
+lo stato di salute di una relazione, lo stato di una pratica incentivi, il
+punteggio di pertinenza, lo stato di un criterio. Nessuna delle nove famiglie
+può ospitarle senza prestare il proprio segno a un'altra. Sono **decisioni di
+prodotto**, non lavoro rimasto indietro.
+
+⛔ **La provenienza delle attività NON è stata aggiunta, e non si può.**
+`task.source` dice quale MODULO ha creato l'attività, non se il documento
+chiedesse quella cosa: la distinzione vive su `ChecklistAction.sourceType`, e
+`stepsFromActions` copia solo il testo — `task_checklist_items` ha la sola
+colonna `text`. Marcare da `task.source` scriverebbe «suggerimento» su azioni
+richieste nero su bianco. Il divario è dichiarato dal 2026-08-13 e resta;
+chiuderlo richiede una **migrazione**.
+
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 
 `npm run test:production -- --no-skip` → **VERDE**, 3 passi, 10,8 s. Non provano

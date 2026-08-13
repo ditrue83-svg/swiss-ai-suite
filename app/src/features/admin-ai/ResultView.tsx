@@ -1,6 +1,8 @@
 // Vista risultato analisi (porting fedele di renderResult): due colonne desktop,
 // documento originale con evidenziazione, checklist, rischio, bozza modificabile.
 import { useEffect, useRef, useState } from 'react';
+import { PriorityMark } from '@/components/ui/PriorityMark';
+import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import { analysisService } from '@/services/analysisService';
 import { actionProgressService } from '@/services/actionProgressService';
@@ -119,7 +121,7 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
       <div className="ax-field-head">
         <div><b>{label}:</b>{' '}
           {current != null
-            ? <span>{current} <span className="badge badge-neutral">{tt('adminAi.result.correctedByHand')}</span></span>
+            ? <span>{current} <Tag>{tt('adminAi.result.correctedByHand')}</Tag></span>
             : <span>{aiDisplay || '—'}</span>}
         </div>
         {!editing && (
@@ -371,7 +373,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
         <div className="card ax-header">
           <div className="ax-head-top">
             <div className="ax-title">{document.title}</div>
-            <div className="ax-badges"><span className="badge badge-alta">{t('adminAi.result.failedTitle')}</span></div>
+            <div className="ax-badges"><Tag tone="alert">{t('adminAi.result.failedTitle')}</Tag></div>
           </div>
           <div className="warn-box mt-14">
             <Icon name="alert" />
@@ -434,7 +436,12 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
           <div className="ax-title">{document.title}</div>
           <div className="ax-badges">
             {r.analysisStatus === 'needs_review' && <ProvenanceMark kind="toVerify" />}
-            <span className={`badge badge-${r.urgency}`}>{t('adminAi.result.urgencyChip', { level: L.urgency(r.urgency) })}</span>
+            {/* L'urgenza del documento È una priorità, e la priorità ha la sua
+                famiglia: una direzione, non una pastiglia colorata. Prima erano
+                tre pastiglie identiche di tre colori — la forma non diceva
+                niente, lo diceva solo il colore, che è la cosa che il
+                vocabolario della fiducia esiste per correggere. */}
+            <PriorityMark level={r.urgency} />
             <ConfidenceBadge level={r.confidence} />
           </div>
         </div>
@@ -595,7 +602,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               {r.amounts.map((m, i) => (
                 <div className="action-item py-2" key={`amt-${i}`}>
                   <span className="ai-main">
-                    <span className="ai-text"><b>{m.display}</b>{m.description ? ` — ${m.description}` : ''} <span className="badge badge-neutral">{L.amountType(m.type)}</span></span>
+                    <span className="ai-text"><b>{m.display}</b>{m.description ? ` — ${m.description}` : ''} <Tag>{L.amountType(m.type)}</Tag></span>
                     {m.evidence && <div className="ai-meta"><EvidenceButton evidence={m.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                   </span>
                 </div>

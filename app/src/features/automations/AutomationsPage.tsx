@@ -10,6 +10,7 @@
 // se è accesa, quando ha lavorato l'ultima volta, se c'è qualcosa che non va.
 // ============================================================================
 import { useMemo, useState } from 'react';
+import { Tag, type TagTone } from '@/components/ui/Tag';
 import { Link, useNavigate } from 'react-router-dom';
 import { automationService } from '@/services/automationService';
 import { documentHubService } from '@/services/documentHubService';
@@ -206,8 +207,8 @@ function AutomationRow({ workflow, names }: { workflow: Workflow; names: NameRes
   const { localeTag } = useI18n();
   const trigger = findTrigger(workflow.triggerType);
   const attention = attentionKey(workflow.attentionCode);
-  const badgeClass = workflow.status === 'active' ? 'badge-bassa'
-    : workflow.status === 'paused' ? 'badge-media' : 'badge-neutral';
+  const badgeClass = workflow.status === 'active' ? 'ok'
+    : workflow.status === 'paused' ? 'attention' : 'neutral';
 
   return (
     <Link className="list-row is-link" to={`/automazioni/${workflow.id}`} aria-label={workflow.name}>
@@ -219,14 +220,14 @@ function AutomationRow({ workflow, names }: { workflow: Workflow; names: NameRes
             <> · {workflow.actions.map((a) => describeAction(t, a, names)).join(' · ')}</>
           )}
         </div>
-        {attention && <div className="list-sub"><span className="badge badge-alta">{t(attention)}</span></div>}
+        {attention && <div className="list-sub"><Tag tone="alert">{t(attention)}</Tag></div>}
       </div>
-      <span className={`badge ${badgeClass}`}>{t(statusLabelKey(workflow.status))}</span>
-      <span className="badge badge-neutral">
+      <Tag tone={badgeClass}>{t(statusLabelKey(workflow.status))}</Tag>
+      <Tag>
         {workflow.lastRunAt
           ? t('automations.lastRunAt', { when: relativeTime(workflow.lastRunAt, localeTag) })
           : t('automations.neverRun')}
-      </span>
+      </Tag>
     </Link>
   );
 }

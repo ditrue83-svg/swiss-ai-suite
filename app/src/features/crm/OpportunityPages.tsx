@@ -16,6 +16,7 @@
 // crea una seconda a ogni salvataggio.
 // ============================================================================
 import { useCallback, useEffect, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -281,8 +282,8 @@ export function OpportunityDetailPage() {
             <Link to={`/clienti/${deal.organizationId}`}>{deal.organizationName}</Link>
           </div>
           <div className="crm-roles">
-            <span className="badge badge-blue">{L.crmStage(deal.stage)}</span>
-            <span className="badge badge-neutral">{t(opportunityStateKey(st))}</span>
+            <Tag tone="info">{L.crmStage(deal.stage)}</Tag>
+            <Tag>{t(opportunityStateKey(st))}</Tag>
           </div>
         </div>
         <div className="row-wrap">

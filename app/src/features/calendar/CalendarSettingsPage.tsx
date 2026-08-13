@@ -19,6 +19,7 @@
 // falso per uno dei due.
 // ============================================================================
 import { useCallback, useEffect, useState } from 'react';
+import { Tag, type TagTone } from '@/components/ui/Tag';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, ErrorState, SkeletonLine } from '@/components/ui/states';
@@ -41,11 +42,11 @@ const STATUS_KEY = {
   disconnected: 'calendar.statusDisconnected',
 } as const;
 
-const STATUS_CLASS = {
-  active: 'badge-neutral',
-  reauth_required: 'badge-alta',
-  error: 'badge-alta',
-  disconnected: 'badge-neutral',
+const STATUS_TONE = {
+  active: 'neutral',
+  reauth_required: 'alert',
+  error: 'alert',
+  disconnected: 'neutral',
 } as const;
 
 export function CalendarSettingsPage() {
@@ -282,7 +283,7 @@ export function CalendarSettingsPage() {
                     )}
                   </div>
                 </div>
-                <span className={`badge ${STATUS_CLASS[connection.status]}`}>{t(STATUS_KEY[connection.status])}</span>
+                <Tag tone={STATUS_TONE[connection.status]}>{t(STATUS_KEY[connection.status])}</Tag>
               </div>
 
               <div className="row-wrap">

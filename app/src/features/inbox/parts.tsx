@@ -4,6 +4,7 @@
 // stato di un messaggio — e perché due copie di questa risposta diventerebbero
 // due verità diverse nella stessa schermata.
 import { Icon } from '@/components/ui/Icon';
+import { Tag, type TagTone } from '@/components/ui/Tag';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { useT, type TFunction } from '@/i18n';
 import type { EmailAttentionStatus, EmailMessageSummary } from '@/types/models';
@@ -30,9 +31,9 @@ const ATTENTION_KEY: Record<EmailAttentionStatus, `inbox.attention.${EmailAttent
  * Classe della pastiglia. Il colore NON è l'unica informazione (§67): il testo
  * dice già di cosa si tratta, e chi non distingue i colori legge la stessa cosa.
  */
-function attentionClass(status: EmailAttentionStatus, urgent: boolean): string {
-  if (status === 'needs_attention') return urgent ? 'badge-alta' : 'badge-media';
-  return 'badge-neutral';
+function attentionClass(status: EmailAttentionStatus, urgent: boolean): TagTone {
+  if (status === 'needs_attention') return urgent ? 'alert' : 'attention';
+  return 'neutral';
 }
 
 /**
@@ -47,9 +48,9 @@ export function AttentionBadge({ message }: { message: EmailMessageSummary }) {
   if (message.attentionStatus === 'to_verify') return <ProvenanceMark kind="toVerify" />;
   const urgent = message.deadlineLevel === 'scaduta' || message.deadlineLevel === 'urgente';
   return (
-    <span className={`badge ${attentionClass(message.attentionStatus, urgent)}`}>
+    <Tag tone={attentionClass(message.attentionStatus, urgent)}>
       {t(ATTENTION_KEY[message.attentionStatus])}
-    </span>
+    </Tag>
   );
 }
 

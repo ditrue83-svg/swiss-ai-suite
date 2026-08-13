@@ -574,6 +574,54 @@ Le regole che il sistema incorpora:
   dizionario: `subsidy.cases.statuses.approved` registra l'esito deciso da
   un'autorità, ed è un fatto vero che si deve poter dire.
 
+### L'etichetta non è una marcatura — `Tag`
+
+Le nove famiglie rispondono a una domanda ciascuna. Una **etichetta** non
+risponde a nessuna: dice a quale insieme una cosa appartiene — il ruolo di una
+persona, il tipo di un contratto, la valuta, la fase di un'opportunità. È una
+parola, non un giudizio, e vive in `components/ui/Tag.tsx`.
+
+⚠️ **`.badge` esisteva da sempre: quello che mancava era il componente, e la
+differenza è misurabile.** Finché era una classe, ogni modulo scriveva il
+proprio `<span className="badge badge-…">` e sceglieva il tono a occhio. Il
+2026-08-14, contando gli usi nei moduli: **57 pastiglie scritte a mano** in
+diciassette file, e tre difetti che nessun controllo poteva vedere perché non
+c'era niente da controllare — erano stringhe:
+
+- lo **stesso** stato di relazione era rosso, ambra o blu nell'elenco clienti e
+  **grigio neutro** nella scheda dello stesso cliente: un'azienda con attività
+  scadute gridava in un posto e taceva nell'altro;
+- gli **stessi** ruoli erano neutri nell'elenco e **blu** nella scheda — e
+  `badge-blue` è `--accent-soft`, il blu d'**azione**, che dal 2026-08-13 non
+  marca più uno stato;
+- lo stato di un'opportunità portava l'**ambra**, cioè il colore che in tutto il
+  resto del prodotto significa «attenzione», su un fatto del tutto normale.
+
+**Il tono ha un default e si omette.** `Tag` rende `neutral` se non gli si dice
+altro; `info`, `attention`, `ok` e `alert` si scrivono solo sapendo dire perché.
+`test:shell-unit` §9 fallisce su ogni pastiglia scritta a mano nei moduli, e §7
+— che vieta i toni d'allarme dove parlano i segni — ora guarda **anche** i toni
+di `Tag`, comprese le tabelle `STATUS_TONE = { error: 'alert' }`: un controllo
+che guardasse le sole classi vecchie diventerebbe cieco proprio mentre il codice
+che sorveglia cambia.
+
+⚠️ **Che cosa NON è stato migrato, e perché non è una dimenticanza.** Un
+inventario dei moduli ha classificato ogni uso: la maggior parte non sono
+marcature (filtri cliccabili, contatori, etichette di lingua, navigazione) e
+restano quello che sono. Restano invece **senza famiglia** quattro cose che una
+famiglia la vorrebbero, e che nessuna delle nove può ospitare senza prestare il
+proprio segno a un'altra — cosa che questo sistema vieta:
+
+| che cosa | dove |
+|---|---|
+| lo stato di salute di una **relazione** (otto valori) | `crm/ClientsPage`, `crm/ClientDetailPage` |
+| lo stato di una **pratica** incentivi | `incentives/CasesTab` |
+| il punteggio di **pertinenza** di un programma | `subsidy-ai/ResultsList`, `ProgramDetail` |
+| lo stato di un **criterio** nel verdetto | `incentives/OpportunityDetail` |
+
+Sono decisioni di prodotto — quante famiglie deve avere il vocabolario — non
+lavoro di consolidamento, e vanno prese guardando, non dedotte.
+
 ### Un divario dichiarato: la provenienza dei passaggi di un'attività
 
 `ChecklistAction.sourceType` distingue ciò che un documento **richiede** da ciò

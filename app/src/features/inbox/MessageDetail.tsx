@@ -15,6 +15,7 @@
 // scelta dal mittente si mostra il DOMINIO REALE di destinazione (§56).
 // ============================================================================
 import { useCallback, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, ErrorState, SkeletonLine } from '@/components/ui/states';
@@ -348,7 +349,7 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
                 {d.state === 'to_verify'
                   ? <ProvenanceMark kind="toVerify" />
                   : d.state && (
-                    <span className="badge badge-neutral">{t(`documents.states.${d.state}` as const)}</span>
+                    <Tag>{t(`documents.states.${d.state}` as const)}</Tag>
                   )}
                 <Link className="btn btn-sm" to={`/documenti/${d.documentId}`}>
                   <Icon name="document" className="ic-sm" /> {t('inbox.detail.openDocument')}
@@ -377,9 +378,9 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
                     {a.sizeBytes ? ` · ${formatBytes(a.sizeBytes)}` : ''}
                   </span>
                 </span>
-                <span className="badge badge-neutral">
+                <Tag>
                   {t(`inbox.attachmentStatus.${a.importStatus}` as const)}
-                </span>
+                </Tag>
                 {a.storagePath && (
                   <button className="btn btn-sm" disabled={busy} onClick={() => openAttachment(a)}>
                     <Icon name="download" className="ic-sm" /> {t('inbox.detail.openFile')}

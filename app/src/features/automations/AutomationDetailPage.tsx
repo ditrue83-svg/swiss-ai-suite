@@ -11,6 +11,7 @@
 // è stata scritta.
 // ============================================================================
 import { useState } from 'react';
+import { Tag, type TagTone } from '@/components/ui/Tag';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { automationService } from '@/services/automationService';
 import { documentHubService } from '@/services/documentHubService';
@@ -100,10 +101,10 @@ export function AutomationDetailPage() {
       <div className="card mt-16">
         <div className="card-title">{t('automations.sectionStatus')}</div>
         <div className="row-wrap">
-          <span className={`badge ${workflow.status === 'active' ? 'badge-bassa'
-            : workflow.status === 'paused' ? 'badge-media' : 'badge-neutral'}`}>
+          <Tag tone={workflow.status === 'active' ? 'ok'
+            : workflow.status === 'paused' ? 'attention' : 'neutral'}>
             {t(statusLabelKey(workflow.status))}
-          </span>
+          </Tag>
           <span className="muted-sm">
             {workflow.lastRunAt
               ? t('automations.lastRunAt', { when: relativeTime(workflow.lastRunAt, localeTag) })
@@ -244,9 +245,9 @@ function RunRow({
   run, workflowId, localeTag,
 }: { run: WorkflowRun; workflowId: string; localeTag: string }) {
   const t = useT();
-  const badge = run.status === 'succeeded' ? 'badge-bassa'
-    : run.status === 'partial' ? 'badge-media'
-    : run.status === 'failed' ? 'badge-alta' : 'badge-neutral';
+  const badge = run.status === 'succeeded' ? 'ok'
+    : run.status === 'partial' ? 'attention'
+    : run.status === 'failed' ? 'alert' : 'neutral';
 
   return (
     <Link className="list-row is-link" to={`/automazioni/${workflowId}/esecuzioni/${run.id}`}>
@@ -257,7 +258,7 @@ function RunRow({
           {run.durationMs !== null && ` · ${t('automations.runDuration', { ms: run.durationMs })}`}
         </div>
       </div>
-      <span className={`badge ${badge}`}>{t(runStatusLabelKey(run.status))}</span>
+      <Tag tone={badge}>{t(runStatusLabelKey(run.status))}</Tag>
     </Link>
   );
 }

@@ -20,6 +20,7 @@
 // tastiera premuta su mille clienti è traffico inutile.
 // ============================================================================
 import { useEffect, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -136,7 +137,7 @@ export function CrmLinkPicker(props: Props) {
 
       {props.linkedId ? (
         <div className="row-wrap">
-          <span className="badge badge-blue">{props.linkedName ?? props.linkedId.slice(0, 8)}</span>
+          <Tag tone="info">{props.linkedName ?? props.linkedId.slice(0, 8)}</Tag>
           <button
             type="button" className="btn btn-sm btn-ghost"
             disabled={props.disabled || busy}
