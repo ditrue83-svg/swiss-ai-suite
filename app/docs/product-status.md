@@ -678,7 +678,7 @@ qui c'è solo lo stato, con le sei parole.
 | Implementato | sì — `src/styles/fonts.css`, tre pesi in `public/fonts/` |
 | Deployato | **sì** — `app.ai-swisse.com` serve i tre `.woff2` con `HTTP 200`, `content-type: font/woff2` e `cache-control: immutable`, e le loro **impronte sha256 coincidono con quelle fissate in `fonts-check.mjs`**: i byte sono arrivati intatti fino al CDN |
 | Configurato | non richiede configurazione: nessun segreto, nessuno scheduler |
-| Testato | **sì** — `npm run fonts:check` in CI (impronte, copertura dei dizionari, cablaggio di preload e `@font-face`), 15 casi di autoverifica |
+| Testato | **sì** — `npm run fonts:check` in CI (impronte, copertura, cablaggio di preload e `@font-face`), 18 casi di autoverifica. ⚠️ Fino al 2026-08-13 la «copertura» era misurata contro la gamma chiesta al subsetter e non contro i file: vedi più avanti |
 | Provato contro la cosa reale | **sì**, sul dominio: vedi la misura qui sotto |
 | Disponibile a clienti esterni | sì — è l'interfaccia che vedono tutti |
 
@@ -784,6 +784,38 @@ chiudere**: nella Panoramica la metrica grande è «Azioni da completare», scel
 leggendo la richiesta come una conferma. Se la metrica che conta di più è
 un'altra, è una classe da spostare (`kpi-hero` / `kpi-sm`) — ma va deciso da una
 persona, non dedotto.
+
+## Il marchio e i pesi del carattere — COMMITTATO il 2026-08-13, non ancora deployato
+
+Il marchio non è più una lettera in un quadrato: è il wordmark che il titolare
+usa già sulla vetrina («AI» in un blocco, poi «Swisse»), ricomposto in Inter. E
+sotto ci sono tre difetti del carattere che nessun controllo vedeva. Il come e
+il perché stanno in [`design-system.md`](design-system.md); qui c'è lo stato.
+
+| | Stato al 2026-08-13 |
+|---|---|
+| Implementato | sì — `BrandMark.tsx` (nove punti di montaggio), favicon in `index.html`, `app.css`, `extra.css`, `fonts-check.mjs` |
+| Deployato | **NO** — commit `19653fa` nello specchio, PR aperta, nessun merge |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 115 casi (§3 favicon, §3b marchio, §8 cifre tabulari), `test:print-unit` 62, `fonts:check` con la copertura letta dalla cmap dei file. Ogni controllo nuovo è stato **provato sul rosso che deve dare** |
+| Provato contro la cosa reale | **in parte, e va detto come**: il marchio, i KPI e le barre sono stati guardati a 1280/768/375, nei due temi e nelle tre lingue, **con le regole CSS vere ma dati inventati** — le schermate interne stanno dietro auth. La pagina di accesso è invece quella vera. Il **PDF del dettaglio documento non è stato riprodotto** |
+| Disponibile a clienti esterni | **no** — finché non è unito |
+
+⚠️ **Che cosa NON è stato riprovato, e non va sottinteso.** La stampa: che
+`@media print` non tocchi `font-family` ora è presidiato da un test sul CSS
+(`test:print-unit`), ma **un test sul CSS non è un PDF aperto**. L'unica prova su
+un PDF vero resta quella del 2026-08-10, che non dice quale schermata sia stata
+esportata e precede otto commit sui fogli di stile. La quinta parola per la
+stampa vale «no» finché qualcuno non esporta il dettaglio documento e guarda i
+font incorporati.
+
+⚠️ **La coerenza fra il marchio dell'app e quello della vetrina non è
+sorvegliata da niente.** `site/` è una base di codice separata, invisibile da
+questo albero: nessun controllo di qui può leggerla. Oggi i due segni sono la
+stessa forma, ma su fondi di **due blu diversi** — `--accent` nell'app,
+`#00AEEF` sulla vetrina — ed è un divario **dichiarato**, non una svista: la
+vetrina tiene i colori del marchio per scelta. Se il marchio cambia, i posti da
+toccare a mano sono due.
 
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 

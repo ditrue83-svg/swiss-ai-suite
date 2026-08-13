@@ -6,6 +6,7 @@ import { RegistryLookup, type RegistryFields } from '@/features/companies/Regist
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { toUserMessage } from '@/lib/errors';
 import { formatUid, isValidUid } from '@/lib/uid';
 import { useT } from '@/i18n';
@@ -93,8 +94,7 @@ export function OnboardingPage() {
     <div className="centered-screen">
       <div className="auth-card onboarding-card">
         <div className="auth-brand">
-          <div className="brand-mark" aria-hidden="true"><Icon name="building" /></div>
-          <div><div className="brand-name">{t('brand.name')}</div><div className="brand-sub">{t('brand.tagline')}</div></div>
+          <BrandMark />
         </div>
         <div className="auth-title">{t('onboarding.title')}</div>
         <div className="auth-sub">{t('onboarding.subtitle')}</div>

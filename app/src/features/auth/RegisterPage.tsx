@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 
@@ -47,11 +48,7 @@ export function RegisterPage() {
     <div className="centered-screen">
       <div className="auth-card">
         <div className="auth-brand">
-          <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div>
-            <div className="brand-name">{t('brand.name')}</div>
-            <div className="brand-sub">{t('brand.tagline')}</div>
-          </div>
+          <BrandMark />
         </div>
         <div className="auth-title">{t('auth.register.title')}</div>
         <div className="auth-sub">{t('auth.register.subtitle')}</div>

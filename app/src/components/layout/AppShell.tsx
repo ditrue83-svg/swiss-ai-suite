@@ -6,6 +6,7 @@
 import { useEffect, useId, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches } from './nav';
 import type { TKey } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -186,9 +187,11 @@ export function AppShell() {
         <button className="hamburger" aria-label={t('nav.openMenu')} aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}>
           <Icon name="menu" />
         </button>
+        {/* Sul telefono il marchio sta fra l'hamburger e la campanella, dentro
+            una barra di altezza fissa: la riga di sottotitolo la farebbe
+            crescere in altezza, quindi qui non c'è. */}
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div className="brand-name">{t('brand.name')}</div>
+          <BrandMark tagline={false} />
         </div>
         {/* Su schermo stretto la campanella sta qui; su desktop questa barra è
             nascosta dal CSS e quella che si vede è nella colonna laterale. */}
@@ -200,11 +203,7 @@ export function AppShell() {
           all'aside sarebbe annunciare due volte la stessa cosa. */}
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div>
-            <div className="brand-name">{t('brand.name')}</div>
-            <div className="brand-sub">{t('brand.tagline')}</div>
-          </div>
+          <BrandMark />
           <NotificationBell count={count} setCount={setCount} />
         </div>
         <CompanySwitch />
@@ -217,11 +216,7 @@ export function AppShell() {
       <aside className={`drawer${drawerOpen ? ' open' : ''}`} aria-label={t('nav.menu')} aria-hidden={!drawerOpen}>
         <button className="drawer-close" aria-label={t('nav.closeMenu')} onClick={() => setDrawerOpen(false)}><Icon name="close" /></button>
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div>
-            <div className="brand-name">{t('brand.name')}</div>
-            <div className="brand-sub">{t('brand.tagline')}</div>
-          </div>
+          <BrandMark />
         </div>
         <CompanySwitch />
         <NavList onNavigate={() => setDrawerOpen(false)} />
