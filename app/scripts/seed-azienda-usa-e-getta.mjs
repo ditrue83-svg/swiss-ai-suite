@@ -181,9 +181,12 @@ async function semina(email) {
   }
 
   // --- Incentivi: i progetti si scrivono, le opportunità no (vedi testata).
+  // ⚠️ Le chiavi dei tipi di progetto sono ITALIANE (subsidy.labels.projectTypes):
+  // «energy_efficiency» non esiste e l'interfaccia mostrerebbe la chiave grezza.
+  // La colonna è string[] e non vincola nulla: l'errore arriva fino allo schermo.
   const PRJ = [
-    ['Efficienza energetica capannone', 'planned', 180000, ['energy_efficiency']],
-    ['Digitalizzazione cantieri', 'idea', 75000, ['digitalisation']],
+    ['Efficienza energetica capannone', 'planned', 180000, ['energia']],
+    ['Digitalizzazione cantieri', 'idea', 75000, ['digitalizzazione']],
   ];
   for (const [titolo, fase, budget, tipi] of PRJ) {
     ok((await admin.from('subsidy_projects').insert({
