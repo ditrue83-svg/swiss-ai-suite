@@ -817,7 +817,7 @@ stessa forma, ma su fondi di **due blu diversi** — `--accent` nell'app,
 vetrina tiene i colori del marchio per scelta. Se il marchio cambia, i posti da
 toccare a mano sono due.
 
-## Le etichette — COMMITTATO il 2026-08-14, non ancora deployato
+## Le etichette — IN PRODUZIONE dal 2026-08-14, e GUARDATE con dei dati
 
 Le pastiglie che **classificano** (ruolo, tipo, fase, valuta) passano da un
 componente solo, `components/ui/Tag.tsx`, invece di essere scritte a mano in
@@ -827,11 +827,19 @@ ogni modulo. Il come e il perché stanno in
 | | Stato al 2026-08-14 |
 |---|---|
 | Implementato | sì — `Tag.tsx` più 27 file toccati; 57 pastiglie scritte a mano tolte da 17 moduli |
-| Deployato | **NO** — commit `658a2ae` nello specchio, PR aperta, nessun merge |
+| Deployato | **sì** — PR #48 unita, marcatori verificati nel bundle servito |
 | Configurato | non richiede configurazione |
 | Testato | **sì** — `test:shell-unit` 116 casi: §9 (nessuna pastiglia a mano nei moduli) e §7 estesa ai toni di `Tag`. Entrambi provati sul rosso che devono dare |
-| Provato contro la cosa reale | **NO, e va detto per intero**: le schermate toccate — CRM, Incentivi, Automazioni, Inbox, Contratti — stanno **tutte dietro auth**. La verifica è stata `typecheck`, `build` e la pagina di accesso. Nessuno ha ancora guardato una pastiglia con dati veri |
-| Disponibile a clienti esterni | **no** — finché non è unito |
+| Provato contro la cosa reale | **sì, e va detto COME**: con un'azienda usa-e-getta seminata in produzione (`scripts/seed-azienda-usa-e-getta.mjs`) e poi rimossa. CRM, Contratti, Automazioni e Incentivi guardati con dei dati, nelle tre lingue: nessuno sforo, nessuno scorrimento orizzontale, nessuna incoerenza di tono **dentro** una schermata. ⚠️ I dati erano **seminati, non di un'azienda che lavora**: le forme si sono viste, i casi che nascono dall'uso no |
+| Disponibile a clienti esterni | sì — è l'interfaccia che vedono tutti |
+
+⚠️ **PERCHÉ È SERVITA UN'AZIENDA FINTA, e non è un dettaglio di metodo.**
+Il 2026-08-14, entrando in produzione con la sessione vera, **quattro moduli su
+cinque erano VUOTI**: Rossi SA non ha clienti, contratti, automazioni né
+progetti incentivi. Le etichette erano in esercizio e non le rendeva nulla — la
+quinta parola non si poteva mettere a «sì» guardando meglio, perché non c'era
+niente da guardare. È il caso in cui il divario si chiude solo mettendo dei dati
+davanti agli occhi, e poi togliendoli.
 
 ⚠️ **Tre difetti che questo lavoro CORREGGE, e che nessun controllo vedeva** —
 perché non c'era niente da controllare: erano stringhe.
@@ -857,6 +865,46 @@ chiedesse quella cosa: la distinzione vive su `ChecklistAction.sourceType`, e
 colonna `text`. Marcare da `task.source` scriverebbe «suggerimento» su azioni
 richieste nero su bianco. Il divario è dichiarato dal 2026-08-13 e resta;
 chiuderlo richiede una **migrazione**.
+
+## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
+
+Trovato il 2026-08-14 guardando la produzione con **due** aziende. **Non è
+corretto**: è un cambio di comportamento in un contesto centrale, e la
+decisione è di chi conduce il prodotto.
+
+Si sceglie la seconda azienda nel selettore, si ricarica la pagina, e si torna
+sulla **prima** — con la preferenza in `localStorage`
+(`swissai.activeCompanyId`) **sovrascritta**, non semplicemente ignorata.
+
+Il meccanismo, in `src/contexts/CompanyContext.tsx`: lo stato nasce da
+`readStored()` (riga 50), ma al primo render l'autenticazione non è ancora
+risolta, quindi `user` è `null`; il ramo «niente utente» (righe 88-100) esegue
+`setActiveCompanyId(null)` e l'effetto di persistenza (righe 105-107) scrive
+subito quel `null`, **cancellando la preferenza**. Quando l'utente arriva,
+`loadMemberships` trova `prev === null` e sceglie `list[0]`.
+
+**La causa in una frase**: quel ramo non distingue **«disconnesso»** da **«non
+ancora saputo»**, e distrugge una preferenza a ogni caricamento di pagina.
+
+⚠️ **Perché non l'aveva visto nessuno**: si vede solo con **più di un'azienda**,
+e in produzione ce n'era una sola. Chi ne ha due legge documenti, scadenze e
+contratti dell'azienda sbagliata **senza accorgersene** — non c'è nessun
+segnale, perché dal punto di vista dell'applicazione quella È l'azienda attiva.
+
+## ⚠️ APERTO — valori attaccati senza separatore in `.list-sub`
+
+Si legge «Accordo di riservatezza**Keller Bau AG**» nell'elenco dei contratti e
+«Zürich (ZH)**Nessun responsabile**Nessuna persona di contatto» in quello dei
+clienti. `.list-sub` (`app.css`) non ha nessuna regola che separi gli `<span>`
+adiacenti, e alcuni chiamanti ne mettono più d'uno di fila
+(`contracts/ContractsPage.tsx:441-447`, `crm/ClientsPage.tsx`); altrove il `·` è
+scritto **a mano** nel JSX (`tasks/TaskDetailPage.tsx:396`), che è la ragione
+per cui la mancanza non salta all'occhio leggendo il codice.
+
+Preesistente — nasce in `59d3245`, verificato con `git log -L`, e non è un
+effetto della migrazione a `Tag`. Non corretto qui perché una regola su
+`.list-sub span + span` toccherebbe ogni chiamante in una volta, compresi
+quelli che il separatore ce l'hanno già: va guardata schermata per schermata.
 
 ## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
 
