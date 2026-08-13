@@ -67,6 +67,24 @@ export function sezionePrAperte(pr) {
   return `### Le PR aperte\n\n${pr.map((p) => `- **#${p.number}** ${p.title} → \`${p.baseRefName}\``).join('\n')}\n`;
 }
 
+/** Le misure git che NON si sono potute prendere — CONTATE, non solo scritte.
+ *
+ *  ⚠️ PERCHÉ. Fino al 2026-08-12 il contatore cresceva SOLO se mancava la
+ *  cartella del monorepo: con la cartella presente e un comando git fallito
+ *  (origin/main non risolto, ref mai fetchato) le righe del foglio dicevano
+ *  «non misurato» ma l'intestazione diceva «Tutte le misure sono state prese»
+ *  e l'uscita era 0. È la bugia che l'intestazione di questo file dichiara di
+ *  impedire, e sta nel codice di uscita — l'unica cosa che un'automazione
+ *  legge. `null` = il comando è fallito; `''` è una MISURA (albero allineato
+ *  per i commit, HEAD staccato per il ramo), non un guasto. */
+export function misureGitMancanti({ hasMono, ramo, sopraMain }) {
+  if (!hasMono) return ['stato del monorepo (cartella non trovata)'];
+  const mancanti = [];
+  if (ramo === null) mancanti.push('ramo di lavoro nel monorepo (git non ha risposto)');
+  if (sopraMain === null) mancanti.push('commit sopra origin/main (git non ha risposto: origin/main non risolto o mai fetchato?)');
+  return mancanti;
+}
+
 // Ogni caso porta l'esito atteso; i negativi (la frase che DEVE tacere) sono
 // il motivo per cui queste funzioni esistono — l'avviso fisso li sbagliava
 // tutti, ed è il caso su cui questa autoverifica è stata vista fallire.
@@ -77,6 +95,11 @@ const SELF_TEST_CASES = [
   { name: 'una PR aperta: compare col suo numero', run: () => sezionePrAperte([{ number: 23, title: 't', baseRefName: 'main' }]).includes('**#23**') },
   { name: 'elenco misurato e vuoto: «Nessuna», non un\'intestazione orfana', run: () => sezionePrAperte([]).includes('Nessuna.') },
   { name: 'PR non misurate: la sezione tace', run: () => sezionePrAperte(null) === '' },
+  // --- il contatore delle misure git: il caso che usciva 0 mentendo ---------
+  { name: 'cartella del monorepo assente: UNA voce, la cartella', run: () => { const m = misureGitMancanti({ hasMono: false, ramo: null, sopraMain: null }); return m.length === 1 && m[0].includes('cartella'); } },
+  { name: '⚠️ IL CASO REALE: cartella presente, origin/main non risolto → la misura mancante si CONTA', run: () => misureGitMancanti({ hasMono: true, ramo: 'main', sopraMain: null }).some((m) => m.includes('origin/main')) },
+  { name: 'ramo non letto da git: si conta anche quello', run: () => misureGitMancanti({ hasMono: true, ramo: null, sopraMain: '' }).some((m) => m.includes('ramo')) },
+  { name: 'tutto misurato (albero allineato): zero voci — \'\' è una misura, non un guasto', run: () => misureGitMancanti({ hasMono: true, ramo: 'main', sopraMain: '' }).length === 0 },
 ];
 const selfTestFailures = SELF_TEST_CASES.filter((c) => !c.run());
 
@@ -210,7 +233,9 @@ const MONO = resolve(APP, '..', 'swiss-ai-suite-repo');
 const hasMono = existsSync(join(MONO, '.git'));
 const ramo = hasMono ? git(MONO, 'branch', '--show-current') : null;
 const sopraMain = hasMono ? git(MONO, 'log', '--oneline', 'origin/main..HEAD') : null;
-if (!hasMono) nonMisurato.push('stato del monorepo (cartella non trovata)');
+// ⚠️ Il conteggio lo fa la funzione pura qui sopra, provata anche sul caso che
+// fino al 2026-08-12 usciva 0 mentendo: cartella presente, git muto.
+nonMisurato.push(...misureGitMancanti({ hasMono, ramo, sopraMain }));
 
 let pr = null;
 try {
@@ -253,7 +278,7 @@ ${uso.map(riga).join('\n')}
 | | |
 |---|---|
 | bundle servito da app.ai-swisse.com | ${bundle ? `\`${bundle}\`` : '**non misurato**'} |
-| ramo di lavoro nel monorepo | ${ramo ? `\`${ramo}\`` : '**non misurato**'} |
+| ramo di lavoro nel monorepo | ${ramo === null ? '**non misurato**' : (ramo === '' ? '`HEAD staccato` (nessun ramo)' : `\`${ramo}\``)} |
 | commit sopra \`origin/main\` non uniti | ${sopraMain === null ? '**non misurato**' : (sopraMain ? sopraMain.split('\n').length : 0)} |
 
 ${sopraMain ? `### I commit non ancora su \`main\`\n\n${sopraMain.split('\n').map((l) => `- ${l}`).join('\n')}\n` : ''}
