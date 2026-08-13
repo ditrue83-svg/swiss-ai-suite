@@ -41,8 +41,10 @@
 //
 //   gruppi        quality · unit · db · integration · eval   (oppure `all`)
 //   --list        mostra i gruppi, i passi e ciò che richiedono. Non esegue.
-//   --self-test   prova la funzione che decide l'esito sui casi che DEVONO
-//                 farla fallire, «gruppo saltato» compreso. Non esegue le suite.
+//   --self-test   prova le funzioni che decidono — l'esito, e la riconciliazione
+//                 dei gruppi con package.json — sui casi che DEVONO farle
+//                 fallire, «gruppo saltato» e «script perso» compresi. Non
+//                 esegue le suite.
 //   --continue-on-error   prosegue dopo un fallimento (uso locale).
 //                 Senza questa, ci si ferma al primo rosso: è la modalità CI.
 //   --allow-ai    autorizza i gruppi che SPENDONO CREDITO ANTHROPIC.
@@ -273,6 +275,12 @@ const GROUPS = {
       // provarlo qui evita di dover invecchiare una riga vera per vederlo
       // reagire.
       { script: 'subsidy:health:self-test' },
+      // I file del carattere, provati sul buco VERO che ha motivato il
+      // controllo: il sottoinsieme «latin» senza U+202F. ⚠️ Era un decimo
+      // script perso, sfuggito anche alla sonda del 2026-08-11: l'ha trovato
+      // la PRIMA esecuzione della riconciliazione con package.json, il
+      // 2026-08-13 — la ragione per cui quel confronto esiste.
+      { script: 'fonts:check:self-test' },
       // ⚠️ E il controllo dei byte si prova sui byte VERI che lo hanno
       // motivato: il NUL della riga 282 di `email/store.ts` e i due BEL di
       // `test-finance-unit.ts`, scritti dentro l'autoverifica come buffer.
@@ -287,6 +295,15 @@ const GROUPS = {
       // La matematica della dispersione, provata senza spendere: la misura vera
       // sta in `eval` perché ripete la stessa domanda N volte a pagamento.
       { script: 'eval:stability:self-test' },
+      // Il metro dell'eval contrattuale — la verità di riferimento va TROVATA
+      // nel testo estratto, non creduta — provato senza rete e senza spendere.
+      // ⚠️ Era uno dei nove script che NESSUN gruppo eseguiva (2026-08-11): la
+      // riconciliazione con package.json, più sotto, esiste perché non riaccada.
+      { script: 'eval:contracts:self-test' },
+      // Il PIANO dell'invio email — a chi si sta per scrivere, con quali nomi
+      // di variabile — provato offline. L'invio VERO spende un'email a ogni
+      // esecuzione e resta fuori dalla suite: lo dichiara FUORI_SUITE.
+      { script: 'test:notification-email:self-test' },
       { script: 'test:ai-json-parser-unit' },
       { script: 'test:inbox-unit' },
       { script: 'test:tasks-unit' },
@@ -378,8 +395,12 @@ const GROUPS = {
       { script: 'eval:subsidy' },
       { script: 'eval:admin' },
       { script: 'eval:assistant' },
-      // ⚠️ Non misura l'ESATTEZZA come le altre tre: misura se la stessa domanda
-      // riceve la stessa risposta. Era la domanda che mancava.
+      // ⚠️ Esisteva dal 2026-08-03 e nessun gruppo lo eseguiva: uno dei nove
+      // script persi che la riconciliazione qui sotto è nata per non perdere
+      // più. Crea un'azienda usa-e-getta e VERIFICA la propria pulizia.
+      { script: 'eval:contracts' },
+      // ⚠️ Non misura l'ESATTEZZA come le altre quattro: misura se la stessa
+      // domanda riceve la stessa risposta. Era la domanda che mancava.
       { script: 'eval:stability' },
     ],
   },
@@ -393,6 +414,88 @@ const GROUPS = {
 // soddisfatti da un database usa-e-getta (e il gruppo lo DICHIARA, invece di
 // passare a vuoto).
 const ALL = ['quality', 'unit', 'db', 'production'];
+
+// ---------------------------------------------------------------------------
+// LA RICONCILIAZIONE CON package.json — nessuno script senza un posto.
+//
+// ⚠️ PERCHÉ ESISTE. I gruppi qui sopra sono un elenco scritto a mano, e fino
+// al 2026-08-13 nessun controllo lo confrontava con `package.json`: la sonda
+// del 2026-08-11 ha trovato nove script che nessun gruppo eseguiva — fra cui
+// `eval:contracts`, nato il 2026-08-03 e mai eseguito da niente. Uno script
+// perso non deve nemmeno mentire per sembrare a posto: non c'è, e la sua
+// assenza non la vedeva nessuno.
+//
+// LA REGOLA. Ogni script di `package.json` o è un passo di un gruppo, o sta
+// in FUORI_SUITE con la ragione scritta. Il confronto va in TUTTE E DUE le
+// direzioni — è la forma delle eccezioni di `design:lint`: una voce di
+// FUORI_SUITE senza più uno script dietro fa fallire quanto uno script senza
+// posto, perché un'esenzione sopravvissuta a ciò che esentava è una porta
+// lasciata aperta.
+//
+// ⚠️ IL LIMITE, dichiarato: il confronto è sui NOMI. `verify:deploy` e `suite`
+// risultano coperti dalla loro forma `--self-test` dentro `unit`; che il
+// controllo VERO di `verify:deploy` resti manuale sta scritto nel commento
+// del suo passo, non qui.
+// ---------------------------------------------------------------------------
+const FUORI_SUITE = {
+  // Il ciclo di lavoro: non termina, o non ha un esito da leggere.
+  dev: 'il server di sviluppo: non termina, non ha un esito',
+  preview: "l'anteprima del build: non termina, non ha un esito",
+  // Le due metà di `typecheck`, che `quality` esegue INTERO: esistono per
+  // iterare su una parte sola, non aggiungono copertura.
+  'typecheck:app': 'metà di `typecheck`, eseguito intero in quality',
+  'typecheck:functions': "l'altra metà di `typecheck`, eseguito intero in quality",
+  // Seminare non è verificare: scrivono nel database di proposito.
+  'subsidy:seed': 'semina il catalogo: scrive nel database, non prova un invariante',
+  'subsidy:seed-catalog': 'semina il catalogo dai sorgenti: scrive nel database, non prova un invariante',
+  'inbox:diagnose': 'diagnostica manuale della posta: si lancia su un guasto in corso, non prova un invariante',
+  'test:notification-email': "l'invio VERO spende un'email a ogni esecuzione; il piano lo prova test:notification-email:self-test, in unit",
+  status: 'misura la produzione e scrive il foglio di stato: un rapporto, non un controllo; le sue frasi le prova status:self-test, in unit',
+  // Gli alias di questo runner: eseguirli da qui sarebbe ricorsione.
+  'test:quality': 'alias di `suite quality`: è questo runner',
+  'test:unit': 'alias di `suite unit`: è questo runner',
+  'test:db': 'alias di `suite db`: è questo runner',
+  'test:production': 'alias di `suite production`: è questo runner',
+  'test:integration': 'alias di `suite integration`: è questo runner',
+  'test:eval': 'alias di `suite eval`: è questo runner',
+  'test:all': 'alias di `suite all`: è questo runner',
+  ci: 'alias di `suite quality unit`: è questo runner',
+};
+
+/**
+ * Il confronto, come funzione pura: si prova sui casi che DEVONO farla
+ * fallire senza leggere un file e senza eseguire una suite.
+ *
+ * Quattro divergenze possibili, nessuna tollerata:
+ *   persi         script di package.json che nessun gruppo esegue e nessuna
+ *                 voce di FUORI_SUITE dichiara — il caso `eval:contracts`;
+ *   fantasmi      voci di FUORI_SUITE senza più uno script dietro;
+ *   contraddetti  dichiarati fuori MA eseguiti da un gruppo: una delle due
+ *                 frasi è falsa;
+ *   inesistenti   passi dei gruppi su script che non esistono: il runner
+ *                 fallirebbe a metà corsa, molto dopo questo controllo.
+ */
+export function riconciliaSuite({ scripts, passi, fuoriSuite }) {
+  const eseguiti = new Set(passi);
+  const dichiarati = new Set(fuoriSuite);
+  const esistenti = new Set(scripts);
+  return {
+    persi: scripts.filter((s) => !eseguiti.has(s) && !dichiarati.has(s)),
+    fantasmi: fuoriSuite.filter((f) => !esistenti.has(f)),
+    contraddetti: fuoriSuite.filter((f) => eseguiti.has(f)),
+    inesistenti: passi.filter((p) => !esistenti.has(p)),
+  };
+}
+
+/** Il confronto sui dati VERI: i gruppi di questo file contro package.json. */
+function divergenzeReali() {
+  const pkg = JSON.parse(readFileSync(join(APP, 'package.json'), 'utf8'));
+  return riconciliaSuite({
+    scripts: Object.keys(pkg.scripts ?? {}),
+    passi: Object.values(GROUPS).flatMap((g) => g.steps.map((s) => s.script)),
+    fuoriSuite: Object.keys(FUORI_SUITE),
+  });
+}
 
 // ---------------------------------------------------------------------------
 
@@ -656,7 +759,52 @@ const CASI = [
   },
 ];
 
-/** La stessa batteria, senza stampare niente: l'esito e basta. */
+// La riconciliazione, sui casi che DEVONO trovarla divergente. Il secondo è
+// quello reale; gli altri provano le due direzioni del confronto e le
+// controprove — una dichiarazione che copre NON deve risultare persa.
+const CASI_RICONCILIAZIONE = [
+  {
+    name: 'tutto coperto o dichiarato → zero divergenze',
+    arg: { scripts: ['a', 'b', 'c'], passi: ['a', 'b'], fuoriSuite: ['c'] },
+    atteso: { persi: [], fantasmi: [], contraddetti: [], inesistenti: [] },
+  },
+  {
+    // ⚠️ IL CASO REALE: `eval:contracts`, dal 2026-08-03 al 2026-08-12.
+    name: 'uno script che nessun gruppo esegue e nessuna voce dichiara → PERSO',
+    arg: { scripts: ['a', 'nuovo'], passi: ['a'], fuoriSuite: [] },
+    atteso: { persi: ['nuovo'] },
+  },
+  {
+    name: 'dichiararlo in FUORI_SUITE lo copre: non è più perso',
+    arg: { scripts: ['a', 'manuale'], passi: ['a'], fuoriSuite: ['manuale'] },
+    atteso: { persi: [], contraddetti: [] },
+  },
+  {
+    name: 'una voce di FUORI_SUITE senza più uno script dietro → FANTASMA',
+    arg: { scripts: ['a'], passi: ['a'], fuoriSuite: ['rimosso-ieri'] },
+    atteso: { fantasmi: ['rimosso-ieri'] },
+  },
+  {
+    name: 'dichiarato fuori MA eseguito da un gruppo → CONTRADDETTO',
+    arg: { scripts: ['a', 'b'], passi: ['a', 'b'], fuoriSuite: ['b'] },
+    atteso: { contraddetti: ['b'] },
+  },
+  {
+    name: 'un passo su uno script che non esiste → INESISTENTE',
+    arg: { scripts: ['a'], passi: ['a', 'refuso'], fuoriSuite: [] },
+    atteso: { inesistenti: ['refuso'] },
+  },
+];
+
+/** I problemi di un caso della riconciliazione: le chiavi attese, alla lettera. */
+function esitoCasoRiconciliazione(c) {
+  const r = riconciliaSuite(c.arg);
+  return Object.entries(c.atteso)
+    .filter(([k, v]) => JSON.stringify(r[k]) !== JSON.stringify(v))
+    .map(([k, v]) => `atteso ${k}=${JSON.stringify(v)}, ottenuto ${JSON.stringify(r[k])}`);
+}
+
+/** Le stesse batterie, senza stampare niente: l'esito e basta. */
 function selfTestSilenzioso() {
   for (const c of CASI) {
     const { code, righe } = decidiEsito(c.arg);
@@ -664,7 +812,7 @@ function selfTestSilenzioso() {
     if (c.vietaVerde && righe.some((r) => VERDE_VIETATO.test(r))) return false;
     if (c.contiene && !righe.join('\n').includes(c.contiene)) return false;
   }
-  return true;
+  return CASI_RICONCILIAZIONE.every((c) => esitoCasoRiconciliazione(c).length === 0);
 }
 
 function selfTest() {
@@ -685,11 +833,18 @@ function selfTest() {
     console.log(`  ${problemi.length ? R + '✗' : G + '✓'}${X} ${c.name}`);
     for (const p of problemi) console.log(`      ${R}${p}${X}`);
   }
+  console.log(`\n${B}Riconciliazione con package.json${X} ${DIM}(uno script senza posto è una copertura immaginaria)${X}\n`);
+  for (const c of CASI_RICONCILIAZIONE) {
+    const problemi = esitoCasoRiconciliazione(c);
+    if (problemi.length) bad++;
+    console.log(`  ${problemi.length ? R + '✗' : G + '✓'}${X} ${c.name}`);
+    for (const p of problemi) console.log(`      ${R}${p}${X}`);
+  }
   if (bad) {
-    console.error(`\n${R}${bad} casi falliti: la funzione che decide l'esito NON è affidabile.${X}\n`);
+    console.error(`\n${R}${bad} casi falliti: le funzioni che decidono NON sono affidabili.${X}\n`);
     return false;
   }
-  console.log(`\n${G}Tutti i ${CASI.length} casi superati.${X}\n`);
+  console.log(`\n${G}Tutti i ${CASI.length + CASI_RICONCILIAZIONE.length} casi superati.${X}\n`);
   return true;
 }
 
@@ -736,6 +891,22 @@ if (opts.selfTest) {
 if (!opts.list && !selfTestSilenzioso()) {
   console.error(`${R}✗ L'autoverifica del runner è fallita: il suo riepilogo non sarebbe attendibile.${X}`);
   console.error(`${DIM}  Dettaglio: node scripts/run-test-suite.mjs --self-test${X}`);
+  process.exit(1);
+}
+
+// ⚠️ La riconciliazione sui dati VERI gira a OGNI invocazione, `--list`
+// compreso: un elenco stampato da un runner disallineato mente pure lui.
+// Esce 1, non 3: non è una misura che manca, è questo file che è rotto.
+const riconciliazione = divergenzeReali();
+const divergenze = [
+  ...riconciliazione.persi.map((s) => `${B}${s}${X} esiste in package.json e NESSUN gruppo lo esegue: o diventa un passo, o entra in FUORI_SUITE con la ragione scritta`),
+  ...riconciliazione.fantasmi.map((s) => `${B}${s}${X} è dichiarato in FUORI_SUITE ma in package.json non esiste più: la voce va rimossa`),
+  ...riconciliazione.contraddetti.map((s) => `${B}${s}${X} è dichiarato FUORI_SUITE ma un gruppo lo esegue: una delle due frasi è falsa`),
+  ...riconciliazione.inesistenti.map((s) => `${B}${s}${X} è un passo di un gruppo ma in package.json non esiste: refuso, o script rimosso senza togliere il passo`),
+];
+if (divergenze.length) {
+  console.error(`${R}✗ I gruppi di questo runner e package.json non coincidono (${divergenze.length}):${X}`);
+  for (const d of divergenze) console.error(`  ${R}·${X} ${d}`);
   process.exit(1);
 }
 
