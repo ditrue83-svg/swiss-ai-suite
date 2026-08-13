@@ -100,8 +100,11 @@ export function useLabels() {
     // ---- Subsidy AI ----------------------------------------------------
     /** Tipo di sostegno: contributo a fondo perso, prestito, fideiussione… */
     supportType: (v: string | null | undefined) => pick('subsidy.labels.supportTypes', v),
-    /** Esito della verifica di idoneità (mai una promessa: è una stima). */
-    eligibility: (v: string | null | undefined) => pick('subsidy.labels.eligibility', v),
+    /* ⚠️ `eligibility` NON è più qui. Le sue chiavi (`subsidy.labels.eligibility`)
+       vivono: le legge `EligibilityMark`, che è il posto in cui l'idoneità ha
+       anche la sua forma. Questo aiutante restava una SECONDA strada alla stessa
+       etichetta, senza il glifo di giudizio che la accompagna — cioè il modo di
+       far ricomparire domani una parola d'idoneità nuda in una pastiglia. */
     /** Affidabilità del dato di catalogo: verificato / da ricontrollare / demo. */
     dataStatus: (v: string | null | undefined) => pick('subsidy.labels.dataStatus', v),
     /** Settore economico dell'impresa. */
