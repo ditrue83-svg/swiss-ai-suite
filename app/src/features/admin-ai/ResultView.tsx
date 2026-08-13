@@ -440,9 +440,28 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                 famiglia: una direzione, non una pastiglia colorata. Prima erano
                 tre pastiglie identiche di tre colori — la forma non diceva
                 niente, lo diceva solo il colore, che è la cosa che il
-                vocabolario della fiducia esiste per correggere. */}
-            <PriorityMark level={r.urgency} />
-            <ConfidenceBadge level={r.confidence} />
+                vocabolario della fiducia esiste per correggere.
+
+                ⚠️ MA QUI LE DUE FAMIGLIE SI TOCCANO, e da sole non bastano.
+                Visto in produzione il 2026-08-14, questa testata diceva
+                «› media  ●●● alta»: due aggettivi nudi affiancati, e chi non ha
+                ancora imparato i segni non sa quale misura cosa. Prima della
+                migrazione il primo diceva «urgenza media» — la parola c'era, ed
+                è stata tolta insieme alla pastiglia. Torna, ma come NOME DELLA
+                FAMIGLIA, non come parola inventata qui: `marks.legend.*` è la
+                stessa stringa che intesta il blocco nella legenda in fondo alla
+                pagina, quindi chi legge «Priorità» qui la ritrova là.
+                Altrove i due segni non si toccano e non serve: nella riga di
+                un'attività l'ordine stato · priorità · termine è fisso, e nel
+                dettaglio del documento stanno dentro campi già intestati. */}
+            <span className="ax-badge-pair">
+              <span className="ax-badge-key">{t('marks.legend.priority')}</span>
+              <PriorityMark level={r.urgency} />
+            </span>
+            <span className="ax-badge-pair">
+              <span className="ax-badge-key">{t('marks.legend.confidence')}</span>
+              <ConfidenceBadge level={r.confidence} />
+            </span>
           </div>
         </div>
         <div className="ax-meta">
