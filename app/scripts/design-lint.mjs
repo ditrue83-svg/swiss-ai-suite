@@ -520,13 +520,20 @@ if (silentFailures.length) {
 
 const tokens = readTokens(readFileSync(join(CSS_ROOT, 'app.css'), 'utf8'));
 
-const cssFiles = readdirSync(CSS_ROOT).filter((f) => f.endsWith('.css')).map((f) => join(CSS_ROOT, f));
+// ⚠️ UN SOLO WALK, RICORSIVO, E ANCHE PER I CSS. Fino al 2026-08-13 i fogli di
+// stile si leggevano con un `readdirSync` piatto su src/styles: un CSS in una
+// sottocartella — o in qualunque altro punto di src/ — sfuggiva al lint intero,
+// provato con un `color: #c00` in src/styles/temi/ che usciva verde. Ora ogni
+// `.css` sotto src/ viene lintato ovunque stia: non esiste un «fuori
+// perimetro» da sorvegliare.
+const cssFiles = [];
 const tsxFiles = [];
 (function walk(dir) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p);
     else if (name.endsWith('.tsx')) tsxFiles.push(p);
+    else if (name.endsWith('.css')) cssFiles.push(p);
   }
 })(TSX_ROOT);
 
