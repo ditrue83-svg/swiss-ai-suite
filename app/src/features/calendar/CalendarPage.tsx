@@ -33,6 +33,7 @@ import { useLabels } from '@/i18n/labels';
 import { calendarService } from '@/services/calendarService';
 import { useMembers } from '@/features/tasks/useMembers';
 import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
+import { DeadlinesHead } from '@/features/tasks/DeadlinesHead';
 import {
   MAX_PER_DAY, addDays, agendaGroups, buildMonthGrid, currentItems, gridRange,
   groupByDay, overdueByDays, overdueItems, shiftMonth, shortTitle, todayISO,
@@ -162,10 +163,7 @@ export function CalendarPage() {
 
   return (
     <>
-      <div className="page-head">
-        <div className="page-title">{t('calendar.title')}</div>
-        <div className="page-desc">{t('calendar.subtitle')}</div>
-      </div>
+      <DeadlinesHead mode="calendar" subtitleKey="calendar.subtitle" />
 
       <div className="row-wrap">
         <span className="filter-group">

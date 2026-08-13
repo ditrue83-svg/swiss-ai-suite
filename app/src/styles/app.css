@@ -274,11 +274,38 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .brand-mark .ic { width: 24px; height: 24px; stroke-width: 2.25; }
 .brand-name { font-weight: 700; font-size: var(--fs-body); letter-spacing: -0.2px; }
 .brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: -1px; }
-.nav { display: flex; flex-direction: column; gap: var(--sp-05); }
-.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; padding: var(--sp-4) var(--sp-3) var(--sp-2); }
-.nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius-sm); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
+/* flex:1 + overflow: la navigazione prende lo spazio fra il selettore azienda
+   e il box account, e quando non basta scorre LEI — così «Impostazioni» in
+   fondo e il box account restano raggiungibili anche su uno schermo basso,
+   invece di uscire dalla pagina. min-height: 0 è ciò che permette a un figlio
+   flex di diventare più basso del proprio contenuto. */
+.nav { display: flex; flex-direction: column; gap: var(--sp-05); flex: 1; min-height: 0; overflow-y: auto; }
+/* L'etichetta di gruppo è ORIENTAMENTO, non una voce: pesa meno delle voci
+   (400 contro 500 — prima era 600, e PIATTAFORMA gridava quanto le sue voci).
+   La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso. */
+.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-4) var(--sp-3) var(--sp-2); border-left: 3px solid transparent; }
+/* Il bordo sinistro c'è SEMPRE, trasparente: comparisse solo con .active, il
+   testo di ogni voce si sposterebbe di 3px a ogni cambio pagina. */
+.nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; border-left: 3px solid transparent; background: none; border-radius: var(--radius-sm); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
-.nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+/* La voce attiva parla il vocabolario della fiducia: il filetto verticale
+   pieno — la barra di revisione di .mark-prov — non solo un fondo colorato.
+   Gli angoli sinistri a 0 come .verify-note: un filetto non si curva. */
+.nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; border-left-color: var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+/* Il piede della barra: separato da un filetto orizzontale e spinto in fondo
+   (margin-top: auto dentro il flex della .nav) — le impostazioni non sono
+   lavoro quotidiano e non stanno in mezzo.
+   `sticky` perché quando la navigazione scorre (drawer a 375px, desktop
+   basso) «Impostazioni» deve restare VISIBILE, non raggiungibile-scrollando:
+   una voce che si vede solo a scroll fatto è una voce che non c'è. Il fondo
+   è la superficie della barra (--card), altrimenti le voci scorrerebbero in
+   trasparenza sotto il piede. */
+.nav-foot { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); position: sticky; bottom: 0; background: var(--card); }
+.nav-caret { margin-left: auto; color: var(--muted); }
+/* Le sottovoci non hanno icona: il rientro È la gerarchia. Il padding
+   sinistro allinea il testo a quello delle voci con icona: il padding base
+   (--sp-3) più l'ingombro di icona e distanza (20px + --sp-3 = --sp-8). */
+.nav-subitem { padding-left: calc(var(--sp-3) + var(--sp-8)); }
 /* ⚠️ L'ETICHETTA DELLA VOCE SI SILLABA, e la barra ha una larghezza fissa (264px)
    che NON si tocca: è la struttura della pagina, non un contenitore di testo.
    In tedesco «Unternehmenseinstellungen» è una parola sola di 25 caratteri senza

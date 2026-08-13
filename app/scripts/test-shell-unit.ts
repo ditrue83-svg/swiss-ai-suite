@@ -1,10 +1,11 @@
 // ============================================================================
-// AI-Swisse — La testata (marchio e campanella): test OFFLINE.
+// AI-Swisse — La shell (testata e barra di navigazione): test OFFLINE.
 //   npm run test:shell-unit
 //
-// Niente database, niente rete, niente credito. Prova le tre regole della
-// testata che nessun altro controllo vede — il design-lint guarda carattere,
-// colore e spaziatura dentro src/, non le forme, i contenitori né index.html:
+// Niente database, niente rete, niente credito. Prova le regole della shell
+// che nessun altro controllo vede — il design-lint guarda carattere,
+// colore e spaziatura dentro src/, non le forme, i contenitori, né la
+// struttura della navigazione, né index.html:
 //
 //   1. FORME — nella famiglia di icone nessuna forma appartiene a due nomi.
 //      La regola è già scritta tre volte nei commenti di Icon.tsx (banknote/
@@ -35,6 +36,7 @@ import { LOCALES } from '../src/i18n/index.tsx';
 import { it } from '../src/i18n/locales/it.ts';
 import { de } from '../src/i18n/locales/de.ts';
 import { fr } from '../src/i18n/locales/fr.ts';
+import { NAV, NAV_SETTINGS, isSection, navItemMatches, type NavItem } from '../src/components/layout/nav.ts';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -171,6 +173,177 @@ section('4. Il documento — titolo e lingua non restano fermi all\'italiano');
     'al cambio di lingua il provider aggiorna document.title dal dizionario',
     /document\.title\s*=\s*translate\('common\.docTitle'\)/.test(provider),
   );
+}
+
+// ---------------------------------------------------------------------------
+section('5. La barra — la struttura del lavoro, non l\'architettura');
+
+// ⚠️ PERCHÉ QUESTA SEZIONE. Fino al 2026-08-13 i gruppi si chiamavano
+// «Piattaforma», «Moduli», «Automazione»: l'architettura del software, non la
+// giornata di chi lo usa. La struttura nuova — oggi → LAVORO → ARCHIVIO →
+// Impostazioni in fondo — è una DECISIONE, e queste asserzioni le impediscono
+// di sfarinarsi una voce alla volta: l'ordine qui sotto non è «com'è», è
+// «come deve restare finché non si decide altrimenti».
+
+{
+  const shape = NAV.map((e) => (isSection(e) ? `[${e.sectionKey}]` : e.id));
+  const expected = [
+    'home', 'assistant',
+    '[nav.sectionWork]', 'inbox', 'admin', 'deadlines', 'subsidy',
+    '[nav.sectionArchive]', 'documents', 'contracts', 'clients', 'finance',
+  ];
+  check(
+    'oggi → LAVORO → ARCHIVIO, nell\'ordine deciso',
+    JSON.stringify(shape) === JSON.stringify(expected),
+    `atteso ${expected.join(' · ')}\n     trovato ${shape.join(' · ')}`,
+  );
+
+  const settingsShape = NAV_SETTINGS.map((s) => s.id);
+  check(
+    'Impostazioni raccoglie azienda · automazioni · registro · abbonamento',
+    JSON.stringify(settingsShape) === JSON.stringify(['company', 'automations', 'audit', 'pricing']),
+    `trovato ${settingsShape.join(' · ')}`,
+  );
+  check(
+    'il Registro attività è l\'UNICA voce riservata',
+    NAV_SETTINGS.filter((s) => s.adminOnly).map((s) => s.id).join() === 'audit'
+      && NAV.every((e) => isSection(e) || !e.adminOnly),
+  );
+
+  // Il calendario non ha una voce propria: è il secondo modo di guardare le
+  // scadenze, e la voce che lo copre lo dichiara con `alsoMatches`.
+  const items = NAV.filter((e): e is NavItem => !isSection(e));
+  check('nessuna voce punta a /calendario', items.every((i) => i.path !== '/calendario'));
+  const deadlines = items.find((i) => i.id === 'deadlines');
+  check(
+    '«Scadenze e attività» resta accesa anche su /calendario',
+    deadlines !== undefined && navItemMatches(deadlines, '/calendario') && navItemMatches(deadlines, '/calendario/impostazioni'),
+  );
+  check(
+    'l\'accensione è per segmento, non per prefisso di stringa',
+    deadlines !== undefined && navItemMatches(deadlines, '/attivita/123') && !navItemMatches(deadlines, '/attivitaX'),
+  );
+
+  const allPaths = [...items.map((i) => i.path), ...NAV_SETTINGS.map((s) => s.path)];
+  check('nessun percorso compare due volte', new Set(allPaths).size === allPaths.length);
+
+  // Le rotte si leggono da App.tsx COME TESTO, come la favicon da index.html:
+  // montare il router qui vorrebbe dire provare react-router, non la barra.
+  const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
+  for (const p of allPaths.filter((x) => x !== '/')) {
+    check(`la voce ${p} ha una rotta`, app.includes(`path="${p}"`));
+  }
+  check('la rotta /calendario resta viva (segnalibri, email di notifica)', app.includes('path="/calendario"'));
+
+  // I vecchi indirizzi stanno nei segnalibri e nelle email delle persone:
+  // il reindirizzamento è parte del contratto, non una cortesia.
+  for (const [from, to] of [['/dashboard', '/'], ['/scadenziario', '/attivita'], ['/archivio', '/documenti']] as const) {
+    const re = new RegExp(`path="${from.replace('/', '\\/')}"[^\\n]*<Navigate to="${to.replace('/', '\\/')}"`);
+    check(`${from} reindirizza a ${to}`, re.test(app));
+  }
+}
+
+{
+  // LA COLLISIONE DEI NOMI: «Admin AI — Documenti» e «Documenti» erano
+  // indistinguibili. La voce di analisi è un'azione, l'archivio è un luogo,
+  // e in NESSUNA lingua possono tornare a chiamarsi uguali.
+  for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
+    check(
+      `${lang}: «${dict.nav.analyzeDoc}» ≠ «${dict.nav.documents}»`,
+      dict.nav.analyzeDoc.trim().toLowerCase() !== dict.nav.documents.trim().toLowerCase(),
+    );
+  }
+
+  // L'INGOMBRO: la barra è larga 264px e una voce deve stare su una riga.
+  // 24 caratteri è la misura della voce più lunga che ci sta con l'icona
+  // accanto (verificata a schermo, non calcolata); il tedesco ha la sua
+  // asserzione perché è la lingua che ha già sfondato una volta
+  // («Unternehmenseinstellungen», 25 caratteri, sillabata su due righe).
+  check('de: «Fristen & Aufgaben», compatto, non la traduzione letterale',
+    de.nav.tasks.length <= 20, `«${de.nav.tasks}» = ${de.nav.tasks.length} caratteri`);
+  const items = NAV.filter((e): e is NavItem => !isSection(e));
+  for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
+    const labels = [
+      ...items.map((i) => (dict.nav as Record<string, string>)[i.labelKey.replace('nav.', '')]),
+      ...NAV_SETTINGS.map((s) => (dict.nav as Record<string, string>)[s.labelKey.replace('nav.', '')]),
+      (dict.nav as Record<string, string>).settings,
+    ];
+    const missing = labels.some((l) => l === undefined);
+    const tooLong = labels.filter((l) => l !== undefined && l.length > 24);
+    check(
+      `${lang}: ogni voce esiste nel dizionario e sta su una riga (≤ 24)`,
+      !missing && tooLong.length === 0,
+      missing ? 'una chiave della barra non esiste nel dizionario' : tooLong.map((l) => `«${l}» = ${l.length}`).join('; '),
+    );
+  }
+}
+
+{
+  // LA GERARCHIA VISIVA, letta dai fogli di stile come per la campanella.
+  const appCss = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
+  const extraCss = readFileSync(join(root, 'src/styles/extra.css'), 'utf8');
+
+  // La voce attiva parla il vocabolario della fiducia: il filetto verticale
+  // (la barra di revisione di .mark-prov), non solo un fondo colorato.
+  const btnBlock = appCss.match(/\.nav-btn\s*\{([^}]*)\}/)?.[1] ?? '';
+  const activeBlock = appCss.match(/\.nav-btn\.active\s*\{([^}]*)\}/)?.[1] ?? '';
+  check('il filetto è SEMPRE presente, trasparente a riposo (niente salto di 3px)',
+    /border-left:\s*3px solid transparent/.test(btnBlock));
+  check('la voce attiva accende il filetto con --accent',
+    /border-left-color:\s*var\(--accent\)/.test(activeBlock));
+
+  // L'etichetta di gruppo è orientamento, non una voce: pesa meno.
+  const sectionWeight = Number(appCss.match(/\.nav-section\s*\{[^}]*font-weight:\s*(\d+)/)?.[1] ?? NaN);
+  const btnWeight = Number(btnBlock.match(/font-weight:\s*(\d+)/)?.[1] ?? NaN);
+  check(
+    'l\'etichetta di gruppo pesa meno delle voci',
+    Number.isFinite(sectionWeight) && Number.isFinite(btnWeight) && sectionWeight < btnWeight,
+    `sezione ${sectionWeight} · voce ${btnWeight}`,
+  );
+
+  // L'azienda attiva è contesto, non contenuto: niente cornice da scheda.
+  // Stesso giudizio della campanella: `border:` che non sia 0/none, o un
+  // fondo di superficie, farebbero del contesto una scheda.
+  const csBlock = extraCss.match(/\.company-switch\s*\{([^}]*)\}/)?.[1] ?? '';
+  check('.company-switch esiste in extra.css', csBlock !== '');
+  check('l\'azienda attiva non ha cornice', !/\bborder\s*:(?!\s*(?:0(?:[;\s]|$)|none\b))/.test(csBlock));
+  check('l\'azienda attiva non ha fondo di superficie', !/\bbackground\s*:\s*var\(--(card|bg)\)/.test(csBlock));
+
+  // Le impostazioni stanno IN FONDO (margin-top: auto) e la navigazione
+  // scorre da sé quando lo schermo è basso: senza, il fondo sparirebbe.
+  const footBlock = appCss.match(/\.nav-foot\s*\{([^}]*)\}/)?.[1] ?? '';
+  check('il piede della barra è spinto in fondo', /margin-top:\s*auto/.test(footBlock));
+  // Sticky col fondo della superficie: a 375px la navigazione scorre, e
+  // «Impostazioni» deve restare visibile — trovato SPARITO sotto la piega
+  // alla prima verifica a schermo, non dedotto dal codice.
+  check('il piede resta visibile quando la navigazione scorre',
+    /position:\s*sticky/.test(footBlock) && /bottom:\s*0/.test(footBlock) && /background:\s*var\(--card\)/.test(footBlock));
+  const navBlock = appCss.match(/\.nav\s*\{([^}]*)\}/)?.[1] ?? '';
+  check('la navigazione scorre quando non ci sta', /overflow-y:\s*auto/.test(navBlock) && /flex:\s*1/.test(navBlock));
+}
+
+{
+  // LE DUE PAGINE DELLE SCADENZE portano la STESSA testata (DeadlinesHead):
+  // titolo dalla chiave della voce di menu e interruttore elenco/calendario.
+  const tasksPage = readFileSync(join(root, 'src/features/tasks/TasksPage.tsx'), 'utf8');
+  const calendarPage = readFileSync(join(root, 'src/features/calendar/CalendarPage.tsx'), 'utf8');
+  check('l\'elenco monta la testata comune in modo elenco',
+    /<DeadlinesHead mode="list"/.test(tasksPage));
+  check('il calendario monta la testata comune in modo calendario',
+    /<DeadlinesHead mode="calendar"/.test(calendarPage));
+  const head = readFileSync(join(root, 'src/features/tasks/DeadlinesHead.tsx'), 'utf8');
+  check('la testata usa la chiave della voce di menu (un nome, un posto)',
+    /t\('nav\.tasks'\)/.test(head));
+  check('l\'interruttore naviga alle due rotte vive',
+    /to="\/attivita"/.test(head) && /to="\/calendario"/.test(head));
+
+  // LA SCORCIATOIA della Panoramica porta ESATTAMENTE dove porta la voce
+  // «Analizza documento» della barra — stessa destinazione, letta dai
+  // sorgenti di entrambe.
+  const home = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
+  const adminItem = NAV.find((e) => !isSection(e) && e.id === 'admin') as NavItem;
+  const shortcut = new RegExp(`to="${adminItem.path.replace('/', '\\/')}"[^\\n]*home\\.analyzeDoc`);
+  check('«Analizza un documento» porta dove porta la voce della barra', shortcut.test(home));
 }
 
 // ---------------------------------------------------------------------------

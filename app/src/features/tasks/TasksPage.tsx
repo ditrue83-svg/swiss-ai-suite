@@ -26,6 +26,7 @@ import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
 import { dueLabel, sourceLabelKey, statusLabelKey } from './taskFormat';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { DeadlinesHead } from './DeadlinesHead';
 import { TaskCreateForm } from './TaskCreateForm';
 import {
   EMPTY_TASK_FORM, createSubmitLatch, safeDatePrefill, taskFormSubmission, type TaskFormValues,
@@ -161,10 +162,7 @@ export function TasksPage() {
 
   return (
     <>
-      <div className="page-head">
-        <div className="page-title">{t('tasks.hubTitle')}</div>
-        <div className="page-desc">{t('tasks.hubSubtitle')}</div>
-      </div>
+      <DeadlinesHead mode="list" subtitleKey="tasks.hubSubtitle" />
 
       <div className="row-wrap">
         <button ref={newTaskButtonRef} className="btn btn-primary btn-block-mobile"

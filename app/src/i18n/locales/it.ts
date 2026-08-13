@@ -86,23 +86,28 @@ export const it = {
     assistant: 'Chiedi ad AI-Swisse',
     contracts: 'Contratti',
     clients: 'Clienti',
-    sectionPlatform: 'Piattaforma',
-    sectionModules: 'Moduli',
-    sectionAccount: 'Account',
-    sectionAutomation: 'Automazione',
+    // I gruppi sono la giornata di chi amministra, non l'architettura del
+    // software: LAVORO è il flusso in entrata, ARCHIVIO è dove si ritrova.
+    sectionWork: 'Lavoro',
+    sectionArchive: 'Archivio',
     automations: 'Automazioni',
     home: 'Panoramica',
-    tasks: 'Attività',
-    calendar: 'Calendario',
-    adminAi: 'Admin AI — Documenti',
-    subsidyAi: 'Subsidy AI — Incentivi',
+    // Una voce sola per elenco e calendario: il nome dice il CONTENUTO
+    // (scadenze, attività), non i due modi di guardarlo.
+    tasks: 'Scadenze e attività',
+    // Un'azione, non un luogo: «Admin AI — Documenti» era indistinguibile per
+    // nome dall'archivio «Documenti».
+    analyzeDoc: 'Analizza documento',
     incentives: 'Incentivi',
-    inbox: 'Inbox',
+    inbox: 'Posta in arrivo',
     documents: 'Documenti',
     finance: 'Finanze',
-    companySettings: 'Impostazioni azienda',
+    settings: 'Impostazioni',
+    company: 'Azienda',
     auditLog: 'Registro attività',
-    pricing: 'Piani e prezzi',
+    // Dentro l'app non si vende, si gestisce: «Piani e prezzi» è il nome
+    // della vetrina, non di una pagina di lavoro.
+    subscription: 'Abbonamento',
     activeCompany: 'Azienda attiva',
     switchCompany: 'Cambia azienda',
     signOut: 'Esci',
@@ -250,6 +255,11 @@ export const it = {
     viewOverdue: 'Scadute',
     viewCompleted: 'Completate',
     viewArchived: 'Archiviate',
+    // L'interruttore in testa alla pagina (DeadlinesHead): elenco e
+    // calendario sono due MODI di guardare le stesse scadenze, non due
+    // pagine con due nomi. «Viste» sono le cinque domande qui sopra.
+    modeList: 'Elenco',
+    modeCalendar: 'Calendario',
     searchPlaceholder: 'Cerca per titolo, descrizione o ente',
     filterPriority: 'Priorità',
     filterAssignee: 'Responsabile',
@@ -343,7 +353,9 @@ export const it = {
   // ---- Archivio ------------------------------------------------------------
   documents: {
     title: 'Documenti',
-    subtitle: 'Tutto ciò che l’azienda ha ricevuto, caricato e analizzato.',
+    // L'ARCHIVIO, in contrapposizione dichiarata ad «Analizza documento»:
+    // là si porta ciò che è arrivato, qui si ritrova ciò che è stato capito.
+    subtitle: 'L’archivio dell’azienda: qui ritrovi ciò che è stato ricevuto, caricato e analizzato.',
     upload: 'Carica documento',
     searchLabel: 'Cerca nei documenti',
     searchPlaceholder: 'Cerca per nome, mittente, contenuto o riferimento…',
@@ -568,7 +580,9 @@ export const it = {
 
   // ---- Calendario (0018) ---------------------------------------------------
   calendar: {
-    title: 'Calendario',
+    // Il titolo della pagina è quello condiviso con l'elenco (nav.tasks,
+    // reso da DeadlinesHead): il calendario è un MODO di guardare le
+    // scadenze, non una pagina con un nome suo.
     subtitle: 'Quando le attività dell’azienda richiedono attenzione.',
     viewMonth: 'Mese',
     viewAgenda: 'Agenda',
@@ -740,7 +754,11 @@ export const it = {
   // Vivevano come costanti in engine.ts: erano l'ultimo punto in cui la UI
   // restava italiana anche cambiando lingua.
   adminAi: {
-    title: 'Admin AI',
+    // Il TITOLO è l'azione, come la voce di navigazione: «Admin AI» è il nome
+    // del modulo nel codice e nei documenti, non ciò che una persona viene a
+    // fare qui. Questa è la pagina dove si PORTA ciò che è arrivato;
+    // l'archivio dove si RITROVA ciò che è stato capito è «Documenti».
+    title: 'Analizza documento',
     intro: 'Carica un PDF, una scansione, un’email o un file di testo: il sistema identifica ente, lingua, scadenze e prepara checklist e bozza di risposta.',
     introReading: 'Analisi di un documento in archivio. Ogni informazione rimanda al punto del testo da cui è stata ricavata.',
     backToDocuments: 'Torna ai documenti',

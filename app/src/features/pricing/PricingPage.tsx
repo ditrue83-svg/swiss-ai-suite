@@ -19,7 +19,7 @@ export function PricingPage() {
   return (
     <>
       <div className="page-head">
-        <div className="page-title">{t('nav.pricing')}</div>
+        <div className="page-title">{t('nav.subscription')}</div>
         <div className="page-desc">{t('pricing.subtitle')}</div>
       </div>
 

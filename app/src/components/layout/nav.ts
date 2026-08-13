@@ -1,6 +1,14 @@
 import type { IconName } from '@/components/ui/Icon';
 import type { TKey } from '@/i18n';
 
+// La barra racconta la STRUTTURA DEL LAVORO AMMINISTRATIVO, non l'architettura
+// del software. Fino al 2026-08-13 i gruppi si chiamavano «Piattaforma»,
+// «Moduli» e «Automazione»: nomi veri per chi ha scritto il codice, vuoti per
+// chi la mattina deve decidere da dove cominciare. I gruppi di oggi sono la
+// giornata di chi amministra: prima il colpo d'occhio (senza etichetta), poi
+// il flusso in entrata (LAVORO), poi la memoria in cui si ritrova (ARCHIVIO),
+// e in fondo — separato, perché non è lavoro quotidiano — le impostazioni.
+//
 // Le voci portano una CHIAVE di traduzione, non un'etichetta già scritta:
 // l'etichetta si risolve al render, così il menu cambia lingua all'istante.
 //
@@ -9,87 +17,105 @@ import type { TKey } from '@/i18n';
 // `audit_select_admin`, 0039). Serve a non mostrare a un membro una porta che
 // gli si chiuderebbe in faccia — e infatti la pagina, aperta per indirizzo,
 // spiega perché non può leggere invece di mostrare un elenco vuoto.
-export interface NavItem { id: string; labelKey: TKey; icon: IconName; path: string; adminOnly?: boolean }
+//
+// ⚠️ NESSUN CONTATORE accanto alle voci. «Posta in arrivo» e «Scadenze e
+// attività» ne meriterebbero uno (non letti, in scadenza), ma i conteggi che
+// esistono oggi sono interrogazioni dedicate (`inboxService.counts`,
+// `taskService.list`) eseguite DENTRO le rispettive pagine: la barra sta su
+// ogni schermata, e un numero lì significherebbe una query in più per ogni
+// cambio pagina. Il giorno in cui un conteggio arriverà già caricato nella
+// shell, il numero si potrà mostrare; fino ad allora, un contatore comprato
+// con query nuove è rumore pagato due volte.
+export interface NavItem {
+  id: string;
+  labelKey: TKey;
+  icon: IconName;
+  path: string;
+  adminOnly?: boolean;
+  /** Altri prefissi di rotta su cui la voce risulta ATTIVA: «Scadenze e
+   *  attività» resta evidenziata anche su `/calendario`, che è la stessa
+   *  area guardata in un altro modo — senza questo, aprire il calendario
+   *  spegnerebbe ogni evidenza nella barra. */
+  alsoMatches?: string[];
+}
 export interface NavSection { sectionKey: TKey }
 export type NavEntry = NavItem | NavSection;
 
 export const NAV: NavEntry[] = [
-  { sectionKey: 'nav.sectionPlatform' },
+  // Senza etichetta: il colpo d'occhio e il modo di chiederlo a parole.
   // La Panoramica è l'UNICA schermata d'insieme: fino al 2026-07-28 accanto
-  // c'era anche «Dashboard», che mostrava gli stessi dati con qualche
-  // grafico in più. Due voci per due viste dello stesso fatto obbligano a
-  // scegliere ogni volta quale aprire, e la risposta era «tutte e due».
+  // c'era anche «Dashboard», che mostrava gli stessi dati con qualche grafico
+  // in più — due voci per due viste dello stesso fatto obbligano a scegliere
+  // ogni volta quale aprire, e la risposta era «tutte e due».
   { id: 'home', labelKey: 'nav.home', icon: 'home', path: '/' },
-  // «Chiedi ad AI-Swisse» sta SUBITO DOPO la Panoramica e prima di tutto il
-  // resto, ed è la posizione che il modulo descrive: la Panoramica dice che cosa
-  // richiede attenzione, questa voce permette di chiederlo a parole. Metterla
-  // fra i moduli l'avrebbe fatta sembrare un decimo modulo accanto agli altri,
-  // mentre è il modo di interrogarli tutti (§117).
+  // «Chiedi ad AI-Swisse» sta SUBITO DOPO la Panoramica: la Panoramica dice
+  // che cosa richiede attenzione, questa voce permette di chiederlo a parole.
+  // Fra le voci di lavoro sembrerebbe un posto in cui il lavoro sta, mentre è
+  // il modo di interrogarli tutti (§117).
   { id: 'assistant', labelKey: 'nav.assistant', icon: 'askAi', path: '/assistente' },
-  // Inbox sta subito dopo la panoramica: è il punto d'ingresso di ciò che
-  // arriva, e viene prima delle scadenze, che sono ciò che ne deriva.
+
+  // LAVORO — il flusso in entrata, nell'ordine in cui il lavoro arriva:
+  // prima ciò che entra (posta), poi ciò che si porta ad analizzare, poi ciò
+  // che ne deriva (scadenze), poi ciò che si va a cercare (incentivi).
+  { sectionKey: 'nav.sectionWork' },
   { id: 'inbox', labelKey: 'nav.inbox', icon: 'inbox', path: '/inbox' },
-  { id: 'deadlines', labelKey: 'nav.tasks', icon: 'checkCircle', path: '/attivita' },
-  // Il Calendario viene DOPO le Attività, e l'ordine è il racconto del prodotto:
-  // prima che cosa c'è da fare, poi quando. L'icona del calendario passa qui —
-  // la teneva Attività, ed era il nome sbagliato per il posto giusto.
-  { id: 'calendar', labelKey: 'nav.calendar', icon: 'calendar', path: '/calendario' },
-  { sectionKey: 'nav.sectionModules' },
-  { id: 'admin', labelKey: 'nav.adminAi', icon: 'document', path: '/admin' },
-  // Gli Incentivi puntano al modulo 2.0 (`/incentivi`, 0032): progetto →
-  // opportunità → pratica, con la fonte e la data di ogni criterio. La
-  // schermata 1.0 resta raggiungibile da `/subsidy` finché il profilo
-  // incentivi e l'interpretazione AI non hanno una casa nel 2.0, ma non ha
-  // una voce propria: due voci per due versioni dello stesso modulo
-  // obbligherebbero a scegliere ogni volta quale aprire — l'errore già
-  // pagato con «Panoramica» e «Dashboard».
+  // «Analizza documento» è un'AZIONE, non un luogo: il nome del modulo
+  // (Admin AI) resta nel codice e nella documentazione, ma la voce dice che
+  // cosa si viene a fare qui — portare un documento e farselo spiegare.
+  // Fino al 2026-08-13 si chiamava «Admin AI — Documenti», indistinguibile
+  // per nome dall'archivio «Documenti» tre voci più sotto.
+  { id: 'admin', labelKey: 'nav.analyzeDoc', icon: 'document', path: '/admin' },
+  // Una voce sola per Attività e Calendario: sono lo STESSO lavoro guardato
+  // in due modi — l'elenco dice che cosa, il calendario dice quando. La rotta
+  // `/calendario` resta viva (segnalibri, email di notifica) e l'interruttore
+  // in testa alle due pagine porta dall'una all'altra; `alsoMatches` tiene
+  // accesa questa voce anche di là.
+  { id: 'deadlines', labelKey: 'nav.tasks', icon: 'checkCircle', path: '/attivita', alsoMatches: ['/calendario'] },
+  // Gli Incentivi puntano al modulo 2.0 (`/incentivi`, 0032). La schermata
+  // 1.0 resta raggiungibile da `/subsidy` finché il profilo incentivi e
+  // l'interpretazione AI non hanno una casa nel 2.0, ma non ha una voce
+  // propria: due voci per due versioni dello stesso modulo obbligherebbero a
+  // scegliere ogni volta quale aprire — l'errore già pagato con «Panoramica»
+  // e «Dashboard».
   { id: 'subsidy', labelKey: 'nav.incentives', icon: 'banknote', path: '/incentivi' },
-  // I Documenti non sono un modulo accanto agli altri: sono la memoria su cui
-  // gli altri lavorano. Restano però qui, in fondo ai moduli, perché spostare
-  // il menu è un'altra decisione e non va presa di straforo insieme a questa.
+
+  // ARCHIVIO — dove si RITROVA ciò che è stato capito. Prima la memoria
+  // intera (Documenti), poi le sue letture per genere: che cosa è stato
+  // pattuito (Contratti), con chi (Clienti), quanto (Finanze).
+  { sectionKey: 'nav.sectionArchive' },
   { id: 'documents', labelKey: 'nav.documents', icon: 'archive', path: '/documenti' },
-  // Le Finanze stanno DOPO i Documenti perché ne sono una lettura: leggono
-  // fatture e ricevute che il Document Hub custodisce già, e senza quelle non
-  // avrebbero niente da mostrare. Il modulo comprende e prepara il denaro, non
-  // lo muove: nel menu non c'è e non deve comparire nessuna voce «Pagamenti».
-  { id: 'finance', labelKey: 'nav.finance', icon: 'receipt', path: '/finanze' },
-  // I Contratti stanno dopo le Finanze e per la stessa ragione per cui le
-  // Finanze stanno dopo i Documenti: sono una LETTURA di documenti che il
-  // Document Hub custodisce già. Il modulo riporta che cosa il contratto dice
-  // e ne ricava le date: nel menu non c'è e non deve comparire nessuna voce
-  // «Disdette» o «Rinnovi».
   { id: 'contracts', labelKey: 'nav.contracts', icon: 'fileSignature', path: '/contratti' },
-  // I Clienti stanno per ULTIMI fra i moduli, e la ragione è la stessa catena
-  // che ha deciso l'ordine finora: i Documenti sono la memoria, le Finanze e i
-  // Contratti ne sono due letture, e il CRM è il livello che COLLEGA ciò che
-  // quelle letture già nominano — la controparte di un contratto, il mittente
-  // di un documento, il fornitore di una fattura. Viene dopo perché senza di
-  // loro non avrebbe niente da collegare.
-  // ⚠️ L'icona è `user` e non `building`: `building` è già «Impostazioni
-  // azienda» nel menu, e due voci con la stessa icona si confondono a colpo
-  // d'occhio — la regola scritta in Icon.tsx, per cui Finanze ha ricevuto
-  // `receipt` invece di `banknote`.
+  // ⚠️ L'icona dei Clienti è `user` e non `building`: `building` è già
+  // «Azienda» sotto Impostazioni, e due voci con la stessa icona si
+  // confondono a colpo d'occhio — la regola scritta in Icon.tsx.
   { id: 'clients', labelKey: 'nav.clients', icon: 'user', path: '/clienti' },
-  // L'Automazione è una sezione a sé e non una voce fra i moduli: i moduli
-  // sono i posti in cui il lavoro sta, questa è la regola che lo muove. Sta
-  // dopo tutti, perché è l'ultimo strato — si automatizza ciò che si è già
-  // capito, organizzato e assegnato.
-  { sectionKey: 'nav.sectionAutomation' },
-  { id: 'automations', labelKey: 'nav.automations', icon: 'settings', path: '/automazioni' },
-  { sectionKey: 'nav.sectionAccount' },
-  // Impostazioni azienda: fino al 2026-07-28 i dati dell'impresa si potevano
-  // scrivere solo all'onboarding, una volta sola — un trasloco o un cambio di
-  // ragione sociale non avevano dove andare. Sta sotto ACCOUNT e non fra i
-  // moduli perché non è un posto dove si lavora: è chi si è.
-  { id: 'company', labelKey: 'nav.companySettings', icon: 'building', path: '/azienda' },
-  // Il Registro attività (0039) sta accanto a «Impostazioni azienda» e non fra i
-  // moduli, per la stessa ragione: non è un posto dove si lavora, è come
-  // l'azienda si guarda da fuori. Ed è la sola voce riservata a titolari e
-  // amministratori, perché dice che cosa hanno fatto le PERSONE.
-  { id: 'audit', labelKey: 'nav.auditLog', icon: 'clock', path: '/registro', adminOnly: true },
-  { id: 'pricing', labelKey: 'nav.pricing', icon: 'tag', path: '/prezzi' },
+  { id: 'finance', labelKey: 'nav.finance', icon: 'receipt', path: '/finanze' },
+];
+
+// IMPOSTAZIONI — in fondo alla barra, dietro una voce sola che si apre.
+// Ciò che sta qui si configura una volta e poi si lascia stare: chi si è
+// (Azienda), le regole che lavorano da sole (Automazioni), come l'azienda si
+// guarda da fuori (Registro attività, riservato a titolari e amministratori),
+// che cosa si paga (Abbonamento — dentro l'app non si vende, si gestisce:
+// «Prezzi» era il nome della vetrina). Le sottovoci non hanno icona: sono
+// voci di secondo livello, e il rientro è la loro gerarchia.
+export interface NavSubItem { id: string; labelKey: TKey; path: string; adminOnly?: boolean }
+export const NAV_SETTINGS: NavSubItem[] = [
+  { id: 'company', labelKey: 'nav.company', path: '/azienda' },
+  { id: 'automations', labelKey: 'nav.automations', path: '/automazioni' },
+  { id: 'audit', labelKey: 'nav.auditLog', path: '/registro', adminOnly: true },
+  { id: 'pricing', labelKey: 'nav.subscription', path: '/prezzi' },
 ];
 
 export function isSection(e: NavEntry): e is NavSection {
   return (e as NavSection).sectionKey !== undefined;
+}
+
+/** Vero se il percorso corrente appartiene alla voce: il suo `path` o uno dei
+ *  prefissi in `alsoMatches` (con `/` o fine stringa dopo, perché `/inbox`
+ *  non deve accendersi su un ipotetico `/inboxes`). Accetta anche le
+ *  sottovoci di NAV_SETTINGS: ciò che serve è il percorso, non l'icona. */
+export function navItemMatches(item: { path: string; alsoMatches?: string[] }, pathname: string): boolean {
+  const prefixes = [item.path, ...(item.alsoMatches ?? [])];
+  return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
