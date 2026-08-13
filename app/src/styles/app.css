@@ -474,6 +474,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
                   il giudizio fine lo porta la parola, il glifo la classe.
      FONTE        il timbro d'archivio: maiuscoletto + data in cifre tabellari.
      TERMINE      le CIFRE sono il segno: data tabellare + distanza in giorni.
+     STATO        la casella che si riempie: vuota · a metà · in pausa · spuntata.
+     PRIORITÀ     la DIREZIONE del tratto: su · di lato · giù. Mai una quantità
+                  di punti, che è la confidenza, e mai il rosso, che è un guasto.
+     FINESTRA     la parentesi `[ ]`: l'etichetta sta DENTRO una finestra.
 
    I glifi sono SVG interni ai componenti (src/components/ui/*Mark*.tsx), non
    caratteri: il sottoinsieme del font non c'entra e `fonts:check` nemmeno.
@@ -543,6 +547,66 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .mark-due.md-over { color: var(--red-dark); font-weight: 700; }
 .mark-due.md-none { color: var(--muted); }
 .mark-due.md-verify { color: var(--amber); }
+
+/* -- STATO DEL LAVORO: la casella che si riempie. ---------------------------
+   Il colore qui è quasi muto di proposito: a che punto è un'attività lo dice
+   la casella, e una riga d'elenco che porta stato + priorità + termine con tre
+   colori accesi non ha più nessuna gerarchia. La conclusa è la sola a
+   colorarsi — verde come ogni giudizio positivo del sistema — e si SPEGNE nel
+   peso, perché un lavoro finito non deve più chiedere attenzione. */
+.mark-state.mw-open { color: var(--ink-soft); }
+.mark-state.mw-doing { color: var(--ink); }
+.mark-state.mw-waiting { color: var(--muted); }
+.mark-state.mw-done { color: var(--green); font-weight: 500; }
+
+/* -- PRIORITÀ: la direzione del tratto. -------------------------------------
+   ⚠️ NIENTE ROSSO. `badge-alta` (rosso degli errori) marcava la priorità alta
+   in Attività, Calendario e Subsidy: un lavoro importante non è un guasto, e
+   con quel colore una lista di attività normali sembrava una lista di
+   problemi. Il grado lo porta la direzione del glifo; il rinforzo è il PESO
+   dell'inchiostro, che è una scala e non un allarme. */
+.mark-prio.mo-high { color: var(--ink); font-weight: 700; }
+.mark-prio.mo-medium { color: var(--ink-soft); }
+.mark-prio.mo-low { color: var(--muted); font-weight: 500; }
+
+/* UN FATTO DICHIARATO CHE NON È UNA MARCATURA.
+   ⚠️ Non tutto ciò che conta appartiene a una delle famiglie: «il programma è
+   sospeso», «la domanda va presentata prima di iniziare», «la scheda è
+   ritirata» sono avvertenze del dominio, non affermazioni sulla provenienza o
+   sulla fiducia di un dato. Restano testo con un segno di attenzione e NON
+   prendono la forma di una famiglia a cui non appartengono: inventare una
+   parentela per simmetria è il modo più rapido di rendere illeggibile un
+   vocabolario. Ambra e non rosso — nessuno di questi fatti è un guasto: erano
+   `badge-alta` e `badge-media`, cioè la scala degli errori. */
+.decl-flag { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-meta); font-weight: 600; color: var(--amber); }
+.decl-flag .ic { color: var(--amber); }
+.decl-flag.df-muted, .decl-flag.df-muted .ic { color: var(--muted); }
+
+/* Un segno con il NOME DELLA SUA FAMIGLIA davanti, per i posti in cui non c'è
+   già un'etichetta di colonna o di riga: nelle tabelle («Idoneità: …») il nome
+   ce l'ha la cella, in una scheda no, e un chevron con scritto «alta» accanto
+   al tipo di sostegno non dice di che cosa sia alta. */
+.mark-field { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-meta); color: var(--muted); }
+
+/* -- FINESTRA DI CANDIDATURA: la parentesi. ---------------------------------
+   Le parentesi arrivano da `content` e non dal testo tradotto: sono la FORMA
+   della famiglia, non una parola, e nessun dizionario deve poterle dimenticare
+   in una lingua sola. `aria-hidden` non serve — il contenuto generato non
+   entra nel nome accessibile dell'elemento, e l'etichetta resta quella vera. */
+/* ⚠️ `nowrap` NON è un vezzo. Visto a schermo sul banco di prova, tedesco:
+   con «Die Quelle sagt es nicht» l'etichetta andava a capo dentro la parentesi
+   e la graffa di chiusura restava a mezz'aria, staccata dalla parola che
+   doveva chiudere. Una parentesi che non abbraccia niente non è la forma di
+   una famiglia, è un carattere caduto lì. La marcatura va a capo INTERA. */
+.mark-win { white-space: nowrap; }
+.mark-win::before { content: '['; margin-right: var(--sp-05); }
+.mark-win::after { content: ']'; margin-left: var(--sp-05); }
+.mark-win.mn-open { color: var(--green); }
+.mark-win.mn-upcoming { color: var(--ink-soft); }
+.mark-win.mn-continuous { color: var(--ink-soft); }
+.mark-win.mn-closed { color: var(--muted); }
+.mark-win.mn-suspended { color: var(--amber); }
+.mark-win.mn-unknown { color: var(--amber); }
 
 /* -- EVIDENZA: la citazione in linea, senza cambiare pagina. ----------------
    Il pulsante è testo, non pastiglia; la citazione aperta porta il filetto
@@ -1018,13 +1082,25 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .quiz-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-4); flex-wrap: wrap; }
 .quiz-live { font-size: var(--fs-body); color: var(--muted); }
 
+/* IL VERDETTO D'IDONEITÀ.
+   ⚠️ Le tre vesti di prima (`vh-ok` verde, `vh-warn` ambra, `vh-bad` ROSSO)
+   sono state tolte, non rinominate: `vh-bad` copriva sia «probabilmente non
+   idoneo» sia «non idoneo», e li dipingeva col colore dei guasti. Un'impresa
+   che non rientra nei criteri di un programma non ha subito un errore — ed è
+   proprio nel punto in cui il prodotto dà il suo giudizio più delicato che il
+   linguaggio dell'allarme fa più danno. Il fondo resta un tono di superficie;
+   il giudizio lo porta il segno dell'idoneità, glifo e parola insieme. */
 .verdict-head { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4); border-radius: var(--radius-sm); margin-bottom: var(--sp-2); }
-.verdict-head .vh-ico { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
 .vh-kicker { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .vh-title { font-size: var(--fs-strong); font-weight: 800; letter-spacing: -0.3px; }
-.vh-ok { background: var(--green-soft); } .vh-ok .vh-ico { background: var(--green); color: var(--on-accent); } .vh-ok .vh-title { color: var(--green); }
-.vh-warn { background: var(--amber-soft); } .vh-warn .vh-ico { background: var(--amber); color: var(--on-accent); } .vh-warn .vh-title { color: var(--amber); }
-.vh-bad { background: var(--red-soft); } .vh-bad .vh-ico { background: var(--red); color: var(--on-accent); } .vh-bad .vh-title { color: var(--red-dark); }
+/* Il verdetto è la riga più importante della scheda: il segno cresce fino alla
+   misura del titolo che sostituisce, invece di restare la marcatura minuta
+   delle righe d'elenco. */
+.vh-title .mark-elig { font-size: var(--fs-strong); font-weight: 800; }
+.vh-title .mark-elig .mk-glyph { width: 18px; height: 18px; }
+.vh-yes { background: var(--green-soft); }
+.vh-verify { background: var(--amber-soft); }
+.vh-no { background: var(--fill-subtle); }
 
 .pratica-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
 /* lista requisiti con stato per-elemento (esito verifica) */

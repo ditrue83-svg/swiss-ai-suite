@@ -29,7 +29,8 @@ import { useLabels } from '@/i18n/labels';
 import { formatDate } from '@/lib/format';
 import { incentivesService } from '@/services/incentivesService';
 import type { IncentiveCatalogProgram } from '@/types/models';
-import { CALL_STATUS_KEY } from './incentivesModel';
+import { WindowMark } from '@/components/ui/WindowMark';
+import { MarkLegend } from '@/components/ui/MarkLegend';
 
 export function CatalogTab() {
   const t = useT();
@@ -96,14 +97,19 @@ export function CatalogTab() {
                   {/* Le DUE pastiglie che cambiano quello che fai (regola 7 del
                       sistema di design): se è concedibile oggi, e se la domanda
                       va presentata prima di iniziare. Il resto è testo. */}
+                  {/* Fatti dichiarati del dominio, non marcature: nessuno dei
+                      tre parla della provenienza o della fiducia di un dato.
+                      Erano tre pastiglie di tre colori — ambra, neutra e BLU,
+                      cioè il colore dell'azione su una cosa che non è
+                      un'azione. */}
                   {p.availability === 'suspended' && (
-                    <span className="badge badge-media">{t('incentives.catalog.suspended')}</span>
+                    <span className="decl-flag">{t('incentives.catalog.suspended')}</span>
                   )}
                   {p.lifecycle === 'retired' && (
-                    <span className="badge badge-neutral">{t('incentives.catalog.retired')}</span>
+                    <span className="decl-flag df-muted">{t('incentives.catalog.retired')}</span>
                   )}
                   {p.mustApplyBeforeStart && (
-                    <span className="badge badge-blue">{t('incentives.catalog.applyBeforeStart')}</span>
+                    <span className="decl-flag">{t('incentives.catalog.applyBeforeStart')}</span>
                   )}
                 </div>
 
@@ -145,6 +151,9 @@ export function CatalogTab() {
             </div>
           );
         })}
+
+        {/* La legenda dei segni: la stessa ovunque. */}
+        <div className="mt-12"><MarkLegend /></div>
       </div>
 
       <div className="footnote">{t('incentives.catalog.footnote')}</div>
@@ -232,7 +241,10 @@ function CatalogDetail({ program: p }: { program: IncentiveCatalogProgram }) {
           <ul className="state-list">
             {p.calls.map((c) => (
               <li key={c.id}>
-                <span className="badge badge-neutral">{t(CALL_STATUS_KEY[c.status])}</span>
+                {/* La finestra col segno della sua famiglia: la stessa
+                    parentesi del dettaglio opportunità, non una pastiglia
+                    neutra indistinguibile da un'etichetta qualsiasi. */}
+                <WindowMark status={c.status} />
                 {' '}
                 {c.title ?? c.externalReference ?? t('incentives.catalog.callUnnamed')}
                 {c.deadlineOn && <> · {t('incentives.catalog.deadline', { date: formatDate(c.deadlineOn) })}</>}

@@ -50,6 +50,10 @@ export const fr: Dictionary = {
       inference: 'Inférence',
       toVerify: 'À vérifier',
     },
+    actionOrigin: {
+      required: 'Demandée dans le document',
+      suggested: 'Suggérée par AI-Swisse',
+    },
     source: { demo: 'Démonstration' },
     deadline: {
       inDays: 'dans {n} jours',
@@ -69,10 +73,14 @@ export const fr: Dictionary = {
     legend: {
       title: 'Légende des signes',
       provenance: 'Provenance',
+      actionOrigin: 'Origine d’une action',
       confidence: 'Confiance',
       eligibility: 'Éligibilité',
       source: 'Source',
       deadline: 'Échéance',
+      state: 'État du travail',
+      priority: 'Priorité',
+      window: 'Fenêtre de dépôt',
     },
   },
 
@@ -468,6 +476,7 @@ export const fr: Dictionary = {
     taskCreated: 'Activité créée',
     taskCreatedWithSteps: 'Activité créée avec {n} étapes',
     taskCreatedStepsFailed: 'Activité créée ; les étapes n’ont pas été ajoutées.',
+    actionsTitle: 'Actions',
     actionsNotConvertedOne: '1 action de l’analyse n’est pas encore devenue une activité',
     actionsNotConvertedMany: '{n} actions de l’analyse ne sont pas encore devenues des activités',
     // ---- prochaine étape : ce qu’il convient de faire maintenant ----
@@ -575,8 +584,6 @@ export const fr: Dictionary = {
     overdueTitle: 'En retard',
     overdueOne: '1 tâche en retard',
     overdueMany: '{n} tâches en retard',
-    overdueByOne: 'depuis 1 jour',
-    overdueByDays: 'depuis {n} jours',
     undatedOne: '1 tâche sans échéance',
     undatedMany: '{n} tâches sans échéance',
     openTasks: 'Ouvrir les tâches',

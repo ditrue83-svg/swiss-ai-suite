@@ -99,9 +99,12 @@ export const ELIGIBILITY_LABEL: Record<EligibilityStatus, string> = {
   unknown: 'Requisiti da verificare', likely: 'Probabilmente idoneo',
   unlikely: 'Probabilmente non idoneo', ineligible: 'Non idoneo',
 };
-export const ELIGIBILITY_BADGE: Record<EligibilityStatus, string> = {
-  unknown: 'media', likely: 'bassa', unlikely: 'alta', ineligible: 'alta',
-};
+/* ⚠️ `ELIGIBILITY_BADGE` NON ESISTE PIÙ. Traduceva i quattro stati di idoneità
+   nella scala delle pastiglie d'allarme — `unlikely` e `ineligible` in rosso,
+   `likely` in verde — cioè diceva che un'impresa fuori dai criteri di un
+   programma ha subito un guasto. L'idoneità ha una famiglia di segni sua
+   (EligibilityMark), dove il definitivo si distingue dal probabile per la
+   FORMA del glifo e non per il colore, e la mappa vive là: un posto solo. */
 
 export type QuizKind = 'hard' | 'excl' | 'soft';
 export interface QuizQuestion { key: string; question: string; kind: QuizKind; ref: Requirement | Exclusion }

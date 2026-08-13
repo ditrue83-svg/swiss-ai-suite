@@ -51,6 +51,7 @@ import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
+import { ActionOriginMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import type { AnalysisCorrection, Confidence, DocumentCategory, DocumentDetail, DocumentTag, Evidence } from '@/types/models';
 import { AskAbout } from '@/features/assistant/AskAbout';
@@ -643,6 +644,41 @@ export function DocumentDetailPage() {
                 </span>
                 <ul>
                   {analysis.uncertaintyItems.map((u, i) => <li key={i}>{u.description}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {/* ---- LE AZIONI, CIASCUNA CON LA SUA PROVENIENZA ----------------
+                ⚠️ PRIMA QUI NON C'ERANO AFFATTO: la pagina diceva soltanto
+                «N azioni non sono ancora diventate attività», cioè un numero
+                senza le cose che contava. E il dato che serve davvero per
+                decidere non è quante siano, ma QUALI il documento CHIEDA e
+                quali stiamo proponendo noi — che è esattamente ciò che
+                `sourceType` sa e che nessuna schermata al di fuori del foglio
+                d'analisi mostrava.
+
+                Elenco in sola lettura: le caselle da spuntare vivono nel
+                foglio d'analisi, e due checklist per la stessa lista sono due
+                liste che prima o poi non si somigliano più. Le citazioni si
+                aprono in linea solo per le azioni ESTRATTE — un suggerimento
+                non ha una frase nel documento, e mostrargli «senza evidenza
+                verificata» accanto sarebbe un rimprovero per un'assenza già
+                dichiarata dal suo stesso segno. */}
+            {analysis && analysis.actions.length > 0 && (
+              <div className="mt-16">
+                <div className="card-title">{t('documents.actionsTitle')}</div>
+                <ul className="stack-sm">
+                  {analysis.actions.map((a) => (
+                    <li key={a.id}>
+                      <div className={a.done ? 'muted-sm' : undefined}>{a.text}</div>
+                      <div className="row-wrap gap-2">
+                        <ActionOriginMark source={a.sourceType} />
+                        {a.sourceType === 'extracted' && (
+                          <EvidenceLink quote={a.evidence?.quote ?? null} page={a.evidence?.pageNumber ?? null} />
+                        )}
+                      </div>
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}

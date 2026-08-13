@@ -33,6 +33,7 @@ import {
 } from './incentivesModel';
 import { EligibilityMark } from '@/components/ui/EligibilityMark';
 import { SourceStamp } from '@/components/ui/SourceStamp';
+import { MarkLegend } from '@/components/ui/MarkLegend';
 import { OpportunityDetail } from './OpportunityDetail';
 
 interface Props {
@@ -206,6 +207,10 @@ export function OpportunitiesTab({
           </div>
         </div>
       )}
+
+      {/* La legenda dei segni: la stessa del dettaglio, dei Documenti e delle
+          Attività. Le righe qui portano idoneità e freschezza della fonte. */}
+      <div className="card"><MarkLegend /></div>
 
       {dismissing && (
         <DismissDialog

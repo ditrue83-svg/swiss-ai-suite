@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { SourceStamp } from '@/components/ui/SourceStamp';
+import { EligibilityMark } from '@/components/ui/EligibilityMark';
+import { PriorityMark } from '@/components/ui/PriorityMark';
+import { WindowMark } from '@/components/ui/WindowMark';
+import { MarkLegend } from '@/components/ui/MarkLegend';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { subsidyService, type CaseKind } from '@/services/subsidyService';
@@ -13,7 +17,7 @@ import type { ProgramModel, Requirement } from './programs';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import {
-  subsidyQuestions, evaluateEligibility, ELIGIBILITY_BADGE,
+  subsidyQuestions, evaluateEligibility,
   type EligibilityResult, type MatchResult,
 } from './engine';
 import { InterpretationPanel } from './Interpretation';
@@ -43,7 +47,6 @@ function Quiz({ prog, answers, setAnswers, onVerdict }: {
   onVerdict: (v: EligibilityResult) => void;
 }) {
   const t = useT();
-  const L = useLabels();
   const qs = subsidyQuestions(prog);
   const N = qs.length;
   const [index, setIndex] = useState(0);
@@ -72,7 +75,12 @@ function Quiz({ prog, answers, setAnswers, onVerdict }: {
       </div>
       <div className="quiz-foot">
         {i > 0 ? <button className="btn btn-sm" onClick={() => setIndex(Math.max(0, i - 1))}>← {t('common.back')}</button> : <span />}
-        <span className="quiz-live">{t('subsidy.detail.currentEligibility')} <span className={`badge badge-${ELIGIBILITY_BADGE[live.status]}`}>{L.eligibility(live.status)}</span></span>
+        {/* ⚠️ ERA UNA PASTIGLIA COLORATA DA `ELIGIBILITY_BADGE`, che traduceva
+            l'idoneità nella scala degli allarmi: `unlikely` e `ineligible` in
+            rosso, `likely` in verde. Rosso vuol dire che qualcosa è andato
+            storto; «probabilmente non idoneo» è un giudizio ponderato, e per
+            giunta un giudizio ancora provvisorio mentre si risponde. */}
+        <span className="quiz-live">{t('subsidy.detail.currentEligibility')} <EligibilityMark status={live.status} /></span>
       </div>
     </div>
   );
@@ -149,8 +157,8 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
         <div className="ax-meta mt-10">
           <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> {L.supportType(p.supportType)}</span>
           <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{p.authority}</b></span>
-          <span className="ax-chip"><Icon name="calendar" className="ic-sm" /> {p.applicationWindow}</span>
-          <span className={`badge badge-${match.priority.level}`}>{t('subsidy.results.priority', { level: L.urgency(match.priority.level) })}</span>
+          <span className="mark-field"><WindowMark status="unknown" /> {p.applicationWindow}</span>
+          <span className="mark-field">{t('marks.legend.priority')} <PriorityMark level={match.priority.level} /></span>
         </div>
         {/* 0011 — la sospensione viene PRIMA di ogni altra informazione: il
             resto della scheda descrive un contributo che oggi non si ottiene, e
@@ -200,7 +208,10 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
           <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsManual')}</div><div><ul className="detail-list warn">{p.informativeExclusions.map((r) => <li key={r.id}>{r.text}</li>)}</ul><div className="muted-sm">{t('subsidy.detail.exclusionsManualHint')}</div></div></div>
         )}
         <div className="result-row"><div className="result-label">{t('subsidy.detail.applicationWindow')}</div>
-          <div>{p.applicationWindow} <button className="btn btn-sm ml-2" onClick={addReminder}><Icon name="calendar" className="ic-sm" /> {t('subsidy.detail.addReminder')}</button>
+          {/* ⚠️ Lo STATO della finestra non è dichiarato dal catalogo 1.0: c'è
+              la frase, non il fatto che oggi sia aperta. Il segno lo dice, e
+              `windowHint` qui sotto spiega che si verifica sulla fonte. */}
+          <div><WindowMark status="unknown" /> {p.applicationWindow} <button className="btn btn-sm ml-2" onClick={addReminder}><Icon name="calendar" className="ic-sm" /> {t('subsidy.detail.addReminder')}</button>
             <div className="muted-sm mt-1">{t('subsidy.detail.windowHint')}</div></div>
         </div>
         <div className="result-row"><div className="result-label">{t('subsidy.detail.documents')}</div><div><ul className="detail-list">{p.documentsRequired.map((d, i) => <li key={i}>{d}</li>)}</ul></div></div>
@@ -241,6 +252,9 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
               onCreate={() => saveCase('candidatura')} onPreliminare={() => saveCase('preliminare')} onRiferimento={() => saveCase('riferimento')}
               onComplete={() => setVerdict(null)} onRestart={() => { setAnswers({}); setVerdict(null); }} />
           : <Quiz prog={p} answers={answers} setAnswers={setAnswers} onVerdict={setVerdict} />}
+
+        {/* La legenda dei segni: la stessa ovunque. */}
+        <div className="mt-12"><MarkLegend /></div>
       </div>
     </>
   );
@@ -251,9 +265,14 @@ function Verdict({ prog, v, savingCase, onCreate, onPreliminare, onRiferimento, 
   onCreate: () => void; onPreliminare: () => void; onRiferimento: () => void; onComplete: () => void; onRestart: () => void;
 }) {
   const t = useT();
-  const L = useLabels();
   const s = v.status;
-  const tone = s === 'likely' ? 'ok' : s === 'unknown' ? 'warn' : 'bad';
+  // ⚠️ IL VERDETTO NEGATIVO NON È PIÙ ROSSO. `vh-bad` vestiva «probabilmente
+  // non idoneo» e «non idoneo» col colore dei guasti: un'impresa che non
+  // rientra nei criteri di un programma non ha subito un errore, e il rosso in
+  // questo prodotto è riservato a ciò che è andato storto davvero. La
+  // differenza fra il probabile e il definitivo la portano il glifo (croce a
+  // tratto / croce piena) e la parola, come dichiara la famiglia dell'idoneità.
+  const tone = s === 'likely' ? 'yes' : s === 'unknown' ? 'verify' : 'no';
   const hardRows: StateRow[] = prog.hardRequirements.map((r) => ({ text: r.text, ...reqStateOf(v, r, t) }));
   const softRows: StateRow[] = prog.softRequirements.map((r) => ({ text: r.text, ...reqStateOf(v, r, t) }));
   const exVerified: StateRow[] = [
@@ -268,8 +287,11 @@ function Verdict({ prog, v, savingCase, onCreate, onPreliminare, onRiferimento, 
   return (
     <div className="verdict">
       <div className={`verdict-head vh-${tone}`}>
-        <div className="vh-ico"><Icon name={s === 'likely' ? 'checkCircle' : 'alert'} /></div>
-        <div><div className="vh-kicker">{t('subsidy.detail.verdict')}</div><div className="vh-title">{L.eligibility(s)}</div></div>
+        {/* Niente riquadro con l'icona d'allarme accanto: il segno dell'idoneità
+            porta già il suo glifo di giudizio, e due segni per lo stesso fatto
+            sono due segni che un giorno diranno cose diverse. */}
+        <div><div className="vh-kicker">{t('subsidy.detail.verdict')}</div>
+          <div className="vh-title"><EligibilityMark status={s} /></div></div>
       </div>
       {s === 'ineligible' && v.cause && (
         <div className="warn-box mb-14"><Icon name="alert" /><span>{t(v.cause.type === 'exclusion' ? 'subsidy.detail.exclusionTriggered' : 'subsidy.detail.requirementFailed')}: <strong>{v.cause.item.text}</strong>. {t('subsidy.detail.prevails')}</span></div>
