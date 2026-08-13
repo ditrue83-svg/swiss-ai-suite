@@ -816,6 +816,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ax-head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
 .ax-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.3px; }
 .ax-badges { display: flex; gap: var(--sp-2); flex-wrap: wrap; flex-shrink: 0; }
+/* Il nome della famiglia davanti al segno, e SOLO qui: è l'unico punto in cui
+   priorità e confidenza stanno affiancate senza altro contesto. La coppia non
+   si spezza andando a capo — `inline-flex` la tiene insieme, altrimenti in
+   tedesco «Zuverlässigkeit» finirebbe su una riga e il suo segno sull'altra,
+   che è peggio di non avere l'etichetta. */
+.ax-badge-pair { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.ax-badge-key { font-size: var(--fs-label); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-label); }
 .ax-meta { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .ax-chip { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-1) var(--sp-3); }
 .ax-chip .ic { width: 14px; height: 14px; color: var(--muted); }
