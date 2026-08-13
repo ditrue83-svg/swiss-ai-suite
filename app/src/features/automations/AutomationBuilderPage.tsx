@@ -213,11 +213,11 @@ export function AutomationBuilderPage() {
         <div className="card-title">
           {t('automations.step2')}
           <span className="filter-group">
-            <button className={`btn btn-sm${conditionMatch === 'all' ? ' btn-primary' : ''}`}
+            <button className="btn btn-sm btn-toggle"
               onClick={() => setConditionMatch('all')} aria-pressed={conditionMatch === 'all'}>
               {t('automations.matchAll')}
             </button>
-            <button className={`btn btn-sm${conditionMatch === 'any' ? ' btn-primary' : ''}`}
+            <button className="btn btn-sm btn-toggle"
               onClick={() => setConditionMatch('any')} aria-pressed={conditionMatch === 'any'}>
               {t('automations.matchAny')}
             </button>

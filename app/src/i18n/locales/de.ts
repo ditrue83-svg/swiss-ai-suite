@@ -236,7 +236,7 @@ export const de: Dictionary = {
     statusAria: 'Status von: {title}',
     deleteAria: 'Frist löschen: {title}',
     hubTitle: 'Aufgaben',
-    hubSubtitle: 'Die anstehende Arbeit, nach Priorität und Frist geordnet.',
+    areaSubtitle: 'Die anstehende Arbeit und wann sie fällig wird.',
     newTask: 'Neue Aufgabe',
     viewTodo: 'Zu erledigen',
     viewMine: 'Meine',
@@ -558,7 +558,6 @@ export const de: Dictionary = {
   },
   // ---- Kalender (0018) -----------------------------------------------------
   calendar: {
-    subtitle: 'Wann die Aufgaben des Unternehmens Aufmerksamkeit erfordern.',
     viewMonth: 'Monat',
     viewAgenda: 'Agenda',
     scopeMine: 'Meine',
@@ -591,7 +590,7 @@ export const de: Dictionary = {
     dayAriaToday: 'heute',
     newTaskOn: 'Neue Aufgabe am {date}',
     createCta: 'Aufgabe erstellen',
-    settings: 'Einstellungen',
+    sync: 'Synchronisierung',
     settingsTitle: 'Benachrichtigungen und Kalender',
     settingsSubtitle: 'Wann AI-Swisse Sie benachrichtigt und in welchen Kalender Ihre Fristen kopiert werden.',
     back: 'Zurück zum Kalender',
@@ -917,7 +916,12 @@ export const de: Dictionary = {
     greetingEveningNamed: 'Guten Abend, {name}',
     subtitle: 'Das erfordert derzeit Ihre Aufmerksamkeit.',
     analyzeDoc: 'Dokument analysieren',
-    findSubsidies: 'Fördermittel finden',
+    // ⚠️ «Förderungen» e non «Fördermittel»: la voce della barra
+    // (nav.incentives) dice «Förderungen», e due sostantivi diversi per lo
+    // stesso posto fanno dubitare che sia lo stesso posto. Il VERBO resta —
+    // la striscia porta azioni, la barra porta luoghi — ma il nome della cosa
+    // è uno solo. In italiano e francese il sostantivo coincideva già.
+    findSubsidies: 'Förderungen finden',
     prioActivity: 'Aufgabe', prioDocument: 'Dokument',
     prioNoDeadline: 'ohne Frist',
     prioOverdue: 'seit {n} Tagen überfällig', prioToday: 'heute fällig', prioInDays: 'in {n} Tagen',

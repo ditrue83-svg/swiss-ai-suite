@@ -236,7 +236,7 @@ export const fr: Dictionary = {
     statusAria: 'Statut de : {title}',
     deleteAria: 'Supprimer l’échéance : {title}',
     hubTitle: 'Activités',
-    hubSubtitle: 'Le travail à accomplir, classé par priorité et par échéance.',
+    areaSubtitle: 'Le travail à accomplir et quand il arrive à échéance.',
     newTask: 'Nouvelle activité',
     viewTodo: 'À faire',
     viewMine: 'Les miennes',
@@ -558,7 +558,6 @@ export const fr: Dictionary = {
   },
   // ---- Calendrier (0018) ---------------------------------------------------
   calendar: {
-    subtitle: 'Quand les tâches de l’entreprise demandent de l’attention.',
     viewMonth: 'Mois',
     viewAgenda: 'Agenda',
     scopeMine: 'Les miennes',
@@ -591,7 +590,7 @@ export const fr: Dictionary = {
     dayAriaToday: 'aujourd’hui',
     newTaskOn: 'Nouvelle tâche le {date}',
     createCta: 'Créer la tâche',
-    settings: 'Paramètres',
+    sync: 'Synchronisation',
     settingsTitle: 'Notifications et calendrier',
     settingsSubtitle: 'Quand AI-Swisse vous avertit, et vers quel calendrier vos échéances sont copiées.',
     back: 'Retour au calendrier',

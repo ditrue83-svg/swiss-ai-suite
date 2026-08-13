@@ -487,9 +487,9 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               <Icon name="document" className="ic-sm" /> {t('adminAi.result.originalDocument')}
               {isPdf && (
                 <span className="gap-2" style={{ marginLeft: 'auto', display: 'inline-flex' }}>
-                  <button type="button" className={`btn btn-sm${docMode === 'pdf' ? ' btn-primary' : ''}`}
+                  <button type="button" className="btn btn-sm btn-toggle"
                     aria-pressed={docMode === 'pdf'} onClick={() => setDocMode('pdf')}>PDF</button>
-                  <button type="button" className={`btn btn-sm${docMode === 'text' ? ' btn-primary' : ''}`}
+                  <button type="button" className="btn btn-sm btn-toggle"
                     aria-pressed={docMode === 'text'} onClick={() => setDocMode('text')}>{t('adminAi.result.docModeText')}</button>
                 </span>
               )}

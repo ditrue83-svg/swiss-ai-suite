@@ -162,7 +162,7 @@ export function TasksPage() {
 
   return (
     <>
-      <DeadlinesHead mode="list" subtitleKey="tasks.hubSubtitle" />
+      <DeadlinesHead mode="list" />
 
       <div className="row-wrap">
         <button ref={newTaskButtonRef} className="btn btn-primary btn-block-mobile"
@@ -197,9 +197,16 @@ export function TasksPage() {
       <div className="card mt-16">
         <div className="card-title">
           {t('tasks.hubTitle')}
+          {/* Le cinque viste sono uno STATO di ciò che si guarda, non cinque
+              azioni: in blu d'azione competevano con «Nuova attività», che è
+              l'unica azione primaria della schermata. Stessa scelta di
+              «Attivi/Archiviati» dei Documenti (`btn-toggle`). Restano
+              `filter-group` e non `segmented`: cinque estremi attaccati non
+              stanno su una riga a 375 pixel, e spezzati a metà un interruttore
+              unito si legge peggio di cinque pulsanti distinti. */}
           <span className="filter-group">
             {VIEWS.map((v) => (
-              <button key={v.id} className={`btn btn-sm${view === v.id ? ' btn-primary' : ''}`}
+              <button key={v.id} className="btn btn-sm btn-toggle"
                 onClick={() => setParams(v.id === 'todo' ? {} : { vista: v.id })} aria-pressed={view === v.id}>
                 {t(v.key)}
               </button>

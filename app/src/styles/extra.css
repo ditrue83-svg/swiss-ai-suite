@@ -417,18 +417,15 @@
    spaziature, e invisibile a chi cerca le regole nel foglio di stile. */
 .dash-sorted { margin: -6px 0 var(--sp-2); }
 
-/* Panoramica — i KPI sono CINQUE, e la griglia condivisa ne dispone quattro per
-   riga: il quinto restava da solo su una riga tutta sua, come se fosse un dato
-   di natura diversa dagli altri. Qui la griglia si adatta al numero che c'è.
-   La regola è limitata alla Panoramica di proposito: `.kpi-grid` la usano anche
-   Finanze e le altre schermate, dove le schede sono quattro e la disposizione
-   fissa è quella giusta. */
-#home-body .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
-/* 168 e non 184: la soglia decide QUANTE schede stanno in riga, e con 184 le
-   cinque non entravano nei 921 pixel della colonna centrale — restava esatta-
-   mente l'orfana che questa regola doveva togliere. Sotto i 168 le etichette su
-   due righe cominciano a spezzarsi male, quindi è il valore più alto che fa
-   entrare tutte e cinque, non un numero scelto a occhio. */
+/* ⚠️ QUI C'ERA `#home-body .kpi-grid`, RIMOSSA il 2026-08-13 perché non
+   toccava più niente: la Panoramica ha smesso di usare `.kpi-grid` quando è
+   passata alla gerarchia dichiarata (`.kpi-lead` — una metrica grande e quattro
+   piccole), e la regola restava a governare cinque schede uguali che non
+   esistono più. Il danno non era il peso: erano le sue quattordici righe di
+   commento, che spiegavano con cura come disporre un layout superato — e un
+   commento accurato su una cosa che non c'è è più caro di nessun commento,
+   perché il prossimo lettore ci crede. `.kpi-grid` resta viva e giusta dove è
+   nata: Finanze, Incentivi, CRM, Contratti, Automazioni. */
 
 /* «Aggiungi alle finanze» — il conteggio accanto al titolo dell'elenco: dice
    che un elenco c'è, prima ancora di leggerlo. */
