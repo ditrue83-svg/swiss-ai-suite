@@ -38,15 +38,21 @@
 //   2. attributi che l'utente legge:   placeholder, aria-label, title, alt, label
 //   3. testo passato a showToast(…)
 // ============================================================================
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, basename } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 const ROOT = 'src';
-const SKIP_DIRS = new Set(['i18n']);          // i dizionari SONO testo, per definizione
+// ⚠️ Le esenzioni sono PERCORSI, non nomi. Fino al 2026-08-13 bastava il nome:
+// un `engine.ts` NUOVO, in qualunque cartella, nasceva esente senza che nessuno
+// lo avesse deciso — provato con un `showToast('…')` in
+// `src/features/tasks/engine.ts`, che usciva verde. L'esenzione è una scelta
+// su UN file, e si scrive col suo percorso.
+const SKIP_DIRS = new Set(['src/i18n']);      // i dizionari SONO testo, per definizione
 const SKIP_FILES = new Set([
-  'Icon.tsx',      // tracciati SVG, non testo
-  'engine.ts',     // motore locale: nomi di enti e chiavi di riconoscimento (dati di dominio)
-  'programs.ts',   // dataset dei programmi di incentivo
+  'src/components/ui/Icon.tsx',        // tracciati SVG, non testo
+  'src/features/admin-ai/engine.ts',   // motore locale: nomi di enti e chiavi di riconoscimento
+  'src/features/subsidy-ai/engine.ts', // idem, per gli incentivi 1.0
+  'src/features/subsidy-ai/programs.ts', // dataset dei programmi di incentivo
 ]);
 
 // Testi uguali in italiano, tedesco e francese: sigle, unità, simboli, segni.
@@ -331,12 +337,29 @@ if (selfTestFailures.length) {
   process.exit(1);
 }
 
+// ⚠️ Un'esenzione senza più il file dietro è una porta lasciata aperta — la
+// forma delle eccezioni di `design:lint` e di FUORI_SUITE: fallisce, non tace.
+const esenzioniOrfane = [...SKIP_DIRS, ...SKIP_FILES].filter((p) => !existsSync(p));
+if (esenzioniOrfane.length) {
+  console.error(`\n✗ Esenzioni senza riscontro sul disco: ${esenzioniOrfane.join(', ')}`);
+  console.error('  Il file è stato spostato o rimosso: la voce va aggiornata, non lasciata.\n');
+  process.exit(2);
+}
+
+const argomenti = process.argv.slice(2);
+const ignoti = argomenti.filter((a) => a !== '--list' && !a.startsWith('src/'));
+if (ignoti.length) {
+  console.error(`\n✗ Argomenti non riconosciuti: ${ignoti.join(' ')}`);
+  console.error('  Si accettano: --list, --self-test, un percorso sotto src/.\n');
+  process.exit(2);
+}
+
 const files = [];
 (function walk(dir) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) { if (!SKIP_DIRS.has(name)) walk(p); }
-    else if (/\.(tsx|ts)$/.test(name) && !SKIP_FILES.has(basename(name))) files.push(p);
+    if (statSync(p).isDirectory()) { if (!SKIP_DIRS.has(p)) walk(p); }
+    else if (/\.(tsx|ts)$/.test(name) && !SKIP_FILES.has(p)) files.push(p);
   }
 })(ROOT);
 
@@ -344,10 +367,21 @@ const listMode = process.argv.includes('--list');
 const filterPath = process.argv.find((a) => a.startsWith('src/'));
 
 const results = [];
+let considerati = 0;
 for (const file of files) {
   if (filterPath && !file.startsWith(filterPath)) continue;
+  considerati++;
   const hits = findHardcodedText(file, readFileSync(file, 'utf8'));
   if (hits.length) results.push({ file: relative('.', file), hits });
+}
+
+// ⚠️ Un filtro che non corrisponde a niente NON è «tutto a posto»: fino al
+// 2026-08-13 `i18n:coverage src/features/inesistente` usciva 0 dicendo
+// «Nessuno» — un verde detto di zero file guardati.
+if (filterPath && considerati === 0) {
+  console.error(`\n✗ Il percorso «${filterPath}» non corrisponde a nessun file sorgente: refuso?`);
+  console.error('  Zero file guardati non è «tutto tradotto»: il controllo non ha risposto.\n');
+  process.exit(2);
 }
 
 const total = results.reduce((n, r) => n + r.hits.length, 0);
