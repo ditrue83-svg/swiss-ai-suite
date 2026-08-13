@@ -210,6 +210,14 @@ const GROUPS = {
       { script: 'typecheck' },
       { script: 'i18n:coverage' },
       { script: 'i18n:typography' },
+      // Le chiavi che NESSUNO chiama più. È il difetto opposto a quello di
+      // `i18n:coverage` — là una frase che non passa dal dizionario, qui una
+      // voce del dizionario che non passa da nessun codice — e per mesi non
+      // l'ha guardato niente: `subsidy.results.priority` e `L.eligibility`
+      // sono sopravvissute alla PR #44 e le ha trovate un grep nel bundle
+      // SERVITO, dopo il merge. Una frase orfana invecchia insieme al prodotto
+      // e un giorno qualcuno la richiama credendola viva.
+      { script: 'i18n:orphans' },
       // Bloccante come i18n:coverage, e per la stessa storia: la regola 1 del
       // sistema di design scritta senza controllo ha prodotto 95 stili inline
       // e ~342 misure a mano in cinque giorni. Un gate che avvisa senza
@@ -280,6 +288,13 @@ const GROUPS = {
       // script perso, sfuggito anche alla sonda del 2026-08-11: l'ha trovato
       // la PRIMA esecuzione della riconciliazione con package.json, il
       // 2026-08-13 — la ragione per cui quel confronto esiste.
+      // ⚠️ Il rilevatore delle chiavi orfane si prova sui due difetti che lo
+      // hanno smascherato mentre lo si scriveva, e che nessun caso inventato
+      // aveva previsto: un tag JSX che si chiude da solo (`/>`) letto come
+      // inizio di espressione regolare — 125 chiavi vive dichiarate morte — e
+      // le chiavi dentro un'interpolazione `${…}`, saltate insieme alla
+      // cornice. Entrambi trovati confrontando l'elenco col codice vero.
+      { script: 'i18n:orphans:self-test' },
       { script: 'fonts:check:self-test' },
       // ⚠️ E il controllo dei byte si prova sui byte VERI che lo hanno
       // motivato: il NUL della riga 282 di `email/store.ts` e i due BEL di
