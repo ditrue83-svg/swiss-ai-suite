@@ -248,7 +248,9 @@ export const it = {
     // ---- Work Hub (0016). «Scadenziario» è diventato «Attività»: la scadenza
     // è una proprietà del lavoro, non il lavoro stesso.
     hubTitle: 'Attività',
-    hubSubtitle: 'Il lavoro da completare, ordinato per priorità e scadenza.',
+    // Il sottotitolo dell'AREA, uno solo per elenco e calendario: i due modi
+    // li distingue l'interruttore, non due descrizioni che si alternano.
+    areaSubtitle: 'Il lavoro da completare e quando scade.',
     newTask: 'Nuova attività',
     viewTodo: 'Da fare',
     viewMine: 'Mie',
@@ -580,10 +582,12 @@ export const it = {
 
   // ---- Calendario (0018) ---------------------------------------------------
   calendar: {
-    // Il titolo della pagina è quello condiviso con l'elenco (nav.tasks,
-    // reso da DeadlinesHead): il calendario è un MODO di guardare le
-    // scadenze, non una pagina con un nome suo.
-    subtitle: 'Quando le attività dell’azienda richiedono attenzione.',
+    // ⚠️ QUI NON C'È NÉ `title` NÉ `subtitle`, e nemmeno in `tasks`: il
+    // calendario è un MODO di guardare le scadenze, non una pagina con un nome
+    // e una descrizione propri. Titolo e sottotitolo dell'area stanno in
+    // `nav.tasks` e `tasks.areaSubtitle`, e li rende DeadlinesHead per
+    // entrambe le viste. Rimettere una descrizione qui è ricreare la coppia di
+    // sottotitoli che si alternavano premendo l'interruttore.
     viewMonth: 'Mese',
     viewAgenda: 'Agenda',
     scopeMine: 'Le mie',
@@ -616,7 +620,9 @@ export const it = {
     dayAriaToday: 'oggi',
     newTaskOn: 'Nuova attività il {date}',
     createCta: 'Crea attività',
-    settings: 'Impostazioni',
+    // ⚠️ «Sincronizzazione» e NON «Impostazioni»: la voce in fondo alla barra
+    // si chiama già così e porta altrove. Qui si collega un calendario esterno.
+    sync: 'Sincronizzazione',
     settingsTitle: 'Notifiche e calendario',
     settingsSubtitle: 'Quando AI-Swisse ti avvisa, e su quale calendario copia le tue scadenze.',
     back: 'Torna al calendario',
@@ -955,7 +961,11 @@ export const it = {
     greetingAfternoonNamed: 'Buon pomeriggio, {name}',
     greetingEveningNamed: 'Buonasera, {name}',
     subtitle: 'Ecco cosa richiede attenzione nella tua azienda.',
-    analyzeDoc: 'Analizza un documento',
+    // ⚠️ ESATTAMENTE come `nav.analyzeDoc`: la scorciatoia porta dove porta la
+    // voce della barra, e due nomi per la stessa destinazione fanno dubitare
+    // che siano la stessa cosa. In tedesco e francese coincidevano già; in
+    // italiano l'articolo faceva la differenza.
+    analyzeDoc: 'Analizza documento',
     findSubsidies: 'Trova incentivi',
     prioActivity: 'Attività', prioDocument: 'Documento',
     prioNoDeadline: 'senza scadenza',

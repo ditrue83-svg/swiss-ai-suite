@@ -28,7 +28,7 @@
 // copiato qui dentro invecchia al primo ritocco del foglio di stile e comincia
 // a garantire una cosa che non c'è più.
 // ============================================================================
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ICONS } from '../src/components/ui/Icon.tsx';
@@ -344,6 +344,185 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   const adminItem = NAV.find((e) => !isSection(e) && e.id === 'admin') as NavItem;
   const shortcut = new RegExp(`to="${adminItem.path.replace('/', '\\/')}"[^\\n]*home\\.analyzeDoc`);
   check('«Analizza un documento» porta dove porta la voce della barra', shortcut.test(home));
+}
+
+// ---------------------------------------------------------------------------
+section('6. Gerarchia e densità dentro le pagine');
+
+// ⚠️ PERCHÉ. Il lavoro di fc4003d aveva dato al dettaglio documento una sola
+// azione primaria, tre livelli di superficie e una colonna di lettura — e
+// nessun controllo li sorvegliava. Nei giorni successivi il blu d'azione è
+// tornato a marcare lo STATO dei filtri in cinque schermate, e la testata
+// comune nata il 2026-08-13 lo ha riportato pure lei. Una regola di design
+// senza guardiano è una regola che dura fino al prossimo componente.
+
+{
+  // (a) IL BLU D'AZIONE NON È UNO STATO PREMUTO.
+  // `aria-pressed` dice «questo è un interruttore»: un interruttore acceso è
+  // una SUPERFICIE (`btn-toggle`), non l'azione della schermata. Il controllo
+  // guarda il singolo tag di apertura, così un pulsante primario e un
+  // interruttore che stanno nella stessa riga non si confondono fra loro.
+  const feature = join(root, 'src/features');
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.tsx')) files.push(p);
+    }
+  };
+  walk(feature);
+  walk(join(root, 'src/components'));
+
+  const colpevoli: string[] = [];
+  for (const f of files) {
+    const src = readFileSync(f, 'utf8');
+    // Ogni tag di apertura di un elemento interattivo, fino al `>` che lo chiude.
+    for (const m of src.matchAll(/<(?:button|Link|a)\b[^>]*>/g)) {
+      const tag = m[0];
+      if (tag.includes('aria-pressed') && tag.includes('btn-primary')) {
+        colpevoli.push(`${f.replace(`${root}/`, '')}: ${tag.slice(0, 70).replace(/\s+/g, ' ')}…`);
+      }
+    }
+  }
+  check(
+    'nessun pulsante usa il blu d\'azione come stato premuto',
+    colpevoli.length === 0,
+    colpevoli.join('\n     '),
+  );
+}
+
+{
+  const appCssRaw = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
+  // ⚠️ I COMMENTI SI TOLGONO PRIMA DI GIUDICARE. Alla prima esecuzione questo
+  // controllo è uscito rosso sul codice GIÀ CORRETTO, perché il commento che
+  // spiega il difetto ne cita il selettore: un test che legge la prosa invece
+  // delle regole vieta di documentare ciò che si è corretto.
+  const appCss = appCssRaw.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // (b) IL FILETTO DEI BLOCCHI PIANI SI DÀ A CHI SEGUE.
+  // `:first-of-type` guarda il TIPO di elemento, non la classe: con quella
+  // regola il filetto restava sul primo blocco piano e spariva dall'unico
+  // `<details>` della pagina — il contrario di ciò che il commento prometteva.
+  check(
+    'il filetto del blocco piano non dipende dal tipo di elemento',
+    !/\.surface-2:first-of-type/.test(appCss),
+    'usare `.surface-2 ~ .surface-2`: la classe, non il tag',
+  );
+  check(
+    'il filetto lo porta il blocco piano che SEGUE un altro blocco piano',
+    /\.surface-2\s*~\s*\.surface-2\s*\{[^}]*border-top:/.test(appCss),
+  );
+
+  // (c) IL TESTO CORRENTE HA UNA MISURA DI LETTURA.
+  // Non basta che `--measure` esista: deve essere CONSUMATO da ogni classe che
+  // porta prosa. `.page-desc` aveva 640px scritti a mano — ~94 caratteri, cioè
+  // il numero che il token è nato per correggere.
+  // ⚠️ UN ELENCO ESPLICITO, non un divieto generico di `max-width` in pixel.
+  // La prima versione cercava `max-width: 6..px` in tutto il foglio e usciva
+  // rossa su `.onboarding-card`, `.crm-narrow`, `.ct-narrow`: quelle sono
+  // larghezze di CONTENITORI, e un pixel lì è una scelta di layout, non una
+  // riga di testo decisa a occhio. Un controllo che grida su ciò che è giusto
+  // si impara a ignorare, e da quel momento non protegge più niente.
+  // Le classi qui sotto sono quelle che portano PROSA: chi ne aggiunge una
+  // aggiunge una riga qui.
+  for (const classe of ['.prose', '.page-desc', '.greeting-sub', '.footnote', '.legal-note', '.hero p']) {
+    const sel = classe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const blocco = appCss.match(new RegExp(`${sel}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+    check(
+      `${classe} porta la misura di lettura`,
+      /max-width:\s*var\(--measure\)/.test(blocco),
+      blocco ? `trovato: ${blocco.trim().slice(0, 60)}` : 'regola assente',
+    );
+  }
+
+  // (d) IL NUMERO PIÙ GRANDE È UNO SOLO.
+  // `.meter-num` era `--fs-h1` come il valore della scheda grande: due primi
+  // posti non fanno gerarchia.
+  const meter = appCss.match(/\.meter-num\s*\{([^}]*)\}/)?.[1] ?? '';
+  check(
+    'la percentuale di completamento non compete col numero che conta di più',
+    /font-size:\s*var\(--fs-h2\)/.test(meter),
+    `.meter-num: ${meter.trim().slice(0, 60)}`,
+  );
+}
+
+{
+  // (e) SCADENZE E ATTIVITÀ: un'area, un sottotitolo, un nome per ogni porta.
+  const head = readFileSync(join(root, 'src/features/tasks/DeadlinesHead.tsx'), 'utf8');
+  check(
+    'la testata comune non riceve più un sottotitolo per vista',
+    !head.includes('subtitleKey'),
+    'il sottotitolo descrive l\'AREA: due sottotitoli che si alternano sono due nomi per una cosa sola',
+  );
+  check('la testata usa il sottotitolo unico dell\'area', /t\('tasks\.areaSubtitle'\)/.test(head));
+  // Le vecchie chiavi non devono sopravvivere: una chiave orfana è la seconda
+  // fonte di verità che aspetta solo di essere ripescata.
+  const dizionari = { it, de, fr } as Record<string, Record<string, Record<string, unknown>>>;
+  for (const [lang, d] of Object.entries(dizionari)) {
+    check(
+      `${lang}: nessun sottotitolo residuo di elenco o calendario`,
+      d.tasks.hubSubtitle === undefined && d.calendar.subtitle === undefined,
+    );
+    check(`${lang}: l'area ha il suo sottotitolo`, typeof d.tasks.areaSubtitle === 'string');
+  }
+
+  const cal = readFileSync(join(root, 'src/features/calendar/CalendarPage.tsx'), 'utf8');
+  check(
+    'il collegamento del calendario si chiama «Sincronizzazione», non «Impostazioni»',
+    /t\('calendar\.sync'\)/.test(cal) && !/t\('calendar\.settings'\)/.test(cal),
+  );
+  // ⚠️ E NON PORTA L'ICONA DELL'INGRANAGGIO: la parola cambiata e il segno no
+  // sarebbero due porte ancora indistinguibili a colpo d'occhio.
+  const rigaSync = cal.split('\n').find((l) => l.includes("calendar.sync")) ?? '';
+  const contesto = cal.slice(Math.max(0, cal.indexOf(rigaSync) - 200), cal.indexOf(rigaSync) + rigaSync.length);
+  check(
+    'e non porta l\'icona della voce Impostazioni',
+    !/name="settings"/.test(contesto),
+    contesto.slice(-90).replace(/\s+/g, ' '),
+  );
+  for (const [lang, d] of Object.entries(dizionari)) {
+    check(
+      `${lang}: «Sincronizzazione» non si chiama come la voce Impostazioni`,
+      typeof d.calendar.sync === 'string'
+        && (d.calendar.sync as string).toLowerCase() !== (d.nav.settings as string).toLowerCase(),
+      `${d.calendar.sync} / ${d.nav.settings}`,
+    );
+  }
+}
+
+{
+  // (f) LE SCORCIATOIE DELLA PANORAMICA PARLANO COME LA BARRA.
+  // Non basta che portino alla stessa rotta (lo prova già la sezione 5): se il
+  // nome è un altro, chi legge non sa che è lo stesso posto.
+  // Si prendono le QUATTRO stringhe che servono, tipizzate dal dizionario
+  // stesso: un cast dell'intero dizionario a `Record<…>` non regge (le sezioni
+  // hanno profondità diverse) e passare da `unknown` spegnerebbe proprio il
+  // controllo che rende utile questo file — se una chiave sparisce, deve
+  // fallire la COMPILAZIONE, non un'asserzione a runtime.
+  const dizionari = [
+    { lang: 'it', nav: it.nav, home: it.home },
+    { lang: 'de', nav: de.nav, home: de.home },
+    { lang: 'fr', nav: fr.nav, home: fr.home },
+  ];
+  for (const d of dizionari) {
+    const lang = d.lang;
+    check(
+      `${lang}: «${d.home.analyzeDoc}» è la voce della barra, alla lettera`,
+      d.home.analyzeDoc === d.nav.analyzeDoc,
+      `barra «${d.nav.analyzeDoc}» · scorciatoia «${d.home.analyzeDoc}»`,
+    );
+    // Per gli incentivi la scorciatoia è un'AZIONE e la voce un LUOGO: i due
+    // testi non possono coincidere alla lettera, ma il NOME DELLA COSA sì —
+    // ed era «Fördermittel» contro «Förderungen».
+    const parole = d.nav.incentives.split(/[^\p{L}]+/u).filter((w) => w.length >= 5).map((w) => w.toLowerCase());
+    const scorciatoia = d.home.findSubsidies.toLowerCase();
+    check(
+      `${lang}: la scorciatoia agli incentivi usa il sostantivo della barra`,
+      parole.some((w) => scorciatoia.includes(w)),
+      `barra «${d.nav.incentives}» · scorciatoia «${d.home.findSubsidies}»`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

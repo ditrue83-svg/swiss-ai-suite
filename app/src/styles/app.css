@@ -366,7 +366,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .page-head { margin-bottom: var(--sp-6); }
 .page-title { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.4px; }
-.page-desc { color: var(--muted); margin-top: var(--sp-1); max-width: 640px; font-size: var(--fs-body); }
+/* ⚠️ `--measure` e non i 640px scritti a mano che stavano qui: a 15px di Inter
+   640 pixel sono ~94 caratteri per riga — esattamente il numero che il commento
+   di `--measure` (in cima a questo file) indica come il difetto da cui il token
+   è nato. Il sottotitolo di OGNI pagina è testo corrente, ed era l'unico rimasto
+   con una misura propria decisa a occhio. */
+.page-desc { color: var(--muted); margin-top: var(--sp-1); max-width: var(--measure); font-size: var(--fs-body); }
 .demo-banner { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-line); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); font-size: var(--fs-body); margin-bottom: var(--sp-6); }
 
 /* ---- I tre livelli di superficie (token in :root) --------------------------
@@ -375,10 +380,25 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .card, .surface-1 { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-6); box-shadow: var(--shadow-xs); }
 .card + .card { margin-top: var(--sp-4); }
 /* Livello 2 — blocco piano. Nessun fondo, nessuna ombra, nessun angolo: dal
-   precedente lo separa un filetto. Il primo della pila non lo porta (non c'è
-   niente da separare), esattamente come `.list-row:first-of-type`. */
-.surface-2 { background: var(--surface-2); border-top: 1px solid var(--surface-rule); padding: var(--sp-6) 0 0; margin-top: var(--sp-6); }
-.surface-2:first-of-type { border-top: none; }
+   precedente lo separa un filetto. Il primo della pila non lo porta, perché non
+   c'è niente da separare: sopra c'è la scheda dell'Analisi, che ha già un bordo
+   suo.
+   ⚠️ IL FILETTO SI DÀ A CHI SEGUE, non si toglie al primo. La regola di prima
+   era `.surface-2:first-of-type { border-top: none }`, e `:first-of-type`
+   guarda il TIPO DI ELEMENTO, non la classe: diceva «il primo <div> fra i
+   fratelli», non «il primo blocco piano». Le conseguenze, viste a schermo nel
+   dettaglio di un documento il 2026-08-13 e non dedotte:
+     · sul primo blocco piano (Attività) non scattava MAI, perché fra i figli
+       di `.reading-col` il primo <div> è `.page-head` — quindi il filetto che
+       si voleva togliere restava;
+     · scattava invece su «Informazioni tecniche», che è l'unico <details>
+       della pagina e quindi il primo del PROPRIO tipo — l'unico blocco senza
+       separatore era l'ultimo, cioè esattamente il contrario.
+   `~` e non `+`: fra un blocco piano e l'altro possono comparire elementi
+   condizionali (il foglio di stampa, un avviso), e l'adiacenza si romperebbe
+   al primo stato diverso. */
+.surface-2 { background: var(--surface-2); padding: var(--sp-6) 0 0; margin-top: var(--sp-6); }
+.surface-2 ~ .surface-2 { border-top: 1px solid var(--surface-rule); }
 /* Livello 3 — riga inline. Non ha contenitore: è testo con un'etichetta
    accanto. Una scheda intera per una riga sola dice «questo conta quanto
    l'analisi», e non è vero. */
@@ -391,6 +411,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    dalla colonna. */
 .reading-col { max-width: var(--content-max); }
 .prose { max-width: var(--measure); }
+/* L'avvertenza legale è testo corrente e non aveva NESSUNA regola propria: la
+   classe esisteva solo per colorare i suoi collegamenti. Vive in quattro
+   schermate (Contratti ×3, Assistente) con 234 caratteri dentro, e senza tetto
+   li stendeva su una riga sola. */
+.legal-note { max-width: var(--measure); }
 .card-title { font-size: var(--fs-body); font-weight: 700; letter-spacing: -0.1px; margin-bottom: var(--sp-4); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .section-title { font-size: var(--fs-strong); font-weight: 700; letter-spacing: -0.2px; margin: var(--sp-1) 0 var(--sp-3); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
@@ -410,6 +435,14 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .btn-danger:hover { background: var(--red-hover); border-color: var(--red); }
 .btn-sm { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body); }
 .btn-icon { padding: var(--sp-2); width: 34px; height: 34px; }
+/* L'etichetta che si ritira su schermo stretto, lasciando l'icona. Serve dove
+   la parola è lunga in una lingua e corta in un'altra: la riga non può
+   dipendere dalla traduzione. ⚠️ Chi la usa DEVE mettere `aria-label` sul
+   comando, altrimenti su un telefono il pulsante perde il nome invece di
+   perdere solo il testo. 720px è la soglia con cui il calendario sceglie già
+   l'agenda (NARROW in CalendarPage.tsx): una soglia nuova sarebbe un secondo
+   punto in cui la schermata cambia forma. */
+@media (max-width: 720px) { .btn-label-wide { display: none; } }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -537,13 +570,20 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    schermata finisce con due pulsanti blu che chiedono la stessa attenzione per
    due cose che non si somigliano: una CARICA, l'altra GUARDA. Lo stato premuto
    qui è una superficie, non un colore d'azione. */
-.btn-toggle[aria-pressed="true"] { background: var(--fill-subtle); border-color: var(--line-strong); color: var(--ink); font-weight: 700; }
-.btn-toggle[aria-pressed="true"]:hover { background: var(--fill-subtle); border-color: var(--line-strong); }
+/* ⚠️ DUE attributi, non uno. `aria-pressed` è di un PULSANTE che porta uno
+   stato (Attivi/Archiviati, Mese/Agenda); `aria-current="page"` è di un
+   COLLEGAMENTO che dichiara quale pagina si sta guardando (Elenco/Calendario,
+   che sono due rotte vive). Sono due cose diverse per chi usa un lettore di
+   schermo, e sarebbe stato comodo mettere `aria-pressed` anche sui link — ma
+   `aria-pressed` su un `<a>` non è ARIA valida, e un attributo sbagliato per
+   far tornare un selettore CSS è il foglio di stile che detta la semantica. */
+.btn-toggle[aria-pressed="true"], .btn-toggle[aria-current="page"] { background: var(--fill-subtle); border-color: var(--line-strong); color: var(--ink); font-weight: 700; }
+.btn-toggle[aria-pressed="true"]:hover, .btn-toggle[aria-current="page"]:hover { background: var(--fill-subtle); border-color: var(--line-strong); }
 /* I due estremi si toccano: è UN interruttore, non due pulsanti vicini. */
 .segmented { display: inline-flex; }
 .segmented .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .segmented .btn + .btn { margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-.segmented .btn[aria-pressed="true"] { position: relative; z-index: 1; }
+.segmented .btn[aria-pressed="true"], .segmented .btn[aria-current="page"] { position: relative; z-index: 1; }
 
 /* ---- Menu di trabocco ------------------------------------------------------
    Dove va ciò che è raro (archivia, stampa) o irreversibile (elimina): fuori
@@ -648,11 +688,14 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .hero { padding: var(--sp-6) 0 var(--sp-2); }
 .hero h1 { font-size: var(--fs-h1); letter-spacing: -0.6px; line-height: 1.22; max-width: 640px; }
 .hero h1 em { color: var(--accent-text); font-style: normal; }
-.hero p { color: var(--ink-soft); max-width: 600px; margin-top: var(--sp-3); font-size: var(--fs-body); }
+.hero p { color: var(--ink-soft); max-width: var(--measure); margin-top: var(--sp-3); font-size: var(--fs-body); }
 .hero-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-6); }
 .module-card { border-top: 3px solid var(--accent); }
 .module-kicker { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-text); }
-.footnote { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-6); border-top: 1px solid var(--line); padding-top: var(--sp-4); line-height: 1.6; }
+/* Il piè di pagina porta il testo corrente più lungo dell'applicazione (le
+   avvertenze legali, oltre 400 caratteri): senza tetto correva per tutta la
+   larghezza della schermata, che è il difetto per cui `--measure` esiste. */
+.footnote { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-6); border-top: 1px solid var(--line); padding-top: var(--sp-4); line-height: 1.6; max-width: var(--measure); }
 
 .tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--line); margin-bottom: var(--sp-4); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
@@ -783,7 +826,9 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .empty-cta { text-align: center; padding: var(--sp-8) var(--sp-6); }
 .empty-cta .ec-ico { width: 48px; height: 48px; margin: 0 auto var(--sp-3); border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; }
 .empty-cta .ec-title { font-weight: 700; font-size: var(--fs-body); }
-.empty-cta .ec-sub { color: var(--muted); font-size: var(--fs-meta); margin: var(--sp-1) 0 var(--sp-4); }
+/* `margin-inline: auto` e non solo il tetto: il blocco vuoto è centrato, e una
+   misura senza centratura avrebbe spostato il testo a sinistra dentro di esso. */
+.empty-cta .ec-sub { color: var(--muted); font-size: var(--fs-meta); margin: var(--sp-1) auto var(--sp-4); max-width: var(--measure); }
 @media (max-width: 600px) { .ax-doc-view { max-height: 40vh; } .draft-controls { gap: var(--sp-2); } }
 
 /* ---------- Dashboard ---------- */
@@ -851,7 +896,15 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 
 /* meter completamento */
 .meter { display: flex; align-items: center; gap: var(--sp-4); }
-.meter-num { font-size: var(--fs-h1); font-weight: 800; letter-spacing: -0.5px; color: var(--accent-text); }
+/* ⚠️ `--fs-h2` e non `--fs-h1`: misurato sulla Panoramica il 2026-08-13, «53%»
+   usciva a 30px/800 — cioè ESATTAMENTE come il «9» delle azioni da completare,
+   che è il numero su cui questo prodotto lavora. Due numeri della stessa misura
+   non fanno gerarchia, fanno due primi posti, e quello a pari merito qui era
+   una percentuale di completamento che sta a metà pagina dentro una scheda
+   secondaria. Il numero più grande della schermata dev'essere quello che conta
+   di più: adesso il metro pesa quanto le quattro schede piccole, che è il suo
+   grado. */
+.meter-num { font-size: var(--fs-h2); font-weight: 800; letter-spacing: -0.5px; color: var(--accent-text); }
 .meter-track { flex: 1; background: var(--track); border-radius: 99px; height: 10px; overflow: hidden; }
 .meter-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
 
@@ -870,7 +923,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 
 /* ---------- greeting / home operativa ---------- */
 .greeting { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.5px; }
-.greeting-sub { color: var(--muted); margin-top: var(--sp-1); font-size: var(--fs-body); }
+/* Il sottotitolo della Panoramica è il gemello di `.page-desc` — stessa cosa,
+   altro nome, perché qui il titolo è un saluto. Prende la stessa misura di
+   lettura: correggere il tetto di uno solo dei due avrebbe lasciato in piedi
+   proprio l'incoerenza che si stava togliendo. */
+.greeting-sub { color: var(--muted); margin-top: var(--sp-1); font-size: var(--fs-body); max-width: var(--measure); }
 
 /* righe azione con priorità (home + dashboard) */
 .action-row { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }

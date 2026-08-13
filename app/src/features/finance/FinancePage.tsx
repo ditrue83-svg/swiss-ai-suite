@@ -328,14 +328,14 @@ export function FinancePage() {
           <span className="filter-group fin-tools">
             {/* Il filtro rapido: la coda di lavoro vera del modulo. */}
             <button
-              className={`btn btn-sm${reviewOnly ? ' btn-primary' : ''}`}
+              className="btn btn-sm btn-toggle"
               aria-pressed={reviewOnly}
               onClick={() => update({ review: reviewOnly ? null : 'needs_review' })}
             >
               {t('finance.kpi.needsReview')}
             </button>
             <button
-              className={`btn btn-sm${filters.duplicates ? ' btn-primary' : ''}`}
+              className="btn btn-sm btn-toggle"
               aria-pressed={filters.duplicates === true}
               onClick={() => update({ duplicates: !filters.duplicates })}
             >
@@ -360,7 +360,8 @@ export function FinancePage() {
                 ciò che il pulsante fa; riscriverle sotto `finance` avrebbe
                 creato due testi da tenere allineati a mano. */}
             <button
-              className={`btn btn-sm${showFilters ? ' btn-primary' : ''}`}
+              className="btn btn-sm btn-toggle"
+              aria-pressed={showFilters}
               aria-expanded={showFilters} aria-controls="fin-filters"
               onClick={() => setShowFilters((v) => !v)}
             >

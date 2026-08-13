@@ -163,31 +163,50 @@ export function CalendarPage() {
 
   return (
     <>
-      <DeadlinesHead mode="calendar" subtitleKey="calendar.subtitle" />
+      <DeadlinesHead mode="calendar" />
 
+      {/* ---- I selettori: DUE righe in tutto, non quattro -----------------
+           Misurato a 375 pixel il 2026-08-13: prima di qualunque contenuto
+           c'erano QUATTRO righe di comandi — elenco/calendario, mese/agenda,
+           le mie/tutte, e «Impostazioni» orfano su una riga sua — per circa
+           640 pixel di altezza, cioè uno schermo intero speso a scegliere
+           come guardare invece che a guardare. Ora: la testata porta la
+           prima riga (elenco/calendario), QUESTA è la seconda (mese/agenda e
+           la sincronizzazione), e l'AMBITO è sceso fra i filtri dentro la
+           scheda, dove stanno già priorità e stato — è un filtro, e stava
+           fuori solo per come era cresciuta la pagina.
+
+           ⚠️ «Sincronizzazione» e non «Impostazioni»: la parola e l'icona
+           erano le stesse della voce «Impostazioni» in fondo alla barra, che
+           porta altrove. Due porte con lo stesso nome e lo stesso segno per
+           due posti diversi è il difetto dei nomi già pagato con «Admin AI —
+           Documenti» e «Documenti». Qui si collega un calendario esterno:
+           l'icona è quella dello scambio, non quella dell'ingranaggio. */}
       <div className="row-wrap">
-        <span className="filter-group">
-          <button className={`btn btn-sm${view === 'mese' ? ' btn-primary' : ''}`}
+        <span className="segmented">
+          <button className="btn btn-sm btn-toggle"
             onClick={() => setView('mese')} aria-pressed={view === 'mese'}>
             {t('calendar.viewMonth')}
           </button>
-          <button className={`btn btn-sm${view === 'agenda' ? ' btn-primary' : ''}`}
+          <button className="btn btn-sm btn-toggle"
             onClick={() => setView('agenda')} aria-pressed={view === 'agenda'}>
             {t('calendar.viewAgenda')}
           </button>
         </span>
-        <span className="filter-group">
-          <button className={`btn btn-sm${mine ? ' btn-primary' : ''}`}
-            onClick={() => setScope(true)} aria-pressed={mine}>
-            {t('calendar.scopeMine')}
-          </button>
-          <button className={`btn btn-sm${!mine ? ' btn-primary' : ''}`}
-            onClick={() => setScope(false)} aria-pressed={!mine}>
-            {t('calendar.scopeAll')}
-          </button>
-        </span>
-        <Link className="btn btn-sm push-right" to="/calendario/impostazioni">
-          <Icon name="settings" className="ic-sm" /> {t('calendar.settings')}
+        {/* ⚠️ Su schermo stretto resta la sola ICONA, e il nome vive in
+            `aria-label`. Misurato a 375 pixel IN TEDESCO: «Synchronisierung»
+            porta i controlli a 331 pixel in 343 disponibili, e la riga si
+            spezzava — tre righe invece di due, cioè il difetto che questa
+            schermata stava correggendo, rientrato dalla porta della
+            traduzione. È il comando meno usato della pagina (un calendario
+            esterno si collega una volta), quindi è quello giusto da stringere. */}
+        <Link
+          className="btn btn-sm push-right"
+          to="/calendario/impostazioni"
+          aria-label={t('calendar.sync')}
+        >
+          <Icon name="refresh" className="ic-sm" />
+          <span className="btn-label-wide">{t('calendar.sync')}</span>
         </Link>
       </div>
 
@@ -250,6 +269,24 @@ export function CalendarPage() {
           )}
 
           <div className="cal-filters">
+            {/* L'AMBITO sta qui, con gli altri filtri: «Le mie / Tutte»
+                sceglie QUALI attività si vedono, esattamente come priorità e
+                stato. Fuori dalla scheda occupava una riga propria e sembrava
+                un modo di visualizzare, che è un'altra cosa. Resta il PRIMO
+                dei filtri perché è quello che cambia di più il risultato — e
+                perché è l'unico con un valore predefinito attivo («Le mie»),
+                che §20 vuole sempre visibile: un elenco che sembra vuoto per
+                un filtro invisibile è la trappola già trovata altrove. */}
+            <span className="segmented">
+              <button className="btn btn-sm btn-toggle"
+                onClick={() => setScope(true)} aria-pressed={mine}>
+                {t('calendar.scopeMine')}
+              </button>
+              <button className="btn btn-sm btn-toggle"
+                onClick={() => setScope(false)} aria-pressed={!mine}>
+                {t('calendar.scopeAll')}
+              </button>
+            </span>
             <div className="field m-0">
               <select className="select-inline" value={priority} aria-label={t('calendar.filterPriority')}
                 onChange={(e) => setPriority(e.target.value as TaskPriority | '')}>
