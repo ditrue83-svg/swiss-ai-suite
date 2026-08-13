@@ -24,6 +24,9 @@ export const it = {
     retry: 'Riprova',
     copy: 'Copia',
     loading: 'Caricamento…',
+    // Il titolo del DOCUMENTO (la scheda del browser): quello statico di
+    // index.html è questo, alla lettera — test:shell-unit li riconcilia.
+    docTitle: 'AI-Swisse — Admin AI & Subsidy AI per le PMI svizzere',
     search: 'Cerca',
     confirm: 'Conferma',
     yes: 'Sì',

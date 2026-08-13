@@ -31,6 +31,7 @@ export const fr: Dictionary = {
     retry: 'Réessayer',
     copy: 'Copier',
     loading: 'Chargement…',
+    docTitle: 'AI-Swisse — Admin AI & Subsidy AI pour les PME suisses',
     search: 'Rechercher',
     confirm: 'Confirmer',
     yes: 'Oui',
