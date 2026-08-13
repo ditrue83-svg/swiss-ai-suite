@@ -1707,7 +1707,6 @@ export const it = {
       suspended: 'Attualmente sospeso',
       applyBeforeStart: 'Domanda prima di iniziare',
       requirementsToVerify: '{n} requisiti da verificare',
-      priority: 'Priorità {level}',
       checkEligibility: 'Verifica idoneità',
       editProfile: 'Modifica profilo',
       editProfileFull: 'Modifica profilo incentivi',

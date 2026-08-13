@@ -1646,7 +1646,6 @@ export const fr: Dictionary = {
       suspended: 'Actuellement suspendu',
       applyBeforeStart: 'Demande avant le début',
       requirementsToVerify: '{n} conditions à vérifier',
-      priority: 'Priorité {level}',
       checkEligibility: 'Vérifier l’éligibilité',
       editProfile: 'Modifier le profil',
       editProfileFull: 'Modifier le profil de subventions',
