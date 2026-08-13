@@ -31,6 +31,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ICONS } from '../src/components/ui/Icon.tsx';
+import { LOCALES } from '../src/i18n/index.tsx';
+import { it } from '../src/i18n/locales/it.ts';
+import { de } from '../src/i18n/locales/de.ts';
+import { fr } from '../src/i18n/locales/fr.ts';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -117,6 +121,56 @@ section('3. Favicon — il marchio è uno');
   check(`il campo della favicon è --accent`, svg.includes(`fill='${accent}'`), `atteso fill='${accent}'`);
   check(`il tratto della S è --on-accent`, svg.includes(`stroke='${onAccent}'`), `atteso stroke='${onAccent}'`);
   check('nessun gradiente residuo', !svg.includes('linearGradient'));
+}
+
+// ---------------------------------------------------------------------------
+section('4. Il documento — titolo e lingua non restano fermi all\'italiano');
+
+{
+  // ⚠️ PERCHÉ. index.html è nato con titolo, descrizione e lang in una lingua
+  // sola e NESSUN controllo li vedeva; e fino al 2026-08-13 il titolo della
+  // scheda restava italiano anche per un utente tedesco, perché nessuno lo
+  // aggiornava al cambio di lingua. Il documento statico parla la lingua di
+  // riferimento (it) — è una scelta, dichiarata nel commento di index.html —
+  // ma DEVE essere riconciliato col dizionario, e il provider DEVE riallineare
+  // titolo e lang a runtime.
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const staticTitle = html.match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
+  const staticDescription = html.match(/name="description"[\s\S]*?content="([^"]*)"/)?.[1] ?? '';
+  const staticLang = html.match(/<html lang="([a-z-]+)">/)?.[1] ?? '';
+
+  check('index.html ha un titolo non vuoto', staticTitle.trim() !== '');
+  check('index.html ha una descrizione non vuota', staticDescription.trim() !== '');
+  check(
+    'la lingua statica è una delle LOCALES',
+    (LOCALES as readonly string[]).includes(staticLang),
+    `lang="${staticLang}" — le lingue dichiarate sono ${LOCALES.join(', ')}`,
+  );
+
+  // La riconciliazione: il titolo statico È common.docTitle della lingua
+  // statica. Se uno dei due cambia senza l'altro, questo rosso lo ricorda.
+  const docTitles = { it: it.common.docTitle, de: de.common.docTitle, fr: fr.common.docTitle } as Record<string, string | undefined>;
+  check(
+    'il titolo statico coincide con common.docTitle della lingua dichiarata',
+    staticTitle === docTitles[staticLang],
+    `statico «${staticTitle}» · dizionario «${docTitles[staticLang] ?? '(chiave assente)'}»`,
+  );
+  check(
+    'le tre docTitle sono tradotte davvero (nessuna copia)',
+    new Set([docTitles.it, docTitles.de, docTitles.fr]).size === 3 && !Object.values(docTitles).includes(undefined),
+  );
+
+  // Il runtime: il provider riallinea lang e titolo al cambio di lingua. Si
+  // legge il sorgente e si pretende il cablaggio letterale, come per la favicon.
+  const provider = readFileSync(join(root, 'src/i18n/index.tsx'), 'utf8');
+  check(
+    'al cambio di lingua il provider aggiorna document.documentElement.lang',
+    /document\.documentElement\.lang\s*=\s*locale/.test(provider),
+  );
+  check(
+    'al cambio di lingua il provider aggiorna document.title dal dizionario',
+    /document\.title\s*=\s*translate\('common\.docTitle'\)/.test(provider),
+  );
 }
 
 // ---------------------------------------------------------------------------

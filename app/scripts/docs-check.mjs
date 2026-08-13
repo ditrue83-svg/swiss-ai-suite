@@ -115,6 +115,30 @@ function listFiles(path, ext) {
 }
 
 /**
+ * Come `listFiles`, ma DENTRO le sottocartelle, con percorsi relativi
+ * (`archivio/vecchio.md`).
+ *
+ * ⚠️ Fino al 2026-08-13 la scansione di `docs/` era piatta: un documento
+ * dentro una sottocartella non risultava mai orfano e il suo testo non veniva
+ * letto dai controlli sulle contraddizioni — invisibile due volte, e la prova
+ * l'ha data un file vero: `docs/archivio/prova-cecita.md`, orfano, usciva 0.
+ */
+function listFilesDeep(path, ext, prefix = '') {
+  if (!existsSync(path)) return [];
+  const out = [];
+  for (const e of readdirSync(path, { withFileTypes: true })) {
+    if (e.isDirectory()) out.push(...listFilesDeep(join(path, e.name), ext, `${prefix}${e.name}/`));
+    else if (e.name.endsWith(ext)) out.push(`${prefix}${e.name}`);
+  }
+  return out.sort();
+}
+
+/** Le cartelle del perimetro che NON esistono: chi le riceve deve fermarsi. */
+export function perimetroMancante(cartelle) {
+  return cartelle.filter((c) => !c.esiste).map((c) => c.nome);
+}
+
+/**
  * I problemi trovati. Ognuno dice COSA manca e DOVE, mai solo «non allineato»:
  * un messaggio che non indica il file da aprire fa perdere il tempo che voleva
  * risparmiare.
@@ -373,6 +397,24 @@ export function checkFunctions(report, { functionDirs, texts }) {
 function scan() {
   const report = new Report();
 
+  // ⚠️ IL PERIMETRO, PRIMA DI TUTTO. `readdirSync` su una cartella assente
+  // tornava [] e la scansione proseguiva su zero elementi: un perimetro
+  // inesistente dava «zero divergenze» — un verde detto di un posto che non
+  // era stato guardato. Una cartella del perimetro che manca non è un caso da
+  // zero problemi: è la domanda posta male, e si esce 2.
+  const perimetro = [
+    ['src/features', join(APP, 'src', 'features')],
+    ['supabase/migrations', join(APP, 'supabase', 'migrations')],
+    ['supabase/functions', join(APP, 'supabase', 'functions')],
+    ['docs', join(APP, 'docs')],
+  ].map(([nome, path]) => ({ nome, esiste: existsSync(path) }));
+  const mancanti = perimetroMancante(perimetro);
+  if (mancanti.length) {
+    console.error(`${R}Perimetro non trovato in ${APP}: ${mancanti.join(', ')}.${X}`);
+    console.error(`${DIM}Zero file in una cartella assente non è «zero divergenze»: la scansione non parte.${X}`);
+    process.exit(2);
+  }
+
   const appReadme = read(join(APP, 'README.md'));
   // ⚠️ Il README della RADICE vive nel monorepo, un livello sopra l'app. Quando
   // si lavora nella directory di sviluppo (`~/swiss-ai-suite-app`) non c'è, e
@@ -387,9 +429,15 @@ function scan() {
   // da soli in giro per il disco significherebbe verificare un file che non si
   // sa quale sia.
   const rootFlag = process.argv.indexOf('--root');
-  const rootDir = rootFlag >= 0 && process.argv[rootFlag + 1]
-    ? resolve(process.argv[rootFlag + 1])
-    : ROOT;
+  const rootArg = rootFlag >= 0 ? process.argv[rootFlag + 1] : null;
+  // ⚠️ Un `--root` indicato e inesistente è un refuso di chi invoca, non un
+  // «parziale»: rispondere PARZIALE a un percorso sbagliato direbbe che la
+  // radice non c'era, mentre c'era — altrove.
+  if (rootFlag >= 0 && (!rootArg || !existsSync(resolve(rootArg)))) {
+    console.error(`${R}--root ${rootArg ?? '(vuoto)'} non esiste: indica il monorepo, o ometti l'opzione.${X}`);
+    process.exit(2);
+  }
+  const rootDir = rootArg ? resolve(rootArg) : ROOT;
   const rootReadme = read(join(rootDir, 'README.md'));
   const rootMissing = rootReadme === null;
 
@@ -409,8 +457,10 @@ function scan() {
     migrations: listFiles(join(APP, 'supabase', 'migrations'), '.sql'), texts,
   });
 
-  const docFiles = listFiles(join(APP, 'docs'), '.md');
-  const links = [...texts.join('\n').matchAll(/\(([^)]*docs\/[a-z0-9-]+\.md)\)/g)]
+  // ⚠️ Ricorsiva, e la regex dei collegamenti ammette il separatore: un
+  // documento in `docs/archivio/` va visto sia come file sia come destinazione.
+  const docFiles = listFilesDeep(join(APP, 'docs'), '.md');
+  const links = [...texts.join('\n').matchAll(/\(([^)]*docs\/[a-z0-9/-]+\.md)\)/g)]
     .map((m) => m[1]);
   checkDocs(report, {
     docFiles, links,
@@ -454,9 +504,10 @@ function scan() {
       router: read(join(APP, 'src', 'App.tsx')) ?? '',
     });
 
-    // Ogni documento del progetto, tranne la fonte stessa.
+    // Ogni documento del progetto, sottocartelle comprese, tranne la fonte
+    // stessa (quella alla radice di docs/: un omonimo annidato non è la fonte).
     const testi = [];
-    for (const f of listFiles(join(APP, 'docs'), '.md')) {
+    for (const f of listFilesDeep(join(APP, 'docs'), '.md')) {
       if (f === 'product-status.md') continue;
       testi.push({ file: `docs/${f}`, testo: read(join(APP, 'docs', f)) ?? '' });
     }
@@ -542,6 +593,42 @@ const CASES = [
       docsExist: () => true,
     }),
     expect: 1,
+  },
+  {
+    // ⚠️ IL CASO DELLA SCANSIONE PIATTA: un orfano in una sottocartella deve
+    // contare quanto uno alla radice — fino al 2026-08-13 non veniva nemmeno
+    // elencato.
+    name: 'un documento orfano in una SOTTOCARTELLA → problema',
+    run: (r) => checkDocs(r, {
+      docFiles: ['archivio/vecchio.md'], links: [], docsExist: () => true,
+    }),
+    expect: 1,
+  },
+  {
+    name: 'un documento annidato e collegato → nessun problema',
+    run: (r) => checkDocs(r, {
+      docFiles: ['archivio/vecchio.md'], links: ['app/docs/archivio/vecchio.md'],
+      docsExist: () => true,
+    }),
+    expect: 0,
+  },
+  {
+    name: '⚠️ una cartella del perimetro assente → si nomina, non si tace',
+    run: (r) => {
+      for (const nome of perimetroMancante([
+        { nome: 'docs', esiste: false }, { nome: 'src/features', esiste: true },
+      ])) r.add('perimetro', `manca ${nome}`, 'scan');
+    },
+    expect: 1,
+  },
+  {
+    name: 'perimetro al completo → nessun problema',
+    run: (r) => {
+      for (const nome of perimetroMancante([
+        { nome: 'docs', esiste: true }, { nome: 'src/features', esiste: true },
+      ])) r.add('perimetro', `manca ${nome}`, 'scan');
+    },
+    expect: 0,
   },
   {
     name: 'un collegamento rotto → problema',

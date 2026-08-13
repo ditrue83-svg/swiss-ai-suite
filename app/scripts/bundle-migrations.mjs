@@ -13,7 +13,19 @@ import { join, basename } from 'node:path';
 const MIG_DIR = 'supabase/migrations';
 const OUT = 'supabase/full-setup.sql';
 
-const files = readdirSync(MIG_DIR).filter((f) => /^\d+.*\.sql$/.test(f)).sort();
+// ⚠️ Un `.sql` il cui nome non comincia con una cifra NON si ignora: fino al
+// 2026-08-13 il filtro lo escludeva in silenzio — il bundle restava «allineato»
+// e un database nuovo non avrebbe mai ricevuto quella migrazione. La
+// convenzione del nome si PRETENDE: chi la rompe riceve un errore col rimedio,
+// non un file fantasma.
+const tuttiSql = readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql'));
+const fuoriConvenzione = tuttiSql.filter((f) => !/^\d+.*\.sql$/.test(f));
+if (fuoriConvenzione.length) {
+  console.error(`Migrazioni con un nome fuori convenzione (il nome comincia con il numero): ${fuoriConvenzione.join(', ')}`);
+  console.error('Un file che il bundle ignora è una migrazione che un database nuovo non riceverà: si rinomina, non si ignora.');
+  process.exit(1);
+}
+const files = tuttiSql.sort();
 if (!files.length) { console.error('Nessuna migrazione trovata in', MIG_DIR); process.exit(1); }
 const names = files.map((f) => basename(f, '.sql'));
 

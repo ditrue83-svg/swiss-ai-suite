@@ -81,6 +81,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = locale;
     setCurrentLocale(locale);
+    // Anche il titolo della scheda: fino al 2026-08-13 restava quello statico
+    // di index.html — italiano per tutti, in un'app trilingue.
+    document.title = translate('common.docTitle');
   }, [locale]);
 
   const setLocale = useCallback((l: Locale) => {

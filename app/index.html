@@ -3,6 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Il documento statico parla ITALIANO, la lingua di riferimento: titolo,
+      descrizione e lang servono a indicizzatori e primo dipinto. È una scelta,
+      non una dimenticanza — e non è più sorvegliata a mano: il titolo qui
+      sotto DEVE coincidere con common.docTitle del dizionario italiano
+      (test:shell-unit li riconcilia), e al primo render I18nProvider riallinea
+      lang e titolo alla lingua dell'utente. La descrizione resta statica:
+      cambiarla a runtime non la farebbe leggere a nessun indicizzatore.
+    -->
     <title>AI-Swisse — Admin AI & Subsidy AI per le PMI svizzere</title>
     <meta
       name="description"
