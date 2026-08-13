@@ -622,6 +622,15 @@ proprio segno a un'altra — cosa che questo sistema vieta:
 Sono decisioni di prodotto — quante famiglie deve avere il vocabolario — non
 lavoro di consolidamento, e vanno prese guardando, non dedotte.
 
+⚠️ **Una di quelle quattro ha già un difetto VISTO, non previsto**: lo stato di
+una relazione è `badge-blue` nell'**elenco** clienti e `badge-neutral` nella
+**scheda** dello stesso cliente. «Trattativa in corso» è blu di là e grigia di
+qua — guardato in produzione il 2026-08-14 su un cliente vero. La causa è che
+la mappa dei toni esiste solo nell'elenco (`STATE_TONE` in `ClientsPage`) e la
+scheda usa un `<Tag>` nudo. Finché lo stato di relazione non ha una famiglia
+sua, i due punti vanno tenuti allineati **a mano**, e questa riga è il
+promemoria che oggi non lo sono.
+
 ### Un divario dichiarato: la provenienza dei passaggi di un'attività
 
 `ChecklistAction.sourceType` distingue ciò che un documento **richiede** da ciò
