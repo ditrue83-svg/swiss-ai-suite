@@ -26,13 +26,14 @@ import { formatDate } from '@/lib/format';
 import { incentivesService } from '@/services/incentivesService';
 import type { IncentiveCriterion, IncentiveOpportunity } from '@/types/models';
 import {
-  CALL_STATUS_KEY, COMPLETENESS_KEY, CRITERION_MARK, CRITERION_STATE_KEY,
+  COMPLETENESS_KEY, CRITERION_MARK, CRITERION_STATE_KEY,
   ELIGIBILITY_KEY, HARDNESS_KEY, NEXT_STEP_KEY,
   READINESS_KEY, RELEVANCE_KEY, TIMING_KEY, deadlineNotice, nextStep, plural,
   subsidyErrorKey, todayISO,
 } from './incentivesModel';
 import { EligibilityMark } from '@/components/ui/EligibilityMark';
 import { SourceStamp } from '@/components/ui/SourceStamp';
+import { WindowMark } from '@/components/ui/WindowMark';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -247,7 +248,9 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
             <dl className="crm-kv">
               {o.callTitle && (<><dt>{t('incentives.detail.call')}</dt><dd>{o.callTitle}</dd></>)}
               <dt>{t('incentives.detail.callStatus')}</dt>
-              <dd>{t(CALL_STATUS_KEY[o.callStatus ?? 'unknown'])}</dd>
+              {/* Lo stato del bando è la FINESTRA: la parentesi è la sua forma,
+                  e non somiglia più al termine qui sotto — che è una data. */}
+              <dd><WindowMark status={o.callStatus ?? 'unknown'} /></dd>
               <dt>{t('incentives.detail.deadline')}</dt>
               <dd>
                 {o.callDeadlineOn

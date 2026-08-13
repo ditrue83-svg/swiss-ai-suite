@@ -20,6 +20,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ErrorState, EmptyCta, SkeletonLine } from '@/components/ui/states';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
+import { MarkLegend } from '@/components/ui/MarkLegend';
 import { documentHubService } from '@/services/documentHubService';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
@@ -457,6 +458,10 @@ export function DocumentsPage() {
             )}
           </div>
           <div className="muted-sm mt-10">{t('documents.searchScope')}</div>
+          {/* La legenda dei segni: le righe portano il termine e il «da
+              verificare», e chi li incontra qui li ritroverà identici nel
+              dettaglio, in Attività e negli Incentivi. */}
+          <div className="mt-12"><MarkLegend /></div>
         </div>
       </div>
     </>

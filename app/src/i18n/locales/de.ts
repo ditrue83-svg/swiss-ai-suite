@@ -51,6 +51,10 @@ export const de: Dictionary = {
       inference: 'Inferenz',
       toVerify: 'Zu prüfen',
     },
+    actionOrigin: {
+      required: 'Im Dokument verlangt',
+      suggested: 'Vorschlag von AI-Swisse',
+    },
     source: { demo: 'Demodaten' },
     deadline: {
       inDays: 'in {n} Tagen',
@@ -70,10 +74,14 @@ export const de: Dictionary = {
     legend: {
       title: 'Zeichenlegende',
       provenance: 'Herkunft',
+      actionOrigin: 'Herkunft der Massnahme',
       confidence: 'Konfidenz',
       eligibility: 'Eignung',
       source: 'Quelle',
       deadline: 'Frist',
+      state: 'Arbeitsstatus',
+      priority: 'Priorität',
+      window: 'Eingabefenster',
     },
   },
 
@@ -468,6 +476,7 @@ export const de: Dictionary = {
     taskCreated: 'Aufgabe erstellt',
     taskCreatedWithSteps: 'Aufgabe mit {n} Schritten erstellt',
     taskCreatedStepsFailed: 'Aufgabe erstellt; die Schritte wurden nicht hinzugefügt.',
+    actionsTitle: 'Massnahmen',
     actionsNotConvertedOne: '1 Schritt aus der Analyse ist noch keine Aufgabe',
     actionsNotConvertedMany: '{n} Schritte aus der Analyse sind noch keine Aufgaben',
     // ---- nächster Schritt: was jetzt zu tun ist ----
@@ -575,8 +584,6 @@ export const de: Dictionary = {
     overdueTitle: 'Überfällig',
     overdueOne: '1 überfällige Aufgabe',
     overdueMany: '{n} überfällige Aufgaben',
-    overdueByOne: 'seit 1 Tag',
-    overdueByDays: 'seit {n} Tagen',
     undatedOne: '1 Aufgabe ohne Frist',
     undatedMany: '{n} Aufgaben ohne Frist',
     openTasks: 'Aufgaben öffnen',

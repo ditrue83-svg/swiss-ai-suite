@@ -51,6 +51,12 @@ export const it = {
       inference: 'Inferenza',
       toVerify: 'Da verificare',
     },
+    // Le stesse due forme della provenienza, con le parole delle AZIONI: su un
+    // fatto conta da dove è stato letto, su un’azione conta chi la chiede.
+    actionOrigin: {
+      required: 'Richiesta nel documento',
+      suggested: 'Suggerita da AI-Swisse',
+    },
     source: { demo: 'Dimostrativa' },
     deadline: {
       inDays: 'fra {n} giorni',
@@ -70,10 +76,14 @@ export const it = {
     legend: {
       title: 'Legenda dei segni',
       provenance: 'Provenienza',
+      actionOrigin: 'Provenienza di un’azione',
       confidence: 'Confidenza',
       eligibility: 'Idoneità',
       source: 'Fonte',
       deadline: 'Termine',
+      state: 'Stato del lavoro',
+      priority: 'Priorità',
+      window: 'Finestra di candidatura',
     },
   },
 
@@ -491,6 +501,7 @@ export const it = {
     taskCreated: 'Attività creata',
     taskCreatedWithSteps: 'Attività creata con {n} passaggi',
     taskCreatedStepsFailed: 'Attività creata; i passaggi non sono stati aggiunti.',
+    actionsTitle: 'Azioni',
     actionsNotConvertedOne: '1 azione dell’analisi non è ancora diventata un’attività',
     actionsNotConvertedMany: '{n} azioni dell’analisi non sono ancora diventate attività',
     // ---- prossimo passo: che cosa conviene fare adesso ----
@@ -605,8 +616,6 @@ export const it = {
     overdueTitle: 'Scadute',
     overdueOne: '1 attività scaduta',
     overdueMany: '{n} attività scadute',
-    overdueByOne: 'da 1 giorno',
-    overdueByDays: 'da {n} giorni',
     undatedOne: '1 attività senza scadenza',
     undatedMany: '{n} attività senza scadenza',
     openTasks: 'Apri Attività',

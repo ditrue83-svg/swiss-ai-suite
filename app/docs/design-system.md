@@ -380,7 +380,7 @@ un `<label>` legato alla casella: si spunta cliccando la frase.
 ⚠️ Quando una riga diventa un `<a>`, il colore va riportato a `var(--ink)`:
 altrimenti la regola globale dei collegamenti tinge di blu tutto il contenuto.
 
-## Marcature di provenienza
+## Il vocabolario della fiducia — le marcature
 
 Il vantaggio del prodotto è dire **da dove viene ogni affermazione** — e fino
 al 2026-08-12 lo diceva con pastiglie colorate indistinguibili: «Da verificare»
@@ -397,13 +397,26 @@ amministrativi, non il badge da dashboard.
 | **Idoneità** | glifo di giudizio + parola, sempre insieme | ? · ✓ · ✕ a tratto · ✕ pieno (definitivo) |
 | **Fonte** | timbro d'archivio: maiuscoletto + data tabellare | verificata di recente · da ricontrollare · vecchia · mai verificata · demo (a cornice) |
 | **Termine** | le CIFRE sono il segno: data tabellare + distanza | fra N giorni · scade oggi/domani · scaduto da N · nessuna scadenza · data da verificare |
+| **Provenienza di un'azione** | le stesse due forme della provenienza, con le parole delle azioni | richiesta nel documento (pieno) · suggerita da AI-Swisse (doppio) |
+| **Stato del lavoro** | la casella che si riempie: è una progressione | vuota · a metà · in pausa · spuntata |
+| **Priorità** | la DIREZIONE del tratto | su (alta) · di lato (media) · giù (bassa) |
+| **Finestra di candidatura** | la parentesi `[ ]`: l'etichetta sta dentro una finestra | aperta · aprirà · sempre aperta · chiusa · sospesa · non dichiarata |
 
-I componenti stanno in `src/components/ui/` (ProvenanceMark, ConfidenceBadge,
-EligibilityMark, SourceStamp, DeadlineMark, EvidenceLink, MarkLegend), le
-classi in `app.css`, sezione «MARCATURE». **Aggiungere uno stato è una riga
-nella mappa del componente**: la legenda itera sulle stesse mappe e si
-aggiorna da sola. I glifi sono SVG interni, non caratteri: il sottoinsieme del
-font non c'entra e `fonts:check` nemmeno.
+I componenti stanno in `src/components/ui/` (ProvenanceMark con
+ActionOriginMark, ConfidenceBadge, EligibilityMark, SourceStamp, DeadlineMark,
+StatusMark, PriorityMark, WindowMark, EvidenceLink, MarkLegend), le classi in
+`app.css`, sezione «MARCATURE». **Aggiungere uno stato è una riga nella mappa
+del componente**: la legenda itera sulle stesse mappe e si aggiorna da sola.
+I glifi sono SVG interni, non caratteri: il sottoinsieme del font non c'entra e
+`fonts:check` nemmeno.
+
+`test:shell-unit` sezione 7 sorveglia il vocabolario: che ogni segno chieda un
+glifo esistente e abbia la sua regola nel foglio di stile, che ogni voce porti
+la sua parola in tutte e tre le lingue, che la legenda renda un blocco per ogni
+famiglia, che ogni schermata con segni la monti, e che nelle schermate
+convertite non tornino le pastiglie d'allarme (`badge-alta/media/bassa`) — con
+le eccezioni dichiarate una per riga, e un'eccezione senza riscontro che fa
+fallire il controllo, come in `design:lint`.
 
 Le regole che il sistema incorpora:
 
@@ -419,8 +432,38 @@ Le regole che il sistema incorpora:
 - **La verificabilità sta in linea.** Ogni campo con evidenza mostra la frase
   originale senza cambiare pagina (`EvidenceLink`); un campo **senza** evidenza
   verificata lo dichiara in maiuscoletto muto, non tace.
-- **La legenda è la stessa ovunque** (dettaglio documento, scheda incentivo):
-  si impara una volta, si richiude.
+- **La legenda è la stessa ovunque** e mostra **tutte** le famiglie, non solo
+  quelle della schermata che si sta guardando: Attività, Scadenzario,
+  Documenti, dettaglio documento, foglio d'analisi, Incentivi, Catalogo,
+  Subsidy AI. Un vocabolario che cambia da una schermata all'altra non è un
+  vocabolario, è un elenco di abitudini locali. Si impara una volta, si
+  richiude.
+- **Una famiglia non presta il suo segno a un'altra.** La priorità non usa la
+  triade di punti (è la confidenza) e la sospensione di un programma non usa
+  la parentesi (è la finestra di un bando): un fatto del dominio che non
+  appartiene a nessuna famiglia resta testo con `.decl-flag`. Prendere in
+  prestito una forma vicina dice una cosa falsa con più autorevolezza.
+- **Il rosso non marca un giudizio.** Priorità alta, «probabilmente non
+  idoneo» e «non idoneo» non sono guasti: erano `badge-alta` e il verdetto
+  `vh-bad`. Il grado lo porta il peso dell'inchiostro, il giudizio il glifo.
+- **Le parole vietate restano vietate**: *approvato*, *garantito*,
+  *ufficialmente idoneo*. Dichiarare idonea un'impresa spetta all'autorità.
+  Il controllo guarda le etichette d'idoneità nelle tre lingue — non l'intero
+  dizionario: `subsidy.cases.statuses.approved` registra l'esito deciso da
+  un'autorità, ed è un fatto vero che si deve poter dire.
+
+### Un divario dichiarato: la provenienza dei passaggi di un'attività
+
+`ChecklistAction.sourceType` distingue ciò che un documento **richiede** da ciò
+che AI-Swisse **suggerisce**, e il segno lo porta ovunque quel dato viva: foglio
+d'analisi, dettaglio del documento, foglio di stampa. **Non** nell'elenco delle
+attività né nello scadenzario: quando le azioni diventano lavoro,
+`stepsFromActions` copia solo il testo e `task_checklist_items` non ha una
+colonna dove conservare la provenienza — il dato non esiste più, e mostrarlo
+richiederebbe una migrazione. Finché non c'è, il segno **non si inventa**: nella
+riga di un'attività `task.source` (Admin AI, Subsidy AI, una regola, una
+persona) resta testo, perché dice quale modulo l'ha creata e **non** se il
+documento chiedesse quella cosa.
 
 ## Regole che valgono per chi lavora qui dopo
 

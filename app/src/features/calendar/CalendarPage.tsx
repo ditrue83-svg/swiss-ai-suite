@@ -32,11 +32,14 @@ import { useI18n, useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { calendarService } from '@/services/calendarService';
 import { useMembers } from '@/features/tasks/useMembers';
-import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
 import { DeadlinesHead } from '@/features/tasks/DeadlinesHead';
+import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { StatusMark } from '@/components/ui/StatusMark';
+import { PriorityMark } from '@/components/ui/PriorityMark';
+import { MarkLegend } from '@/components/ui/MarkLegend';
 import {
   MAX_PER_DAY, addDays, agendaGroups, buildMonthGrid, currentItems, gridRange,
-  groupByDay, overdueByDays, overdueItems, shiftMonth, shortTitle, todayISO,
+  groupByDay, overdueItems, shiftMonth, shortTitle, todayISO,
 } from './calendarModel';
 import type { CalendarTaskItem, TaskPriority, TaskStatus } from '@/types/models';
 
@@ -44,16 +47,6 @@ type CalView = 'mese' | 'agenda';
 
 /** Quanto avanti guarda l'agenda. Tre mesi: oltre, si sfoglia il mese. */
 const AGENDA_DAYS = 90;
-
-/**
- * Dalla priorità del database alla parola con cui il prodotto la chiama.
- * È la stessa mappa che usano Attività e Panoramica, e serve sia per la classe
- * CSS sia per l'etichetta tradotta: tenerle allineate a mano in tre schermate
- * significherebbe che prima o poi un badge verde dirà «Alta».
- */
-const PRIORITY_WORD: Record<TaskPriority, 'alta' | 'media' | 'bassa'> = {
-  high: 'alta', medium: 'media', low: 'bassa',
-};
 
 /**
  * La vista iniziale dipende dalla larghezza dello schermo.
@@ -217,7 +210,12 @@ export function CalendarPage() {
         <div className="card cal-overdue mt-16">
           <div className="card-title">
             <span>{t('calendar.overdueTitle')}</span>
-            <span className="badge badge-alta">
+            {/* Il numero delle scadute: rosso sì — un termine mancato è
+                qualcosa che è andato storto NEL MONDO — ma nella veste della
+                famiglia del termine, non nella pastiglia degli errori
+                dell'interfaccia. Le due cose si somigliavano, e in una schermata
+                di lavoro normale sembravano tutte e due un guasto. */}
+            <span className="mark mark-due md-over">
               {overdue.length === 1 ? t('calendar.overdueOne') : t('calendar.overdueMany', { n: overdue.length })}
             </span>
           </div>
@@ -226,14 +224,15 @@ export function CalendarPage() {
               <div className="list-main">
                 <div className="list-title">{task.title}</div>
                 <div className="list-sub">
-                  {task.assigneeName ?? t('tasks.unassigned')} · {t(statusLabelKey(task.status))}
+                  {task.assigneeName ?? t('tasks.unassigned')}
                 </div>
               </div>
-              <span className="badge badge-alta">
-                {overdueByDays(task) === 1
-                  ? t('calendar.overdueByOne')
-                  : t('calendar.overdueByDays', { n: overdueByDays(task) })}
-              </span>
+              <StatusMark status={task.status} />
+              {/* Il ritardo lo dice la famiglia del TERMINE, che conta i giorni
+                  da sé sulla data vera: `overdueByDays` restava una seconda
+                  aritmetica delle scadenze, con le sue due frasi al singolare e
+                  al plurale, accanto a quella di DeadlineMark. */}
+              <DeadlineMark date={task.dueDate} />
             </Link>
           ))}
           {overdue.length > 6 && (
@@ -339,6 +338,11 @@ export function CalendarPage() {
           <AgendaList items={current} today={today}
             onCreate={(date) => navigate(`/attivita?nuova=${date}`)} />
         )}
+
+        {/* La legenda dei segni: la stessa di Attività, richiusa. Lo
+            scadenziario è l'altra faccia della stessa area, e non può avere un
+            vocabolario suo. */}
+        <div className="mt-12"><MarkLegend /></div>
       </div>
 
       {/* §21 — le attività senza scadenza si DICHIARANO. Non entrano nel
@@ -495,7 +499,6 @@ function AgendaList({
   items, today, onCreate,
 }: { items: CalendarTaskItem[]; today: string; onCreate: (date: string) => void }) {
   const t = useT();
-  const L = useLabels();
   const { localeTag } = useI18n();
   const groups = useMemo(() => agendaGroups(items), [items]);
 
@@ -517,28 +520,28 @@ function AgendaList({
         const label = new Date(`${group.date}T12:00:00Z`).toLocaleDateString(localeTag, {
           weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
         });
-        const due = dueLabel(group.date);
         return (
           <div key={group.date} className="cal-agenda-day">
             <div className="cal-agenda-head">
               <span className={group.date === today ? 'cal-agenda-date is-today' : 'cal-agenda-date'}>{label}</span>
-              <span className="badge badge-neutral">{t(due.key, due.params)}</span>
+              {/* La distanza del GIORNO, non di un'attività: il segno del
+                  termine la scrive con le cifre della sua famiglia. */}
+              <DeadlineMark date={group.date} />
             </div>
             {group.items.map((task) => (
               <Link key={task.id} className="list-row is-link" to={`/attivita/${task.id}`}>
                 <div className="list-main">
                   <div className="list-title">{task.title}</div>
                   <div className="list-sub">
-                    {task.assigneeName ?? t('tasks.unassigned')} · {t(statusLabelKey(task.status))}
+                    {task.assigneeName ?? t('tasks.unassigned')}
                     {task.documentId ? <> · <Icon name="document" className="ic-sm" /></> : null}
                   </div>
                 </div>
-                {/* La priorità passa dalle etichette di dominio, come in
-                    Attività e in Panoramica: una quarta traduzione scritta a
-                    mano qui sarebbe la prima a restare indietro. */}
-                <span className={`badge badge-${PRIORITY_WORD[task.priority]}`}>
-                  {L.urgency(PRIORITY_WORD[task.priority])}
-                </span>
+                {/* Le stesse tre famiglie dell'elenco Attività, nello stesso
+                    ordine: stato, priorità, termine. Il giorno lo dice già la
+                    testata del gruppo, quindi qui il termine non si ripete. */}
+                <StatusMark status={task.status} />
+                <PriorityMark level={task.priority} />
               </Link>
             ))}
           </div>

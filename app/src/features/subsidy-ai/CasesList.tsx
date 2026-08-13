@@ -1,5 +1,6 @@
 // "Le mie pratiche" — lette dalla tabella subsidy_cases (+ items), non più da localStorage.
 import { Icon } from '@/components/ui/Icon';
+import { EligibilityMark } from '@/components/ui/EligibilityMark';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
@@ -7,9 +8,7 @@ import { subsidyService } from '@/services/subsidyService';
 import { EmptyCta, ErrorState, SkeletonCard } from '@/components/ui/states';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
-import { ELIGIBILITY_BADGE } from './engine';
 import { useT, type TKey } from '@/i18n';
-import { useLabels } from '@/i18n/labels';
 import type { SubsidyCase, SubsidyCaseStatus, EligibilityStatus } from '@/types/models';
 
 // Solo l'ELENCO degli stati: l'etichetta la dà il dizionario, perché queste
@@ -31,7 +30,6 @@ function snapshotWindow(c: SubsidyCase): string | null {
 
 export function CasesList({ onGoResults }: { onGoResults: () => void }) {
   const t = useT();
-  const L = useLabels();
   const { activeCompanyId } = useCompany();
   const { showToast } = useToast();
   const companyId = activeCompanyId as string;
@@ -91,10 +89,17 @@ export function CasesList({ onGoResults }: { onGoResults: () => void }) {
               </div>
             </div>
             <div className="badge-row mt-10">
-              {kind === 'preliminare' ? <span className="badge badge-media">{t('subsidy.cases.kindPreliminary')}</span>
+              {/* ⚠️ Il TIPO di pratica è una categoria, e ne compare uno solo
+                  per riga: distinguerli col colore non serviva a nulla, e li
+                  metteva sulla scala degli allarmi — «candidatura» in verde,
+                  «preliminare» in ambra — come se una fosse un esito buono e
+                  l'altra un problema. La parola basta, ed è già lì. */}
+              {kind === 'preliminare' ? <span className="badge badge-neutral">{t('subsidy.cases.kindPreliminary')}</span>
                 : kind === 'riferimento' ? <span className="badge badge-neutral">{t('subsidy.cases.savedForReference')}</span>
-                : <span className="badge badge-bassa">{t('subsidy.cases.kindApplication')}</span>}
-              {elig && <span className={`badge badge-${ELIGIBILITY_BADGE[elig] ?? 'neutral'}`}>{t('subsidy.cases.eligibility')} {L.eligibility(elig)}</span>}
+                : <span className="badge badge-neutral">{t('subsidy.cases.kindApplication')}</span>}
+              {/* L'idoneità registrata alla creazione della pratica: il segno
+                  della sua famiglia, non la pastiglia negli allarmi. */}
+              {elig && <span className="mark-field">{t('subsidy.cases.eligibility')} <EligibilityMark status={elig} /></span>}
               <span className="muted-sm">{t('subsidy.cases.createdOn', { date: formatDate(c.createdAt) })}{c.sourceLastCheckedAt ? ` · ${t('subsidy.cases.sourceOf', { date: c.sourceLastCheckedAt })}` : ''}</span>
             </div>
             <div className="ax-progress mt-12"><span className="pg-label">{t('subsidy.cases.documentsProgress', { done, total: items.length })}</span>

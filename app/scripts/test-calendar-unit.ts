@@ -44,7 +44,7 @@ import { buildReminderEmail, createResendProvider } from '../supabase/functions/
 import { deliverEmails, generateReminders, type NotifyDeps } from '../supabase/functions/_shared/calendar/notify.ts';
 import {
   MAX_PER_DAY, addDays, agendaGroups, buildMonthGrid, gridRange, groupByDay,
-  overdueByDays, overdueItems, shiftMonth, shortTitle, todayISO,
+  overdueItems, shiftMonth, shortTitle, todayISO,
 } from '../src/features/calendar/calendarModel';
 import { badgeLabel, notificationLink, notificationTitleKey, relativeTime } from '../src/features/notifications/notificationFormat';
 // ⚠️ Si importa il modulo dei DEFAULT, non il service: quello tira dentro il
@@ -660,7 +660,9 @@ section('9 · Griglia del mese e agenda');
   const late = overdueItems(items, oggi);
   ok(late.length === 2 && late.every((t) => t.status !== 'completed'),
     'in ritardo: le aperte con scadenza passata, mai quelle concluse');
-  ok(overdueByDays(item({ dueDate: '2026-08-30' }), oggi) === 2, 'scaduta da due giorni');
+  // ⚠️ `overdueByDays` non si prova più perché non esiste più: il conto dei
+  // giorni di ritardo lo fa `deadlineState` (DeadlineMark), che lo scadenziario
+  // usa adesso, ed è provato in test:shell-unit insieme al resto della famiglia.
 
   ok(MAX_PER_DAY === 3, 'in una casella del mese si mostrano tre attività, poi si riassume');
   ok(shortTitle('Trasmettere il rendiconto IVA del secondo trimestre').endsWith('…'),

@@ -24,8 +24,11 @@ import { toUserMessage } from '@/lib/errors';
 import { useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
-import { dueLabel, sourceLabelKey, statusLabelKey } from './taskFormat';
+import { dueLabel, sourceLabelKey } from './taskFormat';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { StatusMark } from '@/components/ui/StatusMark';
+import { PriorityMark } from '@/components/ui/PriorityMark';
+import { MarkLegend } from '@/components/ui/MarkLegend';
 import { DeadlinesHead } from './DeadlinesHead';
 import { TaskCreateForm } from './TaskCreateForm';
 import {
@@ -261,6 +264,11 @@ export function TasksPage() {
             )}
           </div>
         )}
+
+        {/* La legenda dei segni: la stessa di Documenti e Incentivi, richiusa.
+            Qui compaiono tre famiglie in ogni riga — stato, priorità, termine —
+            e il posto dove si impara che cosa vogliono dire è uno solo. */}
+        <div className="mt-12"><MarkLegend /></div>
       </div>
     </>
   );
@@ -273,9 +281,7 @@ export function TasksPage() {
  */
 function TaskRow({ task, assigneeName }: { task: TaskWithPeople; assigneeName: string }) {
   const t = useT();
-  const L = useLabels();
   const due = dueLabel(task.dueDate);
-  const priorityWord = task.priority === 'high' ? 'alta' : task.priority === 'medium' ? 'media' : 'bassa';
 
   return (
     <Link className="list-row is-link" to={`/attivita/${task.id}`} aria-label={task.title}>
@@ -284,19 +290,29 @@ function TaskRow({ task, assigneeName }: { task: TaskWithPeople; assigneeName: s
         <div className="list-sub">
           {assigneeName}
           {task.authority ? ` · ${task.authority}` : ''}
+          {/* ⚠️ DA DOVE VIENE L'ATTIVITÀ RESTA TESTO, e non è una svista.
+              `task.source` dice quale MODULO l'ha creata (Admin AI, Subsidy AI,
+              una regola, una persona): non dice se il documento chiedesse quella
+              cosa o se gliela stiamo proponendo noi. Dargli il filetto della
+              provenienza lo farebbe leggere come «suggerimento AI-Swisse» anche
+              quando l'azione era richiesta nero su bianco — una marcatura falsa
+              è peggio di nessuna marcatura. Il segno vero delle azioni vive
+              dove vive il dato: vedi ActionOriginMark e il dettaglio documento. */}
           {' · '}{t(sourceLabelKey(task.source))}
           {task.documentId ? <> · <Icon name="document" className="ic-sm" /></> : null}
           {task.emailMessageId ? <> · <Icon name="mail" className="ic-sm" /></> : null}
         </div>
       </div>
-      {/* Lo stato è testo, non solo colore: un badge rosso non dice nulla a chi
-          non distingue i colori. */}
-      <span className="badge badge-neutral">{t(statusLabelKey(task.status))}</span>
-      <span className={`badge badge-${priorityWord}`}>{L.urgency(priorityWord)}</span>
-      {/* Il termine parla con le cifre della sua famiglia. ⚠️ Un'attività
-          CONCLUSA non è «in ritardo» (regola di isOverdue): la sua scadenza
-          passata torna testo muto, non un segno rosso che chiede attenzione
-          per un lavoro già fatto. */}
+      {/* ⚠️ TRE DOMANDE, TRE FAMIGLIE DI SEGNI. Fino a oggi erano tre pastiglie
+          identiche — «Da fare», «media», «fra 28 giorni» — con la stessa forma
+          e tre colori: a che punto è, quanto conta, entro quando si leggevano
+          tutte come «un'etichetta». Ora lo stato è una casella che si riempie,
+          la priorità una direzione, il termine delle cifre. */}
+      <StatusMark status={task.status} />
+      <PriorityMark level={task.priority} />
+      {/* ⚠️ Un'attività CONCLUSA non è «in ritardo» (regola di isOverdue): la
+          sua scadenza passata torna testo muto, non un segno rosso che chiede
+          attenzione per un lavoro già fatto. */}
       {task.status === 'completed'
         ? <span className="muted-sm">{t(due.key, due.params)}</span>
         : <DeadlineMark date={task.dueDate} />}

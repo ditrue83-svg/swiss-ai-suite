@@ -15,7 +15,7 @@
 // L'unica cosa che si legge dal fuso locale è QUAL È OGGI, che è appunto una
 // domanda locale.
 // ============================================================================
-import { calendarDaysUntil, isOverdue } from '@/features/tasks/taskFormat';
+import { isOverdue } from '@/features/tasks/taskFormat';
 import type { CalendarTaskItem } from '@/types/models';
 
 /** Il giorno di OGGI secondo l'orologio di chi guarda, in `YYYY-MM-DD`. */
@@ -152,11 +152,12 @@ export function currentItems(items: CalendarTaskItem[], today: Date = new Date()
   return items.filter((t) => !isOverdue({ dueDate: t.dueDate, status: t.status }, today));
 }
 
-/** Da quanti giorni è scaduta. Positivo. Usa i giorni di CALENDARIO, non i millisecondi. */
-export function overdueByDays(item: CalendarTaskItem, today: Date = new Date()): number {
-  const d = calendarDaysUntil(item.dueDate, today);
-  return d == null ? 0 : Math.abs(Math.min(0, d));
-}
+/* ⚠️ `overdueByDays` NON VIVE PIÙ QUI, ed è stato tolto invece che lasciato.
+   Contava i giorni di ritardo per una pastiglia rossa dello scadenziario, che
+   ora porta il segno del TERMINE (`DeadlineMark`): quel componente il conto lo
+   fa già, sulla stessa data e con gli stessi giorni di calendario. Tenerne due
+   avrebbe voluto dire due aritmetiche delle scadenze — e con esse il giorno in
+   cui una dice «da 1 giorno» e l'altra «scaduto ieri» per la stessa attività. */
 
 /**
  * Quante attività mostrare in una casella del mese prima di riassumere il resto.

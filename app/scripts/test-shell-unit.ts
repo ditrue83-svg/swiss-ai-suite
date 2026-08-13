@@ -37,6 +37,15 @@ import { it } from '../src/i18n/locales/it.ts';
 import { de } from '../src/i18n/locales/de.ts';
 import { fr } from '../src/i18n/locales/fr.ts';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches, type NavItem } from '../src/components/layout/nav.ts';
+import { GLYPH_NAMES, type MarkGlyphName } from '../src/components/ui/MarkGlyph.tsx';
+import { PROVENANCE_KINDS } from '../src/components/ui/ProvenanceMark.tsx';
+import { CONFIDENCE_LEVELS } from '../src/components/ui/ConfidenceBadge.tsx';
+import { ELIGIBILITY_STATES } from '../src/components/ui/EligibilityMark.tsx';
+import { SOURCE_STATES } from '../src/components/ui/SourceStamp.tsx';
+import { DEADLINE_STATES, deadlineState } from '../src/components/ui/DeadlineMark.tsx';
+import { TASK_STATES } from '../src/components/ui/StatusMark.tsx';
+import { PRIORITY_LEVELS } from '../src/components/ui/PriorityMark.tsx';
+import { WINDOW_STATES } from '../src/components/ui/WindowMark.tsx';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -523,6 +532,247 @@ section('6. Gerarchia e densità dentro le pagine');
       `barra «${d.nav.incentives}» · scorciatoia «${d.home.findSubsidies}»`,
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+section('7. Il vocabolario della fiducia — le famiglie di marcature');
+
+// ⚠️ PERCHÉ QUESTA SEZIONE. Il sistema di marcature è nato il 2026-08-12 con
+// cinque famiglie e una legenda che si aggiorna da sola; in dieci giorni sono
+// arrivate tre famiglie nuove (stato del lavoro, priorità, finestra) e in
+// mezza dozzina di schermate le pastiglie colorate non se ne sono andate da
+// sole. Le regole del vocabolario sono tre, e nessuna era sorvegliata:
+//   · ogni famiglia ha una FORMA propria e il colore è rinforzo;
+//   · la legenda mostra TUTTE le famiglie, sempre le stesse;
+//   · una schermata che usa un segno monta la legenda.
+// Una regola di design senza guardiano dura fino al prossimo componente
+// (lezione della sezione 6, pagata due volte).
+
+{
+  const appCss = readFileSync(join(root, 'src/styles/app.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const legendSrc = readFileSync(join(root, 'src/components/ui/MarkLegend.tsx'), 'utf8');
+
+  // Le mappe VERE, importate: se una famiglia cambia, questo elenco non resta
+  // indietro perché non descrive niente — usa gli oggetti stessi.
+  // `labelKey` può essere null: il TERMINE compone il suo testo con i numeri
+  // («fra 12 giorni») e non ha una chiave fissa per ogni stato.
+  const famiglie: { nome: string; mappa: Record<string, { cls: string; glyph?: MarkGlyphName; labelKey: string | null }> }[] = [
+    { nome: 'PROVENANCE_KINDS', mappa: PROVENANCE_KINDS },
+    { nome: 'CONFIDENCE_LEVELS', mappa: CONFIDENCE_LEVELS },
+    { nome: 'ELIGIBILITY_STATES', mappa: ELIGIBILITY_STATES },
+    { nome: 'SOURCE_STATES', mappa: SOURCE_STATES },
+    { nome: 'DEADLINE_STATES', mappa: DEADLINE_STATES },
+    { nome: 'TASK_STATES', mappa: TASK_STATES },
+    { nome: 'PRIORITY_LEVELS', mappa: PRIORITY_LEVELS },
+    { nome: 'WINDOW_STATES', mappa: WINDOW_STATES },
+  ];
+
+  // (a) OGNI SEGNO CHIEDE UN GLIFO CHE ESISTE.
+  // Un nome sbagliato non esplode: `GLYPHS[name]` è `undefined` e il
+  // componente rende un `<svg>` vuoto — una marcatura senza forma, cioè un
+  // segno che resta affidato al solo colore.
+  const glifiIgnoti: string[] = [];
+  for (const f of famiglie) {
+    for (const [k, v] of Object.entries(f.mappa)) {
+      if (v.glyph && !GLYPH_NAMES.includes(v.glyph)) glifiIgnoti.push(`${f.nome}.${k} → ${v.glyph}`);
+    }
+  }
+  check('ogni famiglia chiede glifi che esistono', glifiIgnoti.length === 0, glifiIgnoti.join(', '));
+
+  // (b) OGNI SEGNO HA LA SUA REGOLA NEL FOGLIO DI STILE.
+  // Una classe dichiarata in una mappa e mai scritta in app.css è un segno che
+  // eredita il colore di quello accanto: si vede solo aprendo la schermata
+  // giusta nella lingua giusta, che è il modo peggiore di accorgersene.
+  const classiOrfane: string[] = [];
+  for (const f of famiglie) {
+    for (const [k, v] of Object.entries(f.mappa)) {
+      if (!new RegExp(`\\.${v.cls}\\b`).test(appCss)) classiOrfane.push(`${f.nome}.${k} → .${v.cls}`);
+    }
+  }
+  check('ogni segno ha la sua regola in app.css', classiOrfane.length === 0, classiOrfane.join(', '));
+
+  // (c) OGNI VOCE DI OGNI FAMIGLIA HA UN'ETICHETTA NELLE TRE LINGUE.
+  // ⚠️ Il colore NON è portatore: la parola c'è sempre, e se manca in una
+  // lingua sola quella lingua resta col solo segno grafico.
+  const dizionari: Record<string, unknown> = { it, de, fr };
+  const risolvi = (d: unknown, chiave: string): unknown =>
+    chiave.split('.').reduce<unknown>((acc, p) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[p] : undefined), d);
+  const senzaParola: string[] = [];
+  for (const f of famiglie) {
+    for (const [k, v] of Object.entries(f.mappa)) {
+      if (!v.labelKey) continue; // DEADLINE_STATES.none porta numeri, non una chiave fissa
+      for (const [lang, d] of Object.entries(dizionari)) {
+        if (typeof risolvi(d, v.labelKey) !== 'string') senzaParola.push(`${lang}: ${f.nome}.${k} → ${v.labelKey}`);
+      }
+    }
+  }
+  check('ogni segno porta la sua parola in it/de/fr', senzaParola.length === 0, senzaParola.join('\n     '));
+
+  // (d) LA PRIORITÀ NON RUBA IL SEGNO DELLA CONFIDENZA.
+  // Sono due domande diverse — quanto conta un lavoro, quanto è affidabile
+  // un'analisi — ed erano già state confuse una volta, quando entrambe erano
+  // una pastiglia colorata. La triade di punti resta di una sola famiglia.
+  const glifiConf = new Set(Object.values(CONFIDENCE_LEVELS).map((v) => v.glyph));
+  const glifiPrio = new Set(Object.values(PRIORITY_LEVELS).map((v) => v.glyph));
+  check(
+    'priorità e confidenza non condividono nessun glifo',
+    [...glifiPrio].every((g) => !glifiConf.has(g)),
+    [...glifiPrio].filter((g) => glifiConf.has(g)).join(', '),
+  );
+
+  // (e) LA LEGENDA NON PUÒ INVECCHIARE: mostra TUTTE le famiglie.
+  // Itera le mappe, quindi uno stato nuovo compare da sé — ma una FAMIGLIA
+  // nuova va aggiunta, e finché non lo è i suoi segni sono in giro senza che
+  // niente li spieghi.
+  const fuoriLegenda = famiglie
+    .filter((f) => f.nome !== 'DEADLINE_STATES') // il termine è reso con esempi numerici, non iterando
+    .filter((f) => !legendSrc.includes(f.nome))
+    .map((f) => f.nome);
+  check('la legenda elenca tutte le famiglie', fuoriLegenda.length === 0, fuoriLegenda.join(', '));
+  // ⚠️ E NON BASTA CHE IL NOME COMPAIA. Trovato provando a rompere questo
+  // controllo: rinominando l'import la mappa restava citata nel file e il
+  // verde reggeva pur senza il blocco reso — la stessa famiglia di verde falso
+  // del byte NUL. Si contano anche i BLOCCHI: uno per famiglia, più quello
+  // della provenienza delle azioni, che non ha una mappa sua perché usa le
+  // due forme della provenienza con le parole delle azioni.
+  const blocchi = legendSrc.match(/ml-fam-title/g)?.length ?? 0;
+  check(
+    'la legenda rende un blocco per ogni famiglia',
+    blocchi === famiglie.length + 1,
+    `${blocchi} blocchi per ${famiglie.length + 1} famiglie`,
+  );
+
+  // (f) CHI MOSTRA UN SEGNO MOSTRA LA LEGENDA.
+  // ⚠️ Elenco esplicito di PAGINE, non una regola dedotta dagli import: le
+  // righe e le testate vivono in file propri (NextStepCard, parts.tsx) e
+  // pretendere la legenda anche là ne metterebbe tre sulla stessa schermata.
+  // Chi aggiunge una pagina con dei segni aggiunge una riga qui.
+  const pagineConSegni = [
+    'src/features/tasks/TasksPage.tsx',
+    'src/features/tasks/TaskDetailPage.tsx',
+    'src/features/calendar/CalendarPage.tsx',
+    'src/features/documents/DocumentsPage.tsx',
+    'src/features/documents/DocumentDetailPage.tsx',
+    'src/features/admin-ai/ResultView.tsx',
+    'src/features/incentives/OpportunitiesTab.tsx',
+    'src/features/incentives/OpportunityDetail.tsx',
+    'src/features/incentives/CatalogTab.tsx',
+    'src/features/subsidy-ai/ResultsList.tsx',
+    'src/features/subsidy-ai/ProgramDetail.tsx',
+  ];
+  const senzaLegenda = pagineConSegni
+    .filter((p) => !readFileSync(join(root, p), 'utf8').includes('<MarkLegend />'));
+  check('ogni schermata con segni monta la legenda', senzaLegenda.length === 0, senzaLegenda.join(', '));
+
+  // (g) NIENTE PASTIGLIE DI STATO NELLE SCHERMATE DEL VOCABOLARIO.
+  // `badge-alta/media/bassa` è la scala degli allarmi: rosso, ambra, verde. Ci
+  // finivano una priorità, un'idoneità e un ritardo — tre cose che non sono
+  // guasti. Il perimetro è quello delle schermate convertite: altrove (Inbox,
+  // Contratti, CRM) le pastiglie descrivono altro e restano.
+  //
+  // ⚠️ LE ECCEZIONI SONO DICHIARATE QUI, una riga ciascuna con il motivo — come
+  // in `design-lint.mjs`, e per la stessa ragione: ciò che non passa dal
+  // controllo deve passare da una frase che si può contestare. Il rosso È il
+  // colore giusto quando qualcosa è andato storto DAVVERO, e sono questi i
+  // casi. Un'eccezione che non corrisponde più a niente fa fallire il
+  // controllo: va tolta, non dimenticata.
+  const eccezioni: { file: string; motivo: string }[] = [
+    {
+      file: 'src/features/documents/DocumentsPage.tsx',
+      motivo: 'un\'analisi FALLITA è un guasto vero: il rosso è il suo colore, non un prestito',
+    },
+    {
+      file: 'src/features/calendar/CalendarSettingsPage.tsx',
+      motivo: 'connessione in errore o da riautorizzare: il calendario non si sta sincronizzando',
+    },
+  ];
+  const perimetro = ['tasks', 'calendar', 'documents', 'subsidy-ai', 'incentives'];
+  const conPastiglie: string[] = [];
+  const eccezioniUsate = new Set<string>();
+  for (const dir of perimetro) {
+    const base = join(root, 'src/features', dir);
+    const files: string[] = [];
+    const walk = (d: string) => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const p = join(d, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (e.name.endsWith('.tsx') || e.name.endsWith('.ts')) files.push(p);
+      }
+    };
+    walk(base);
+    for (const file of files) {
+      const rel = file.replace(`${root}/`, '');
+      const src = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      if (!/badge-(alta|media|bassa)/.test(src)) continue;
+      if (eccezioni.some((e) => e.file === rel)) { eccezioniUsate.add(rel); continue; }
+      conPastiglie.push(rel);
+    }
+  }
+  check(
+    'nessuna pastiglia d\'allarme dove parlano i segni',
+    conPastiglie.length === 0,
+    conPastiglie.join(', '),
+  );
+  // Un'eccezione morta è una regola che sembra ancora in vigore e non protegge
+  // più niente: la si toglie, come pretende `design-lint`.
+  const eccezioniMorte = eccezioni.filter((e) => !eccezioniUsate.has(e.file)).map((e) => e.file);
+  check(
+    'nessuna eccezione dichiarata è rimasta senza riscontro',
+    eccezioniMorte.length === 0,
+    eccezioniMorte.join(', '),
+  );
+
+  // (h) LE PAROLE VIETATE RESTANO VIETATE.
+  // ⚠️ Il perimetro sono le ETICHETTE D'IDONEITÀ, non l'intero dizionario:
+  // `subsidy.cases.statuses.approved` dice che una PERSONA ha registrato l'esito
+  // di un'autorità, ed è un fatto vero che va poter dire. Qui si vieta all'app
+  // di DEDURRE un'idoneità: dichiararla spetta all'autorità, non a noi.
+  const vietate = /approvat|garantit|ufficialmente|genehmigt|garantiert|offiziell|approuv|garanti|officiellement/i;
+  const promesse: string[] = [];
+  for (const [lang, d] of Object.entries(dizionari)) {
+    for (const v of Object.values(ELIGIBILITY_STATES)) {
+      const testo = risolvi(d, v.labelKey);
+      if (typeof testo === 'string' && vietate.test(testo)) promesse.push(`${lang}: «${testo}» (${v.labelKey})`);
+    }
+  }
+  check('nessuna etichetta d\'idoneità promette un esito', promesse.length === 0, promesse.join('\n     '));
+
+  // (i) L'INGOMBRO TEDESCO — DIECI CARATTERI, e il numero è misurato.
+  //
+  // Stato, priorità e termine stanno sulla STESSA riga d'elenco, sotto il
+  // titolo. Banco di prova del 2026-08-13, viewport 375, dizionario tedesco,
+  // riga peggiore («In Arbeit» + «hoch» + «seit 3 Tagen überfällig»): con
+  // un'etichetta di stato di 10 caratteri i tre segni restano su una riga con
+  // 2 pixel di margine; a 11 la riga si spezza e cresce da 127 a 159 pixel.
+  // Il primo tentativo di questo controllo diceva 12 — un numero scelto a
+  // occhio, che avrebbe lasciato passare proprio ciò che deve fermare.
+  //
+  // ⚠️ NON promette che la riga non vada MAI a capo: con la priorità più lunga
+  // («niedrig») e la frase di ritardo più lunga i segni passano a due righe
+  // anche con le etichette di oggi, e va bene — restano tutti leggibili e
+  // nessuno viene troncato. Quello che questo controllo impedisce è che una
+  // sola parola faccia da sola quel danno, in una lingua sola.
+  const inRiga = [...Object.values(TASK_STATES), ...Object.values(PRIORITY_LEVELS)];
+  const troppoLunghe: string[] = [];
+  for (const [lang, d] of Object.entries(dizionari)) {
+    for (const v of inRiga) {
+      const testo = risolvi(d, v.labelKey);
+      if (typeof testo === 'string' && testo.length > 10) troppoLunghe.push(`${lang}: «${testo}» (${testo.length})`);
+    }
+  }
+  check('nessuna etichetta di stato o priorità supera i dieci caratteri', troppoLunghe.length === 0, troppoLunghe.join(', '));
+
+  // (l) IL CONTO DEI GIORNI DI RITARDO È UNO SOLO.
+  // Lo scadenziario aveva il suo (`overdueByDays` in calendarModel) accanto a
+  // quello della famiglia del termine: due aritmetiche della stessa scadenza.
+  // Resta questa, e si prova qui — comprese le due giornate di scarto attorno
+  // a oggi, dove un conto sui millisecondi sbaglia.
+  const oggi = new Date('2026-09-01T10:00:00');
+  const giorniFa = (iso: string) => deadlineState(iso, false, 7, oggi);
+  check('due giorni di ritardo si contano due', giorniFa('2026-08-30').state === 'over' && giorniFa('2026-08-30').days === 2);
+  check('oggi non è in ritardo', giorniFa('2026-09-01').state === 'today');
+  check('domani è vicino, non scaduto', giorniFa('2026-09-02').state === 'soon');
+  check('senza data si dichiara «nessuna scadenza»', deadlineState(null).state === 'none');
 }
 
 // ---------------------------------------------------------------------------

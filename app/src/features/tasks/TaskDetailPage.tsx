@@ -28,6 +28,7 @@ import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
 import { dueLabel, eventLabelKey, sourceLabelKey, statusLabelKey } from './taskFormat';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { MarkLegend } from '@/components/ui/MarkLegend';
 import type { Task, TaskChecklistItem, TaskPriority, TaskStatus } from '@/types/models';
 
 export function TaskDetailPage() {
@@ -263,6 +264,13 @@ export function TaskDetailPage() {
             </div>
           )}
 
+          {/* La legenda dei segni: la stessa ovunque. ⚠️ Stato e priorità qui
+              NON portano il loro segno accanto alla tendina — la tendina È
+              già la lettura dello stato, e due punti che rendono la stessa
+              cosa prima o poi ne rendono due diverse. Il segno vive dove lo
+              stato si LEGGE e basta: elenco, calendario, Panoramica. */}
+          <div className="mt-12"><MarkLegend /></div>
+
           <div className="row-wrap mt-16">
             {task.archivedAt ? (
               <button className="btn btn-sm" onClick={() => void taskService.restore(task.id).then(() => { showToast(t('tasks.restored')); reload(); })}>
@@ -328,6 +336,16 @@ export function TaskDetailPage() {
           )}
         </div>
 
+        {/* ⚠️ DIVARIO DICHIARATO — i passaggi non portano il segno della loro
+            provenienza, e non è una dimenticanza di questa schermata.
+            `ChecklistAction.sourceType` esiste e distingue ciò che il documento
+            RICHIEDE da ciò che AI-Swisse SUGGERISCE, ma `stepsFromActions`
+            (taskFormat.ts) copia solo il testo e `task_checklist_items` non ha
+            una colonna per conservarlo: qui il dato non c'è più. Mostrarlo
+            servirebbe una migrazione, che è una decisione e non un passaggio di
+            questo lavoro. Finché non c'è, il segno vive dove vive il dato — nel
+            dettaglio del documento e nel foglio di analisi. Vedi
+            docs/design-system.md, «Il vocabolario della fiducia». */}
         {checklist.length === 0 && <div className="muted-sm">{t('tasks.checklistEmpty')}</div>}
 
         {checklist.map((item, i) => (

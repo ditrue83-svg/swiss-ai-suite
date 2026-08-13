@@ -25,19 +25,32 @@ export const DEADLINE_STATES: Record<DeadlineState, { cls: string; glyph: MarkGl
 };
 
 /** Giorni interi da oggi alla data, nel fuso locale (le scadenze sono giorni civili, non istanti). */
-function giorniA(dateIso: string): number {
-  const oggi = new Date();
+function giorniA(dateIso: string, oggi: Date): number {
   const a = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate());
   const d = new Date(dateIso);
   const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   return Math.round((b.getTime() - a.getTime()) / 86_400_000);
 }
 
-/** Lo stato di un termine, come funzione pura: i casi limite si provano qui. */
-export function deadlineState(date: string | null, toVerify?: boolean, soonDays = 7): { state: DeadlineState; days: number | null } {
+/**
+ * Lo stato di un termine, come funzione pura: i casi limite si provano qui.
+ *
+ * ⚠️ `today` È UN PARAMETRO e non `new Date()` letto dentro. Una funzione che
+ * legge l'orologio da sé non si può provare su un istante scelto — è la stessa
+ * ragione per cui `priorityFromDueDate` lo prende, ed è il difetto già pagato
+ * dalla sezione 9 di `test:workflows-unit`. Da quando lo scadenziario ha
+ * smesso di contare i giorni per conto suo (`overdueByDays`), questo è
+ * l'UNICO conto del ritardo nel prodotto: provarlo non è un lusso.
+ */
+export function deadlineState(
+  date: string | null,
+  toVerify?: boolean,
+  soonDays = 7,
+  today: Date = new Date(),
+): { state: DeadlineState; days: number | null } {
   if (!date) return { state: 'none', days: null };
   if (toVerify) return { state: 'toVerify', days: null };
-  const days = giorniA(date);
+  const days = giorniA(date, today);
   if (days < 0) return { state: 'over', days: -days };
   if (days === 0) return { state: 'today', days: 0 };
   return { state: days <= soonDays ? 'soon' : 'days', days };

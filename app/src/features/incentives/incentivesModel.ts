@@ -242,14 +242,12 @@ export const READINESS_KEY: Record<SubsidyReadiness, TKey> = {
   submitted: 'incentives.readiness.submitted',
 };
 
-export const CALL_STATUS_KEY: Record<SubsidyCallStatus, TKey> = {
-  upcoming: 'incentives.callStatus.upcoming',
-  open: 'incentives.callStatus.open',
-  closed: 'incentives.callStatus.closed',
-  continuous: 'incentives.callStatus.continuous',
-  suspended: 'incentives.callStatus.suspended',
-  unknown: 'incentives.callStatus.unknown',
-};
+/* ⚠️ `CALL_STATUS_KEY` NON ESISTE PIÙ. Traduceva lo stato di un bando in una
+   chiave, e le due schermate che la usavano lo rendevano come testo o come
+   pastiglia neutra — cioè come un'etichetta qualsiasi, indistinguibile dal
+   termine che le stava accanto. Lo stato della finestra è una FAMIGLIA DI
+   SEGNI (WindowMark, `[ ]`), e la mappa vive là insieme alla sua forma: un
+   posto solo, e la legenda la elenca da sé. */
 
 export const CASE_STATUS_KEY: Record<SubsidyCaseStatus, TKey> = {
   draft: 'incentives.caseStatus.draft',

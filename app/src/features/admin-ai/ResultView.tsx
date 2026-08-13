@@ -17,21 +17,14 @@ import { TONI } from '@/features/admin-ai/engine';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { PdfViewer } from '@/features/admin-ai/PdfViewer';
-import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
+import { ActionOriginMark, ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
-import type { ActionSource, AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence } from '@/types/models';
+import { MarkLegend } from '@/components/ui/MarkLegend';
+import type { AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence } from '@/types/models';
 
 /** Tono predefinito della bozza, come prima della 0010 (era il default di reply_tone). */
 const DEFAULT_TONE = 'formale';
-
-/** LA coppia di provenienza del prodotto, resa col filetto di famiglia:
- *  pieno = il documento lo chiede, doppio = lo suggeriamo noi. Era una
- *  pastiglia (`origin-badge`) con quattro varianti di testo; il segno ora è
- *  lo stesso ovunque, ed è quello che la legenda insegna. */
-function OriginMark({ source }: { source: ActionSource }) {
-  return <ProvenanceMark kind={source === 'extracted' ? 'document' : 'suggestion'} />;
-}
 
 function EvidenceButton({ evidence, label, onShow }: { evidence: Evidence | null; label?: string; onShow: (ev: Evidence) => void }) {
   const t = useT();
@@ -474,7 +467,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
         <div className="co-ico"><Icon name="checkCircle" /></div>
         <div className="co-main">
           <div className="co-kicker">{t('adminAi.result.whatToDoNow')}</div>
-          <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <OriginMark source={r.primaryActionSource} /></div>
+          <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <ActionOriginMark source={r.primaryActionSource} /></div>
           <div className="co-when">{r.deadline ? <>{t('adminAi.result.by')} <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</> : t('adminAi.result.noDeadlineFound')}</div>
         </div>
         <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || document.title)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}</button>
@@ -540,7 +533,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                 <div className={`action-item${c.done ? ' done' : ''}`} key={c.id}>
                   <input type="checkbox" id={`act-${r.id}-${c.id}`} checked={c.done} onChange={(e) => toggleAction(c.id, e.target.checked)} />
                   <div className="ai-main">
-                    <div className="ai-text"><label htmlFor={`act-${r.id}-${c.id}`}>{c.text}</label> <OriginMark source={c.sourceType} /></div>
+                    <div className="ai-text"><label htmlFor={`act-${r.id}-${c.id}`}>{c.text}</label> <ActionOriginMark source={c.sourceType} /></div>
                     <div className="ai-meta">
                       {c.sourceType === 'extracted' && c.evidence && <EvidenceButton evidence={c.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />}
                       <button type="button" className="mini-btn" onClick={() => createTask(c.text)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.addToTasks')}</button>
@@ -549,6 +542,12 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                 </div>
               ))}
             </div>
+
+            {/* La legenda dei segni, qui dove il vocabolario è più fitto: ogni
+                azione porta la sua provenienza, e questa è la pagina in cui si
+                impara che cosa vuol dire un filetto pieno. È la STESSA legenda
+                di Documenti, Attività e Incentivi. */}
+            <div className="mt-12"><MarkLegend /></div>
           </div>
 
           {r.uncertainties.length ? (
