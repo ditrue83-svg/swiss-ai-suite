@@ -2,15 +2,16 @@
 // Esportata perché `test:shell-unit` prova sulla famiglia intera la regola che
 // i commenti qui sotto invocano caso per caso: due cose diverse, due forme.
 export const ICONS = {
-  // Il marchio: la S di Swisse, a doppia curva. ⚠️ NON un simbolo d'azione:
-  // il segno precedente era lo STESSO path di `plus`, e un quadrato accent con
-  // un «+» dentro, nella posizione del logo, si legge «aggiungi» — un comando,
-  // non un nome. Una lettera nomina e basta; e la sua curva continua è una
-  // forma che nessuna icona funzionale della famiglia ha (sono tutte rette,
-  // rettangoli e archi brevi), quindi il marchio non potrà mai essere scambiato
-  // per un pulsante. `test:shell-unit` tiene ferma la metà meccanica della
-  // regola: una forma, un nome.
-  logo: '<path d="M16.8 7.1C15.9 5.6 14.3 4.8 12.2 4.8 9.4 4.8 7.5 6.3 7.5 8.4c0 2.2 1.8 3.1 4.7 3.7 2.9.6 4.5 1.6 4.5 3.8 0 2.2-2 3.6-4.8 3.6-2.2 0-4-.9-4.9-2.5"/>',
+  // ⚠️ QUI NON C'È PIÙ IL MARCHIO, e la sua assenza è la regola.
+  // C'è stato per due volte: prima lo STESSO path di `plus` (un quadrato accent
+  // con un «+» dentro, nella posizione del logo, si legge «aggiungi»: un
+  // comando, non un nome), poi una «S» a doppia curva. Entrambe erano segni
+  // INVENTATI qui dentro, mentre il marchio del prodotto esiste già ed è un
+  // wordmark. Ora sta in `BrandMark.tsx`, composto in Inter e letto dai
+  // dizionari — non è un'icona e non deve tornare a esserlo: un marchio in
+  // questa famiglia è un marchio che qualcuno, un giorno, monterà in un
+  // pulsante. `test:shell-unit` §1 tiene ferma la regola meccanica accanto
+  // (una forma, un nome); la §3 lega la favicon ai token.
   home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.6V20h13V9.6"/>',
   dashboard: '<rect x="3" y="3" width="7.5" height="8" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.2"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.2"/><rect x="3" y="14" width="7.5" height="7" rx="1.2"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/>',

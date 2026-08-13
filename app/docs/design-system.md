@@ -35,11 +35,40 @@ fuori renderebbe falsa una dichiarazione fatta ai clienti.
 
 | | |
 |---|---|
+| Famiglia | **Inter**, poi lo stack di sistema come ripiego: `'Inter', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif` (`app.css`, `:root`) |
 | Origine | `inter-ui@4.1.1` (SIL OFL, licenza in `public/fonts/`) |
-| Pesi | **400** corpo · **500** etichette e navigazione · **600** titoli e numeri |
+| Ospitato | **da noi**, `public/fonts/` — mai da un CDN, vedi sopra |
+| Pesi | **400** corpo · **500** etichette e navigazione · **600** titoli, numeri e grassetto. **Non ne esistono altri**, e il CSS non può chiederne |
 | Peso dei file | 25 KB ciascuno — sottoinsieme di 445 caratteri su 2852 |
 | Caricamento | `font-display: swap`; **precaricato il solo 400**, con `crossorigin` |
-| Controllo | `npm run fonts:check` (impronte, copertura, cablaggio) |
+| Controllo | `npm run fonts:check` (impronte, copertura **letta dalla cmap dei file**, cablaggio, pesi chiesti) |
+
+⚠️⚠️ **TRE PESI VUOL DIRE CHE 700 E 800 NON ESISTONO, e per tre giorni i fogli
+di stile li hanno chiesti in 58 regole.** Misurato a schermo il 2026-08-13: a
+40 px la stessa stringa occupa **257,73 px identici** a 600, 700, 800 e 900.
+Il browser **non sintetizza** un grassetto — sceglie la faccia più vicina e
+disegna **seicento**. Quindi `.kpi-value` a 800 e `.kpi-label` a 600 erano lo
+stesso peso: un gradino di gerarchia scritto nel codice e **inesistente sullo
+schermo**, che nessun controllo vedeva perché nessuno confrontava le due liste.
+Le 58 regole sono state portate a 600 — un cambio che non sposta **un pixel**,
+perché 600 è ciò che già rendevano — e `b, strong` ora dichiara 600 invece di
+ereditare il 700 del browser (59 punti che rendevano un peso che il CSS non
+diceva). `fonts:check` fallisce se una regola chiede un peso senza file.
+
+**Se un giorno servisse un quarto peso**, il gesto è aggiungere il file *e*
+la voce in `CARATTERI`: scrivere `font-weight: 700` e basta non aggiunge un
+peso, lo fa solo sembrare.
+
+⚠️ **La copertura si misura aprendo i binari, non leggendo la gamma chiesta al
+subsetter.** Fino al 2026-08-13 `fonts:check` confrontava i dizionari con la
+costante `GAMMA` — che chiede 556 codepoint, mentre i file ne disegnano **445**.
+Centoundici erano dichiarati e assenti: un carattere fra quelli sarebbe passato
+verde e a schermo l'avrebbe disegnato un altro font. Oggi il controllo legge la
+tabella `cmap` dentro i `.woff2` (decompressione brotli, tabella non
+trasformata) e verifica anche che **i tre pesi coprano gli stessi caratteri** —
+altrimenti una parola in grassetto cambierebbe carattere a metà. Nessun
+carattere dei dizionari era davvero scoperto: il difetto era il metodo, non il
+risultato.
 
 ⚠️ **Il sottoinsieme «latin» di Google non andava bene, e il perché vale più
 della scelta**: non contiene **U+202F**, lo spazio fine insecabile che tutta
@@ -87,11 +116,82 @@ dizionari:
   `.rb-num` (la percentuale di rilevanza): tornano identiche a **49,1**, e le
   date passano da uno scarto di 3,6 px a **zero**. Gli importi lo avevano già
   (`.fin-num`): lì non è cambiato niente.
+- ⚠️⚠️ **E il posto peggiore era rimasto scoperto per tre giorni: i KPI della
+  Panoramica.** Quella correzione ha coperto ciò a cui qualcuno aveva pensato,
+  non ciò che il difetto toccava. Misurato il 2026-08-13 a 30 px, peso 600, sui
+  numeri veri: «11» **24,4** · «40» **38,8** · «92» **36,9** — **14,4 px** di
+  scarto fra due numeri di due cifre, quattro volte quello che era bastato a
+  far correggere le scadenze. Le quattro schede piccole stanno in una griglia
+  2×2, e sotto i 600 px in una colonna sola: i numeri si guardano uno sopra
+  l'altro. Ora dichiarano le cifre tabulari `.kpi-value`, `.meter-num`,
+  `.bar-val` e `.crm-kv dd` (la colonna dei valori di CRM e Incentivi, dove
+  stanno gli importi e le scadenze fuori da Finanze). **La regola scritta non è
+  bastata: ora c'è un controllo** — `test:shell-unit` §8 elenca le classi i cui
+  numeri stanno in colonna e pretende la dichiarazione su ciascuna.
+- ⚠️ **Le cifre tabulari sono più LARGHE, e una colonna fissa se ne accorge.**
+  `.bar-val` stava in una traccia di griglia di 42 px (34 sotto i 600 px):
+  «100 %» misura 38,3 px con le cifre tabulari — e ne misurava già **35,7**
+  senza, quindi sul telefono usciva dalla propria colonna **da prima**. La
+  traccia è passata a `max-content`, che in una griglia vale per tutta la
+  colonna: le barre restano allineate fra loro e la colonna prende la misura
+  del numero più largo. Regola 6: mai una larghezza fissa attorno a un
+  contenuto che può crescere.
 - **La stampa è stata provata producendo un PDF vero** con Chrome: i tre pesi
   sono **incorporati come sottoinsiemi** (`FontFile2` × 3, `Inter-Regular`,
   `Inter-Medium`, `Inter-SemiBold`) e nel PDF ci sono U+202F, `é à œ « » —`.
   Il blocco `@media print` non tocca `font-family`: cambia i colori, non il
   carattere.
+
+## Il marchio
+
+Un **wordmark**, non un'icona: blocco pieno con la sigla **AI**, poi **Swisse**
+composto in Inter 600. Sta in `BrandMark.tsx` e compare in nove punti (barra
+laterale, barra del telefono, drawer, le quattro schermate di autenticazione,
+la configurazione mancante, l'onboarding).
+
+**Non è un segno inventato qui**: è il marchio che il titolare usa già sulla
+vetrina e sul dominio, ricomposto nel carattere del prodotto invece che nei
+tracciati Poppins di `site/`. Chi arriva da ai-swisse.com e apre l'applicazione
+deve riconoscere lo stesso marchio, non crederne due.
+
+Che cosa c'era prima, e perché non andava:
+
+| | |
+|---|---|
+| fino al 2026-08-12 | il path di `plus` in un quadrato accent — un **comando** nella posizione del nome |
+| dal 2026-08-12 | una «S» a tratto nello stesso quadrato — la forma dell'**avatar**, e una lettera che il marchio non usa |
+| dal 2026-08-13 | il wordmark |
+
+⚠️ **Il difetto che nessuna delle due sostituzioni aveva tolto**: il contenitore
+pesava quanto la campanella accanto. Un quadrato pieno di 32 px e un pulsante di
+40 px affiancati sono **due scatole di pari grado**, e il marchio non è un
+accessorio della campanella. Togliendo la scatola, il grado torna a dirsi da sé:
+il nome è testo a `--fs-strong`, la campanella è un glifo di 18 px senza fondo.
+
+⚠️ **Il raggio del blocco NON è `--radius-sm`.** Quello è il raggio dei
+controlli — pulsanti, hamburger, campi. Un blocco con lo stesso raggio dei
+pulsanti torna a leggersi come qualcosa da premere, che è l'errore da cui si
+viene per due volte. Il blocco usa `var(--sp-1)`.
+
+**Il nome non si traduce, la riga sotto sì.** «AI-Swisse» vive in un posto solo,
+`brand.name` dei dizionari, e il componente lo **divide sul trattino**: non è
+scritto a mano da nessuna parte (`i18n:coverage` uscirebbe 1). `test:shell-unit`
+§3b pretende che tutti e tre i dizionari si dividano e che il nome sia identico
+nelle tre lingue.
+
+⚠️ **La favicon è l'unico punto del prodotto in cui il marchio NON è composto in
+Inter, ed è una conseguenza tecnica, non una scelta.** Un `data:` URI non carica
+risorse esterne — è tutto il punto della CSP — quindi un `<text>` lì dentro
+sarebbe disegnato dal carattere di sistema, diverso su ogni macchina. Il segno
+va in **contorni**, e i contorni usati sono quelli del marchio del titolare, gli
+stessi che la vetrina serve: una scheda aperta su ai-swisse.com e una aperta
+sull'applicazione mostrano lo stesso segno. `test:shell-unit` §3 lega i due
+colori ai token e rifiuta un `<text>`.
+
+**Che cosa NON è sorvegliato, e va detto**: che il segno dell'app e quello della
+vetrina restino uguali. `site/` è una base di codice separata, invisibile da
+questo albero — nessun controllo di qui può leggerla. Se il marchio cambia, i
+due posti si aggiornano a mano, e sono due.
 
 ## Scala tipografica
 
@@ -285,29 +385,51 @@ e un colore che deve essere riconoscibile non sono lo stesso colore.**
 
 ## Contrasti
 
-Verificati con il calcolo WCAG, non a occhio. Tema chiaro:
+Verificati con il calcolo WCAG, non a occhio, e **ricalcolati dai token il
+2026-08-13** con il carattere nuovo in esercizio.
 
-| | contrasto | |
-|---|---|---|
-| testo principale | 16.48:1 | AAA |
-| collegamenti | 7.87:1 | AAA |
-| testo bianco sul pulsante | 5.40:1 | AA |
-| metadati | 5.52:1 | AA |
-| pastiglia «media» (ambra) | 4.61:1 | AA — era **3.31:1** |
-| pastiglia «bassa» (verde) | 4.69:1 | AA — era **4.00:1** |
+⚠️ **La colonna del fondo non è un dettaglio**: fino al 2026-08-13 questa
+tabella non diceva contro quale superficie fossero misurati i rapporti, e i
+numeri si riproducono solo su `--card`. Le stesse tinte su `--bg` danno valori
+diversi (15.76 · 7.52 · 5.28): una tabella senza il fondo è una tabella che non
+si può verificare.
+
+| coppia | fondo | chiaro | scuro |
+|---|---|---|---|
+| testo principale (`--ink`) | `--card` | **16.48:1** | **13.49:1** |
+| collegamenti (`--accent-text`) | `--card` | **7.87:1** | **7.91:1** |
+| testo sul pulsante (`--on-accent`) | `--accent` | **5.40:1** | **6.02:1** |
+| metadati (`--muted`) | `--card` | **5.52:1** | **6.21:1** |
+| pastiglia «media» (`--amber`) | `--amber-soft` | **4.61:1** — era 3.31 | **7.57:1** |
+| pastiglia «bassa» (`--green`) | `--green-soft` | **4.69:1** — era 4.00 | **7.27:1** |
+| etichette 12px: KPI, RILEVANZA, sezioni | `--card` | **5.52:1** | **6.21:1** |
+| **sigla del marchio** (`--on-accent`) | `--accent` | **5.40:1** | **6.02:1** |
+| testo su fondo pagina | `--bg` | **15.76:1** | **16.37:1** |
+| metadati su fondo pagina | `--bg` | **5.28:1** | **7.54:1** |
+| rosso di testo (`--red-dark`) | `--red-soft` | **5.10:1** | **6.37:1** |
+| evidenziazione (`--on-highlight`) | `--highlight` | **12.01:1** | **5.64:1** |
+
+**Tutte a 4.5:1 o sopra, in tutti e due i temi** — soglia del testo normale,
+quindi valgono anche per i gradini piccoli. Le prime sei righe riproducono
+esattamente i numeri di prima: il rapporto WCAG è funzione dei soli colori, e
+nessun token è cambiato.
 
 Le ultime due erano sotto soglia proprio sulle pastiglie che comunicano
 l'urgenza. Sono state scurite del minimo necessario, mantenendo la tinta: non un
 colore diverso, lo stesso colore reso leggibile.
 
-⚠️ **Ricalcolati il 2026-08-10 dopo il passaggio a Inter, e nessuno è cambiato —
-né poteva.** Il rapporto WCAG è una funzione dei soli colori: il carattere non lo
-sposta di un decimale. Le tredici coppie ricalcolate dai token — comprese quelle
-sui gradini piccoli (`--fs-label` 12 px, `--fs-meta` 13 px: etichette dei KPI,
-RILEVANZA nel riquadro, sezioni della barra laterale) — stanno **tutte a 4,5:1 o
-sopra**. Ciò che il carattere cambia è lo **spessore percepito**, che WCAG 2.1
-non misura: quello è stato guardato a schermo nei due temi, e i gradini piccoli
-restano leggibili perché usano già peso 600–700, non 400.
+⚠️ **Il carattere non sposta un contrasto di un decimale** — il rapporto WCAG è
+funzione dei soli colori. Ciò che il carattere cambia è lo **spessore
+percepito**, che WCAG 2.1 non misura, e quello si guarda a schermo nei due temi.
+
+⚠️ **La vecchia giustificazione dello spessore era già scaduta quando è stata
+scritta.** Diceva che i gradini piccoli restano leggibili «perché usano già peso
+600–700, non 400»: `.nav-section` è passata a 400 il 2026-08-13, e altre regole
+a 12 px stanno a 400 per eredità. La frase giusta è più corta e si regge da
+sola: **ogni coppia della tabella supera 4,5:1, cioè la soglia del testo
+normale** — quella che vale a 400 e a 12 px. Non c'è nessun contrasto che
+dipenda dal peso per stare in regola, e quindi nessuna giustificazione da
+tenere aggiornata.
 
 ## Tema scuro
 

@@ -51,6 +51,7 @@
 // ============================================================================
 import { readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { brotliDecompressSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 // L'elenco dei dizionari vive in UN posto: il disco, riconciliato con LOCALES.
@@ -72,9 +73,21 @@ export const CARATTERI = [
 const PESO_PRECARICATO = 400;
 
 // ---------------------------------------------------------------------------
-// 2. LA GAMMA del sottoinsieme — la stessa passata al subsetter, in forma di
-//    dato. Non è una copia da tenere allineata a mano: è LA definizione, e la
-//    riga del comando qui sopra la cita.
+// 2. LA GAMMA CHIESTA AL SUBSETTER — la stessa passata sulla riga di comando.
+//
+//    ⚠️⚠️ NON È CIÒ CHE I FILE CONTENGONO, e per tre giorni questo file ha
+//    scritto il contrario («è LA definizione»). Il subsetter tiene solo i glifi
+//    che servono ai caratteri richiesti E che il font sorgente ha: la gamma qui
+//    sotto chiede 556 codepoint, i tre .woff2 ne disegnano 445. Centoundici
+//    sono chiesti e assenti.
+//
+//    Finché la copertura si misurava CONTRO QUESTA COSTANTE, un carattere
+//    dentro la gamma ma assente dal file passava verde e a schermo lo
+//    disegnava un altro carattere tipografico: esattamente il difetto che
+//    questo controllo esiste per impedire, con la gamma nel ruolo del
+//    testimone che conferma la propria versione. Oggi la copertura si misura
+//    aprendo i binari (§2 più sotto): la gamma resta qui perché serve a
+//    RIGENERARE i file, non a giudicarli.
 // ---------------------------------------------------------------------------
 export const GAMMA = [
   [0x0000, 0x00FF], [0x0100, 0x017F], [0x0192, 0x0192], [0x02C6, 0x02C6],
@@ -126,8 +139,17 @@ const LITERAL = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`
  * vengono estratte — limite dichiarato, oggi senza casi reali). */
 const testoDelLetterale = (m) => (m[1] ?? m[2] ?? m[3] ?? '').replace(/\$\{[^}]*\}/g, '');
 
-/** I caratteri di un sorgente che NON sono coperti né dalla gamma né dall'elenco. */
-export function scoperti(src) {
+/**
+ * I caratteri di un sorgente che NESSUNO dei nostri file disegna.
+ *
+ * `copre` dice che cosa conta come coperto. In esecuzione vera gli si passa la
+ * cmap LETTA DAI .woff2 — i glifi che esistono davvero. L'autoverifica gli
+ * passa invece `dentroGamma`, perché quei diciotto casi provano l'estrazione
+ * delle stringhe (apici, template, commenti), non il contenuto dei binari:
+ * mescolare le due cose renderebbe l'autoverifica dipendente da un file che
+ * può cambiare, e un caso noto deve restare noto.
+ */
+export function scoperti(src, copre = dentroGamma) {
   const out = new Map();
   LITERAL.lastIndex = 0;
   let m;
@@ -135,12 +157,106 @@ export function scoperti(src) {
     const testo = testoDelLetterale(m);
     for (const c of testo) {
       const cp = c.codePointAt(0);
-      if (dentroGamma(cp) || cp in AL_RIPIEGO) continue;
+      if (copre(cp) || cp in AL_RIPIEGO) continue;
       if (!out.has(cp)) out.set(cp, testo.slice(0, 70));
     }
   }
   return out;
 }
+
+/**
+ * I codepoint che un .woff2 disegna davvero, letti dalla sua tabella `cmap`.
+ *
+ * Un woff2 è intestazione + direttorio + UN flusso brotli con tutte le tabelle
+ * in fila. `glyf` e `loca` viaggiano trasformate; `cmap` no, quindi si legge
+ * direttamente dal flusso decompresso. Si guarda la mappa dei caratteri e non
+ * i contorni: la domanda è «questo carattere ha un glifo?», non «che forma ha».
+ */
+export function codepointsDelFile(percorso) {
+  const b = readFileSync(percorso);
+  if (b.readUInt32BE(0) !== 0x774f4632) throw new Error(`${percorso}: non è un woff2`);
+
+  const base128 = (buf, pos) => {
+    let v = 0;
+    for (let i = 0; i < 5; i++) {
+      const byte = buf[pos++];
+      v = ((v << 7) | (byte & 0x7f)) >>> 0;
+      if ((byte & 0x80) === 0) return [v, pos];
+    }
+    throw new Error('UIntBase128 malformato');
+  };
+
+  let p = 48;
+  const tavole = [];
+  for (let i = 0, n = b.readUInt16BE(12); i < n; i++) {
+    const flags = b[p++];
+    const idx = flags & 0x3f;
+    let tag;
+    if (idx === 63) { tag = b.toString('ascii', p, p + 4); p += 4; }
+    else tag = TAG_NOTI[idx];
+    let lunghezza; [lunghezza, p] = base128(b, p);
+    // Versione 0 = trasformata, e solo glyf/loca lo sono: lì la lunghezza nel
+    // flusso è un secondo numero.
+    if ((tag === 'glyf' || tag === 'loca') && ((flags >> 6) & 3) === 0) {
+      [lunghezza, p] = base128(b, p);
+    }
+    tavole.push({ tag, lunghezza });
+  }
+
+  const flusso = brotliDecompressSync(b.subarray(p));
+  let off = 0; let cmap = null;
+  for (const t of tavole) {
+    if (t.tag === 'cmap') cmap = flusso.subarray(off, off + t.lunghezza);
+    off += t.lunghezza;
+  }
+  if (!cmap) throw new Error(`${percorso}: nessuna tabella cmap`);
+
+  const trovati = new Set();
+  for (let i = 0, n = cmap.readUInt16BE(2); i < n; i++) {
+    const sub = cmap.readUInt32BE(4 + i * 8 + 4);
+    const formato = cmap.readUInt16BE(sub);
+    if (formato === 4) {
+      const segX2 = cmap.readUInt16BE(sub + 6);
+      const fine = sub + 14; const inizio = fine + segX2 + 2;
+      const delta = inizio + segX2; const rangeOff = delta + segX2;
+      for (let s = 0; s < segX2 / 2; s++) {
+        const st = cmap.readUInt16BE(inizio + s * 2);
+        const en = cmap.readUInt16BE(fine + s * 2);
+        if (st === 0xffff) continue;
+        const d = cmap.readInt16BE(delta + s * 2);
+        const ro = cmap.readUInt16BE(rangeOff + s * 2);
+        for (let c = st; c <= en; c++) {
+          let g;
+          if (ro === 0) g = (c + d) & 0xffff;
+          else {
+            const gi = rangeOff + s * 2 + ro + (c - st) * 2;
+            if (gi + 1 >= cmap.length) continue;
+            g = cmap.readUInt16BE(gi);
+            if (g !== 0) g = (g + d) & 0xffff;
+          }
+          if (g !== 0) trovati.add(c);
+        }
+      }
+    } else if (formato === 12) {
+      for (let gI = 0, gruppi = cmap.readUInt32BE(sub + 12); gI < gruppi; gI++) {
+        const g0 = sub + 16 + gI * 12;
+        for (let c = cmap.readUInt32BE(g0), en = cmap.readUInt32BE(g0 + 4); c <= en; c++) trovati.add(c);
+      }
+    }
+  }
+  return trovati;
+}
+
+/** I tag delle tabelle nell'ordine che il formato woff2 dà per noto. */
+const TAG_NOTI = [
+  'cmap', 'head', 'hhea', 'hmtx', 'maxp', 'name', 'OS/2', 'post', 'cvt ', 'fpgm',
+  'glyf', 'loca', 'prep', 'CFF ', 'VORG', 'EBDT', 'EBLC', 'gasp', 'hdmx', 'kern',
+  'LTSH', 'PCLT', 'VDMX', 'vhea', 'vmtx', 'BASE', 'GDEF', 'GPOS', 'GSUB', 'EBSC',
+  'JSTF', 'MATH', 'CBDT', 'CBLC', 'COLR', 'CPAL', 'SVG ', 'sbix', 'acnt', 'avar',
+  'bdat', 'bloc', 'bsln', 'cvar', 'fdsc', 'feat', 'fmtx', 'fvar', 'gvar', 'hsty',
+  'just', 'lcar', 'mort', 'morx', 'opbd', 'prop', 'trak', 'Zapf', 'Silf', 'Glat',
+  'Gloc', 'Feat', 'Sill',
+];
 
 // ---------------------------------------------------------------------------
 // Autoverifica: metà dei casi DEVE risultare scoperta.
@@ -237,14 +353,46 @@ for (const c of CARATTERI) {
 // era cablato qui («it, de, fr») e una quarta lingua non la guardava nessuno.
 // labels.ts non è un locale: è il file delle etichette condivise, e resta.
 const DIZIONARI = dizionari().concat('src/i18n/labels.ts');
+
+// La cmap VERA di ogni peso. Si intersecano: un carattere che il 400 disegna e
+// il 600 no comparirebbe in grassetto con un altro carattere tipografico, e
+// sarebbe più difficile da vedere che se mancasse ovunque.
+let copertiDaTutti = null;
+const perPeso = [];
+for (const c of CARATTERI) {
+  const percorso = resolve(ROOT, c.file);
+  if (!existsSync(percorso)) continue;
+  let insieme;
+  try { insieme = codepointsDelFile(percorso); }
+  catch (e) {
+    problemi.push(`${c.file}: la cmap non si legge (${e.message}). `
+      + 'Senza aprire il file, la copertura sarebbe una dichiarazione, non una misura.');
+    continue;
+  }
+  perPeso.push({ peso: c.peso, n: insieme.size });
+  copertiDaTutti = copertiDaTutti === null
+    ? insieme
+    : new Set([...copertiDaTutti].filter((cp) => insieme.has(cp)));
+}
+if (copertiDaTutti === null) {
+  problemi.push('nessun file leggibile: la copertura non è stata misurata');
+  copertiDaTutti = new Set();
+}
+const disallineati = perPeso.filter((p) => p.n !== perPeso[0]?.n);
+if (disallineati.length) {
+  problemi.push(`i tre pesi non coprono gli stessi caratteri: ${perPeso.map((p) => `${p.peso}→${p.n}`).join(', ')}\n`
+    + '      Una parola in grassetto cambierebbe carattere a metà. Rigenerare i tre file con la stessa gamma.');
+}
+
+const copre = (cp) => copertiDaTutti.has(cp);
 for (const rel of DIZIONARI) {
   const percorso = resolve(ROOT, rel);
   if (!existsSync(percorso)) { problemi.push(`${rel} non trovato`); continue; }
-  const mancanti = scoperti(readFileSync(percorso, 'utf8'));
+  const mancanti = scoperti(readFileSync(percorso, 'utf8'), copre);
   for (const [cp, esempio] of mancanti) {
     problemi.push(`${rel}: U+${cp.toString(16).toUpperCase().padStart(4, '0')} «${String.fromCodePoint(cp)}» `
-      + `non è nel sottoinsieme — es. «${esempio}»\n`
-      + '      Lo disegnerebbe un altro carattere. Allarga la gamma e rigenera, '
+      + `NON è disegnato dai file — es. «${esempio}»\n`
+      + '      Lo disegnerebbe un altro carattere. Allarga la gamma e RIGENERA i .woff2, '
       + 'oppure dichiaralo in AL_RIPIEGO con la ragione.');
   }
 }
@@ -275,11 +423,32 @@ if (citaGoogleFonts(html + css)) {
   problemi.push('c’è un riferimento a Google Fonts: l’informativa dichiara che non si caricano risorse esterne');
 }
 
+// --- 4. I pesi CHIESTI dai fogli di stile esistono come file? ---------------
+// ⚠️ Il difetto che questo controllo chiude, misurato a schermo il 2026-08-13:
+// i fogli chiedevano 700 in 48 regole e 800 in 9, ma i file sono 400/500/600.
+// Il browser non sintetizza niente — sceglie la faccia più vicina e disegna
+// SEISCENTO. `.kpi-value` a 800 e `.kpi-label` a 600 erano lo stesso peso: un
+// gradino di gerarchia dichiarato nel codice e inesistente sullo schermo.
+// Nessun rosso da nessuna parte, perché nulla confrontava le due liste.
+const PESI_SERVITI = new Set(CARATTERI.map((c) => c.peso));
+for (const rel of ['src/styles/app.css', 'src/styles/extra.css']) {
+  const foglio = senzaCommenti(readFileSync(resolve(ROOT, rel), 'utf8'));
+  const chiesti = new Set([...foglio.matchAll(/font-weight:\s*(\d{3})/g)].map((m) => Number(m[1])));
+  for (const peso of [...chiesti].sort((a, b) => a - b)) {
+    if (PESI_SERVITI.has(peso)) continue;
+    const vicino = [...PESI_SERVITI].reduce((a, b) => (Math.abs(b - peso) < Math.abs(a - peso) ? b : a));
+    problemi.push(`${rel} chiede font-weight ${peso}, che non esiste fra i file (${[...PESI_SERVITI].sort().join(', ')})\n`
+      + `      Il browser disegnerebbe ${vicino}: il peso dichiarato non è quello reso. `
+      + 'Portare la regola a un peso servito, oppure aggiungere il file — e allora anche a CARATTERI.');
+  }
+}
+
 if (problemi.length === 0) {
   const kb = CARATTERI.reduce((n, c) => n + readFileSync(resolve(ROOT, c.file)).length, 0) / 1024;
   console.log(`  ${G}Nessun problema${X}: ${CARATTERI.length} pesi (${kb.toFixed(0)} KB in tutto, `
     + `precaricato il solo ${PESO_PRECARICATO}), impronte corrispondenti,`);
-  console.log('  e ogni carattere dei dizionari sta nel sottoinsieme o è dichiarato al ripiego.\n');
+  console.log(`  ogni carattere dei dizionari è disegnato dai file (${copertiDaTutti.size} codepoint, letti dalla cmap `
+    + 'di ciascun peso) o è dichiarato al ripiego,\n  e nessuna regola chiede un peso che non esista come file.\n');
   console.log(`  ${DIM}⚠️ Questo controllo NON sa che aspetto abbia il testo a schermo: quello`);
   console.log(`  si guarda, in tre lingue.${X}\n`);
   process.exit(0);

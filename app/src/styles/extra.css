@@ -12,7 +12,7 @@
 /* ---- Box account (sidebar/drawer) + logout ---- */
 .account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
 .account-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1); }
-.account-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; font-weight: 700; font-size: var(--fs-body); flex-shrink: 0; }
+.account-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; font-weight: 600; font-size: var(--fs-body); flex-shrink: 0; }
 .account-info { min-width: 0; }
 .account-name { font-weight: 600; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .account-email { font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -23,11 +23,11 @@
 /* Niente cornice né fondo: l'azienda attiva è CONTESTO, non contenuto — una
    scatola da scheda la faceva concorrere con le voci di navigazione. */
 .company-switch { padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2); }
-.company-switch .cs-label { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.company-switch .cs-name { font-weight: 700; font-size: var(--fs-meta); letter-spacing: -0.2px; }
+.company-switch .cs-label { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.company-switch .cs-name { font-weight: 600; font-size: var(--fs-meta); letter-spacing: -0.2px; }
 .company-switch .cs-meta { font-size: var(--fs-meta); color: var(--muted); }
 .company-switch select { width: 100%; margin-top: var(--sp-1); }
-.role-chip { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: var(--sp-05) var(--sp-2); }
+.role-chip { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: var(--sp-05) var(--sp-2); }
 
 /* ---- Schermate centrate (auth / onboarding / stati globali) ---- */
 .centered-screen { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; padding: var(--sp-8) var(--sp-4); background: var(--bg); }
@@ -37,7 +37,7 @@
    non c'entrano con un elenco di scelte. */
 .registry-candidates { list-style: none; padding: 0; margin: var(--sp-2) 0 0; }
 .auth-brand { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
-.auth-title { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.4px; }
+.auth-title { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.4px; }
 .auth-sub { color: var(--muted); font-size: var(--fs-body); margin-top: var(--sp-1); margin-bottom: var(--sp-4); }
 .auth-alt { margin-top: var(--sp-4); font-size: var(--fs-body); color: var(--muted); text-align: center; }
 .auth-alt .btn-link { font-size: var(--fs-body); }
@@ -285,7 +285,7 @@
    non deve permettere (§22). */
 .fin-amounts { list-style: none; margin: var(--sp-1) 0 0; padding: 0; }
 .fin-amounts li {
-  font-size: var(--fs-strong); font-weight: 700;
+  font-size: var(--fs-strong); font-weight: 600;
   font-variant-numeric: tabular-nums; line-height: 1.3;
 }
 
@@ -319,7 +319,7 @@
 .fin-row-sub { font-size: var(--fs-meta); color: var(--muted); }
 .fin-row-amount {
   min-width: 132px; text-align: right; flex-shrink: 0;
-  font-size: var(--fs-body); font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-body); font-weight: 600; font-variant-numeric: tabular-nums;
 }
 .fin-row-amount .muted-sm { font-weight: 500; }
 .fin-row-side {
@@ -340,7 +340,7 @@
   font-size: var(--fs-body);
 }
 .fin-flags li::before, .fin-blockers li::before {
-  content: '•'; position: absolute; left: var(--sp-2); font-weight: 700;
+  content: '•'; position: absolute; left: var(--sp-2); font-weight: 600;
 }
 .fin-flags li::before { color: var(--amber); }
 .fin-blockers li::before { color: var(--red-dark); }
@@ -462,7 +462,7 @@
   border-radius: 10px; padding: var(--sp-3); min-width: 180px; }
 .crm-col-head { display: flex; align-items: baseline; justify-content: space-between;
   gap: var(--sp-2); margin-bottom: var(--sp-2); }
-.crm-col-title { font-size: var(--fs-label); font-weight: 700; color: var(--muted);
+.crm-col-title { font-size: var(--fs-label); font-weight: 600; color: var(--muted);
   text-transform: uppercase; letter-spacing: .03em;
   /* ⚠️ Altezza minima: in tedesco «Offene Verkaufschancen» va a capo e
      disallineerebbe la fila. Regola 6 del sistema di design. */
@@ -481,8 +481,13 @@
 .crm-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr);
   gap: var(--sp-1) var(--sp-4); margin: 0; }
 .crm-kv dt { font-size: var(--fs-label); color: var(--muted); }
+/* `tabular-nums` sui VALORI, non sulle etichette: la colonna di destra parte
+   da una posizione fissa (`max-content` a sinistra) e impila importi, scadenze
+   e date di chiusura una sotto l'altra — le colonne vere di questo prodotto
+   fuori da Finanze, che ha le sue classi `.fin-*`. Sul testo non cambia nulla:
+   la proprietà tocca solo le cifre. */
 .crm-kv dd { font-size: var(--fs-body); color: var(--ink); margin: 0; min-width: 0;
-  overflow-wrap: anywhere; }
+  overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .crm-sec { margin-top: var(--sp-5); }
 .crm-sec-head { display: flex; flex-wrap: wrap; align-items: center;
   justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }

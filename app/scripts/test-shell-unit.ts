@@ -19,10 +19,16 @@
 //      un marchio di 32px sono due scatole affiancate, cioè due pari grado.
 //      L'hover può colorare: il feedback non è un contenitore.
 //
-//   3. FAVICON — il marchio è uno: il campo della favicon è `--accent` e il
-//      tratto della S è `--on-accent`, letti dal token e pretesi letterali
-//      nell'SVG. La favicon è nata dal prototipo con un gradiente suo
-//      (#00A3FF→#4DEAFF): due blu per lo stesso segno sono due marchi.
+//   3. FAVICON — il marchio è uno: il campo della favicon è `--accent` e la
+//      sigla è `--on-accent`, letti dal token e pretesi letterali nell'SVG.
+//      La favicon è nata dal prototipo con un gradiente suo
+//      (#00A3FF→#4DEAFF): due blu per lo stesso segno sono due marchi. E va
+//      in contorni: un data: URI non carica Inter, quindi un <text> lo
+//      disegnerebbe un carattere diverso su ogni macchina.
+//
+//   3b. MARCHIO — «AI-Swisse» si legge da `brand.name` e si divide sul
+//      trattino; non è scritto a mano in un componente, e non è tornato
+//      un'icona (da lì rientrerebbe dentro un pulsante).
 //
 // ⚠️ Il CSS si LEGGE DAI FILE, non si descrive a mano: un elenco di proprietà
 // copiato qui dentro invecchia al primo ritocco del foglio di stile e comincia
@@ -32,6 +38,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ICONS } from '../src/components/ui/Icon.tsx';
+import { dividiMarchio } from '../src/components/ui/BrandMark.tsx';
 import { LOCALES } from '../src/i18n/index.tsx';
 import { it } from '../src/i18n/locales/it.ts';
 import { de } from '../src/i18n/locales/de.ts';
@@ -130,8 +137,62 @@ section('3. Favicon — il marchio è uno');
   const onAccent = appCss.match(/--on-accent:\s*([^;]+);/)?.[1].trim() ?? '';
   check('i token --accent e --on-accent esistono in app.css', accent !== '' && onAccent !== '');
   check(`il campo della favicon è --accent`, svg.includes(`fill='${accent}'`), `atteso fill='${accent}'`);
-  check(`il tratto della S è --on-accent`, svg.includes(`stroke='${onAccent}'`), `atteso stroke='${onAccent}'`);
+  check(`la sigla è --on-accent`, svg.includes(`fill='${onAccent}'`), `atteso fill='${onAccent}'`);
   check('nessun gradiente residuo', !svg.includes('linearGradient'));
+
+  // ⚠️ La favicon dev'essere in CONTORNI. Un data: URI non carica risorse
+  // esterne (è il punto della CSP), quindi un <text> qui dentro lo
+  // disegnerebbe un carattere di sistema diverso su ogni macchina: il marchio
+  // smetterebbe di essere uno. Questo rosso arriva a chi, un giorno, proverà
+  // la scorciatoia — che a schermo sembra funzionare, perché sulla SUA
+  // macchina un font c'è.
+  check(
+    'la favicon non compone testo',
+    !/<text[\s>]/.test(svg),
+    'un data: URI non può caricare Inter: il segno va in contorni, o lo disegna il carattere di sistema',
+  );
+
+  // Il marchio dell'interfaccia non è più un'icona: se qualcuno lo rimette
+  // nella famiglia, torna disponibile a chi monta un pulsante.
+  check(
+    'il marchio non è tornato una voce della famiglia icone',
+    !Object.prototype.hasOwnProperty.call(ICONS, 'logo'),
+    'il marchio sta in BrandMark.tsx e si compone in Inter: un\'icona «logo» è la porta da cui rientra come pulsante',
+  );
+}
+
+// ---------------------------------------------------------------------------
+section('3b. Il marchio — si legge dai dizionari, non si scrive a mano');
+
+{
+  // Il nome del prodotto vive in un posto solo (`brand.name`) e il marchio lo
+  // divide sul trattino: «AI-Swisse» → blocco «AI» + parola «Swisse». Se un
+  // dizionario perdesse il trattino, `dividiMarchio` tornerebbe null e la
+  // barra mostrerebbe il nome intero senza blocco — un marchio a metà che
+  // NESSUNO vedrebbe in italiano. Qui si pretende che tutti e tre si dividano.
+  const dizionari: [string, Record<string, unknown>][] = [['it', it], ['de', de], ['fr', fr]];
+  for (const [lingua, dz] of dizionari) {
+    const nome = (dz.brand as { name?: string } | undefined)?.name ?? '';
+    const parti = dividiMarchio(nome);
+    check(
+      `${lingua}: «${nome}» si divide in sigla e parola`,
+      parti !== null && parti[0].length > 0 && parti[1].length > 0,
+      'il marchio si compone da brand.name: senza trattino il blocco sparisce senza che nulla protesti',
+    );
+  }
+  // Le tre lingue devono avere lo STESSO nome: un marchio tradotto è due marchi.
+  const nomi = dizionari.map(([, dz]) => (dz.brand as { name?: string } | undefined)?.name ?? '');
+  check(
+    'il nome del marchio non si traduce',
+    new Set(nomi).size === 1,
+    `trovati: ${nomi.join(' · ')}`,
+  );
+
+  // I casi che DEVONO rompere il divisore: la prova che non inventa una
+  // divisione plausibile quando la forma non c'è.
+  check('«AISwisse» (senza trattino) non si divide', dividiMarchio('AISwisse') === null);
+  check('«-Swisse» (trattino in testa) non si divide', dividiMarchio('-Swisse') === null);
+  check('«AI-» (trattino in coda) non si divide', dividiMarchio('AI-') === null);
 }
 
 // ---------------------------------------------------------------------------
@@ -773,6 +834,66 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
   check('oggi non è in ritardo', giorniFa('2026-09-01').state === 'today');
   check('domani è vicino, non scaduto', giorniFa('2026-09-02').state === 'soon');
   check('senza data si dichiara «nessuna scadenza»', deadlineState(null).state === 'none');
+}
+
+// ---------------------------------------------------------------------------
+section('8. Cifre tabulari — dove i numeri stanno in colonna');
+
+{
+  // ⚠️ PERCHÉ UN CONTROLLO E NON UNA RIGA NEL SISTEMA DI DESIGN. La regola
+  // «cifre tabulari dove i numeri si impilano» è scritta in design-system.md
+  // §11 dal 2026-08-10, ed è bastata a coprire scadenze e importi di Finanze —
+  // ma NON i KPI della Panoramica, che sono rimasti con le cifre proporzionali
+  // per tre giorni con tutta la suite verde. Una regola scritta che non ha un
+  // controllo copre ciò a cui qualcuno ha pensato, e niente altro.
+  //
+  // Il perimetro sono le classi il cui contenuto è SEMPRE un numero e che
+  // stanno in una colonna. Non è l'elenco di tutti i numeri dell'app: è
+  // l'elenco di quelli che si guardano uno sotto l'altro.
+  const NUMERICHE: { selettore: string; file: string; perche: string }[] = [
+    { selettore: '.kpi-value', file: 'src/styles/app.css', perche: 'griglia 2×2, e una colonna sola sotto i 600px' },
+    { selettore: '.bar-val', file: 'src/styles/app.css', perche: 'colonna fissa da 42px allineata a destra' },
+    { selettore: '.meter-num', file: 'src/styles/app.css', perche: 'percentuale di completamento della Panoramica' },
+    { selettore: '.dl-date', file: 'src/styles/app.css', perche: 'pila di scadenze' },
+    { selettore: '.rb-num', file: 'src/styles/app.css', perche: 'percentuali di rilevanza, una scheda sotto l\'altra' },
+    { selettore: '.doc-row-date', file: 'src/styles/app.css', perche: 'colonna delle date nell\'elenco documenti' },
+    { selettore: '.fin-num', file: 'src/styles/extra.css', perche: 'gli importi' },
+    { selettore: '.crm-kv dd', file: 'src/styles/extra.css', perche: 'colonna dei valori: importi e scadenze fuori da Finanze' },
+  ];
+  const fogli = new Map<string, string>();
+  const senza: string[] = [];
+  for (const n of NUMERICHE) {
+    // ⚠️ I commenti si tolgono PRIMA di spezzare in regole, non dentro il
+    // ciclo: la testata di `.kpi-value` contiene «24,4px · «40» 38,8px», e
+    // spezzando sulle virgole il commento si rompe a metà — le due metà non
+    // sono più riconoscibili come commento e finiscono nel nome del selettore.
+    // Trovato perché il controllo, appena scritto, dava per scoperte cinque
+    // classi che dichiarano la proprietà: un rosso falso.
+    if (!fogli.has(n.file)) {
+      fogli.set(n.file, readFileSync(join(root, n.file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' '));
+    }
+    const css = fogli.get(n.file)!;
+    // ⚠️ Si cerca la regola che COLPISCE quel selettore, non una riga uguale
+    // alla lettera: `.rb-num` vive dentro `.rel-badge .rb-num`, e la prima
+    // stesura di questo controllo l'ha dato per scoperto pur essendo a posto —
+    // un rosso falso è un difetto quanto un verde falso. Basta che il selettore
+    // FINISCA con il bersaglio (`.rel-badge .rb-num` sì, `.rb-num-alt` no).
+    // `[^{}]*` anche nel corpo: così si agganciano solo le regole PIÙ INTERNE,
+    // e un blocco `@media` non viene scambiato per una regola.
+    const dichiara = [...css.matchAll(/([^{}]*)\{([^{}]*)\}/g)].some(([, sel, corpo]) => {
+      if (!/font-variant-numeric:\s*tabular-nums/.test(corpo)) return false;
+      return sel.split(',').some((s) => {
+        const pulito = s.trim();
+        return pulito === n.selettore || pulito.endsWith(` ${n.selettore}`);
+      });
+    });
+    if (!dichiara) senza.push(`${n.selettore} (${n.perche})`);
+  }
+  check(
+    'ogni classe di numeri in colonna dichiara le cifre tabulari',
+    senza.length === 0,
+    `${senza.join('; ')}\n     Inter usa cifre proporzionali: il «1» è più stretto, e la colonna balla.`,
+  );
 }
 
 // ---------------------------------------------------------------------------

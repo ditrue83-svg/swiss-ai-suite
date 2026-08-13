@@ -283,5 +283,41 @@ for (const [lang, d] of Object.entries(dicts)) {
 }
 
 // ---------------------------------------------------------------------------
+// IL CARATTERE DEVE ARRIVARE NEL PDF.
+//
+// Il foglio stampato finisce nel fascicolo di una fiduciaria: se `@media print`
+// toccasse `font-family`, quel foglio uscirebbe con il carattere di sistema
+// mentre tutto il resto del prodotto è composto in Inter — e nessuno se ne
+// accorgerebbe finché non guarda un PDF, cioè quasi mai.
+//
+// ⚠️ FINO AL 2026-08-13 QUESTO FATTO NON ERA SORVEGLIATO DA NIENTE: la parola
+// «font» non compariva in questo file. La prova esisteva — un PDF vero
+// ispezionato il 2026-08-10, con i tre sottoinsiemi incorporati — ma una prova
+// fatta una volta non impedisce la riga che la smentisce il mese dopo.
+{
+  const blocchi: { file: string; corpo: string }[] = [];
+  for (const [file, css] of [['app.css', APP], ['extra.css', EXTRA]] as const) {
+    let da = 0;
+    for (;;) {
+      const at = css.indexOf('@media print', da);
+      if (at < 0) break;
+      const b = mediaBlock(css.slice(at), 'print');
+      if (!b) break;
+      blocchi.push({ file, corpo: b.body });
+      da = at + 12;
+    }
+  }
+  check('i blocchi @media print si trovano', blocchi.length > 0, `trovati ${blocchi.length}`);
+  const colpevoli = blocchi
+    .filter((b) => /font-family\s*:|(^|[;{\s])font\s*:\s*(?!inherit)/.test(b.corpo))
+    .map((b) => b.file);
+  check(
+    'nessun blocco @media print tocca il carattere',
+    colpevoli.length === 0,
+    `${colpevoli.join(', ')} — il PDF uscirebbe col carattere di sistema mentre lo schermo è in Inter`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato:${X} ${fail === 0 ? `${G}${pass} passati${X}` : `${R}${fail} falliti${X} ${DIM}su ${pass + fail}${X}`}`);
 process.exit(fail === 0 ? 0 : 1);

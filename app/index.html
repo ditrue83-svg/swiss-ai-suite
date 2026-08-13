@@ -35,9 +35,28 @@
       type="font/woff2"
       crossorigin
     />
+    <!--
+      La favicon porta lo STESSO marchio della barra laterale: il blocco con la
+      sigla «AI». Due cose da sapere prima di toccarla.
+
+      PERCHÉ IN CONTORNI E NON IN TESTO. Qui non si può scrivere <text>AI</text>
+      e chiedere Inter: un data: URI non carica risorse esterne — è tutto il
+      punto della CSP — quindi il carattere lo sceglierebbe il browser, e il
+      marchio sarebbe disegnato da un font di sistema diverso su ogni macchina.
+      I contorni qui sotto sono quelli del marchio del titolare, gli stessi che
+      la vetrina serve in `site/static/favicon.svg`: una scheda del browser
+      aperta su ai-swisse.com e una aperta sull'applicazione mostrano lo stesso
+      segno. È l'unico punto del prodotto in cui il marchio NON è composto in
+      Inter, ed è una conseguenza del data: URI, non una scelta di disegno.
+
+      PERCHÉ I COLORI SONO SCRITTI PER ESTESO. Un data: URI non può dire
+      var(--accent): i due valori sono copiati dai token, e `test:shell-unit`
+      li rilegge da app.css pretendendoli letterali qui. Se l'accento cambia,
+      quel rosso è il promemoria che la favicon non si aggiorna da sola.
+    -->
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='hsl(207, 88%25, 39%25)'/%3E%3Cpath d='M22.4 9.5C21.2 7.5 19.1 6.4 16.3 6.4 12.5 6.4 10 8.4 10 11.2c0 2.9 2.4 4.1 6.3 4.9 3.9.8 6 2.1 6 5.1 0 2.9-2.7 4.8-6.4 4.8-2.9 0-5.3-1.2-6.5-3.3' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='14.2 31.9 301.8 301.8'%3E%3Crect x='14.2' y='31.9' width='301.8' height='301.8' rx='56.6' fill='hsl(207, 88%25, 39%25)'/%3E%3Cpath d='M166.3 231.6H110L100.9 258.3H62.4L117.1 107.3H159.7L214.3 258.3H175.4ZM156.9 203.2 138.2 147.9 119.7 203.2Z M267.7 107.3V258.3H230.9V107.3Z' fill='%23ffffff'/%3E%3C/svg%3E"
     />
   </head>
   <body>

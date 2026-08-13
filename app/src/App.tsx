@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { RequireAuth, RequireCompany, RedirectIfAuthed } from '@/components/layout/guards';
 import { AppShell } from '@/components/layout/AppShell';
 import { Icon } from '@/components/ui/Icon';
+import { BrandMark } from '@/components/ui/BrandMark';
 
 import { LoginPage } from '@/features/auth/LoginPage';
 import { RegisterPage } from '@/features/auth/RegisterPage';
@@ -58,8 +59,7 @@ function ConfigNeeded({ reason }: { reason: 'missing' | 'rejected' }) {
     <div className="centered-screen">
       <div className="auth-card">
         <div className="auth-brand">
-          <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
-          <div><div className="brand-name">{t('brand.name')}</div><div className="brand-sub">{t('brand.tagline')}</div></div>
+          <BrandMark />
         </div>
         <div className="auth-title">
           {reason === 'rejected' ? t('states.configRejected') : t('states.configRequired')}
