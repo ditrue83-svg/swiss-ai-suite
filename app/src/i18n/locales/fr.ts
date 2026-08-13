@@ -84,22 +84,22 @@ export const fr: Dictionary = {
     assistant: 'Demandez à AI-Swisse',
     contracts: 'Contrats',
     clients: 'Clients',
-    sectionPlatform: 'Plateforme',
-    sectionModules: 'Modules',
-    sectionAccount: 'Compte',
-    sectionAutomation: 'Automatisation',
+    sectionWork: 'Travail',
+    sectionArchive: 'Archives',
     automations: 'Automatisations',
     home: 'Aperçu',
-    tasks: 'Activités',
-    calendar: 'Calendrier',
-    adminAi: 'Admin AI — Documents',
-    subsidyAi: 'Subsidy AI — Subventions',
+    // « tâches » et non « activités » : la voce doit tenir sur une ligne de
+    // la barre, et le mot est déjà du vocabulaire du produit (« nouvelle
+    // tâche »). « Échéances et activités » déborderait.
+    tasks: 'Échéances et tâches',
+    analyzeDoc: 'Analyser un document',
     incentives: 'Aides et subventions',
-    inbox: 'Inbox',
+    inbox: 'Boîte de réception',
     documents: 'Documents',
     finance: 'Finances',
-    companySettings: 'Paramètres de l’entreprise',
-    pricing: 'Offres et tarifs',
+    settings: 'Paramètres',
+    company: 'Entreprise',
+    subscription: 'Abonnement',
     activeCompany: 'Entreprise active',
     switchCompany: 'Changer d’entreprise',
     signOut: 'Se déconnecter',
@@ -243,6 +243,8 @@ export const fr: Dictionary = {
     viewOverdue: 'Échues',
     viewCompleted: 'Terminées',
     viewArchived: 'Archivées',
+    modeList: 'Liste',
+    modeCalendar: 'Calendrier',
     searchPlaceholder: 'Rechercher par titre, description ou autorité',
     filterPriority: 'Priorité',
     filterAssignee: 'Responsable',
@@ -335,7 +337,7 @@ export const fr: Dictionary = {
 
   documents: {
     title: 'Documents',
-    subtitle: 'Tout ce que l’entreprise a reçu, chargé et analysé.',
+    subtitle: 'Les archives de l’entreprise : vous y retrouvez tout ce qui a été reçu, chargé et analysé.',
     upload: 'Charger un document',
     searchLabel: 'Rechercher dans les documents',
     searchPlaceholder: 'Rechercher par nom, expéditeur, contenu ou référence…',
@@ -556,7 +558,6 @@ export const fr: Dictionary = {
   },
   // ---- Calendrier (0018) ---------------------------------------------------
   calendar: {
-    title: 'Calendrier',
     subtitle: 'Quand les tâches de l’entreprise demandent de l’attention.',
     viewMonth: 'Mois',
     viewAgenda: 'Agenda',
@@ -724,7 +725,7 @@ export const fr: Dictionary = {
   },
 
   adminAi: {
-    title: 'Admin AI',
+    title: 'Analyser un document',
     intro: 'Chargez un PDF, un scan, un e-mail ou un fichier texte : le système identifie l’expéditeur, la langue et les délais, et prépare une checklist et un projet de réponse.',
     introReading: 'Analyse d’un document archivé. Chaque information renvoie au passage du texte dont elle est issue.',
     backToDocuments: 'Retour aux documents',

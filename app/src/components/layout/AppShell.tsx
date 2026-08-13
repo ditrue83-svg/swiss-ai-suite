@@ -3,10 +3,10 @@
 // selettore azienda (multi-tenant ready), box account con "Esci".
 // Riproduce fedelmente il layout/design del prototipo.
 // ============================================================================
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
-import { NAV, isSection } from './nav';
+import { NAV, NAV_SETTINGS, isSection, navItemMatches } from './nav';
 import type { TKey } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -24,8 +24,20 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   // Le voci riservate spariscono per chi non è titolare o amministratore. Il
   // permesso però NON è questo: è la RLS della pagina (vedi nav.ts).
   const { isAdmin } = useCompany();
+  const { pathname } = useLocation();
+  // L'id del gruppo Impostazioni viene da useId perché nell'albero i NavList
+  // sono DUE — colonna laterale e drawer — e un id scritto a mano sarebbe
+  // duplicato nel documento.
+  const settingsId = useId();
+  // Il gruppo si apre da sé quando la pagina corrente ci abita: arrivare a
+  // /azienda da una scorciatoia e trovare la propria voce invisibile sarebbe
+  // una barra che mente. Resta uno stato locale: chiuderlo è sempre permesso.
+  const inSettings = NAV_SETTINGS.some((item) => navItemMatches(item, pathname));
+  const [settingsOpen, setSettingsOpen] = useState(inSettings);
+  useEffect(() => { if (inSettings) setSettingsOpen(true); }, [inSettings]);
+
   return (
-    <nav className="nav" aria-label={t('nav.sectionPlatform')}>
+    <nav className="nav" aria-label={t('nav.mainNav')}>
       {NAV.filter((entry) => isSection(entry) || !entry.adminOnly || isAdmin).map((entry, i) =>
         isSection(entry) ? (
           <div className="nav-section" key={`s-${i}`}>{t(entry.sectionKey)}</div>
@@ -34,7 +46,9 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             key={entry.id}
             to={entry.path}
             end={entry.path === '/'}
-            className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
+            // `navItemMatches` e non solo `isActive`: «Scadenze e attività»
+            // resta accesa anche su /calendario (vedi nav.ts).
+            className={({ isActive }) => `nav-btn${isActive || navItemMatches(entry, pathname) ? ' active' : ''}`}
             onClick={onNavigate}
           >
             <Icon name={entry.icon} />
@@ -42,6 +56,33 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           </NavLink>
         ),
       )}
+
+      {/* IMPOSTAZIONI — in fondo, separato: ciò che si configura una volta
+          non sta in mezzo al lavoro di ogni giorno (vedi nav.ts). */}
+      <div className="nav-foot">
+        <button
+          className="nav-btn"
+          aria-expanded={settingsOpen}
+          aria-controls={settingsId}
+          onClick={() => setSettingsOpen((v) => !v)}
+        >
+          <Icon name="settings" />
+          <span>{t('nav.settings')}</span>
+          <Icon name={settingsOpen ? 'arrowUp' : 'arrowDown'} className="ic-sm nav-caret" />
+        </button>
+        <div id={settingsId} hidden={!settingsOpen}>
+          {NAV_SETTINGS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
+            <NavLink
+              key={item.id}
+              to={item.path}
+              className={({ isActive }) => `nav-btn nav-subitem${isActive ? ' active' : ''}`}
+              onClick={onNavigate}
+            >
+              <span>{t(item.labelKey)}</span>
+            </NavLink>
+          ))}
+        </div>
+      </div>
     </nav>
   );
 }
@@ -154,8 +195,10 @@ export function AppShell() {
         <NotificationBell count={count} setCount={setCount} />
       </header>
 
-      {/* Sidebar (desktop) */}
-      <aside className="sidebar" aria-label={t('nav.mainNav')}>
+      {/* Sidebar (desktop). Il landmark di navigazione è il <nav> interno,
+          che si chiama «Navigazione principale»: dare lo stesso nome anche
+          all'aside sarebbe annunciare due volte la stessa cosa. */}
+      <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Icon name="logo" /></div>
           <div>

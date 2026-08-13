@@ -85,22 +85,21 @@ export const de: Dictionary = {
     assistant: 'Frag AI-Swisse',
     contracts: 'Verträge',
     clients: 'Kunden',
-    sectionPlatform: 'Plattform',
-    sectionModules: 'Module',
-    sectionAccount: 'Konto',
-    sectionAutomation: 'Automatisierung',
+    sectionWork: 'Arbeit',
+    sectionArchive: 'Archiv',
     automations: 'Automatisierungen',
     home: 'Übersicht',
-    tasks: 'Aufgaben',
-    calendar: 'Kalender',
-    adminAi: 'Admin AI — Dokumente',
-    subsidyAi: 'Subsidy AI — Fördermittel',
+    // Kompakt, nicht wörtlich: «Fristen und Aktivitäten» würde die Spalte
+    // sprengen — die Voce misst sich an der Leiste, nicht am Wörterbuch.
+    tasks: 'Fristen & Aufgaben',
+    analyzeDoc: 'Dokument analysieren',
     incentives: 'Förderungen',
-    inbox: 'Inbox',
+    inbox: 'Posteingang',
     documents: 'Dokumente',
     finance: 'Finanzen',
-    companySettings: 'Unternehmenseinstellungen',
-    pricing: 'Abos und Preise',
+    settings: 'Einstellungen',
+    company: 'Unternehmen',
+    subscription: 'Abonnement',
     activeCompany: 'Aktives Unternehmen',
     switchCompany: 'Unternehmen wechseln',
     signOut: 'Abmelden',
@@ -244,6 +243,8 @@ export const de: Dictionary = {
     viewOverdue: 'Überfällig',
     viewCompleted: 'Erledigt',
     viewArchived: 'Archiviert',
+    modeList: 'Liste',
+    modeCalendar: 'Kalender',
     searchPlaceholder: 'Nach Titel, Beschreibung oder Behörde suchen',
     filterPriority: 'Priorität',
     filterAssignee: 'Zuständig',
@@ -336,7 +337,7 @@ export const de: Dictionary = {
 
   documents: {
     title: 'Dokumente',
-    subtitle: 'Alles, was das Unternehmen erhalten, hochgeladen und analysiert hat.',
+    subtitle: 'Das Archiv des Unternehmens: Hier finden Sie wieder, was eingegangen, hochgeladen und analysiert wurde.',
     upload: 'Dokument hochladen',
     searchLabel: 'In den Dokumenten suchen',
     searchPlaceholder: 'Nach Name, Absender, Inhalt oder Referenz suchen …',
@@ -557,7 +558,6 @@ export const de: Dictionary = {
   },
   // ---- Kalender (0018) -----------------------------------------------------
   calendar: {
-    title: 'Kalender',
     subtitle: 'Wann die Aufgaben des Unternehmens Aufmerksamkeit erfordern.',
     viewMonth: 'Monat',
     viewAgenda: 'Agenda',
@@ -725,7 +725,7 @@ export const de: Dictionary = {
   },
 
   adminAi: {
-    title: 'Admin AI',
+    title: 'Dokument analysieren',
     intro: 'Laden Sie ein PDF, einen Scan, eine E-Mail oder eine Textdatei hoch: Das System erkennt Absender, Sprache und Fristen und bereitet Checkliste und Antwortentwurf vor.',
     introReading: 'Analyse eines Dokuments aus dem Archiv. Jede Angabe verweist auf die Stelle im Text, aus der sie stammt.',
     backToDocuments: 'Zurück zu den Dokumenten',

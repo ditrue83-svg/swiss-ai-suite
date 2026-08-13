@@ -20,7 +20,9 @@
 .account-actions .btn { flex: 1; }
 
 /* ---- Selettore azienda (multi-tenant ready) ---- */
-.company-switch { padding: var(--sp-2); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); margin-bottom: var(--sp-2); }
+/* Niente cornice né fondo: l'azienda attiva è CONTESTO, non contenuto — una
+   scatola da scheda la faceva concorrere con le voci di navigazione. */
+.company-switch { padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2); }
 .company-switch .cs-label { font-size: var(--fs-label); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .company-switch .cs-name { font-weight: 700; font-size: var(--fs-meta); letter-spacing: -0.2px; }
 .company-switch .cs-meta { font-size: var(--fs-meta); color: var(--muted); }
