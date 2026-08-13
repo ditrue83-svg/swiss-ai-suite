@@ -17,6 +17,7 @@
 // nasconderebbe quelle che lo sono state.
 // ============================================================================
 import { useState } from 'react';
+import { Tag, type TagTone } from '@/components/ui/Tag';
 import { Link, useParams } from 'react-router-dom';
 import { automationService } from '@/services/automationService';
 import { documentHubService } from '@/services/documentHubService';
@@ -86,9 +87,9 @@ export function RunDetailPage() {
   const trigger = findTrigger(String(snapshot.triggerType ?? ''));
   const savedConditions = (snapshot.conditions ?? []) as WorkflowCondition[];
   const link = entityLink(run.entityType, run.entityId);
-  const badge = run.status === 'succeeded' ? 'badge-bassa'
-    : run.status === 'partial' ? 'badge-media'
-    : run.status === 'failed' ? 'badge-alta' : 'badge-neutral';
+  const badge = run.status === 'succeeded' ? 'ok'
+    : run.status === 'partial' ? 'attention'
+    : run.status === 'failed' ? 'alert' : 'neutral';
   const retryable = isAdmin && (run.status === 'failed' || run.status === 'partial');
 
   return (
@@ -107,7 +108,7 @@ export function RunDetailPage() {
       <div className="card mt-16">
         <div className="card-title">{t('automations.runOutcome')}</div>
         <div className="row-wrap">
-          <span className={`badge ${badge}`}>{t(runStatusLabelKey(run.status))}</span>
+          <Tag tone={badge}>{t(runStatusLabelKey(run.status))}</Tag>
           {run.errorCode && (() => {
             const key = actionOutcomeKey(run.errorCode);
             return key ? <span className="muted-sm">{t(key)}</span> : null;
@@ -155,9 +156,9 @@ export function RunDetailPage() {
               {c.outcome === 'unknown'
                 ? <span className="mark mark-prov mp-verify">{t('automations.outcomeUnknown')}</span>
                 : (
-                  <span className={`badge ${c.outcome === 'true' ? 'badge-bassa' : 'badge-neutral'}`}>
+                  <Tag tone={c.outcome === 'true' ? 'ok' : 'neutral'}>
                     {t(c.outcome === 'true' ? 'automations.outcomeTrue' : 'automations.outcomeFalse')}
-                  </span>
+                  </Tag>
                 )}
             </div>
           );
@@ -187,10 +188,10 @@ export function RunDetailPage() {
                   </div>
                 )}
               </div>
-              <span className={`badge ${a.status === 'succeeded' ? 'badge-bassa'
-                : a.status === 'failed' ? 'badge-alta' : 'badge-neutral'}`}>
+              <Tag tone={a.status === 'succeeded' ? 'ok'
+                : a.status === 'failed' ? 'alert' : 'neutral'}>
                 {t(actionStatusLabelKey(a.status))}
-              </span>
+              </Tag>
             </div>
           );
         })}

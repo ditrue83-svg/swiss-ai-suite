@@ -17,6 +17,7 @@
 //    prodotto non sa.
 // ============================================================================
 import { useEffect, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import { Button, EmptyCta, ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useT, type TKey } from '@/i18n';
@@ -303,9 +304,9 @@ function OpportunityRow({
       <div className="inc-row-side">
         {o.dismissedAt ? (
           <>
-            <span className="badge badge-neutral">
+            <Tag>
               {o.dismissedReason ? t(DISMISSAL_KEY[o.dismissedReason]) : t('incentives.dismissed')}
-            </span>
+            </Tag>
             <button type="button" className="mini-btn" onClick={onReopen}>
               {t('incentives.reopen')}
             </button>

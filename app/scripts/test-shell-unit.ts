@@ -764,7 +764,25 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
     for (const file of files) {
       const rel = file.replace(`${root}/`, '');
       const src = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-      if (!/badge-(alta|media|bassa)/.test(src)) continue;
+      // ⚠️ DUE FORME, DALLA MIGRAZIONE A `Tag` del 2026-08-14: le pastiglie
+      // d'allarme non si scrivono più con le classi `badge-alta|media|bassa`,
+      // si chiedono con `<Tag tone="alert">` e `tone="attention"`. Guardare le
+      // sole classi vecchie avrebbe lasciato passare la stessa cosa scritta nel
+      // modo nuovo — un controllo che diventa cieco proprio mentre il codice
+      // che sorveglia cambia. Le classi restano nel controllo perché
+      // sopravvivono in `Tag.tsx` e in un componente di terze parti potrebbero
+      // ricomparire.
+      // ⚠️ ANCHE NELLA FORMA DA MAPPA. Il tono spesso non è scritto nel JSX ma
+      // in una tabella in cima al file (`STATUS_TONE = { error: 'alert', … }`),
+      // e cercare il solo `tone="alert"` non lo vede: è così che il primo
+      // tentativo ha lasciato morire l'eccezione del calendario, che il tono
+      // d'allarme ce l'ha eccome. Si cercano i VALORI, ovunque stiano.
+      // Due forme e due sole: il tono scritto nel JSX (`tone="alert"`) e il
+      // tono che sta in una tabella (`reauth_required: 'alert',`).
+      // ⚠️ NON il semplice `'alert'` sciolto: quello è anche il nome di
+      // un'icona (`<Icon name="alert" />`), che sta in mezzo modulo — provato,
+      // e dava dieci rossi falsi in un colpo.
+      if (!/badge-(alta|media|bassa)|tone="(alert|attention)"|:\s*'(alert|attention)'/.test(src)) continue;
       if (eccezioni.some((e) => e.file === rel)) { eccezioniUsate.add(rel); continue; }
       conPastiglie.push(rel);
     }
@@ -893,6 +911,57 @@ section('8. Cifre tabulari — dove i numeri stanno in colonna');
     'ogni classe di numeri in colonna dichiara le cifre tabulari',
     senza.length === 0,
     `${senza.join('; ')}\n     Inter usa cifre proporzionali: il «1» è più stretto, e la colonna balla.`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+section('9. Le etichette — una sola implementazione, e il tono non si sceglie a occhio');
+
+{
+  // ⚠️ PERCHÉ ESISTE. `.badge` era una classe, non un componente: ogni modulo
+  // scriveva il proprio <span className="badge badge-…"> e sceglieva il TONO
+  // riga per riga. Il risultato, misurato leggendo il codice il 2026-08-14:
+  //   · lo STESSO stato di relazione era rosso/ambra/blu nell'elenco clienti e
+  //     grigio neutro nella scheda dello stesso cliente;
+  //   · gli STESSI ruoli erano neutri nell'elenco e blu nella scheda;
+  //   · lo stato di un'opportunità portava l'ambra, cioè il colore che in tutto
+  //     il resto del prodotto significa «attenzione», su un fatto normale.
+  // Nessuno di questi era visibile da un controllo, perché non c'era niente da
+  // controllare: erano stringhe. Ora c'è `Tag`, e questo tiene ferma la regola.
+  const moduli = join(root, 'src/features');
+  const files: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.tsx')) files.push(p);
+    }
+  };
+  walk(moduli);
+
+  const aMano: string[] = [];
+  for (const file of files) {
+    const src = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    // `badge-row` è un CONTENITORE di righe, non una pastiglia: non entra.
+    // `bell-badge` è il pallino dei non letti, che non è un'etichetta.
+    const righe = src.split('\n');
+    righe.forEach((riga, i) => {
+      // ⚠️ `(?<![\w-])badge` e non `\bbadge\b`: il trattino è un confine di
+      // parola, quindi `\b` acchiappa anche `rel-badge` — che è la scheda di
+      // pertinenza degli incentivi, una classe sua con il suo CSS, non una
+      // pastiglia scritta a mano. Trovato alla prima esecuzione: due rossi
+      // falsi su codice a posto.
+      if (!/className=(\{`|")[^"`]*(?<![\w-])badge(?![\w-])/.test(riga)) return;
+      // `badge-row` è il CONTENITORE delle righe di pastiglie, non una
+      // pastiglia; `bell-badge` è il pallino dei non letti.
+      if (/badge-row|bell-badge/.test(riga)) return;
+      aMano.push(`${file.replace(`${root}/`, '')}:${i + 1}`);
+    });
+  }
+  check(
+    'nessuna pastiglia scritta a mano nei moduli',
+    aMano.length === 0,
+    `${aMano.join(', ')}\n     Le etichette si compongono con <Tag> (components/ui/Tag.tsx): il tono si omette, a meno di saper dire perché.`,
   );
 }
 

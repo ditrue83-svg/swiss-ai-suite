@@ -11,6 +11,7 @@
 // c'è nulla da fare lo dice — invece di mostrare uno zero.
 // ============================================================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, EmptyCta, ErrorState, SkeletonLine } from '@/components/ui/states';
@@ -308,9 +309,9 @@ export function InboxPage() {
                 : t('inbox.lastSyncNever')}
             </span>
             {needsReauth.map((c) => (
-              <span key={c.id} className="badge badge-alta">
+              <Tag key={c.id} tone="alert">
                 <Icon name="alert" className="ic-sm" /> {c.emailAddress} · {t('inbox.accounts.reauthRequired')}
-              </span>
+              </Tag>
             ))}
           </div>
         )}

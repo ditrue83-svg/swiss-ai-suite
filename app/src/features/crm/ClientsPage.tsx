@@ -21,6 +21,7 @@
 // venticinque righe alla volta, anche con mille clienti.
 // ============================================================================
 import { useEffect, useMemo, useState } from 'react';
+import { Tag, type TagTone } from '@/components/ui/Tag';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -73,11 +74,11 @@ const STATE_KEY: Record<CrmOrganizationState, TKey> = {
   ok: 'crm.states.ok',
 };
 /** Il colore accompagna: il testo dice già tutto (regola del sistema di design). */
-const STATE_TONE: Record<CrmOrganizationState, string> = {
-  archived: 'badge-neutral', merged: 'badge-neutral',
-  overdue_tasks: 'badge-alta', never_contacted: 'badge-media',
-  stale: 'badge-media', active_deal: 'badge-blue',
-  inactive: 'badge-neutral', ok: 'badge-neutral',
+const STATE_TONE: Record<CrmOrganizationState, TagTone> = {
+  archived: 'neutral', merged: 'neutral',
+  overdue_tasks: 'alert', never_contacted: 'attention',
+  stale: 'attention', active_deal: 'info',
+  inactive: 'neutral', ok: 'neutral',
 };
 
 const ROLES: CrmOrganizationRole[] = [
@@ -493,7 +494,7 @@ function OrganizationRow(props: {
       <Link to={`/clienti/${o.id}`} className="crm-row-link">
         <div className="list-main">
           <span className="list-title">{o.displayName}</span>
-          <span className={`badge ${STATE_TONE[state]}`}>{t(STATE_KEY[state])}</span>
+          <Tag tone={STATE_TONE[state]}>{t(STATE_KEY[state])}</Tag>
         </div>
 
         {legal && <div className="list-sub">{legal}</div>}
@@ -502,7 +503,7 @@ function OrganizationRow(props: {
           {o.roles.length === 0
             ? <em className="muted-sm">{t('crm.row.noRoles')}</em>
             : o.roles.map((r) => (
-              <span key={r} className="badge badge-neutral">{L.crmRole(r)}</span>
+              <Tag key={r}>{L.crmRole(r)}</Tag>
             ))}
         </div>
 
@@ -580,7 +581,7 @@ function PipelineBoard(props: {
         ) : (
           <div className="row-wrap">
             {props.perCurrency.map((c) => (
-              <span key={c.currency ?? 'none'} className="badge badge-neutral">
+              <Tag key={c.currency ?? 'none'}>
                 {c.totalAmount === null
                   ? <>{c.opportunityCount} · {t('crm.opp.noValue')}</>
                   : <>
@@ -588,7 +589,7 @@ function PipelineBoard(props: {
                       {c.totalAmount.toLocaleString('de-CH')}
                       {' · '}{c.opportunityCount}
                     </>}
-              </span>
+              </Tag>
             ))}
           </div>
         )}
@@ -624,7 +625,7 @@ function PipelineBoard(props: {
                         : `${d.valueCurrency} ${d.valueAmount.toLocaleString('de-CH')}`}
                     </span>
                     {(st === 'overdue_step' || st === 'no_step') && (
-                      <span className="badge badge-media">{t(opportunityStateKey(st))}</span>
+                      <Tag tone="attention">{t(opportunityStateKey(st))}</Tag>
                     )}
                   </Link>
                 );

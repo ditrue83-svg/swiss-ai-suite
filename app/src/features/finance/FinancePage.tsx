@@ -17,6 +17,7 @@
 // venticinque righe alla volta, anche con duemila fatture.
 // ============================================================================
 import { useEffect, useMemo, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
@@ -681,12 +682,12 @@ function FinanceRow({
 
       <div className="fin-row-side">
         {item.duplicateSuspected && (
-          <span className="badge badge-media">
+          <Tag tone="attention">
             <Icon name="alert" className="ic-sm" /> {t('finance.duplicate.banner')}
-          </span>
+          </Tag>
         )}
         {item.qualityFlags.length > 0 && state !== 'failed' && (
-          <span className="badge badge-media">{t('finance.filters.flagged')}</span>
+          <Tag tone="attention">{t('finance.filters.flagged')}</Tag>
         )}
         {/* «Da verificare» è il segno epistemico di famiglia; guasti e stati
             di lavorazione restano pastiglie (il rosso resta al guasto). */}

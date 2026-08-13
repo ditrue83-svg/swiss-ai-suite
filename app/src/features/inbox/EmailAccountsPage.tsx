@@ -9,6 +9,7 @@
 //     realmente richiesti — non a quelli che suonerebbero meglio (§39).
 // ============================================================================
 import { useCallback, useEffect, useState } from 'react';
+import { Tag, type TagTone } from '@/components/ui/Tag';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, EmptyCta, ErrorState, SkeletonLine } from '@/components/ui/states';
@@ -28,11 +29,11 @@ const STATUS_KEY = {
   error: 'inbox.accounts.error',
 } as const;
 
-const STATUS_CLASS = {
-  active: 'badge-neutral',
-  reauth_required: 'badge-alta',
-  disconnected: 'badge-neutral',
-  error: 'badge-alta',
+const STATUS_TONE = {
+  active: 'neutral',
+  reauth_required: 'alert',
+  disconnected: 'neutral',
+  error: 'alert',
 } as const;
 
 export function EmailAccountsPage() {
@@ -155,9 +156,9 @@ export function EmailAccountsPage() {
               </div>
             </div>
 
-            <span className={`badge ${STATUS_CLASS[connection.status]}`}>
+            <Tag tone={STATUS_TONE[connection.status]}>
               {t(STATUS_KEY[connection.status])}
-            </span>
+            </Tag>
 
             {isAdmin && connection.status === 'reauth_required' && (
               <button

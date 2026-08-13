@@ -21,6 +21,7 @@
 // rilevato — la correzione non cancella niente, si affianca.
 // ============================================================================
 import { useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
@@ -323,7 +324,7 @@ export function FinanceDetailPage() {
           {state === 'to_verify'
             ? <ProvenanceMark kind="toVerify" />
             : <span className={stateBadgeClass(state)}>{stateBadgeText(state, t, L)}</span>}
-          {archived && <span className="badge badge-neutral">{t('finance.filters.archived')}</span>}
+          {archived && <Tag>{t('finance.filters.archived')}</Tag>}
           {/* La CAUSA accanto alla pastiglia, come nell'elenco: il codice del
               worker tradotto se noto, grezzo se no (mai una categoria
               inventata). */}
@@ -596,7 +597,7 @@ function FinField({
       <div className="fin-field-label" id={`lbl-${field ?? label}`}>{label}</div>
       <div className="fin-field-value">
         <span className={kind === 'amount' ? 'fin-num' : undefined}>{value ?? '—'}</span>
-        {corrected && <span className="badge badge-blue">{t('finance.detail.correctedManually')}</span>}
+        {corrected && <Tag tone="info">{t('finance.detail.correctedManually')}</Tag>}
       </div>
 
       {corrected && (
@@ -888,7 +889,7 @@ function TasksPanel({
                   .filter(Boolean).join(' · ')}
               </div>
             </div>
-            <span className="badge badge-neutral">{t('documents.openTask')}</span>
+            <Tag>{t('documents.openTask')}</Tag>
           </Link>
         );
       })}

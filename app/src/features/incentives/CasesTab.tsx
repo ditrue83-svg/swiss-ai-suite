@@ -20,6 +20,7 @@
 // quella vera. È la lezione del dettaglio Attività.
 // ============================================================================
 import { useEffect, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import { Button, EmptyCta, ErrorState, SkeletonCard, SkeletonLine } from '@/components/ui/states';
 import { useT, type TKey } from '@/i18n';
@@ -119,17 +120,17 @@ export function CasesTab({ companyId, showArchived, onShowArchived, onChanged }:
                     {c.projectTitle && <> · {c.projectTitle}</>}
                   </div>
                   <div className="badge-row">
-                    <span className="badge badge-neutral">{t(CASE_STATUS_KEY[c.status])}</span>
+                    <Tag>{t(CASE_STATUS_KEY[c.status])}</Tag>
                     {/* ⚠️ La percentuale è `null` quando non c'è nessun passo:
                         «0%» racconterebbe un lavoro appena cominciato dove
                         invece non è stato ancora definito. */}
                     {progress.percent !== null && (
-                      <span className="badge badge-neutral">
+                      <Tag>
                         {t('incentives.cases.progress', { done: progress.done, total: progress.total })}
-                      </span>
+                      </Tag>
                     )}
                     {c.archivedAt && (
-                      <span className="badge badge-neutral">{t('incentives.cases.archived')}</span>
+                      <Tag>{t('incentives.cases.archived')}</Tag>
                     )}
                   </div>
                   {due && (
@@ -240,7 +241,7 @@ function CaseDetail({
               {item.projectTitle && <> · {item.projectTitle}</>}
             </div>
           </div>
-          <span className="badge badge-neutral">{t(CASE_STATUS_KEY[item.status])}</span>
+          <Tag>{t(CASE_STATUS_KEY[item.status])}</Tag>
         </div>
 
         {error && <ErrorState message={error} />}

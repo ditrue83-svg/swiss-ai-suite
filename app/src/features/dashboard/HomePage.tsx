@@ -20,6 +20,8 @@
 // portavano quelle schede.
 // ============================================================================
 import { Link } from 'react-router-dom';
+import { PriorityMark } from '@/components/ui/PriorityMark';
+import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard, SkeletonKpiGrid } from '@/components/ui/states';
 import { useOverview, type OverviewData } from './useOverview';
@@ -100,7 +102,10 @@ function PriorityRow({ it }: { it: PriorityItem }) {
         <div className="action-sub">{it.sub}</div>
       </div>
       <div className="action-meta">
-        <span className={`badge badge-${it.priority}`}>{L.urgency(it.priority)}</span>
+        {/* Stessa famiglia della riga di un'attività: la priorità è una
+            direzione. Tre pastiglie di tre colori dicevano la stessa cosa a
+            colpo d'occhio solo a chi distingue i colori. */}
+        <PriorityMark level={it.priority} />
         <span className="action-link" aria-hidden="true"><Icon name="arrowRight" className="ic-sm" /></span>
       </div>
     </Link>
@@ -290,7 +295,7 @@ function OverviewBody({ data }: { data: OverviewData }) {
                 </div>
               </div>
               {o.programAvailability === 'suspended'
-                ? <span className="badge badge-media">{t('incentives.catalog.suspended')}</span>
+                ? <Tag tone="attention">{t('incentives.catalog.suspended')}</Tag>
                 : <EligibilityMark status={o.eligibilityStatus} />}
             </div>
           ))}

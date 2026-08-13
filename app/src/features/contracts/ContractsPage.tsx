@@ -21,6 +21,7 @@
 // contratti.
 // ============================================================================
 import { useEffect, useMemo, useState } from 'react';
+import { Tag, type TagTone } from '@/components/ui/Tag';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -79,10 +80,10 @@ const STATE_KEY: Record<ContractState, TKey> = {
  *  rosso resta a `failed` (lettura non riuscita) e allo scaduto delle cifre.
  *  `to_verify` non è più qui: è il segno epistemico di famiglia (filetto
  *  puntinato), reso a parte nella riga. */
-const STATE_TONE: Record<ContractState, string> = {
-  archived: 'badge-neutral', failed: 'badge-alta', processing: 'badge-neutral',
-  notice_soon: 'badge-media', renewal_soon: 'badge-media', amendment: 'badge-media',
-  to_verify: 'badge-media', verified: 'badge-blue',
+const STATE_TONE: Record<ContractState, TagTone> = {
+  archived: 'neutral', failed: 'alert', processing: 'neutral',
+  notice_soon: 'attention', renewal_soon: 'attention', amendment: 'attention',
+  to_verify: 'attention', verified: 'info',
 };
 
 const CONTRACT_TYPES: ContractType[] = [
@@ -434,7 +435,7 @@ function ContractRow(props: {
           <span className="list-title">{c.displayName}</span>
           {state === 'to_verify'
             ? <ProvenanceMark kind="toVerify" />
-            : <span className={`badge ${STATE_TONE[state]}`}>{t(STATE_KEY[state])}</span>}
+            : <Tag tone={STATE_TONE[state]}>{t(STATE_KEY[state])}</Tag>}
         </div>
 
         <div className="list-sub">

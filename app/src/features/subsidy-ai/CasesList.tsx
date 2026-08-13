@@ -1,5 +1,6 @@
 // "Le mie pratiche" — lette dalla tabella subsidy_cases (+ items), non più da localStorage.
 import { Icon } from '@/components/ui/Icon';
+import { Tag } from '@/components/ui/Tag';
 import { EligibilityMark } from '@/components/ui/EligibilityMark';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
@@ -94,9 +95,9 @@ export function CasesList({ onGoResults }: { onGoResults: () => void }) {
                   metteva sulla scala degli allarmi — «candidatura» in verde,
                   «preliminare» in ambra — come se una fosse un esito buono e
                   l'altra un problema. La parola basta, ed è già lì. */}
-              {kind === 'preliminare' ? <span className="badge badge-neutral">{t('subsidy.cases.kindPreliminary')}</span>
-                : kind === 'riferimento' ? <span className="badge badge-neutral">{t('subsidy.cases.savedForReference')}</span>
-                : <span className="badge badge-neutral">{t('subsidy.cases.kindApplication')}</span>}
+              {kind === 'preliminare' ? <Tag>{t('subsidy.cases.kindPreliminary')}</Tag>
+                : kind === 'riferimento' ? <Tag>{t('subsidy.cases.savedForReference')}</Tag>
+                : <Tag>{t('subsidy.cases.kindApplication')}</Tag>}
               {/* L'idoneità registrata alla creazione della pratica: il segno
                   della sua famiglia, non la pastiglia negli allarmi. */}
               {elig && <span className="mark-field">{t('subsidy.cases.eligibility')} <EligibilityMark status={elig} /></span>}

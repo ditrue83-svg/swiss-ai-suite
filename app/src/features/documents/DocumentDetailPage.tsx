@@ -17,6 +17,7 @@
 // nulla, si affianca.
 // ============================================================================
 import { useCallback, useRef, useState } from 'react';
+import { Tag } from '@/components/ui/Tag';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -779,7 +780,7 @@ export function DocumentDetailPage() {
                     .filter(Boolean).join(' · ')}
                 </div>
               </div>
-              <span className="badge badge-neutral">{t('documents.openTask')}</span>
+              <Tag>{t('documents.openTask')}</Tag>
             </Link>
           );
         })}
@@ -1003,7 +1004,7 @@ function Field({
         {mark ?? value ?? '—'}
         {corrected && (
           <>
-            {' '}<span className="badge badge-blue">{t('documents.correctedBadge')}</span>
+            {' '}<Tag tone="info">{t('documents.correctedBadge')}</Tag>
             <div className="muted-sm">
               {aiValue ? t('documents.aiValue', { value: aiValue }) : t('documents.aiValueEmpty')}
             </div>
