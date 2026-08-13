@@ -35,6 +35,8 @@
     "fallback:scan:self-test": "node scripts/fallback-scan.mjs --self-test",
     "docs:check": "node scripts/docs-check.mjs",
     "i18n:typography": "node scripts/i18n-typography.mjs",
+    "i18n:orphans": "node --import tsx scripts/i18n-orphans.ts",
+    "i18n:orphans:self-test": "node --import tsx scripts/i18n-orphans.ts --self-test",
     "test:uid": "node --import tsx scripts/test-uid.ts",
     "test:routing": "node --import tsx scripts/test-routing.ts",
     "test:validate": "node --import tsx scripts/test-validate.ts",

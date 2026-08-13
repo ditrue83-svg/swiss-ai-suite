@@ -399,6 +399,28 @@ renderebbe impossibili da ritrovare nel testo e la verifica automatica le scarte
 codice: testo dentro il JSX, attributi che l'utente legge (`placeholder`, `aria-label`, `title`,
 `alt`, `label`) e messaggi passati a `showToast()`.
 
+`npm run i18n:orphans` guarda **dall'altra parte**: le chiavi dei dizionari che nessun codice
+chiama più. Sono i due lati della stessa moneta — là una frase che non passa dal dizionario, qui
+una voce del dizionario che non passa da nessun codice — e per mesi il secondo lato non l'ha
+guardato nessuno: dopo la PR #44 `subsidy.results.priority` e `L.eligibility` sono rimaste senza
+chiamanti, e le ha trovate un `grep` nel bundle **servito**, dopo il merge. Una frase orfana
+invecchia insieme al prodotto, e un giorno qualcuno la richiama credendola viva.
+
+Il rilevatore **importa** il dizionario invece di leggerlo con un'espressione regolare, e percorre
+i sorgenti con un tokenizzatore che distingue codice, commenti, stringhe, template e regex: una
+chiave citata solo in un commento **non** conta come usata, e una composta a runtime
+(`` `subsidy.cases.statuses.${k}` ``, `pick('subsidy.labels.eligibility', v)`) **sì** — il nodo
+nominato copre le sue foglie. Le eccezioni si dichiarano una per riga con il motivo, e
+un'eccezione senza più niente dietro fa fallire il controllo, come in `design:lint`.
+
+⚠️ Mentre lo si scriveva ha mentito due volte, e nessuno dei casi di prova inventati l'aveva
+previsto: la prima versione leggeva il `/` di un tag JSX che si chiude da solo (`/>`) come inizio
+di un'espressione regolare, e la finta regex si chiudeva sul `/` di `</span>` portandosi dentro la
+chiave — **125 chiavi vive dichiarate morte**; la seconda saltava il contenuto delle
+interpolazioni `${…}`, dove in questo codice le traduzioni ci stanno spesso. Entrambe le volte a
+smascherarlo è stato il confronto dell'elenco col codice vero, non un caso di prova. Ora quei due
+difetti *sono* due casi di prova.
+
 ⚠️ Fino al 2026-07-26 lo script cercava invece *parole italiane*, con una lista di articoli e verbi
 al singolare. Dichiarava «nessuna stringa da tradurre» mentre un centinaio di etichette era ancora
 in italiano: erano quasi tutte al plurale — «Azioni da completare», «Documenti da verificare» — e
@@ -1002,6 +1024,9 @@ npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
 npm run i18n:typography # spazi insecabili (U+202F) prima dei segni doppi francesi
 npm run i18n:typography -- --self-test
+npm run i18n:orphans    # chiavi dei dizionari che nessun codice chiama più (esce 1 se ne trova)
+npm run i18n:orphans -- --list         # l'elenco completo, non solo le sezioni
+npm run i18n:orphans:self-test         # verifica che il rilevatore sappia fallire (13 casi)
 npm run design:lint     # regola 1 del sistema di design: misure e colori dai token, mai
                         #   a mano (esce 1 se trova violazioni; le eccezioni sono dichiarate
                         #   nello script, una riga e un motivo ciascuna, e una riga senza più
