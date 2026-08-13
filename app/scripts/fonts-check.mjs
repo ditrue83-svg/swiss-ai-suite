@@ -53,6 +53,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+// L'elenco dei dizionari vive in UN posto: il disco, riconciliato con LOCALES.
+import { dizionari } from './i18n-locales.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const G = '\x1b[32m', R = '\x1b[31m', B = '\x1b[1m', DIM = '\x1b[2m', X = '\x1b[0m';
@@ -112,8 +114,17 @@ export function senzaCommenti(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/<!--[\s\S]*?-->/g, ' ');
 }
 
-/** Stringhe letterali in apici singoli — ciò che finisce a schermo. */
-const LITERAL = /'((?:[^'\\\n]|\\.)*)'/g;
+/** Stringhe letterali — apici singoli, DOPPI e template: ciò che finisce a
+ * schermo non dipende dal delimitatore. ⚠️ Fino al 2026-08-13 si guardavano
+ * solo gli apici singoli: una stringa in apici doppi sfuggiva INTERA. Latente
+ * (i dizionari sono al 100% in apici singoli), ma un controllo appeso a una
+ * convenzione di stile non dichiarata muore al primo formatter. */
+const LITERAL = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g;
+
+/** Il testo di un match, con le interpolazioni `${…}` dei template rimosse:
+ * sono codice, non testo (le stringhe eventualmente annidate lì dentro non
+ * vengono estratte — limite dichiarato, oggi senza casi reali). */
+const testoDelLetterale = (m) => (m[1] ?? m[2] ?? m[3] ?? '').replace(/\$\{[^}]*\}/g, '');
 
 /** I caratteri di un sorgente che NON sono coperti né dalla gamma né dall'elenco. */
 export function scoperti(src) {
@@ -121,10 +132,11 @@ export function scoperti(src) {
   LITERAL.lastIndex = 0;
   let m;
   while ((m = LITERAL.exec(src)) !== null) {
-    for (const c of m[1]) {
+    const testo = testoDelLetterale(m);
+    for (const c of testo) {
       const cp = c.codePointAt(0);
       if (dentroGamma(cp) || cp in AL_RIPIEGO) continue;
-      if (!out.has(cp)) out.set(cp, m[1].slice(0, 70));
+      if (!out.has(cp)) out.set(cp, testo.slice(0, 70));
     }
   }
   return out;
@@ -147,6 +159,14 @@ const CASI = [
   { nome: '⚠️ un carattere cirillico non dichiarato → scoperto', src: `const a = 'Привет';`, scoperti: 6 },
   { nome: '⚠️ un ideogramma non dichiarato → scoperto', src: `const a = '文書';`, scoperti: 2 },
   { nome: '⚠️ un’emoji NON dichiarata → scoperta', src: `const a = 'fatto 🎉';`, scoperti: 1 },
+  // ⚠️ GLI APICI DOPPI E I TEMPLATE. Fino al 2026-08-13 si guardavano SOLO gli
+  // apici singoli: questi due casi, con la regex vecchia, uscivano «0 scoperti»
+  // — una stringa intera invisibile per via del delimitatore. Latente (i
+  // dizionari sono al 100% in apici singoli), ma un controllo appeso a una
+  // convenzione di stile non dichiarata muore al primo formatter.
+  { nome: '⚠️ APICI DOPPI: il cirillico non dichiarato si vede anche lì', src: `const a = "Привет";`, scoperti: 6 },
+  { nome: '⚠️ TEMPLATE: l’ideogramma nel testo statico si vede', src: 'const a = `doc 文書 ${x}`;', scoperti: 2 },
+  { nome: 'l’interpolazione di un template è codice, non testo', src: 'const a = `fatto ${emojiScelta}`;', scoperti: 0 },
   // I negativi che contano: il controllo guarda le STRINGHE, non i commenti.
   { nome: 'un commento con un ideogramma non è testo d’interfaccia',
     src: `// il documento 文書 non passa di qui`, scoperti: 0 },
@@ -213,7 +233,10 @@ for (const c of CARATTERI) {
 }
 
 // --- 2. Copertura -----------------------------------------------------------
-const DIZIONARI = ['it', 'de', 'fr'].map((l) => `src/i18n/locales/${l}.ts`).concat('src/i18n/labels.ts');
+// ⚠️ L'elenco viene dal disco, riconciliato con LOCALES: fino al 2026-08-13
+// era cablato qui («it, de, fr») e una quarta lingua non la guardava nessuno.
+// labels.ts non è un locale: è il file delle etichette condivise, e resta.
+const DIZIONARI = dizionari().concat('src/i18n/labels.ts');
 for (const rel of DIZIONARI) {
   const percorso = resolve(ROOT, rel);
   if (!existsSync(percorso)) { problemi.push(`${rel} non trovato`); continue; }

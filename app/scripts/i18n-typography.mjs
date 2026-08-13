@@ -34,6 +34,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+// L'elenco dei dizionari vive in UN posto: il disco, riconciliato con LOCALES.
+import { dizionari } from './i18n-locales.mjs';
 
 const NNBSP = ' '; // espace fine insécable
 const NBSP = ' ';  // espace insécable
@@ -41,12 +43,21 @@ const NBSP = ' ';  // espace insécable
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TARGET = resolve(ROOT, 'src/i18n/locales/fr.ts');
 
-// ⚠️ La CODIFICA riguarda tutte e tre le lingue, non solo il francese: qui il
-// controllo si allarga, e la ragione è un difetto vero trovato il 2026-08-10.
-const DIZIONARI = ['it', 'de', 'fr'].map((l) => resolve(ROOT, `src/i18n/locales/${l}.ts`));
+// ⚠️ La CODIFICA riguarda TUTTE le lingue, non solo il francese — e l'elenco
+// non si scrive più qui: fino al 2026-08-13 era cablato («it, de, fr») e una
+// quarta lingua sul disco non la guardava nessuno. Ora viene dal disco,
+// riconciliato con LOCALES (vedi i18n-locales.mjs).
+const DIZIONARI = dizionari().map((rel) => resolve(ROOT, rel));
 
-/** Stringhe letterali in apici singoli, con `\'` gestito. */
-const LITERAL = /'((?:[^'\\\n]|\\.)*)'/g;
+/** Stringhe letterali — apici singoli, DOPPI e template: la tipografia non
+ * dipende dal delimitatore. ⚠️ Fino al 2026-08-13 si guardavano solo gli
+ * apici singoli: una stringa in apici doppi sfuggiva intera. Latente, ma un
+ * controllo appeso a una convenzione di stile muore al primo formatter. */
+const LITERAL = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g;
+
+/** Il testo di un match, con le interpolazioni `${…}` dei template rimosse:
+ * sono codice, e sostituirle con qualcosa inventerebbe spazi che non esistono. */
+const testoDelLetterale = (m) => (m[1] ?? m[2] ?? m[3] ?? '').replace(/\$\{[^}]*\}/g, '');
 
 /**
  * Occorrenze da correggere DENTRO una stringa.
@@ -121,8 +132,9 @@ export function violazioniDelSorgente(src) {
   LITERAL.lastIndex = 0;
   let m;
   while ((m = LITERAL.exec(src)) !== null) {
-    const v = violazioniDelTesto(m[1]);
-    if (v.length) out.push({ testo: m[1], regole: [...new Set(v)] });
+    const testo = testoDelLetterale(m);
+    const v = violazioniDelTesto(testo);
+    if (v.length) out.push({ testo, regole: [...new Set(v)] });
   }
   return out;
 }
@@ -138,6 +150,13 @@ const CASI = [
   { nome: 'guillemets con spazio normale', src: `const a = 'Voir « le document »';`, deveFallire: true },
   { nome: 'guillemets con U+202F', src: `const a = 'Voir «${NNBSP}le document${NNBSP}»';`, deveFallire: false },
   { nome: 'U+00A0 al posto di U+202F', src: `const a = 'Priorité${NBSP}: toutes';`, deveFallire: true },
+  // ⚠️ GLI APICI DOPPI E I TEMPLATE. Fino al 2026-08-13 si guardavano SOLO gli
+  // apici singoli: questi casi, con la regex vecchia, non fallivano — la
+  // stringa intera era invisibile per via del delimitatore. Latente, ma un
+  // controllo appeso a una convenzione di stile muore al primo formatter.
+  { nome: '⚠️ APICI DOPPI: lo spazio sbagliato si vede anche lì', src: `const a = "Priorité : toutes";`, deveFallire: true },
+  { nome: '⚠️ TEMPLATE: il testo statico si giudica', src: 'const a = `Que faire ?`;', deveFallire: true },
+  { nome: 'l’interpolazione di un template non inventa errori', src: 'const a = `Priorité${"x"}: toutes`;', deveFallire: false },
   // ⚠️ I due negativi che contano: il controllo non deve inventarsi errori.
   { nome: 'URL con due punti (nessuno spazio)', src: `const a = 'https://ai-swisse.com/a:b';`, deveFallire: false },
   { nome: 'orario', src: `const a = '14:30';`, deveFallire: false },
