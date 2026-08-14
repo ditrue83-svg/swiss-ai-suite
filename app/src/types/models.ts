@@ -393,6 +393,22 @@ export interface DocumentPage {
   total: number;
 }
 
+/**
+ * I documenti che richiedono attenzione, con i due totali accanto.
+ *
+ * ⚠️ I totali NON sono `items.length`: `items` è troncato al limite della Home,
+ * i totali contano tutto ciò che il filtro seleziona. È la differenza fra il
+ * numero scritto su una scheda e la lunghezza di un elenco che sta in pagina —
+ * la seconda mente appena i documenti superano il limite.
+ */
+export interface DocumentAttention {
+  items: DocumentHubItem[];
+  /** Analisi che chiedono una verifica: lo stesso insieme di `?stato=to_verify`. */
+  toVerifyTotal: number;
+  /** Analisi non riuscite: lo stesso insieme di `?stato=failed`. */
+  failedTotal: number;
+}
+
 /** I filtri della lista. Tipizzati, mai `Record<string, unknown>` (§103). */
 export interface DocumentHubFilters {
   query?: string | null;

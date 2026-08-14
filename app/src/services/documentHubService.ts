@@ -25,9 +25,9 @@ import { stateOf, toListArgs } from '@/features/documents/documentModel';
 import { analysisService } from './analysisService';
 import type { Database } from '@/types/database';
 import type {
-  AnalysisCorrection, DocumentCategory, DocumentDetail, DocumentEmailSource, DocumentHubFilters,
-  DocumentHubItem, DocumentLinkedTask, DocumentPage, DocumentRecord, DocumentTag,
-  DocumentTechnicalInfo,
+  AnalysisCorrection, DocumentAttention, DocumentCategory, DocumentDetail, DocumentEmailSource,
+  DocumentHubFilters, DocumentHubItem, DocumentLinkedTask, DocumentPage, DocumentRecord,
+  DocumentTag, DocumentTechnicalInfo,
 } from '@/types/models';
 
 type ListRow = Database['public']['Functions']['list_documents']['Returns'][number];
@@ -153,13 +153,25 @@ export const documentHubService = {
    * I documenti che richiedono attenzione (§61): analisi da verificare o non
    * riuscita. Serve alla Home, che NON deve diventare un elenco di documenti —
    * per questo è una interrogazione filtrata e non una lista troncata.
+   *
+   * ⚠️ RENDE ANCHE I DUE TOTALI, e non è un di più: la Panoramica mostra il
+   * numero «Documenti da verificare» e da lì si arriva a `/documenti?stato=
+   * to_verify`. Il numero e l'elenco devono venire dalla STESSA interrogazione,
+   * altrimenti la scheda dice 16 e la pagina ne mostra 4 — due verità sullo
+   * stesso fatto. `total` conta prima di paginare (funzione finestra), quindi
+   * è il totale vero anche se le righe rese sono `limit`. Nessuna query in più:
+   * questi due totali arrivavano già e venivano buttati via.
    */
-  async attention(companyId: string, limit = 8): Promise<DocumentHubItem[]> {
+  async attention(companyId: string, limit = 8): Promise<DocumentAttention> {
     const [toVerify, failed] = await Promise.all([
       documentHubService.list(companyId, { state: 'to_verify', limit }),
       documentHubService.list(companyId, { state: 'failed', limit }),
     ]);
-    return [...failed.items, ...toVerify.items].slice(0, limit);
+    return {
+      items: [...failed.items, ...toVerify.items].slice(0, limit),
+      toVerifyTotal: toVerify.total,
+      failedTotal: failed.total,
+    };
   },
 
   /** Quanti documenti attivi ha l'azienda. Interrogazione di sola testata. */

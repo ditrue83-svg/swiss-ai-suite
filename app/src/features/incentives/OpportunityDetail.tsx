@@ -318,7 +318,7 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
 
         {/* La legenda dei segni: identica a quella del dettaglio documento —
             il sistema si impara una volta sola. */}
-        <div className="mt-12"><MarkLegend /></div>
+        <MarkLegend />
       </div>
 
       {/* ⚠️ LA VERSIONE PER LA CARTA. Qui il foglio non porta citazioni da un

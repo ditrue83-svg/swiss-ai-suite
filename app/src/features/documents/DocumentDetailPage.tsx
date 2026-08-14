@@ -690,7 +690,7 @@ export function DocumentDetailPage() {
 
             {/* La legenda dei segni: la stessa in ogni schermata che li usa,
                 si impara una volta e si richiude. */}
-            <div className="mt-12"><MarkLegend /></div>
+            <MarkLegend />
           </>
         )}
       </div>

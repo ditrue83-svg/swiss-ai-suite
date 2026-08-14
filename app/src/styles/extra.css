@@ -285,9 +285,43 @@
 
 /* Un KPI che è anche un collegamento: la riga intera è il bersaglio, non una
    freccia da centrare. Eredita `--ink` perché altrimenti il numero diventerebbe
-   blu — la stessa correzione già fatta su `.action-row.is-link` nella 0016. */
-.kpi-link { color: var(--ink); text-decoration: none; display: block; }
-.kpi-link:hover { border-color: var(--accent-line); }
+   blu — la stessa correzione già fatta su `.action-row.is-link` nella 0016.
+   ⚠️⚠️ `display: flex` E NON `block`, e la riga cambiata è una correzione:
+   `.kpi` è una colonna flex, questa regola arriva dopo e con `block` la
+   sovrascriveva. Effetto misurato il 2026-08-15, quando la sola scheda
+   collegata era il Calendario: il suo `margin-top: auto` non aveva più un
+   contenitore flex su cui appoggiarsi e la didascalia partiva 6px più in alto
+   delle quattro accanto. Sei pixel di disallineamento in una fila di cinque
+   numeri sono lo stesso difetto che il 2026-08-10 è bastato a far correggere le
+   scadenze (là erano 3,6). Ora TUTTE le schede sono collegamenti, quindi
+   sarebbe stata l'intera fila a scivolare. */
+.kpi-link { color: var(--ink); text-decoration: none; display: flex; position: relative; transition: border-color .12s, background .12s; }
+/* L'hover parla il vocabolario delle altre superfici premibili — `.nav-btn` e
+   `.action-row.is-link` usano ENTRAMBE `--bg`, e questa è la terza: il bordo si
+   colora del blu tenue e il fondo scende al colore della pagina. Nessuna ombra
+   e nessun sollevamento — una scheda numerica non deve sembrare un pulsante.
+   ⚠️⚠️ `text-decoration: none` ANCHE QUI, e non è una ripetizione: la regola
+   globale `a:hover` sottolinea, e `.kpi-link` la spegneva solo a riposo. Visto
+   a schermo il 2026-08-15 passando sopra la scheda: etichetta, numero e
+   didascalia si sottolineavano tutti e tre insieme — tre righe di un blocco
+   sottolineate non sono un collegamento, sono un errore di stampa. Il difetto
+   c'era già dal 2026-08-11 sulla sola scheda del Calendario, l'unica collegata;
+   ora che lo sono tutte sarebbe stata l'intera fila. Stessa forma della riga
+   282 di app.css, che fa la stessa cosa per `.nav-btn`, `.btn` e `.brand`. */
+.kpi-link:hover { border-color: var(--accent-line); background: var(--bg); text-decoration: none; }
+/* La freccia: presente sempre, discreta finché non serve. Non compare
+   SOLTANTO al passaggio del mouse, perché su un portatile con trackpad — e su
+   un tablet, dove il passaggio non esiste — l'unico indizio che la scheda si
+   può premere sparirebbe. */
+.kpi-go { position: absolute; right: var(--sp-3); bottom: var(--sp-3); color: var(--muted); display: flex; transition: transform .12s, color .12s; }
+.kpi-link:hover .kpi-go { color: var(--accent-text); transform: translateX(2px); }
+/* Chi ha chiesto meno animazione non riceve nemmeno questa. */
+@media (prefers-reduced-motion: reduce) {
+  .kpi-link, .kpi-go { transition: none; }
+  .kpi-link:hover .kpi-go { transform: none; }
+}
+/* La didascalia non finisce sotto la freccia: le si lascia il posto. */
+.kpi-link .kpi-sub { padding-inline-end: var(--sp-6); }
 
 /* ===========================================================================
    Finanze (0021)

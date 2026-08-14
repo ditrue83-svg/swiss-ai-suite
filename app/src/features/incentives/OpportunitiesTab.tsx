@@ -211,7 +211,7 @@ export function OpportunitiesTab({
 
       {/* La legenda dei segni: la stessa del dettaglio, dei Documenti e delle
           Attività. Le righe qui portano idoneità e freschezza della fonte. */}
-      <div className="card"><MarkLegend /></div>
+      <MarkLegend />
 
       {dismissing && (
         <DismissDialog

@@ -32,6 +32,16 @@ interface BaseData {
   counts: { open: number; overdue: number; inProgress: number; completed: number };
   /** I documenti che richiedono attenzione, non tutti i documenti (§61). */
   attention: DocumentHubItem[];
+  /**
+   * Quante analisi chiedono una verifica, in tutta l'azienda.
+   *
+   * ⚠️ NON è `attention.length`, che è troncato al limite della Home, e non è
+   * più un conteggio fatto qui sulle analisi caricate: è il totale della STESSA
+   * interrogazione a cui porta la scheda (`/documenti?stato=to_verify`). Una
+   * scheda che dice un numero e una pagina che ne mostra un altro sono due
+   * verità sullo stesso fatto — vedi `documentHubService.attention`.
+   */
+  documentsToVerify: number;
   documentCount: number;
   /**
    * ⚠️ I NUMERI DEGLI INCENTIVI VENGONO DAL DATABASE (`subsidy_home_summary`),
@@ -90,7 +100,9 @@ export function useOverview() {
         open: todo.total, overdue: overdue.total,
         inProgress: inProgress.total, completed: completed.total,
       },
-      attention, documentCount, analyses,
+      attention: attention.items,
+      documentsToVerify: attention.toVerifyTotal,
+      documentCount, analyses,
       incentives, opportunities: opportunities.items, cases,
       today: todayISO(),
     };

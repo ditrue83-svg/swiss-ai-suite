@@ -153,7 +153,7 @@ export function CatalogTab() {
         })}
 
         {/* La legenda dei segni: la stessa ovunque. */}
-        <div className="mt-12"><MarkLegend /></div>
+        <MarkLegend />
       </div>
 
       <div className="footnote">{t('incentives.catalog.footnote')}</div>

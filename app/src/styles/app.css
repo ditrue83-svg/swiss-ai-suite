@@ -327,6 +327,35 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    invece di uscire dalla pagina. min-height: 0 è ciò che permette a un figlio
    flex di diventare più basso del proprio contenuto. */
 .nav { display: flex; flex-direction: column; gap: var(--sp-05); flex: 1; min-height: 0; overflow-y: auto; }
+/* ⚠️ LA BARRA DI SCORRIMENTO DELLA NAVIGAZIONE, e prima la misura che spiega
+   perché esiste. Misurata il 2026-08-15 a 1280×720: la colonna chiede 910px in
+   tutto — marchio 89 + selettore azienda 75 + navigazione 550 + box account 158
+   + margini e spazi 38 — e la navigazione è l'unica parte elastica. Non c'è
+   nessuna altezza forzata e nessun contenitore sbagliato: le voci sono dieci,
+   più due intestazioni di sezione e il piede «Impostazioni», cioè 550px e non
+   otto righe da 39. Su un portatile (~820px utili) mancano una novantina di
+   pixel, e la barra compare SEMPRE.
+   Finché quei pixel non si recuperano — è una decisione sulle spaziature, non
+   una riga di CSS — la barra si veste: sottile, del colore dei bordi marcati
+   (che il tema scuro ridefinisce da sé) e su fondo trasparente, cioè la
+   superficie della colonna.
+   ⚠️ Le due dichiarazioni standard e le pseudo-classi `-webkit-` NON sono un
+   doppione: Chrome e Safari recenti leggono le prime e ignorano le seconde,
+   i motori più vecchi fanno l'opposto. Gli 8px sono la misura che
+   `scrollbar-width: thin` produce da sé: qui si scrive per chi non legge la
+   parola chiave, non per aggiungere una misura nuova. */
+.nav, .drawer { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+/* Col puntatore nella colonna il cursore diventa afferrabile: `--muted` ha più
+   contrasto di `--line-strong` in tutt'e due i temi (più scuro su chiaro, più
+   chiaro su scuro), quindi il gesto è lo stesso di là e di qua. Quieta finché
+   si legge, presa quando si vuole scorrere. */
+.nav:hover, .drawer:hover { scrollbar-color: var(--muted) transparent; }
+.nav::-webkit-scrollbar, .drawer::-webkit-scrollbar { width: 8px; }
+.nav::-webkit-scrollbar-track, .drawer::-webkit-scrollbar-track { background: transparent; }
+.nav::-webkit-scrollbar-thumb, .drawer::-webkit-scrollbar-thumb {
+  background: var(--line-strong); border-radius: 99px;
+}
+.nav::-webkit-scrollbar-thumb:hover, .drawer::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 /* L'etichetta di gruppo è ORIENTAMENTO, non una voce: pesa meno delle voci
    (400 contro 500 — prima era 600, e PIATTAFORMA gridava quanto le sue voci).
    La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso. */
@@ -687,6 +716,22 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .evidence-none { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); white-space: nowrap; }
 
 /* -- LEGENDA: compatta, apribile, la stessa ovunque. ------------------------ */
+/* ⚠️ LA DISTANZA DAL CONTENUTO STA QUI, non nel `<div className="mt-12">` che
+   ogni schermata scriveva attorno alla legenda. Le ragioni sono due, e la
+   seconda è quella vera: undici copie della stessa misura divergono, e
+   soprattutto quel contenitore restava in pagina — con il suo margine — anche
+   quando la legenda decide di non comparire, cioè uno spazio vuoto al posto di
+   una cosa tolta. Ora è la legenda a portarsi il proprio piede.
+   ⚠️ `--sp-3`, cioè 12px, che è ESATTAMENTE ciò che `.mt-12` valeva: quel nome
+   viene dal prototipo e NON dice il proprio valore (`.mt-12` è `--sp-3`,
+   `.mt-16` è `--sp-4`). Scritto `--sp-12` per somiglianza di nome avrebbe
+   quadruplicato lo stacco in undici schermate — provato e misurato prima di
+   correggerlo.
+   ⚠️ E NON è più una scheda: in Opportunità e nel modulo 1.0 stava dentro un
+   `.card`, cioè una superficie elevata (--surface-1) che dichiara «questo si
+   legge» attorno a un glossario che si consulta una volta. Un filetto e una
+   riga richiudibile a piè di pagina: come nelle altre nove schermate. */
+.legend-foot { margin-top: var(--sp-3); }
 .mark-legend { border-top: 1px solid var(--surface-rule); padding-top: var(--sp-3); font-size: var(--fs-meta); color: var(--ink-soft); }
 .mark-legend summary { cursor: pointer; display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); }
 .mark-legend summary:hover { color: var(--ink-soft); }
@@ -866,7 +911,19 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* Il piè di pagina porta il testo corrente più lungo dell'applicazione (le
    avvertenze legali, oltre 400 caratteri): senza tetto correva per tutta la
    larghezza della schermata, che è il difetto per cui `--measure` esiste. */
-.footnote { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-6); border-top: 1px solid var(--line); padding-top: var(--sp-4); line-height: 1.6; max-width: var(--measure); }
+/* ⚠️ IL FILETTO CORRE PER INTERO, IL TESTO NO — e la riga che è sparita è
+   `max-width: var(--measure)`, che li teneva legati. Misurato il 2026-08-15
+   nella Panoramica: contenuto largo 905px, filetto largo 426. Si fermava al 47%
+   e il blocco sembrava fluttuare, staccato dalla colonna invece che chiuderla.
+   Il testo però deve restare nella misura di lettura, che è il motivo per cui
+   quel `max-width` c'era: la larghezza si toglie al CONTENUTO con un padding di
+   destra, non alla scatola. La percentuale si risolve sulla larghezza del
+   contenitore, quindi il contenuto misura esattamente `--measure` e il bordo
+   resta al 100%. `max(0px, …)` per gli schermi più stretti della misura, dove
+   la differenza sarebbe negativa. Vale per tutti e cinque i piè di pagina
+   dell'app: la nota legale della Panoramica, quelle degli Incentivi (due), del
+   modulo 1.0 e dell'Abbonamento. */
+.footnote { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-6); border-top: 1px solid var(--line); padding-top: var(--sp-4); line-height: 1.6; padding-inline-end: max(0px, calc(100% - var(--measure))); }
 
 .tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--line); margin-bottom: var(--sp-4); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
@@ -1020,11 +1077,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    uguali, e allora nessuna conta più delle altre) o una gerarchia detta a voce
    alta. Qui è la seconda: il numero che il prodotto insegue sta da solo a
    sinistra, gli altri quattro gli stanno accanto in un 2×2. */
-/* ⚠️⚠️ LE QUATTRO PICCOLE STANNO IN FILA, NON IN UN 2×2, e il motivo è un
-   difetto misurato il 2026-08-14 aprendo la Panoramica: con il 2×2 la colonna
-   di destra era alta 341px, la scheda grande si stirava ad accompagnarla, e il
-   suo contenuto ne occupava 125. Il 63% della scheda più importante della
-   schermata era vuoto.
+/* ⚠️⚠️ LE PICCOLE STANNO IN FILA, NON IN UN 2×2, e il motivo è un difetto
+   misurato il 2026-08-14 aprendo la Panoramica: con il 2×2 la colonna di destra
+   era alta 341px, la scheda grande si stirava ad accompagnarla, e il suo
+   contenuto ne occupava 125. Il 63% della scheda più importante della schermata
+   era vuoto.
    Il passo precedente aveva già visto il vuoto e l'aveva CENTRATO
    (`justify-content: center`): il buco di duecento pixel in mezzo è diventato
    due buchi da centootto sopra e sotto. Centrare il vuoto non lo toglie —
@@ -1032,16 +1089,22 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    Con una fila sola le due altezze coincidono per costruzione: la scheda grande
    è alta quanto una piccola, e non c'è più niente da riempire. La gerarchia
    resta detta dove è sempre stata — --fs-h1 contro --fs-h2 e una colonna
-   propria — e non da una superficie doppia che nessun contenuto occupava. */
-.kpi-lead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: var(--sp-4); align-items: stretch; }
-.kpi-lead-rest { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
-/* Sotto i 1200px cinque schede in fila diventano cinque colonne da 140px, dove
+   propria — e non da una superficie doppia che nessun contenuto occupava.
+   ⚠️ DAL 2026-08-15 LE PICCOLE SONO TRE, non quattro: «Azioni da completare»
+   non c'è più (contava voci di checklist che nessuna pagina elenca — vedi
+   HomePage.tsx) e la scheda grande è diventata «Attività aperte». Il rapporto
+   1:3 avrebbe reso la scheda grande larga come le altre, cioè una gerarchia
+   dichiarata e non visibile: con 1:2 resta larga una volta e mezzo. */
+.kpi-lead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--sp-4); align-items: stretch; }
+.kpi-lead-rest { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); }
+/* Sotto i 1200px quattro schede in fila diventano colonne troppo strette, dove
    ogni etichetta va a capo tre volte: la scheda grande sale sopra le altre a
-   piena larghezza e le quattro tornano in un 2×2 — che qui è giusto, perché
-   non c'è più nessuna colonna alta il doppio da accompagnare. */
+   piena larghezza e le tre restano in fila sotto — a piena larghezza ci stanno.
+   ⚠️ NON in un 2×2: con tre schede il 2×2 rifà il «due più uno con il buco in
+   fondo», cioè la forma che nessuno sceglie e che il lettore prova comunque a
+   interpretare. È il difetto corretto il 2026-08-14, non ripetuto. */
 @media (max-width: 1200px) {
   .kpi-lead { grid-template-columns: minmax(0, 1fr); }
-  .kpi-lead-rest { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* ⚠️ La differenza NON la fa un settimo gradino tipografico: la scala ha sei
    gradini, uno per compito, e «il numero che domina la schermata» non è un

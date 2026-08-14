@@ -462,7 +462,7 @@ export function DocumentsPage() {
           {/* La legenda dei segni: le righe portano il termine e il «da
               verificare», e chi li incontra qui li ritroverà identici nel
               dettaglio, in Attività e negli Incentivi. */}
-          <div className="mt-12"><MarkLegend /></div>
+          <MarkLegend />
         </div>
       </div>
     </>

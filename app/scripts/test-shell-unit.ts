@@ -54,6 +54,7 @@ import { DEADLINE_STATES, deadlineState } from '../src/components/ui/DeadlineMar
 import { TASK_STATES } from '../src/components/ui/StatusMark.tsx';
 import { PRIORITY_LEVELS } from '../src/components/ui/PriorityMark.tsx';
 import { WINDOW_STATES } from '../src/components/ui/WindowMark.tsx';
+import { contaSegni } from '../src/components/ui/MarkLegend.tsx';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -599,7 +600,11 @@ section('6. Gerarchia e densità dentro le pagine');
   // si impara a ignorare, e da quel momento non protegge più niente.
   // Le classi qui sotto sono quelle che portano PROSA: chi ne aggiunge una
   // aggiunge una riga qui.
-  for (const classe of ['.prose', '.page-desc', '.greeting-sub', '.footnote', '.legal-note', '.hero p']) {
+  // ⚠️ `.footnote` NON è in questo elenco dal 2026-08-15, ed è una promozione,
+  // non un'esenzione: il suo testo resta nella misura ma con un padding, così
+  // il filetto sopra può correre per intero. Il controllo suo sta più sotto,
+  // nella sezione 10 — chi togliesse il padding lo farebbe fallire.
+  for (const classe of ['.prose', '.page-desc', '.greeting-sub', '.legal-note', '.hero p']) {
     const sel = classe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const blocco = appCss.match(new RegExp(`${sel}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
     check(
@@ -1066,6 +1071,209 @@ section('9. Le etichette — una sola implementazione, e il tono non si sceglie 
     aMano.length === 0,
     `${aMano.join(', ')}\n     Le etichette si compongono con <Tag> (components/ui/Tag.tsx): il tono si omette, a meno di saper dire perché.`,
   );
+}
+
+// ---------------------------------------------------------------------------
+section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portano');
+
+// ⚠️ PERCHÉ QUESTA SEZIONE. Cinque difetti visti a schermo il 2026-08-15, tutti
+// invisibili al typecheck e al design-lint perché nessuno riguarda un valore
+// scritto a mano: una barra di scorrimento vestita col default del sistema, una
+// legenda che compariva su pagine senza segni, schede numeriche che non
+// portavano da nessuna parte, zeri senza messaggio, un filetto largo la metà
+// del suo blocco. Ciò che si è corretto guardando va tenuto fermo leggendo.
+
+{
+  const appCss = readFileSync(join(root, 'src/styles/app.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const extraCss = readFileSync(join(root, 'src/styles/extra.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const blocco = (css: string, sel: string) =>
+    css.match(new RegExp(`${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+
+  // (a) LA BARRA DI SCORRIMENTO DELLA NAVIGAZIONE È VESTITA, e da TUTT'E DUE i
+  // meccanismi: la parola chiave standard per i motori recenti, la pseudo-classe
+  // `-webkit-` per gli altri. Con una sola delle due, metà dei browser resta col
+  // default di sistema — cioè il difetto di partenza, ma solo per qualcuno.
+  const nav = blocco(appCss, '.nav, .drawer');
+  check('la navigazione dichiara una barra sottile', /scrollbar-width:\s*thin/.test(nav), nav.trim().slice(0, 70));
+  check(
+    'e il suo colore viene dai token, su fondo trasparente',
+    /scrollbar-color:\s*var\(--[\w-]+\)\s+transparent/.test(nav),
+    nav.trim().slice(0, 90),
+  );
+  check(
+    'la controparte -webkit esiste (motori che non leggono la parola chiave)',
+    /::-webkit-scrollbar-thumb[^{]*\{[^}]*background:\s*var\(--/.test(appCss),
+  );
+  // ⚠️ Il colore della barra NON può essere un letterale: sarebbe l'unico punto
+  // dell'app con un grigio deciso a mano, e in tema scuro resterebbe chiaro.
+  // (design:lint non guarda `scrollbar-color`: non è una proprietà di colore
+  // che conosce. Questo controllo copre il buco.)
+  check(
+    'nessun colore scritto a mano nelle regole della barra',
+    !/scrollbar-color:[^;]*(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\()/.test(appCss)
+      && !/::-webkit-scrollbar[^{]*\{[^}]*(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\()/.test(appCss),
+  );
+
+  // (b) IL PIÈ DI PAGINA — il filetto per intero, il testo nella misura.
+  const foot = blocco(appCss, '.footnote');
+  check(
+    'il piè di pagina non lega più il filetto alla misura di lettura',
+    !/max-width:\s*var\(--measure\)/.test(foot),
+    `.footnote: ${foot.trim().slice(0, 80)}`,
+  );
+  check(
+    'ma il testo resta nella misura, per padding',
+    /padding-inline-end:\s*max\(\s*0px\s*,\s*calc\(\s*100%\s*-\s*var\(--measure\)\s*\)\s*\)/.test(foot),
+    `.footnote: ${foot.trim().slice(0, 80)}`,
+  );
+  check('e il filetto sopra c\'è ancora', /border-top:\s*1px\s+solid\s+var\(--/.test(foot));
+
+  // (c) LA SCHEDA NUMERICA COLLEGATA È UNA COLONNA FLEX come le altre.
+  // Con `display: block` il `margin-top: auto` della didascalia non ha su cosa
+  // appoggiarsi e la fila si disallinea di 6px.
+  const link = blocco(extraCss, '.kpi-link');
+  check('la scheda collegata resta una colonna flex', /display:\s*flex/.test(link), `.kpi-link: ${link.trim().slice(0, 70)}`);
+  const linkHover = blocco(extraCss, '.kpi-link:hover');
+  check(
+    'e al passaggio del mouse non si sottolinea (la regola globale a:hover lo farebbe)',
+    /text-decoration:\s*none/.test(linkHover),
+    `.kpi-link:hover: ${linkHover.trim().slice(0, 70)}`,
+  );
+}
+
+{
+  // (d) OGNI SCHEDA NUMERICA DELLA PANORAMICA PORTA A UN ELENCO.
+  // La regola in una riga: un numero senza elenco che lo spieghi non è un KPI.
+  // Il controllo conta i `.kpi` nel sorgente e pretende che siano tutti `Link`.
+  const home = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+  const schede = [...home.matchAll(/<(\w+)[^>]*className="kpi[ "][^>]*>/g)];
+  check('la Panoramica ha ancora le sue schede numeriche', schede.length >= 4, `trovate ${schede.length}`);
+  const nonCollegate = schede.filter((m) => m[1] !== 'Link').map((m) => m[0].slice(0, 60));
+  check(
+    'ogni scheda numerica è un collegamento',
+    nonCollegate.length === 0,
+    `${nonCollegate.join('\n     ')}\n     Un numero senza elenco che lo spieghi non è un KPI: si toglie, non si lascia muto.`,
+  );
+  // Le destinazioni, una per una: sono le stesse interrogazioni che producono i
+  // numeri. `?stato=to_verify` e `?vista=high` non sono decorazioni — vedi
+  // `documentHubService.attention` e `list_subsidy_opportunities`.
+  for (const to of ['/attivita', '/calendario', '/documenti?stato=to_verify', '/incentivi?vista=high']) {
+    check(`una scheda porta a ${to}`, home.includes(`"${to}"`) || home.includes(`'${to}'`));
+  }
+  check(
+    'ogni scheda mostra la freccia che dice «si può premere»',
+    (home.match(/<KpiGo \/>/g) ?? []).length === schede.length,
+    `${(home.match(/<KpiGo \/>/g) ?? []).length} frecce per ${schede.length} schede`,
+  );
+
+  // (e) LO ZERO PROPONE — ogni scheda ha un ramo per il proprio zero.
+  const dizionari = [{ lang: 'it', d: it.dashboard }, { lang: 'de', d: de.dashboard }, { lang: 'fr', d: fr.dashboard }];
+  for (const { lang, d } of dizionari) {
+    for (const [chiave, testo] of Object.entries({
+      kpiTasksNone: d.kpiTasksNone, kpiDueNone: d.kpiDueNone,
+      kpiToVerifyNone: d.kpiToVerifyNone, kpiToVerifyNoDocs: d.kpiToVerifyNoDocs,
+      kpiSubsidiesNone: d.kpiSubsidiesNone,
+    })) {
+      check(`${lang}: lo zero di ${chiave} ha una frase`, typeof testo === 'string' && testo.trim().length > 0);
+    }
+  }
+  for (const chiave of ['kpiTasksNone', 'kpiDueNone', 'kpiToVerifyNone', 'kpiToVerifyNoDocs', 'kpiSubsidiesNone']) {
+    check(`la Panoramica usa dashboard.${chiave}`, home.includes(`dashboard.${chiave}`));
+  }
+  // ⚠️ E il numero «da verificare» viene dal totale del filtro, non da un
+  // conteggio fatto sulle analisi caricate: è la condizione perché la scheda e
+  // la pagina a cui porta dicano lo stesso numero.
+  check(
+    'il numero «da verificare» è il totale della stessa interrogazione',
+    home.includes('documentsToVerify'),
+  );
+  check(
+    'e non è più ricalcolato sulle analisi in memoria',
+    !/confidence\s*!==\s*'alta'/.test(home),
+    'un conteggio locale e un filtro del database sono due verità sullo stesso fatto',
+  );
+}
+
+{
+  // (f) LA LEGENDA — mai una scheda dedicata, e solo dove ci sono segni.
+  const moduli: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.tsx')) moduli.push(p);
+    }
+  };
+  walk(join(root, 'src/features'));
+
+  const dentroScheda: string[] = [];
+  for (const f of moduli) {
+    const src = readFileSync(f, 'utf8');
+    src.split('\n').forEach((riga, i) => {
+      if (!riga.includes('<MarkLegend')) return;
+      // Una scheda DEDICATA è un contenitore che apre e chiude sulla stessa
+      // riga attorno alla sola legenda: `<div className="card"><MarkLegend /></div>`.
+      if (/className="[^"]*\bcard\b[^"]*"\s*>\s*<MarkLegend/.test(riga)) {
+        dentroScheda.push(`${f.replace(`${root}/`, '')}:${i + 1}`);
+      }
+    });
+  }
+  check(
+    'la legenda non è mai una scheda dedicata',
+    dentroScheda.length === 0,
+    `${dentroScheda.join(', ')}\n     È una riga richiudibile a piè di pagina: `
+      + 'una superficie elevata attorno a un glossario dice «questo si legge», e non è vero.',
+  );
+  // E il piede se lo porta lei: undici copie di `mt-12` divergono, e soprattutto
+  // resterebbero in pagina quando la legenda decide di non comparire.
+  const conMargine = moduli.filter((f) => /className="mt-12"\s*>\s*<MarkLegend/.test(readFileSync(f, 'utf8')));
+  check('e nemmeno un margine scritto attorno', conMargine.length === 0, conMargine.join(', '));
+
+  const legenda = readFileSync(join(root, 'src/components/ui/MarkLegend.tsx'), 'utf8');
+  check(
+    'la legenda si mostra solo se nella pagina c\'è almeno un segno',
+    /segni === 0/.test(legenda) && /contaSegni/.test(legenda),
+  );
+}
+
+{
+  // (g) IL CONTEGGIO DEI SEGNI — provato sul rosso, non solo sul verde.
+  // ⚠️ È la parte che conta: un conteggio che dice sempre «ce ne sono» tiene la
+  // legenda accesa ovunque, e il difetto torna senza che niente diventi rosso.
+  // Si costruisce un finto albero con la stessa API che usa il componente
+  // (`querySelectorAll` + `closest`): niente browser, niente dipendenze.
+  interface FintoNodo { classi: string[]; genitore: FintoNodo | null }
+  const nodo = (classi: string, genitore: FintoNodo | null = null): FintoNodo =>
+    ({ classi: classi.split(' ').filter(Boolean), genitore });
+  const finto = (nodi: FintoNodo[]) => ({
+    querySelectorAll: (sel: string) => nodi.filter((n) => n.classi.includes(sel.slice(1))).map((n) => ({
+      closest: (s: string) => {
+        for (let c: FintoNodo | null = n; c; c = c.genitore) if (c.classi.includes(s.slice(1))) return c;
+        return null;
+      },
+    })),
+  }) as unknown as ParentNode;
+
+  const casi: { nome: string; nodi: FintoNodo[]; atteso: number }[] = [];
+  const pagina = nodo('main');
+  const dentroLegenda = nodo('mark-legend', pagina);
+  casi.push({ nome: 'pagina vuota', nodi: [], atteso: 0 });
+  casi.push({ nome: 'un segno in pagina', nodi: [nodo('mark mark-prio', pagina)], atteso: 1 });
+  casi.push({
+    nome: 'i segni DELLA legenda non contano',
+    nodi: [nodo('mark mark-prio', dentroLegenda), nodo('mark mark-conf', dentroLegenda)],
+    atteso: 0,
+  });
+  casi.push({
+    nome: 'legenda aperta più un segno vero: conta solo il vero',
+    nodi: [nodo('mark mark-prio', dentroLegenda), nodo('mark mark-due', pagina)],
+    atteso: 1,
+  });
+  for (const c of casi) {
+    const n = contaSegni(finto(c.nodi));
+    check(`conteggio dei segni — ${c.nome}: ${c.atteso}`, n === c.atteso, `trovati ${n}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
