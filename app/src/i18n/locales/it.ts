@@ -976,9 +976,6 @@ export const it = {
     // Il sistema i18n non ha regole di plurale: dove il numero cambia la frase
     // ci sono due chiavi e la scelta si fa nel componente. Cinque casi non
     // giustificano una libreria, ma «1 documenti coinvolti» sì un intervento.
-    kpiOpenActions: 'Azioni da completare',
-    kpiOpenActionsDocsOne: '{n} documento coinvolto',
-    kpiOpenActionsDocsMany: '{n} documenti coinvolti',
     kpiTasksOpen: 'Attività aperte',
     kpiTasksInProgress: '{n} in corso',
     kpiOverdueOne: '{n} già scaduta',
@@ -987,11 +984,25 @@ export const it = {
     kpiDueToday: 'In scadenza oggi',
     kpiDueWeek: 'Nei prossimi 7 giorni: {n}',
     kpiToVerify: 'Documenti da verificare',
-    kpiToVerifySub: 'confidenza bassa o ente incerto',
+    // ⚠️ «Incertezze gravi» e non «ente incerto»: dal 2026-08-15 il numero è il
+    // totale di `?stato=to_verify`, cioè ciò che il server chiama
+    // `needs_review` — confidenza sotto 0,45 oppure un'incertezza di gravità
+    // alta (`reviewStatus`, persist.ts). La didascalia dice la regola vera, non
+    // quella che il conteggio usava prima.
+    kpiToVerifySub: 'confidenza bassa o incertezze gravi',
     kpiSubsidies: 'Incentivi rilevanti',
     kpiSubsidiesSub: 'idoneità da verificare',
     kpiSubsidiesUnknown: 'dato non disponibile',
     kpiSubsidiesNoProject: 'crea un progetto per cercare',
+    // ---- LO ZERO PROPONE ----------------------------------------------------
+    // Uno zero senza messaggio è spazio morto: la didascalia allarga la finestra
+    // («questa settimana») o dice il gesto successivo. Tono quieto, mai allarme:
+    // non c'è niente che non va: c'è qualcosa che si può fare.
+    kpiTasksNone: 'niente in sospeso: crea un’attività quando serve',
+    kpiDueNone: 'nessuna scadenza questa settimana',
+    kpiToVerifyNone: 'nessuna analisi in attesa',
+    kpiToVerifyNoDocs: 'analizza il primo documento',
+    kpiSubsidiesNone: 'nessuna opportunità molto rilevante',
     statNew: 'nuove',
     nextActions: 'Prossime azioni',
     allDone: 'Nessuna azione prioritaria: sei in pari.',

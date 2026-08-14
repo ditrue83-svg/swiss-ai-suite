@@ -89,6 +89,18 @@ function Bars({ rows }: { rows: BarRow[] }) {
   );
 }
 
+/**
+ * La freccia in fondo a una scheda numerica.
+ *
+ * ⚠️ È un INDIZIO, non un bersaglio: il collegamento è la scheda intera, come
+ * nelle righe delle priorità qui sotto. Sta in `aria-hidden` perché il
+ * collegamento si annuncia già da sé — etichetta, numero e didascalia sono il
+ * suo nome accessibile — e una freccia letta ad alta voce non aggiunge niente.
+ */
+function KpiGo() {
+  return <span className="kpi-go" aria-hidden="true"><Icon name="arrowRight" className="ic-sm" /></span>;
+}
+
 function PriorityRow({ it }: { it: PriorityItem }) {
   const L = useLabels();
   // Il collegamento è la riga, non la freccia: su un portatile con trackpad
@@ -115,17 +127,12 @@ function PriorityRow({ it }: { it: PriorityItem }) {
 function OverviewBody({ data }: { data: OverviewData }) {
   const t = useT();
   const L = useLabels();
-  const { tasks, counts, analyses, incentives } = data;
+  const { tasks, counts, analyses, incentives, documentsToVerify, documentCount } = data;
   // `tasks` sono le attività aperte più urgenti (le prime della lista ordinata
   // dal database), non tutte: per i CONTEGGI si usa `counts`, che il database
   // calcola prima di paginare. Un numero preso dalla lunghezza di un elenco
   // troncato direbbe «20» qualunque sia la realtà.
   const withDate = tasks.filter((task) => task.dueDate);
-
-  let openActions = 0;
-  analyses.forEach((a) => { openActions += a.actions.filter((c) => !c.done).length; });
-  const docsWithOpen = analyses.filter((a) => a.actions.some((c) => !c.done)).length;
-  const toVerify = analyses.filter((a) => a.confidence !== 'alta' || a.senderUncertain);
   // ⚠️ I NUMERI DEGLI INCENTIVI VENGONO DAL MOTORE 2.0 (`subsidy_home_summary`),
   // non più dal matcher 1.0 che girava nel browser. Fino al 2026-07-30 questa
   // schermata diceva «6 incentivi rilevanti» mentre `/incentivi` diceva
@@ -182,30 +189,54 @@ function OverviewBody({ data }: { data: OverviewData }) {
            Cinque schede uguali su una griglia da quattro colonne facevano un
            3+2 con un buco in fondo: una forma che nessuno ha scelto, e cinque
            numeri della stessa misura che non dicono quale guardare per primo.
-           Ora ce n'è UNO grande — le azioni da completare, che è il conto su
-           cui questo prodotto lavora — e quattro piccoli accanto.
+           Ora ce n'è UNO grande — le attività aperte, che è il conto su cui
+           questo prodotto lavora — e tre piccoli accanto.
            ⚠️ Nessun settimo gradino tipografico: la differenza fra --fs-h1 e
            --fs-h2 (30 e 22px) basta a dichiarare la gerarchia, e la scala resta
-           di sei gradini come dice docs/design-system.md. ---------------- */}
+           di sei gradini come dice docs/design-system.md.
+
+           ⚠️⚠️ OGNI SCHEDA È UN COLLEGAMENTO, e la regola che ne deriva è più
+           importante della riga di CSS: un numero senza un elenco che lo spieghi
+           NON È UN KPI. Per questo «Azioni da completare» non c'è più — contava
+           le voci di checklist dentro le analisi, e nessuna pagina di questo
+           prodotto le elenca: sarebbe stata l'unica scheda che non porta da
+           nessuna parte. Le voci che contano diventano attività (regola di non
+           duplicazione, `overview.ts`), e le attività hanno il loro elenco.
+
+           ⚠️ E la destinazione deve rendere LO STESSO NUMERO, non un elenco
+           vagamente imparentato:
+             attività aperte      → /attivita             vista «da fare», che è
+                                                          la stessa di `counts.open`
+             in scadenza oggi     → /calendario           le stesse attività, per data
+             documenti da verif.  → ?stato=to_verify      lo stesso filtro che ha
+                                                          prodotto il conteggio
+             incentivi rilevanti  → ?vista=high           `p_view='high'` è la
+                                                          stessa condizione di
+                                                          `highRelevance` in SQL
+           ---------------------------------------------------------------- */}
       <div className="kpi-lead">
-        <div className="kpi kpi-hero">
-          <div className="kpi-ico ok"><Icon name="checkCircle" className="ic-sm" /></div>
-          <div className="kpi-label">{t('dashboard.kpiOpenActions')}</div>
-          <div className="kpi-value">{openActions}</div>
-          <div className="kpi-sub">{t(docsWithOpen === 1 ? 'dashboard.kpiOpenActionsDocsOne' : 'dashboard.kpiOpenActionsDocsMany', { n: docsWithOpen })}</div>
-        </div>
-        <div className="kpi-lead-rest">
-          <div className="kpi kpi-sm">
-            <div className={`kpi-ico ${counts.overdue ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
-            <div className="kpi-label">{t('dashboard.kpiTasksOpen')}</div>
-            <div className={`kpi-value ${counts.overdue ? 'hot' : ''}`}>{counts.open}</div>
-            <div className="kpi-sub">
-              {counts.overdue
-                ? t(counts.overdue === 1 ? 'dashboard.kpiOverdueOne' : 'dashboard.kpiOverdueMany', { n: counts.overdue })
-                : t('dashboard.kpiNoneOverdue')}
-              {counts.inProgress ? ` · ${t('dashboard.kpiTasksInProgress', { n: counts.inProgress })}` : ''}
-            </div>
+        <Link className="kpi kpi-hero kpi-link" to="/attivita">
+          <div className={`kpi-ico ${counts.overdue ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
+          <div className="kpi-label">{t('dashboard.kpiTasksOpen')}</div>
+          <div className={`kpi-value ${counts.overdue ? 'hot' : ''}`}>{counts.open}</div>
+          {/* Lo ZERO PROPONE: senza attività aperte le due frasi di sotto
+              direbbero «nessuna scaduta», che è vero e non serve a niente —
+              descrive l'assenza di un problema dentro un insieme vuoto. */}
+          <div className="kpi-sub">
+            {counts.open === 0
+              ? t('dashboard.kpiTasksNone')
+              : (
+                <>
+                  {counts.overdue
+                    ? t(counts.overdue === 1 ? 'dashboard.kpiOverdueOne' : 'dashboard.kpiOverdueMany', { n: counts.overdue })
+                    : t('dashboard.kpiNoneOverdue')}
+                  {counts.inProgress ? ` · ${t('dashboard.kpiTasksInProgress', { n: counts.inProgress })}` : ''}
+                </>
+              )}
           </div>
+          <KpiGo />
+        </Link>
+        <div className="kpi-lead-rest">
           {/* §92 — UNA scheda, non una dashboard nuova. «Scadute» c'era già nella
               scheda accanto: qui si aggiunge ciò che mancava, cioè oggi e la
               settimana. I due numeri escono dalle STESSE attività, contate con
@@ -216,31 +247,60 @@ function OverviewBody({ data }: { data: OverviewData }) {
             <div className={`kpi-ico ${dueToday ? 'warn' : ''}`}><Icon name="calendar" className="ic-sm" /></div>
             <div className="kpi-label">{t('dashboard.kpiDueToday')}</div>
             <div className={`kpi-value ${dueToday ? 'hot' : ''}`}>{dueToday}</div>
-            <div className="kpi-sub">{t('dashboard.kpiDueWeek', { n: dueWeek })}</div>
+            {/* A zero non si ripete «Nei prossimi 7 giorni: 0»: si allarga la
+                finestra e si dice la cosa quieta che quel numero significa. */}
+            <div className="kpi-sub">
+              {dueToday === 0 && dueWeek === 0
+                ? t('dashboard.kpiDueNone')
+                : t('dashboard.kpiDueWeek', { n: dueWeek })}
+            </div>
+            <KpiGo />
           </Link>
-          <div className="kpi kpi-sm">
-            <div className={`kpi-ico ${toVerify.length ? 'amb' : ''}`}><Icon name="fileSearch" className="ic-sm" /></div>
+          <Link className="kpi kpi-sm kpi-link" to="/documenti?stato=to_verify">
+            <div className={`kpi-ico ${documentsToVerify ? 'amb' : ''}`}><Icon name="fileSearch" className="ic-sm" /></div>
             <div className="kpi-label">{t('dashboard.kpiToVerify')}</div>
-            <div className="kpi-value">{toVerify.length}</div>
-            <div className="kpi-sub">{t('dashboard.kpiToVerifySub')}</div>
-          </div>
-          <div className="kpi kpi-sm">
+            <div className="kpi-value">{documentsToVerify}</div>
+            {/* Due zeri diversi: non c'è ancora nessun documento (e allora il
+                gesto è portarne uno) oppure ci sono e nessuno chiede una
+                verifica. La stessa distinzione già fatta per gli incentivi. */}
+            <div className="kpi-sub">
+              {documentsToVerify > 0
+                ? t('dashboard.kpiToVerifySub')
+                : documentCount === 0
+                  ? t('dashboard.kpiToVerifyNoDocs')
+                  : t('dashboard.kpiToVerifyNone')}
+            </div>
+            <KpiGo />
+          </Link>
+          {/* ⚠️ La destinazione SEGUE la frase: quando la frase dice «crea un
+              progetto», il collegamento porta ai progetti — non a un elenco di
+              opportunità che non esistono ancora. */}
+          <Link
+            className="kpi kpi-sm kpi-link"
+            to={highRelevance === null ? '/incentivi'
+              : activeProjects === 0 ? '/incentivi?scheda=progetti'
+              : '/incentivi?vista=high'}
+          >
             <div className="kpi-ico"><Icon name="star" className="ic-sm" /></div>
             <div className="kpi-label">{t('dashboard.kpiSubsidies')}</div>
             <div className="kpi-value">{highRelevance ?? '—'}</div>
-            {/* ⚠️ TRE frasi e non due, perché le situazioni sono tre e portano a
-                gesti diversi: non lo sappiamo · non c'è ancora un progetto (e
-                senza progetto il motore non ha una domanda a cui rispondere) ·
-                ci sono opportunità. Un «completa il profilo» indistinto le
-                confondeva tutte. */}
+            {/* ⚠️ QUATTRO frasi e non due, perché le situazioni sono quattro e
+                portano a gesti diversi: non lo sappiamo · non c'è ancora un
+                progetto (e senza progetto il motore non ha una domanda a cui
+                rispondere) · c'è un progetto ma nessuna opportunità molto
+                rilevante · ci sono opportunità. Un «completa il profilo»
+                indistinto le confondeva tutte. */}
             <div className="kpi-sub">
               {highRelevance === null
                 ? t('dashboard.kpiSubsidiesUnknown')
                 : activeProjects === 0
                   ? t('dashboard.kpiSubsidiesNoProject')
-                  : t('dashboard.kpiSubsidiesSub')}
+                  : highRelevance === 0
+                    ? t('dashboard.kpiSubsidiesNone')
+                    : t('dashboard.kpiSubsidiesSub')}
             </div>
-          </div>
+            <KpiGo />
+          </Link>
         </div>
       </div>
 

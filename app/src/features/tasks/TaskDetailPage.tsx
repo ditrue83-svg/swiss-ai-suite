@@ -269,7 +269,7 @@ export function TaskDetailPage() {
               già la lettura dello stato, e due punti che rendono la stessa
               cosa prima o poi ne rendono due diverse. Il segno vive dove lo
               stato si LEGGE e basta: elenco, calendario, Panoramica. */}
-          <div className="mt-12"><MarkLegend /></div>
+          <MarkLegend />
 
           <div className="row-wrap mt-16">
             {task.archivedAt ? (

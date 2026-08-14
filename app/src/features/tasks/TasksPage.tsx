@@ -268,7 +268,7 @@ export function TasksPage() {
         {/* La legenda dei segni: la stessa di Documenti e Incentivi, richiusa.
             Qui compaiono tre famiglie in ogni riga — stato, priorità, termine —
             e il posto dove si impara che cosa vogliono dire è uno solo. */}
-        <div className="mt-12"><MarkLegend /></div>
+        <MarkLegend />
       </div>
     </>
   );

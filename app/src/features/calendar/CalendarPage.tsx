@@ -342,7 +342,7 @@ export function CalendarPage() {
         {/* La legenda dei segni: la stessa di Attività, richiusa. Lo
             scadenziario è l'altra faccia della stessa area, e non può avere un
             vocabolario suo. */}
-        <div className="mt-12"><MarkLegend /></div>
+        <MarkLegend />
       </div>
 
       {/* §21 — le attività senza scadenza si DICHIARANO. Non entrano nel

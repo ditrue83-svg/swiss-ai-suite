@@ -254,7 +254,7 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
           : <Quiz prog={p} answers={answers} setAnswers={setAnswers} onVerdict={setVerdict} />}
 
         {/* La legenda dei segni: la stessa ovunque. */}
-        <div className="mt-12"><MarkLegend /></div>
+        <MarkLegend />
       </div>
     </>
   );

@@ -133,7 +133,7 @@ export function ResultsList({
       })}
 
       {/* La legenda dei segni: la stessa di Documenti, Attività e Incentivi. */}
-      <div className="card"><MarkLegend /></div>
+      <MarkLegend />
     </>
   );
 }

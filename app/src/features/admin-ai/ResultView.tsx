@@ -573,7 +573,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                 azione porta la sua provenienza, e questa è la pagina in cui si
                 impara che cosa vuol dire un filetto pieno. È la STESSA legenda
                 di Documenti, Attività e Incentivi. */}
-            <div className="mt-12"><MarkLegend /></div>
+            <MarkLegend />
           </div>
 
           {r.uncertainties.length ? (

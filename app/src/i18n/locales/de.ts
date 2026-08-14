@@ -920,18 +920,13 @@ export const de: Dictionary = {
     docsByType: 'Dokumente nach Typ',
     docLanguages: 'Sprachen der Dokumente',
     noDocsAnalyzed: 'Noch kein Dokument analysiert.',
-    // ⚠️ «Massnahmen» e non «Aufgaben»: fino al 2026-08-11 questa chiave e
-    // `kpiTasksOpen` erano ENTRAMBE «Offene Aufgaben», e le due schede vicine
-    // della Panoramica portavano lo stesso titolo su due numeri diversi — 40 e
-    // 17 — senza che niente dicesse in che cosa differissero. Sono due cose
-    // distinte: qui le azioni che l'ANALISI di un documento ha richiesto, là le
-    // attività del Work Hub. Il resto del dizionario tedesco già chiamava le
-    // prime `Massnahmen` (labels.analysis); mancava solo qui. Visto aprendo la
-    // schermata in tedesco: in italiano e in francese i due nomi erano diversi
-    // e il difetto non si vedeva.
-    kpiOpenActions: 'Offene Massnahmen',
-    kpiOpenActionsDocsOne: '{n} Dokument betroffen',
-    kpiOpenActionsDocsMany: '{n} Dokumente betroffen',
+    // ⚠️ «Offene Massnahmen» (le azioni chieste dall'ANALISI) è SPARITA il
+    // 2026-08-15 insieme alla sua scheda: nessuna pagina del prodotto elenca
+    // quelle voci, e un numero senza elenco non è un KPI. Restano le
+    // «Offene Aufgaben» del Work Hub, che un elenco ce l'hanno. Il difetto che
+    // il 2026-08-11 aveva costretto a distinguere i due nomi — due schede
+    // vicine intitolate ENTRAMBE «Offene Aufgaben» su numeri diversi, 40 e 17,
+    // visibile solo in tedesco — si chiude qui per sottrazione.
     kpiTasksOpen: 'Offene Aufgaben',
     kpiTasksInProgress: '{n} in Arbeit',
     kpiOverdueOne: '{n} bereits abgelaufen',
@@ -940,11 +935,16 @@ export const de: Dictionary = {
     kpiDueToday: 'Frist heute',
     kpiDueWeek: 'In den nächsten 7 Tagen: {n}',
     kpiToVerify: 'Zu prüfende Dokumente',
-    kpiToVerifySub: 'geringe Zuverlässigkeit oder unklare Behörde',
+    kpiToVerifySub: 'geringe Zuverlässigkeit oder gravierende Unklarheiten',
     kpiSubsidies: 'Relevante Fördermittel',
     kpiSubsidiesSub: 'Anspruch zu prüfen',
     kpiSubsidiesUnknown: 'Angabe nicht verfügbar',
     kpiSubsidiesNoProject: 'Projekt erstellen, um zu suchen',
+    kpiTasksNone: 'nichts offen: bei Bedarf eine Aufgabe erstellen',
+    kpiDueNone: 'keine Frist in dieser Woche',
+    kpiToVerifyNone: 'keine Analyse wartet auf Prüfung',
+    kpiToVerifyNoDocs: 'das erste Dokument analysieren',
+    kpiSubsidiesNone: 'keine besonders relevante Gelegenheit',
     statNew: 'neue',
     nextActions: 'Nächste Aufgaben',
     allDone: 'Keine dringenden Aufgaben: Sie sind auf dem Laufenden.',
