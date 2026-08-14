@@ -1089,6 +1089,23 @@ npm run verify:deploy   # l'altra metà: quegli scheduler esistono DAVVERO nel p
                         #   Richiede SUPABASE_ACCESS_TOKEN e FALLISCE se non ce l'ha:
                         #   «non ho potuto verificare» non è un verde. Fuori da test:all
                         #   di proposito — giudica l'ambiente, non il codice.
+npm run verify:ai       # «i percorsi AI possono funzionare ADESSO?» Una richiesta da UN token
+                        #   sul modello più economico, e QUATTRO guasti distinti perché hanno
+                        #   quattro rimedi: exit 1 credito esaurito · 2 chiave assente ·
+                        #   3 chiave rifiutata · 4 servizio irraggiungibile · 5 rifiuto che non
+                        #   sa classificare (e non è un verde) · 6 la chiave locale NON è quella
+                        #   delle Edge Function. Legge anche ai_request_log: quando ha
+                        #   funzionato l'ultima volta. ⚠️ Un 200 su un token non promette una
+                        #   lettura da 50 000. Lo chiamano da soli `status` e i gruppi che
+                        #   spendono (integration, eval), così una suite non muore a metà
+npm run verify:ai:self-test   # le sei diagnosi su risposte costruite, senza rete: 25 casi, fra
+                        #   cui «un 400 che non parla di credito NON è credito esaurito»
+npm run subsidy:sources # confronta le SETTE fonti ufficiali con l'impronta registrata, ADESSO.
+                        #   ⚠️ SOLA LETTURA: non scrive nulla, e in particolare non tocca
+                        #   last_checked_at — quel campo dice «una PERSONA ha verificato», e a
+                        #   leggere qui è uno script. exit 0 nessuna differenza · 1 qualcosa è
+                        #   cambiato · 2 una fonte non si è potuta leggere, che non è «tutto ok»
+npm run subsidy:sources:self-test   # il giudizio dei tre esiti, senza uscire in rete
 npm run docs:check      # la documentazione descrive il codice che c'è davvero? Confronta i README
                         # con il filesystem: moduli, migrazioni, documenti, comandi, Edge Function.
                         # Esce 1 se divergono, e dice COSA manca e DOVE. ⚠️ Il controllo sui moduli

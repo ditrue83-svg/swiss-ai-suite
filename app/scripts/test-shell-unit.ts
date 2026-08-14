@@ -34,7 +34,8 @@
 // copiato qui dentro invecchia al primo ritocco del foglio di stile e comincia
 // a garantire una cosa che non c'è più.
 // ============================================================================
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ICONS } from '../src/components/ui/Icon.tsx';
@@ -193,6 +194,81 @@ section('3b. Il marchio — si legge dai dizionari, non si scrive a mano');
   check('«AISwisse» (senza trattino) non si divide', dividiMarchio('AISwisse') === null);
   check('«-Swisse» (trattino in testa) non si divide', dividiMarchio('-Swisse') === null);
   check('«AI-» (trattino in coda) non si divide', dividiMarchio('AI-') === null);
+}
+
+// ---------------------------------------------------------------------------
+section('3c. Il marchio ha DUE sedi, e finora non lo ricordava nessuno');
+
+{
+  // ⚠️⚠️ PERCHÉ QUESTO CONTROLLO ESISTE. Lo stesso marchio vive in due basi di
+  // codice: qui (`BrandMark.tsx` + le regole `.brand-*`, composto in Inter sul
+  // token `--accent`) e nella vetrina (`site/static/logo-ai-swisse.svg`, un
+  // tracciato Poppins sul blu del titolare `#00AEEF`). I due blu DIVERGONO PER
+  // SCELTA — la vetrina tiene i colori del marchio — ma la FORMA è una sola, e
+  // `site/` è invisibile da questo albero: nessun controllo dell'app poteva
+  // leggerla. Se il marchio cambia, i posti da toccare sono due e non c'era
+  // niente che lo ricordasse: si sarebbe scoperto guardando le due pagine
+  // affiancate, cioè per caso.
+  //
+  // COME. Un'impronta di ciò che DEFINISCE il segno — le dichiarazioni CSS
+  // delle regole `.brand-*` e le classi che il componente monta — confrontata
+  // con quella dichiarata qui sotto. Non è un test di stile: è un promemoria
+  // che scatta nell'istante in cui il marchio si muove, e nomina l'altra sede.
+  //
+  // ⚠️ L'impronta ignora i COMMENTI, di proposito: un controllo che diventa
+  // rosso quando si riscrive una spiegazione insegna a rifare il numero senza
+  // guardare, ed è il modo in cui una cricca smette di valere.
+  const css = readFileSync(join(root, 'src', 'styles', 'app.css'), 'utf8');
+  const senzaCommenti = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const regoleMarchio = [...senzaCommenti.matchAll(/^\.brand-[\w-]*\s*\{[^}]*\}/gm)]
+    .map((m) => m[0].replace(/\s+/g, ' ').trim())
+    .sort();
+  const sorgente = readFileSync(join(root, 'src', 'components', 'ui', 'BrandMark.tsx'), 'utf8');
+  const classiMontate = [...sorgente.matchAll(/className="([^"]+)"/g)].map((m) => m[1]).sort();
+
+  const impronta = createHash('sha256')
+    .update(JSON.stringify({ regoleMarchio, classiMontate }))
+    .digest('hex')
+    .slice(0, 16);
+
+  // L'impronta del marchio al 2026-08-14. Cambiarla è il gesto che accompagna
+  // un cambiamento del segno — e va fatto DOPO aver toccato anche la vetrina.
+  const IMPRONTA_DICHIARATA = 'ad27c9be1713df2d';
+
+  check(
+    'il marchio dell\'app è quello dichiarato — se cambia, la vetrina va cambiata con lui',
+    impronta === IMPRONTA_DICHIARATA,
+    `impronta ${impronta}, dichiarata ${IMPRONTA_DICHIARATA}.\n`
+    + '     Il marchio ha DUE sedi:\n'
+    + '       · qui        src/components/ui/BrandMark.tsx + le regole .brand-* di app.css (su --accent)\n'
+    + '       · la vetrina ~/swiss-ai-suite-repo/site/static/logo-ai-swisse.svg (+ scuro, + favicon), su #00AEEF\n'
+    + '     I due BLU divergono per scelta; la FORMA no. Aggiorna anche la vetrina, poi\n'
+    + '     scrivi qui la nuova impronta — e ricorda che site/ si pubblica da sé (site.yml, su push a main).',
+  );
+
+  // ⚠️ E se la seconda sede è raggiungibile, si GUARDA invece di crederci.
+  // Dal monorepo (dove gira la CI) `../site` esiste; da ~/swiss-ai-suite-app no,
+  // e allora la riga lo DICHIARA — non si finge un verde su una cosa non vista.
+  // Due geografie, entrambe vere: nel monorepo (e in CI) l'app sta in `app/` e
+  // la vetrina le è sorella; sulla macchina di sviluppo l'albero di lavoro è
+  // `~/swiss-ai-suite-app` e il monorepo gli sta accanto.
+  const vetrina = [
+    join(root, '..', 'site', 'static', 'logo-ai-swisse.svg'),
+    join(root, '..', 'swiss-ai-suite-repo', 'site', 'static', 'logo-ai-swisse.svg'),
+  ].find((p) => existsSync(p));
+  if (vetrina) {
+    const svg = readFileSync(vetrina, 'utf8');
+    check(
+      'la vetrina porta ancora il blu del marchio (#00AEEF) e il blocco della sigla',
+      /#00AEEF/i.test(svg) && /<rect/i.test(svg),
+      'il logo della vetrina è cambiato: allinea il marchio dell\'app o dichiara la divergenza',
+    );
+  } else {
+    console.log(`  ${DIM}! seconda sede non raggiungibile da questo albero:`
+      + ' il confronto con la vetrina gira nel monorepo, dove gira anche la CI.'
+      + ' Qui resta verificata la sola sede dell\'app.'
+      + `${X}`);
+  }
 }
 
 // ---------------------------------------------------------------------------

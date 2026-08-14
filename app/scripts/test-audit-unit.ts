@@ -21,8 +21,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   AUDIT_ACTIONS, AUDIT_ENTITY_TYPES, AUDIT_FIELDS, AUDIT_PERIODS, DEFAULT_PERIOD,
-  changeEntries, entryHref, filtersFromParams, groupByDay, isAuditAction,
-  paramsFromFilters, periodStart, toChanges,
+  actorLabelKey, actorOf, changeEntries, entryHref, filtersFromParams, groupByDay,
+  isAuditAction, paramsFromFilters, periodStart, toChanges,
 } from '../src/features/audit/auditModel.ts';
 import { it as dictIt } from '../src/i18n/locales/it.ts';
 import { de as dictDe } from '../src/i18n/locales/de.ts';
@@ -225,6 +225,40 @@ check('i giorni si raggruppano nell’ordine in cui arrivano',
     entry({ id: '2', createdAt: '2026-08-06T09:00:00.000Z' }),
     entry({ id: '3', createdAt: '2026-08-05T23:00:00.000Z' }),
   ]).map((g) => `${g.day}:${g.entries.length}`).join(' ') === '2026-08-06:2 2026-08-05:1');
+
+// ---------------------------------------------------------------------------
+section('L’AUTORE — quattro casi, e due erano diventati uno');
+
+{
+  // ⚠️ IL CASO REALE, visto sul dominio il 2026-08-09: il registro diceva «di
+  // una persona non più in azienda» di gente che in azienda c'era. La rubrica
+  // restituisce stringa vuota per chi non ha compilato il profilo
+  // (`display_name ?? ''`), e `if (name)` mandava vuoto e assente nello stesso
+  // ramo. Sulla schermata: una frase falsa su una persona reale.
+  const rubrica = { 'u-con-nome': 'Anna Rossi', 'u-senza-nome': '' };
+
+  check('nessun autore → il sistema',
+    actorLabelKey(actorOf(null, rubrica)) === 'audit.actor.system');
+  check('autore in rubrica con nome → il nome, nessuna chiave',
+    actorLabelKey(actorOf('u-con-nome', rubrica)) === null
+    && actorOf('u-con-nome', rubrica).kind === 'name');
+  check('⚠️ autore IN AZIENDA senza nome nel profilo → NON «non più in azienda»',
+    actorLabelKey(actorOf('u-senza-nome', rubrica)) === 'audit.actor.noProfileName');
+  check('autore che non è più nella rubrica → «non più in azienda»',
+    actorLabelKey(actorOf('u-sparito', rubrica)) === 'audit.actor.former');
+  // La controprova del confine: uno spazio non è un nome, ma nemmeno un'uscita.
+  check('un nome fatto di soli spazi resta «senza nome», non «uscita»',
+    actorLabelKey(actorOf('u-spazi', { 'u-spazi': '   ' })) === 'audit.actor.noProfileName');
+  // ⚠️ E la chiave nuova deve esistere in TUTTE E TRE le lingue: una chiave
+  // mancante si vedrebbe come testo grezzo in mezzo al registro.
+  for (const [lingua, dz] of [['it', dictIt], ['de', dictDe], ['fr', dictFr]] as const) {
+    const actor = (dz as { audit?: { actor?: Record<string, string> } }).audit?.actor ?? {};
+    check(`${lingua}: le tre frasi dell'autore esistono e sono diverse fra loro`,
+      !!actor.system && !!actor.noProfileName && !!actor.former
+      && new Set([actor.system, actor.noProfileName, actor.former]).size === 3,
+      JSON.stringify(actor));
+  }
+}
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato:${X} ${fail === 0 ? `${G}${pass} passati${X}` : `${R}${fail} falliti${X} ${DIM}su ${pass + fail}${X}`}`);

@@ -25,9 +25,9 @@ import { auditService } from '@/services/auditService';
 import { memberService } from '@/services/memberService';
 import type { AuditEntry } from '@/types/models';
 import {
-  AUDIT_ACTIONS, AUDIT_PAGE_SIZE, AUDIT_PERIODS, actionLabelKey, changeEntries,
-  entryHref, fieldLabelKey, filtersFromParams, groupByDay, isAuditAction, isAuditPeriod,
-  paramsFromFilters, type AuditFilters,
+  AUDIT_ACTIONS, AUDIT_PAGE_SIZE, AUDIT_PERIODS, actionLabelKey, actorLabelKey, actorOf,
+  changeEntries, entryHref, fieldLabelKey, filtersFromParams, groupByDay, isAuditAction,
+  isAuditPeriod, paramsFromFilters, type AuditFilters,
 } from './auditModel';
 
 export function AuditLogPage() {
@@ -95,14 +95,15 @@ export function AuditLogPage() {
    */
   const shownValue = (v: string | null): string => (v === null || v === '' ? t('audit.change.empty') : v);
 
-  /** Chi ha agito. NULL = il sistema, e lo si dice — non «sconosciuto». */
+  /**
+   * Chi ha agito. Quattro casi, e la decisione sta in `auditModel` perché è
+   * l'unica parte in cui un errore non si vede: dire «non più in azienda» di
+   * un collega seduto accanto è una frase falsa che nessuno segnala.
+   */
   function actorLabel(entry: AuditEntry): string {
-    if (entry.actorUserId === null) return t('audit.actor.system');
-    const name = names[entry.actorUserId];
-    if (name) return name;
-    // Ha agito una persona che oggi non è più nell'azienda: l'identificativo
-    // resta nel registro (nessuna chiave esterna, 0039), il nome no.
-    return t('audit.actor.former');
+    const actor = actorOf(entry.actorUserId, names);
+    const chiave = actorLabelKey(actor);
+    return chiave ? t(chiave) : (actor as { name: string }).name;
   }
 
   // ⚠️ `ready` e non `!loading`: prima che le membership siano state lette per

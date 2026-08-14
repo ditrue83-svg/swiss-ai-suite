@@ -1022,6 +1022,7 @@ export const fr: Dictionary = {
     loadMore: 'Afficher {count} de plus',
     actor: {
       system: 'le système',
+      noProfileName: 'une personne sans nom dans son profil',
       former: 'une personne qui n’est plus dans l’entreprise',
     },
     filter: { period: 'Période', action: 'Type' },

@@ -257,8 +257,14 @@ export const FUNZIONI_SCOPERTE = {
   '_shared/assistant/dates.ts#asConcreteDate': 'interpretazione delle date parlate: nessun test la importa per nome',
 
   // --- incentivi: il percorso delle FONTI, già dichiarato scoperto -----------
+  // ⚠️ QUI STAVA `fetchGuard.ts#fetchSource`, e la riga è uscita il 2026-08-14:
+  // `npm run subsidy:sources` la ESEGUE contro le sette fonti vere. Non l'ha
+  // tolta la memoria di nessuno — il controllo 9 ha detto «la riga è stantia» e
+  // ha fatto rosso, esattamente come per i tre rami della coda eventi il
+  // 2026-08-11. ⚠️ Ciò che resta scoperto è ciò che SCRIVE (`runSourceChecks`)
+  // e l'involucro HTTP della Edge Function: leggere una fonte e registrarne
+  // l'esito sono due cose, e adesso lo sono anche qui.
   '_shared/subsidy/fetchGuard.ts#hostOf': 'il percorso delle fonti (`runSourceChecks`) esce in rete ed è dichiarato scoperto in docs/product-status.md',
-  '_shared/subsidy/fetchGuard.ts#fetchSource': 'il percorso delle fonti (`runSourceChecks`) esce in rete ed è dichiarato scoperto in docs/product-status.md',
   '_shared/subsidy/adapters.ts#extractDeclaredDates': 'adattatore di una fonte ufficiale: vive nel percorso delle fonti, scoperto',
   '_shared/subsidy/facts.ts#findFact': 'helper del motore di abbinamento: nessun test lo importa per nome',
   '_shared/subsidy/hash.ts#sha256Bytes': 'variante binaria dell\'impronta: quella testuale (`normalizeForHash`) è coperta',

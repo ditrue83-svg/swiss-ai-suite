@@ -24,7 +24,7 @@
 // Non stampa MAI una chiave: dell'ambiente verifica che i nomi esistano.
 // ============================================================================
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -85,6 +85,35 @@ export function misureGitMancanti({ hasMono, ramo, sopraMain }) {
   return mancanti;
 }
 
+/** La sezione del credito Anthropic, dall'esito di `verify:ai --json`.
+ *
+ *  ⚠️ Tre stati, non due. «Può funzionare» e «non può» sono misure; «non
+ *  misurato» è l'assenza di una misura, e scriverlo come un rosso farebbe
+ *  cercare un guasto dove c'è un comando che non ha risposto. La riga
+ *  dell'ultima richiesta riuscita resta anche quando il credito c'è: è ciò che
+ *  distingue un prodotto fermo da un prodotto inattivo. */
+export function sezioneCredito(ai) {
+  if (!ai) {
+    return '## I percorsi AI possono funzionare?\n\n**Non misurato** — `npm run verify:ai` non ha risposto.\n';
+  }
+  const ok = ai.code === 0;
+  const righe = [
+    `| i percorsi AI possono funzionare adesso | ${ok ? 'sì' : `**NO** — ${ai.titolo}`} |`,
+    `| misurato con | una richiesta da 1 token a \`${ai.modello}\` (HTTP ${ai.sonda?.status ?? '—'}) |`,
+    `| chiave = quella delle Edge Function | ${ai.chiavi === 'coincidono' ? 'sì' : ai.chiavi === 'divergono' ? '**NO — in produzione ogni percorso AI prende 401**' : `**non verificato** — ${ai.chiaviPerche ?? '—'}`} |`,
+  ];
+  if (ai.log) {
+    righe.push(`| ultima richiesta AI riuscita | ${ai.log.ultimaOk ? `${ai.log.ultimaOk.quando.replace('T', ' ').slice(0, 16)} UTC (${ai.log.ultimaOk.oreFa}h fa)` : 'nessuna: nessun percorso AI è mai arrivato in fondo'} |`);
+    righe.push(`| ultimo errore AI | ${ai.log.ultimoErrore ? `${ai.log.ultimoErrore.quando.replace('T', ' ').slice(0, 16)} UTC — \`${ai.log.ultimoErrore.codice ?? '—'}\`` : 'nessuno'} |`);
+  } else {
+    righe.push('| storia (`ai_request_log`) | **non letta** |');
+  }
+  return `## I percorsi AI possono funzionare?\n\n| | |\n|---|---|\n${righe.join('\n')}\n${
+    ok
+      ? '\n> ⚠️ Un 200 su una richiesta da UN token non promette una lettura da 50 000 token.\n'
+      : `\n> ⚠️ ${ai.rimedio ?? ''}\n`}`;
+}
+
 // Ogni caso porta l'esito atteso; i negativi (la frase che DEVE tacere) sono
 // il motivo per cui queste funzioni esistono — l'avviso fisso li sbagliava
 // tutti, ed è il caso su cui questa autoverifica è stata vista fallire.
@@ -100,6 +129,33 @@ const SELF_TEST_CASES = [
   { name: '⚠️ IL CASO REALE: cartella presente, origin/main non risolto → la misura mancante si CONTA', run: () => misureGitMancanti({ hasMono: true, ramo: 'main', sopraMain: null }).some((m) => m.includes('origin/main')) },
   { name: 'ramo non letto da git: si conta anche quello', run: () => misureGitMancanti({ hasMono: true, ramo: null, sopraMain: '' }).some((m) => m.includes('ramo')) },
   { name: 'tutto misurato (albero allineato): zero voci — \'\' è una misura, non un guasto', run: () => misureGitMancanti({ hasMono: true, ramo: 'main', sopraMain: '' }).length === 0 },
+  // --- il credito: tre stati, e il terzo non somiglia a nessuno dei due -----
+  {
+    name: '⚠️ IL CASO REALE del 2026-08-14: credito esaurito → il foglio dice NO e porta il rimedio',
+    run: () => {
+      const s = sezioneCredito({ code: 1, titolo: 'CREDITO ESAURITO', rimedio: 'ricaricare il conto', modello: 'claude-haiku-4-5', sonda: { status: 400 }, chiavi: 'ignoto', log: null });
+      return s.includes('**NO** — CREDITO ESAURITO') && s.includes('ricaricare il conto');
+    },
+  },
+  {
+    name: 'credito disponibile → sì, con la frase che impedisce di leggerlo per più di ciò che dice',
+    run: () => {
+      const s = sezioneCredito({ code: 0, titolo: 'ok', modello: 'm', sonda: { status: 200 }, chiavi: 'coincidono', log: { ultimaOk: null, ultimoErrore: null } });
+      return s.includes('| i percorsi AI possono funzionare adesso | sì |') && s.includes('50 000');
+    },
+  },
+  {
+    name: '⚠️ comando senza risposta → «non misurato», che NON è un rosso',
+    run: () => { const s = sezioneCredito(null); return s.includes('Non misurato') && !s.includes('**NO**'); },
+  },
+  {
+    name: '⚠️⚠️ chiavi divergenti: il foglio lo dice anche con la sonda verde',
+    run: () => sezioneCredito({ code: 6, titolo: 'LE DUE CHIAVI DIVERGONO', rimedio: 'allineare il secret', modello: 'm', sonda: { status: 200 }, chiavi: 'divergono', log: null }).includes('401'),
+  },
+  {
+    name: 'senza storia letta la riga lo dichiara, invece di scrivere «nessuna»',
+    run: () => sezioneCredito({ code: 0, titolo: 'ok', modello: 'm', sonda: { status: 200 }, chiavi: 'coincidono', log: null }).includes('**non letta**'),
+  },
 ];
 const selfTestFailures = SELF_TEST_CASES.filter((c) => !c.run());
 
@@ -224,6 +280,29 @@ try {
 }
 
 // ---------------------------------------------------------------------------
+// 3-bis. IL CREDITO ANTHROPIC — la dipendenza che si scopriva solo mordendo.
+//
+// ⚠️ PERCHÉ STA QUI. Questo foglio dice quanto viene usato il prodotto; il
+// credito dice se può funzionare. Fino al 2026-08-14 lo si scopriva a
+// posteriori — un worker che rimette in coda, tre messaggi fermi — perché era
+// l'unica dipendenza senza un comando che la misurasse. Adesso ce l'ha, e il
+// posto dove va letta è il foglio che qualcuno guarda.
+//
+// ⚠️ Un credito esaurito è una MISURA, non una misura mancante: non entra in
+// `nonMisurato` e non fa uscire 3. Ci entra solo il caso in cui il comando non
+// abbia potuto rispondere — che è un'altra cosa, e va distinta.
+//
+// Costa una richiesta da un token sul modello più economico (§ verify:ai).
+// ---------------------------------------------------------------------------
+let ai = null;
+{
+  const r = spawnSync('npm', ['run', '--silent', 'verify:ai', '--', '--json'],
+    { cwd: APP, encoding: 'utf8', env: process.env });
+  try { ai = JSON.parse(String(r.stdout ?? '').trim().split('\n').pop()); } catch { ai = null; }
+  if (!ai) nonMisurato.push(`stato del credito Anthropic (verify:ai non ha risposto: exit ${r.status ?? '?'})`);
+}
+
+// ---------------------------------------------------------------------------
 // 4. GIT E PR — dove sta il lavoro che non è ancora degli utenti.
 // ---------------------------------------------------------------------------
 const git = (cwd, ...a) => {
@@ -273,6 +352,7 @@ ${uso.map(riga).join('\n')}
 | migrazioni applicate in produzione | ${applicate === null ? '**non misurato**' : applicate} |
 | allineate | ${applicate === null ? '**non misurato**' : (applicate === suDisco.length ? 'sì' : `**NO** — ${suDisco.length - applicate} in attesa`)} |
 
+${sezioneCredito(ai)}
 ## È arrivato agli utenti?
 
 | | |

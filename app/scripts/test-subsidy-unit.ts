@@ -622,6 +622,42 @@ const primaLetturaCaduta = detectChanges({
 check('e una fonte caduta si dichiara comunque',
   primaLetturaCaduta.some((c) => c.changeType === 'source_unreachable'));
 
+// ⚠️⚠️ IL CAMPO FANTASMA — misurato sulle fonti VERE il 2026-08-14, non
+//    inventato. L'istantanea conserva `unsupported` DENTRO `normalized`
+//    (`runSourceChecks` scrive `{ ...normalized, unsupported }`), l'adapter lo
+//    restituisce accanto: `diffFields` lo vedeva quindi «sparire» a OGNI
+//    controllo di OGNI fonte. Conseguenza letta in produzione: la nota di
+//    `ti-lrilocc` diceva «1 campi normalizzati diversi» dove ne era cambiato
+//    zero (solo l'impronta), e quella di `ti-linn` due invece di uno. Chi
+//    smaltisce la coda decide su quel numero.
+const soloFantasma = detectChanges({
+  sourceId: 's', programId: 'p', previousHash: 'hash-a',
+  result: { ...okResult, normalized: { textLength: 1000 }, unsupported: [] },
+  previousNormalized: { textLength: 1000, unsupported: ['content_inside_iframe_not_followed'] },
+});
+check('⚠️ solo l\'impronta è cambiata → la nota NON conta campi che non si sono mossi',
+  soloFantasma.length === 1 && soloFantasma[0].notes.includes('senza differenze nei campi normalizzati'),
+  JSON.stringify(soloFantasma.map((c) => c.notes)));
+
+// La controprova: un campo VERO che cambia deve continuare a essere contato.
+const unCampoVero = detectChanges({
+  sourceId: 's', programId: 'p', previousHash: 'hash-a',
+  result: { ...okResult, normalized: { textLength: 4436 }, unsupported: [] },
+  previousNormalized: { textLength: 4574, unsupported: ['content_inside_iframe_not_followed'] },
+});
+check('e un campo vero che cambia resta contato: UNO, non due',
+  unCampoVero[0].notes.includes('(1 campi'), unCampoVero[0].notes);
+
+// ⚠️ E le strutture non interpretate NON perdono sorveglianza togliendole dal
+//    confronto: hanno la loro proposta, che legge `previousNormalized.unsupported`.
+const strutturaNuova = detectChanges({
+  sourceId: 's', programId: 'p', previousHash: 'hash-a',
+  result: { ...okResult, unsupported: ['content_inside_iframe_not_followed'] },
+  previousNormalized: { textLength: 1000, unsupported: [] },
+});
+check('una struttura NUOVA non interpretabile resta una revisione a sé',
+  strutturaNuova.some((c) => c.changeType === 'source_structure_changed'));
+
 // ⚠️ §22 — una candidata di scadenza diventa una revisione `critical`, mai un
 //    dato del catalogo.
 const withDeadline = detectChanges({
