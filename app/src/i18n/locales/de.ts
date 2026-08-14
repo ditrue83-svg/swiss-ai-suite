@@ -921,7 +921,7 @@ export const de: Dictionary = {
     docLanguages: 'Sprachen der Dokumente',
     noDocsAnalyzed: 'Noch kein Dokument analysiert.',
     // ⚠️ «Offene Massnahmen» (le azioni chieste dall'ANALISI) è SPARITA il
-    // 2026-08-15 insieme alla sua scheda: nessuna pagina del prodotto elenca
+    // 2026-08-14 insieme alla sua scheda: nessuna pagina del prodotto elenca
     // quelle voci, e un numero senza elenco non è un KPI. Restano le
     // «Offene Aufgaben» del Work Hub, che un elenco ce l'hanno. Il difetto che
     // il 2026-08-11 aveva costretto a distinguere i due nomi — due schede

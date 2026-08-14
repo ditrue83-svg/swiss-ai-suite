@@ -984,7 +984,7 @@ export const it = {
     kpiDueToday: 'In scadenza oggi',
     kpiDueWeek: 'Nei prossimi 7 giorni: {n}',
     kpiToVerify: 'Documenti da verificare',
-    // ⚠️ «Incertezze gravi» e non «ente incerto»: dal 2026-08-15 il numero è il
+    // ⚠️ «Incertezze gravi» e non «ente incerto»: dal 2026-08-14 il numero è il
     // totale di `?stato=to_verify`, cioè ciò che il server chiama
     // `needs_review` — confidenza sotto 0,45 oppure un'incertezza di gravità
     // alta (`reviewStatus`, persist.ts). La didascalia dice la regola vera, non

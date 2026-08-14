@@ -600,7 +600,7 @@ section('6. Gerarchia e densità dentro le pagine');
   // si impara a ignorare, e da quel momento non protegge più niente.
   // Le classi qui sotto sono quelle che portano PROSA: chi ne aggiunge una
   // aggiunge una riga qui.
-  // ⚠️ `.footnote` NON è in questo elenco dal 2026-08-15, ed è una promozione,
+  // ⚠️ `.footnote` NON è in questo elenco dal 2026-08-14, ed è una promozione,
   // non un'esenzione: il suo testo resta nella misura ma con un padding, così
   // il filetto sopra può correre per intero. Il controllo suo sta più sotto,
   // nella sezione 10 — chi togliesse il padding lo farebbe fallire.
@@ -1076,7 +1076,7 @@ section('9. Le etichette — una sola implementazione, e il tono non si sceglie 
 // ---------------------------------------------------------------------------
 section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portano');
 
-// ⚠️ PERCHÉ QUESTA SEZIONE. Cinque difetti visti a schermo il 2026-08-15, tutti
+// ⚠️ PERCHÉ QUESTA SEZIONE. Cinque difetti visti a schermo il 2026-08-14, tutti
 // invisibili al typecheck e al design-lint perché nessuno riguarda un valore
 // scritto a mano: una barra di scorrimento vestita col default del sistema, una
 // legenda che compariva su pagine senza segni, schede numeriche che non

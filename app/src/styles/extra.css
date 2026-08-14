@@ -288,7 +288,7 @@
    blu — la stessa correzione già fatta su `.action-row.is-link` nella 0016.
    ⚠️⚠️ `display: flex` E NON `block`, e la riga cambiata è una correzione:
    `.kpi` è una colonna flex, questa regola arriva dopo e con `block` la
-   sovrascriveva. Effetto misurato il 2026-08-15, quando la sola scheda
+   sovrascriveva. Effetto misurato il 2026-08-14, quando la sola scheda
    collegata era il Calendario: il suo `margin-top: auto` non aveva più un
    contenitore flex su cui appoggiarsi e la didascalia partiva 6px più in alto
    delle quattro accanto. Sei pixel di disallineamento in una fila di cinque
@@ -302,7 +302,7 @@
    e nessun sollevamento — una scheda numerica non deve sembrare un pulsante.
    ⚠️⚠️ `text-decoration: none` ANCHE QUI, e non è una ripetizione: la regola
    globale `a:hover` sottolinea, e `.kpi-link` la spegneva solo a riposo. Visto
-   a schermo il 2026-08-15 passando sopra la scheda: etichetta, numero e
+   a schermo il 2026-08-14 passando sopra la scheda: etichetta, numero e
    didascalia si sottolineavano tutti e tre insieme — tre righe di un blocco
    sottolineate non sono un collegamento, sono un errore di stampa. Il difetto
    c'era già dal 2026-08-11 sulla sola scheda del Calendario, l'unica collegata;
