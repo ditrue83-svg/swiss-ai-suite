@@ -563,7 +563,7 @@ Le regole che il sistema incorpora:
 - **Ma solo dove c'è almeno un segno da spiegare, e mai come scheda.** Su una
   schermata vuota — Incentivi senza progetti — la legenda era l'unica cosa in
   pagina: un glossario di nove famiglie sotto un elenco che non ne usa nessuna.
-  Dal 2026-08-15 conta i `.mark` renderizzati nella pagina (esclusi i propri) e
+  Dal 2026-08-14 conta i `.mark` renderizzati nella pagina (esclusi i propri) e
   se sono zero non compare. ⚠️ **Il conteggio guarda il DOM, non una prop**: una
   condizione passata dalle undici schermate che la usano sarebbe stata undici
   posti in cui ricordarsene, cioè lo stesso invecchiamento che l'iterazione
@@ -747,7 +747,7 @@ documento chiedesse quella cosa.
     numerica della Panoramica porta alla lista filtrata da cui il numero esce, e
     la destinazione deve rendere **lo stesso numero**: `/documenti?stato=
     to_verify` è il filtro che ha prodotto il conteggio, `?vista=high` è la
-    stessa condizione SQL di `highRelevance`. Il 2026-08-15 «Azioni da
+    stessa condizione SQL di `highRelevance`. Il 2026-08-14 «Azioni da
     completare» è stata **tolta** per questa regola: contava le voci di
     checklist dentro le analisi, e nessuna pagina del prodotto le elenca —
     aggiungere quel filtro sarebbe stata una funzione nuova, lasciarla muta

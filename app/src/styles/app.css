@@ -328,7 +328,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    flex di diventare più basso del proprio contenuto. */
 .nav { display: flex; flex-direction: column; gap: var(--sp-05); flex: 1; min-height: 0; overflow-y: auto; }
 /* ⚠️ LA BARRA DI SCORRIMENTO DELLA NAVIGAZIONE, e prima la misura che spiega
-   perché esiste. Misurata il 2026-08-15 a 1280×720: la colonna chiede 910px in
+   perché esiste. Misurata il 2026-08-14 a 1280×720: la colonna chiede 910px in
    tutto — marchio 89 + selettore azienda 75 + navigazione 550 + box account 158
    + margini e spazi 38 — e la navigazione è l'unica parte elastica. Non c'è
    nessuna altezza forzata e nessun contenitore sbagliato: le voci sono dieci,
@@ -912,7 +912,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    avvertenze legali, oltre 400 caratteri): senza tetto correva per tutta la
    larghezza della schermata, che è il difetto per cui `--measure` esiste. */
 /* ⚠️ IL FILETTO CORRE PER INTERO, IL TESTO NO — e la riga che è sparita è
-   `max-width: var(--measure)`, che li teneva legati. Misurato il 2026-08-15
+   `max-width: var(--measure)`, che li teneva legati. Misurato il 2026-08-14
    nella Panoramica: contenuto largo 905px, filetto largo 426. Si fermava al 47%
    e il blocco sembrava fluttuare, staccato dalla colonna invece che chiuderla.
    Il testo però deve restare nella misura di lettura, che è il motivo per cui
@@ -1090,7 +1090,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    è alta quanto una piccola, e non c'è più niente da riempire. La gerarchia
    resta detta dove è sempre stata — --fs-h1 contro --fs-h2 e una colonna
    propria — e non da una superficie doppia che nessun contenuto occupava.
-   ⚠️ DAL 2026-08-15 LE PICCOLE SONO TRE, non quattro: «Azioni da completare»
+   ⚠️ DAL 2026-08-14 LE PICCOLE SONO TRE, non quattro: «Azioni da completare»
    non c'è più (contava voci di checklist che nessuna pagina elenca — vedi
    HomePage.tsx) e la scheda grande è diventata «Attività aperte». Il rapporto
    1:3 avrebbe reso la scheda grande larga come le altre, cioè una gerarchia
