@@ -112,6 +112,40 @@ const REQUIREMENTS = {
       ? { ok: true }
       : { ok: false, why: 'spende credito Anthropic vero: serve --allow-ai (o AISWISSE_ALLOW_AI=1)' }),
   },
+  // ⚠️⚠️ IL CANCELLO CHE MANCAVA, e nasce da tre esaurimenti in due settimane.
+  // L'autorizzazione a spendere (`ai`, qui sopra) dice che si PUÒ spendere; non
+  // dice che ci sia qualcosa da spendere. Con il credito esaurito
+  // `test:integration -- --allow-ai` partiva, macinava per un minuto e moriva a
+  // metà — e il risultato non era «il credito è finito», era una suite rossa: si
+  // va a cercare un difetto nel prodotto per un guasto d'ambiente. Ora la
+  // domanda si fa PRIMA, con una richiesta da un token, e il gruppo viene
+  // saltato con la ragione vera.
+  //
+  // ⚠️ La sonda si esegue SOLO se la spesa è già stata autorizzata: senza
+  // `--allow-ai` il gruppo è comunque fermo, e una chiamata di rete che nessuno
+  // ha chiesto sarebbe esattamente la spesa ereditata che questo file vieta.
+  aiCredit: {
+    label: 'credito Anthropic disponibile ADESSO (npm run verify:ai)',
+    check: (opts) => {
+      if (!opts.allowAi) return { ok: true };   // ferma già `ai`, con la sua ragione
+      const r = spawnSync('npm', ['run', '--silent', 'verify:ai', '--', '--json'], {
+        cwd: APP, encoding: 'utf8', env: process.env,
+      });
+      if (r.status === 0) return { ok: true };
+      // ⚠️ Il JSON è l'unica cosa che si legge: il codice d'uscita dice CHE è
+      // rosso, la riga dice PERCHÉ, e i quattro perché hanno quattro rimedi.
+      let esito = null;
+      try { esito = JSON.parse(String(r.stdout ?? '').trim().split('\n').pop()); } catch { /* resta null */ }
+      if (!esito) {
+        return {
+          ok: false,
+          why: `verify:ai non ha risposto (exit ${r.status ?? '?'}): il credito non è stato verificato, `
+            + 'e queste suite non partono su una domanda senza risposta',
+        };
+      }
+      return { ok: false, why: `${esito.titolo} — ${esito.rimedio ?? ''} (npm run verify:ai)`.trim() };
+    },
+  },
   // ⚠️ Il gruppo `production` non prova il PRODOTTO: prova QUEL progetto —
   // la configurazione di autenticazione, il contenuto del catalogo, le Edge
   // Function deployate. Eseguirlo contro un database effimero darebbe un verde
@@ -283,6 +317,17 @@ const GROUPS = {
       // provarlo qui evita di dover invecchiare una riga vera per vederlo
       // reagire.
       { script: 'subsidy:health:self-test' },
+      // Le quattro diagnosi sul credito Anthropic — esaurito · chiave assente ·
+      // chiave rifiutata · servizio irraggiungibile — provate su risposte
+      // costruite, senza rete e senza spendere. ⚠️ Il caso che conta di più è
+      // quello che NON deve scattare: un 400 che non parla di credito non
+      // diventa «credito esaurito», perché l'esaurimento arriva con lo stesso
+      // codice HTTP di una richiesta malformata.
+      { script: 'verify:ai:self-test' },
+      // Il giudizio del confronto con le fonti: «non ho potuto leggere» pesa
+      // più di «è cambiata», e nessuna delle due è «va tutto bene». Provato
+      // senza uscire in rete.
+      { script: 'subsidy:sources:self-test' },
       // I file del carattere, provati sul buco VERO che ha motivato il
       // controllo: il sottoinsieme «latin» senza U+202F. ⚠️ Era un decimo
       // script perso, sfuggito anche alla sonda del 2026-08-11: l'ha trovato
@@ -396,7 +441,7 @@ const GROUPS = {
   },
   integration: {
     title: 'Integrazione — richiede .env.test · SPENDE credito AI',
-    needs: ['env', 'ai'],
+    needs: ['env', 'ai', 'aiCredit'],
     steps: [
       { script: 'test:phase2' },
       { script: 'test:async' },
@@ -405,7 +450,7 @@ const GROUPS = {
   },
   eval: {
     title: 'Valutazioni AI — richiede .env.test · SPENDE credito AI',
-    needs: ['env', 'ai'],
+    needs: ['env', 'ai', 'aiCredit'],
     steps: [
       { script: 'eval:subsidy' },
       { script: 'eval:admin' },
@@ -466,6 +511,17 @@ const FUORI_SUITE = {
   'inbox:diagnose': 'diagnostica manuale della posta: si lancia su un guasto in corso, non prova un invariante',
   'test:notification-email': "l'invio VERO spende un'email a ogni esecuzione; il piano lo prova test:notification-email:self-test, in unit",
   status: 'misura la produzione e scrive il foglio di stato: un rapporto, non un controllo; le sue frasi le prova status:self-test, in unit',
+  // ⚠️ Misura l'AMBIENTE, non il codice: può essere rosso su un albero perfetto
+  // (credito finito) e verde su un albero rotto — la stessa ragione per cui
+  // `verify:deploy` non sta in `test:all`. Chiama l'API vera, quindi in una
+  // suite sarebbe una chiamata di rete a ogni `npm run ci`. Il gruppo `unit`
+  // esegue `verify:ai:self-test`, che prova le sue diagnosi senza rete; i
+  // gruppi che spendono lo invocano da soli, come requisito.
+  'verify:ai': "chiama l'API Anthropic: misura l'ambiente, non il codice; le sue diagnosi le prova verify:ai:self-test, in unit",
+  // Esce in rete verso sette siti ufficiali e dice che cosa è cambiato: è un
+  // rapporto per una persona, non un invariante. Metterlo in una suite
+  // significherebbe interrogare sette amministrazioni a ogni `npm run ci`.
+  'subsidy:sources': 'legge le sette fonti ufficiali in rete: un rapporto per una persona, non un invariante; il suo giudizio lo prova subsidy:sources:self-test, in unit',
   // Gli alias di questo runner: eseguirli da qui sarebbe ricorsione.
   'test:quality': 'alias di `suite quality`: è questo runner',
   'test:unit': 'alias di `suite unit`: è questo runner',

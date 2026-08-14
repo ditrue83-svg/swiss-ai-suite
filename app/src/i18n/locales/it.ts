@@ -1081,6 +1081,10 @@ export const it = {
     loadMore: 'Mostra altri {count}',
     actor: {
       system: 'il sistema',
+      // ⚠️ Tre frasi e non due: chi è in azienda senza nome nel profilo NON è
+      // «uscito dall'azienda», ed è la cosa che il registro esiste per non
+      // confondere.
+      noProfileName: 'una persona senza nome nel profilo',
       former: 'una persona non più in azienda',
     },
     filter: { period: 'Periodo', action: 'Tipo' },

@@ -136,6 +136,122 @@ export function giudicaCodaRevisioni(revisioni, oggi, soglie = {}) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// ⚠️⚠️ IL CONFRONTO CON LE FONTI — la domanda che questo comando non faceva.
+//
+// Al 2026-08-14 `subsidy:health` usciva **0**, «catalogo valido e aggiornato,
+// niente in sospeso», con `last_checked_at` fermo al **2026-07-25** su tutti e
+// sette i programmi. Non era un difetto di calcolo: la freschezza di un
+// contenuto `verified` scade a 180 giorni, e venti giorni sono ben dentro. Era
+// di nuovo un difetto di COPERTURA — la stessa forma della coda di revisione
+// che non veniva guardata, un mese prima.
+//
+// PERCHÉ VENTI GIORNI CONTANO SU UN CONTENUTO CHE NE VALE CENTOTTANTA. Perché
+// sono due fatti diversi, e questa pagina li teneva sotto una parola sola:
+//
+//   · `subsidy_sources.last_successful_check_at` — la MACCHINA ha riletto la
+//     fonte. Gira da sola ogni quindici minuti, ciascuna fonte con la sua
+//     cadenza (7 giorni per una pagina critica, 180 per una base legale);
+//   · `subsidy_programs.last_checked_at` — una PERSONA ha guardato la fonte e
+//     ha detto «ciò che pubblichiamo è ancora vero». La muove soltanto la
+//     decisione `accepted` di `resolve_subsidy_catalog_review`.
+//
+// ⚠️ Ne discende una cosa che va detta: se il rilevatore non produce revisioni,
+// **non esiste alcun percorso per cui la verifica umana riparta**. Una coda
+// vuota, che sembra la situazione migliore, è anche quella in cui
+// `last_checked_at` invecchia senza che nessuno possa farci niente da dentro il
+// prodotto. Per questo la soglia qui sotto non è un errore di integrità: è un
+// promemoria che esce non-zero, come le revisioni in coda.
+//
+// TRENTA GIORNI, come per la coda di revisione, e per la stessa ragione: le
+// finestre di domanda svizzere si misurano in mesi, quindi un mese di ritardo
+// sul confronto non fa perdere un bando e due possono. Si sposta con
+// `--verify-stale-days=`.
+const verifyStaleArg = process.argv.find((a) => a.startsWith('--verify-stale-days='));
+const VERIFY_STALE_DAYS = verifyStaleArg ? Math.max(1, parseInt(verifyStaleArg.split('=')[1], 10) || 30) : 30;
+
+/**
+ * Il giudizio sull'invecchiamento del confronto con le fonti. Funzione PURA.
+ *
+ * Ritorna `{ righe, lavoro, errori }`:
+ *   · `righe`   ciò che il riepilogo stampa SEMPRE, anche quando va tutto bene:
+ *               un conteggio che compare solo quando è diverso da zero insegna
+ *               a non cercarlo;
+ *   · `lavoro`  ciò che porta l'uscita a 1 — c'è qualcosa da fare per una
+ *               persona;
+ *   · `errori`  ciò che porta l'uscita a 2 — il meccanismo stesso è fermo.
+ */
+export function giudicaConfrontoFonti({ programmi = [], fonti = [], oggi = new Date(), soglie = {} } = {}) {
+  const verifyStale = soglie.verifyStaleDays ?? VERIFY_STALE_DAYS;
+  const gg = (v) => {
+    if (!v) return null;
+    const d = new Date(String(v).length === 10 ? `${v}T00:00:00Z` : v);
+    return Number.isNaN(d.getTime()) ? null : Math.floor((oggi.getTime() - d.getTime()) / 86_400_000);
+  };
+
+  const righe = [];
+  const lavoro = [];
+  const errori = [];
+
+  // --- 1. La verifica UMANA ------------------------------------------------
+  const eta = programmi.map((p) => ({ id: p.id, giorni: gg(p.last_checked_at) }));
+  const maiVerificati = eta.filter((e) => e.giorni == null);
+  const piuVecchio = eta.filter((e) => e.giorni != null).sort((a, b) => b.giorni - a.giorni)[0] ?? null;
+  righe.push(`Confronto con le fonti fatto da una PERSONA: ${
+    piuVecchio ? `il più vecchio ${piuVecchio.giorni}g fa (${piuVecchio.id})` : 'mai'
+  }${maiVerificati.length ? ` · ${maiVerificati.length} mai verificati` : ''} (soglia ${verifyStale}g)`);
+  if (maiVerificati.length) {
+    lavoro.push(`${maiVerificati.length} programmi non sono mai stati confrontati con la loro fonte da una persona: `
+      + maiVerificati.map((e) => e.id).join(', '));
+  }
+  if (piuVecchio && piuVecchio.giorni > verifyStale) {
+    lavoro.push(`nessuno confronta il catalogo con le fonti da ${piuVecchio.giorni} giorni (soglia ${verifyStale}g). `
+      + 'La freschezza del contenuto scade a 180 giorni, ma quella è un\'altra domanda: qui nessuno ha ancora GUARDATO.');
+  }
+
+  // --- 2. Le letture AUTOMATICHE -------------------------------------------
+  // ⚠️ Una fonte si giudica sulla PROPRIA cadenza, non su una soglia unica:
+  //    180 giorni sono un ritardo enorme per una pagina critica e la normalità
+  //    per una base legale. `next_check_at` è la promessa che il sistema ha
+  //    fatto a sé stesso, e la si confronta con l'orologio.
+  const attive = fonti.filter((f) => f.enabled !== false);
+  const maiLette = attive.filter((f) => !f.last_successful_check_at);
+  // ⚠️ Una fonte MAI letta non è anche «in ritardo»: è lo stesso fatto detto due
+  //    volte, e due righe per un fatto solo fanno sembrare due i problemi. Se
+  //    n'è accorto il caso «mai letta → integrità, non arretrato», che contava
+  //    un lavoro di troppo.
+  const inRitardo = attive
+    .filter((f) => f.last_successful_check_at)
+    .map((f) => ({ f, ritardo: gg(f.next_check_at) }))
+    .filter((x) => x.ritardo != null && x.ritardo > 1);
+  const letturaPiuVecchia = attive
+    .map((f) => gg(f.last_successful_check_at))
+    .filter((n) => n != null)
+    .sort((a, b) => b - a)[0] ?? null;
+
+  righe.push(`Riletture AUTOMATICHE delle fonti: ${attive.length} attive · la meno recente ${
+    letturaPiuVecchia == null ? 'mai' : `${letturaPiuVecchia}g fa`
+  }${inRitardo.length ? ` · ${inRitardo.length} OLTRE la propria cadenza` : ' · nessuna in ritardo'}`);
+
+  if (maiLette.length) {
+    // Un catalogo che dichiara una fonte mai letta non è «da ricontrollare»:
+    // sta pubblicando un contenuto che nessuno ha mai confrontato con niente.
+    errori.push(`${maiLette.length} fonti attive non sono MAI state lette con successo: `
+      + maiLette.map((f) => f.id ?? f.canonical_url).join(', '));
+  }
+  for (const { f, ritardo } of inRitardo) {
+    const cadenza = f.check_frequency_days ?? null;
+    const messaggio = `la fonte «${f.id ?? f.canonical_url}» doveva essere riletta ${ritardo} giorni fa`
+      + `${cadenza ? ` (cadenza ${cadenza}g)` : ''}`;
+    // Oltre una cadenza intera di ritardo non è più un turno saltato: lo
+    // scheduler non sta facendo il suo lavoro, o la fonte rifiuta da giorni.
+    if (cadenza && ritardo > cadenza) errori.push(`${messaggio}: il meccanismo è fermo, non in ritardo`);
+    else lavoro.push(messaggio);
+  }
+
+  return { righe, lavoro, errori };
+}
+
 /**
  * L'esito del comando: codice d'uscita e frase che lo accompagna.
  *
@@ -161,10 +277,15 @@ export function giudicaCodaRevisioni(revisioni, oggi, soglie = {}) {
  *
  * Funzione PURA, perché è una decisione, e le decisioni si provano.
  */
-export function decidiEsito({ integrita = 0, daRicontrollare = 0, inCoda = 0 } = {}) {
+export function decidiEsito({ integrita = 0, daRicontrollare = 0, inCoda = 0, daConfrontare = 0 } = {}) {
   const pezzi = [];
   if (daRicontrollare) pezzi.push(`${daRicontrollare} da ricontrollare`);
   if (inCoda) pezzi.push(`${inCoda} REVISIONI IN ATTESA DI UNA PERSONA`);
+  // ⚠️ Nominato a sé, e non fuso con «da ricontrollare»: quello dice che il
+  //    CONTENUTO è scaduto, questo che NESSUNO HA GUARDATO. Due frasi diverse,
+  //    due gesti diversi — e fonderle è esattamente come questa pagina è
+  //    arrivata a dire «aggiornato» per venti giorni.
+  if (daConfrontare) pezzi.push(`${daConfrontare} sul CONFRONTO CON LE FONTI`);
 
   if (integrita) {
     return { code: 2, esito: `ERRORI DI INTEGRITÀ — correggere il seed${pezzi.length ? ` · ${pezzi.join(' · ')}` : ''}` };
@@ -275,6 +396,72 @@ const CASI_ESITO = [
     name: 'con lavoro in sospeso la frase NON dice «aggiornato»',
     arg: { inCoda: 1 }, code: 1, nonContiene: 'aggiornato',
   },
+  {
+    name: '⚠️ IL CASO DEL 2026-08-14: solo il confronto con le fonti è vecchio → 1, NON 0',
+    arg: { daConfrontare: 1 }, code: 1, contiene: 'CONFRONTO CON LE FONTI',
+  },
+  {
+    name: 'e non si confonde con «da ricontrollare»: sono due frasi diverse',
+    arg: { daConfrontare: 1, daRicontrollare: 1 }, code: 1, contiene: 'da ricontrollare · 1 sul CONFRONTO',
+  },
+];
+
+// ⚠️ I casi sull'INVECCHIAMENTO del confronto. Le soglie si passano, per la
+// stessa ragione di `SOGLIE_DEL_TEST`: un flag da riga di comando non deve
+// poter rendere rossa un'autoverifica.
+const OGGI_FONTI = new Date('2026-08-14T12:00:00Z');
+const CASI_FONTI = [
+  {
+    name: '⚠️ IL CASO REALE: sette programmi verificati il 2026-07-25 (20 giorni) → dentro la soglia, ma NOMINATO',
+    arg: {
+      programmi: Array.from({ length: 7 }, (_, i) => ({ id: `p${i}`, last_checked_at: '2026-07-25' })),
+      fonti: [{ id: 'f', last_successful_check_at: '2026-08-13T17:30:00Z', next_check_at: '2026-08-20T17:30:00Z', check_frequency_days: 7 }],
+    },
+    lavoro: 0, errori: 0, riga: '20g fa',
+  },
+  {
+    name: '⚠️ a 31 giorni lo stesso catalogo smette di poter uscire zero',
+    arg: {
+      programmi: [{ id: 'p', last_checked_at: '2026-07-14' }],
+      fonti: [{ id: 'f', last_successful_check_at: '2026-08-13T17:30:00Z', next_check_at: '2026-08-20T17:30:00Z', check_frequency_days: 7 }],
+    },
+    lavoro: 1, errori: 0,
+  },
+  {
+    name: 'un programma mai confrontato da una persona è lavoro, e si NOMINA',
+    arg: { programmi: [{ id: 'nuovo', last_checked_at: null }], fonti: [] },
+    lavoro: 1, errori: 0, contieneLavoro: 'nuovo',
+  },
+  {
+    name: '⚠️ una fonte MAI letta con successo è integrità, non arretrato',
+    arg: { programmi: [], fonti: [{ id: 'f', last_successful_check_at: null, next_check_at: '2026-08-01T00:00:00Z', check_frequency_days: 30 }] },
+    lavoro: 0, errori: 1,
+  },
+  {
+    name: 'una fonte in ritardo di due giorni sulla propria cadenza → lavoro',
+    arg: { programmi: [], fonti: [{ id: 'f', last_successful_check_at: '2026-07-11T00:00:00Z', next_check_at: '2026-08-12T00:00:00Z', check_frequency_days: 30 }] },
+    lavoro: 1, errori: 0,
+  },
+  {
+    name: '⚠️ oltre una cadenza intera di ritardo il meccanismo è FERMO, non in ritardo → errore',
+    arg: { programmi: [], fonti: [{ id: 'f', last_successful_check_at: '2026-05-01T00:00:00Z', next_check_at: '2026-05-31T00:00:00Z', check_frequency_days: 30 }] },
+    lavoro: 0, errori: 1,
+  },
+  {
+    name: '⚠️ una cadenza lunga NON è un ritardo: 180 giorni sono la normalità per una base legale',
+    arg: { programmi: [], fonti: [{ id: 'lrilocc', last_successful_check_at: '2026-07-30T00:00:00Z', next_check_at: '2027-01-26T00:00:00Z', check_frequency_days: 180 }] },
+    lavoro: 0, errori: 0,
+  },
+  {
+    name: 'una fonte disabilitata non produce né lavoro né errori',
+    arg: { programmi: [], fonti: [{ id: 'spenta', enabled: false, last_successful_check_at: null, next_check_at: '2026-01-01T00:00:00Z' }] },
+    lavoro: 0, errori: 0,
+  },
+  {
+    name: '⚠️ le due righe del riepilogo ci sono ANCHE quando va tutto bene',
+    arg: { programmi: [{ id: 'p', last_checked_at: '2026-08-13' }], fonti: [{ id: 'f', last_successful_check_at: '2026-08-13T00:00:00Z', next_check_at: '2026-08-20T00:00:00Z', check_frequency_days: 7 }] },
+    lavoro: 0, errori: 0, righe: 2,
+  },
 ];
 
 function selfTest() {
@@ -329,8 +516,22 @@ function selfTest() {
     console.log(`  ${problemi.length ? '✗' : '✓'} ${c.name}`);
     for (const p of problemi) console.log(`      ${p}`);
   }
+  // ---- L'invecchiamento del confronto con le fonti ------------------------
+  for (const c of CASI_FONTI) {
+    const r = giudicaConfrontoFonti({ ...c.arg, oggi: OGGI_FONTI, soglie: { verifyStaleDays: 30 } });
+    const problemi = [];
+    if (r.lavoro.length !== c.lavoro) problemi.push(`atteso ${c.lavoro} lavoro, trovato ${r.lavoro.length}: ${r.lavoro.join(' | ')}`);
+    if (r.errori.length !== c.errori) problemi.push(`attesi ${c.errori} errori, trovati ${r.errori.length}: ${r.errori.join(' | ')}`);
+    if (c.riga && !r.righe.join(' ').includes(c.riga)) problemi.push(`il riepilogo non dice «${c.riga}»: ${r.righe.join(' | ')}`);
+    if (c.righe && r.righe.length !== c.righe) problemi.push(`attese ${c.righe} righe di riepilogo, trovate ${r.righe.length}`);
+    if (c.contieneLavoro && !r.lavoro.join(' ').includes(c.contieneLavoro)) problemi.push(`il lavoro non nomina «${c.contieneLavoro}»`);
+    if (problemi.length) bad++;
+    console.log(`  ${problemi.length ? '✗' : '✓'} ${c.name}`);
+    for (const p of problemi) console.log(`      ${p}`);
+  }
+
   if (bad) { console.error(`\n${bad} casi falliti: il giudizio sulla coda NON è affidabile.\n`); return false; }
-  console.log(`\nTutti i ${CASI.length + CASI_ESITO.length} casi superati.\n`);
+  console.log(`\nTutti i ${CASI.length + CASI_ESITO.length + CASI_FONTI.length} casi superati.\n`);
   return true;
 }
 
@@ -463,13 +664,36 @@ const run = async () => {
   // chi non vuole saperlo: è la forma esatta del difetto che questo intervento
   // sta correggendo altrove.
   const { data: revRows, error: revErr } = await admin
-    .from('subsidy_catalog_reviews').select('status, created_at');
+    .from('subsidy_catalog_reviews').select('status, created_at, reviewed_by, reviewed_at');
   if (revErr) {
     console.error(`\n✗ Impossibile leggere subsidy_catalog_reviews: ${revErr.message}`);
     console.error('  La coda di revisione non è stata guardata: questo esito non vale.\n');
     process.exit(2);
   }
   const coda = giudicaCodaRevisioni(revRows ?? [], today);
+
+  // ---- Il confronto con le fonti ------------------------------------------
+  // ⚠️ Anche qui: se la lettura fallisce NON si prosegue come se le fonti
+  // fossero fresche. È la stessa regola della coda, due paragrafi sopra.
+  const { data: srcRows, error: srcErr } = await admin
+    .from('subsidy_sources')
+    .select('id, canonical_url, enabled, check_frequency_days, last_successful_check_at, next_check_at, last_error_code');
+  if (srcErr) {
+    console.error(`\n✗ Impossibile leggere subsidy_sources: ${srcErr.message}`);
+    console.error('  Il confronto con le fonti non è stato guardato: questo esito non vale.\n');
+    process.exit(2);
+  }
+  const fonti = giudicaConfrontoFonti({ programmi: rows, fonti: srcRows ?? [], oggi: today });
+
+  // ⚠️ LE CHIUSURE SENZA UNA PERSONA, contate e NOMINATE per sempre.
+  // Il 2026-08-05 sette revisioni sono state chiuse dal sistema con
+  // `reviewed_by` nullo, e da allora la coda dice «nessuna»: il lavoro è sparito
+  // dalla vista insieme al problema. Questa riga lo tiene visibile.
+  // ⚠️⚠️ E `reviewed_by IS NULL` NON basta a distinguere «chiusa dal sistema» da
+  // «chiusa da una persona il cui utente è stato poi cancellato»: la colonna è
+  // `on delete set null`. Oggi la differenza sopravvive solo nella nota, che è
+  // prosa. È una decisione aperta, dichiarata in docs/product-status.md.
+  const chiuseSenzaPersona = (revRows ?? []).filter((r) => r.status !== 'pending' && !r.reviewed_by);
 
   console.log('\n— Riepilogo —');
   console.log(`  Programmi: ${rows.length}  (verified ${byStatus.verified} · recheck ${byStatus.recheck} · demo ${byStatus.demo}${byStatus.other ? ` · altro ${byStatus.other}` : ''})`);
@@ -486,9 +710,13 @@ const run = async () => {
   // «nessuna»: un conteggio che compare solo quando è diverso da zero insegna
   // a non cercarlo.
   console.log(`  ${coda.nominata}`);
+  console.log(`  Revisioni chiuse SENZA una persona: ${chiuseSenzaPersona.length}${
+    chiuseSenzaPersona.length ? ' (reviewed_by nullo: nessuno ha deciso, o chi ha deciso non esiste più)' : ''}`);
+  for (const r of fonti.righe) console.log(`  ${r}`);
 
   // Oltre le soglie, la coda smette di essere un arretrato e diventa integrità.
   for (const e of coda.errori) integrityIssues.push(`revisioni: ${e}`);
+  for (const e of fonti.errori) integrityIssues.push(`fonti: ${e}`);
 
   if (warnings.length) { console.log('\n— Avvisi —'); for (const w of warnings) console.log(`  ! ${w}`); }
   if (toRecheck.length) { console.log('\n— Da ricontrollare —'); for (const r of toRecheck) console.log(`  - ${r}`); }
@@ -500,8 +728,18 @@ const run = async () => {
   }
   if (integrityIssues.length) { console.log('\n— Errori di integrità (da correggere nel seed) —'); for (const e of integrityIssues) console.log(`  ✗ ${e}`); }
 
+  if (fonti.lavoro.length) {
+    console.log('\n— Il confronto con le fonti —');
+    for (const l of fonti.lavoro) console.log(`  - ${l}`);
+    console.log('  La verifica umana la muove SOLO «accetta» su una revisione: `npm run subsidy:sources`');
+    console.log('  mostra che cosa dicono le fonti adesso, senza scrivere niente.');
+  }
+
   const { code, esito } = decidiEsito({
-    integrita: integrityIssues.length, daRicontrollare: toRecheck.length, inCoda: coda.pending,
+    integrita: integrityIssues.length,
+    daRicontrollare: toRecheck.length,
+    inCoda: coda.pending,
+    daConfrontare: fonti.lavoro.length,
   });
   console.log(`\nEsito: ${esito} (exit ${code})\n`);
   process.exit(code);

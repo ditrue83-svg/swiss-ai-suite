@@ -1036,6 +1036,7 @@ export const de: Dictionary = {
     loadMore: 'Weitere {count} anzeigen',
     actor: {
       system: 'das System',
+      noProfileName: 'eine Person ohne Namen im Profil',
       former: 'eine Person, die nicht mehr im Unternehmen ist',
     },
     filter: { period: 'Zeitraum', action: 'Art' },

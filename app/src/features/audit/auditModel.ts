@@ -97,6 +97,58 @@ export const actionLabelKey = (a: AuditAction): TKey => `audit.action.${a}` as T
 export const fieldLabelKey = (field: string): TKey => `audit.field.${field}` as TKey;
 
 /**
+ * CHI ha agito — e i casi sono QUATTRO, non due.
+ *
+ * ⚠️⚠️ IL DIFETTO CHE QUESTA FUNZIONE CHIUDE, visto in produzione il
+ * 2026-08-09 sul dominio: il registro diceva «di una persona non più in
+ * azienda» di gente che in azienda c'era, seduta accanto. Il ripiego era
+ * `if (name) … else «non più in azienda»`, e `name` arriva da
+ * `company_member_directory` come **stringa vuota** quando il profilo non ha né
+ * nome né cognome (`memberService`: `display_name ?? ''`). Vuoto e assente
+ * finivano nello stesso ramo.
+ *
+ * Non è una sfumatura di cortesia: il registro esiste per non confondere i
+ * fatti, e «questa persona ha lasciato l'azienda» è un fatto — falso — su una
+ * persona reale. Un titolare che legge chi ha cancellato un documento
+ * concluderebbe che è stato qualcuno che se n'è andato.
+ *
+ * I quattro casi, con quattro risposte diverse:
+ *   · nessun autore          → l'ha fatto il sistema (un trigger, un worker);
+ *   · autore in rubrica, con nome  → il nome;
+ *   · autore IN RUBRICA, senza nome → è in azienda, il suo profilo è vuoto;
+ *   · autore non in rubrica  → non è più fra i membri di questa azienda.
+ *
+ * ⚠️ La rubrica va passata per intero e non come funzione «dammi il nome»:
+ * la differenza fra «c'è ed è vuoto» e «non c'è» sopravvive solo se chi decide
+ * può vedere le CHIAVI, ed è esattamente la differenza che si era persa.
+ */
+export type AuditActor =
+  | { kind: 'name'; name: string }
+  | { kind: 'system' }
+  | { kind: 'noProfileName' }
+  | { kind: 'former' };
+
+export function actorOf(
+  actorUserId: string | null,
+  rubrica: Record<string, string>,
+): AuditActor {
+  if (actorUserId === null) return { kind: 'system' };
+  if (!Object.prototype.hasOwnProperty.call(rubrica, actorUserId)) return { kind: 'former' };
+  const nome = (rubrica[actorUserId] ?? '').trim();
+  return nome ? { kind: 'name', name: nome } : { kind: 'noProfileName' };
+}
+
+/** La chiave di traduzione dei tre casi senza nome. `null` per il nome vero. */
+export function actorLabelKey(actor: AuditActor): TKey | null {
+  switch (actor.kind) {
+    case 'system': return 'audit.actor.system' as TKey;
+    case 'noProfileName': return 'audit.actor.noProfileName' as TKey;
+    case 'former': return 'audit.actor.former' as TKey;
+    default: return null;
+  }
+}
+
+/**
  * I campi noti che i trigger della 0039 possono scrivere in `changes`.
  * Serve a due cose: dare un'etichetta tradotta, e accorgersi che ne è comparso
  * uno nuovo — nel test unitario, non davanti a un cliente con una chiave i18n

@@ -158,7 +158,27 @@ export function detectChanges(input: DetectInput): ChangeProposal[] {
     });
   }
 
-  const changes = diffFields(input.previousNormalized, result.normalized);
+  // ⚠️⚠️ `unsupported` ESCE DAL CONFRONTO DEI CAMPI, e non è un dettaglio di
+  //    forma: è un campo FANTASMA che risultava cambiato a ogni controllo.
+  //    L'istantanea lo conserva DENTRO `normalized`
+  //    (`runSourceChecks`: `{ ...result.normalized, unsupported }`), mentre
+  //    l'adapter lo restituisce accanto — quindi `diffFields` vedeva sempre un
+  //    valore che «sparisce», su ogni fonte, per sempre.
+  //
+  //    Misurato il 2026-08-14 sulle fonti vere: la nota di `ti-lrilocc` diceva
+  //    «1 campi normalizzati diversi» dove ne era cambiato **zero** (solo
+  //    l'impronta: una modifica redazionale), e quella di `ti-linn` ne diceva
+  //    due dove uno solo — `textLength` — si era mosso. Chi legge la coda
+  //    decide su quel numero: gonfiarlo di uno trasforma «niente di sostanziale»
+  //    in «qualcosa è cambiato», che è il modo più veloce per far smettere di
+  //    fidarsi della coda.
+  //
+  //    Le strutture non interpretate NON perdono sorveglianza: hanno la loro
+  //    proposta dedicata (`source_structure_changed`, qui sopra), che legge
+  //    `previousNormalized.unsupported` apposta. Contarle due volte non era
+  //    prudenza, era rumore.
+  const { unsupported: _strutturePrecedenti, ...precedentiConfrontabili } = input.previousNormalized;
+  const changes = diffFields(precedentiConfrontabili, result.normalized);
   const deadlineCandidates = result.evidence.filter((e) => e.field === 'deadline_candidate');
 
   // ⚠️ Una candidata di scadenza NON diventa una scadenza: diventa una
