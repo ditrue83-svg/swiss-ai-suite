@@ -34,7 +34,7 @@ import { ErrorState, FullScreenLoader } from '@/components/ui/states';
 import { contractService } from '@/services/contractService';
 import { memberService } from '@/services/memberService';
 import { documentService } from '@/services/documentService';
-import { formatDate } from '@/lib/format';
+import { formatCurrency, formatDate } from '@/lib/format';
 import { causaDelGuasto } from '@/lib/errorCause';
 import { toUserMessage } from '@/lib/errors';
 import { useT, type TFunction, type TKey } from '@/i18n';
@@ -390,7 +390,12 @@ export function ContractDetailPage() {
                     ricorrente così com'è: moltiplicarlo per dodici
                     presupporrebbe una durata, mesi tutti uguali e nessuna
                     indicizzazione — tre cose che il documento spesso non dice. */}
-                {shown.costCurrency ? `${shown.costCurrency} ` : ''}{shown.costAmount}
+                {/* ⚠️ `formatCurrency` e non la concatenazione a mano: così
+                    scritto, «1890» compariva NUDO — nessun separatore delle
+                    migliaia, nessun decimale — accanto agli stessi importi che
+                    Finanze e il CRM scrivono «CHF 1'890.00». Lo stesso costo,
+                    due forme, a seconda della schermata da cui lo si guarda. */}
+                {formatCurrency(shown.costAmount, shown.costCurrency) ?? shown.costAmount}
                 {shown.costFrequency !== 'unknown' && (
                   <span className="muted-sm"> · {L.contractFrequency(shown.costFrequency)}</span>
                 )}

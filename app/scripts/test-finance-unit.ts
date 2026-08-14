@@ -900,6 +900,26 @@ const elemento = (over: Partial<ItemLike> = {}): ItemLike => ({
   // DIVERSO da quello stampato sulla fattura: plausibile e sbagliato.
   ok(formatDecimal('12345678901234567.89', 'CHF', 'it-CH') === 'CHF 12345678901234567.89',
     'oltre le quindici cifre si mostra la stringa esatta: meno bella, vera');
+
+  // ⚠️⚠️ IL SEPARATORE DELLE MIGLIAIA C'È ANCHE SOTTO LE DIECIMILA, e in
+  // italiano non c'era: il default di Intl per l'it raggruppa da CINQUE cifre
+  // («min2»), e nella colonna delle fatture si leggeva «CHF 23'450.80» sopra
+  // «CHF 6712.40» — due forme dello stesso franco, dove i numeri servono a
+  // essere confrontati. de-CH e fr-CH raggruppano già da mille, quindi il
+  // difetto era invisibile a chi provava l'app in tedesco: qui si pretende in
+  // TUTTE E TRE le lingue, altrimenti la prova avrebbe lo stesso punto cieco.
+  // (Il francese svizzero separa con lo spazio unificatore U+202F, non con
+  // l'apostrofo: si controlla che il gruppo esista, non quale segno lo faccia.)
+  for (const tag of ['it-CH', 'de-CH', 'fr-CH']) {
+    const quattro = formatDecimal('6712.40', 'CHF', tag) ?? '';
+    const cinque = formatDecimal('23450.80', 'CHF', tag) ?? '';
+    ok(!/6712/.test(quattro), `${tag}: un importo di quattro cifre porta il separatore delle migliaia (${quattro})`);
+    ok(!/23450/.test(cinque), `${tag}: e uno di cinque pure (${cinque})`);
+  }
+  // CONTROPROVA: sotto le mille non c'è niente da raggruppare, e non deve
+  // comparire nessun segno dove il numero è di tre cifre.
+  ok(/^CHF\s?840\.60$/.test((formatDecimal('840.60', 'CHF', 'it-CH') ?? '').replace(/ | /g, ' ').trim()),
+    'CONTROPROVA: sotto il migliaio nessun separatore si inventa');
 }
 
 {

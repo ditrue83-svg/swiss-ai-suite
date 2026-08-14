@@ -121,7 +121,12 @@ function nearestStep(px, spMap) {
 //   dalla gerarchia del testo.
 // ---------------------------------------------------------------------------
 const EXCEPTIONS = [
-  { file: 'src/styles/app.css', contesto: '.brand-sub', frammento: 'margin-top: -1px', motivo: 'il sottotitolo risale di un filo contro il line-height del nome: negativo, la scala non parla in negativo' },
+  // ⚠️ L'eccezione di `.brand-sub` («margin-top: -1px») è stata TOLTA il
+  // 2026-08-14, non dimenticata: compensava il line-height del nome composto in
+  // Inter, e il nome composto non esiste più — il marchio è un disegno. Sotto
+  // un SVG non c'è nessun line-height da recuperare, quindi il sottotitolo
+  // torna sulla scala (`--sp-1`). L'ha fatto notare questo stesso controllo,
+  // uscendo rosso per «eccezione morta»: è il suo mestiere.
   { file: 'src/styles/app.css', contesto: '.dash-inc-stats', frammento: 'margin: -2px 0 var(--sp-3)', motivo: 'compensa il line-height del titolo sopra: valore negativo, la scala non parla in negativo' },
   { file: 'src/styles/extra.css', contesto: '.dash-sorted', frammento: 'margin: -6px 0 var(--sp-2)', motivo: 'risale sotto il titolo che il card-title ha già distanziato: negativo, fuori dal ritmo' },
   { file: 'src/styles/app.css', contesto: '.segmented .btn + .btn', frammento: 'margin-left: -1px', motivo: 'i due estremi di un interruttore condividono UN bordo: risale esattamente 1px, cioè lo spessore del bordo che sta sovrapponendo — negativo, e la scala non parla in negativo' },
@@ -520,6 +525,63 @@ if (silentFailures.length) {
 
 const tokens = readTokens(readFileSync(join(CSS_ROOT, 'app.css'), 'utf8'));
 
+/**
+ * ⚠️⚠️ I TOKEN FANTASMA — `var(--qualcosa)` che nessun `:root` definisce.
+ *
+ * PERCHÉ QUESTO CONTROLLO ESISTE, e la data conta. Il 2026-08-14 due righe di
+ * `extra.css` chiedevano `var(--sp-5)`. La scala è 05·1·2·3·4·6·8·12: il
+ * cinque non c'è, e non c'è mai stato. Un token inesistente NON dà errore —
+ * il browser scarta la dichiarazione in silenzio e la proprietà torna al valore
+ * ereditato. Misurato nel browser prima della correzione:
+ *
+ *     .crm-tl > li   padding    → 0px su tutti e quattro i lati
+ *     .crm-sec       margin-top → 0px
+ *
+ * E la prima riga è la lezione vera: `padding` è una SCORCIATOIA, quindi un
+ * solo valore invalido si porta via anche il `var(--sp-4)` scritto giusto
+ * accanto. Nella cronologia del cliente e in quella della pratica le voci
+ * stavano incollate e il pallino finiva sopra la data.
+ *
+ * Nessuno degli strumenti di questo repository poteva vederlo: il typecheck non
+ * guarda il CSS, il lint del design guardava i valori SCRITTI A MANO (il
+ * problema opposto — qui il valore viene da un token, solo che il token non
+ * esiste) e nessun test apre una cronologia. Si vedeva solo a schermo, e solo
+ * sapendo che cosa cercare.
+ *
+ * ⚠️ Si ignorano i `var(--x, fallback)`: con un ripiego dichiarato l'assenza è
+ * una scelta, non un guasto. E si leggono i token da TUTTI i blocchi `:root`
+ * (chiaro, scuro, stampa), non dal solo primo: un token definito solo per la
+ * stampa è definito.
+ */
+function tokenFantasma(cssSources) {
+  const definiti = new Set();
+  for (const { text } of cssSources) {
+    for (const m of senzaCommenti(text).matchAll(/(--[\w-]+)\s*:/g)) definiti.add(m[1]);
+  }
+  const mancanti = [];
+  for (const { file, text } of cssSources) {
+    // ⚠️ Si guarda il CODICE, non i commenti — e questa riga è nata da un
+    // rosso che il rilevatore ha dato a SE STESSO: il commento che spiega il
+    // difetto di `--sp-5` cita `var(--sp-5)`, e la prima versione lo contava
+    // come una violazione. Un controllo che diventa rosso quando qualcuno
+    // spiega perché era rosso insegna a non scrivere spiegazioni. È la stessa
+    // scelta già presa dall'impronta del marchio in `test-shell-unit`.
+    const righe = senzaCommenti(text).split('\n');
+    righe.forEach((riga, i) => {
+      // `var(--nome)` SENZA virgola: con la virgola c'è un ripiego dichiarato.
+      for (const m of riga.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)) {
+        if (!definiti.has(m[1])) mancanti.push({ file, line: i + 1, token: m[1], decl: riga.trim() });
+      }
+    });
+  }
+  return mancanti;
+}
+
+/** I commenti via, ma gli a-capo restano: i numeri di riga devono reggere. */
+function senzaCommenti(text) {
+  return text.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+}
+
 // ⚠️ UN SOLO WALK, RICORSIVO, E ANCHE PER I CSS. Fino al 2026-08-13 i fogli di
 // stile si leggevano con un `readdirSync` piatto su src/styles: un CSS in una
 // sottocartella — o in qualunque altro punto di src/ — sfuggiva al lint intero,
@@ -536,6 +598,9 @@ const tsxFiles = [];
     else if (name.endsWith('.css')) cssFiles.push(p);
   }
 })(TSX_ROOT);
+
+const cssSources = cssFiles.map((f) => ({ file: relative('.', f), text: readFileSync(f, 'utf8') }));
+const fantasmi = tokenFantasma(cssSources);
 
 let all = [];
 for (const f of cssFiles) all = all.concat(scanCss(relative('.', f), readFileSync(f, 'utf8'), tokens));
@@ -562,7 +627,15 @@ if (dead.length) {
   console.error('');
 }
 
-if (!remaining.length && !dead.length) {
+if (fantasmi.length) {
+  console.error('  ✗ TOKEN FANTASMA — `var(--x)` che nessun :root definisce. Non danno errore:');
+  console.error('    la dichiarazione cade in silenzio, e se è una SCORCIATOIA (padding, margin,');
+  console.error('    font, border) si porta via anche i valori scritti giusti accanto.');
+  for (const g of fantasmi) console.error(`      ${g.file}:${g.line}  ${g.token}  —  ${g.decl}`);
+  console.error('');
+}
+
+if (!remaining.length && !dead.length && !fantasmi.length) {
   console.log('  Nessuna violazione: misure e colori vengono dai token.\n');
   process.exit(0);
 }

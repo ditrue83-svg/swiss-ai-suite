@@ -1039,6 +1039,18 @@ npm run fonts:check     # i .woff2 serviti sono quelli verificati (impronta sha2
                         #   sottoinsieme «latin» di Google non contiene U+202F, lo spazio che
                         #   tutto il francese usa
 npm run fonts:check:self-test        # verifica che il rilevatore sappia fallire (15 casi)
+npm run brand:check     # il MARCHIO dell'app è quello del titolare, carattere per carattere:
+                        #   i due tracciati di `src/components/ui/brandArt.ts` e il documento
+                        #   della favicon in `index.html` contro `site/static/*.svg` della
+                        #   vetrina, più il token `--brand` contro il campo che la vetrina
+                        #   dipinge. Nato il 2026-08-14, quando lo stesso segno era disegnato
+                        #   in TRE modi nella stessa pagina: barra laterale ricomposta in Inter
+                        #   sul blu d'AZIONE, favicon con un riquadro e un raggio suoi, vetrina
+                        #   con l'artefatto vero su #00AEEF.
+                        #   ⚠️ Da ~/swiss-ai-suite-app la vetrina non è raggiungibile: il
+                        #   comando lo DICHIARA ed esce 0 senza aver confrontato. Il confronto
+                        #   vero gira nel monorepo, dove site/ è sorella di app/ — e in CI
+npm run brand:check:self-test        # verifica che il rilevatore sappia fallire (6 casi)
 npm run bytes:check     # ogni file tracciato è ancora LEGGIBILE agli strumenti che lo leggono:
                         #   UTF-8, senza BOM, senza byte di controllo crudi. Nato il 2026-08-11
                         #   da un NUL scritto crudo dentro `email/store.ts`: per grep(1) quel

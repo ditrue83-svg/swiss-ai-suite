@@ -262,6 +262,14 @@ const GROUPS = {
       // binario — il sottoinsieme «latin» di Google non ha U+202F, lo spazio
       // che tutto il francese usa — dove nessuna rilettura del codice arriva.
       { script: 'fonts:check' },
+      // Il MARCHIO, che vive in due repository e fino al 2026-08-14 era
+      // disegnato in tre modi diversi nella stessa pagina (barra in Inter,
+      // favicon con un riquadro suo, vetrina con l'artefatto vero). Confronta i
+      // tracciati carattere per carattere con `site/static/`. ⚠️ Da questo
+      // albero la vetrina non è raggiungibile e il passo lo DICHIARA uscendo
+      // verde senza aver confrontato: il confronto vero gira nel monorepo,
+      // dove gira anche la CI.
+      { script: 'brand:check' },
       // Fratello di `fonts:check`, e nato dallo stesso genere di difetto: là il
       // buco stava DENTRO un binario, qui un byte solo rendeva binario un file
       // di CODICE. Un NUL crudo in `email/store.ts` lo faceva saltare in
@@ -341,6 +349,11 @@ const GROUPS = {
       // cornice. Entrambi trovati confrontando l'elenco col codice vero.
       { script: 'i18n:orphans:self-test' },
       { script: 'fonts:check:self-test' },
+      // ⚠️ L'autoverifica di `brand:check` conta DOPPIO qui: dall'albero di
+      // sviluppo il controllo vero non trova la vetrina e non confronta niente,
+      // quindi senza questa riga il suo rilevatore non sarebbe provato da
+      // nessuna parte se non in CI.
+      { script: 'brand:check:self-test' },
       // ⚠️ E il controllo dei byte si prova sui byte VERI che lo hanno
       // motivato: il NUL della riga 282 di `email/store.ts` e i due BEL di
       // `test-finance-unit.ts`, scritti dentro l'autoverifica come buffer.

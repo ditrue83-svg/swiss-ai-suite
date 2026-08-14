@@ -53,6 +53,34 @@
 .state-error { display: flex; gap: var(--sp-3); align-items: flex-start; background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); }
 .state-error .ic { flex-shrink: 0; margin-top: var(--sp-05); }
 
+/* ---- La schermata che si è rotta (ErrorBoundary.tsx) ----------------------
+   ⚠️ NON è `.state-error`, e la differenza è voluta. Quella è la fascia rossa
+   di un caricamento fallito DENTRO una pagina che per il resto funziona: si
+   legge in una riga e si riprova. Qui la pagina non c'è: al posto suo resta un
+   riquadro che deve reggere da solo, con il suo respiro e i suoi due gesti.
+   ⚠️ Il rosso è al bordo e all'icona, non al fondo: un guasto dell'applicazione
+   va detto, ma tingere di rosso mezza finestra fa credere a chi legge di aver
+   rotto qualcosa lui — ed è la prima cosa che questo riquadro nega. */
+.crash-box {
+  background: var(--card); border: 1px solid var(--red-line);
+  border-left: 3px solid var(--red); border-radius: var(--radius);
+  padding: var(--sp-8) var(--sp-6); margin-top: var(--sp-6);
+  max-width: var(--content-max);
+}
+.crash-ico {
+  width: 40px; height: 40px; border-radius: var(--radius-sm);
+  background: var(--red-soft); color: var(--red-dark);
+  display: grid; place-items: center; margin-bottom: var(--sp-4);
+}
+.crash-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: var(--ls-title); }
+.crash-body { color: var(--ink-soft); max-width: var(--measure); margin: var(--sp-2) 0 var(--sp-6); }
+/* Il dettaglio tecnico è chiuso e pesa poco: serve a chi lo riferisce, non a
+   chi lo subisce. `word-break` perché un messaggio di errore non va a capo da
+   sé e uscirebbe dal riquadro sul telefono. */
+.crash-details { margin-top: var(--sp-6); font-size: var(--fs-meta); color: var(--muted); }
+.crash-details summary { cursor: pointer; }
+.crash-details code { display: block; margin-top: var(--sp-2); word-break: break-word; }
+
 /* ---- Skeleton (loading discreto) ----
    Passa dai token: con tre grigi chiari scritti a mano lo scheletro restava
    bianco in tema scuro e la pagina lampeggiava a ogni caricamento. */
@@ -449,6 +477,18 @@
   align-items: stretch; margin-bottom: 0; }
 .crm-search input { flex: 1; min-width: 0; }
 .crm-search .btn { flex: 0 0 auto; }
+/* ⚠️⚠️ SOTTO I 640px IL CAMPO DIVENTAVA ALTO 260 PIXEL.
+   `flex: 1 1 260px` qui sopra: 260 è la larghezza minima che si vuole quando la
+   barra è in FILA. Ma `flex-basis` si misura sull'asse principale, e a 640px
+   `.ct-toolbar` gira in colonna (app.css): quei 260 diventano un'ALTEZZA.
+   Misurato sul telefono il 2026-08-14, Clienti a 375px: campo 258×260 e
+   pulsante «Cerca» 77×260 — un terzo dello schermo per una casella vuota.
+   `auto` restituisce la misura al contenuto; la larghezza minima non serve più,
+   perché in colonna la barra è già larga quanto la pagina.
+   ⚠️ La soglia è 640px perché è quella in cui `.ct-toolbar` cambia asse: una
+   soglia diversa qui vorrebbe dire una fascia di larghezze in cui il difetto
+   resta. Le due righe vanno lette insieme. */
+@media (max-width: 640px) { .crm-search { flex-basis: auto; } }
 .crm-row-link { display: block; color: var(--ink); text-decoration: none; padding: var(--sp-3) 0; }
 .crm-row-link:hover .list-title { color: var(--accent-text); }
 .crm-roles { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-05); }
@@ -472,8 +512,22 @@
   border-radius: 8px; padding: var(--sp-3); margin-bottom: var(--sp-2);
   color: var(--ink); text-decoration: none; }
 .crm-card:hover { border-color: var(--accent); }
-.crm-card-title { font-weight: 600; font-size: var(--fs-body); }
-.crm-card-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
+/* ⚠️⚠️ `display: block`, E SENZA QUESTA PAROLA IL TABELLONE ERA ILLEGGIBILE.
+   `.crm-card` è un blocco e i suoi quattro figli sono `<span>`: in flusso
+   inline finivano tutti su una riga sola, incollati, e il `margin-top` qui
+   sotto non toccava niente — su uno span in linea il margine verticale non ha
+   effetto. Letto a schermo il 2026-08-14, nella colonna «Contatto»:
+
+       «Erstauftrag WartungMeier Präzisionstechnik GmbHCHF 21'000»
+
+   Tre dati diversi — che cosa, con chi, quanto — in un paragrafo unico che
+   andava a capo dove capitava. È lo stesso difetto di `.list-sub`, nato dallo
+   stesso gesto: si sceglie `<span>` per un pezzo di testo e si dà per scontato
+   che il CSS lo impili. */
+.crm-card-title { display: block; font-weight: 600; font-size: var(--fs-body); }
+.crm-card-sub { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
+/* La pastiglia resta in linea — è un segno, non una riga — ma stacca da sopra. */
+.crm-card .badge { margin-top: var(--sp-2); }
 .crm-col-empty { font-size: var(--fs-meta); color: var(--muted); padding: var(--sp-2) 0; }
 
 /* Il dettaglio */
@@ -488,13 +542,29 @@
    la proprietà tocca solo le cifre. */
 .crm-kv dd { font-size: var(--fs-body); color: var(--ink); margin: 0; min-width: 0;
   overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-.crm-sec { margin-top: var(--sp-5); }
+/* ⚠️⚠️ ERA `var(--sp-5)`, E `--sp-5` NON ESISTE. La scala ha 05·1·2·3·4·6·8·12
+   (app.css): il cinque non c'è, non c'è mai stato, e nessuno se n'era accorto
+   perché un token fantasma non dà errore — la dichiarazione diventa invalida in
+   silenzio e la proprietà cade al valore ereditato. Qui il margine fra due
+   sezioni della scheda cliente valeva ZERO: misurato nel browser il
+   2026-08-14, `margin-top: 0px`. Il gradino sopra è quello giusto: 24px, la
+   distanza che l'app usa già fra un blocco e il successivo. */
+.crm-sec { margin-top: var(--sp-6); }
 .crm-sec-head { display: flex; flex-wrap: wrap; align-items: center;
   justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
 
 /* La timeline. §61 — righe di riferimento, non contenuti. */
 .crm-tl { list-style: none; margin: var(--sp-3) 0 0; padding: 0; }
-.crm-tl > li { position: relative; padding: 0 0 var(--sp-4) var(--sp-5);
+/* ⚠️⚠️ E QUI IL TOKEN FANTASMA COSTAVA DI PIÙ. `padding` è una SCORCIATOIA:
+   un solo valore invalido la invalida INTERA, quindi con `--sp-5` inesistente
+   cadeva anche il `var(--sp-4)` in fondo, che era scritto giusto. Misurato nel
+   browser il 2026-08-14: `padding: 0px` su tutti e quattro i lati.
+   A schermo, nella cronologia del cliente e in quella della pratica: le voci
+   incollate una all'altra senza respiro, il testo appiccicato al filetto, e il
+   pallino — 7px a `left: -4px` — sopra le prime cifre della data.
+   24px è il corridoio che l'app dà già a un marcatore in posizione assoluta
+   (`.detail-list li`, `.price-feats li`, `.state-list li`). */
+.crm-tl > li { position: relative; padding: 0 0 var(--sp-4) var(--sp-6);
   border-left: 1px solid var(--line); }
 .crm-tl > li:last-child { border-left-color: transparent; padding-bottom: 0; }
 .crm-tl > li::before { content: ''; position: absolute; left: -4px; top: 6px;
@@ -777,8 +847,15 @@
 .inc-measure dt { font-size: var(--fs-label); color: var(--muted);
   text-transform: uppercase; letter-spacing: .02em;
   /* Due righe riservate: «Freschezza della fonte» in tedesco va a capo, e senza
-     l'altezza minima il suo valore scenderebbe disallineando tutta la fila. */
-  min-height: 2.4em; }
+     l'altezza minima il suo valore scenderebbe disallineando tutta la fila.
+     ⚠️ 2.4em NON bastavano, e si vedeva anche in ITALIANO: «Freschezza della
+     fonte» va a capo pure lui, e con l'interlinea predefinita del browser
+     (~1.5) due righe di un testo a 12px ne occupano 2.9em — il valore sotto
+     scendeva lo stesso e la fila restava sfalsata. Sono gli stessi due numeri
+     già provati su `.kpi-label` (app.css), che risolve lo stesso problema
+     nella stessa forma: si dichiara l'interlinea e poi si riservano due righe
+     di QUELLA interlinea, invece di riservarne due di un'altezza ignota. */
+  line-height: 1.3; min-height: 2.7em; }
 .inc-measure dd { font-size: var(--fs-meta); color: var(--ink); margin: 0; }
 
 /* «Che cosa fare adesso»: una riga sola, e l'unica con l'accento. */

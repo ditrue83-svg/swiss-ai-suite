@@ -702,6 +702,11 @@ export const de: Dictionary = {
     loading: 'Wird geladen…',
     verifyingSession: 'Sitzung wird geprüft…',
     loadingCompany: 'Unternehmen wird geladen…',
+    crashTitle: 'Diese Ansicht konnte nicht geöffnet werden',
+    crashBody: 'Das ist ein Fehler der Anwendung, kein Problem Ihrer Daten: Es wurde nichts geändert. Die übrigen Ansichten funktionieren.',
+    crashRetry: 'Erneut versuchen',
+    crashHome: 'Zurück zur Übersicht',
+    crashDetails: 'Technische Angabe',
     configRequired: 'Konfiguration erforderlich',
     configRequiredHint: 'Kopieren Sie .env.example nach .env, tragen Sie VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY Ihres Supabase-Projekts ein und starten Sie den Entwicklungsserver neu.',
     configRejected: 'Anwendung nicht korrekt konfiguriert',
@@ -1992,6 +1997,7 @@ export const de: Dictionary = {
       noAmount: 'Betrag nicht angegeben',
       processing: 'Wird ausgelesen',
       failed: 'Auslesen fehlgeschlagen',
+      flagged: 'Mit Hinweisen',
     },
     detail: {
       back: 'Zurück zu den Finanzen',
@@ -2372,6 +2378,9 @@ export const de: Dictionary = {
     row: {
       noOwner: 'Niemand verantwortlich', noContact: 'Keine Kontaktperson',
       neverContacted: 'Nie kontaktiert', noRoles: 'Keine Rolle',
+      peopleOne: '{n} Person', peopleMany: '{n} Personen',
+      opportunityOne: '{n} Chance', opportunityMany: '{n} Chancen',
+      contractOne: '{n} Vertrag', contractMany: '{n} Verträge',
     },
     detail: {
       overview: 'Überblick', people: 'Personen', opportunities: 'Verkaufschancen', tasks: 'Aufgaben',

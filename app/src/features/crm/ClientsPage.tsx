@@ -28,7 +28,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { EmptyCta, ErrorState, SkeletonKpiGrid, SkeletonLine } from '@/components/ui/states';
 import { crmService } from '@/services/crmService';
 import { memberService } from '@/services/memberService';
-import { formatDate } from '@/lib/format';
+import { formatCurrency, formatDate } from '@/lib/format';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import type {
@@ -514,8 +514,13 @@ function OrganizationRow(props: {
                 riga lo dichiara invece di mostrare una cella bianca. */}
             {props.ownerName ?? <em>{t('crm.row.noOwner')}</em>}
           </span>
+          {/* ⚠️ IL CONTEGGIO PORTA IL SUO SOSTANTIVO, e non è più il titolo di
+              una sezione: qui c'era `{n} · {t('crm.detail.people')}` → «2 ·
+              Persone», cioè un numero, un separatore e il TITOLO della sezione
+              «Persone» della scheda. Fra i separatori che `.list-sub` mette da
+              sé, quel punto in mezzo faceva leggere due dati dove ce n'è uno. */}
           {o.contactCount > 0
-            ? <span>{o.contactCount} · {t('crm.detail.people')}</span>
+            ? <span>{t(o.contactCount === 1 ? 'crm.row.peopleOne' : 'crm.row.peopleMany', { n: o.contactCount })}</span>
             : <em>{t('crm.row.noContact')}</em>}
         </div>
 
@@ -526,12 +531,16 @@ function OrganizationRow(props: {
               : <>{t('crm.detail.lastContact')}: {formatDate(o.lastContactAt)}</>}
           </span>
           {o.openOpportunityCount > 0 && (
-            <span>{o.openOpportunityCount} · {t('crm.detail.opportunities')}</span>
+            <span>{t(o.openOpportunityCount === 1 ? 'crm.row.opportunityOne' : 'crm.row.opportunityMany', { n: o.openOpportunityCount })}</span>
           )}
+          {/* Le attività scadute restano in grassetto: è l'unico numero di
+              questa riga che chiede di fare qualcosa oggi. */}
           {o.overdueTaskCount > 0 && (
-            <span><strong>{o.overdueTaskCount}</strong> · {t('crm.filters.overdueTasks')}</span>
+            <span><strong>{o.overdueTaskCount}</strong> {t('crm.filters.overdueTasks')}</span>
           )}
-          {o.contractCount > 0 && <span>{o.contractCount} · {t('crm.detail.contracts')}</span>}
+          {o.contractCount > 0 && (
+            <span>{t(o.contractCount === 1 ? 'crm.row.contractOne' : 'crm.row.contractMany', { n: o.contractCount })}</span>
+          )}
         </div>
       </Link>
     </li>
@@ -585,8 +594,13 @@ function PipelineBoard(props: {
                 {c.totalAmount === null
                   ? <>{c.opportunityCount} · {t('crm.opp.noValue')}</>
                   : <>
-                      {c.currency ?? t('crm.opp.unknownCurrency')}{' '}
-                      {c.totalAmount.toLocaleString('de-CH')}
+                      {/* ⚠️ Stessa correzione della scheda del tabellone: la
+                          valuta la compone `formatCurrency`, che segue la
+                          lingua dell'utente. Quando la valuta manca si dice
+                          che manca invece di scrivere il numero nudo. */}
+                      {c.currency
+                        ? formatCurrency(c.totalAmount, c.currency)
+                        : `${t('crm.opp.unknownCurrency')} ${c.totalAmount}`}
                       {' · '}{c.opportunityCount}
                     </>}
               </Tag>
@@ -619,10 +633,16 @@ function PipelineBoard(props: {
                   >
                     <span className="crm-card-title">{d.title}</span>
                     <span className="crm-card-sub">{d.organizationName}</span>
+                    {/* ⚠️ `formatCurrency` e non `toLocaleString('de-CH')`: la
+                        riga inchiodava la Svizzera TEDESCA anche a chi usa
+                        l'app in italiano o in francese, e senza decimali fissi
+                        «CHF 8'900» e «CHF 8'900.50» finivano in colonna con
+                        due forme diverse. La funzione di `lib/format` è la
+                        stessa che scrivono Finanze e Contratti. */}
                     <span className="crm-card-sub">
                       {d.valueAmount === null || !d.valueCurrency
                         ? <em>{t('crm.opp.noValue')}</em>
-                        : `${d.valueCurrency} ${d.valueAmount.toLocaleString('de-CH')}`}
+                        : formatCurrency(d.valueAmount, d.valueCurrency)}
                     </span>
                     {(st === 'overdue_step' || st === 'no_step') && (
                       <Tag tone="attention">{t(opportunityStateKey(st))}</Tag>

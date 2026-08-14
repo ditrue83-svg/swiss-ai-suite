@@ -30,6 +30,21 @@
   --accent-soft: hsl(207, 65%, 95%);   /* fondi tenui, chip informativi         */
   --accent-line: hsl(207, 58%, 82%);   /* bordo di ciò che sta su --accent-soft */
 
+  /* --- Il colore del MARCHIO, che non è il colore dell'azione ---------------
+     ⚠️ #00AEEF è il blu del titolare: quello dei contorni che la vetrina serve
+     in `site/static/logo-ai-swisse.svg` e che la scheda del browser mostra
+     nella favicon. NON è `--accent`, e la differenza è deliberata: l'accento
+     deve reggere il contrasto AA perché ci si scrive sopra e ci si clicca; un
+     marchio è un disegno, non testo corrente, e non ha quella soglia da
+     rispettare. Fino al 2026-08-14 l'app ricomponeva il segno sull'accento e i
+     due blu divergevano: due marchi, uno dei quali non era di nessuno.
+     ⚠️ Questi tre token vestono SOLO il marchio (le regole `.bm-*`). Usarli per
+     un pulsante o per un testo è il modo di riaprire il difetto: #00AEEF su
+     bianco fa 2,3:1, sotto ogni soglia leggibile. */
+  --brand: #00AEEF;                    /* il blocco della sigla                 */
+  --brand-ink: #ffffff;                /* la sigla DENTRO il blocco, sempre     */
+  --brand-word: #00AEEF;               /* la parola accanto: segue il tema      */
+
   /* --- Neutri --------------------------------------------------------------
      Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti. */
   --ink: hsl(213, 40%, 13%);           /* testo principale                      */
@@ -208,6 +223,12 @@
     --accent-line: hsl(207, 40%, 34%);
     --amber-fill: hsl(38, 80%, 58%);
     --green-fill: hsl(151, 48%, 50%);
+
+    /* Il BLOCCO resta il blu del titolare — è il segno, e un segno che cambia
+       colore col tema è due segni. Cambia la PAROLA, che su fondo scuro in
+       #00AEEF vibrerebbe: diventa bianca, esattamente come fa l'artefatto
+       `logo-ai-swisse-scuro.svg` che la vetrina serve al tema scuro. */
+    --brand-word: #ffffff;
 
     /* In scuro l'evidenziazione diventa un ocra di luminanza media: il testo
        sopra deve restare SCURO, non seguire --ink che qui è quasi bianco.

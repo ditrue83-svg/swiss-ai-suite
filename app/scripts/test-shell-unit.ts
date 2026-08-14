@@ -128,17 +128,31 @@ section('3. Favicon — il marchio è uno');
   // giusto così: è un guasto, non un caso da assorbire.
   const svg = decodeURIComponent(uri);
 
-  // Il colore canonico vive in app.css e un data URI non può dire var(--accent):
-  // il valore si LEGGE dal token — il PRIMO `--accent:` del file, cioè il tema
-  // chiaro, perché la favicon è una e la scheda del browser non segue il tema
-  // del sito — e si pretende letterale nell'SVG. Se un giorno l'accento cambia,
-  // questo rosso è il promemoria che la favicon non si aggiorna da sola.
+  // ⚠️ IL CAMPO È `--brand`, NON `--accent`, e il cambio è del 2026-08-14.
+  // Fino ad allora la favicon portava il blu D'AZIONE: la scheda del browser
+  // mostrava un marchio di un colore che il titolare non usa da nessuna parte.
+  // I due token esistono per due mestieri — `--accent` deve reggere il
+  // contrasto AA perché ci si scrive e ci si clicca sopra, `--brand` è il
+  // colore del segno — e la favicon è un segno.
+  // Il valore si LEGGE dal token (il primo del file, cioè il tema chiaro:
+  // la favicon è una e la scheda del browser non segue il tema del sito) e si
+  // pretende letterale nell'SVG. Se un giorno il marchio cambia, questo rosso
+  // è il promemoria che la favicon non si aggiorna da sola.
   const appCss = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
+  const brand = appCss.match(/--brand:\s*([^;]+);/)?.[1].trim() ?? '';
+  const brandInk = appCss.match(/--brand-ink:\s*([^;]+);/)?.[1].trim() ?? '';
+  check('i token --brand e --brand-ink esistono in app.css', brand !== '' && brandInk !== '');
+  check(`il campo della favicon è --brand`, svg.includes(`fill='${brand}'`), `atteso fill='${brand}'`);
+  check(`la sigla è --brand-ink`, svg.includes(`fill='${brandInk}'`), `atteso fill='${brandInk}'`);
+  // ⚠️ E il blu del marchio NON deve essere quello dell'azione: se un giorno
+  // qualcuno «semplificasse» facendo puntare `--brand` a `--accent`, il difetto
+  // del 2026-08-14 tornerebbe senza che nulla protesti.
   const accent = appCss.match(/--accent:\s*([^;]+);/)?.[1].trim() ?? '';
-  const onAccent = appCss.match(/--on-accent:\s*([^;]+);/)?.[1].trim() ?? '';
-  check('i token --accent e --on-accent esistono in app.css', accent !== '' && onAccent !== '');
-  check(`il campo della favicon è --accent`, svg.includes(`fill='${accent}'`), `atteso fill='${accent}'`);
-  check(`la sigla è --on-accent`, svg.includes(`fill='${onAccent}'`), `atteso fill='${onAccent}'`);
+  check(
+    'il blu del marchio è distinto dal blu d\'azione',
+    brand !== '' && brand !== accent && !brand.includes('--accent'),
+    'il marchio ha il colore del titolare, l\'azione quello che regge il contrasto: un token solo per due mestieri li fa divergere di nuovo',
+  );
   check('nessun gradiente residuo', !svg.includes('linearGradient'));
 
   // ⚠️ La favicon dev'essere in CONTORNI. Un data: URI non carica risorse
@@ -158,7 +172,7 @@ section('3. Favicon — il marchio è uno');
   check(
     'il marchio non è tornato una voce della famiglia icone',
     !Object.prototype.hasOwnProperty.call(ICONS, 'logo'),
-    'il marchio sta in BrandMark.tsx e si compone in Inter: un\'icona «logo» è la porta da cui rientra come pulsante',
+    'il marchio sta in BrandMark.tsx e i suoi contorni in brandArt.ts: un\'icona «logo» è la porta da cui rientra come pulsante',
   );
 }
 
@@ -201,14 +215,18 @@ section('3c. Il marchio ha DUE sedi, e finora non lo ricordava nessuno');
 
 {
   // ⚠️⚠️ PERCHÉ QUESTO CONTROLLO ESISTE. Lo stesso marchio vive in due basi di
-  // codice: qui (`BrandMark.tsx` + le regole `.brand-*`, composto in Inter sul
-  // token `--accent`) e nella vetrina (`site/static/logo-ai-swisse.svg`, un
-  // tracciato Poppins sul blu del titolare `#00AEEF`). I due blu DIVERGONO PER
-  // SCELTA — la vetrina tiene i colori del marchio — ma la FORMA è una sola, e
-  // `site/` è invisibile da questo albero: nessun controllo dell'app poteva
-  // leggerla. Se il marchio cambia, i posti da toccare sono due e non c'era
-  // niente che lo ricordasse: si sarebbe scoperto guardando le due pagine
-  // affiancate, cioè per caso.
+  // codice: qui (`BrandMark.tsx` + `brandArt.ts` + le regole `.brand-*`/`.bm-*`)
+  // e nella vetrina (`site/static/logo-ai-swisse.svg`). `site/` è invisibile da
+  // questo albero: nessun controllo dell'app poteva leggerla. Se il marchio
+  // cambia, i posti da toccare sono due e non c'era niente che lo ricordasse:
+  // si sarebbe scoperto guardando le due pagine affiancate, cioè per caso.
+  //
+  // ⚠️ IL 2026-08-14 I DUE BLU HANNO SMESSO DI DIVERGERE. Fino a quel giorno
+  // l'app ricomponeva il segno in Inter sul token `--accent` e questo commento
+  // diceva che la differenza era «per scelta»: erano due marchi, e uno dei due
+  // non era di nessuno. Adesso i contorni sono gli STESSI (copiati in
+  // `brandArt.ts`, confrontati carattere per carattere da `npm run brand:check`)
+  // e il colore è lo stesso `#00AEEF`, che qui si chiama `--brand`.
   //
   // COME. Un'impronta di ciò che DEFINISCE il segno — le dichiarazioni CSS
   // delle regole `.brand-*` e le classi che il componente monta — confrontata
@@ -220,7 +238,11 @@ section('3c. Il marchio ha DUE sedi, e finora non lo ricordava nessuno');
   // guardare, ed è il modo in cui una cricca smette di valere.
   const css = readFileSync(join(root, 'src', 'styles', 'app.css'), 'utf8');
   const senzaCommenti = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  const regoleMarchio = [...senzaCommenti.matchAll(/^\.brand-[\w-]*\s*\{[^}]*\}/gm)]
+  // ⚠️ ANCHE `.bm-*`, e l'aggiunta è del 2026-08-14: sono le tre regole che
+  // vestono i pezzi del disegno (blocco, sigla, parola). Guardando solo
+  // `.brand-*` si potrebbe cambiare il colore del marchio senza che l'impronta
+  // se ne accorga — cioè proprio la cosa che questo controllo esiste per vedere.
+  const regoleMarchio = [...senzaCommenti.matchAll(/^\.(?:brand|bm)-[\w-]*\s*\{[^}]*\}/gm)]
     .map((m) => m[0].replace(/\s+/g, ' ').trim())
     .sort();
   const sorgente = readFileSync(join(root, 'src', 'components', 'ui', 'BrandMark.tsx'), 'utf8');
@@ -231,19 +253,24 @@ section('3c. Il marchio ha DUE sedi, e finora non lo ricordava nessuno');
     .digest('hex')
     .slice(0, 16);
 
-  // L'impronta del marchio al 2026-08-14. Cambiarla è il gesto che accompagna
-  // un cambiamento del segno — e va fatto DOPO aver toccato anche la vetrina.
-  const IMPRONTA_DICHIARATA = 'ad27c9be1713df2d';
+  // L'impronta del marchio al 2026-08-14, DOPO il passaggio ai contorni veri.
+  // Cambiarla è il gesto che accompagna un cambiamento del segno, e va fatto
+  // dopo aver visto verde `npm run brand:check` — che è ciò che confronta i
+  // tracciati con la vetrina. Questa impronta da sola non prova l'allineamento:
+  // prova che il segno non si è mosso senza che qualcuno lo decidesse.
+  const IMPRONTA_DICHIARATA = '388e47112d89b0fa';
 
   check(
     'il marchio dell\'app è quello dichiarato — se cambia, la vetrina va cambiata con lui',
     impronta === IMPRONTA_DICHIARATA,
     `impronta ${impronta}, dichiarata ${IMPRONTA_DICHIARATA}.\n`
     + '     Il marchio ha DUE sedi:\n'
-    + '       · qui        src/components/ui/BrandMark.tsx + le regole .brand-* di app.css (su --accent)\n'
-    + '       · la vetrina ~/swiss-ai-suite-repo/site/static/logo-ai-swisse.svg (+ scuro, + favicon), su #00AEEF\n'
-    + '     I due BLU divergono per scelta; la FORMA no. Aggiorna anche la vetrina, poi\n'
-    + '     scrivi qui la nuova impronta — e ricorda che site/ si pubblica da sé (site.yml, su push a main).',
+    + '       · qui        src/components/ui/BrandMark.tsx + brandArt.ts + le regole .brand-*/.bm-* di app.css\n'
+    + '       · la vetrina ~/swiss-ai-suite-repo/site/static/logo-ai-swisse.svg (+ scuro, + favicon)\n'
+    + '     Dal 2026-08-14 la FORMA e il COLORE sono gli stessi: si cambia PRIMA la vetrina,\n'
+    + '     poi si riallinea qui (`npm run brand:check` confronta i tracciati carattere per\n'
+    + '     carattere) e infine si scrive la nuova impronta — ricordando che site/ si pubblica\n'
+    + '     da sé (site.yml, su push a main).',
   );
 
   // ⚠️ E se la seconda sede è raggiungibile, si GUARDA invece di crederci.

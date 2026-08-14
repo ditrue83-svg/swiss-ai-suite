@@ -46,13 +46,35 @@ export function formatDateTime(value: string | null | undefined): string {
 export function formatCurrency(amount: number | null | undefined, currency: string | null | undefined): string | null {
   if (amount == null) return null;
   const cur = String(currency ?? '').trim().toUpperCase();
+  // ⚠️⚠️ `useGrouping: 'always'`, E IL DIFETTO SI VEDEVA SOLO IN ITALIANO.
+  // Il default di Intl per l'italiano è il raggruppamento «min2»: il separatore
+  // delle migliaia compare da CINQUE cifre in su. In una colonna di importi
+  // usciva così, misurato il 2026-08-14 nelle Finanze:
+  //
+  //     CHF 23'450.80
+  //     CHF 6712.40      ← stessa colonna, stessa valuta, altra forma
+  //     CHF 3120.00
+  //
+  // Due modi di scrivere un franco a due righe di distanza, proprio dove i
+  // numeri servono a essere confrontati. In de-CH e fr-CH il difetto NON
+  // esiste — quelle lingue raggruppano da mille — quindi chi provava l'app in
+  // tedesco non poteva vederlo, ed è la lingua di riferimento del prodotto ad
+  // averlo. `'always'` allinea le tre lingue senza toccarne nessun'altra
+  // regola: in de e fr il risultato è identico a prima.
+  //
+  // ⚠️ `true` e non la stringa `'always'` di Intl v3, benché siano la stessa
+  // cosa (lo standard fa cadere il booleano su «always»): i tipi di TypeScript
+  // in questo progetto dichiarano `useGrouping?: boolean`, e la stringa non
+  // compila. Il booleano dice esattamente la stessa cosa, e per giunta lo dice
+  // anche ai motori che precedono Intl v3.
+  const raggruppa = { useGrouping: true } as const;
   if (!/^[A-Z]{3}$/.test(cur)) {
     return new Intl.NumberFormat(getCurrentLocaleTag(), {
-      minimumFractionDigits: 2, maximumFractionDigits: 2,
+      minimumFractionDigits: 2, maximumFractionDigits: 2, ...raggruppa,
     }).format(amount);
   }
   try {
-    return new Intl.NumberFormat(getCurrentLocaleTag(), { style: 'currency', currency: cur }).format(amount);
+    return new Intl.NumberFormat(getCurrentLocaleTag(), { style: 'currency', currency: cur, ...raggruppa }).format(amount);
   } catch {
     return `${cur} ${amount}`;
   }
