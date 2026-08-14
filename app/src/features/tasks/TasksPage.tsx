@@ -287,9 +287,14 @@ function TaskRow({ task, assigneeName }: { task: TaskWithPeople; assigneeName: s
     <Link className="list-row is-link" to={`/attivita/${task.id}`} aria-label={task.title}>
       <div className="list-main">
         <div className="list-title">{task.title}</div>
+        {/* ⚠️ OGNI VALORE È UN ELEMENTO, e i `·` scritti a mano non ci sono più.
+            Il separatore lo mette `.list-sub` fra due fratelli (app.css): con i
+            punti scritti qui, un'attività che viene DA UN DOCUMENTO ED È
+            arrivata VIA EMAIL — le uniche due icone insieme — ne mostrava due
+            di fila, e il primo valore restava senza. */}
         <div className="list-sub">
-          {assigneeName}
-          {task.authority ? ` · ${task.authority}` : ''}
+          <span>{assigneeName}</span>
+          {task.authority ? <span>{task.authority}</span> : null}
           {/* ⚠️ DA DOVE VIENE L'ATTIVITÀ RESTA TESTO, e non è una svista.
               `task.source` dice quale MODULO l'ha creata (Admin AI, Subsidy AI,
               una regola, una persona): non dice se il documento chiedesse quella
@@ -298,9 +303,9 @@ function TaskRow({ task, assigneeName }: { task: TaskWithPeople; assigneeName: s
               quando l'azione era richiesta nero su bianco — una marcatura falsa
               è peggio di nessuna marcatura. Il segno vero delle azioni vive
               dove vive il dato: vedi ActionOriginMark e il dettaglio documento. */}
-          {' · '}{t(sourceLabelKey(task.source))}
-          {task.documentId ? <> · <Icon name="document" className="ic-sm" /></> : null}
-          {task.emailMessageId ? <> · <Icon name="mail" className="ic-sm" /></> : null}
+          <span>{t(sourceLabelKey(task.source))}</span>
+          {task.documentId ? <Icon name="document" className="ic-sm" /> : null}
+          {task.emailMessageId ? <Icon name="mail" className="ic-sm" /> : null}
         </div>
       </div>
       {/* ⚠️ TRE DOMANDE, TRE FAMIGLIE DI SEGNI. Fino a oggi erano tre pastiglie

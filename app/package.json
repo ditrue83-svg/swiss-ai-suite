@@ -31,6 +31,8 @@
     "design:lint": "node scripts/design-lint.mjs",
     "fonts:check": "node scripts/fonts-check.mjs",
     "fonts:check:self-test": "node scripts/fonts-check.mjs --self-test",
+    "brand:check": "node scripts/brand-check.mjs",
+    "brand:check:self-test": "node scripts/brand-check.mjs --self-test",
     "bytes:check": "node scripts/bytes-check.mjs",
     "bytes:check:self-test": "node scripts/bytes-check.mjs --self-test",
     "fallback:scan": "node scripts/fallback-scan.mjs",

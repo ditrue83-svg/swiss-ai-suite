@@ -686,8 +686,12 @@ function FinanceRow({
             <Icon name="alert" className="ic-sm" /> {t('finance.duplicate.banner')}
           </Tag>
         )}
+        {/* ⚠️ `finance.row.flagged` e NON `finance.filters.flagged`: quella è
+            l'etichetta della casella «Solo con segnalazioni» in cima, e su una
+            riga diceva «solo» di un elenco che le mostra tutte. Una riga non si
+            nomina con il filtro che la selezionerebbe. */}
         {item.qualityFlags.length > 0 && state !== 'failed' && (
-          <Tag tone="attention">{t('finance.filters.flagged')}</Tag>
+          <Tag tone="attention">{t('finance.row.flagged')}</Tag>
         )}
         {/* «Da verificare» è il segno epistemico di famiglia; guasti e stati
             di lavorazione restano pastiglie (il rosso resta al guasto). */}

@@ -17,6 +17,21 @@
   --accent-soft: hsl(207, 65%, 95%);   /* fondi tenui, chip informativi         */
   --accent-line: hsl(207, 58%, 82%);   /* bordo di ciò che sta su --accent-soft */
 
+  /* --- Il colore del MARCHIO, che non è il colore dell'azione ---------------
+     ⚠️ #00AEEF è il blu del titolare: quello dei contorni che la vetrina serve
+     in `site/static/logo-ai-swisse.svg` e che la scheda del browser mostra
+     nella favicon. NON è `--accent`, e la differenza è deliberata: l'accento
+     deve reggere il contrasto AA perché ci si scrive sopra e ci si clicca; un
+     marchio è un disegno, non testo corrente, e non ha quella soglia da
+     rispettare. Fino al 2026-08-14 l'app ricomponeva il segno sull'accento e i
+     due blu divergevano: due marchi, uno dei quali non era di nessuno.
+     ⚠️ Questi tre token vestono SOLO il marchio (le regole `.bm-*`). Usarli per
+     un pulsante o per un testo è il modo di riaprire il difetto: #00AEEF su
+     bianco fa 2,3:1, sotto ogni soglia leggibile. */
+  --brand: #00AEEF;                    /* il blocco della sigla                 */
+  --brand-ink: #ffffff;                /* la sigla DENTRO il blocco, sempre     */
+  --brand-word: #00AEEF;               /* la parola accanto: segue il tema      */
+
   /* --- Neutri --------------------------------------------------------------
      Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti. */
   --ink: hsl(213, 40%, 13%);           /* testo principale                      */
@@ -213,6 +228,12 @@
     --amber-fill: hsl(38, 80%, 58%);
     --green-fill: hsl(151, 48%, 50%);
 
+    /* Il BLOCCO resta il blu del titolare — è il segno, e un segno che cambia
+       colore col tema è due segni. Cambia la PAROLA, che su fondo scuro in
+       #00AEEF vibrerebbe: diventa bianca, esattamente come fa l'artefatto
+       `logo-ai-swisse-scuro.svg` che la vetrina serve al tema scuro. */
+    --brand-word: #ffffff;
+
     /* In scuro l'evidenziazione diventa un ocra di luminanza media: il testo
        sopra deve restare SCURO, non seguire --ink che qui è quasi bianco.
        Con --ink il contrasto era 2.54:1, sotto la soglia AA di 4.5. */
@@ -281,23 +302,25 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    `min-width: 0` sul contenitore: senza, in una colonna da 264px il lockup si
    rifiuta di restringersi e spinge fuori la campanella. */
 .brand-lockup { min-width: 0; }
-.brand-word { display: flex; align-items: baseline; gap: var(--sp-2); }
-/* La sigla sta in un blocco pieno: è il segno del marchio, non un pulsante.
-   ⚠️ Il raggio NON è --radius-sm (8px, quello dei controlli): un blocco con lo
-   stesso raggio dei pulsanti e della scatola dell'hamburger torna a leggersi
-   come qualcosa da premere, che è l'errore da cui veniamo. 4px = --sp-1: il
-   ritmo lo dà la scala anche qui. */
-.brand-sigla {
-  background: var(--accent); color: var(--on-accent);
-  font-size: var(--fs-body); font-weight: 600; line-height: 1; letter-spacing: 0.2px;
-  padding: var(--sp-05) var(--sp-1); border-radius: var(--sp-1); flex-shrink: 0;
-}
-/* --fs-strong e non --fs-body: il nome del prodotto è il titolo della colonna,
-   e il gradino sopra è ciò che gli ridà il peso che il quadrato pieno gli dava
-   per superficie. Peso 600 e non 700 — 700 non esiste fra i file serviti e
-   cadrebbe comunque su 600 (vedi la sezione «Il carattere» del sistema). */
-.brand-name { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.3px; }
-.brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: -1px; }
+/* ⚠️ IL MARCHIO NON HA PIÙ REGOLE DI TESTO, e la sparizione è il cambiamento:
+   `.brand-word`, `.brand-sigla` e `.brand-name` componevano il segno in Inter
+   (blocco colorato + parola) e non esistono più. Il segno è un disegno, e ciò
+   che resta da decidere qui è quanto è largo.
+
+   ⚠️ SI DÀ LA LARGHEZZA, MAI L'ALTEZZA. Il rapporto del riquadro è 1068:326 e
+   lo tiene l'SVG: fissare anche l'altezza vorrebbe dire deciderlo due volte, e
+   al primo ritocco il marchio si schiaccia. 148px in una colonna da 264 con
+   32 di padding lascia i 50 che servono alla campanella accanto.
+   `flex-shrink: 0` perché il marchio non si restringe per fare posto: se lo
+   spazio manca, è la campanella a cedere. */
+.brand-logo { display: block; width: 148px; height: auto; flex-shrink: 0; }
+.bm-block { fill: var(--brand); }
+.bm-sigla { fill: var(--brand-ink); }
+.bm-word { fill: var(--brand-word); }
+/* Il solo blocco, dove la parola non starebbe. Quadrato per costruzione: il
+   riquadro è 300×326, cioè il blocco e nient'altro. */
+.brand-block { display: block; width: 36px; height: auto; flex-shrink: 0; }
+.brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-1); }
 /* flex:1 + overflow: la navigazione prende lo spazio fra il selettore azienda
    e il box account, e quando non basta scorre LEI — così «Impostazioni» in
    fondo e il box account restano raggiungibili anche su uno schermo basso,
@@ -366,6 +389,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
     position: sticky; top: 0; z-index: 40;
   }
   .topbar .brand { padding: 0; }
+  /* Nella barra del telefono il marchio divide 375px con l'hamburger (40) e la
+     campanella (40): a 148px se ne prendeva il 39% e la barra diventava una
+     insegna. 120 lasciano respiro attorno e il segno resta leggibile — sotto i
+     100 la parola «Swisse» comincia a chiudersi. */
+  .topbar .brand-logo { width: 120px; }
   .hamburger { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
   .hamburger:hover { background: var(--bg); }
   .topbar-demo { margin-left: auto; }
@@ -373,9 +401,24 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
     position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw;
     background: var(--card); border-right: 1px solid var(--line); z-index: 60;
     padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05);
-    transform: translateX(-100%); transition: transform .22s ease; overflow-y: auto;
+    transform: translateX(-100%); transition: transform .22s ease, visibility .22s; overflow-y: auto;
+    /* ⚠️⚠️ `visibility: hidden`, E SENZA QUESTA RIGA IL MENU CHIUSO ERA ANCORA
+       NAVIGABILE. Il cassetto usciva dallo schermo con `translateX(-100%)`, ma
+       una trasformazione sposta i pixel e basta: i suoi quindici collegamenti
+       restavano nell'ordine di tabulazione. Su un telefono, chi naviga da
+       tastiera o con un controllo a scansione premeva Tab dopo l'hamburger e
+       finiva dentro un menu che non si vede — senza modo di sapere dov'era.
+       Peggio: l'`aria-hidden={!drawerOpen}` del componente lo nascondeva ai
+       lettori di schermo lasciandolo focalizzabile, che è la combinazione che
+       le linee guida chiamano esplicitamente un errore (il fuoco finisce su
+       qualcosa che non viene annunciato).
+       `visibility` è l'unica proprietà che toglie SIA il fuoco SIA l'albero di
+       accessibilità e si eredita ai figli. Sta anche nella transizione, così
+       chiudendo il cassetto resta visibile per i 220ms della scivolata invece
+       di sparire di colpo a metà. */
+    visibility: hidden;
   }
-  .drawer.open { transform: translateX(0); box-shadow: var(--shadow-md); }
+  .drawer.open { transform: translateX(0); visibility: visible; box-shadow: var(--shadow-md); }
   .drawer-overlay { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .22s; }
   .drawer-overlay.open { opacity: 1; pointer-events: auto; }
   .drawer-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink-soft); }
@@ -737,7 +780,47 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .list-row:first-of-type { border-top: none; }
 .list-main { flex: 1; min-width: 200px; }
 .list-title { font-weight: 600; font-size: var(--fs-body); }
+/* ⚠️ IL TITOLO NON TOCCA IL SEGNO CHE LO SEGUE. Misurato il 2026-08-14 su
+   tutte e cinque le righe dei Contratti: fra il bordo destro del titolo e il
+   bordo sinistro della pastiglia c'erano ZERO pixel. A occhio sembrava esserci
+   spazio perché la pastiglia ha il suo padding interno, ma il suo fondo
+   colorato partiva dall'ultima lettera del titolo — e su un titolo che va a
+   capo la pastiglia si incastrava nella parola.
+   Stessa famiglia del separatore di `.list-sub`, e stesso motivo per cui sta
+   qui e non nei chiamanti: `.list-main` è la riga di una decina di schermate
+   (contratti, clienti, documenti, incentivi) e ognuna ci mette accanto al
+   titolo un segno diverso — una `Tag`, un `ProvenanceMark`, una `badge`. */
+.list-main > .list-title + * { margin-left: var(--sp-2); }
 .list-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
+/* ⚠️⚠️ IL SEPARATORE FRA DUE VALORI ACCANTO, e senza questa riga non c'era.
+   `.list-sub` è la riga dei metadati di venticinque schermate. Alcune scrivono
+   il punto a mano nel testo; altre mettono gli elementi uno dopo l'altro e
+   basta — e JSX toglie lo spazio fra due tag su righe diverse. Il risultato si
+   legge in produzione, in ogni riga dell'elenco clienti e dei contratti:
+
+       «Zürich (ZH)Andrea Cavalieri2 · Persone»
+       «Ultimo contatto: 08.08.20262 · Opportunità»
+       «AssicurazioneHelvetia Assicurazioni SA2 documenti»
+       «fra 9 giorniPreavviso: 3 mesi»
+
+   Non è solo brutto: «08.08.20262» è una data con una cifra attaccata, e chi
+   legge in fretta la prende per parte della data. Il difetto nasce in `59d3245`
+   e nessuna prova poteva vederlo — nessun test guarda lo spazio fra due nodi.
+
+   ⚠️ SI SEPARA QUI, NON NEI VENTICINQUE CHIAMANTI. Un separatore che ogni
+   chiamante deve ricordarsi è un separatore che il prossimo dimentica: è
+   esattamente come ci siamo arrivati. La regola vale fra due ELEMENTI
+   fratelli — il primo non lo porta, e il testo semplice non ne genera mai —
+   quindi chi scrive già il proprio `·` dentro un testo non ne riceve un
+   secondo. Restano da normalizzare i pochi punti che scrivevano il `·` a mano
+   PRIMA di un elemento: lì il doppio si vedrebbe, e infatti sono stati tolti.
+   `--line-strong` e non `--muted`: il separatore è una pausa, non un dato, e
+   non deve pesare come i valori che divide. */
+.list-sub > * + *::before {
+  content: '·';
+  margin: 0 var(--sp-2);
+  color: var(--line-strong);
+}
 .empty { color: var(--muted); font-size: var(--fs-body); padding: var(--sp-4) 0; text-align: center; }
 
 .match-head { display: flex; align-items: flex-start; gap: var(--sp-4); flex-wrap: wrap; }
@@ -937,26 +1020,45 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    uguali, e allora nessuna conta più delle altre) o una gerarchia detta a voce
    alta. Qui è la seconda: il numero che il prodotto insegue sta da solo a
    sinistra, gli altri quattro gli stanno accanto in un 2×2. */
-.kpi-lead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--sp-4); }
-.kpi-lead-rest { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); }
+/* ⚠️⚠️ LE QUATTRO PICCOLE STANNO IN FILA, NON IN UN 2×2, e il motivo è un
+   difetto misurato il 2026-08-14 aprendo la Panoramica: con il 2×2 la colonna
+   di destra era alta 341px, la scheda grande si stirava ad accompagnarla, e il
+   suo contenuto ne occupava 125. Il 63% della scheda più importante della
+   schermata era vuoto.
+   Il passo precedente aveva già visto il vuoto e l'aveva CENTRATO
+   (`justify-content: center`): il buco di duecento pixel in mezzo è diventato
+   due buchi da centootto sopra e sotto. Centrare il vuoto non lo toglie —
+   lo divide.
+   Con una fila sola le due altezze coincidono per costruzione: la scheda grande
+   è alta quanto una piccola, e non c'è più niente da riempire. La gerarchia
+   resta detta dove è sempre stata — --fs-h1 contro --fs-h2 e una colonna
+   propria — e non da una superficie doppia che nessun contenuto occupava. */
+.kpi-lead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: var(--sp-4); align-items: stretch; }
+.kpi-lead-rest { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
+/* Sotto i 1200px cinque schede in fila diventano cinque colonne da 140px, dove
+   ogni etichetta va a capo tre volte: la scheda grande sale sopra le altre a
+   piena larghezza e le quattro tornano in un 2×2 — che qui è giusto, perché
+   non c'è più nessuna colonna alta il doppio da accompagnare. */
+@media (max-width: 1200px) {
+  .kpi-lead { grid-template-columns: minmax(0, 1fr); }
+  .kpi-lead-rest { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* ⚠️ La differenza NON la fa un settimo gradino tipografico: la scala ha sei
    gradini, uno per compito, e «il numero che domina la schermata» non è un
    compito nuovo — è --fs-h1, che le altre quattro lasciano libero scendendo a
    --fs-h2. Trenta contro ventidue più il doppio di superficie: la gerarchia è
    un fatto misurabile, non un modo di dire. */
 .kpi-sm .kpi-value { font-size: var(--fs-h2); }
-/* ⚠️ La scheda grande è alta quanto le quattro piccole messe insieme, e senza
-   queste due righe il numero restava incollato in cima e la sua didascalia in
-   fondo — `.kpi-sub` ha `margin-top: auto`, che nelle schede piccole allinea le
-   didascalie di una fila e qui apriva un vuoto di duecento pixel in mezzo.
-   Visto aprendo la schermata: un buco così non si legge come gerarchia, si
-   legge come un difetto. Il gruppo si centra e la didascalia torna sotto il
-   numero, dove appartiene. L'etichetta non riserva più due righe perché qui non
-   c'è nessuna fila con cui allinearsi: la scheda è sola nella sua colonna. */
-.kpi-hero { justify-content: center; }
-.kpi-hero .kpi-sub { margin-top: var(--sp-1); }
+/* ⚠️ NIENTE PIÙ `justify-content: center` QUI, e la riga tolta è la correzione:
+   centrava il contenuto dentro una scheda alta il doppio del necessario. Ora la
+   scheda è alta quanto le altre e il contenuto parte dall'alto come ovunque —
+   `.kpi-sub` con il suo `margin-top: auto` riallinea la didascalia al piede,
+   che è esattamente ciò che fa nelle quattro schede accanto: le cinque
+   didascalie stanno su una riga sola.
+   L'etichetta invece continua a NON riservare due righe: la scheda è sola nella
+   sua colonna e non ha nessuna fila con cui allinearsi, quindi due righe
+   riservate sarebbero uno spazio bianco in più sotto una parola sola. */
 .kpi-hero .kpi-label { min-height: 0; }
-@media (max-width: 900px) { .kpi-lead { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) { .kpi-lead-rest { grid-template-columns: minmax(0, 1fr); } }
 .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); }
 /* Due righe di spazio riservate all'etichetta: le traduzioni non hanno la
@@ -1410,7 +1512,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 }
 .doc-tag-x {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; padding: 0; border: none; border-radius: 999px;
+  /* ⚠️ 24 e non 22: è il minimo che le WCAG 2.2 (§2.5.8) chiedono a un
+     bersaglio, ed è la crocetta che TOGLIE un'etichetta da un documento — un
+     gesto distruttivo che si preme per sbaglio con un dito. Due pixel di
+     differenza sono anche il gradino --sp-05 della scala: non è un numero
+     scelto a occhio, è la soglia. */
+  width: 24px; height: 24px; padding: 0; border: none; border-radius: 999px;
   background: none; color: var(--muted); cursor: pointer;
 }
 .doc-tag-x:hover { background: var(--line); color: var(--ink); }
@@ -1516,6 +1623,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   /* §122 — il dettaglio resta leggibile: una colonna sola, date in cima. */
   .ct-doc-row, .ct-ms-row { display: grid; gap: var(--sp-2); }
   .ct-toolbar { flex-direction: column; align-items: stretch; }
+  /* ⚠️ La correzione di `.crm-search` che accompagna questa riga sta in
+     `extra.css`, non qui: là è definita la sua base, e `extra.css` viene
+     caricato DOPO — a parità di specificità vince l'ultimo, quindi una
+     correzione scritta qui non toccherebbe niente. Provato a schermo. */
 }
 
 /* ============================================================================

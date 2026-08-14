@@ -260,6 +260,17 @@ export function formatDecimal(
   const options: Intl.NumberFormatOptions = {
     minimumFractionDigits: frac,
     maximumFractionDigits: frac,
+    // ⚠️ IL SEPARATORE DELLE MIGLIAIA SEMPRE, e in italiano non era così.
+    // Il default di Intl per l'it è il raggruppamento «min2»: il separatore
+    // compare da CINQUE cifre in su. Nella colonna delle fatture si leggeva
+    //     CHF 23'450.80 / CHF 6712.40 / CHF 3120.00
+    // cioè due modi di scrivere un franco a una riga di distanza, dove i
+    // numeri servono a essere confrontati. In de-CH e fr-CH il risultato non
+    // cambia — quelle lingue raggruppano già da mille — quindi il difetto era
+    // invisibile a chi provava l'app in tedesco.
+    // Stessa correzione, stesso giorno, in `formatCurrency` di lib/format.ts:
+    // due funzioni per due semantiche diverse, ma la FORMA di un franco è una.
+    useGrouping: true,
   };
 
   // ⚠️ OLTRE LE 15 CIFRE SIGNIFICATIVE NON SI PASSA DA `Number`. Un double non

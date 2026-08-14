@@ -702,6 +702,11 @@ export const fr: Dictionary = {
     loading: 'Chargement…',
     verifyingSession: 'Vérification de la session…',
     loadingCompany: 'Chargement de l’entreprise…',
+    crashTitle: 'Cet écran n’a pas pu s’ouvrir',
+    crashBody: 'Il s’agit d’une panne de l’application, pas d’un problème de vos données : rien n’a été modifié. Les autres écrans fonctionnent.',
+    crashRetry: 'Réessayer',
+    crashHome: 'Revenir à la vue d’ensemble',
+    crashDetails: 'Détail technique',
     configRequired: 'Configuration requise',
     configRequiredHint: 'Copiez .env.example vers .env, renseignez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY de votre projet Supabase, puis redémarrez le serveur de développement.',
     configRejected: 'Application mal configurée',
@@ -1985,6 +1990,7 @@ export const fr: Dictionary = {
       noAmount: 'Montant non indiqué',
       processing: 'Lecture en cours',
       failed: 'Lecture échouée',
+      flagged: 'Avec signalements',
     },
     detail: {
       back: 'Retour aux finances',
@@ -2365,6 +2371,9 @@ export const fr: Dictionary = {
     row: {
       noOwner: 'Aucun responsable', noContact: 'Aucune personne de contact',
       neverContacted: 'Jamais contactée', noRoles: 'Aucun rôle',
+      peopleOne: '{n} personne', peopleMany: '{n} personnes',
+      opportunityOne: '{n} opportunité', opportunityMany: '{n} opportunités',
+      contractOne: '{n} contrat', contractMany: '{n} contrats',
     },
     detail: {
       overview: 'Aperçu', people: 'Personnes', opportunities: 'Opportunités', tasks: 'Tâches',

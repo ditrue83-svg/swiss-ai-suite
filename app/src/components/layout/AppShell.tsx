@@ -7,6 +7,7 @@ import { useEffect, useId, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches } from './nav';
 import type { TKey } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -223,8 +224,15 @@ export function AppShell() {
         <AccountBox />
       </aside>
 
+      {/* ⚠️ LA RETE STA QUI DENTRO, NON ATTORNO ALLA BARRA, e la posizione è la
+          decisione: un guasto di una schermata deve lasciare in piedi la
+          navigazione, il selettore azienda e l'uscita. Attorno a tutto avrebbe
+          spento anche quelli, ed è esattamente la pagina bianca da cui veniamo.
+          La chiave è il percorso: cambiata pagina, la rete si riarma. */}
       <main className="main">
-        <Outlet />
+        <ErrorBoundary chiave={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

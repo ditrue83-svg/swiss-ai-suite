@@ -736,6 +736,15 @@ export const it = {
     loading: 'Caricamento…',
     verifyingSession: 'Verifica sessione…',
     loadingCompany: 'Caricamento azienda…',
+    // ⚠️ QUANDO UNA SCHERMATA SI ROMPE. Non si promette che il dato sia salvo
+    // né si incolpa l'utente: si dice che questa schermata non si è aperta, che
+    // il resto dell'applicazione funziona, e si offrono i due gesti veri —
+    // riprovare e tornare indietro. Vedi ErrorBoundary.tsx.
+    crashTitle: 'Questa schermata non si è aperta',
+    crashBody: 'È un guasto dell’applicazione, non un problema dei tuoi dati: niente è stato modificato. Le altre schermate funzionano.',
+    crashRetry: 'Riprova',
+    crashHome: 'Torna alla panoramica',
+    crashDetails: 'Dettaglio tecnico',
     configRequired: 'Configurazione richiesta',
     configRequiredHint: 'Copia .env.example in .env e imposta VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY con i valori del tuo progetto Supabase, poi riavvia il server di sviluppo.',
     configRejected: 'Applicazione non configurata correttamente',
@@ -2049,6 +2058,12 @@ export const it = {
       noAmount: 'Importo non indicato',
       processing: 'Lettura in corso',
       failed: 'Lettura non riuscita',
+      // ⚠️ L'ETICHETTA DELLA RIGA NON È QUELLA DEL FILTRO. Qui c'era
+      // `finance.filters.flagged` — «Solo con segnalazioni» — cioè il nome
+      // di un FILTRO appiccicato a una riga: una pastiglia che dice «solo»
+      // su un elenco che mostra tutto. In tedesco si leggeva «Nur mit
+      // Hinweisen» sopra una fattura sola.
+      flagged: 'Con segnalazioni',
     },
     detail: {
       back: 'Torna alle finanze',
@@ -2459,6 +2474,13 @@ export const it = {
     row: {
       noOwner: 'Nessun responsabile', noContact: 'Nessuna persona di contatto',
       neverContacted: 'Mai contattata', noRoles: 'Nessun ruolo',
+      // ⚠️ CONTEGGI CON IL LORO SOSTANTIVO, e prima non c'erano: la riga
+      // scriveva «2 · Persone» riusando `crm.detail.people`, che è il TITOLO
+      // di una sezione della scheda. Un numero, un punto e un titolo con la
+      // maiuscola non sono una quantità: sono due dati che sembrano tre.
+      peopleOne: '{n} persona', peopleMany: '{n} persone',
+      opportunityOne: '{n} opportunità', opportunityMany: '{n} opportunità',
+      contractOne: '{n} contratto', contractMany: '{n} contratti',
     },
     detail: {
       overview: 'Panoramica', people: 'Persone', opportunities: 'Opportunità', tasks: 'Attività',

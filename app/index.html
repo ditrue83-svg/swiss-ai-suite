@@ -37,27 +37,45 @@
     />
     <!--
       La favicon porta lo STESSO marchio della barra laterale: il blocco con la
-      sigla «AI». Due cose da sapere prima di toccarla.
+      sigla «AI». Tre cose da sapere prima di toccarla.
 
       PERCHÉ IN CONTORNI E NON IN TESTO. Qui non si può scrivere <text>AI</text>
       e chiedere Inter: un data: URI non carica risorse esterne — è tutto il
       punto della CSP — quindi il carattere lo sceglierebbe il browser, e il
       marchio sarebbe disegnato da un font di sistema diverso su ogni macchina.
-      I contorni qui sotto sono quelli del marchio del titolare, gli stessi che
-      la vetrina serve in `site/static/favicon.svg`: una scheda del browser
-      aperta su ai-swisse.com e una aperta sull'applicazione mostrano lo stesso
-      segno. È l'unico punto del prodotto in cui il marchio NON è composto in
-      Inter, ed è una conseguenza del data: URI, non una scelta di disegno.
+
+      ⚠️ FINO AL 2026-08-14 QUESTA FAVICON ERA UN TERZO DISEGNO. Portava sì i
+      contorni del titolare, ma su un riquadro suo (`14.2 31.9 301.8 301.8`),
+      con gli angoli arrotondati (`rx='56.6'`) e i tracciati riscritti a una
+      cifra decimale — mentre la vetrina serve `20 20 300 326`, spigoli vivi e
+      i numeri per intero. E il campo era `--accent`, il blu D'AZIONE, non il
+      blu del marchio. Il commento di allora sosteneva che «una scheda aperta su
+      ai-swisse.com e una aperta sull'applicazione mostrano lo stesso segno»:
+      non era vero, erano due segni simili di due colori diversi.
+      Adesso questo documento è `site/static/favicon.svg` carattere per
+      carattere, solo percent-encoded. `npm run brand:check` lo rilegge dalla
+      vetrina e fallisce se divergono.
 
       PERCHÉ I COLORI SONO SCRITTI PER ESTESO. Un data: URI non può dire
-      var(--accent): i due valori sono copiati dai token, e `test:shell-unit`
-      li rilegge da app.css pretendendoli letterali qui. Se l'accento cambia,
-      quel rosso è il promemoria che la favicon non si aggiorna da sola.
+      var(--brand): i due valori sono copiati dai token del marchio, e
+      `test:shell-unit` li rilegge da app.css pretendendoli letterali qui. Se il
+      marchio cambia, quel rosso è il promemoria che la favicon non si aggiorna
+      da sola.
     -->
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='14.2 31.9 301.8 301.8'%3E%3Crect x='14.2' y='31.9' width='301.8' height='301.8' rx='56.6' fill='hsl(207, 88%25, 39%25)'/%3E%3Cpath d='M166.3 231.6H110L100.9 258.3H62.4L117.1 107.3H159.7L214.3 258.3H175.4ZM156.9 203.2 138.2 147.9 119.7 203.2Z M267.7 107.3V258.3H230.9V107.3Z' fill='%23ffffff'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='20 20 300 326'%3E %3Crect x='20' y='20' width='300' height='326' fill='%2300AEEF'/%3E %3Cpath d='M166.34302325581393 231.61627906976744H109.98255813953489L100.94767441860465 258.2906976744186H62.44186046511628L117.0813953488372 107.27906976744185H159.67441860465118L214.31395348837208 258.2906976744186H175.37790697674419ZM156.87790697674419 203.22093023255815 138.1627906976744 147.93604651162792 119.66279069767441 203.22093023255815Z M267.6627906976744 107.27906976744185V258.2906976744186H230.87790697674419V107.27906976744185Z' fill='%23ffffff'/%3E %3C/svg%3E"
     />
+    <!--
+      ⚠️ `theme-color` non è decorazione: è il colore che il telefono dipinge
+      attorno alla pagina (barra di stato su Android, bordo della scheda). Senza,
+      resta bianco anche in tema scuro e l'app sembra tagliata a metà. Sono DUE
+      dichiarazioni con `media`, perché il colore giusto dipende dal tema: i
+      valori vengono da `--card` di app.css (chiaro e scuro), non dal marchio —
+      è la superficie che continua, non il segno.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1c232c" />
   </head>
   <body>
     <div id="root"></div>
