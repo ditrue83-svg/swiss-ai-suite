@@ -43,7 +43,41 @@
 > questa pagina che dipende da un percorso AI — lettura contratti dal capo alla
 > coda, eval, classificazione Inbox — resta **non rimisurata**.
 
-## ⛔ IL CREDITO ANTHROPIC RESTA ESAURITO (rimisurato da ultimo il 2026-08-07)
+## ⛔ IL CREDITO ANTHROPIC RESTA ESAURITO (rimisurato il 2026-08-14 — e ora con un comando)
+
+✅ **Da oggi la domanda ha un comando**: `npm run verify:ai`. Fino al 2026-08-13
+il credito era **l'unica dipendenza del prodotto senza una misura**: gli
+scheduler li dice `verify:deploy`, le migrazioni `supabase migration list
+--linked`, i permessi `test:audit`, i documenti `docs:check` — il credito lo si
+scopriva quando mordeva. Tre esaurimenti in due settimane, tre scoperte a
+posteriori. Il dettaglio sta in [«Il comando sul credito»](#il-comando-sul-credito--verifyai)
+più sotto.
+
+⚠️ **Rimisurato il 2026-08-14 con quel comando**, ed è ancora esaurito:
+
+```
+npm run verify:ai
+→ sonda all'API   HTTP 400 · 377 ms
+  «Your credit balance is too low to access the Anthropic API.»
+  ultima richiesta RIUSCITA   2026-08-02 18:15 UTC (270h fa · inbox_classification)
+  ultimo errore               2026-08-02 09:15 UTC (279h fa · AI_CREDIT_EXHAUSTED)
+→ CREDITO ESAURITO (exit 1)
+```
+
+⚠️ **L'ultimo errore è PRIMA dell'ultima riuscita, e non è un refuso**: il ciclo
+di ritentativo dell'Inbox si è fermato da sé quando non è rimasto niente da
+ripescare (zero `failed`), quindi da undici giorni **nessun percorso AI prova
+nemmeno a partire**. Un log senza errori recenti non è un prodotto che
+funziona: qui è un prodotto che non ci prova più.
+
+⚠️ **Il confronto fra la chiave locale e quella delle Edge Function NON è stato
+fatto** in questa misura: vive nel portachiavi di macOS e leggerlo apre una
+finestra che una sessione non interattiva non può chiudere. Si fa così, e vale
+la pena farlo prima della prossima ricarica:
+
+```bash
+export SUPABASE_ACCESS_TOKEN=$(security find-generic-password -s "Supabase CLI" -w) && npm run verify:ai
+```
 
 ⚠️ **Rimisurato il 2026-08-07**, prima di provare a leggere contratti veri:
 
@@ -134,6 +168,96 @@ finché il credito non torna.
 (`test:phase2` 36, `test:async` 17, `test:pipeline` 18). Tutte le suite a
 consumo sono quindi state rieseguite dopo il ripristino del credito.
 
+## Il comando sul credito — `verify:ai`
+
+Risponde a una domanda sola: **«i percorsi AI possono funzionare adesso?»**, ed
+esce non-zero quando la risposta è no.
+
+```bash
+npm run verify:ai            # la risposta, con la storia accanto
+npm run verify:ai -- --json  # per chi la consuma (il runner, il foglio di stato)
+```
+
+**Quanto costa.** Una `POST /v1/messages` con `max_tokens: 1` sul modello più
+economico: serve a distinguere un 200 da un 400, ed è la stessa forma della
+misura conservata qui sopra dal 2026-08-01. A credito esaurito l'API rifiuta
+**prima** di far ragionare il modello — zero token, come già misurato sul ciclo
+dell'Inbox.
+
+**I quattro guasti sono quattro, e «l'AI non va» non è una diagnosi**: hanno
+quattro rimedi diversi, e tre su quattro non li può eseguire chi legge.
+
+| exit | Che cosa | Rimedio |
+|---|---|---|
+| 0 | i percorsi AI possono funzionare | — |
+| 1 | **credito esaurito** | ricaricare il conto: è una decisione, nessun comando la prende |
+| 2 | **chiave assente** | `ANTHROPIC_API_KEY` non è nell'ambiente (in locale: `.env.test`) |
+| 3 | **chiave rifiutata** | scaduta, revocata o di un altro account: si rigenera **e si riallinea il secret del progetto** |
+| 4 | **servizio irraggiungibile** | rete, timeout, 429, 5xx: ricaricare non cambierebbe niente |
+| 5 | rifiuto non classificato | l'API dice no per una ragione che il comando non conosce: stampa il suo testo, e non è un verde |
+| 6 | **le due chiavi divergono** | qui funziona, in produzione ogni percorso AI prende 401 |
+
+⚠️ **Il discrimine del credito è il TESTO, non il codice HTTP**, ed è l'unica
+parte fragile: l'esaurimento arriva come **400 `invalid_request_error`**, cioè
+con lo stesso codice di una richiesta malformata. Un 400 che non parla di credito
+**non** diventa «credito esaurito»: diventa il caso 5, che esce non-zero e
+stampa il testo vero. Preferire un rifiuto senza nome a una diagnosi inventata è
+la regola di casa.
+
+⚠️⚠️ **Il caso 6 è quello per cui il comando non si ferma alla sonda.** La chiave
+di `.env.test` e quella dei secret delle Edge Function devono coincidere: se
+divergono, la sonda direbbe «si può lavorare» mentre in produzione ogni analisi
+prende 401. Il confronto è `sha256(chiave) === value` del secret — **non** il
+confronto con ciò che restituisce `GET /v1/projects/<ref>/secrets`, che *è* già
+lo SHA-256, e che il 2026-07-31 è costato due giri di diagnosi sbagliata. Senza
+`SUPABASE_ACCESS_TOKEN` il confronto **si dichiara non fatto**, e la frase finale
+dice che la risposta vale per la chiave locale.
+
+**Dove è richiamato, e perché lì.**
+
+| Dove | Perché |
+|---|---|
+| `npm run status` | il foglio dice quanto viene usato il prodotto; il credito dice se **può** funzionare. Un credito esaurito è una MISURA (il foglio lo scrive), non una misura mancante: non fa uscire 3 |
+| `npm run test:integration` e `test:eval` (requisito del gruppo) | con il credito finito quelle suite partivano, macinavano un minuto e morivano a metà — e il risultato non era «il credito è finito», era **una suite rossa**: si va a cercare un difetto nel prodotto per un guasto d'ambiente. Ora la domanda si fa PRIMA e il gruppo viene **saltato con la ragione vera** (exit 3, «NON ESEGUITO») |
+
+⚠️ **La sonda parte solo dopo `--allow-ai`**: senza, il gruppo è comunque fermo,
+e una chiamata di rete che nessuno ha chiesto sarebbe la spesa ereditata che il
+runner esiste per impedire.
+
+⚠️ **Non è in `npm run ci`, e non lo sarà**: misura l'AMBIENTE, non il codice —
+può essere rosso su un albero perfetto e verde su un albero rotto, esattamente
+come `verify:deploy`. In `unit` gira `verify:ai:self-test`, che prova le sei
+diagnosi su risposte costruite, **senza rete**: 25 casi, e i tre più importanti
+sono provati sul rosso che devono dare (un 400 che non parla di credito, una
+sonda verde con le chiavi divergenti, un secret non letto che non diventa
+«coincidono»).
+
+⚠️ **Nessuno scheduler lo invoca, di proposito.** Sorvegliare il credito con un
+cron significherebbe decidere che qualcuno guardi quel log; e la ricarica
+automatica **non è stata accesa**: il piano di ricarica è una decisione di chi
+conduce il prodotto. Questo comando serve a saperlo prima, non a decidere.
+
+### CHE COSA NON DICE — dichiarato qui perché nessuno lo deduca
+
+- ⚠️⚠️ **Un 200 su una richiesta da UN token non promette una lettura da 50 000.**
+  Dice che l'account non è a zero e che la chiave è accettata. Un contratto
+  intero, un giro di `eval:assistant`, una giornata di classificazioni possono
+  esaurire il credito cinque minuti dopo un verde;
+- sonda **un modello** (per difetto il più economico). Il prodotto gira su
+  `claude-opus-4-8` e `claude-opus-5`: un divieto per modello non si vede da qui.
+  Si guarda con `--model=`;
+- non dice niente su velocità, limiti al minuto, o quanto credito resti: l'API
+  non lo espone su questa chiamata;
+- guarda un secret solo (`ANTHROPIC_API_KEY`), non gli altri venti;
+- e **la storia** (`ai_request_log`) è un contorno, non la risposta: se non si
+  può leggere, la riga lo dichiara e il codice d'uscita non cambia — la domanda
+  «può funzionare adesso» l'ha già risolta la sonda.
+
+**Con che frequenza va lanciato.** Prima di ogni giro che spende (ci pensa il
+runner da solo), e quando si rimisura lo stato. Non ha senso in un ciclo: fra due
+esecuzioni la risposta può cambiare in entrambe le direzioni senza che nessuno
+faccia niente, e questa pagina lo ha imparato tre volte.
+
 ## Le sei parole, e perché sono sei
 
 Fino al 2026-07-31 i documenti usavano «in esercizio» per stati molto diversi, e
@@ -166,7 +290,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ✅ **Letti tre contratti veri il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ✅ **Le correzioni sono DEPLOYATE dal 2026-08-09** (`contract-worker` v19). ⚠️ **La rilettura dal capo alla coda resta non eseguibile** (credito esaurito; ultima misura vera 2026-08-07, non rimisurato il 09): il 88,6 % resta la misura di PRIMA della correzione delle date. In produzione `contract_extractions` è a **0 righe**: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il 2026-08-07 le prove che non spendono credito: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
-| Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). ⚠️ **Questa riga ha detto «7 revisioni del catalogo in attesa di una persona» fino al 2026-08-06, ed era vero fino al 2026-08-05**: rimisurato interrogando la produzione, la coda è a **ZERO in attesa — 7 `ignored`**, chiuse tutte alle 22:45:42 del 2026-08-05 **dal sistema e non da una persona** (`reviewed_by` nullo su tutte e sette). Non erano un cambiamento della fonte ma la **prima lettura riuscita**, e il difetto è corretto in `diff.ts` (commit `ac0c65e`). ⚠️⚠️ **Una coda vuota NON significa catalogo verificato**: `last_checked_at` è fermo al **2026-07-25** per tutti e sette i programmi — nessuno ha ancora confrontato il catalogo con la fonte, ed è la cosa che quella riga rischiava di far credere fatta. Rimisurato il 2026-08-07: `test:subsidy` **91/91** sul database vero, `subsidy:health` **exit 0 «niente in sospeso»**, `last_checked_at` ancora al 2026-07-25 |
+| Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). ⚠️ **Questa riga ha detto «7 revisioni del catalogo in attesa di una persona» fino al 2026-08-06, ed era vero fino al 2026-08-05**: rimisurato interrogando la produzione, la coda è a **ZERO in attesa — 7 `ignored`**, chiuse tutte alle 22:45:42 del 2026-08-05 **dal sistema e non da una persona** (`reviewed_by` nullo su tutte e sette). Non erano un cambiamento della fonte ma la **prima lettura riuscita**, e il difetto è corretto in `diff.ts` (commit `ac0c65e`). ⚠️⚠️ **Una coda vuota NON significa catalogo verificato**: `last_checked_at` è fermo al **2026-07-25** per tutti e sette i programmi — nessuno ha ancora confrontato il catalogo con la fonte, ed è la cosa che quella riga rischiava di far credere fatta. Rimisurato il 2026-08-07: `test:subsidy` **91/91** sul database vero, `subsidy:health` **exit 0 «niente in sospeso»**, `last_checked_at` ancora al 2026-07-25. ✅ **Rimisurato il 2026-08-14, ed erano DUE domande confuse in una**: la rilettura AUTOMATICA delle fonti è viva e nessuna fonte è in ritardo sulla propria cadenza; ciò che è fermo al 2026-07-25 è la verifica **umana**. Le sette fonti sono state confrontate in sola lettura con `npm run subsidy:sources`: **due sono cambiate** (`ti-linn`, `ti-lrilocc`). ⚠️ Il **percorso delle fonti non è più del tutto scoperto**: `fetchSource`+adapter+`detectChanges` sono stati eseguiti contro le sette fonti VERE — resta scoperto ciò che scrive (`runSourceChecks`) e l'involucro HTTP. Dettaglio nella sezione dedicata |
 
 ## Registro attività (0039) — applicato, provato sul database vero e DEPLOYATO il 2026-08-09
 
@@ -243,6 +367,38 @@ aziende, utenti, programmi, revisioni, operatori):
   persona in azienda c'è. Con utenti registrati per la via normale il profilo
   esiste; il ripiego dell'etichetta però non distingue «senza profilo» da
   «uscita dall'azienda».
+  ✅ **Corretto il 2026-08-14**, e i casi sono QUATTRO invece di due (§sotto).
+
+### ✅ L'autore del registro: quattro casi, e due erano diventati uno
+
+La rubrica (`company_member_directory`) restituisce **stringa vuota** per chi non
+ha compilato il profilo — `memberService` fa `display_name ?? ''` — e la pagina
+faceva `if (name) … else «una persona non più in azienda»`: **vuoto e assente
+finivano nello stesso ramo**. Sullo schermo era una frase falsa su una persona
+reale, e non un'imprecisione di cortesia: il registro esiste per non confondere i
+fatti, e un titolare che legge chi ha cancellato un documento concluderebbe che è
+stato qualcuno che se n'è andato.
+
+| Caso | Che cosa si legge |
+|---|---|
+| nessun autore (`actor_user_id` null) | «il sistema» — un trigger, un worker |
+| in rubrica, con nome | il nome |
+| **in rubrica, SENZA nome nel profilo** | «una persona senza nome nel profilo» ← la frase nuova |
+| non più in rubrica | «una persona non più in azienda» |
+
+La decisione è una funzione pura in `auditModel.ts` (`actorOf` + `actorLabelKey`)
+e non più un `if` dentro la pagina, per la ragione dichiarata in testa a quel
+file: sono le parti in cui un errore **non si vede**. La rubrica si passa per
+intero e non come «dammi il nome» — la differenza fra «c'è ed è vuoto» e «non
+c'è» sopravvive solo se chi decide può vedere le chiavi, ed è esattamente ciò
+che si era perso. Chiave nuova nelle tre lingue; `test:audit-unit` da 74 a **82**
+asserzioni, e **controprova eseguita**: rimettendo il ripiego di prima, due
+asserzioni diventano rosse.
+
+⚠️ **Un residuo dichiarato e non toccato**: il commento SQL della `0016` dice che
+la rubrica ripiega sull'**email** quando il nome manca, e non è vero — restituisce
+`null`. Il commento è dentro una migrazione **già applicata**, e qui non si
+modificano: chi legge quel file crede a una cosa che il codice non fa.
 
 ## I messaggi fermi dell'Inbox — da 11 su 124 a ZERO su 148
 
@@ -785,21 +941,21 @@ leggendo la richiesta come una conferma. Se la metrica che conta di più è
 un'altra, è una classe da spostare (`kpi-hero` / `kpi-sm`) — ma va deciso da una
 persona, non dedotto.
 
-## Il marchio e i pesi del carattere — COMMITTATO il 2026-08-13, non ancora deployato
+## Il marchio e i pesi del carattere — IN PRODUZIONE dal 2026-08-13
 
 Il marchio non è più una lettera in un quadrato: è il wordmark che il titolare
 usa già sulla vetrina («AI» in un blocco, poi «Swisse»), ricomposto in Inter. E
 sotto ci sono tre difetti del carattere che nessun controllo vedeva. Il come e
 il perché stanno in [`design-system.md`](design-system.md); qui c'è lo stato.
 
-| | Stato al 2026-08-13 |
+| | Stato al 2026-08-14 |
 |---|---|
 | Implementato | sì — `BrandMark.tsx` (nove punti di montaggio), favicon in `index.html`, `app.css`, `extra.css`, `fonts-check.mjs` |
-| Deployato | **NO** — commit `19653fa` nello specchio, PR aperta, nessun merge |
+| Deployato | **sì** — PR #47 unita (merge `c5d647d`); **verificato il 2026-08-14 nel bundle SERVITO** da `app.ai-swisse.com` (`index-hEh5aeam.js` / `index-Dc9KBvWb.css`): `brand-lockup`, `brand-word`, `brand-sigla` ci sono, in JS e in CSS. ⚠️ Fino al 2026-08-14 questa riga diceva ancora «NO — PR aperta, nessun merge»: era vera quando è stata scritta e ha smesso di esserlo la notte stessa |
 | Configurato | non richiede configurazione |
-| Testato | **sì** — `test:shell-unit` 115 casi (§3 favicon, §3b marchio, §8 cifre tabulari), `test:print-unit` 62, `fonts:check` con la copertura letta dalla cmap dei file. Ogni controllo nuovo è stato **provato sul rosso che deve dare** |
+| Testato | **sì** — `test:shell-unit` 118 casi (§3 favicon, §3b marchio, **§3c la doppia sede**, §8 cifre tabulari), `test:print-unit` 62, `fonts:check` con la copertura letta dalla cmap dei file. Ogni controllo nuovo è stato **provato sul rosso che deve dare** |
 | Provato contro la cosa reale | **in parte, e va detto come**: il marchio, i KPI e le barre sono stati guardati a 1280/768/375, nei due temi e nelle tre lingue, **con le regole CSS vere ma dati inventati** — le schermate interne stanno dietro auth. La pagina di accesso è invece quella vera. Il **PDF del dettaglio documento non è stato riprodotto** |
-| Disponibile a clienti esterni | **no** — finché non è unito |
+| Disponibile a clienti esterni | sì — è l'interfaccia che vedono tutti |
 
 ⚠️ **Che cosa NON è stato riprovato, e non va sottinteso.** La stampa: che
 `@media print` non tocchi `font-family` ora è presidiato da un test sul CSS
@@ -809,13 +965,30 @@ esportata e precede otto commit sui fogli di stile. La quinta parola per la
 stampa vale «no» finché qualcuno non esporta il dettaglio documento e guarda i
 font incorporati.
 
-⚠️ **La coerenza fra il marchio dell'app e quello della vetrina non è
-sorvegliata da niente.** `site/` è una base di codice separata, invisibile da
-questo albero: nessun controllo di qui può leggerla. Oggi i due segni sono la
-stessa forma, ma su fondi di **due blu diversi** — `--accent` nell'app,
-`#00AEEF` sulla vetrina — ed è un divario **dichiarato**, non una svista: la
-vetrina tiene i colori del marchio per scelta. Se il marchio cambia, i posti da
-toccare a mano sono due.
+### ✅ La doppia sede del marchio adesso è NOMINATA da qualcosa — dal 2026-08-14
+
+Il marchio vive in **due basi di codice**: qui (`BrandMark.tsx` più le regole
+`.brand-*`, composto in Inter sul token `--accent`) e nella vetrina
+(`site/static/logo-ai-swisse.svg`, un tracciato Poppins sul blu del titolare
+`#00AEEF`). I due **blu divergono per scelta** — la vetrina tiene i colori del
+marchio — ma la **forma è una sola**, e `site/` è invisibile da questo albero.
+Fino a ieri, se il marchio cambiava, i posti da toccare erano due e **niente lo
+ricordava**: lo si sarebbe scoperto guardando le due pagine affiancate, cioè per
+caso.
+
+`test:shell-unit` **§3c** tiene un'impronta di ciò che DEFINISCE il segno — le
+dichiarazioni CSS delle regole `.brand-*` e le classi che il componente monta —
+e diventa rossa quando si muove, **nominando la seconda sede** e il comando per
+raggiungerla. L'impronta ignora i commenti di proposito: un controllo che
+diventa rosso quando si riscrive una spiegazione insegna a rifare il numero
+senza guardare.
+
+⚠️ E dove la vetrina è raggiungibile — nel monorepo, quindi **in CI** — il
+controllo la **guarda** invece di crederci: verifica che il logo porti ancora
+`#00AEEF` e il blocco della sigla. Da `~/swiss-ai-suite-app` la riga dichiara
+che la seconda sede non è raggiungibile, invece di fingere un verde.
+**Controprova eseguita**: cambiando il raggio del blocco della sigla
+(`--sp-1` → `--radius-sm`) il controllo diventa rosso e stampa i due indirizzi.
 
 ## Le etichette — IN PRODUZIONE dal 2026-08-14, e GUARDATE con dei dati
 
@@ -851,6 +1024,31 @@ perché non c'era niente da controllare: erano stringhe.
    `badge-blue` è il blu d'**azione**, che dal 2026-08-13 non marca più stati.
 3. Lo stato di un'opportunità portava l'**ambra**, il colore che ovunque nel
    prodotto significa «attenzione», su un fatto del tutto normale.
+
+### La testata dell'analisi diceva DUE AGGETTIVI NUDI — corretto, PR #49, in produzione
+
+⚠️ **Un difetto introdotto migrando i segni, e visibile solo con un documento
+vero davanti.** Nella testata dell'analisi si leggeva «› media  ●●● alta»: due
+aggettivi affiancati e nessuno dei due diceva di CHE COSA — il primo è
+l'urgenza, il secondo la confidenza. Migrando l'urgenza a `PriorityMark` il
+segno era arrivato e la parola «urgenza» se n'era andata con la vecchia
+pastiglia.
+
+Corretto mettendo davanti il **nome della famiglia**
+(`marks.legend.priority` / `marks.legend.confidence` — le stesse stringhe della
+legenda, zero chiavi nuove), **solo in quella testata**: altrove le due famiglie
+non si toccano e non serve. In produzione si legge
+`PRIORITÀ › media   CONFIDENZA ●●● alta`.
+
+**PR #49 unita** (merge `479e5ad`); ✅ **verificato il 2026-08-14 nel CSS
+servito**: `ax-badge-key` e `ax-badge-pair` ci sono (`index-Dc9KBvWb.css`), e
+prima non c'erano.
+
+⚠️ **Nessun test poteva vederlo, e non è una lacuna della suite**: i controlli
+provano che i segni esistano, che le classi siano giuste, che le etichette non
+sforino. Che DUE FAMIGLIE AFFIANCATE dicano due aggettivi nudi si vede solo
+guardando la schermata con dentro un documento vero. È la stessa lezione della
+riga qui sopra, in piccolo.
 
 ⚠️ **Quattro cose restano senza famiglia**, dichiarate in `design-system.md`:
 lo stato di salute di una relazione, lo stato di una pratica incentivi, il
@@ -995,6 +1193,170 @@ casi con `npm run subsidy:health:self-test`, che gira dentro `test:unit`.
 
 Segnalato dalla suite stessa, e legittimo: **`ti-lrilocc` è SOSPESO** — attivo
 ma non concedibile, stato verificato il 2026-07-25. Concedibili 6 su 7.
+
+## ⚠️⚠️ «Il catalogo non è confrontato con le fonti dal 25 luglio» — misurato il 2026-08-14, ed erano DUE domande
+
+Questa pagina ha detto per due settimane una cosa sola dove i fatti erano due, e
+la differenza cambia che cosa c'è da fare.
+
+| | Che cosa dice | Al 2026-08-14 |
+|---|---|---|
+| `subsidy_sources.last_successful_check_at` | **la MACCHINA** ha riletto la fonte | viva: fetch il **2026-08-06** e due il **2026-08-13**, tutti `unchanged`. Ogni fonte ha la sua cadenza (7g `prokilowatt`, 14g `innosuisse`, 30g quattro, 180g `ti-lrilocc`), **nessuna in ritardo** |
+| `subsidy_programs.last_checked_at` | **una PERSONA** ha guardato la fonte e ha detto «ciò che pubblichiamo è ancora vero» | fermo al **2026-07-25** su tutti e sette: 20 giorni |
+
+**`runSourceChecks` NON costa credito Anthropic**, e non è una stima: il
+confronto è impronta contro impronta, e `diff.ts` lo dichiara in testa —
+*«NESSUNA AI IN QUESTO FILE (§153) … chiedere a un modello se due pagine siano
+diverse significherebbe pagare per una domanda a cui una funzione di hash
+risponde meglio»*. Costa HTTP verso i siti ufficiali.
+
+⚠️ **Non è stato eseguito `runSourceChecks`, ed è la scelta giusta**: gira già da
+solo ogni quindici minuti dentro `subsidy-worker`, e legge le fonti **scadute**.
+Al 2026-08-14 nessuna lo era: eseguirlo a mano avrebbe scritto zero righe e
+misurato zero fonti. La domanda di una persona — «che cosa è cambiato da quando
+l'ho verificato?» — non coincide con la cadenza di uno scheduler.
+
+### ✅ `npm run subsidy:sources` — il confronto che una persona può chiedere
+
+Nuovo, **in sola lettura**: legge tutte e sette le fonti ADESSO, con la
+`fetchSource` vera (allowlist degli host, HTTPS imposto, redirect validati a
+ogni salto, tetto sui byte) e gli adapter veri, e confronta l'impronta con
+quella registrata. **Non scrive niente.**
+
+⚠️⚠️ **E soprattutto NON tocca `last_checked_at`**, che sarebbe stata la bugia
+più facile di tutto questo intervento. Quel campo significa «una PERSONA ha
+verificato», lo muove soltanto la decisione `accepted` di
+`resolve_subsidy_catalog_review`, e un comando che lo aggiornasse scriverebbe
+che qualcuno ha guardato quando a leggere è stato uno script — la stessa bugia
+che il 2026-08-05 ha fatto scegliere `ignored` invece di `accepted` sulle sette
+revisioni.
+
+**Che cosa è cambiato alla fonte, programma per programma** (eseguito il
+2026-08-14, 7 fonti su 7 lette):
+
+| Programma | Esito | Che cosa |
+|---|---|---|
+| `prokilowatt` | invariato | impronta identica (riletta 0g fa) |
+| `innosuisse` | invariato | impronta identica (riletta 0g fa) |
+| `pronovo` | invariato | impronta identica (riletta 14g fa) |
+| `programma-edifici` | invariato | impronta identica |
+| `ti-fer` | invariato | impronta identica |
+| **`ti-linn`** | **CAMBIATA** | `textLength` **4574 → 4436**: la pagina ha perso 138 caratteri dal 2026-07-30 |
+| **`ti-lrilocc`** | **CAMBIATA** | solo l'impronta: **nessun campo normalizzato diverso** — una modifica redazionale |
+
+⚠️ **Le due cambiate sono anche le due che lo scheduler avrebbe riletto fra 15
+giorni** (`next_check_at` al 2026-08-29 e al 2027-01-26): il confronto a
+richiesta le ha viste due settimane prima della cadenza. Nessuna revisione è
+stata creata — questo comando non scrive — quindi restano da guardare, ed è il
+gesto che sposta `last_checked_at`.
+
+### ⚠️⚠️ IL DIFETTO CHE IL CONFRONTO HA FATTO VEDERE: un campo FANTASMA nella nota
+
+`detectChanges` contava sempre **un campo di troppo**. L'istantanea conserva
+`unsupported` DENTRO `normalized` (`runSourceChecks` scrive
+`{ ...result.normalized, unsupported }`), l'adapter lo restituisce accanto:
+`diffFields` vedeva quindi un valore «sparire» a ogni controllo di ogni fonte,
+per sempre.
+
+Misurato sulle fonti vere: la nota di `ti-lrilocc` diceva «**1 campi
+normalizzati diversi**» dove ne era cambiato **zero**, e quella di `ti-linn` due
+dove uno solo si era mosso. Chi smaltisce la coda decide su quel numero:
+gonfiarlo di uno trasforma «niente di sostanziale» in «qualcosa è cambiato».
+
+✅ **Corretto il 2026-08-14** (`unsupported` esce dal confronto dei campi: ha già
+la sua proposta dedicata, `source_structure_changed`, e contarlo due volte non
+era prudenza, era rumore). Coperto da **tre casi nuovi** in `test:subsidy-unit`
+(305 asserzioni), fra cui la controprova «un campo vero che cambia resta
+contato: UNO, non due». **Controprova eseguita**: rimettendo la riga di prima,
+due asserzioni diventano rosse.
+
+⚠️ **NON è in produzione**: `diff.ts` vive in una Edge Function, e nessun
+workflow le deploya. Finché `subsidy-worker` non viene rideployata, la coda vera
+continuerà a contare un campo di troppo.
+
+### ✅ L'invecchiamento adesso si vede — `subsidy:health` guarda anche il confronto
+
+Il comando usciva **0** con «catalogo valido e aggiornato» e `last_checked_at` di
+venti giorni. Non era un errore di calcolo: era di nuovo un difetto di
+**copertura**, la stessa forma della coda di revisione che non veniva guardata un
+mese prima. Da oggi il riepilogo stampa **sempre** due righe nuove:
+
+```
+  Revisioni chiuse SENZA una persona: 7 (reviewed_by nullo: nessuno ha deciso, o chi ha deciso non esiste più)
+  Confronto con le fonti fatto da una PERSONA: il più vecchio 20g fa (innosuisse) (soglia 30g)
+  Riletture AUTOMATICHE delle fonti: 7 attive · la meno recente 14g fa · nessuna in ritardo
+```
+
+**La soglia proposta, e perché quel numero.**
+
+| Soglia | Valore | Effetto | Perché |
+|---|---|---|---|
+| Verifica **umana** più vecchia | **30 giorni** (`--verify-stale-days=`) | exit **1** — lavoro per una persona, non un errore | la stessa della coda di revisione, e per la stessa ragione: le finestre di domanda svizzere si misurano in mesi, quindi un mese di ritardo sul confronto non fa perdere un bando e due possono. Un mese significa «il catalogo si guarda almeno una volta al mese» |
+| Programma **mai** confrontato | — | exit **1**, e lo NOMINA | un programma che nessuno ha mai verificato non è vecchio: non è mai stato guardato |
+| Fonte **mai letta** con successo | — | exit **2**, integrità | il catalogo starebbe pubblicando un contenuto che nessuno ha mai confrontato con niente |
+| Fonte in ritardo sulla **propria** cadenza | > 1 giorno | exit **1** | una fonte si giudica sulla sua cadenza, non su una soglia unica: 180 giorni sono un ritardo enorme per una pagina critica e la normalità per una base legale |
+| Ritardo oltre **una cadenza intera** | — | exit **2** | non è un turno saltato: lo scheduler non sta facendo il suo lavoro, o la fonte rifiuta da giorni |
+
+⚠️ **Oggi il catalogo resta a exit 0** (20 giorni < 30) — e la riga si legge lo
+stesso. È voluto: far diventare rosso adesso un catalogo che nessuno ha ancora
+avuto motivo di ricontrollare insegnerebbe a ignorare quel rosso. **All'undicesimo
+giorno da oggi esce 1 da solo**, senza che nessuno debba ricordarsene.
+
+Il giudizio è una funzione pura provata su **nove casi nuovi**
+(`subsidy:health:self-test`, 25 in tutto), fra cui «a 31 giorni lo stesso
+catalogo smette di poter uscire zero» e «una cadenza lunga NON è un ritardo».
+⚠️ Un caso ha trovato un difetto mentre lo si scriveva: una fonte mai letta
+veniva contata **due volte**, come errore e come ritardo — un fatto solo che
+sembrava due problemi.
+
+### ⚠️ La verifica umana NON HA UNA PORTA, ed è la cosa più importante di questa sezione
+
+`last_checked_at` lo muove **soltanto** `accepted` su una revisione. Se il
+rilevatore non produce revisioni — cioè quando le fonti non cambiano, che è la
+situazione normale e apparentemente migliore — **non esiste alcun percorso, da
+dentro il prodotto, perché una persona dica «ho guardato, è ancora vero».** Il
+catalogo invecchia verso i 180 giorni e l'unico modo di azzerare il contatore è
+riseminare.
+
+Non è stato corretto qui: aprire quella porta significa decidere **chi** può
+dirlo e **dove** (una schermata per gli operatori del catalogo, o un comando che
+scrive con il ruolo di servizio), ed è una decisione di prodotto, non
+consolidamento. `npm run subsidy:sources` è la metà che si poteva fare senza
+decidere: mostra ciò che serve per guardare, e lascia il gesto a una persona.
+
+### Le sette revisioni chiuse dal sistema — non può più succedere in silenzio, ma restano AMBIGUE
+
+**Verificato il 2026-08-14, e sono due domande distinte.**
+
+✅ **Il difetto che le ha emesse è chiuso e sorvegliato.** `detectChanges` non
+produce più una revisione di contenuto quando `previousHash` è `null`: senza
+un'impronta precedente non c'è un cambiamento, c'è una prima lettura.
+`test:subsidy-unit` lo prova su tre casi, con le due controprove che contano —
+una candidata di scadenza e una fonte caduta **sopravvivono** alla prima lettura,
+perché non sono confronti, sono cose da guardare.
+
+✅ **E chiuderle in silenzio non è un percorso del codice**: l'unica via
+applicativa è `resolve_subsidy_catalog_review`, che pretende un operatore del
+catalogo e scrive `reviewed_by = auth.uid()`. Le sette del 2026-08-05 sono state
+chiuse con il ruolo di servizio, cioè da una persona che ha eseguito uno script:
+nessuna funzione del prodotto lo fa da sé.
+
+⚠️⚠️ **Ma «chiusa dal sistema» e «chiusa da una persona» NON sono distinguibili a
+posteriori in modo strutturato, e questo resta aperto.** Oggi la differenza
+sopravvive in due posti, e nessuno dei due è un dato:
+
+- `reviewed_by IS NULL` — **ambiguo per costruzione**: la colonna è
+  `references auth.users on delete set null`, quindi una decisione **umana** il
+  cui utente venga cancellato diventa indistinguibile da una chiusura di
+  sistema. Oggi non è ancora successo, ma è una domanda di tempo;
+- la **nota**, che è prosa: le sette dicono *«Chiusa dal sistema il 2026-08-05,
+  non da una persona…»*. Regge finché qualcuno la scrive.
+
+Ciò che è stato fatto senza decidere niente: `subsidy:health` **conta e nomina
+per sempre** le revisioni chiuse senza una persona, così quel lavoro non sparisce
+dalla vista insieme al problema. Chiuderlo davvero richiede una **migrazione**
+(una colonna che dica «deciso da: persona | sistema», e la funzione che la
+scrive), e le migrazioni si chiedono.
 
 ## `test:integration` — 71 asserzioni contro la funzione DEPLOYATA
 
@@ -1428,6 +1790,8 @@ che usciva verso `to: [null]` — raggiunto per un'altra strada.
 ```bash
 npm run test:all         # quality + unit + db + production (`production` è dentro di proposito: in locale `.env.test` punta al progetto reale)
 npm run verify:deploy    # scheduler ed Edge Function nel progetto reale (serve il token)
+npm run verify:ai        # il credito Anthropic ADESSO: 0 = si può lavorare, non-zero = perché no
+npm run subsidy:sources  # le sette fonti ufficiali confrontate ora, in sola lettura
 ```
 
 E le suite che **non** stanno in `test:all`, perché provano il progetto o
