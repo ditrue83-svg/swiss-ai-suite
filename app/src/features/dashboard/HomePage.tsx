@@ -21,6 +21,7 @@
 // ============================================================================
 import { Link } from 'react-router-dom';
 import { PriorityMark } from '@/components/ui/PriorityMark';
+import { Bars } from '@/components/ui/Bars';
 import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard, SkeletonKpiGrid } from '@/components/ui/states';
@@ -36,7 +37,6 @@ import { daysUntil } from '@/lib/format';
 import { calendarDaysUntil } from '@/features/tasks/taskFormat';
 import { useAuth } from '@/contexts/AuthContext';
 import { useT, type TKey } from '@/i18n';
-import { useLabels } from '@/i18n/labels';
 
 /**
  * Il saluto, con il nome quando lo sappiamo.
@@ -61,34 +61,6 @@ function greetingSlot(): keyof typeof GREETING {
   return 'evening';
 }
 
-interface BarRow { cat: string; val: number; cls?: string; dotCls?: string }
-
-/**
- * Barre orizzontali. La lunghezza è la QUOTA SUL TOTALE della serie, non sul
- * valore più alto: normalizzando sul massimo, un solo documento riempiva la
- * barra fino in fondo e sembrava «tanto». Con il totale al denominatore la
- * lunghezza dice qualcosa di vero — quanta parte dell'insieme sta in questa
- * riga — e il numero accanto resta il dato esatto.
- */
-function Bars({ rows }: { rows: BarRow[] }) {
-  const total = rows.reduce((n, r) => n + r.val, 0);
-  return (
-    <>
-      {rows.map((r) => (
-        <div className="bar-row" key={r.cat}>
-          <div className="bar-cat">{r.dotCls && <span className={`bar-dot ${r.dotCls}`} />}{r.cat}</div>
-          <div className="bar-track">
-            {/* A zero non si disegna nulla: una barra minima mostrerebbe una
-                quantità che non c'è. */}
-            {r.val > 0 && <div className={`bar-fill ${r.cls ?? ''}`} style={{ width: `${Math.round((r.val / total) * 100)}%` }} />}
-          </div>
-          <div className="bar-val">{r.val}</div>
-        </div>
-      ))}
-    </>
-  );
-}
-
 /**
  * La freccia in fondo a una scheda numerica.
  *
@@ -102,7 +74,6 @@ function KpiGo() {
 }
 
 function PriorityRow({ it }: { it: PriorityItem }) {
-  const L = useLabels();
   // Il collegamento è la riga, non la freccia: su un portatile con trackpad
   // centrare un bersaglio di 16 pixel è una prova di mira. La freccia resta
   // come indizio di dove si va.
@@ -126,8 +97,7 @@ function PriorityRow({ it }: { it: PriorityItem }) {
 
 function OverviewBody({ data }: { data: OverviewData }) {
   const t = useT();
-  const L = useLabels();
-  const { tasks, counts, analyses, incentives, documentsToVerify, documentCount } = data;
+  const { tasks, counts, completion, incentives, documentsToVerify, documentCount } = data;
   // `tasks` sono le attività aperte più urgenti (le prime della lista ordinata
   // dal database), non tutte: per i CONTEGGI si usa `counts`, che il database
   // calcola prima di paginare. Un numero preso dalla lunghezza di un elenco
@@ -146,22 +116,17 @@ function OverviewBody({ data }: { data: OverviewData }) {
   const activeCases = incentives?.openCases ?? null;
   const activeProjects = incentives?.activeProjects ?? null;
 
-  let totChecks = 0, doneChecks = 0;
-  analyses.forEach((a) => a.actions.forEach((c) => { totChecks++; if (c.done) doneChecks++; }));
-  const compPct = totChecks ? Math.round((doneChecks / totChecks) * 100) : 0;
-
-  const urg = { alta: 0, media: 0, bassa: 0 };
-  const langCount: Record<string, number> = {};
-  const tipoCount: Record<string, number> = {};
-  analyses.forEach((a) => {
-    urg[a.urgency]++;
-    langCount[a.languageLabel] = (langCount[a.languageLabel] || 0) + 1;
-    // L'etichetta del tipo passa dalle etichette tradotte: la mappa di
-    // abbreviazioni italiane che stava qui restava italiana in de e fr.
-    const k = a.documentType ? L.docType(a.documentType) : a.documentTypeLabel;
-    tipoCount[k] = (tipoCount[k] || 0) + 1;
-  });
-  const tipoRows = Object.entries(tipoCount).sort((a, b) => b[1] - a[1]).map(([cat, val]) => ({ cat, val }));
+  // ⚠️ IL COMPLETAMENTO NON LEGGE PIÙ LO SNAPSHOT. Fino al 2026-08-15 questa
+  // riga era `analyses.forEach((a) => a.actions.forEach(...))` e contava
+  // `c.done` dentro `document_analyses.actions`: dalla 0010 quel campo è SEMPRE
+  // `false` — lo stato delle spunte vive in `action_progress` — quindi il
+  // numeratore era zero per costruzione. Mostrava «0 di 40», che era per caso
+  // il valore giusto, e nessuna spunta avrebbe mai potuto farlo salire: un verde
+  // falso in attesa del giorno in cui qualcuno avesse spuntato qualcosa.
+  // Ora `done` viene da `action_progress` e il denominatore dallo snapshot (che
+  // è l'unico posto in cui si sa quante azioni ESISTONO), sui soli documenti
+  // attivi: le azioni di un documento archiviato non sono lavoro in sospeso.
+  const compPct = completion.total ? Math.round((completion.done / completion.total) * 100) : 0;
 
   // Le fasce restano chiavi tecniche e diventano etichette solo al render:
   // prima erano stringhe italiane usate sia come chiave sia come testo, e in
@@ -324,11 +289,27 @@ function OverviewBody({ data }: { data: OverviewData }) {
           )}
         </div>
         <div className="card"><div className="card-title">{t('dashboard.completion')}</div>
-          {totChecks === 0 ? <div className="chart-empty">{t('dashboard.noChecklist')}</div> : (
+          {completion.total === 0 ? <div className="chart-empty">{t('dashboard.noChecklist')}</div> : (
             <>
               <div className="meter"><div className="meter-num">{compPct}%</div>
                 <div className="meter-track"><div className="meter-fill" style={{ width: `${compPct}%` }} /></div></div>
-              <div className="kpi-sub mt-10">{t('dashboard.completionSub', { done: doneChecks, total: totChecks })}</div>
+              {/* ⚠️ L'INSIEME NELLA FRASE, non sottinteso: «su tutti i documenti»
+                  era falso due volte — comprendeva gli archiviati e non li
+                  contava comunque. Ora dice su quanti documenti attivi è
+                  calcolato, e se il tetto ha morso lo dichiara invece di
+                  presentare una parte come il tutto. */}
+              <div className="kpi-sub mt-10">
+                {t('dashboard.completionSub', { done: completion.done, total: completion.total })}
+                {' · '}
+                {completion.documents < completion.documentsTotal
+                  ? t('dashboard.completionScopePartial', {
+                    n: completion.documents, total: completion.documentsTotal,
+                  })
+                  // Due chiavi per il singolare: «su 1 documenti attivi» è la
+                  // frase che esce fingendo che l'i18n abbia il plurale.
+                  : t(completion.documents === 1 ? 'dashboard.completionScopeOne' : 'dashboard.completionScope',
+                    { n: completion.documents })}
+              </div>
             </>
           )}
         </div>
@@ -363,28 +344,18 @@ function OverviewBody({ data }: { data: OverviewData }) {
         </div>
       )}
 
-      <div className="section-title mt-28">{t('dashboard.docStats')}</div>
-      <div className="grid-2">
-        <div className="card"><div className="card-title">{t('dashboard.docsByUrgency')}</div>
-          {analyses.length === 0 ? <div className="chart-empty">{t('dashboard.noDocsAnalyzed')}</div> : (
-            <Bars rows={[
-              { cat: L.urgency('alta'), val: urg.alta, cls: 's-alta', dotCls: 'dot-alta' },
-              { cat: L.urgency('media'), val: urg.media, cls: 's-media', dotCls: 'dot-media' },
-              { cat: L.urgency('bassa'), val: urg.bassa, cls: 's-bassa', dotCls: 'dot-bassa' },
-            ]} />
-          )}
-        </div>
-        <div className="card"><div className="card-title">{t('dashboard.docsByType')}</div>
-          {tipoRows.length === 0 ? <div className="chart-empty">{t('dashboard.noDocsAnalyzed')}</div> : <Bars rows={tipoRows} />}
-        </div>
-      </div>
-      {analyses.length > 0 && (
-        <div className="card mt-16 lang-card"><span className="lang-title">{t('dashboard.docLanguages')}</span>
-          {Object.entries(langCount).sort((a, b) => b[1] - a[1]).map(([cat, val]) => (
-            <span className="lang-chip" key={cat}>{cat} <b>{val}</b></span>
-          ))}
-        </div>
-      )}
+      {/* ⚠️ QUI FINIVA «STATISTICHE DOCUMENTI» — urgenza, tipo, lingue — e dal
+          2026-08-15 sta in `/documenti`, in una sezione chiusa sotto la lista.
+          Non è un trasloco estetico: §37 dice che questa schermata è una
+          dashboard d'AZIONE, e «quanti documenti per lingua» non risponde a
+          «cosa richiede la mia attenzione oggi». Soprattutto, quei tre grafici
+          erano la SOLA ragione per cui la Panoramica leggeva tutte le analisi
+          dell'azienda — `document_analyses` filtrata per sola azienda, una
+          tabella che non sa cosa sia `archived_at`. Risultato misurato su Rossi
+          SA: la Panoramica diceva «19 documenti», l'archivio «2 di 2». Nessuno
+          dei due era falso, nessuno dei due diceva quale insieme contava.
+          Nell'archivio l'insieme lo sceglie chi guarda, con l'interruttore
+          Attivi/Archiviati che quella pagina ha già. */}
     </>
   );
 }

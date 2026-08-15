@@ -23,6 +23,7 @@ import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import { documentHubService } from '@/services/documentHubService';
+import { DocumentStatsPanel } from './DocumentStatsPanel';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useT, type TFunction, type TKey } from '@/i18n';
@@ -463,6 +464,16 @@ export function DocumentsPage() {
               verificare», e chi li incontra qui li ritroverà identici nel
               dettaglio, in Attività e negli Incentivi. */}
           <MarkLegend />
+          {/* ⚠️ SOTTO LA LISTA E CHIUSA: la pagina risponde a «dove ritrovo
+              questo documento», e i conteggi sono una seconda domanda. Segue
+              l'interruttore Attivi/Archiviati qui sopra — l'insieme lo sceglie
+              chi guarda, ed è la ragione per cui questi grafici non stanno più
+              in Panoramica (§37). */}
+          <DocumentStatsPanel
+            companyId={companyId}
+            archived={filters.archived === true}
+            reloadKey={list.total}
+          />
         </div>
       </div>
     </>

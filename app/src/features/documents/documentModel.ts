@@ -12,9 +12,10 @@
 // finto non direbbe niente, perché la cosa da dimostrare è proprio che le
 // regole del database siano in vigore.
 // ============================================================================
+import { daysUntil, urgencyFromType } from '@/features/admin-ai/engine';
 import type {
   DocumentCategory, DocumentHubFilters, DocumentHubItem, DocumentSort, DocumentSourceType,
-  DocumentState, DocumentStatus, DocumentTag,
+  DocumentState, DocumentStatsRow, DocumentStatus, DocumentTag,
 } from '@/types/models';
 import type { AnalysisStatus } from '@/types/database';
 
@@ -109,6 +110,94 @@ export function rowMarks(
     toVerify: item.state === 'to_verify',
     deadline: item.deadline !== null && !failed,
   };
+}
+
+// ---------------------------------------------------------------------------
+// LE STATISTICHE DELL'ARCHIVIO (§37, 2026-08-15)
+//
+// Stavano in Panoramica, che è una schermata d'AZIONE: «quanti documenti per
+// tipo» non risponde a «cosa richiede la mia attenzione oggi», ed erano la sola
+// ragione per cui la Panoramica interrogava `document_analyses` senza sapere
+// nulla di `archived_at` — da lì i due numeri che si contraddicevano, 19 e 2.
+//
+// Qui invece l'insieme lo SCEGLIE chi guarda, con l'interruttore
+// Attivi/Archiviati che la pagina ha già: quando sceglie «Archiviati», il 19
+// diventa un numero vero perché è la risposta alla domanda che ha posto.
+//
+// ⚠️ UN SOLO DENOMINATORE PER TUTTI E TRE I GRAFICI. Un documento caricato e mai
+// analizzato non ha urgenza, non ha tipo e non ha lingua: invece di sparire da
+// un grafico e comparire in un altro — tre totali diversi nella stessa sezione —
+// occupa in tutti e tre una riga «senza analisi». Così ogni grafico somma
+// esattamente ai documenti dell'insieme dichiarato in testa.
+// ---------------------------------------------------------------------------
+
+/** Le fasce di urgenza più l'assenza di analisi, che non è una fascia. */
+export interface UrgencyBuckets { alta: number; media: number; bassa: number; none: number }
+
+/** `key: null` è «senza analisi»: un'assenza dichiarata, non una categoria. */
+export interface StatsBucket { key: string | null; n: number }
+
+export interface DocumentStatsBuckets {
+  urgency: UrgencyBuckets;
+  types: StatsBucket[];
+  languages: StatsBucket[];
+  withoutAnalysis: number;
+  /** Quante righe sono state contate davvero. Non è per forza il totale. */
+  counted: number;
+}
+
+/**
+ * I conteggi, da righe che partono da `documents`.
+ *
+ * ⚠️ L'urgenza NON viene ricalcolata con una regola scritta qui: si chiama
+ * `urgencyFromType`, la stessa funzione che decide l'urgenza nel dettaglio del
+ * documento e nell'analisi. Due copie della stessa soglia divergono, e a
+ * divergere sarebbe proprio il numero che questa sezione mostra.
+ *
+ * `days` è un parametro per poter provare le soglie senza dipendere dal giorno
+ * in cui gira la prova; in produzione è sempre la `daysUntil` del motore.
+ */
+export function buildDocumentStats(
+  rows: DocumentStatsRow[],
+  days: (iso: string | null) => number | null = daysUntil,
+): DocumentStatsBuckets {
+  const urgency: UrgencyBuckets = { alta: 0, media: 0, bassa: 0, none: 0 };
+  const types = new Map<string | null, number>();
+  const languages = new Map<string | null, number>();
+  const bump = (m: Map<string | null, number>, k: string | null) => m.set(k, (m.get(k) ?? 0) + 1);
+
+  for (const r of rows) {
+    if (!r.hasAnalysis) {
+      urgency.none++;
+      bump(types, null);
+      bump(languages, null);
+      continue;
+    }
+    // Un'analisi senza tipo esiste: `urgencyFromType` la tratta come le altre,
+    // e il tipo resta l'assenza che è — non si inventa «altro».
+    urgency[urgencyFromType(r.documentType ?? '', days(r.deadline))]++;
+    bump(types, r.documentType);
+    bump(languages, r.language);
+  }
+
+  return {
+    urgency,
+    types: sortBuckets(types),
+    languages: sortBuckets(languages),
+    withoutAnalysis: urgency.none,
+    counted: rows.length,
+  };
+}
+
+/**
+ * Dal più frequente al meno. ⚠️ Il gruppo «senza analisi» va SEMPRE in fondo
+ * anche quando è il più numeroso: è un'assenza di dato, e un'assenza in cima a
+ * un grafico si legge come la categoria dominante.
+ */
+function sortBuckets(m: Map<string | null, number>): StatsBucket[] {
+  return [...m.entries()]
+    .map(([key, n]) => ({ key, n }))
+    .sort((a, b) => (a.key === null ? 1 : b.key === null ? -1 : 0) || b.n - a.n);
 }
 
 /** Un'etichetta ripulita. Stessa regola in creazione e in confronto. */

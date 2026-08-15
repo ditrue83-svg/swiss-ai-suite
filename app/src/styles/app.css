@@ -1201,6 +1201,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .lang-chip { font-size: var(--fs-meta); color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-1) var(--sp-3); }
 .lang-chip b { color: var(--ink); font-weight: 600; }
 
+/* Interruttore della sezione statistiche (archivio). È un pulsante vero — si
+   raggiunge da tastiera e annuncia `aria-expanded` — con l'aspetto di una
+   intestazione: chi non la apre non deve nemmeno accorgersi che c'è un comando,
+   chi la cerca la trova dove finisce la lista. */
+.stats-toggle { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: 0; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; }
+.stats-toggle:hover { color: var(--accent-text); }
+
 /* ---------- KPI compatti (dashboard/home) ---------- */
 .kpi-value { display: flex; align-items: baseline; gap: var(--sp-2); }
 .kpi-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); margin-bottom: var(--sp-3); }

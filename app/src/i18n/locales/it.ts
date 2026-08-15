@@ -366,6 +366,24 @@ export const it = {
     searchPlaceholder: 'Cerca per nome, mittente, contenuto o riferimento…',
     searchScope: 'La ricerca guarda titolo, mittente, oggetto, riferimenti, etichette e il testo dei documenti.',
     countShown: '{shown} di {total}',
+    // ---- Statistiche documenti (§37, arrivate dalla Panoramica il 2026-08-15)
+    // Ogni frase DICHIARA l'insieme: il numero da solo non è un'informazione
+    // finché non si sa se parla degli attivi, degli archiviati o di tutti.
+    stats: {
+      title: 'Statistiche documenti',
+      scopeActiveOne: 'Su 1 documento attivo.',
+      scopeActive: 'Su {n} documenti attivi.',
+      scopeArchivedOne: 'Su 1 documento archiviato.',
+      scopeArchived: 'Su {n} documenti archiviati.',
+      partial: 'statistiche sui primi {n} di {total}',
+      byUrgency: 'Per urgenza',
+      byType: 'Per tipo',
+      languages: 'Lingue',
+      // Un documento caricato e mai letto. Non è un tipo e non è una fascia
+      // d'urgenza: è l'assenza dell'analisi, e si dice così invece di sparire.
+      withoutAnalysis: 'Senza analisi',
+      empty: 'Nessun documento in questo insieme.',
+    },
     loadMore: 'Mostra altri',
     filtersShow: 'Filtri',
     filtersHide: 'Nascondi i filtri',
@@ -969,10 +987,6 @@ export const it = {
     noDatedDeadlines: 'Nessuna scadenza con data.',
     noChecklist: 'Nessuna checklist ancora. Analizza un documento.',
     allSubsidies: 'Vedi tutti gli incentivi',
-    docsByUrgency: 'Documenti per urgenza',
-    docsByType: 'Documenti per tipo',
-    docLanguages: 'Lingue dei documenti',
-    noDocsAnalyzed: 'Nessun documento analizzato.',
     // Il sistema i18n non ha regole di plurale: dove il numero cambia la frase
     // ci sono due chiavi e la scelta si fa nel componente. Cinque casi non
     // giustificano una libreria, ma «1 documenti coinvolti» sì un intervento.
@@ -983,7 +997,11 @@ export const it = {
     kpiNoneOverdue: 'nessuna scaduta',
     kpiDueToday: 'In scadenza oggi',
     kpiDueWeek: 'Nei prossimi 7 giorni: {n}',
-    kpiToVerify: 'Documenti da verificare',
+    // ⚠️ «ATTIVI» NELL'ETICHETTA, e non è una parola di troppo: il numero conta
+    // i documenti non archiviati, e fino al 2026-08-15 la stessa schermata più
+    // in basso ne dichiarava 19 contando anche gli archiviati. Un numero che non
+    // dice cosa conta rende inaffidabile anche quello accanto.
+    kpiToVerify: 'Documenti attivi da verificare',
     // ⚠️ «Incertezze gravi» e non «ente incerto»: dal 2026-08-14 il numero è il
     // totale di `?stato=to_verify`, cioè ciò che il server chiama
     // `needs_review` — confidenza sotto 0,45 oppure un'incertezza di gravità
@@ -1008,11 +1026,15 @@ export const it = {
     allDone: 'Nessuna azione prioritaria: sei in pari.',
     upcomingDeadlines: 'Scadenze in arrivo',
     completion: 'Completamento azioni',
-    completionSub: '{done} di {total} azioni completate su tutti i documenti',
+    completionSub: '{done} di {total} azioni completate',
+    // Due chiavi e non una: il sistema i18n non ha regole di plurale, e «su 1
+    // documenti attivi» è la frase che si ottiene fingendo che le abbia.
+    completionScopeOne: 'su 1 documento attivo',
+    completionScope: 'su {n} documenti attivi',
+    completionScopePartial: 'sui primi {n} di {total} documenti attivi',
     subsidiesAndCases: 'Incentivi e pratiche',
     statRelevant: 'rilevanti',
     statActiveCases: 'pratiche attive',
-    docStats: 'Statistiche documenti',
     horizonOverdue: 'Scadute',
     horizon30: 'Entro 30 giorni',
     horizon90: 'Da 31 a 90 giorni',

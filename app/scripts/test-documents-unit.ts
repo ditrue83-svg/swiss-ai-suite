@@ -20,7 +20,7 @@
 // ============================================================================
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, MAX_QUERY_LENGTH, SORTS, SOURCES, STATES,
-  filtersFromParams, findExistingTag, hasActiveFilters, needsAttention,
+  buildDocumentStats, filtersFromParams, findExistingTag, hasActiveFilters, needsAttention,
   normalizeTagName, paramsFromFilters, rowMarks, sameTagName, splitSnippet, stateOf,
   toListArgs,
 } from '../src/features/documents/documentModel';
@@ -35,7 +35,7 @@ import { titoloDocumento, nomeFileInformativo } from '../src/lib/documentTitle';
 import { documentTaskDraft, runCreateFromDocument } from '../src/features/tasks/documentToTask';
 import type {
   ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
-  DocumentLinkedTask, Task,
+  DocumentLinkedTask, DocumentStatsRow, Task,
 } from '../src/types/models';
 
 let pass = 0, fail = 0;
@@ -667,6 +667,91 @@ section('12 · Lo stato del termine (deadlineState)');
   ok(ieri.state === 'over' && ieri.days === 1, 'ieri: scaduto da 1 — i giorni di ritardo sono positivi');
   const treGiorniFa = deadlineState(giorno(-3));
   ok(treGiorniFa.state === 'over' && treGiorniFa.days === 3, 'tre giorni fa: scaduto da 3');
+}
+
+// ===========================================================================
+section('9. Statistiche documenti — l’insieme, e chi non ha analisi');
+// ===========================================================================
+// ⚠️ IL DIFETTO CHE QUESTI CONTROLLI SORVEGLIANO (misurato il 2026-08-15). La
+// Panoramica contava `document_analyses` filtrando la sola azienda: quella
+// tabella non conosce `archived_at`, quindi diceva «19 documenti» mentre
+// l'archivio ne mostrava 2. Qui si prova che i conteggi partono dalle RIGHE che
+// il chiamante ha scelto — attivi o archiviati, mai «tutte le analisi» — e che
+// un documento senza analisi resta visibile invece di sparire.
+{
+  const riga = (over: Partial<DocumentStatsRow> = {}): DocumentStatsRow => ({
+    id: 'd1', documentType: 'request_for_documents', language: 'it', deadline: null,
+    analysisId: 'a1', hasAnalysis: true, actionCount: null, ...over,
+  });
+  // Giorni fissi: le soglie si provano senza dipendere dal giorno in cui gira.
+  const mai = () => null;
+  const fra = (n: number) => () => n;
+
+  const vuoto = buildDocumentStats([]);
+  ok(vuoto.counted === 0 && vuoto.types.length === 0 && vuoto.urgency.media === 0,
+    'nessuna riga: tutti i conteggi a zero, nessuna categoria inventata');
+
+  // I 19 documenti di Rossi SA erano 14 media + 5 bassa: la stessa forma.
+  const misti = buildDocumentStats([
+    riga({ id: 'a', documentType: 'request_for_documents' }),
+    riga({ id: 'b', documentType: 'payment_request' }),
+    riga({ id: 'c', documentType: 'information' }),
+    riga({ id: 'd', documentType: 'other', language: 'de' }),
+  ], mai);
+  ok(misti.urgency.media === 2 && misti.urgency.bassa === 2 && misti.urgency.alta === 0,
+    'l’urgenza segue `urgencyFromType`: due tipi «medi», due che non lo sono');
+  ok(misti.counted === 4, 'si contano le righe ricevute, non una tabella intera');
+  ok(misti.languages.length === 2 && misti.languages[0].key === 'it' && misti.languages[0].n === 3,
+    'le lingue si ordinano dalla più frequente');
+
+  // ⚠️ IL CASO CHE HA MOTIVATO «si parte da documents»: un documento caricato e
+  // mai letto. Partendo dalle analisi non esisteva; qui deve occupare una riga
+  // in TUTTI e tre i grafici, così i tre totali restano lo stesso numero.
+  const conOrfano = buildDocumentStats([
+    riga({ id: 'a' }),
+    riga({ id: 'b', hasAnalysis: false, analysisId: null, documentType: null, language: null }),
+  ], mai);
+  ok(conOrfano.withoutAnalysis === 1, 'un documento senza analisi si conta, non sparisce');
+  ok(conOrfano.urgency.none === 1 && conOrfano.urgency.bassa === 0,
+    'senza analisi NON è «bassa urgenza»: è l’assenza di una fascia, non la fascia più tranquilla');
+  const sommaU = conOrfano.urgency.alta + conOrfano.urgency.media
+    + conOrfano.urgency.bassa + conOrfano.urgency.none;
+  const sommaT = conOrfano.types.reduce((n, b) => n + b.n, 0);
+  const sommaL = conOrfano.languages.reduce((n, b) => n + b.n, 0);
+  ok(sommaU === 2 && sommaT === 2 && sommaL === 2,
+    'i tre grafici sommano allo STESSO numero: un solo denominatore per la sezione');
+
+  // ⚠️ Un'assenza in cima a un grafico si legge come la categoria dominante.
+  const orfaniInMaggioranza = buildDocumentStats([
+    riga({ id: 'a', hasAnalysis: false, documentType: null, language: null }),
+    riga({ id: 'b', hasAnalysis: false, documentType: null, language: null }),
+    riga({ id: 'c', hasAnalysis: false, documentType: null, language: null }),
+    riga({ id: 'd', documentType: 'invoice', language: 'fr' }),
+  ], mai);
+  ok(orfaniInMaggioranza.types[0].key === 'invoice'
+    && orfaniInMaggioranza.types[orfaniInMaggioranza.types.length - 1].key === null,
+    '«senza analisi» va in fondo anche quando è il gruppo più numeroso');
+
+  // Le soglie non sono riscritte qui: si prova che vengono da `urgencyFromType`.
+  ok(buildDocumentStats([riga({ deadline: '2026-01-01' })], fra(3)).urgency.alta === 1,
+    'una scadenza vicina alza l’urgenza anche su un tipo tranquillo');
+  ok(buildDocumentStats([riga({ documentType: 'information', deadline: '2026-01-01' })], fra(20)).urgency.media === 1,
+    'fra dieci e trenta giorni: media');
+
+  // ---- LA CONTROPROVA (§ «un test che non può fallire non è un test») -------
+  // Si rifà il difetto vero: contare le righe come faceva la Panoramica, cioè
+  // saltando i documenti senza analisi. Se i controlli qui sopra non vedessero
+  // quel caso, questa riga passerebbe — e passare qui significa fallire.
+  const comeFacevaLaPanoramica = (righe: DocumentStatsRow[]) =>
+    buildDocumentStats(righe.filter((r) => r.hasAnalysis), mai);
+  const difetto = comeFacevaLaPanoramica([
+    riga({ id: 'a' }),
+    riga({ id: 'b', hasAnalysis: false, documentType: null, language: null }),
+  ]);
+  ok(difetto.counted === 1 && difetto.withoutAnalysis === 0,
+    'controprova: partendo dalle analisi il documento mai letto sparisce — è il difetto del 2026-08-15');
+  ok(difetto.counted !== conOrfano.counted,
+    'controprova: i due conteggi DEVONO divergere, altrimenti questi controlli non guardano niente');
 }
 
 // ===========================================================================

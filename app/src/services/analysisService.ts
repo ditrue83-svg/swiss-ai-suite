@@ -348,25 +348,16 @@ export const analysisService = {
     return { analysis, status };
   },
 
-  /**
-   * Analisi dell'azienda (per Dashboard/Panoramica): UNA per documento, la più
-   * recente. Dalla 0010 il client non può più cancellare le analisi precedenti,
-   * quindi un documento rianalizzato ha più righe: senza questo filtro lo stesso
-   * documento comparirebbe più volte nella panoramica e nei conteggi.
-   */
-  async listForCompany(companyId: string): Promise<DocumentAnalysis[]> {
-    const { data, error } = await requireSupabase()
-      .from('document_analyses')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false });
-    if (error) throw new AppError(toUserMessage(error), error);
-    const latestPerDocument = new Map<string, AnalysisRow>();
-    for (const row of data ?? []) {                       // già ordinate dalla più recente
-      if (!latestPerDocument.has(row.document_id)) latestPerDocument.set(row.document_id, row);
-    }
-    return [...latestPerDocument.values()].map(rowToDomain);
-  },
+  // ⚠️ `listForCompany()` È STATA RIMOSSA IL 2026-08-15, e non sostituita.
+  // Leggeva tutte le analisi dell'azienda filtrando la sola `company_id` per
+  // dare i grafici alla Panoramica. `document_analyses` non conosce
+  // `archived_at` — non nomina nemmeno la tabella `documents` — quindi quei
+  // conteggi comprendevano gli archiviati: su Rossi SA la Panoramica diceva
+  // «19 documenti» e l'archivio «2 di 2». I conteggi partono ora da
+  // `documents` con l'analisi agganciata accanto (`documentHubService.stats`),
+  // che è l'unico verso in cui un documento mai analizzato resta visibile.
+  // Non è dead code tolto per pulizia: finché la funzione esiste, il difetto
+  // ha un modo comodo di rientrare.
 
   /**
    * Analisi del documento. Se l'ULTIMO tentativo è fallito ma esiste un'analisi
