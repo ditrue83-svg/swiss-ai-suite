@@ -43,7 +43,59 @@
 > questa pagina che dipende da un percorso AI — lettura contratti dal capo alla
 > coda, eval, classificazione Inbox — resta **non rimisurata**.
 
-## ⛔ IL CREDITO ANTHROPIC RESTA ESAURITO (rimisurato il 2026-08-14 — e ora con un comando)
+## ⛔ 2026-08-15 — DUE VERIFICHE DI PRODOTTO CHIESTE, NESSUNA DELLE DUE ESEGUIBILE
+
+Chieste il **2026-08-15**: (1) rileggere tre contratti veri dal capo alla coda e
+riportare il tasso **per campo**; (2) caricare cinque comunicazioni
+amministrative svizzere vere di enti diversi, in almeno due lingue, e verificare
+a mano mittente, tipo, scadenza, importi, azioni richieste e citazioni.
+**Nessuna delle due è stata eseguita, e nessuna colonna di questa pagina passa a
+sì per averle chieste.**
+
+| verifica chiesta | esito | perché |
+|---|---|---|
+| tre contratti, rilettura dal capo alla coda | ⛔ **SALTATA** | credito Anthropic esaurito, rimisurato oggi (§sotto) |
+| cinque lettere amministrative vere | ⛔ **SALTATA** | credito esaurito **e** i cinque documenti non esistono: in `scripts/fixtures/` ci sono soltanto i tre PDF dei contratti, nessuna lettera |
+
+⚠️ **«Saltata» non è «rossa» e non è «verde».** Un eval che non parte non dice
+niente sul prodotto: dice che non lo si può interrogare. È la stessa distinzione
+che questa pagina fa dal 2026-08-01 per le suite a consumo.
+
+⚠️ **La ricarica del credito non è stata fatta**: spostare denaro su un conto è
+una decisione di chi lo possiede, non un passaggio di un lavoro — è la stessa
+riga che `verify:ai` stampa da sé, «nessun comando lo fa». Finché non avviene, i
+due punti qui sopra restano dove sono.
+
+⚠️ **Quando il credito tornerà, il punto (1) va chiarito PRIMA di eseguirlo.**
+I tre PDF già presenti in `scripts/fixtures/contracts/` sono contratti svizzeri
+**verosimili, scritti per la prova** e dichiarati tali dal 2026-08-03: non sono
+documenti di terzi. Rileggerli misura di nuovo la stessa carta — utile per
+sapere se la correzione delle date ha funzionato, inutile per sapere come il
+modulo si comporta su un contratto vero. Sono due numeri diversi e non vanno
+confusi.
+
+### Che cosa è stato misurato oggi lo stesso
+
+Misurato il **2026-08-15 alle 00:44 CEST** (2026-08-14 22:44 UTC), interrogando
+la produzione e rieseguendo ciò che non spende credito:
+
+| misura | valore | comando |
+|---|---|---|
+| i percorsi AI possono partire adesso | **NO — credito esaurito** (HTTP 400) | `npm run verify:ai` |
+| ultima richiesta AI riuscita | 2026-08-02 18:15 UTC — **292 h fa** | idem |
+| `contract_extractions` in produzione | **0 righe** | `npm run status` |
+| correzioni umane registrate | **0** | idem |
+| documenti / analisi documento | 19 / 19 | idem |
+| contratti caricati in produzione | **1, mai letto** | idem |
+| `test:contracts` sul database vero | **69 / 69** | `npm run test:contracts` |
+| `eval:contracts --self-test` (il metro, senza rete) | **8 / 8** | `npm run eval:contracts:self-test` |
+
+⚠️ **Lo zero è il numero che conta.** `contract_extractions` è a zero da sempre:
+un contratto è caricato in produzione e **non è mai stato letto**. Le due prove
+verdi qui sopra non lo contraddicono — provano il codice e il metro, non la
+lettura di un documento.
+
+## ⛔ IL CREDITO ANTHROPIC RESTA ESAURITO (rimisurato il 2026-08-15 — e ora con un comando)
 
 ✅ **Da oggi la domanda ha un comando**: `npm run verify:ai`. Fino al 2026-08-13
 il credito era **l'unica dipendenza del prodotto senza una misura**: gli
@@ -63,6 +115,23 @@ npm run verify:ai
   ultimo errore               2026-08-02 09:15 UTC (279h fa · AI_CREDIT_EXHAUSTED)
 → CREDITO ESAURITO (exit 1)
 ```
+
+⚠️ **Rimisurato di nuovo il 2026-08-15**, ventidue ore dopo, prima di provare a
+eseguire le due verifiche chieste (§in cima). Invariato:
+
+```
+npm run verify:ai
+→ sonda all'API   HTTP 400 · 374 ms
+  «Your credit balance is too low to access the Anthropic API.»
+  ultima richiesta RIUSCITA   2026-08-02 18:15 UTC (292h fa · inbox_classification)
+  ultimo errore               2026-08-02 09:15 UTC (301h fa · AI_CREDIT_EXHAUSTED)
+→ CREDITO ESAURITO (exit 1)
+```
+
+Fra le due misure si muovono soltanto le ore, da 270 a 292: **dodici giorni**
+senza che un percorso AI parta. ⚠️ Anche in questa misura il confronto fra la
+chiave locale e quella delle Edge Function è uscito **non verificato**, per la
+ragione scritta qui sotto.
 
 ⚠️ **L'ultimo errore è PRIMA dell'ultima riuscita, e non è un refuso**: il ciclo
 di ritentativo dell'Inbox si è fermato da sé quando non è rimasto niente da
@@ -287,7 +356,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Calendario e notifiche | `/calendario` | sì | sì | sì | sì | **no** | **no** | Google/Microsoft Calendar, provider email | ⚠️ **i promemoria sono accesi dal 2026-07-31**, non prima: i due scheduler non esistevano e i secret non erano impostati. Dal 2026-07-31 li crea la **migrazione 0035** invece di un blocco SQL da incollare a mano, e il percorso è stato **provato dal capo alla coda** su un tenant tecnico (§sotto). ⚠️⚠️ **Il 2026-08-03 si è scoperto che le email non sarebbero potute partire NEMMENO con i secret impostati**: `composeEmail` non metteva il destinatario nel messaggio, e ogni promemoria sarebbe uscito verso `to: [null]` (§sotto). Corretto e coperto da 25 controlli nuovi. Restano due cose, entrambe **gesti dell'utente**: i due secret del provider email non sono impostati, e **nessuna connessione OAuth reale è mai stata stabilita** — misurato il 2026-08-03, `POST /calendar-oauth/providers` risponde `{"providers":[],"emailConfigured":false}`. Quindi «servizio reale» resta **no**. ✅ **Il 2026-08-11 il MOTORE dei promemoria è stato eseguito contro il database vero e ha prodotto la sua riga** (`npm run test:reminders`, 11 controlli, azienda usa-e-getta rimossa e rimozione verificata rileggendo). Prima esisteva solo la verifica manuale del 2026-07-31: vera, ma non ripetibile. ⚠️ **E in produzione lo zero è CORRETTO, misurato e non più dedotto**: le quattro attività scadono il 10 e il 30 settembre, la finestra arriva a otto giorni, il primo avviso è a sette — non c'è ancora niente da ricordare (§sotto) |
 | Automazioni | `/automazioni` | sì | sì | sì | sì | sì | sì | — | nessuna approvazione umana: solo azioni a rischio basso, e per questo non esiste nessuna azione che ne avrebbe bisogno. Le esecuzioni che non corrispondono non lasciano traccia |
 | Finanze | `/finanze` | sì | sì | sì | sì | parziale | sì | — | il codice QR **binario** non viene decodificato; le aliquote storiche non ci sono; su 4 voci reali 2 sono `completed` e 2 `failed` con `NOT_FINANCIAL`, che è una classificazione corretta |
-| Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ✅ **Letti tre contratti veri il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ✅ **Le correzioni sono DEPLOYATE dal 2026-08-09** (`contract-worker` v19). ⚠️ **La rilettura dal capo alla coda resta non eseguibile** (credito esaurito; ultima misura vera 2026-08-07, non rimisurato il 09): il 88,6 % resta la misura di PRIMA della correzione delle date. In produzione `contract_extractions` è a **0 righe**: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il 2026-08-07 le prove che non spendono credito: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
+| Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ⛔ **Il tasso per campo è NON MISURABILE al 2026-08-15**: la rilettura è stata chiesta e **saltata**, perché `eval:contracts` spende credito e il credito è esaurito (rimisurato oggi). Storico, non sostituito: ✅ **letti tre contratti verosimili il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto — misura di PRIMA della correzione delle date. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ✅ **Le correzioni sono DEPLOYATE dal 2026-08-09** (`contract-worker` v19). ⚠️ **La rilettura dal capo alla coda resta non eseguibile** (credito esaurito, rimisurato il 2026-08-15). In produzione `contract_extractions` è a **0 righe**, rimisurato il 2026-08-15: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il **2026-08-15** le prove che non spendono credito, invariate: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo) | l'abbinamento automatico non collega mai da solo: propone |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
 | Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). ⚠️ **Questa riga ha detto «7 revisioni del catalogo in attesa di una persona» fino al 2026-08-06, ed era vero fino al 2026-08-05**: rimisurato interrogando la produzione, la coda è a **ZERO in attesa — 7 `ignored`**, chiuse tutte alle 22:45:42 del 2026-08-05 **dal sistema e non da una persona** (`reviewed_by` nullo su tutte e sette). Non erano un cambiamento della fonte ma la **prima lettura riuscita**, e il difetto è corretto in `diff.ts` (commit `ac0c65e`). ⚠️⚠️ **Una coda vuota NON significa catalogo verificato**: `last_checked_at` è fermo al **2026-07-25** per tutti e sette i programmi — nessuno ha ancora confrontato il catalogo con la fonte, ed è la cosa che quella riga rischiava di far credere fatta. Rimisurato il 2026-08-07: `test:subsidy` **91/91** sul database vero, `subsidy:health` **exit 0 «niente in sospeso»**, `last_checked_at` ancora al 2026-07-25. ✅ **Rimisurato il 2026-08-14, ed erano DUE domande confuse in una**: la rilettura AUTOMATICA delle fonti è viva e nessuna fonte è in ritardo sulla propria cadenza; ciò che è fermo al 2026-07-25 è la verifica **umana**. Le sette fonti sono state confrontate in sola lettura con `npm run subsidy:sources`: **due sono cambiate** (`ti-linn`, `ti-lrilocc`). ⚠️ Il **percorso delle fonti non è più del tutto scoperto**: `fetchSource`+adapter+`detectChanges` sono stati eseguiti contro le sette fonti VERE — resta scoperto ciò che scrive (`runSourceChecks`) e l'involucro HTTP. Dettaglio nella sezione dedicata |
@@ -640,7 +709,17 @@ c'era **non hanno una riga di consegna e non l'avranno mai**. Le email partono d
 promemoria generati da lì in avanti. Dettagli in
 [`calendar-notifications.md` § Accendere le email](calendar-notifications.md).
 
-## I contratti, letti per la prima volta — 88,6 % dei campi
+## I contratti — il tasso attuale è NON MISURABILE; l'88,6 % è del 2026-08-03
+
+⛔ **Al 2026-08-15 il tasso per campo dell'estrazione contrattuale non è un
+numero: è una misura che non si può prendere.** L'unico modo di prenderla è
+rileggere i documenti dal capo alla coda con `npm run eval:contracts`, che
+spende credito; il credito è esaurito, rimisurato oggi (§in cima). Quindi:
+**l'88,6 % qui sotto è conservato come misura STORICA del 2026-08-03 e non
+descrive il codice in produzione dal 2026-08-09**, perché la correzione delle
+date scritte a parole è entrata dopo. Il ~77/79 che compare più avanti resta una
+**previsione, non una misura** — e non va scritto da nessun'altra parte come se
+lo fosse.
 
 Misurato il **2026-08-03** con `npm run eval:contracts`, su tre contratti
 svizzeri verosimili scritti per la prova — locazione commerciale (it), fornitura
@@ -739,6 +818,16 @@ il worker deployato porta il codice vecchio e il credito manca — e le
 esecuzioni dell'eval non lasciano righe, perché l'azienda tecnica se ne va con
 tutto ciò che possiede. «Il modulo ha letto tre contratti» e «il modulo non ha
 mai letto il contratto di un cliente» sono entrambe vere.
+
+⚠️ **Rimisurato il 2026-08-15, e niente è cambiato.** La rilettura dal capo alla
+coda è stata **chiesta esplicitamente** ed è **saltata**: `verify:ai` esce 1
+(§in cima), quindi `eval:contracts` non parte e il tasso per campo resta
+**non misurabile**. Rieseguito ciò che non spende credito, con gli stessi
+numeri di otto giorni fa: `eval:contracts --self-test` **8/8**,
+`test:contracts` **69/69** sul database vero. In produzione
+`contract_extractions` è **ancora a 0 righe** (`npm run status`, stessa sera):
+dodici giorni dopo, il contratto caricato da un'azienda vera non è ancora stato
+letto.
 
 ## ✅ I DUE CONTROLLI CHE NON SI CONTROLLAVANO — chiusi il 2026-08-03
 
