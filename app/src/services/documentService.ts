@@ -4,6 +4,7 @@
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
+import { etichettaDaRigaDocumento, type EtichettaDocumento } from '@/lib/documentTitle';
 import type { DocumentRecord, DocumentSourceType, DocumentStatus } from '@/types/models';
 import type { Database } from '@/types/database';
 
@@ -48,15 +49,37 @@ export interface CreateDocumentInput {
   pageCount?: number | null;
 }
 
+/** Una voce del selettore «allega un documento»: id, nome da mostrare, basta. */
+export interface DocumentPickerItem {
+  id: string;
+  /** Il titolo GREZZO: serve a NIENTE a schermo, e infatti non si mostra. */
+  title: string;
+  label: EtichettaDocumento;
+}
+
 export const documentService = {
-  async list(companyId: string): Promise<DocumentRecord[]> {
+  /**
+   * L'elenco per SCEGLIERE un documento (il selettore dei contratti).
+   *
+   * ⚠️ Restituisce l'ETICHETTA e non il record intero. Prima tornava
+   * `DocumentRecord[]` e il selettore mostrava `d.title`: il documento «2.5»
+   * compariva così anche lì, cioè nel momento in cui si decide che cosa
+   * allegare a un contratto — dove sbagliare documento costa più che altrove.
+   * L'ultima analisi valida viaggia agganciata, con lo stesso incorporamento
+   * usato dal Document Hub.
+   */
+  async list(companyId: string): Promise<DocumentPickerItem[]> {
     const { data, error } = await requireSupabase()
       .from('documents')
-      .select('*')
+      .select('id, title, original_filename, document_analyses(sender, document_type, confidence, analysis_status, created_at)')
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     if (error) throw new AppError(toUserMessage(error), error);
-    return (data ?? []).map(toDocument);
+    return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => ({
+      id: row.id as string,
+      title: (row.title as string | null) ?? '',
+      label: etichettaDaRigaDocumento(row),
+    }));
   },
 
   async get(id: string): Promise<DocumentRecord | null> {

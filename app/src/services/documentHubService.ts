@@ -22,13 +22,28 @@ import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { translate as tr } from '@/i18n';
 import { stateOf, toListArgs } from '@/features/documents/documentModel';
+import { etichettaDocumento } from '@/lib/documentTitle';
 import { analysisService } from './analysisService';
 import type { Database } from '@/types/database';
 import type {
-  AnalysisCorrection, DocumentAttention, DocumentCategory, DocumentDetail, DocumentEmailSource,
-  DocumentHubFilters, DocumentHubItem, DocumentLinkedTask, DocumentPage, DocumentRecord,
-  DocumentTag, DocumentTechnicalInfo,
+  ActionCompletion, AnalysisCorrection, DocumentAttention, DocumentCategory, DocumentDetail,
+  DocumentEmailSource, DocumentHubFilters, DocumentHubItem, DocumentLinkedTask, DocumentPage,
+  DocumentRecord, DocumentStatsRow, DocumentStatsSet, DocumentTag, DocumentTechnicalInfo,
 } from '@/types/models';
+
+/**
+ * I TETTI DELLE STATISTICHE, e perché sono due numeri diversi.
+ *
+ * Le statistiche dell'archivio leggono quattro campi per documento: mille righe
+ * sono qualche decina di kilobyte. Il completamento deve invece scaricare le
+ * checklist intere per contarne le voci, e una checklist è un oggetto vero:
+ * duecento documenti è il punto in cui quella lettura resta onesta.
+ *
+ * ⚠️ Quando il tetto morde, chi legge lo SA — `truncated`, e l'etichetta lo
+ * dice. Una statistica che tace di essere parziale è peggio di una assente.
+ */
+export const STATS_MAX_DOCUMENTS = 1000;
+export const COMPLETION_MAX_DOCUMENTS = 200;
 
 type ListRow = Database['public']['Functions']['list_documents']['Returns'][number];
 type DocRow = Database['public']['Tables']['documents']['Row'];
@@ -40,6 +55,21 @@ function toItem(row: ListRow): DocumentHubItem {
   return {
     id: row.id,
     title: row.title,
+    // ⚠️ LA DECISIONE SUL NOME DA MOSTRARE SI PRENDE QUI, dove la riga entra
+    // nell'applicazione, e non in ciascuna schermata. `title` resta il valore
+    // GREZZO del database — serve al campo «Titolo» dell'organizzazione, che
+    // deve far modificare il dato vero — ma tutto ciò che si legge passa da
+    // `label`. Finché la decisione stava nelle schermate, era presa in una
+    // sola: la pagina di caricamento. L'elenco, la Panoramica e il dettaglio
+    // mostravano «2.5».
+    label: etichettaDocumento({
+      titolo: row.title,
+      nomeFile: row.original_filename,
+      mittente: row.sender,
+      mittenteCorretto: row.sender_corrected === true,
+      confidenza: row.confidence,
+      tipoDocumento: row.document_type,
+    }),
     originalFilename: row.original_filename,
     mimeType: row.mime_type,
     fileSize: row.file_size,
@@ -172,6 +202,126 @@ export const documentHubService = {
       toVerifyTotal: toVerify.total,
       failedTotal: failed.total,
     };
+  },
+
+  /**
+   * GLI INGREDIENTI DEI CONTEGGI — una riga per documento, con l'ultima analisi
+   * VALIDA agganciata. È l'unica lettura da cui nascono le statistiche dei
+   * documenti, e ci passano sia la sezione dell'archivio sia il completamento
+   * delle azioni in Panoramica.
+   *
+   * ⚠️ SI PARTE DA `documents`. Fino al 2026-08-15 la Panoramica partiva da
+   * `document_analyses` filtrando solo `company_id`: quella tabella non conosce
+   * `archived_at`, quindi i suoi grafici contavano anche i 17 documenti
+   * archiviati mentre l'archivio ne mostrava 2. Qui l'archiviazione è un filtro
+   * esplicito, e chi chiama DEVE dire quale insieme vuole.
+   *
+   * ⚠️ «Ultima analisi valida» è la stessa regola di `list_documents` (il ramo
+   * `good`, 0017) e di `analysisService.getForDocument`: l'ultima riga che non
+   * sia `failed`. Non è riscritta qui — è espressa come filtro sulla risorsa
+   * incorporata, `analysis_status <> 'failed'` più ordinamento e limite — così
+   * resta UNA regola e non tre. Un documento il cui ultimo tentativo è fallito
+   * mostra il contenuto dell'analisi buona precedente, esattamente come nella
+   * riga dell'archivio da cui si arriva.
+   *
+   * ⚠️ IL TETTO È DICHIARATO, non silenzioso: chi chiama riceve `truncated` e lo
+   * dice a schermo. Un conteggio troncato che si presenta come totale è la
+   * stessa bugia di un KPI che dice «20» perché ne ha caricate 20.
+   */
+  async statsRows(companyId: string, opts: {
+    archived?: boolean;
+    /** Serve solo al completamento: le checklist pesano, non si scaricano per niente. */
+    withActions?: boolean;
+    limit: number;
+  }): Promise<DocumentStatsRow[]> {
+    const inner = opts.withActions
+      ? 'id, document_type, language, deadline, actions'
+      : 'id, document_type, language, deadline';
+    let q = requireSupabase()
+      .from('documents')
+      .select(`id, document_analyses(${inner})`)
+      .eq('company_id', companyId)
+      // Il confronto sull'azienda accompagna la RLS, non la sostituisce: è la
+      // disciplina del progetto, ed è anche l'unica difesa che si vede leggendo.
+      .neq('document_analyses.analysis_status', 'failed')
+      .order('created_at', { referencedTable: 'document_analyses', ascending: false })
+      .limit(1, { referencedTable: 'document_analyses' })
+      .order('created_at', { ascending: false })
+      .limit(opts.limit);
+    q = opts.archived ? q.not('archived_at', 'is', null) : q.is('archived_at', null);
+
+    const { data, error } = await q;
+    if (error) throw new AppError(documentErrorMessage(error), error);
+
+    type Embedded = {
+      id: string; document_type: string | null; language: string | null;
+      deadline: string | null; actions?: unknown;
+    };
+    type Row = { id: string; document_analyses: Embedded[] };
+    return ((data ?? []) as unknown as Row[]).map((r) => {
+      const a = r.document_analyses[0] ?? null;
+      return {
+        id: r.id,
+        documentType: a?.document_type ?? null,
+        language: a?.language ?? null,
+        deadline: a?.deadline ?? null,
+        analysisId: a?.id ?? null,
+        hasAnalysis: a !== null,
+        actionCount: !opts.withActions ? null : Array.isArray(a?.actions) ? a.actions.length : 0,
+      };
+    });
+  },
+
+  /**
+   * Le statistiche di un insieme DICHIARATO: attivi oppure archiviati.
+   *
+   * Il totale non è `rows.length`: arriva da `document_category_counts`, cioè
+   * dalla stessa funzione che riempie i conteggi della barra laterale. Due
+   * numeri sulla stessa pagina che contano lo stesso insieme devono venire
+   * dalla stessa interrogazione, altrimenti si contraddicono appena i documenti
+   * superano il tetto.
+   */
+  async stats(companyId: string, archived = false): Promise<DocumentStatsSet> {
+    const [rows, counts] = await Promise.all([
+      documentHubService.statsRows(companyId, { archived, limit: STATS_MAX_DOCUMENTS }),
+      documentHubService.counts(companyId, archived),
+    ]);
+    const total = [...counts.values()].reduce((a, b) => a + b, 0);
+    return { rows, total, truncated: rows.length < total, archived };
+  },
+
+  /**
+   * Quante azioni della checklist sono spuntate, sui documenti ATTIVI.
+   *
+   * ⚠️ DUE FONTI, ED È VOLUTO. Il denominatore viene dallo SNAPSHOT, che è
+   * l'unico posto in cui si sa quante azioni esistono; il numeratore viene da
+   * `action_progress`, che dalla 0010 è l'unico posto in cui si sa quali sono
+   * fatte (nello snapshot `done` è sempre `false`, e infatti la Panoramica
+   * mostrava «0 di 40» — un numero che nessuna spunta poteva far salire).
+   *
+   * ⚠️ SOLO I DOCUMENTI ATTIVI: le azioni di un documento archiviato non sono
+   * lavoro in sospeso, e contarle abbasserebbe una percentuale che descrive
+   * ciò che resta da fare oggi.
+   */
+  async actionCompletion(companyId: string): Promise<ActionCompletion> {
+    const [rows, documentsTotal] = await Promise.all([
+      documentHubService.statsRows(companyId, {
+        archived: false, withActions: true, limit: COMPLETION_MAX_DOCUMENTS,
+      }),
+      documentHubService.activeCount(companyId),
+    ]);
+    const total = rows.reduce((n, r) => n + (r.actionCount ?? 0), 0);
+    const analysisIds = rows.map((r) => r.analysisId).filter((id): id is string => !!id);
+    if (!analysisIds.length) return { done: 0, total, documents: rows.length, documentsTotal };
+
+    const { count, error } = await requireSupabase()
+      .from('action_progress')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .eq('done', true)
+      .in('analysis_id', analysisIds);
+    if (error) throw new AppError(documentErrorMessage(error), error);
+    return { done: count ?? 0, total, documents: rows.length, documentsTotal };
   },
 
   /** Quanti documenti attivi ha l'azienda. Interrogazione di sola testata. */

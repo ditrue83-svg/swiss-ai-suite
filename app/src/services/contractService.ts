@@ -18,6 +18,7 @@
 import { requireSupabase } from '@/lib/supabase';
 import type { Database, Json } from '@/types/database';
 import { toUserMessage } from '@/lib/errors';
+import { etichettaDaRigaDocumento } from '@/lib/documentTitle';
 import type {
   ContractAttentionClause, ContractAutoRenewal, ContractCorrection, ContractCostFrequency,
   ContractDetail, ContractDocumentLink, ContractDocumentRelation, ContractDocumentSuggestion,
@@ -366,8 +367,18 @@ export const contractService = {
     // costa una interrogazione e non rischia il PGRST200 che il Document Hub ha
     // già pagato quando una relazione dichiarata non esisteva davvero.
     const ids = rows.map((r) => r.document_id as string);
+    // ⚠️ SI LEGGE ANCHE L'ULTIMA ANALISI VALIDA, e non per curiosità: senza
+    // mittente e tipo, un documento il cui titolo non è mostrabile qui
+    // comparirebbe come «2.5» — è successo, e il §6 vale anche fuori dal
+    // Document Hub. L'aggancio è lo stesso di `documentHubService.statsRows`:
+    // ultima riga non fallita, una per documento.
     const { data: docs } = await sb.from('documents')
-      .select('id, title, storage_path, mime_type, created_at').in('id', ids);
+      .select('id, title, original_filename, storage_path, mime_type, created_at, '
+        + 'document_analyses(sender, document_type, confidence)')
+      .neq('document_analyses.analysis_status', 'failed')
+      .order('created_at', { referencedTable: 'document_analyses', ascending: false })
+      .limit(1, { referencedTable: 'document_analyses' })
+      .in('id', ids);
     const byId = new Map(((docs ?? []) as unknown as Record<string, unknown>[]).map((d) => [d.id as string, d]));
 
     return rows.map((r) => {
@@ -385,6 +396,7 @@ export const contractService = {
         addedAt: r.added_at as string,
         addedBy: (r.added_by as string | null) ?? null,
         title: (d?.title as string) ?? '',
+        label: etichettaDaRigaDocumento(d),
         storagePath: (d?.storage_path as string | null) ?? null,
         mimeType: (d?.mime_type as string | null) ?? null,
         documentCreatedAt: (d?.created_at as string) ?? (r.added_at as string),

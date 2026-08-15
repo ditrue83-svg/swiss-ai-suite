@@ -2,6 +2,7 @@
 // Tipi di dominio (application layer). Più ricchi delle Row DB dove serve:
 // la mappatura Row <-> dominio avviene nei service.
 // ============================================================================
+import type { EtichettaDocumento } from '@/lib/documentTitle';
 import type {
   MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource, TaskEventKind,
   AuditAction, AuditEntityType,
@@ -345,7 +346,21 @@ export type DocumentState = 'analyzed' | 'to_verify' | 'failed' | 'processing' |
 /** Una riga della lista Documenti, già composta dal database (§25). */
 export interface DocumentHubItem {
   id: string;
+  /**
+   * Il titolo GREZZO del database.
+   *
+   * ⚠️ NON si mostra: si mostra `label`. Questo campo serve al campo «Titolo»
+   * dell'organizzazione, che deve far modificare il dato vero, e ai confronti
+   * («è cambiato?»). Il 2026-08-15 le schermate leggevano questo, e la prima
+   * riga della Panoramica diceva «2.5».
+   */
   title: string;
+  /**
+   * Che cosa mostrare: il titolo quando è mostrabile, altrimenti un'etichetta
+   * composta dai dati che il sistema conosce davvero. La decide `toItem` una
+   * volta sola; la traduce `useDocumentLabel()`.
+   */
+  label: EtichettaDocumento;
   originalFilename: string | null;
   mimeType: string | null;
   fileSize: number | null;
@@ -407,6 +422,71 @@ export interface DocumentAttention {
   toVerifyTotal: number;
   /** Analisi non riuscite: lo stesso insieme di `?stato=failed`. */
   failedTotal: number;
+}
+
+/**
+ * L'INGREDIENTE DEI CONTEGGI: un documento, con l'ultima analisi valida
+ * agganciata accanto.
+ *
+ * ⚠️ SI PARTE DA `documents`, MAI DA `document_analyses`, e il 2026-08-15 questa
+ * riga di distanza valeva diciassette documenti. La Panoramica contava le
+ * analisi dell'azienda: `document_analyses` non conosce `archived_at` — non
+ * nomina nemmeno la tabella `documents` — quindi archiviare un documento lo
+ * toglieva dall'archivio e lo lasciava nei grafici. L'archivio diceva «2», la
+ * Panoramica «19», ed erano entrambi veri di due insiemi diversi che nessuna
+ * delle due schermate dichiarava.
+ *
+ * ⚠️ E `hasAnalysis` esiste perché un documento CARICATO E MAI LETTO deve
+ * comparire come «senza analisi» invece di sparire: partendo dalle analisi era
+ * invisibile, e il totale sarebbe stato più basso di quello vero senza che
+ * niente se ne accorgesse.
+ */
+export interface DocumentStatsRow {
+  id: string;
+  /** null quando non c'è analisi: è un'assenza, non un tipo «altro». */
+  documentType: string | null;
+  language: string | null;
+  deadline: string | null;
+  analysisId: string | null;
+  hasAnalysis: boolean;
+  /**
+   * Quante azioni ha la checklist dello snapshot. `null` quando non sono state
+   * chieste: `null` è «non lo sappiamo», che non è zero.
+   */
+  actionCount: number | null;
+}
+
+/** Le righe di un insieme dichiarato, con il totale vero accanto. */
+export interface DocumentStatsSet {
+  rows: DocumentStatsRow[];
+  /**
+   * Quanti documenti ha DAVVERO l'insieme scelto, contati dal database e non
+   * dalla lunghezza di `rows`.
+   */
+  total: number;
+  /** true quando `rows` non copre tutto `total`. Si DICE a schermo, non si tace. */
+  truncated: boolean;
+  /** Quale insieme è stato chiesto: serve all'etichetta, che deve dichiararlo. */
+  archived: boolean;
+}
+
+/**
+ * Il completamento della checklist sui documenti ATTIVI.
+ *
+ * ⚠️ `done` viene da `action_progress` e NON dallo snapshot: dalla 0010
+ * `document_analyses.actions[].done` è sempre `false`, e un numero che legge
+ * quel campo non può salire nemmeno spuntando tutto.
+ * ⚠️ `total` viene invece dallo snapshot, che è l'unico posto in cui si sa
+ * QUANTE azioni esistono: `action_progress` ha una riga solo per le azioni già
+ * toccate, e usarla come denominatore direbbe «0 di 1» dove le azioni sono 40.
+ */
+export interface ActionCompletion {
+  done: number;
+  total: number;
+  /** Su quanti documenti attivi è stato calcolato. */
+  documents: number;
+  /** Quanti documenti attivi esistono. Se supera `documents`, si dichiara. */
+  documentsTotal: number;
 }
 
 /** I filtri della lista. Tipizzati, mai `Record<string, unknown>` (§103). */
@@ -1023,7 +1103,9 @@ export interface EmailLinkedDocument {
   documentId: string;
   relation: EmailDocumentRelation;
   attachmentId: string | null;
+  /** Il titolo GREZZO. ⚠️ Non si mostra: si mostra `label`. */
   title: string;
+  label: EtichettaDocumento;
   status: DocumentStatus;
 }
 
@@ -1252,7 +1334,9 @@ export interface FinanceItem {
   createdAt: string;
   extractionId: string | null;
   extractionVersion: number | null;
+  /** Il titolo GREZZO del documento collegato. ⚠️ Non si mostra: `documentLabel`. */
   documentTitle: string;
+  documentLabel: EtichettaDocumento;
   documentSource: DocumentSourceType;
   documentStatus: DocumentStatus;
   storagePath: string | null;
@@ -1575,7 +1659,9 @@ export interface ContractDocumentLink {
   suggested: boolean;
   addedAt: string;
   addedBy: string | null;
+  /** Il titolo GREZZO del documento. ⚠️ Non si mostra: si mostra `label`. */
   title: string;
+  label: EtichettaDocumento;
   storagePath: string | null;
   mimeType: string | null;
   documentCreatedAt: string;
@@ -2008,7 +2094,9 @@ export interface CrmPipelineCell {
 export interface CrmDocumentLink {
   id: string;
   documentId: string;
+  /** Il titolo GREZZO. ⚠️ Non si mostra: si mostra `label`. */
   title: string | null;
+  label: EtichettaDocumento;
   category: DocumentCategory | null;
   /**
    * ⚠️ Quando il documento è stato CARICATO, non la data che porta stampata:

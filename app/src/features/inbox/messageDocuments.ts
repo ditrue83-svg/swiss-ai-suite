@@ -18,6 +18,7 @@
 // dire «in elaborazione» avrebbe prodotto due parole per lo stesso stato.
 // ============================================================================
 import { stateOf } from '@/features/documents/documentModel';
+import type { EtichettaDocumento } from '@/lib/documentTitle';
 import type {
   DocumentState, EmailAttachment, EmailDocumentRelation, EmailLinkedDocument,
 } from '@/types/models';
@@ -26,7 +27,9 @@ import type { AnalysisStatus, DocumentStatus } from '@/types/database';
 export interface MessageDocumentRow {
   documentId: string;
   relation: EmailDocumentRelation;
+  /** Il titolo GREZZO. ⚠️ Non si mostra: si mostra `label`. */
   title: string;
+  label: EtichettaDocumento;
   /** Il nome del file, quando la riga viene da un allegato. */
   filename: string | null;
   /**
@@ -107,6 +110,7 @@ export function messageDocumentRows(
     documentId: d.documentId,
     relation: d.relation,
     title: d.title,
+    label: d.label,
     // Il nome del file lo porta l'allegato, non il documento: il titolo del
     // documento può essere stato cambiato a mano nel Document Hub, e in quel
     // caso sono due informazioni diverse ed entrambe utili.

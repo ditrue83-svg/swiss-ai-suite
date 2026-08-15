@@ -11,6 +11,7 @@
 //     comunicazione che non è mai stata vista.
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
+import { etichettaDaRigaDocumento } from '@/lib/documentTitle';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { daysUntil } from '@/lib/format';
 import { deadlineLevel } from '@/features/admin-ai/engine';
@@ -210,7 +211,11 @@ export const inboxService = {
         .select('id, provider_attachment_id, filename, mime_type, declared_mime_type, size_bytes, is_inline, storage_path, import_status, skip_reason')
         .eq('email_message_id', messageId).order('created_at', { ascending: true }),
       sb.from('email_message_documents')
-        .select('document_id, relation, attachment_id, documents(title, status)')
+        // ⚠️ Anche il titolo del documento passa dalla regola del §6: qui si
+        // legge quel che serve a comporlo — nome del file e ultima analisi —
+        // perché «2.5» era un titolo vero, mostrato anche in questa lista.
+        .select('document_id, relation, attachment_id, '
+          + 'documents(title, original_filename, status, document_analyses(sender, document_type, confidence, analysis_status, created_at))')
         .eq('email_message_id', messageId),
       row.provider_thread_id
         ? sb.from('email_messages').select('id', { count: 'exact', head: true })
@@ -220,16 +225,17 @@ export const inboxService = {
     ]);
 
     const documentByAttachment = new Map<string, string>();
-    const documents: EmailLinkedDocument[] = ((links.data ?? []) as {
+    const documents: EmailLinkedDocument[] = ((links.data ?? []) as unknown as {
       document_id: string; relation: 'body' | 'attachment'; attachment_id: string | null;
-      documents: { title?: string; status?: string } | null;
+      documents: Record<string, unknown> | null;
     }[]).map((l) => {
       if (l.attachment_id) documentByAttachment.set(l.attachment_id, l.document_id);
       return {
         documentId: l.document_id,
         relation: l.relation,
         attachmentId: l.attachment_id,
-        title: l.documents?.title ?? '',
+        title: (l.documents?.title as string | null) ?? '',
+        label: etichettaDaRigaDocumento(l.documents),
         status: (l.documents?.status ?? 'uploaded') as EmailLinkedDocument['status'],
       };
     });

@@ -23,10 +23,12 @@ import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import { documentHubService } from '@/services/documentHubService';
+import { DocumentStatsPanel } from './DocumentStatsPanel';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { useDocumentLabel } from '@/i18n/documentLabel';
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, SORTS, SOURCES, STATES,
   filtersFromParams, hasActiveFilters, paramsFromFilters, rowMarks, splitSnippet,
@@ -463,6 +465,16 @@ export function DocumentsPage() {
               verificare», e chi li incontra qui li ritroverà identici nel
               dettaglio, in Attività e negli Incentivi. */}
           <MarkLegend />
+          {/* ⚠️ SOTTO LA LISTA E CHIUSA: la pagina risponde a «dove ritrovo
+              questo documento», e i conteggi sono una seconda domanda. Segue
+              l'interruttore Attivi/Archiviati qui sopra — l'insieme lo sceglie
+              chi guarda, ed è la ragione per cui questi grafici non stanno più
+              in Panoramica (§37). */}
+          <DocumentStatsPanel
+            companyId={companyId}
+            archived={filters.archived === true}
+            reloadKey={list.total}
+          />
         </div>
       </div>
     </>
@@ -491,13 +503,22 @@ function DocumentRow({
   item: DocumentHubItem; t: TFunction; category: string; docType: string | null;
   selected: boolean; onSelect: () => void;
 }) {
+  // ⚠️ IL NOME, non `item.title`: quando il titolo non è mostrabile qui
+  // comparirebbe «2.5». La decisione l'ha già presa il servizio.
+  const docLabel = useDocumentLabel();
+  const nome = docLabel(item.label);
+
   // ⚠️ Categoria e tipo di documento a volte hanno la STESSA etichetta — un
   // documento di tipo «Assicurazioni sociali» nella categoria «Assicurazioni
   // sociali» — e la riga la stampava due volte di fila. Visto leggendo la
   // schermata con documenti veri: nessun test poteva accorgersene, perché
   // entrambi i valori erano quelli giusti.
   const categoryLabel = item.category ? category : null;
-  const typeMark = docType && docType !== categoryLabel ? docType : null;
+  // ⚠️ E DALLO STESSO GIORNO ANCHE IL NOME PUÒ COINCIDERE COL TIPO: quando
+  // l'etichetta è composta dal solo tipo di documento, «Altro documento
+  // amministrativo» finiva scritto una volta come nome e una come marcatura,
+  // uno sotto l'altro. Stessa regola di prima, un caso in più.
+  const typeMark = docType && docType !== categoryLabel && docType !== nome ? docType : null;
   const rest = [categoryLabel, t(SOURCE_KEY[item.sourceType])].filter(Boolean);
   // ⚠️ I marcatori si chiedono UNA volta per la riga, non uno per pastiglia:
   // la regola parla della riga (su un guasto la scadenza non si mostra), e due
@@ -510,10 +531,10 @@ function DocumentRow({
     <div className={`doc-row${selected ? ' is-selected' : ''}`}>
       <label className="doc-check">
         <input type="checkbox" checked={selected} onChange={onSelect}
-          aria-label={t('documents.selectAria', { title: item.title })} />
+          aria-label={t('documents.selectAria', { title: nome })} />
       </label>
-      <Link className="doc-row-main" to={`/documenti/${item.id}`} aria-label={t('documents.openAria', { title: item.title })}>
-        <div className="doc-row-title">{item.title}</div>
+      <Link className="doc-row-main" to={`/documenti/${item.id}`} aria-label={t('documents.openAria', { title: nome })}>
+        <div className="doc-row-title">{nome}</div>
         <div className="doc-row-meta">
           {item.sender && <span className="doc-sender">{item.sender}</span>}
           {typeMark && <span className="doc-type">{typeMark}</span>}

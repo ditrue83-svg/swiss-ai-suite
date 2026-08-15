@@ -24,6 +24,7 @@ import type {
   DocumentCategory,
 } from '@/types/database';
 import { toUserMessage } from '@/lib/errors';
+import { etichettaDaRigaDocumento } from '@/lib/documentTitle';
 import type {
   CrmContact, CrmContactMethod, CrmContactOrganization, CrmContractLink,
   CrmDocumentLink, CrmDuplicateCandidate, CrmEmailLink, CrmEmailMatch, CrmEvent,
@@ -1031,11 +1032,18 @@ export const crmService = {
     if (rows.length === 0) return [];
 
     const ids = rows.map((r) => r.document_id as string);
+    // ⚠️ Anche qui l'ultima analisi valida: senza mittente e tipo un titolo non
+    // mostrabile arriverebbe a schermo com'è (§6). Stessa forma dei contratti.
     const { data: docs, error: dErr } = await sb.from('documents')
-      .select('id, title, category, created_at').in('id', ids);
+      .select('id, title, original_filename, category, created_at, '
+        + 'document_analyses(sender, document_type, confidence)')
+      .neq('document_analyses.analysis_status', 'failed')
+      .order('created_at', { referencedTable: 'document_analyses', ascending: false })
+      .limit(1, { referencedTable: 'document_analyses' })
+      .in('id', ids);
     if (dErr) fail(dErr);
     const byId = new Map(
-      ((docs ?? []) as Array<Record<string, unknown>>).map((d) => [d.id as string, d]),
+      ((docs ?? []) as unknown as Array<Record<string, unknown>>).map((d) => [d.id as string, d]),
     );
     return rows.map((r) => {
       const d = byId.get(r.document_id as string);
@@ -1043,6 +1051,7 @@ export const crmService = {
         id: r.id as string,
         documentId: r.document_id as string,
         title: (d?.title as string | null) ?? null,
+        label: etichettaDaRigaDocumento(d),
         category: (d?.category as DocumentCategory | null) ?? null,
         uploadedAt: (d?.created_at as string | null) ?? null,
         relation: r.relation as CrmDocumentRelation,
