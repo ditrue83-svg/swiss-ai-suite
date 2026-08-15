@@ -31,7 +31,11 @@ import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
 import { nextStepFor } from '../src/features/documents/nextStep';
-import { titoloDocumento, nomeFileInformativo } from '../src/lib/documentTitle';
+import { readFileSync } from 'node:fs';
+import {
+  etichettaComposta, etichettaDaRigaDocumento, etichettaDocumento,
+  nomeFileInformativo, titoloDocumento, titoloMostrabile,
+} from '../src/lib/documentTitle';
 import { documentTaskDraft, runCreateFromDocument } from '../src/features/tasks/documentToTask';
 import type {
   ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
@@ -47,7 +51,8 @@ const ok = (cond: boolean, label: string, detail = '') => {
 const section = (title: string) => console.log(`\n${B}${title}${X}`);
 
 const item = (over: Partial<DocumentHubItem> = {}): DocumentHubItem => ({
-  id: 'd1', title: 'Documento', originalFilename: null, mimeType: null, fileSize: null,
+  id: 'd1', title: 'Documento', label: { origine: 'titolo', titolo: 'Documento' },
+  originalFilename: null, mimeType: null, fileSize: null,
   storagePath: null, sourceType: 'upload', status: 'completed', pageCount: null,
   createdAt: '2026-01-01T00:00:00Z', archivedAt: null, category: null, categorySource: null,
   state: 'analyzed', analysisId: 'a1', lastAttemptFailed: false, errorCode: null,
@@ -251,7 +256,9 @@ function analisi(over: Partial<DocumentAnalysis> = {}): DocumentAnalysis {
 
 function voce(over: Partial<DocumentHubItem> = {}): DocumentHubItem {
   return {
-    id: 'doc-1', title: 'Rendiconto IVA 2026', originalFilename: 'iva.pdf', mimeType: 'application/pdf',
+    id: 'doc-1', title: 'Rendiconto IVA 2026',
+    label: { origine: 'titolo', titolo: 'Rendiconto IVA 2026' },
+    originalFilename: 'iva.pdf', mimeType: 'application/pdf',
     fileSize: 1024, storagePath: 'co-1/doc-1.pdf', sourceType: 'email', status: 'completed',
     pageCount: 2, createdAt: '2026-07-30T08:00:00Z', archivedAt: null,
     category: 'taxes', categorySource: 'rule', state: 'analyzed', analysisId: 'an-1',
@@ -752,6 +759,222 @@ section('9. Statistiche documenti — l’insieme, e chi non ha analisi');
     'controprova: partendo dalle analisi il documento mai letto sparisce — è il difetto del 2026-08-15');
   ok(difetto.counted !== conOrfano.counted,
     'controprova: i due conteggi DEVONO divergere, altrimenti questi controlli non guardano niente');
+}
+
+// ===========================================================================
+section('10. Il nome mostrato — la regola in LETTURA (§6)');
+// ===========================================================================
+// ⚠️⚠️ IL SEGUITO DEL CASO «2.5», quattro giorni dopo. La regola qui sopra era
+// scritta, provata e usata in UN posto: la pagina di caricamento, cioè dove un
+// titolo NASCE. Il documento «2.5» era già nel database, e il 2026-08-15 era la
+// PRIMA RIGA della Panoramica. Una regola applicata solo in scrittura non
+// protegge i dati già scritti — questi controlli guardano la LETTURA.
+{
+  ok(!titoloMostrabile('2.5', '2.5.pdf'), '«2.5» col file «2.5.pdf»: non è un titolo, è il file travestito');
+  ok(!titoloMostrabile('', null), 'un titolo vuoto non si mostra');
+  ok(!titoloMostrabile('  ', null), 'né uno fatto di spazi');
+  ok(!titoloMostrabile('AB', null), 'due caratteri non sono un titolo');
+  ok(!titoloMostrabile('2026', null), 'un anno non è un titolo: non c’è una lettera');
+  ok(!titoloMostrabile('—', null), 'né un trattino');
+  ok(!titoloMostrabile('###', null), 'né tre cancelletti');
+  ok(titoloMostrabile('IVA', null), '«IVA» sì: tre caratteri e sono lettere');
+  ok(titoloMostrabile('Fattura Swisscom', null), 'un titolo vero si mostra, ovviamente');
+
+  // ⚠️ LA QUARTA CONDIZIONE VALE SOLO QUANDO IL NOME DEL FILE È MUTO. Un
+  // titolo uguale a un nome di file che DICE qualcosa resta mostrabile:
+  // rifiutarlo perché somiglia al file sarebbe zelo, e toglierebbe un titolo
+  // buono a metà archivio.
+  ok(titoloMostrabile('Disdetta locazione', 'Disdetta locazione.pdf'),
+    'titolo uguale a un nome di file PARLANTE: si mostra');
+  ok(!titoloMostrabile('2.5', '2.5.PDF'), 'il confronto col nome del file ignora le maiuscole');
+  ok(titoloMostrabile('Fattura marzo', '2.5.pdf'),
+    'un titolo buono su un file muto resta buono: le due cose sono indipendenti');
+
+  // ⚠️ NESSUNA EURISTICA IN PIÙ. Un titolo dubbio che non ricade nelle quattro
+  // condizioni SI MOSTRA: nascondere un titolo vero è peggio che mostrarne uno
+  // brutto, ed è il modo in cui una regola come questa comincia a mentire.
+  ok(titoloMostrabile('Doc', null), '«Doc» non è bello e non è vietato: si mostra');
+  ok(titoloMostrabile('a1b', null), 'nemmeno «a1b» rientra nelle quattro condizioni');
+}
+{
+  // I TRE LIVELLI DI COMPOSIZIONE, nell'ordine del §6.
+  const conTutto = etichettaDocumento({
+    titolo: '2.5', nomeFile: '2.5.pdf',
+    mittente: 'Comune di Lugano', confidenza: 'alta', tipoDocumento: 'inspection_notice',
+  });
+  ok(conTutto.origine === 'mittente_e_tipo', 'mittente certo + tipo: si compone con tutti e due');
+
+  const soloTipo = etichettaDocumento({ titolo: '2.5', nomeFile: '2.5.pdf', tipoDocumento: 'other' });
+  ok(soloTipo.origine === 'tipo', 'senza mittente resta il tipo');
+
+  const niente = etichettaDocumento({ titolo: '2.5', nomeFile: '2.5.pdf' });
+  ok(niente.origine === 'nessuno', 'senza mittente e senza tipo: lo si DICE');
+
+  // ⚠️ IL MITTENTE DA SOLO NON È UN'ETICHETTA: «Comune di Lugano» come nome di
+  // un documento fa credere che il documento SIA il Comune.
+  const soloMittente = etichettaDocumento({
+    titolo: '2.5', nomeFile: '2.5.pdf', mittente: 'Comune di Lugano', confidenza: 'alta',
+  });
+  ok(soloMittente.origine === 'nessuno', 'il mittente da solo non compone: i livelli sono tre');
+
+  const buono = etichettaDocumento({ titolo: 'Rendiconto IVA', tipoDocumento: 'vat_statement' });
+  ok(buono.origine === 'titolo' && buono.titolo === 'Rendiconto IVA',
+    'quando il titolo è mostrabile non si compone niente: vince lui');
+  ok(!etichettaComposta(buono) && etichettaComposta(soloTipo),
+    '«composta» distingue i due casi: è ciò che il dettaglio dichiara a chi legge');
+}
+{
+  // ⚠️ MAI COMPORRE DA DATI INCERTI. Un ente sbagliato incollato davanti al
+  // tipo produce un'etichetta che SEMBRA precisa: è il difetto di «2.5» con una
+  // casella in più.
+  const bassa = etichettaDocumento({
+    titolo: '2.5', nomeFile: '2.5.pdf',
+    mittente: 'Comune di Lugano', confidenza: 'bassa', tipoDocumento: 'other',
+  });
+  ok(bassa.origine === 'tipo', 'mittente a bassa confidenza: si scende di livello, non si usa');
+
+  const senzaConfidenza = etichettaDocumento({
+    titolo: '2.5', nomeFile: '2.5.pdf', mittente: 'Comune di Lugano', tipoDocumento: 'other',
+  });
+  ok(senzaConfidenza.origine === 'tipo',
+    'confidenza ASSENTE non vale «alta»: non aver guardato non è aver visto');
+
+  // …ma una CORREZIONE UMANA batte la confidenza dell'analisi: quel mittente
+  // l'ha verificato una persona.
+  const corretto = etichettaDocumento({
+    titolo: '2.5', nomeFile: '2.5.pdf', mittente: 'Comune di Lugano',
+    mittenteCorretto: true, confidenza: 'bassa', tipoDocumento: 'other',
+  });
+  ok(corretto.origine === 'mittente_e_tipo', 'un mittente corretto a mano si usa, qualunque cosa dica l’analisi');
+}
+{
+  // ⚠️ IL TITOLO SCRITTO A MANO VINCE SEMPRE, senza un ramo dedicato: se una
+  // persona scrive qualcosa di leggibile nel campo «Titolo», quel valore è il
+  // titolo e `titoloMostrabile` lo lascia passare. La regola smette di
+  // intervenire da sola — che è il punto 5 del §6.
+  const scritto = etichettaDocumento({
+    titolo: 'Contestazione tassa rifiuti', nomeFile: '2.5.pdf',
+    mittente: 'Comune di Lugano', confidenza: 'alta', tipoDocumento: 'inspection_notice',
+  });
+  ok(scritto.origine === 'titolo' && scritto.titolo === 'Contestazione tassa rifiuti',
+    'titolo scritto a mano: nessuna composizione, vince lui');
+}
+{
+  // L'adattatore delle letture che incorporano l'analisi (contratti, CRM,
+  // Inbox, selettore): la scelta dell'ultima analisi VALIDA sta in un posto solo.
+  const riga = {
+    title: '2.5', original_filename: '2.5.pdf',
+    document_analyses: [
+      { sender: 'Vecchio', document_type: 'invoice', confidence: 'alta', analysis_status: 'completed', created_at: '2026-01-01T00:00:00Z' },
+      { sender: 'Nuovo', document_type: 'other', confidence: 'alta', analysis_status: 'completed', created_at: '2026-06-01T00:00:00Z' },
+    ],
+  };
+  const e = etichettaDaRigaDocumento(riga);
+  ok(e.origine === 'mittente_e_tipo' && e.mittente === 'Nuovo',
+    'fra due analisi vince la più recente, come in `list_documents`');
+
+  const conFallita = etichettaDaRigaDocumento({
+    ...riga,
+    document_analyses: [
+      { sender: 'Buono', document_type: 'invoice', confidence: 'alta', analysis_status: 'completed', created_at: '2026-01-01T00:00:00Z' },
+      { sender: null, document_type: null, confidence: null, analysis_status: 'failed', created_at: '2026-09-01T00:00:00Z' },
+    ],
+  });
+  ok(conFallita.origine === 'mittente_e_tipo' && conFallita.mittente === 'Buono',
+    'un ultimo tentativo FALLITO non cancella il risultato buono precedente');
+
+  ok(etichettaDaRigaDocumento({ title: '2.5', original_filename: '2.5.pdf', document_analyses: [] }).origine === 'nessuno',
+    'nessuna analisi: non c’è di che comporre, e lo si dice');
+  ok(etichettaDaRigaDocumento(null).origine === 'nessuno', 'riga assente: nessuna eccezione, l’ultimo livello');
+}
+{
+  // ---- LA CONTROPROVA -----------------------------------------------------
+  // Si rifà il difetto vero: mostrare `documents.title` così com'è, che è
+  // quello che facevano Panoramica, elenco e dettaglio fino al 2026-08-15.
+  const comeFacevanoLeSchermate = (titolo: string) => titolo;
+  const grezzo = comeFacevanoLeSchermate('2.5');
+  const e = etichettaDocumento({ titolo: '2.5', nomeFile: '2.5.pdf', tipoDocumento: 'other' });
+  ok(grezzo === '2.5' && e.origine !== 'titolo',
+    'controprova: il titolo grezzo è ancora «2.5» — non è stato cancellato, cambia solo cosa si mostra');
+  ok(e.origine === 'tipo' && (e as { tipo: string }).tipo === 'other',
+    'controprova: la regola DEVE dare un esito diverso dal grezzo, altrimenti non guarda niente');
+}
+
+// ===========================================================================
+section('11. Il guardiano: nessuna schermata legge il titolo grezzo');
+// ===========================================================================
+// ⚠️ PERCHÉ UN CONTROLLO SUL CODICE E NON SOLO SULLA REGOLA. La regola del
+// titolo esisteva dall'11 agosto, era provata, ed era usata in UN posto: fra il
+// dato e lo schermo nessuno la chiamava. Un controllo che guarda le REGOLE non
+// avrebbe visto niente — erano tutte verdi — perché il difetto non era nella
+// regola: era che le schermate non la usavano. Questo controllo guarda le
+// schermate.
+//
+// ⚠️ Un'eccezione dichiarata resta possibile e deve stare QUI, con il motivo:
+// il campo «Titolo» dell'organizzazione DEVE mostrare il valore grezzo, perché
+// è quello che si sta modificando.
+{
+  const ECCEZIONI: { file: string; frammento: string; perche: string }[] = [
+    {
+      file: 'src/features/documents/DocumentDetailPage.tsx',
+      frammento: 'value={title ?? doc.title}',
+      perche: 'il campo «Titolo» modifica il dato vero: deve mostrare il grezzo',
+    },
+    {
+      file: 'src/features/crm/ClientDetailPage.tsx',
+      frammento: '{d.title}',
+      perche: 'è il titolo di un’OPPORTUNITÀ, non di un documento: lo scrive una persona',
+    },
+  ];
+
+  const SCHERMATE = [
+    'src/features/dashboard/overview.ts',
+    'src/features/documents/DocumentsPage.tsx',
+    'src/features/documents/DocumentDetailPage.tsx',
+    'src/features/admin-ai/ResultView.tsx',
+    'src/features/inbox/MessageDetail.tsx',
+    'src/features/crm/ClientDetailPage.tsx',
+    'src/features/contracts/ContractDetailPage.tsx',
+    'src/features/finance/FinancePage.tsx',
+    'src/features/finance/FinanceDetailPage.tsx',
+  ];
+  // Le forme con cui un titolo grezzo finisce a schermo: dentro le graffe di
+  // JSX, oppure passato a una proprietà.
+  const SOSPETTI = [
+    // Dentro una qualunque espressione JSX, non solo da sola: `{title ?? doc.title}`
+    // finisce a schermo esattamente come `{doc.title}`.
+    /\{[^}]*\b(?:doc|document|item|d)\.title\b[^}]*\}/,
+    /\{[^}]*\bitem\.documentTitle\b[^}]*\}/,
+    /\btitle:\s*(?:doc|document|item|d)\.title\b/,
+    /\btitle:\s*item\.documentTitle\b/,
+  ];
+
+  let usateEccezioni = 0;
+  for (const file of SCHERMATE) {
+    const testo = readFileSync(file, 'utf8');
+    const righe = testo.split('\n');
+    const colpevoli: string[] = [];
+    righe.forEach((riga, i) => {
+      if (!SOSPETTI.some((re) => re.test(riga))) return;
+      const scusa = ECCEZIONI.find((e) => e.file === file && riga.includes(e.frammento));
+      if (scusa) { usateEccezioni++; return; }
+      colpevoli.push(`${i + 1}: ${riga.trim()}`);
+    });
+    ok(colpevoli.length === 0, `${file} non mostra il titolo grezzo`, colpevoli.join('\n     '));
+  }
+  // ⚠️ Un'eccezione MORTA fa fallire il controllo: una riga che non corrisponde
+  // più a niente nel codice è una scusa che nessuno ha ritirato.
+  ok(usateEccezioni === ECCEZIONI.length,
+    'ogni eccezione dichiarata corrisponde a una riga vera',
+    `dichiarate ${ECCEZIONI.length}, trovate ${usateEccezioni}`);
+
+  // E la regola deve essere DAVVERO importata dove serve: un file che non la
+  // nomina non può applicarla, per quanto non mostri `doc.title`.
+  for (const file of SCHERMATE) {
+    const testo = readFileSync(file, 'utf8');
+    ok(/useDocumentLabel|documentLabelText|titoloMostrabile|etichettaDocumento/.test(testo),
+      `${file} passa dalla regola del nome`);
+  }
 }
 
 // ===========================================================================

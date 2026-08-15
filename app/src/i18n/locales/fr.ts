@@ -344,6 +344,9 @@ export const fr: Dictionary = {
     searchPlaceholder: 'Rechercher par nom, expéditeur, contenu ou référence…',
     searchScope: 'La recherche porte sur le titre, l’expéditeur, l’objet, les références, les étiquettes et le texte des documents.',
     countShown: '{shown} sur {total}',
+    untitled: 'Document sans titre',
+    composedName: 'Nom composé par AI-Swisse — dans le fichier : {raw}',
+    composedNameNoRaw: 'Nom composé par AI-Swisse : le document n’en indique aucun.',
     stats: {
       title: 'Statistiques des documents',
       scopeActiveOne: 'Sur 1 document actif.',

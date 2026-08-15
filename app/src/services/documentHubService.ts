@@ -22,6 +22,7 @@ import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { translate as tr } from '@/i18n';
 import { stateOf, toListArgs } from '@/features/documents/documentModel';
+import { etichettaDocumento } from '@/lib/documentTitle';
 import { analysisService } from './analysisService';
 import type { Database } from '@/types/database';
 import type {
@@ -54,6 +55,21 @@ function toItem(row: ListRow): DocumentHubItem {
   return {
     id: row.id,
     title: row.title,
+    // ⚠️ LA DECISIONE SUL NOME DA MOSTRARE SI PRENDE QUI, dove la riga entra
+    // nell'applicazione, e non in ciascuna schermata. `title` resta il valore
+    // GREZZO del database — serve al campo «Titolo» dell'organizzazione, che
+    // deve far modificare il dato vero — ma tutto ciò che si legge passa da
+    // `label`. Finché la decisione stava nelle schermate, era presa in una
+    // sola: la pagina di caricamento. L'elenco, la Panoramica e il dettaglio
+    // mostravano «2.5».
+    label: etichettaDocumento({
+      titolo: row.title,
+      nomeFile: row.original_filename,
+      mittente: row.sender,
+      mittenteCorretto: row.sender_corrected === true,
+      confidenza: row.confidence,
+      tipoDocumento: row.document_type,
+    }),
     originalFilename: row.original_filename,
     mimeType: row.mime_type,
     fileSize: row.file_size,

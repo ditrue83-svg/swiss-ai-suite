@@ -344,6 +344,9 @@ export const de: Dictionary = {
     searchPlaceholder: 'Nach Name, Absender, Inhalt oder Referenz suchen …',
     searchScope: 'Gesucht wird in Titel, Absender, Betreff, Referenzen, Etiketten und im Text der Dokumente.',
     countShown: '{shown} von {total}',
+    untitled: 'Dokument ohne Titel',
+    composedName: 'Name von AI-Swisse zusammengesetzt — in der Datei: {raw}',
+    composedNameNoRaw: 'Name von AI-Swisse zusammengesetzt: das Dokument nennt keinen.',
     stats: {
       title: 'Dokumentenstatistik',
       scopeActiveOne: 'Bei 1 aktiven Dokument.',

@@ -2,6 +2,7 @@
 // Tipi di dominio (application layer). Più ricchi delle Row DB dove serve:
 // la mappatura Row <-> dominio avviene nei service.
 // ============================================================================
+import type { EtichettaDocumento } from '@/lib/documentTitle';
 import type {
   MemberRole, DocumentSourceType, DocumentStatus, TaskPriority, TaskStatus, TaskSource, TaskEventKind,
   AuditAction, AuditEntityType,
@@ -345,7 +346,21 @@ export type DocumentState = 'analyzed' | 'to_verify' | 'failed' | 'processing' |
 /** Una riga della lista Documenti, già composta dal database (§25). */
 export interface DocumentHubItem {
   id: string;
+  /**
+   * Il titolo GREZZO del database.
+   *
+   * ⚠️ NON si mostra: si mostra `label`. Questo campo serve al campo «Titolo»
+   * dell'organizzazione, che deve far modificare il dato vero, e ai confronti
+   * («è cambiato?»). Il 2026-08-15 le schermate leggevano questo, e la prima
+   * riga della Panoramica diceva «2.5».
+   */
   title: string;
+  /**
+   * Che cosa mostrare: il titolo quando è mostrabile, altrimenti un'etichetta
+   * composta dai dati che il sistema conosce davvero. La decide `toItem` una
+   * volta sola; la traduce `useDocumentLabel()`.
+   */
+  label: EtichettaDocumento;
   originalFilename: string | null;
   mimeType: string | null;
   fileSize: number | null;
@@ -1088,7 +1103,9 @@ export interface EmailLinkedDocument {
   documentId: string;
   relation: EmailDocumentRelation;
   attachmentId: string | null;
+  /** Il titolo GREZZO. ⚠️ Non si mostra: si mostra `label`. */
   title: string;
+  label: EtichettaDocumento;
   status: DocumentStatus;
 }
 
@@ -1317,7 +1334,9 @@ export interface FinanceItem {
   createdAt: string;
   extractionId: string | null;
   extractionVersion: number | null;
+  /** Il titolo GREZZO del documento collegato. ⚠️ Non si mostra: `documentLabel`. */
   documentTitle: string;
+  documentLabel: EtichettaDocumento;
   documentSource: DocumentSourceType;
   documentStatus: DocumentStatus;
   storagePath: string | null;
@@ -1640,7 +1659,9 @@ export interface ContractDocumentLink {
   suggested: boolean;
   addedAt: string;
   addedBy: string | null;
+  /** Il titolo GREZZO del documento. ⚠️ Non si mostra: si mostra `label`. */
   title: string;
+  label: EtichettaDocumento;
   storagePath: string | null;
   mimeType: string | null;
   documentCreatedAt: string;
@@ -2073,7 +2094,9 @@ export interface CrmPipelineCell {
 export interface CrmDocumentLink {
   id: string;
   documentId: string;
+  /** Il titolo GREZZO. ⚠️ Non si mostra: si mostra `label`. */
   title: string | null;
+  label: EtichettaDocumento;
   category: DocumentCategory | null;
   /**
    * ⚠️ Quando il documento è stato CARICATO, non la data che porta stampata:

@@ -820,7 +820,9 @@ section('10 · Dal messaggio al documento, e ritorno');
   });
   const collegato = (over: Partial<EmailLinkedDocument> = {}): EmailLinkedDocument => ({
     documentId: 'doc-body', relation: 'body', attachmentId: null,
-    title: 'Corpo della comunicazione', status: 'completed', ...over,
+    title: 'Corpo della comunicazione',
+    label: { origine: 'titolo', titolo: 'Corpo della comunicazione' },
+    status: 'completed', ...over,
   });
 
   // -- la guardia sull'indirizzo --------------------------------------------

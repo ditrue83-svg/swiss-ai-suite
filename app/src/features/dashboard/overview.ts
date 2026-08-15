@@ -12,6 +12,11 @@ import type { MatchProfile } from '@/features/subsidy-ai/engine';
 import type { IconName } from '@/components/ui/Icon';
 import { daysUntil } from '@/lib/format';
 import { translate as tr } from '@/i18n';
+// ⚠️ Il NOME del documento, non il suo titolo grezzo. Il 2026-08-15 la prima
+// riga di questa schermata era «2.5» — un titolo estratto male, mostrato sotto
+// «Ecco cosa richiede attenzione nella tua azienda». La decisione è già stata
+// presa dal servizio (`d.label`); qui si traduce soltanto.
+import { documentLabelText } from '@/i18n/documentLabel';
 import {
   caseDeadline, nextStep, NEXT_STEP_KEY, type NextStep,
 } from '@/features/incentives/incentivesModel';
@@ -132,7 +137,7 @@ export function collectPriorities({ tasks, attention, opportunities, cases, toda
         priority: failed ? 'alta' : 'media',
         icon: failed ? 'alert' : 'fileSearch',
         order: failed ? -100 : 10,
-        title: d.title,
+        title: documentLabelText(d.label),
         sub: [d.sender, failed ? tr('home.prioDocFailed') : tr('home.prioDocToVerify')]
           .filter(Boolean).join(' · '),
         to: `/documenti/${d.id}`, cta: tr('home.ctaDocument'),

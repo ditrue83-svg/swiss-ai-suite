@@ -366,6 +366,14 @@ export const it = {
     searchPlaceholder: 'Cerca per nome, mittente, contenuto o riferimento…',
     searchScope: 'La ricerca guarda titolo, mittente, oggetto, riferimenti, etichette e il testo dei documenti.',
     countShown: '{shown} di {total}',
+    // ---- Il nome mostrato quando il titolo non è un titolo (§6) -------------
+    // «2.5» era il titolo di un documento vero: il nome del file meno
+    // l'estensione, mostrato come se fosse l'oggetto. Quando non c'è niente di
+    // leggibile il prodotto compone un nome dai dati che conosce e lo DICHIARA,
+    // invece di mostrare il residuo dell'estrazione.
+    untitled: 'Documento senza titolo',
+    composedName: 'Nome composto da AI-Swisse — nel file: {raw}',
+    composedNameNoRaw: 'Nome composto da AI-Swisse: il documento non ne dichiara uno.',
     // ---- Statistiche documenti (§37, arrivate dalla Panoramica il 2026-08-15)
     // Ogni frase DICHIARA l'insieme: il numero da solo non è un'informazione
     // finché non si sa se parla degli attivi, degli archiviati o di tutti.

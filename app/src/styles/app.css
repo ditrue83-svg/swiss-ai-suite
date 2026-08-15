@@ -1201,6 +1201,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .lang-chip { font-size: var(--fs-meta); color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-1) var(--sp-3); }
 .lang-chip b { color: var(--ink); font-weight: 600; }
 
+/* La dichiarazione «questo nome l'abbiamo messo noi», sotto il titolo del
+   dettaglio: il segno della famiglia provenienza e una riga di spiegazione, sul
+   filo di base del segno. */
+.doc-name-composed { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+
 /* Interruttore della sezione statistiche (archivio). È un pulsante vero — si
    raggiunge da tastiera e annuncia `aria-expanded` — con l'aspetto di una
    intestazione: chi non la apre non deve nemmeno accorgersi che c'è un comando,

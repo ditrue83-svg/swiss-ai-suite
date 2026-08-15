@@ -32,6 +32,7 @@ import { causaDelGuasto } from '@/lib/errorCause';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { useDocumentLabel } from '@/i18n/documentLabel';
 import {
   DEFAULT_DUE_DAYS, DOCUMENT_SOURCES, EXPENSE_CATEGORIES, FINANCE_COMMON_CURRENCIES,
   FINANCE_PAGE_SIZE, PROCESSINGS, REVIEWS, SORTS, TABS,
@@ -642,12 +643,13 @@ function FinanceRow({
   item: FinanceItem; tab: FinanceTab; t: TFunction;
   L: ReturnType<typeof useLabels>; localeTag: string;
 }) {
+  const docLabel = useDocumentLabel();
   const state = financeState(item);
   const badge = stateBadge(state, t, L);
   // Su una ricevuta il fornitore spesso non c'è e l'esercente sì: si mostra
   // quello che il documento dice davvero, senza inventare l'altro. Quando non
   // c'è né l'uno né l'altro resta il titolo del documento, che è un fatto.
-  const who = item.supplierName || item.merchant || item.documentTitle;
+  const who = item.supplierName || item.merchant || docLabel(item.documentLabel);
   const date = tab === 'expenses'
     ? item.expenseDate ?? item.invoiceDate
     : item.invoiceDate;
@@ -728,6 +730,7 @@ function AddFromDocument({
 }) {
   const t = useT();
   const L = useLabels();
+  const docLabel = useDocumentLabel();
   const [type, setType] = useState<FinanceItemType>(initialType);
   const [query, setQuery] = useState('');
   const [docs, setDocs] = useState<DocumentHubItem[]>([]);
@@ -816,7 +819,7 @@ function AddFromDocument({
       {!loading && !error && docs.map((doc) => (
         <div className="list-row" key={doc.id}>
           <div className="list-main">
-            <div className="list-title">{doc.title}</div>
+            <div className="list-title">{docLabel(doc.label)}</div>
             <div className="list-sub">{formatDate(doc.documentDate ?? doc.createdAt)}</div>
           </div>
           <button className="btn btn-sm" disabled={busy} onClick={() => void add(doc.id)}>

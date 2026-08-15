@@ -30,6 +30,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { useI18n, useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { useDocumentLabel } from '@/i18n/documentLabel';
 import { formatBytes, formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { analysisService } from '@/services/analysisService';
@@ -48,6 +49,7 @@ interface Props {
 
 export function MessageDetail({ messageId, onBack, onChanged }: Props) {
   const t = useT();
+  const docLabel = useDocumentLabel();
   const { activeCompany } = useCompany();
   // 0026 — il collegamento alla controparte. L'hook rilegge dopo ogni scrittura:
   // i guardiani possono rifiutare, e lo stato locale non deve raccontare un
@@ -328,7 +330,7 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
             {documentRows.map((d) => (
               <li key={d.documentId} className="list-row">
                 <span className="list-main">
-                  <span className="list-title">{d.title}</span>
+                  <span className="list-title">{docLabel(d.label)}</span>
                   <span className="list-sub">
                     {[
                       d.relation === 'attachment'

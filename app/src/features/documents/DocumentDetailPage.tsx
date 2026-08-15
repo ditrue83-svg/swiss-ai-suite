@@ -47,12 +47,14 @@ import { formatBytes, formatCurrency, formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { useDocumentLabel } from '@/i18n/documentLabel';
+import { etichettaComposta } from '@/lib/documentTitle';
 import { CATEGORIES } from './documentModel';
 import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
-import { ActionOriginMark } from '@/components/ui/ProvenanceMark';
+import { ActionOriginMark, ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import type { AnalysisCorrection, Confidence, DocumentCategory, DocumentDetail, DocumentTag, Evidence } from '@/types/models';
 import { AskAbout } from '@/features/assistant/AskAbout';
@@ -75,6 +77,7 @@ function aiValueOf(corrections: AnalysisCorrection[], field: string): string | n
 export function DocumentDetailPage() {
   const t = useT();
   const L = useLabels();
+  const docLabel = useDocumentLabel();
   const { locale } = useI18n();
   const { id = '' } = useParams();
   const navigate = useNavigate();
@@ -193,7 +196,7 @@ export function DocumentDetailPage() {
       companyId,
       userId: user.id,
       documentId: detail.document.id,
-      title: proposedTaskTitle(detail),
+      title: proposedTaskTitle(detail, docLabel(detail.item.label)),
       analysis: detail.analysis,
       // Valori EFFETTIVI: se una persona ha corretto il mittente o la scadenza,
       // il modulo mostra il dato corretto, non quello che l'AI aveva letto.
@@ -351,6 +354,18 @@ export function DocumentDetailPage() {
 
   const doc = detail.document;
   const analysis = detail.analysis;
+  // ⚠️ IL NOME MOSTRATO e il TITOLO GREZZO sono due cose diverse, e qui
+  // convivono di proposito: `nome` è ciò che si legge in cima, in stampa e nel
+  // modulo attività; `doc.title` resta il valore del database, che il campo
+  // «Titolo» dell'organizzazione deve poter modificare. Se una persona ci
+  // scrive dentro qualcosa di leggibile, la regola smette di intervenire da
+  // sola — il titolo scritto a mano vince sempre.
+  const nome = docLabel(detail.item.label);
+  // Il residuo, quando c'è: serve a RICONOSCERE il documento, mai a descriverlo.
+  // ⚠️ PRIMA IL NOME DEL FILE, poi il titolo grezzo: la frase dice «nel file», e
+  // con l'ordine inverso mostrava «nel file: 2.5» — cioè il titolo — mentre il
+  // file si chiama `2.5.pdf`. Visto a schermo, non leggendo il codice.
+  const grezzo = (doc.originalFilename ?? '').trim() || (doc.title ?? '').trim() || null;
   const archived = !!doc.archivedAt;
   // Chi può cancellare per sempre: chi amministra l'azienda, oppure chi ha
   // caricato personalmente il documento. È la stessa regola della policy del
@@ -359,7 +374,7 @@ export function DocumentDetailPage() {
   // Che cosa conviene fare adesso. La decisione è una funzione PURA e vive in
   // `nextStep.ts`: una guardia di questo tipo si sbaglia in silenzio — propone
   // la cosa sbagliata e non lo dice nessuno.
-  const step = nextStepFor(detail);
+  const step = nextStepFor(detail, nome);
   // §40 — le azioni dell'analisi e le attività sono cose diverse, e dopo la
   // conversione non esiste un collegamento fra le due liste. Perciò questo
   // avviso compare SOLO quando non è nata nessuna attività da questo documento:
@@ -420,7 +435,23 @@ export function DocumentDetailPage() {
         <Link className="btn btn-sm btn-ghost mb-8" to="/documenti">
           <Icon name="arrowLeft" className="ic-sm" /> {t('documents.back')}
         </Link>
-        <div className="page-title">{doc.title}</div>
+        <div className="page-title">{nome}</div>
+        {/* §6 — QUANDO IL NOME L'ABBIAMO MESSO NOI, LO SI DICE. Il documento
+            «2.5» non dichiarava un titolo leggibile: l'etichetta è composta dai
+            dati che il sistema conosce davvero, e chi legge deve poter capire
+            che quel nome non viene dal documento. Il segno è quello che il
+            vocabolario usa già per un valore ricavato e non letto —
+            «Inferenza», stessa famiglia della provenienza. */}
+        {etichettaComposta(item.label) && (
+          <div className="doc-name-composed">
+            <ProvenanceMark kind="inference" />
+            <span className="muted-sm">
+              {grezzo
+                ? t('documents.composedName', { raw: grezzo })
+                : t('documents.composedNameNoRaw')}
+            </span>
+          </div>
+        )}
         <div className="page-desc">
           {(() => {
             // Categoria e tipo possono avere la STESSA etichetta («Assicurazioni
@@ -462,7 +493,7 @@ export function DocumentDetailPage() {
             </button>
           )}
           {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
-          <AskAbout type="document" id={doc.id} label={doc.title} />
+          <AskAbout type="document" id={doc.id} label={nome} />
         </div>
         <div className="action-bar-more">
           <ActionMenu label={t('documents.moreActions')} items={menuItems} />
@@ -703,7 +734,7 @@ export function DocumentDetailPage() {
           di pagina d'archivio. */}
       {analysis && analysis.analysisStatus !== 'failed' && (
         <PrintSheet
-          title={doc.title}
+          title={nome}
           facts={[
             { labelKey: 'documents.sender', value: item.sender },
             { labelKey: 'documents.documentType', value: item.documentType ? L.docType(item.documentType) : null },
@@ -797,7 +828,7 @@ export function DocumentDetailPage() {
             <div className="card-title">{t('documents.taskForm.title')}</div>
             <p className="muted-sm">{t('documents.taskForm.intro')}</p>
             <p className="muted-sm">
-              <b>{t('documents.taskForm.linkedDocument')}</b> — {doc.title}
+              <b>{t('documents.taskForm.linkedDocument')}</b> — {nome}
             </p>
             {/* Le stesse avvertenze del riquadro in cima, accanto ai campi:
                 qui è dove si sta per decidere, e chi apre il modulo dal

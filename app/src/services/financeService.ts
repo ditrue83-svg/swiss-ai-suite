@@ -26,6 +26,7 @@
 // scrive il worker con il service role.
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
+import { etichettaDocumento } from '@/lib/documentTitle';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { translate as tr } from '@/i18n';
 import {
@@ -96,6 +97,14 @@ function toItem(row: ListRow): FinanceItem {
     extractionId: row.extraction_id,
     extractionVersion: row.extraction_version === null ? null : Number(row.extraction_version),
     documentTitle: row.document_title,
+    // ⚠️ `list_finance_items` porta il solo TITOLO del documento: niente nome
+    // del file, niente mittente, niente tipo. La regola del §6 si applica lo
+    // stesso — un titolo non mostrabile non si mostra — ma qui non c'è di che
+    // COMPORRE, e l'etichetta scende all'ultimo livello («Documento senza
+    // titolo»). È meno preciso di quel che fa il Document Hub ed è comunque
+    // meglio di «2.5»: per averlo migliore servirebbe portare mittente e tipo
+    // dentro quella funzione SQL, che è una migrazione e una decisione.
+    documentLabel: etichettaDocumento({ titolo: row.document_title }),
     documentSource: row.document_source,
     documentStatus: row.document_status,
     storagePath: row.storage_path,

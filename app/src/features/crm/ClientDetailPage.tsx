@@ -33,6 +33,7 @@ import { taskService } from '@/services/taskService';
 import { formatDate, formatCurrency } from '@/lib/format';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { useDocumentLabel } from '@/i18n/documentLabel';
 import type {
   AssignableMember, CrmContractLink, CrmDocumentLink, CrmDuplicateCandidate,
   CrmEmailLink, CrmFinanceLink, CrmInteraction, CrmOpportunity, CrmOrganization,
@@ -687,6 +688,7 @@ function DocumentsTab(props: {
   docs: CrmDocumentLink[]; t: TFunction; L: ReturnType<typeof useLabels>;
 }) {
   const { t, L } = props;
+  const docLabel = useDocumentLabel();
   if (props.docs.length === 0) return <EmptyCta title={t('crm.detail.emptyDocuments')} />;
   return (
     <ul className="crm-list">
@@ -694,7 +696,7 @@ function DocumentsTab(props: {
         <li className="list-row" key={d.id}>
           <Link className="crm-row-link" to={`/documenti/${d.documentId}`}>
             <div className="list-main">
-              <span className="list-title">{d.title ?? <em>—</em>}</span>
+              <span className="list-title">{docLabel(d.label)}</span>
               <Tag>{L.crmRelation(d.relation)}</Tag>
             </div>
             <div className="list-sub">

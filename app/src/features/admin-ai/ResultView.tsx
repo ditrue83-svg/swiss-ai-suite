@@ -18,6 +18,8 @@ import { formatDate } from '@/lib/format';
 import { TONI } from '@/features/admin-ai/engine';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { useDocumentLabel } from '@/i18n/documentLabel';
+import { etichettaDocumento } from '@/lib/documentTitle';
 import { PdfViewer } from '@/features/admin-ai/PdfViewer';
 import { ActionOriginMark, ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
@@ -158,6 +160,21 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
 }) {
   const t = useT();
   const L = useLabels();
+  const docLabel = useDocumentLabel();
+  // ⚠️ LO STESSO NOME CHE MOSTRA L'ARCHIVIO, composto dagli stessi ingredienti.
+  // Questa schermata è il primo posto in cui si legge un documento appena
+  // analizzato: se qui dicesse «2.5» e l'elenco dicesse «Altro documento
+  // amministrativo», sarebbero due nomi per la stessa cosa a due minuti di
+  // distanza. La differenza con il Document Hub è solo da DOVE arrivano gli
+  // ingredienti: là dalla riga di `list_documents`, qui dall'analisi che si sta
+  // guardando.
+  const nome = docLabel(etichettaDocumento({
+    titolo: document.title,
+    nomeFile: document.originalFilename,
+    mittente: analysis.sender,
+    confidenza: analysis.confidence,
+    tipoDocumento: analysis.documentType,
+  }));
   const { activeCompany } = useCompany();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -372,7 +389,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
       <div>
         <div className="card ax-header">
           <div className="ax-head-top">
-            <div className="ax-title">{document.title}</div>
+            <div className="ax-title">{nome}</div>
             <div className="ax-badges"><Tag tone="alert">{t('adminAi.result.failedTitle')}</Tag></div>
           </div>
           <div className="warn-box mt-14">
@@ -433,7 +450,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
 
       <div className="card ax-header">
         <div className="ax-head-top">
-          <div className="ax-title">{document.title}</div>
+          <div className="ax-title">{nome}</div>
           <div className="ax-badges">
             {r.analysisStatus === 'needs_review' && <ProvenanceMark kind="toVerify" />}
             {/* L'urgenza del documento È una priorità, e la priorità ha la sua
@@ -496,7 +513,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
           <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <ActionOriginMark source={r.primaryActionSource} /></div>
           <div className="co-when">{r.deadline ? <>{t('adminAi.result.by')} <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</> : t('adminAi.result.noDeadlineFound')}</div>
         </div>
-        <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || document.title)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}</button>
+        <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || nome)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}</button>
       </div>
 
       <div className="ax-grid">

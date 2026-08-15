@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ErrorState } from '@/components/ui/states';
 import { contractService } from '@/services/contractService';
 import { documentService } from '@/services/documentService';
+import { titoloMostrabile } from '@/lib/documentTitle';
 import { memberService } from '@/services/memberService';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
@@ -54,9 +55,17 @@ export function ContractCreatePage() {
       .catch(() => setMembers([]));
     // Il titolo del documento è un buon punto di partenza per il nome, e resta
     // modificabile: è metadato organizzativo, non un dato del contratto (§31).
+    //
+    // ⚠️ MA SOLO SE È UN TITOLO. Un titolo non mostrabile precompilato qui
+    // diventerebbe il NOME DI UN CONTRATTO — un «2.5» che resta negli elenchi
+    // per anni. Qui non si compone niente: comporre significherebbe proporre
+    // «Altro documento amministrativo» come nome di un contratto, che è peggio
+    // del vuoto. Il campo resta da riempire, ed è la cosa onesta.
     if (fromDocument) {
       documentService.get(fromDocument)
-        .then((d) => { if (d?.title) setName((n) => n || d.title); })
+        .then((d) => {
+          if (d && titoloMostrabile(d.title, d.originalFilename)) setName((n) => n || d.title);
+        })
         .catch(() => undefined);
     }
   }, [company, fromDocument]);

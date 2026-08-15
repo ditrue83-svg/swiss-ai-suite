@@ -86,18 +86,25 @@ export interface NextStep {
 
 /**
  * Il titolo proposto per l'attività: la prima azione richiesta dal documento se
- * c'è — è quella che dice cosa va fatto — altrimenti il titolo del documento.
+ * c'è — è quella che dice cosa va fatto — altrimenti il NOME del documento.
  * Esportato perché è la stessa regola che il dettaglio usa per precompilare il
  * modulo: scritta due volte, prima o poi direbbe due titoli diversi.
+ *
+ * ⚠️ `nomeDocumento` È UN PARAMETRO, e non si legge più `document.title`. Il
+ * titolo grezzo può non essere mostrabile — è il caso di «2.5» — e un'attività
+ * intitolata «2.5» porta il difetto anche nello scadenziario, dove resta per
+ * mesi. Il nome tradotto lo risolve la schermata (`useDocumentLabel`), perché
+ * questo modulo è puro e non ha dizionari. Quando non arriva si ripiega sul
+ * titolo grezzo: è un ripiego dichiarato, non un'abitudine.
  */
-export function proposedTaskTitle(detail: DocumentDetail): string {
-  return detail.analysis?.primaryAction || detail.document.title;
+export function proposedTaskTitle(detail: DocumentDetail, nomeDocumento?: string): string {
+  return detail.analysis?.primaryAction || (nomeDocumento ?? '').trim() || detail.document.title;
 }
 
-export function nextStepFor(detail: DocumentDetail): NextStep {
+export function nextStepFor(detail: DocumentDetail, nomeDocumento?: string): NextStep {
   const { item, analysis } = detail;
   const archived = !!detail.document.archivedAt;
-  const proposedTitle = proposedTaskTitle(detail);
+  const proposedTitle = proposedTaskTitle(detail, nomeDocumento);
   const openActions = analysis ? analysis.actions.filter((a) => !a.done).length : 0;
   // I passaggi si contano con la funzione che li creerà davvero: dire «ne
   // creerò 4» e crearne 2 sarebbe una promessa non mantenuta, e la differenza

@@ -42,6 +42,7 @@ import { causaDelGuasto } from '@/lib/errorCause';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { useDocumentLabel } from '@/i18n/documentLabel';
 import { AskAbout } from '@/features/assistant/AskAbout';
 import {
   FINANCE_HIGH_RISK_FIELDS, financeState, formatDecimal, isCorrectableField, readyBlockers,
@@ -193,6 +194,7 @@ function effectiveOutsideProjection(
 }
 
 export function FinanceDetailPage() {
+  const docLabel = useDocumentLabel();
   const t = useT();
   const L = useLabels();
   const { localeTag } = useI18n();
@@ -241,7 +243,7 @@ export function FinanceDetailPage() {
   const state = financeState(item);
   const blockers = readyBlockers(item);
   const archived = !!item.archivedAt;
-  const who = item.supplierName || item.merchant || item.documentTitle;
+  const who = item.supplierName || item.merchant || docLabel(item.documentLabel);
   const amount = formatDecimal(item.grossAmount, item.currency, localeTag);
   const canRetry = item.processingStatus === 'failed' || item.processingStatus === 'completed';
 
@@ -286,7 +288,7 @@ export function FinanceDetailPage() {
         companyId,
         userId: user.id,
         documentId: item.documentId,
-        title: item.documentTitle,
+        title: docLabel(item.documentLabel),
         authority: item.supplierName ?? item.merchant,
         dueDate: item.dueDate,
       });
@@ -827,6 +829,7 @@ function PaymentPanel({ ctx }: { ctx: FieldContext }) {
 // Scheda «Origine»
 // ---------------------------------------------------------------------------
 function OriginPanel({ detail, t }: { detail: FinanceDetail; t: TFunction }) {
+  const docLabel = useDocumentLabel();
   const { item, emails } = detail;
   return (
     <>
@@ -855,7 +858,7 @@ function OriginPanel({ detail, t }: { detail: FinanceDetail; t: TFunction }) {
       )}
       <div className="list-row">
         <div className="list-main">
-          <div className="list-title">{item.documentTitle}</div>
+          <div className="list-title">{docLabel(item.documentLabel)}</div>
           <div className="list-sub">{detail.document ? formatDate(detail.document.createdAt) : ''}</div>
         </div>
         <Link className="btn btn-sm" to={`/documenti/${item.documentId}`}>

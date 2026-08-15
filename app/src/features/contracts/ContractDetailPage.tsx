@@ -39,6 +39,7 @@ import { causaDelGuasto } from '@/lib/errorCause';
 import { toUserMessage } from '@/lib/errors';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
+import { useDocumentLabel } from '@/i18n/documentLabel';
 import { AskAbout } from '@/features/assistant/AskAbout';
 import { PrintButton } from '@/components/ui/PrintButton';
 import { PrintSheet } from '@/features/print/PrintSheet';
@@ -706,10 +707,11 @@ function DocumentRow(props: {
   onRemove: () => void;
 }) {
   const { link: d, t, L } = props;
+  const docLabel = useDocumentLabel();
   return (
     <li className="ct-doc-row">
       <div>
-        <Link to={`/documenti/${d.documentId}`}>{d.title || d.documentId.slice(0, 8)}</Link>
+        <Link to={`/documenti/${d.documentId}`}>{docLabel(d.label)}</Link>
         <div className="muted-sm">
           {L.contractRelation(d.relation)}
           {d.processingStatus === 'pending' && ` · ${t('contracts.documents.pending')}`}
@@ -768,9 +770,12 @@ function AddDocument(props: {
 }) {
   const { t, L } = props;
   const { showToast } = useToast();
+  const docLabel = useDocumentLabel();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
-  const [docs, setDocs] = useState<{ id: string; title: string }[]>([]);
+  // ⚠️ `nome` e non `title`: qui dentro c'è l'ETICHETTA già risolta, e un campo
+  // chiamato `title` avrebbe invitato il prossimo a rimetterci il titolo grezzo.
+  const [docs, setDocs] = useState<{ id: string; nome: string }[]>([]);
   const [relation, setRelation] = useState<ContractDocumentRelation>('main_agreement');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -782,7 +787,9 @@ function AddDocument(props: {
     setLoadError(null);
     documentService.list(props.companyId)
       .then((res) => {
-        if (!cancelled) setDocs(res.map((d) => ({ id: d.id, title: d.title })));
+        // ⚠️ Il NOME, non il titolo grezzo: qui si sceglie che cosa allegare a
+        // un contratto, e «2.5» non permette di scegliere.
+        if (!cancelled) setDocs(res.map((d) => ({ id: d.id, nome: docLabel(d.label) })));
       })
       .catch((e) => { if (!cancelled) setLoadError(toUserMessage(e)); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -790,7 +797,7 @@ function AddDocument(props: {
   }, [open, props.companyId]);
 
   const visible = useMemo(
-    () => docs.filter((d) => d.title.toLowerCase().includes(filter.trim().toLowerCase())),
+    () => docs.filter((d) => d.nome.toLowerCase().includes(filter.trim().toLowerCase())),
     [docs, filter],
   );
 
@@ -842,7 +849,7 @@ function AddDocument(props: {
             <ul className="ct-list ct-pick">
               {visible.map((d) => (
                 <li key={d.id}>
-                  <span>{d.title}</span>
+                  <span>{d.nome}</span>
                   <button
                     type="button" className="btn btn-sm" disabled={props.busy}
                     onClick={async () => {
