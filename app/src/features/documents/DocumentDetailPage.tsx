@@ -39,7 +39,7 @@ import { TaskCreateForm } from '@/features/tasks/TaskCreateForm';
 import {
   EMPTY_TASK_FORM, createSubmitLatch, taskFormSubmission, type TaskFormValues,
 } from '@/features/tasks/taskCreateModel';
-import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
+import { dueLabel, statusLabelKey, taskDateKind } from '@/features/tasks/taskFormat';
 import { useMembers } from '@/features/tasks/useMembers';
 import { NextStepCard, NextStepPrimary, NextStepSecondary, type NextStepActionProps } from './NextStepCard';
 import { nextStepFor, proposedTaskTitle } from './nextStep';
@@ -820,7 +820,13 @@ export function DocumentDetailPage() {
               <div className="list-main">
                 <div className="list-title">{task.title}</div>
                 <div className="list-sub">
-                  {[assigneeName(task.assigneeUserId), t(statusLabelKey(task.status)), t(due.key, due.params)]
+                  {/* ⚠️ «Nessuna scadenza» su un'attività che ha un
+                      appuntamento sarebbe vero e monco: qui si dice l'altra
+                      cosa vera, con la parola che la distingue da un termine. */}
+                  {[assigneeName(task.assigneeUserId), t(statusLabelKey(task.status)),
+                    taskDateKind(task) === 'appointment'
+                      ? `${t('marks.appointment.label')} · ${formatDate(task.appointmentDate as string)}`
+                      : t(due.key, due.params)]
                     .filter(Boolean).join(' · ')}
                 </div>
               </div>

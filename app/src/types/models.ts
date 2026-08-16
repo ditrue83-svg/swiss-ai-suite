@@ -555,6 +555,8 @@ export interface DocumentLinkedTask {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: string | null;
+  /** Il giorno dell'evento a cui il lavoro si riferisce (0041). Non è un termine. */
+  appointmentDate: string | null;
   assigneeUserId: string | null;
   archivedAt: string | null;
 }

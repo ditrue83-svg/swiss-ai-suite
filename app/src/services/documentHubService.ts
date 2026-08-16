@@ -459,7 +459,7 @@ export const documentHubService = {
   async linkedTasks(documentId: string): Promise<DocumentLinkedTask[]> {
     const { data, error } = await requireSupabase()
       .from('tasks')
-      .select('id, title, status, priority, due_date, archived_at, assignee_user_id')
+      .select('id, title, status, priority, due_date, appointment_date, archived_at, assignee_user_id')
       .eq('document_id', documentId)
       .order('created_at', { ascending: false });
     if (error) throw new AppError(documentErrorMessage(error), error);
@@ -469,6 +469,7 @@ export const documentHubService = {
       status: r.status,
       priority: r.priority,
       dueDate: r.due_date,
+      appointmentDate: r.appointment_date ?? null,
       assigneeUserId: r.assignee_user_id,
       archivedAt: r.archived_at,
     }));

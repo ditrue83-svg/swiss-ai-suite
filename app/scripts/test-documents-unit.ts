@@ -279,7 +279,7 @@ function voce(over: Partial<DocumentHubItem> = {}): DocumentHubItem {
 function attivita(over: Partial<DocumentLinkedTask> = {}): DocumentLinkedTask {
   return {
     id: 't-1', title: 'Trasmettere il rendiconto IVA', status: 'open', priority: 'high',
-    dueDate: '2026-08-20', assigneeUserId: null, archivedAt: null, ...over,
+    dueDate: '2026-08-20', appointmentDate: null, assigneeUserId: null, archivedAt: null, ...over,
   };
 }
 
