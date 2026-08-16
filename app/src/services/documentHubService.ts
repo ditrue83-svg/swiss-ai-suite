@@ -21,6 +21,7 @@
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { translate as tr } from '@/i18n';
+import { deadlineRequiresVerification } from '../../supabase/functions/_shared/deadlineNature.ts';
 import { stateOf, toListArgs } from '@/features/documents/documentModel';
 import { etichettaDocumento } from '@/lib/documentTitle';
 import { analysisService } from './analysisService';
@@ -93,7 +94,17 @@ function toItem(row: ListRow): DocumentHubItem {
     documentDate: row.document_date,
     deadline: row.deadline,
     deadlineCorrected: row.deadline_corrected === true,
-    deadlineRequiresVerification: row.deadline_requires_verification === true,
+    // ⚠️ La stessa regola, dalla stessa funzione, del dettaglio dell'analisi:
+    // una scadenza la cui natura non è mai stata dichiarata non è un fatto. Se
+    // qui si leggesse il flag grezzo, la lista direbbe «scadenza» e il dettaglio
+    // «da verificare» sullo stesso documento.
+    deadlineRequiresVerification: deadlineRequiresVerification({
+      deadline: row.deadline,
+      deadlineKind: row.deadline_kind,
+      storedFlag: row.deadline_requires_verification === true,
+    }),
+    deadlineKind: row.deadline_kind ?? null,
+    appointmentDate: row.appointment_date ?? null,
     amount: row.amount === null ? null : Number(row.amount),
     amountCurrency: row.amount_currency,
     amountCorrected: row.amount_corrected === true,

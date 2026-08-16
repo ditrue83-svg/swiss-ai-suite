@@ -557,6 +557,10 @@ export interface Database {
           sender_authority_type: string | null; sender_confidence: number | null;
           recipient: string | null; subject: string | null; document_date: string | null; reply_needed: boolean | null;
           deadline_type: string | null; deadline_source_text: string | null; deadline_confidence: number | null; deadline_requires_verification: boolean;
+          // 0040 — che COSA è la data. `deadline_kind` null = natura mai dichiarata
+          // (analisi anteriori al 2026-08-15): in lettura vale «da verificare».
+          deadline_kind: string | null;
+          appointment_date: string | null; appointment_evidence: Json | null; appointment_source_text: string | null;
           amounts: Json; reference_numbers: Json; legal_references: Json; sender_evidence_list: Json;
           created_at: string; updated_at: string;
         };
@@ -576,6 +580,8 @@ export interface Database {
           sender_authority_type?: string | null; sender_confidence?: number | null;
           recipient?: string | null; subject?: string | null; document_date?: string | null; reply_needed?: boolean | null;
           deadline_type?: string | null; deadline_source_text?: string | null; deadline_confidence?: number | null; deadline_requires_verification?: boolean;
+          deadline_kind?: string | null;
+          appointment_date?: string | null; appointment_evidence?: Json | null; appointment_source_text?: string | null;
           amounts?: Json; reference_numbers?: Json; legal_references?: Json; sender_evidence_list?: Json;
         };
         // 0010 — lo snapshot è immutabile: il client non ha più il permesso di
@@ -2037,7 +2043,11 @@ export interface Database {
           document_type: string | null; document_type_corrected: boolean;
           sender: string | null; sender_corrected: boolean; sender_authority_type: string | null;
           document_date: string | null; deadline: string | null; deadline_corrected: boolean;
+          // ⚠️ Il flag è GREZZO, come lo ha scritto il validatore. Il «da
+          // verificare» effettivo lo calcola `deadlineNature.ts` combinandolo con
+          // `deadline_kind`: la regola sta in un posto solo (0040).
           deadline_requires_verification: boolean;
+          deadline_kind: string | null; appointment_date: string | null;
           amount: number | null; amount_currency: string | null; amount_corrected: boolean;
           confidence: string | null;
           tags: { id: string; name: string }[];

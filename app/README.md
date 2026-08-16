@@ -38,6 +38,10 @@ supabase/
                 0037_subsidy_catalog_review
                 0038_subsidy_review_source_url
                 0039_audit_logs
+                0040_deadline_nature   — che COSA è una data estratta: termine,
+                                         evento (sopralluogo, udienza) o riferimento
+                                         amministrativo. Solo la prima popola la
+                                         Scadenza; la seconda ha una colonna sua.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

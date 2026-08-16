@@ -191,7 +191,24 @@ await run('§47 Comune (italiano)', DOCS.comune, (a) => {
   check('lingua = it', a.language === 'it', a.language);
   check('authorityType = municipal', a.sender.authorityType === 'municipal', a.sender.authorityType);
   check('tipo = inspection_notice', a.documentType.value === 'inspection_notice', a.documentType.value);
-  check('data sopralluogo 2026-09-10 individuata', a.deadline.date === '2026-09-10' || inc(a.deadline.sourceText, '10.09.2026') || a.subject?.includes('sopralluogo') === true, `${a.deadline.type} ${a.deadline.date}`);
+  // ⚠️⚠️ QUESTO CONTROLLO BENEDICEVA IL DIFETTO. Fino al 2026-08-15 diceva:
+  //   a.deadline.date === '2026-09-10' || inc(a.deadline.sourceText, '10.09.2026') || …
+  // cioè accettava come SUCCESSO che la data del sopralluogo finisse nel campo
+  // Scadenza — che è esattamente ciò che è successo in produzione, con
+  // «affidabilità alta» e tre attività generate. Era verde perché chiedeva «hai
+  // trovato la data?» invece di «hai capito che cos'è?».
+  //
+  // Un controllo che passa sul comportamento sbagliato è peggio di nessun
+  // controllo: è già successo due volte con `i18n:coverage`, e questa è la
+  // terza. Adesso chiede la cosa giusta, e sulla vecchia analisi FALLISCE.
+  check('la data è dichiarata EVENTO, non termine', a.deadline.dateKind === 'event', String(a.deadline.dateKind));
+  check('la Scadenza resta VUOTA (un sopralluogo non è un termine)',
+    a.deadline.date === null && a.deadline.type === 'none', `${a.deadline.type} ${a.deadline.date}`);
+  check('la data del sopralluogo è conservata come appuntamento',
+    a.appointment?.date === '2026-09-10', String(a.appointment?.date));
+  check('e la sua citazione è verificata nel testo', a.appointment?.evidence?.verified === true);
+  check('l\'analisi dichiara che il termine, se esiste, non è scritto',
+    a.uncertainties.some((u) => u.field === 'deadline'), a.uncertainties.map((u) => u.field).join(', '));
 });
 
 await run('§48/§59 A — nessuna scadenza, nessun importo', DOCS.noDeadline, (a) => {

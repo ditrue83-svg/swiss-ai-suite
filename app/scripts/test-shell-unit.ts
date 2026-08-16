@@ -51,6 +51,7 @@ import { CONFIDENCE_LEVELS } from '../src/components/ui/ConfidenceBadge.tsx';
 import { ELIGIBILITY_STATES } from '../src/components/ui/EligibilityMark.tsx';
 import { SOURCE_STATES } from '../src/components/ui/SourceStamp.tsx';
 import { DEADLINE_STATES, deadlineState } from '../src/components/ui/DeadlineMark.tsx';
+import { APPOINTMENT_STATES, appointmentState } from '../src/components/ui/AppointmentMark.tsx';
 import { TASK_STATES } from '../src/components/ui/StatusMark.tsx';
 import { PRIORITY_LEVELS } from '../src/components/ui/PriorityMark.tsx';
 import { WINDOW_STATES } from '../src/components/ui/WindowMark.tsx';
@@ -731,6 +732,7 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
     { nome: 'ELIGIBILITY_STATES', mappa: ELIGIBILITY_STATES },
     { nome: 'SOURCE_STATES', mappa: SOURCE_STATES },
     { nome: 'DEADLINE_STATES', mappa: DEADLINE_STATES },
+    { nome: 'APPOINTMENT_STATES', mappa: APPOINTMENT_STATES },
     { nome: 'TASK_STATES', mappa: TASK_STATES },
     { nome: 'PRIORITY_LEVELS', mappa: PRIORITY_LEVELS },
     { nome: 'WINDOW_STATES', mappa: WINDOW_STATES },
@@ -794,7 +796,10 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
   // nuova va aggiunta, e finché non lo è i suoi segni sono in giro senza che
   // niente li spieghi.
   const fuoriLegenda = famiglie
-    .filter((f) => f.nome !== 'DEADLINE_STATES') // il termine è reso con esempi numerici, non iterando
+    // Le due famiglie di DATE si rendono con esempi numerici, non iterando la
+    // mappa: «fra 12 giorni» non è una parola fissa. Il blocco c'è lo stesso, e
+    // il conteggio qui sotto lo pretende.
+    .filter((f) => f.nome !== 'DEADLINE_STATES' && f.nome !== 'APPOINTMENT_STATES')
     .filter((f) => !legendSrc.includes(f.nome))
     .map((f) => f.nome);
   check('la legenda elenca tutte le famiglie', fuoriLegenda.length === 0, fuoriLegenda.join(', '));
@@ -960,6 +965,22 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
   check('oggi non è in ritardo', giorniFa('2026-09-01').state === 'today');
   check('domani è vicino, non scaduto', giorniFa('2026-09-02').state === 'soon');
   check('senza data si dichiara «nessuna scadenza»', deadlineState(null).state === 'none');
+
+  // ⚠️⚠️ L'APPUNTAMENTO CONTA I GIORNI COME IL TERMINE, MA NON GIUDICA.
+  // Il 10.09.2026 era un sopralluogo del Comune presentato come scadenza. Da
+  // qui in poi ha un segno suo, e la differenza che conta è il passato: un
+  // termine mancato è un guaio («scaduto da 2 giorni», rosso), un sopralluogo
+  // passato è semplicemente avvenuto. Se `past` diventasse `over`, il segno
+  // tornerebbe a raccontare un allarme che il dato non dichiara.
+  const app = (iso: string) => appointmentState(iso, 7, oggi);
+  check('un appuntamento passato è passato, non «scaduto»',
+    app('2026-08-30').state === 'past' && app('2026-08-30').days === 2);
+  check('oggi è oggi', app('2026-09-01').state === 'today');
+  check('domani è vicino', app('2026-09-02').state === 'soon');
+  check('e a due settimane è solo futuro', app('2026-09-15').state === 'future');
+  // La coppia che tiene separate le due famiglie: stessa data, due letture.
+  check('LA COPPIA: la stessa data passata, termine e appuntamento non dicono la stessa cosa',
+    giorniFa('2026-08-30').state === 'over' && app('2026-08-30').state === 'past');
 }
 
 // ---------------------------------------------------------------------------

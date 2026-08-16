@@ -53,6 +53,24 @@ const GLYPHS: Record<string, { viewBox: string; body: ReactElement }> = {
   arrow: { viewBox: '0 0 14 14', body: <path {...STROKE} d="M2.6 7h7.6M7.4 3.8 10.6 7l-3.2 3.2" /> },
   /** La citazione: i caporali del testo originale. */
   quote: { viewBox: '0 0 14 14', body: <path {...STROKE} d="M3.2 4 6.2 7l-3 3M7.8 4l3 3-3 3" /> },
+  /**
+   * Un momento FISSATO sulla linea del tempo: l'appuntamento.
+   *
+   * ⚠️ Deliberatamente diverso da `arrow`, che è la DISTANZA verso un termine.
+   * Una data di sopralluogo e una scadenza non devono somigliarsi: la prima è
+   * un punto in cui qualcosa accade, la seconda è il bordo oltre cui qualcosa
+   * va storto. Il 2026-08-15 erano la stessa cosa, con le stesse cifre e lo
+   * stesso segno, e da lì sono nate tre attività con la data sbagliata.
+   */
+  pin: {
+    viewBox: '0 0 14 14',
+    body: (
+      <>
+        <path {...STROKE} d="M2.4 11.4h9.2M7 11.4V4.6" />
+        <circle cx="7" cy="3.2" r="1.5" fill="currentColor" stroke="none" />
+      </>
+    ),
+  },
   /** Distanza nel tempo SENZA fine: la finestra sempre aperta. */
   arrowBoth: { viewBox: '0 0 14 14', body: <path {...STROKE} d="M1.8 7h10.4M4.4 4.4 1.8 7l2.6 2.6M9.6 4.4 12.2 7l-2.6 2.6" /> },
   /** Mai verificata: il cerchio che nessuno ha ancora chiuso. */

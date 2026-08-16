@@ -193,9 +193,20 @@ export function buildAnalysisRow(a: NormalizedAnalysis, ctx: SaveContext) {
     document_date: a.documentDate,
     reply_needed: a.replyNeeded,
     deadline_type: a.deadline.type,
+    // ⚠️ CHE COSA era quella data secondo il modello (0040). `null` = non
+    // dichiarato: le analisi anteriori al 2026-08-15 non hanno la colonna
+    // compilata, e la lettura non deve scambiare quel vuoto per «termine».
+    deadline_kind: a.deadline.dateKind,
     deadline_source_text: a.deadline.sourceText,
     deadline_confidence: a.deadline.confidence,
     deadline_requires_verification: a.deadline.requiresVerification,
+    // La data dell'appuntamento sta in una colonna SUA: se stesse in `deadline`
+    // con un flag accanto, ogni lettore che dimentica il flag la userebbe come
+    // termine — ed è esattamente ciò che è successo con le tre attività del
+    // 2026-07-26.
+    appointment_date: a.appointment?.date ?? null,
+    appointment_evidence: a.appointment ? legacyEvidence(a.appointment.evidence) : null,
+    appointment_source_text: a.appointment?.sourceText ?? null,
     amounts: a.amounts,
     reference_numbers: a.referenceNumbers,
     legal_references: a.legalReferences,

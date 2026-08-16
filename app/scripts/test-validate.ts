@@ -12,6 +12,7 @@ import {
   classifyProviderError, ERROR_MESSAGES, validateAndNormalize, type ExtractionResult,
 } from '../supabase/functions/_shared/validate.ts';
 import { buildAnalysisRow, reviewStatus } from '../supabase/functions/_shared/persist.ts';
+import { deadlineNatureDeclared, deadlineRequiresVerification } from '../supabase/functions/_shared/deadlineNature.ts';
 import { looksLikeScan, MIN_CHARS_ABSOLUTE } from '../supabase/functions/_shared/extractionQuality.ts';
 import { parseOcrResponse } from '../supabase/functions/_shared/extract.ts';
 import { runAnalysisPipeline, type ModelMessage } from '../supabase/functions/_shared/pipeline.ts';
@@ -57,7 +58,11 @@ const base = () => ({
   sender: { name: 'Ausgleichskasse des Kantons Zürich', authorityType: 'social_insurance', confidence: 0.95, evidence: { quote: 'Ausgleichskasse des Kantons Zürich', pageNumber: 1 } },
   recipient: null, subject: 'Lohndeklaration 2025', documentDate: null, referenceNumbers: [],
   summaryShort: 'La cassa di compensazione chiede i documenti salariali mancanti.',
-  deadline: { date: '2026-08-15', type: 'explicit', sourceText: 'bis spätestens 15.08.2026', confidence: 0.9, evidence: { quote: 'bis spätestens 15.08.2026 einzureichen', pageNumber: 1 } },
+  // ⚠️ `dateKind` fa parte di un output ONESTO dal 2026-08-15: un modello che
+  // non risponde a «che cosa è questa data?» lascia un'interpretazione che
+  // nessuno ha verificato, e il validatore la marca da verificare. La sezione
+  // sul sopralluogo prova apposta anche il caso in cui il campo manca.
+  deadline: { date: '2026-08-15', type: 'explicit', dateKind: 'term', kindConfidence: 0.9, sourceText: 'bis spätestens 15.08.2026', confidence: 0.9, evidence: { quote: 'bis spätestens 15.08.2026 einzureichen', pageNumber: 1 } },
   amounts: [], actions: [], requestedActions: [], requestedDocuments: [], risks: [], legalReferences: [],
   replyNeeded: false, uncertainties: [], overallConfidence: 0.9,
 });
@@ -179,6 +184,172 @@ console.log('1) Scadenza (§11/§20)');
   ai.deadline = { date: null, type: 'none', sourceText: null, confidence: 0, evidence: { quote: '', pageNumber: null } } as never;
   const r = validateAndNormalize(ai as never, EXTRACTION);
   ok(r.deadline.date === null, 'nessuna scadenza → resta null (§59)');
+}
+
+// ---------------------------------------------------------------------------
+// ⚠️⚠️ CHE COSA È QUELLA DATA — il caso REALE del 2026-08-15.
+//
+// «Comune di Lugano — Controllo tassa rifiuti» mostrava «Scadenza 10.09.2026 ·
+// fra 26 giorni · affidabilità ALTA», e da quel campo erano nate TRE attività
+// datate 10.09.2026. La citazione a supporto era esatta e verificabile: «Il
+// sopralluogo è previsto per il 10.09.2026 presso la vostra sede».
+//
+// ⚠️ IL PUNTO DI QUESTA SEZIONE: le tre guardie esistenti erano tutte e tre
+// VERDI su quel dato. `type` = explicit (la data è assoluta: vero).
+// `obligesCompany` = true (da un sopralluogo l'azienda è coinvolta: vero).
+// `evidence` verificata (la frase c'è: vero). Tre risposte giuste a tre domande
+// che non erano quella. Il testo qui sotto è il documento vero, parola per
+// parola, e l'output del modello è quello che il difetto produceva.
+const SOPRALLUOGO = `Comune di Lugano — Cancelleria comunale
+Piazza della Riforma 1, 6900 Lugano
+
+Oggetto: Verifica della tassa rifiuti aziendale — sopralluogo
+
+Spettabile Ditta,
+
+vi informiamo che il nostro servizio effettuerà un controllo relativo alla tassa rifiuti per le attività economiche. Il sopralluogo è previsto per il 10.09.2026 presso la vostra sede.
+
+Vi invitiamo a presentare in tale occasione il formulario allegato debitamente compilato e i giustificativi relativi allo smaltimento dei rifiuti speciali.
+
+Distinti saluti
+Cancelleria comunale di Lugano`;
+
+{
+  const estrazione: ExtractionResult = {
+    fullText: SOPRALLUOGO, pages: [{ pageNumber: 1, text: SOPRALLUOGO }], extractionMethod: 'text',
+  };
+  // L'output com'era il 26 luglio, più il campo nuovo. `obligesCompany: true`
+  // resta true ED È CORRETTO: l'azienda deve esserci. È il tipo di data a
+  // cambiare tutto.
+  const sopralluogo = (over: Record<string, unknown> = {}) => {
+    const ai = base();
+    ai.language = 'it' as never;
+    ai.deadline = {
+      date: '2026-09-10', type: 'explicit', obligesCompany: true, dateKind: 'event',
+      kindConfidence: 0.9,
+      sourceText: 'Il sopralluogo è previsto per il 10.09.2026', confidence: 0.9,
+      evidence: { quote: 'Il sopralluogo è previsto per il 10.09.2026 presso la vostra sede', pageNumber: 1 },
+      ...over,
+    } as never;
+    return ai;
+  };
+
+  const r = validateAndNormalize(sopralluogo() as never, estrazione);
+  ok(r.deadline.date === null && r.deadline.type === 'none',
+    'data di un sopralluogo: NON popola la scadenza', `${r.deadline.type} ${r.deadline.date}`);
+  ok(r.appointment?.date === '2026-09-10',
+    'ma non sparisce: diventa un APPUNTAMENTO', String(r.appointment?.date));
+  ok(r.appointment?.evidence?.verified === true,
+    'e si porta dietro la citazione che la prova');
+  ok(r.deadline.evidence === null,
+    'la citazione NON resta appesa a una scadenza che non c\'è');
+  ok(r.uncertainties.some((u) => u.field === 'deadline' && /appuntamento/i.test(u.description)),
+    'e si dichiara che il termine, se esiste, è anteriore e non è scritto');
+  // ⚠️ `medium`, non `high`: una `high` manderebbe in revisione ogni avviso di
+  // sopralluogo, e l'analisi qui NON è dubbia — ha riconosciuto bene.
+  ok(reviewStatus(r) === 'completed',
+    'riconoscere bene un appuntamento non manda l\'analisi in revisione');
+
+  // ⚠️ LA COPPIA. Stesso documento, stessa data, stessa citazione, stesso
+  // `obligesCompany`: cambia SOLO che cosa la data è. Se questa cadesse, la
+  // correzione starebbe cancellando scadenze vere invece di distinguerle.
+  const termine = validateAndNormalize(sopralluogo({ dateKind: 'term' }) as never, estrazione);
+  ok(termine.deadline.date === '2026-09-10' && termine.deadline.type === 'explicit',
+    'CONTROPROVA: identica in tutto, ma dichiarata «termine» resta una scadenza', String(termine.deadline.date));
+  ok(termine.appointment === null, 'e allora non c\'è nessun appuntamento');
+
+  // ⚠️ IL TERZO STATO — ed è QUI che si vede il difetto vero. Senza il campo
+  // (cioè: come si comportava il prodotto fino al 2026-08-15) la data resta
+  // una scadenza: buttarla cancellerebbe le scadenze vere di ogni analisi
+  // vecchia. Ma non è più un FATTO: l'interpretazione non l'ha verificata
+  // nessuno, e l'analisi lo dichiara.
+  const muta = sopralluogo();
+  delete (muta.deadline as unknown as Record<string, unknown>).dateKind;
+  delete (muta.deadline as unknown as Record<string, unknown>).kindConfidence;
+  const rm = validateAndNormalize(muta as never, estrazione);
+  ok(rm.deadline.date === '2026-09-10',
+    'natura non dichiarata: la data resta — il silenzio non cancella le scadenze di ieri');
+  ok(rm.deadline.requiresVerification === true,
+    'MA marcata DA VERIFICARE: un\'interpretazione che nessuno ha fatto non è un fatto');
+
+  // Una data di riferimento amministrativo: né scadenza, né appuntamento.
+  const rif = validateAndNormalize(sopralluogo({ dateKind: 'reference' }) as never, estrazione);
+  ok(rif.deadline.date === null && rif.appointment === null,
+    'data di riferimento (periodo, emissione, decorrenza): non è né l\'una né l\'altro');
+
+  // ⚠️ FINO ALLA RIGA CHE SI SCRIVE. La colonna `deadline` è quella che
+  // `documentTaskDraft` legge per la scadenza di un'attività, ed è da lì che
+  // sono uscite le tre attività datate 10.09.2026: se il validatore distingue e
+  // la persistenza no, il difetto è intatto un piano più sotto.
+  const riga = buildAnalysisRow(r, ctx) as unknown as Record<string, unknown>;
+  ok(riga.deadline === null,
+    'la riga scritta nel database non ha alcuna scadenza', String(riga.deadline));
+  ok(riga.appointment_date === '2026-09-10',
+    'e porta la data nella colonna dell\'appuntamento', String(riga.appointment_date));
+  ok(riga.deadline_kind === 'event',
+    'con la natura dichiarata accanto, perché la lettura possa fidarsi', String(riga.deadline_kind));
+  ok((riga.appointment_evidence as { quote?: string } | null)?.quote?.includes('sopralluogo') === true,
+    'e la citazione dell\'appuntamento, verificata, per chi la vorrà rileggere');
+  ok(riga.deadline_evidence === null,
+    'e nessuna citazione di scadenza appesa a una scadenza inesistente');
+}
+
+// ---------------------------------------------------------------------------
+// ⚠️⚠️ LA CONFIDENZA MISURAVA UNA COSA SOLA. «Affidabilità ALTA» su una
+// data-evento non era un errore di calcolo: era la definizione a essere monca.
+// `confidence` rispondeva a «ho letto bene la data?» — e 0.9 era onesto. Nessun
+// numero rispondeva a «ho capito che cos'è?». Adesso sono due, e vince il più
+// debole: un valore perfetto nel campo sbagliato resta un dato sbagliato.
+{
+  const incerta = base();
+  incerta.deadline = {
+    date: '2026-08-15', type: 'explicit', obligesCompany: true, dateKind: 'term',
+    // Certo del valore, incerto della natura: la risposta onesta.
+    confidence: 0.95, kindConfidence: 0.2,
+    sourceText: 'bis spätestens 15.08.2026',
+    evidence: { quote: 'bis spätestens 15.08.2026 einzureichen', pageNumber: 1 },
+  } as never;
+  incerta.overallConfidence = 0.9 as never;
+  const r = validateAndNormalize(incerta as never, EXTRACTION);
+  ok(Math.abs(r.deadline.confidence - 0.2) < 1e-9,
+    'due certezze, vince la più debole: 0.95 sul valore e 0.2 sulla natura fanno 0.2', String(r.deadline.confidence));
+  ok(Math.abs(r.overallConfidence - 0.2) < 1e-9,
+    'e l\'analisi non si dichiara più sicura del dato da cui nascono le attività', String(r.overallConfidence));
+  // ⚠️ LA COPPIA: senza una data, la scadenza non ha opinioni da imporre al resto.
+  const senzaData = base();
+  senzaData.deadline = { date: null, type: 'none', dateKind: 'none', confidence: 0.1, kindConfidence: 0.1, sourceText: null, evidence: { quote: '', pageNumber: 0 } } as never;
+  senzaData.overallConfidence = 0.9 as never;
+  const r2 = validateAndNormalize(senzaData as never, EXTRACTION);
+  ok(Math.abs(r2.overallConfidence - 0.9) < 1e-9,
+    'CONTROPROVA: senza scadenza il taglio non scatta', String(r2.overallConfidence));
+}
+
+// ---------------------------------------------------------------------------
+// ⚠️⚠️ LA REGOLA IN LETTURA — la lezione pagata due volte. La domanda su CHI
+// obbliga è del 2026-08-11, e il 15 agosto la riga di Stripe era ANCORA nel
+// database con «Scadenza 22.01.2027»: il validatore gira quando si ANALIZZA, e
+// nessuno rianalizza un documento archiviato. Una regola applicata solo in
+// scrittura non protegge i dati già scritti.
+{
+  ok(deadlineRequiresVerification({ deadline: '2026-09-10', deadlineKind: null, storedFlag: false }) === true,
+    'riga vecchia (natura mai dichiarata) → in lettura è DA VERIFICARE, senza riscriverla');
+  ok(deadlineRequiresVerification({ deadline: '2026-09-10', deadlineKind: 'term', storedFlag: false }) === false,
+    'riga nuova che ha risposto «termine» → resta un fatto');
+  ok(deadlineRequiresVerification({ deadline: '2026-09-10', deadlineKind: 'term', storedFlag: true }) === true,
+    'e il flag scritto dal validatore non viene mai perso per strada');
+  ok(deadlineRequiresVerification({ deadline: null, deadlineKind: null, storedFlag: false }) === false,
+    'senza data non c\'è niente da qualificare: la domanda non si pone');
+
+  // ⚠️ La constatazione da sola, ESEGUITA e non solo esportata: è la domanda
+  // «questa riga ha risposto?», e il resto della regola ci si appoggia.
+  ok(deadlineNatureDeclared({ deadline: '2026-09-10', deadlineKind: 'event' }) === true,
+    'una riga che ha risposto «evento» ha risposto');
+  ok(deadlineNatureDeclared({ deadline: '2026-09-10', deadlineKind: null }) === false,
+    'una riga muta non ha risposto');
+  ok(deadlineNatureDeclared({ deadline: '2026-09-10', deadlineKind: 'termine' }) === false,
+    'e una parola che non è fra le quattro previste non è una risposta');
+  ok(deadlineNatureDeclared({ deadline: null, deadlineKind: null }) === true,
+    'senza data la domanda non si pone, quindi non c\'è nulla da dichiarare');
 }
 
 // ---------------------------------------------------------------------------

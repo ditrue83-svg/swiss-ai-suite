@@ -53,6 +53,7 @@ import { CATEGORIES } from './documentModel';
 import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { ActionOriginMark, ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
@@ -642,6 +643,14 @@ export function DocumentDetailPage() {
                   : null}
                 corrected={item.deadlineCorrected} aiValue={aiValueOf(detail.corrections, 'deadline')}
                 evidence={analysis ? (analysis.deadlineEvidence ?? null) : undefined} />
+              {/* Una riga SUA, sotto la scadenza e mai al posto suo: 0040. */}
+              {item.appointmentDate && (
+                <Field
+                  label={t('documents.appointment')}
+                  value={formatDate(item.appointmentDate)}
+                  mark={<AppointmentMark date={item.appointmentDate} display={formatDate(item.appointmentDate)} />}
+                  evidence={analysis ? (analysis.appointmentEvidence ?? null) : undefined} />
+              )}
               <Field label={t('documents.amount')} value={formatCurrency(item.amount, item.amountCurrency)}
                 corrected={item.amountCorrected} aiValue={aiValueOf(detail.corrections, 'amount')}
                 evidence={analysis ? (analysis.amountEvidence ?? null) : undefined} />
@@ -744,6 +753,7 @@ export function DocumentDetailPage() {
           deadline={item.deadline
             ? { value: formatDate(item.deadline), kindKey: deadlineKindKey(analysis) }
             : null}
+          appointment={item.appointmentDate ? { value: formatDate(item.appointmentDate) } : null}
           amounts={[
             ...(item.amount !== null ? [{
               display: formatCurrency(item.amount, item.amountCurrency) ?? String(item.amount),

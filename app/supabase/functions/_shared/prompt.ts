@@ -18,7 +18,7 @@ const SCHEMA_SKELETON = `{
   "documentDate": "YYYY-MM-DD"|null,
   "referenceNumbers": [ { "label": "", "value": "", "evidence": { "quote": "", "pageNumber": 0 } } ],
   "summaryShort": "2-3 frasi nella LINGUA DI RISPOSTA richiesta",
-  "deadline": { "date": "YYYY-MM-DD"|null, "type": "explicit|relative|inferred|none", "obligesCompany": true|false, "sourceText": string|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } },
+  "deadline": { "date": "YYYY-MM-DD"|null, "type": "explicit|relative|inferred|none", "obligesCompany": true|false, "dateKind": "term|event|reference|none", "kindConfidence": 0..1, "sourceText": string|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } },
   "amounts": [ { "amount": number, "currency": "CHF", "type": "due|fine|fee|contribution|other", "description": "", "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } } ],
   "requestedActions": [ { "title": "", "description": "", "sourceType": "extracted|suggested", "required": true|false|null, "deadlineReference": string|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } } ],
   "requestedDocuments": [ { "name": "", "required": true|false|null, "confidence": 0..1, "evidence": { "quote": "", "pageNumber": 0 } } ],
@@ -118,7 +118,35 @@ richieste, documenti richiesti, rischi espliciti, data del documento, numeri di 
   SEMPRE nella lingua originale del documento, copiate alla lettera: tradurle le renderebbe
   impossibili da ritrovare nel testo e la verifica automatica le scarterebbe.
 - deadline: la scadenza principale.
-  ⚠️ PRIMA DEL TIPO, LA DOMANDA CHE DECIDE: **chi è obbligato da quella data?**
+  ⚠️⚠️ PRIMA DI TUTTO IL RESTO, LA DOMANDA CHE DECIDE: **che cosa È quella data?**
+  Una data può essere tre cose diverse, e solo la prima è una scadenza.
+    · "term" — il TERMINE entro cui l'azienda deve fare qualcosa: pagare,
+      rispondere, consegnare, iscriversi, opporsi, disdire. È l'ULTIMO giorno
+      utile; oltre, c'è una conseguenza.
+    · "event" — il MOMENTO in cui accade qualcosa che coinvolge l'azienda:
+      un sopralluogo, un controllo, un'ispezione, un'udienza, un'assemblea, un
+      ritiro, un appuntamento, un intervento tecnico, l'inizio di un corso.
+      L'azienda è coinvolta, deve esserci, magari deve prepararsi — ma quel
+      giorno l'evento ACCADE, non scade.
+    · "reference" — una data amministrativa di riferimento: periodo di
+      competenza, data di emissione, entrata in vigore, decorrenza, data di un
+      pagamento già avvenuto.
+  ⚠️ SE È "event", "date" DEVE ESSERE COMPILATA LO STESSO e "dateKind" DEVE
+  essere "event": la data serve, ed è il sistema a metterla al posto giusto
+  (un appuntamento, non un termine). Non spostarla, non tacerla, non
+  trasformarla in un termine perché «tanto qualcosa va fatto entro allora».
+  ⚠️ IL TERMINE DI UN EVENTO, SE ESISTE, È PRECEDENTE E NON COINCIDE. Un
+  documento che annuncia un sopralluogo il giorno X e chiede di preparare dei
+  giustificativi PER quell'occasione non fissa un termine il giorno X: il
+  termine è implicito e anteriore. Se il documento non lo scrive, non
+  inventarlo — "dateKind": "event" e una uncertainty che lo dica.
+  Esempio, e va classificato "event" senza esitare:
+    «Il sopralluogo è previsto per il 10.09.2026 presso la vostra sede.
+      Vi invitiamo a presentare in tale occasione il formulario compilato.»
+  Contro-esempio "term": «Vi invitiamo a far pervenire il formulario entro il
+  10.09.2026» — lì il giorno X è l'ultimo utile, ed è una scadenza.
+
+  ⚠️ POI, LA SECONDA DOMANDA: **chi è obbligato da quella data?**
   Una scadenza è una data entro cui QUESTA AZIENDA deve fare qualcosa, o subisce
   una conseguenza. Non è una scadenza una data che riguarda chi scrive:
     · l'entrata in vigore di un listino o di nuove condizioni di un fornitore;
@@ -139,6 +167,17 @@ richieste, documenti richiesti, rischi espliciti, data del documento, numeri di 
   testo in "sourceText", e imposta requiresVerification lato sistema. NON calcolare una data assoluta.
   type "inferred": scadenza probabile ma non esplicita → "date" null, spiega nell'incertezza.
   type "none": nessuna scadenza → "date" null. Non costruire una scadenza plausibile.
+  ⚠️ "type" e "dateKind" rispondono a DUE domande diverse e vanno compilati
+  ENTRAMBI: "type" dice che FORMA ha la data (assoluta, relativa, dedotta,
+  assente), "dateKind" dice che COSA è (termine, evento, riferimento). Un
+  sopralluogo scritto a chiare lettere è "type": "explicit" e "dateKind":
+  "event". Se non c'è alcuna data, "dateKind": "none".
+  "confidence": quanto sei certo del VALORE letto (la data giusta, copiata bene).
+  "kindConfidence": quanto sei certo della NATURA che hai dichiarato in
+  "dateKind". Sono numeri distinti perché sono due domande distinte: si può
+  leggere una data con assoluta certezza e non sapere affatto se sia un termine
+  o un appuntamento. In quel caso "confidence" alta e "kindConfidence" BASSA —
+  è la risposta onesta, e il sistema tiene il minimo dei due.
 - amounts: TUTTI gli importi rilevanti, ciascuno con currency (ISO, es. "CHF") e type
   (due | fine | fee | contribution | other). Non assumere che il primo numero con CHF sia l'importo
   dovuto: interpreta il contesto.
@@ -158,6 +197,12 @@ richieste, documenti richiesti, rischi espliciti, data del documento, numeri di 
   importo ambiguo, allegato citato ma non presente, pagina poco leggibile, testo troncato.
 - confidence e overallConfidence: numeri fra 0 e 1, stima interna della tua fiducia. Sii onesto e
   conservativo: preferisci confidence bassa e un'incertezza esplicita a una sicurezza ingiustificata.
+  ⚠️ LA FIDUCIA NON È SOLO SUL VALORE LETTO, È ANCHE SULLA SUA INTERPRETAZIONE.
+  Un dato copiato benissimo e messo nel campo sbagliato è un dato sbagliato, e
+  una confidence alta su di esso è una sicurezza falsa — il difetto peggiore che
+  questo sistema possa produrre, perché toglie a chi legge il motivo di
+  controllare. Se sei certo di ciò che c'è scritto ma non di che cosa significhi
+  per l'azienda, la confidence è BASSA.
 
 ## Formato di output
 Restituisci ESCLUSIVAMENTE un oggetto JSON valido con ESATTAMENTE questa forma (tutti i campi presenti,

@@ -643,6 +643,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .mark-due.md-over { color: var(--red-dark); font-weight: 600; }
 .mark-due.md-none { color: var(--muted); }
 .mark-due.md-verify { color: var(--amber); }
+/* APPUNTAMENTO — cifre come il termine (è una data), colori che NON sono quelli
+   dell'allarme: un sopralluogo passato non è una scadenza mancata. */
+.mark-appt { font-variant-numeric: tabular-nums; }
+.mark-appt.ma-future { color: var(--ink-soft); }
+.mark-appt.ma-soon { color: var(--ink-soft); font-weight: 600; }
+.mark-appt.ma-today { color: var(--ink); font-weight: 600; }
+.mark-appt.ma-past { color: var(--muted); }
 
 /* -- STATO DEL LAVORO: la casella che si riempie. ---------------------------
    Il colore qui è quasi muto di proposito: a che punto è un'attività lo dice
@@ -998,6 +1005,23 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ev-btn .ic { width: 13px; height: 13px; }
 .ev-quote { margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); background: var(--bg); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: var(--sp-2) var(--sp-3); font-style: italic; display: none; }
 .ev-quote.show { display: block; }
+
+/* ⚠️⚠️ LA PROVA SOTTO I DATI CHE GENERANO LAVORO, VISIBILE SENZA UN GESTO.
+   Sopra c'è `.ev-quote`, che sta dietro «Mostra nel documento» ed è giusta così
+   per i campi minori. Per scadenza, appuntamento, importi e mittente non lo è:
+   il 2026-08-15 la citazione che smascherava una scadenza falsa esisteva, era
+   esatta, ed era invisibile — e chi guardava non aveva ragione di aprirla,
+   perché il sistema si dichiarava sicuro. Una prova che si vede solo se la si
+   cerca protegge chi già sospetta, cioè nessuno.
+
+   Il peso tipografico è MINORE del dato (13px, inchiostro tenue, filetto
+   sottile e neutro invece dell'accento): deve accompagnare, non competere. */
+.ev-shown { margin-top: var(--sp-2); }
+.ev-shown-q { margin: 0; font-size: var(--fs-meta); color: var(--ink-soft); border-left: 2px solid var(--line); padding: 0 0 0 var(--sp-3); font-style: italic; }
+/* Un campo MUTO e un campo SENZA PROVA non devono somigliarsi: lo spazio vuoto
+   si legge come «non c'è niente da dire», e qui invece c'è da dire che il dato
+   non ha un appiglio nel documento. */
+.ev-none { margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--muted); display: inline-flex; align-items: center; gap: var(--sp-2); font-style: italic; }
 
 /* card scadenza dedicata */
 .deadline-card { display: flex; align-items: center; gap: var(--sp-4); }

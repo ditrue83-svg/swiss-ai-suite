@@ -20,6 +20,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
 import { ErrorState, EmptyCta, SkeletonLine } from '@/components/ui/states';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import { documentHubService } from '@/services/documentHubService';
@@ -565,6 +566,14 @@ function DocumentRow({
               display={formatDate(item.deadline)}
               toVerify={item.deadlineRequiresVerification}
             />
+          )}
+          {/* ⚠️ L'appuntamento compare NELLO STESSO POSTO del termine e con un
+              segno DIVERSO: se non comparisse, un documento che fissa un
+              sopralluogo sembrerebbe non avere alcuna data (e chi cercava il
+              10.09.2026 non lo troverebbe più); se comparisse con il segno del
+              termine, saremmo daccapo. */}
+          {item.appointmentDate && (
+            <AppointmentMark date={item.appointmentDate} display={formatDate(item.appointmentDate)} />
           )}
           {marks.toVerify && <ProvenanceMark kind="toVerify" />}
           {marks.state && (

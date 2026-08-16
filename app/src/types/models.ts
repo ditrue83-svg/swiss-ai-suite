@@ -252,8 +252,24 @@ export interface DocumentAnalysis {
   referenceNumbers: ReferenceNumber[];
   legalReferences: LegalReference[];
   deadlineType: string | null;
+  /**
+   * ⚠️ EFFETTIVO, non il valore grezzo della colonna: `deadlineNature.ts` ci
+   * somma «la natura della data non è mai stata dichiarata». Una scadenza
+   * salvata prima del 2026-08-15 può essere un sopralluogo, e nessuno lo sa.
+   */
   deadlineRequiresVerification: boolean;
+  /** term | event | reference | none — `null` = natura mai dichiarata (0040). */
+  deadlineKind: string | null;
   deadlineSourceText: string | null;
+  /**
+   * La data in cui accade l'evento, quando il documento ne fissa uno.
+   *
+   * ⚠️ NON è una scadenza: sta in un campo suo perché da una scadenza nascono
+   * attività e promemoria, e da un appuntamento no. Vedi 0040.
+   */
+  appointmentDate: string | null;
+  appointmentEvidence: Evidence | null;
+  appointmentSourceText: string | null;
   overallConfidence: number | null;
   // ---- Esito tecnico (§25/§46): un fallimento NON va mai reso come risultato ----
   analysisStatus: AnalysisStatus;
@@ -389,6 +405,10 @@ export interface DocumentHubItem {
   deadlineCorrected: boolean;
   /** L'analisi dichiara che la scadenza va verificata: non è un fatto (§36). */
   deadlineRequiresVerification: boolean;
+  /** term | event | reference | none — `null` = natura mai dichiarata (0040). */
+  deadlineKind: string | null;
+  /** La data in cui accade l'evento. NON è una scadenza: vedi 0040. */
+  appointmentDate: string | null;
   amount: number | null;
   amountCurrency: string | null;
   amountCorrected: boolean;
