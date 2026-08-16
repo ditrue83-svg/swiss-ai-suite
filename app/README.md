@@ -46,6 +46,10 @@ supabase/
                                          `appointment_date` dice prima di quando
                                          un lavoro va fatto, senza essere un
                                          termine (niente fasce, niente ritardo).
+                0042_calendar_appointments — il calendario colloca una riga per
+                                         (attività, genere di data): `on_date` e
+                                         `date_kind`. Gli appuntamenti entrano
+                                         nella griglia ma non fra le scadute.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

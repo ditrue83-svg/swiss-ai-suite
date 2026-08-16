@@ -2088,7 +2088,10 @@ export interface Database {
           p_assignee?: string | null; p_include_overdue?: boolean; p_limit?: number;
         };
         Returns: {
-          id: string; title: string; due_date: string;
+          id: string; title: string; due_date: string | null; appointment_date: string | null;
+          // 0042 — dove va disegnata la riga e PERCHÉ: la stessa attività può
+          // tornare due volte, una per il termine e una per l'appuntamento.
+          on_date: string; date_kind: string;
           priority: TaskPriority; status: TaskStatus; source: TaskSource;
           assignee_user_id: string | null; assignee_name: string | null; document_id: string | null;
         }[];

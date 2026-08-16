@@ -88,13 +88,21 @@ export function gridRange(year: number, month: number): { from: string; to: stri
   return { from: weeks[0][0].date, to: weeks[weeks.length - 1][6].date };
 }
 
-/** Le attività raggruppate per giorno di scadenza. */
+/**
+ * Le attività raggruppate per giorno.
+ *
+ * ⚠️ Per `onDate` e non per `dueDate`: dalla 0042 una riga può essere collocata
+ * dal suo appuntamento invece che dal suo termine, e la stessa attività può
+ * comparire in due giorni diversi con due generi diversi. Raggruppare per
+ * `dueDate` farebbe sparire dalla griglia proprio le righe per cui questo
+ * lavoro esiste — e su un `null` le farebbe sparire in silenzio.
+ */
 export function groupByDay(items: CalendarTaskItem[]): Map<string, CalendarTaskItem[]> {
   const map = new Map<string, CalendarTaskItem[]>();
   for (const item of items) {
-    const list = map.get(item.dueDate) ?? [];
+    const list = map.get(item.onDate) ?? [];
     list.push(item);
-    map.set(item.dueDate, list);
+    map.set(item.onDate, list);
   }
   for (const list of map.values()) list.sort(compareInDay);
   return map;
@@ -143,14 +151,37 @@ export function agendaGroups(items: CalendarTaskItem[]): AgendaGroup[] {
  */
 export function overdueItems(items: CalendarTaskItem[], today: Date = new Date()): CalendarTaskItem[] {
   return items
-    .filter((t) => isOverdue({ dueDate: t.dueDate, status: t.status }, today))
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    // ⚠️⚠️ SOLO I TERMINI. Un sopralluogo passato è passato, non mancato:
+    // l'azienda non ha superato nessun limite, perché quel limite non è mai
+    // stato scritto. Farlo entrare nel pannello delle scadute sarebbe l'allarme
+    // falso che tutto questo lavoro esiste per togliere.
+    .filter((t) => t.dateKind === 'deadline'
+      && isOverdue({ dueDate: t.dueDate, status: t.status }, today))
+    .sort((a, b) => a.onDate.localeCompare(b.onDate));
 }
 
 /** Le attività che NON sono in ritardo: quelle che la griglia disegna nelle caselle. */
 export function currentItems(items: CalendarTaskItem[], today: Date = new Date()): CalendarTaskItem[] {
-  return items.filter((t) => !isOverdue({ dueDate: t.dueDate, status: t.status }, today));
+  return items.filter((t) => t.dateKind === 'appointment'
+    || !isOverdue({ dueDate: t.dueDate, status: t.status }, today));
 }
+
+/**
+ * Che genere di giornata è: la testata del gruppo porta il segno giusto.
+ *
+ * ⚠️ Basta UN termine perché la giornata sia una giornata di termini: mostrare
+ * il segno dell'appuntamento su un giorno in cui scade qualcosa attenuerebbe
+ * proprio ciò che va visto. Solo una giornata fatta di soli appuntamenti si
+ * dichiara tale.
+ */
+export function groupKind(items: CalendarTaskItem[]): 'deadline' | 'appointment' {
+  return items.length > 0 && items.every((t) => t.dateKind === 'appointment')
+    ? 'appointment'
+    : 'deadline';
+}
+
+/** La chiave di React: la stessa attività può stare in due giorni. */
+export const itemKey = (t: CalendarTaskItem): string => `${t.id}-${t.dateKind}`;
 
 /* ⚠️ `overdueByDays` NON VIVE PIÙ QUI, ed è stato tolto invece che lasciato.
    Contava i giorni di ritardo per una pastiglia rossa dello scadenziario, che

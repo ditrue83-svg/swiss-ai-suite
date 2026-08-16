@@ -34,12 +34,13 @@ import { calendarService } from '@/services/calendarService';
 import { useMembers } from '@/features/tasks/useMembers';
 import { DeadlinesHead } from '@/features/tasks/DeadlinesHead';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { StatusMark } from '@/components/ui/StatusMark';
 import { PriorityMark } from '@/components/ui/PriorityMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import {
   MAX_PER_DAY, addDays, agendaGroups, buildMonthGrid, currentItems, gridRange,
-  groupByDay, overdueItems, shiftMonth, shortTitle, todayISO,
+  groupByDay, groupKind, itemKey, overdueItems, shiftMonth, shortTitle, todayISO,
 } from './calendarModel';
 import type { CalendarTaskItem, TaskPriority, TaskStatus } from '@/types/models';
 
@@ -452,16 +453,20 @@ function MonthGrid({
                   >
                     {Number(day.date.slice(8, 10))}
                   </button>
+                  {/* ⚠️ La chiave è (attività + genere di data): la stessa
+                      attività può stare in due caselle, il 5 come termine e il
+                      10 come appuntamento. Con la sola `id` React ne
+                      disegnerebbe una sola, e a sparire sarebbe la seconda. */}
                   {shown.map((task) => (narrow ? (
                     <span
-                      key={task.id}
-                      className={`cal-item p-${task.priority}${task.status === 'completed' ? ' is-done' : ''}`}
+                      key={itemKey(task)}
+                      className={`cal-item p-${task.priority}${task.dateKind === 'appointment' ? ' is-appt' : ''}${task.status === 'completed' ? ' is-done' : ''}`}
                       aria-hidden="true"
                     />
                   ) : (
                     <Link
-                      key={task.id}
-                      className={`cal-item p-${task.priority}${task.status === 'completed' ? ' is-done' : ''}`}
+                      key={itemKey(task)}
+                      className={`cal-item p-${task.priority}${task.dateKind === 'appointment' ? ' is-appt' : ''}${task.status === 'completed' ? ' is-done' : ''}`}
                       to={`/attivita/${task.id}`}
                       title={task.title}
                     >
@@ -517,6 +522,7 @@ function AgendaList({
   return (
     <div className="cal-agenda">
       {groups.map((group) => {
+        const kind = groupKind(group.items);
         const label = new Date(`${group.date}T12:00:00Z`).toLocaleDateString(localeTag, {
           weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
         });
@@ -524,12 +530,17 @@ function AgendaList({
           <div key={group.date} className="cal-agenda-day">
             <div className="cal-agenda-head">
               <span className={group.date === today ? 'cal-agenda-date is-today' : 'cal-agenda-date'}>{label}</span>
-              {/* La distanza del GIORNO, non di un'attività: il segno del
-                  termine la scrive con le cifre della sua famiglia. */}
-              <DeadlineMark date={group.date} />
+              {/* La distanza del GIORNO, non di un'attività. ⚠️ E il segno
+                  segue ciò che quel giorno contiene: una giornata fatta di soli
+                  appuntamenti non si annuncia col segno del termine, o
+                  prometterebbe una scadenza che non esiste. Basta un termine
+                  perché torni quello del termine (vedi `groupKind`). */}
+              {kind === 'appointment'
+                ? <AppointmentMark date={group.date} />
+                : <DeadlineMark date={group.date} />}
             </div>
             {group.items.map((task) => (
-              <Link key={task.id} className="list-row is-link" to={`/attivita/${task.id}`}>
+              <Link key={itemKey(task)} className="list-row is-link" to={`/attivita/${task.id}`}>
                 <div className="list-main">
                   <div className="list-title">{task.title}</div>
                   <div className="list-sub">
@@ -539,9 +550,18 @@ function AgendaList({
                 </div>
                 {/* Le stesse tre famiglie dell'elenco Attività, nello stesso
                     ordine: stato, priorità, termine. Il giorno lo dice già la
-                    testata del gruppo, quindi qui il termine non si ripete. */}
+                    testata del gruppo, quindi qui il termine non si ripete.
+                    ⚠️ L'APPUNTAMENTO invece SÌ, ma SOLO in una giornata MISTA.
+                    In questa schermata il genere sottinteso è il termine e ciò
+                    che fa eccezione va nominato — ma se la giornata è fatta di
+                    soli appuntamenti l'ha già detto la testata, e ripeterlo su
+                    ogni riga è la stessa ridondanza che al termine è vietata:
+                    quattro volte «Appuntamento · fra 25 giorni» sotto una
+                    testata che dice esattamente quello. */}
                 <StatusMark status={task.status} />
                 <PriorityMark level={task.priority} />
+                {task.dateKind === 'appointment' && kind !== 'appointment'
+                  && <AppointmentMark date={task.onDate} />}
               </Link>
             ))}
           </div>

@@ -190,9 +190,18 @@ async function main() {
     p_company_id: companyA, p_from: giorno(0), p_to: giorno(30), p_mine: true,
   });
   const colonne = Object.keys((leggero ?? [])[0] ?? {});
+  // ⚠️ IL TETTO È SALITO A 12 IL 2026-08-16, e la ragione va scritta o la
+  // prossima volta lo si alza per abitudine. Le tre colonne nuove sono
+  // `appointment_date`, `on_date` e `date_kind` (0042): dicono DOVE va disegnata
+  // la riga e PERCHÉ, cioè sono la chiave di collocazione — non contenuto
+  // dell'attività. La regola che questo controllo difende è un'altra: nel
+  // calendario non entrano descrizione, checklist, commenti, note o analisi.
+  // L'elenco dei nomi vietati è la parte che conta; il numero è la rete sotto.
+  const VIETATE = ['description', 'checklist', 'comments', 'internal_notes', 'summary', 'analysis'];
+  const intruse = VIETATE.filter((c) => colonne.includes(c));
   check('il modello di lettura è POVERO: niente descrizione, checklist, commenti o analisi (§22)',
-    !colonne.includes('description') && !colonne.includes('checklist') && colonne.length <= 10,
-    `colonne: ${colonne.join(', ')}`);
+    intruse.length === 0 && colonne.length <= 12,
+    `colonne: ${colonne.join(', ')}${intruse.length ? ` — intruse: ${intruse.join(', ')}` : ''}`);
 
   // =========================================================================
   section('2 · Il trigger che riempie la coda');

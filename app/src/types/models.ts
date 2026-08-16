@@ -689,8 +689,23 @@ export interface AssignableMember {
 export interface CalendarTaskItem {
   id: string;
   title: string;
-  /** `YYYY-MM-DD`. Sempre presente: senza scadenza un'attività non entra nel calendario. */
-  dueDate: string;
+  /**
+   * `YYYY-MM-DD`. ⚠️ NON è più sempre presente: dalla 0042 un'attività entra nel
+   * calendario anche col solo appuntamento, e allora un termine non ce l'ha.
+   * Per sapere in che giorno va disegnata si legge `onDate`, non questo campo.
+   */
+  dueDate: string | null;
+  appointmentDate: string | null;
+  /** Il giorno in cui la riga va collocata. Sempre presente: è la chiave. */
+  onDate: string;
+  /**
+   * PERCHÉ è finita in quel giorno.
+   *
+   * ⚠️ Arriva dal database, non si deduce confrontando le due date: la stessa
+   * attività può comparire due volte, il 5 come termine e il 10 come
+   * appuntamento, e da `onDate` da solo non si saprebbe quale delle due è.
+   */
+  dateKind: 'deadline' | 'appointment';
   priority: TaskPriority;
   status: TaskStatus;
   source: TaskSource;
