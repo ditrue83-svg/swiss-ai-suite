@@ -557,6 +557,10 @@ export interface Database {
           sender_authority_type: string | null; sender_confidence: number | null;
           recipient: string | null; subject: string | null; document_date: string | null; reply_needed: boolean | null;
           deadline_type: string | null; deadline_source_text: string | null; deadline_confidence: number | null; deadline_requires_verification: boolean;
+          // 0040 — che COSA è la data. `deadline_kind` null = natura mai dichiarata
+          // (analisi anteriori al 2026-08-15): in lettura vale «da verificare».
+          deadline_kind: string | null;
+          appointment_date: string | null; appointment_evidence: Json | null; appointment_source_text: string | null;
           amounts: Json; reference_numbers: Json; legal_references: Json; sender_evidence_list: Json;
           created_at: string; updated_at: string;
         };
@@ -576,6 +580,8 @@ export interface Database {
           sender_authority_type?: string | null; sender_confidence?: number | null;
           recipient?: string | null; subject?: string | null; document_date?: string | null; reply_needed?: boolean | null;
           deadline_type?: string | null; deadline_source_text?: string | null; deadline_confidence?: number | null; deadline_requires_verification?: boolean;
+          deadline_kind?: string | null;
+          appointment_date?: string | null; appointment_evidence?: Json | null; appointment_source_text?: string | null;
           amounts?: Json; reference_numbers?: Json; legal_references?: Json; sender_evidence_list?: Json;
         };
         // 0010 — lo snapshot è immutabile: il client non ha più il permesso di
@@ -655,13 +661,13 @@ export interface Database {
         Relationships: [];
       };
       tasks: {
-        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null; contract_id: string | null; contract_milestone_id: string | null; crm_organization_id: string | null; crm_opportunity_id: string | null;};
-        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null; contract_id?: string | null; contract_milestone_id?: string | null; crm_organization_id?: string | null; crm_opportunity_id?: string | null };
+        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; appointment_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null; contract_id: string | null; contract_milestone_id: string | null; crm_organization_id: string | null; crm_opportunity_id: string | null;};
+        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; appointment_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null; contract_id?: string | null; contract_milestone_id?: string | null; crm_organization_id?: string | null; crm_opportunity_id?: string | null };
         // `completed_at`, `completed_by`, `archived_by` non compaiono in Update:
         // li scrive il trigger `tasks_guard`, e un client che li mandasse li
         // vedrebbe comunque sovrascritti. `archived_at` c'è perché è il modo in
         // cui si DICHIARA di voler archiviare; il valore vero lo mette il server.
-        Update: { title?: string; description?: string | null; authority?: string | null; due_date?: string | null; priority?: TaskPriority; status?: TaskStatus; assignee_user_id?: string | null; archived_at?: string | null; contract_id?: string | null; contract_milestone_id?: string | null; crm_organization_id?: string | null; crm_opportunity_id?: string | null };
+        Update: { title?: string; description?: string | null; authority?: string | null; due_date?: string | null; appointment_date?: string | null; priority?: TaskPriority; status?: TaskStatus; assignee_user_id?: string | null; archived_at?: string | null; contract_id?: string | null; contract_milestone_id?: string | null; crm_organization_id?: string | null; crm_opportunity_id?: string | null };
         Relationships: [];
       };
       task_checklist_items: {
@@ -2037,7 +2043,11 @@ export interface Database {
           document_type: string | null; document_type_corrected: boolean;
           sender: string | null; sender_corrected: boolean; sender_authority_type: string | null;
           document_date: string | null; deadline: string | null; deadline_corrected: boolean;
+          // ⚠️ Il flag è GREZZO, come lo ha scritto il validatore. Il «da
+          // verificare» effettivo lo calcola `deadlineNature.ts` combinandolo con
+          // `deadline_kind`: la regola sta in un posto solo (0040).
           deadline_requires_verification: boolean;
+          deadline_kind: string | null; appointment_date: string | null;
           amount: number | null; amount_currency: string | null; amount_corrected: boolean;
           confidence: string | null;
           tags: { id: string; name: string }[];
@@ -2078,7 +2088,10 @@ export interface Database {
           p_assignee?: string | null; p_include_overdue?: boolean; p_limit?: number;
         };
         Returns: {
-          id: string; title: string; due_date: string;
+          id: string; title: string; due_date: string | null; appointment_date: string | null;
+          // 0042 — dove va disegnata la riga e PERCHÉ: la stessa attività può
+          // tornare due volte, una per il termine e una per l'appuntamento.
+          on_date: string; date_kind: string;
           priority: TaskPriority; status: TaskStatus; source: TaskSource;
           assignee_user_id: string | null; assignee_name: string | null; document_id: string | null;
         }[];

@@ -28,6 +28,7 @@ import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
 import { dueLabel, eventLabelKey, sourceLabelKey, statusLabelKey } from './taskFormat';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import type { Task, TaskChecklistItem, TaskPriority, TaskStatus } from '@/types/models';
 
@@ -257,6 +258,23 @@ export function TaskDetailPage() {
                 : <DeadlineMark date={task.dueDate} />}
             </div>
           </div>
+
+          {/* ⚠️ IL CAMPO C'È SOLO SE LA DATA C'È, e non è modificabile qui.
+              Un appuntamento non lo si sposta da un'attività: lo sposta chi
+              scrive il documento. Renderlo un campo con la sua tendina
+              inviterebbe a inventarne uno dove non ce n'è — che è la porta da
+              cui il difetto del 10.09.2026 è entrato. Se un giorno servirà
+              cambiarlo a mano, sarà una decisione con la sua ragione, non un
+              effetto collaterale di questa scheda. */}
+          {task.appointmentDate && (
+            <div className="field">
+              <label>{t('tasks.appointmentLabel')}</label>
+              <div className="mt-10">
+                <AppointmentMark date={task.appointmentDate} display={formatDate(task.appointmentDate)} />
+              </div>
+              <div className="muted-sm mt-2">{t('tasks.appointmentHint')}</div>
+            </div>
+          )}
 
           {task.completedAt && (
             <div className="muted-sm">

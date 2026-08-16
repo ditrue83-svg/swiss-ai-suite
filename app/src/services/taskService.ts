@@ -58,6 +58,7 @@ function toTask(row: TaskRow): Task {
     description: row.description,
     authority: row.authority,
     dueDate: row.due_date,
+    appointmentDate: row.appointment_date ?? null,
     priority: row.priority,
     status: row.status,
     source: row.source,
@@ -86,6 +87,11 @@ export interface CreateTaskInput {
   authority?: string | null;
   description?: string | null;
   dueDate?: string | null;         // YYYY-MM-DD
+  /**
+   * Il giorno dell'evento a cui il lavoro si riferisce (0041). NON è un
+   * termine: non tocca la priorità e non entra nelle fasce dello scadenziario.
+   */
+  appointmentDate?: string | null;
   priority?: TaskPriority;
   source?: TaskSource;
   documentId?: string | null;
@@ -109,6 +115,7 @@ export interface UpdateTaskInput {
   description?: string | null;
   authority?: string | null;
   dueDate?: string | null;
+  appointmentDate?: string | null;
   priority?: TaskPriority;
   status?: TaskStatus;
   assigneeUserId?: string | null;
@@ -198,6 +205,10 @@ export const taskService = {
       authority: input.authority ?? null,
       description: input.description ?? null,
       due_date: input.dueDate ?? null,
+      appointment_date: input.appointmentDate ?? null,
+      // ⚠️ La priorità la decide il TERMINE, non l'appuntamento: un lavoro con
+      // un riferimento temporale ma senza scadenza non è urgente per il solo
+      // fatto che l'evento si avvicina — quanto conti lo dice una persona.
       priority: input.priority ?? priorityFromDueDate(input.dueDate),
       status: 'open',
       source: input.source ?? 'manual',
@@ -219,6 +230,7 @@ export const taskService = {
     if (input.description !== undefined) patch.description = input.description;
     if (input.authority !== undefined) patch.authority = input.authority;
     if (input.dueDate !== undefined) patch.due_date = input.dueDate;
+    if (input.appointmentDate !== undefined) patch.appointment_date = input.appointmentDate;
     if (input.priority !== undefined) patch.priority = input.priority;
     if (input.status !== undefined) patch.status = input.status;
     if (input.assigneeUserId !== undefined) patch.assignee_user_id = input.assigneeUserId;

@@ -13,6 +13,7 @@ import {
   analyzeText, buildReply, deadlineLevel, daysUntil, urgencyFromType,
   LANG_LABEL, DOC_TYPE_LABEL, type EngineAnalysis,
 } from '@/features/admin-ai/engine';
+import { deadlineRequiresVerification } from '../../supabase/functions/_shared/deadlineNature.ts';
 import { invokeAnalyze, DETERMINISTIC_ENGINE } from './analysisProviders';
 import { documentService } from './documentService';
 import type { ClientExtraction } from '@/features/admin-ai/pdf';
@@ -173,8 +174,22 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     referenceNumbers,
     legalReferences,
     deadlineType: row.deadline_type ?? null,
-    deadlineRequiresVerification: row.deadline_requires_verification ?? false,
+    // ⚠️ NON è la colonna tale e quale. Il flag grezzo dice ciò che il
+    // validatore sapeva IL GIORNO IN CUI HA SCRITTO; questa riga ci somma ciò
+    // che si constata OGGI leggendola — se la natura della data non è mai stata
+    // dichiarata, quella scadenza non è un fatto. Senza, le analisi anteriori al
+    // 2026-08-15 continuerebbero a mostrare «●●● alta» su date che potrebbero
+    // essere sopralluoghi. La regola sta in `deadlineNature.ts`, una volta sola.
+    deadlineRequiresVerification: deadlineRequiresVerification({
+      deadline: row.deadline,
+      deadlineKind: row.deadline_kind,
+      storedFlag: row.deadline_requires_verification ?? false,
+    }),
+    deadlineKind: row.deadline_kind ?? null,
     deadlineSourceText: row.deadline_source_text ?? null,
+    appointmentDate: row.appointment_date ?? null,
+    appointmentEvidence: (row.appointment_evidence as unknown as Evidence) ?? null,
+    appointmentSourceText: row.appointment_source_text ?? null,
     overallConfidence: row.overall_confidence ?? null,
     // §25/§46 — l'esito tecnico arriva fino alla UI: un'analisi fallita non
     // deve mai essere resa come un risultato valido.

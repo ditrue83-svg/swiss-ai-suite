@@ -58,7 +58,8 @@ const item = (over: Partial<DocumentHubItem> = {}): DocumentHubItem => ({
   state: 'analyzed', analysisId: 'a1', lastAttemptFailed: false, errorCode: null,
   documentType: null, documentTypeCorrected: false, sender: null, senderCorrected: false,
   senderAuthorityType: null, documentDate: null, deadline: null, deadlineCorrected: false,
-  deadlineRequiresVerification: false, amount: null, amountCurrency: null, amountCorrected: false,
+  deadlineRequiresVerification: false, deadlineKind: null, appointmentDate: null,
+  amount: null, amountCurrency: null, amountCorrected: false,
   confidence: null, tags: [], openTaskCount: 0, taskCount: 0, emailCount: 0, snippet: null,
   ...over,
 });
@@ -247,7 +248,8 @@ function analisi(over: Partial<DocumentAnalysis> = {}): DocumentAnalysis {
     uncertainties: [], uncertaintyItems: [], confidence: 'alta',
     recipient: null, subject: null, documentDate: null, senderAuthorityType: null,
     amounts: [], referenceNumbers: [], legalReferences: [],
-    deadlineType: null, deadlineRequiresVerification: false, deadlineSourceText: null,
+    deadlineType: null, deadlineRequiresVerification: false, deadlineKind: null, deadlineSourceText: null,
+    appointmentDate: null, appointmentEvidence: null, appointmentSourceText: null,
     overallConfidence: null, analysisStatus: 'completed', errorCode: null, errorMessageSafe: null,
     createdAt: '2026-07-31T08:00:00Z', updatedAt: '2026-07-31T08:00:00Z',
     ...over,
@@ -267,6 +269,7 @@ function voce(over: Partial<DocumentHubItem> = {}): DocumentHubItem {
     sender: 'Amministrazione federale delle contribuzioni', senderCorrected: false,
     senderAuthorityType: 'federal', documentDate: '2026-07-15',
     deadline: '2026-08-20', deadlineCorrected: false, deadlineRequiresVerification: false,
+    deadlineKind: 'term', appointmentDate: null,
     amount: null, amountCurrency: null, amountCorrected: false, confidence: 'alta',
     tags: [], openTaskCount: 0, taskCount: 0, emailCount: 1, snippet: null,
     ...over,
@@ -276,7 +279,7 @@ function voce(over: Partial<DocumentHubItem> = {}): DocumentHubItem {
 function attivita(over: Partial<DocumentLinkedTask> = {}): DocumentLinkedTask {
   return {
     id: 't-1', title: 'Trasmettere il rendiconto IVA', status: 'open', priority: 'high',
-    dueDate: '2026-08-20', assigneeUserId: null, archivedAt: null, ...over,
+    dueDate: '2026-08-20', appointmentDate: null, assigneeUserId: null, archivedAt: null, ...over,
   };
 }
 
@@ -458,6 +461,40 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
   ok(documentTaskDraft({ ...base, analysis: analisi() }).payload.assigneeUserId === null,
     'e senza scelta resta «non assegnata», non un valore inventato');
 
+  // -- L'APPUNTAMENTO NON DIVENTA UN TERMINE, e viceversa --------------------
+  // ⚠️⚠️ QUESTA È LA RIGA DA CUI IL DIFETTO È ENTRATO NEL MONDO. Il 2026-07-26
+  // un'analisi che aveva messo un sopralluogo nel campo Scadenza ha prodotto
+  // TRE attività datate 10.09.2026 — la data in cui il Comune si presenta, non
+  // il giorno entro cui l'azienda deve aver preparato i giustificativi. Da
+  // qui in poi le due date viaggiano separate, e nessuna delle due si travasa
+  // nell'altra per comodità.
+  {
+    const sopralluogo = analisi({
+      deadline: null, deadlineType: 'none', deadlineKind: 'event',
+      appointmentDate: '2026-09-10', urgency: 'media',
+    });
+    const d = documentTaskDraft({ ...base, analysis: sopralluogo });
+    ok(d.payload.dueDate === null,
+      'un sopralluogo NON diventa la scadenza dell’attività', String(d.payload.dueDate));
+    ok(d.payload.appointmentDate === '2026-09-10',
+      'ma non sparisce: l’attività dice prima di quando va fatta', String(d.payload.appointmentDate));
+
+    // ⚠️ LA COPPIA. Una scadenza vera resta una scadenza, e non genera un
+    // appuntamento: se cadesse, staremmo spostando i termini invece di
+    // distinguerli.
+    const termine = documentTaskDraft({ ...base, analysis: analisi({ deadlineKind: 'term' }) });
+    ok(termine.payload.dueDate === '2026-08-20' && termine.payload.appointmentDate === null,
+      'CONTROPROVA: un termine resta un termine, e non produce alcun appuntamento',
+      `${termine.payload.dueDate} / ${termine.payload.appointmentDate}`);
+
+    // ⚠️ E NON SI RIPIEGA. Senza appuntamento il campo resta vuoto: un'attività
+    // senza termine e senza appuntamento è legittima, non un buco da riempire
+    // con la prima data a portata di mano.
+    const nuda = documentTaskDraft({ ...base, analysis: analisi({ deadline: null, appointmentDate: null }) });
+    ok(nuda.payload.dueDate === null && nuda.payload.appointmentDate === null,
+      'senza né l’una né l’altra, nessuna data viene inventata');
+  }
+
   // -- senza analisi ---------------------------------------------------------
   const senzaAnalisi = documentTaskDraft({ ...base, analysis: null, authority: null, dueDate: null });
   ok(senzaAnalisi.payload.source === 'manual', 'senza analisi l’attività è «a mano», non «Admin AI»');
@@ -466,7 +503,7 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
   // -- la scrittura: i tre esiti --------------------------------------------
   const taskFinta = (id: string): Task => ({
     id, companyId: 'co-1', createdBy: 'u-1', documentId: 'doc-1', subsidyCaseId: null,
-    title: base.title, description: null, authority: null, dueDate: null, priority: 'high',
+    title: base.title, description: null, authority: null, dueDate: null, appointmentDate: null, priority: 'high',
     status: 'open', source: 'admin_ai', assigneeUserId: null,
     completedAt: null, completedBy: null, archivedAt: null, archivedBy: null, workflowRunId: null,
     createdAt: '2026-07-31T10:00:00Z', updatedAt: '2026-07-31T10:00:00Z',

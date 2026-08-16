@@ -252,8 +252,24 @@ export interface DocumentAnalysis {
   referenceNumbers: ReferenceNumber[];
   legalReferences: LegalReference[];
   deadlineType: string | null;
+  /**
+   * ⚠️ EFFETTIVO, non il valore grezzo della colonna: `deadlineNature.ts` ci
+   * somma «la natura della data non è mai stata dichiarata». Una scadenza
+   * salvata prima del 2026-08-15 può essere un sopralluogo, e nessuno lo sa.
+   */
   deadlineRequiresVerification: boolean;
+  /** term | event | reference | none — `null` = natura mai dichiarata (0040). */
+  deadlineKind: string | null;
   deadlineSourceText: string | null;
+  /**
+   * La data in cui accade l'evento, quando il documento ne fissa uno.
+   *
+   * ⚠️ NON è una scadenza: sta in un campo suo perché da una scadenza nascono
+   * attività e promemoria, e da un appuntamento no. Vedi 0040.
+   */
+  appointmentDate: string | null;
+  appointmentEvidence: Evidence | null;
+  appointmentSourceText: string | null;
   overallConfidence: number | null;
   // ---- Esito tecnico (§25/§46): un fallimento NON va mai reso come risultato ----
   analysisStatus: AnalysisStatus;
@@ -389,6 +405,10 @@ export interface DocumentHubItem {
   deadlineCorrected: boolean;
   /** L'analisi dichiara che la scadenza va verificata: non è un fatto (§36). */
   deadlineRequiresVerification: boolean;
+  /** term | event | reference | none — `null` = natura mai dichiarata (0040). */
+  deadlineKind: string | null;
+  /** La data in cui accade l'evento. NON è una scadenza: vedi 0040. */
+  appointmentDate: string | null;
   amount: number | null;
   amountCurrency: string | null;
   amountCorrected: boolean;
@@ -535,6 +555,8 @@ export interface DocumentLinkedTask {
   status: TaskStatus;
   priority: TaskPriority;
   dueDate: string | null;
+  /** Il giorno dell'evento a cui il lavoro si riferisce (0041). Non è un termine. */
+  appointmentDate: string | null;
   assigneeUserId: string | null;
   archivedAt: string | null;
 }
@@ -577,6 +599,16 @@ export interface Task {
   description: string | null;
   authority: string | null;
   dueDate: string | null;
+  /**
+   * Il giorno dell'EVENTO a cui il lavoro si riferisce (0041).
+   *
+   * ⚠️ NON è un termine e non si comporta come tale: non entra nelle fasce
+   * dello scadenziario, non fa scattare «in ritardo», non ordina l'elenco.
+   * Dice «questo va fatto prima del 10.09.2026», che è un'altra frase da
+   * «questo scade il 10.09.2026» — e le tre attività nate dal sopralluogo del
+   * Comune di Lugano sono la ragione per cui il prodotto le distingue.
+   */
+  appointmentDate: string | null;
   priority: TaskPriority;
   status: TaskStatus;
   source: TaskSource;
@@ -657,8 +689,23 @@ export interface AssignableMember {
 export interface CalendarTaskItem {
   id: string;
   title: string;
-  /** `YYYY-MM-DD`. Sempre presente: senza scadenza un'attività non entra nel calendario. */
-  dueDate: string;
+  /**
+   * `YYYY-MM-DD`. ⚠️ NON è più sempre presente: dalla 0042 un'attività entra nel
+   * calendario anche col solo appuntamento, e allora un termine non ce l'ha.
+   * Per sapere in che giorno va disegnata si legge `onDate`, non questo campo.
+   */
+  dueDate: string | null;
+  appointmentDate: string | null;
+  /** Il giorno in cui la riga va collocata. Sempre presente: è la chiave. */
+  onDate: string;
+  /**
+   * PERCHÉ è finita in quel giorno.
+   *
+   * ⚠️ Arriva dal database, non si deduce confrontando le due date: la stessa
+   * attività può comparire due volte, il 5 come termine e il 10 come
+   * appuntamento, e da `onDate` da solo non si saprebbe quale delle due è.
+   */
+  dateKind: 'deadline' | 'appointment';
   priority: TaskPriority;
   status: TaskStatus;
   source: TaskSource;

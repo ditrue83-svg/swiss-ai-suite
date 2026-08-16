@@ -22,6 +22,7 @@ import { useDocumentLabel } from '@/i18n/documentLabel';
 import { etichettaDocumento } from '@/lib/documentTitle';
 import { PdfViewer } from '@/features/admin-ai/PdfViewer';
 import { ActionOriginMark, ProvenanceMark } from '@/components/ui/ProvenanceMark';
+import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { MarkLegend } from '@/components/ui/MarkLegend';
@@ -41,6 +42,52 @@ function EvidenceButton({ evidence, label, onShow }: { evidence: Evidence | null
       </button>
       <div className={`ev-quote${open ? ' show' : ''}`}>«{evidence.quote}»</div>
     </>
+  );
+}
+
+/**
+ * LA PROVA DI UN DATO CHE GENERA LAVORO — visibile, senza un clic.
+ *
+ * ⚠️⚠️ PERCHÉ NON È `EvidenceButton`. Il 2026-08-15 la scheda «Scadenza
+ * 10.09.2026 · affidabilità alta» aveva sotto, chiusa, la citazione che la
+ * smentiva: «Il sopralluogo è previsto per il 10.09.2026 presso la vostra
+ * sede». Bastava leggerla per vedere che quella data non era un termine. Era
+ * dietro «Mostra nel documento», e nessuno aveva motivo di premerlo: il
+ * sistema si dichiarava sicuro. Una prova che compare solo a chi già sospetta
+ * non protegge nessuno — protegge chi non ne ha bisogno.
+ *
+ * ⚠️ IL CLIC RESTA, ma cambia mestiere: non serve più a SCOPRIRE che una prova
+ * esiste, serve ad ANDARE al punto del documento originale.
+ *
+ * ⚠️ E QUANDO LA PROVA NON C'È, LO SPAZIO LO DICE. Un campo muto e un campo
+ * senza appiglio nel testo si somigliavano — entrambi niente — e sono due cose
+ * opposte: nel secondo caso c'è un dato che nessuna frase del documento
+ * sostiene, ed è proprio quello da guardare per primo.
+ *
+ * ⚠️ NON SI APPLICA A TUTTI I CAMPI, di proposito: solo a quelli da cui nascono
+ * attività e termini (scadenza, appuntamento, importi, mittente). Venti
+ * citazioni aperte in una pagina non si leggono — e una pagina che non si legge
+ * riporta al punto di partenza per un'altra strada.
+ */
+function EvidenceShown({ evidence, onShow }: { evidence: Evidence | null; onShow: (ev: Evidence) => void }) {
+  const t = useT();
+  if (!evidence) {
+    return (
+      <div className="ev-none">
+        <MarkGlyph name="dash" />{t('adminAi.result.noEvidenceInDocument')}
+      </div>
+    );
+  }
+  return (
+    <div className="ev-shown">
+      {/* `lang=""` — la citazione è nella lingua del DOCUMENTO, non
+          dell'interfaccia: dichiararlo evita che un lettore di schermo la
+          pronunci con la fonetica sbagliata. */}
+      <blockquote className="ev-shown-q" lang="">«{evidence.quote}»</blockquote>
+      <button type="button" className="ev-btn" onClick={() => onShow(evidence)}>
+        <Icon name="fileSearch" className="ic-sm" />{t('adminAi.result.goToPoint')}
+      </button>
+    </div>
   );
 }
 
@@ -478,6 +525,18 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             <span className="ax-badge-pair">
               <span className="ax-badge-key">{t('marks.legend.confidence')}</span>
               <ConfidenceBadge level={r.confidence} />
+              {/* ⚠️⚠️ IL CAVEAT DOVE STAVA LA SICUREZZA FALSA. Il 2026-08-15
+                  questa testata diceva «●●● alta» sopra una data che era un
+                  sopralluogo preso per scadenza, e il «da verificare» stava
+                  quaranta centimetri più in basso, nella scheda del termine.
+                  Chi legge una schermata parte da qui.
+
+                  ⚠️ E NON SI DECLASSA L'ETICHETTA. Trasformare «alta» in
+                  «media» metterebbe in bocca al modello un giudizio che non ha
+                  dato: quello che manca non è fiducia, è una verifica. Le due
+                  cose hanno due segni, e restano due. */}
+              {r.deadlineRequiresVerification && r.analysisStatus !== 'needs_review'
+                && <ProvenanceMark kind="toVerify" />}
             </span>
           </div>
         </div>
@@ -502,7 +561,10 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
           </span>
         </div>
         {r.subject && <div className="ax-subject muted-sm mt-2"><b>{t('adminAi.result.subjectLabel')}:</b> {r.subject}</div>}
-        {r.senderEvidence && <div><EvidenceButton evidence={r.senderEvidence} label={t('adminAi.result.senderShowInDocument')} onShow={setHighlight} /></div>}
+        {/* ⚠️ NON più condizionata a `r.senderEvidence`: prima, senza citazione,
+            qui non compariva niente — e «mittente senza appiglio nel documento»
+            è un'informazione, non un vuoto. */}
+        <EvidenceShown evidence={r.senderEvidence} onShow={setHighlight} />
       </div>
 
       {/* Callout: cosa devi fare adesso */}
@@ -511,7 +573,15 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
         <div className="co-main">
           <div className="co-kicker">{t('adminAi.result.whatToDoNow')}</div>
           <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <ActionOriginMark source={r.primaryActionSource} /></div>
-          <div className="co-when">{r.deadline ? <>{t('adminAi.result.by')} <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</> : t('adminAi.result.noDeadlineFound')}</div>
+          {/* ⚠️ Tre casi, non due. Senza scadenza ma con un appuntamento, qui
+              diceva soltanto «nessuna scadenza individuata» — vero e monco: la
+              data che il documento fissa esiste, e tacerla manda a cercarla
+              altrove. La si nomina per quello che è. */}
+          <div className="co-when">{r.deadline
+            ? <>{t('adminAi.result.by')} <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</>
+            : r.appointmentDate
+              ? <>{t('adminAi.result.noDeadlineFound')} · <AppointmentMark date={r.appointmentDate} display={formatDate(r.appointmentDate)} /></>
+              : t('adminAi.result.noDeadlineFound')}</div>
         </div>
         <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || nome)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}</button>
       </div>
@@ -550,7 +620,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                     nel kicker due righe sopra: colore in più, informazione in
                     meno di zero. Il termine parla con le sue cifre. */}
               </div>
-              <EvidenceButton evidence={r.deadlineEvidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />
+              <EvidenceShown evidence={r.deadlineEvidence} onShow={setHighlight} />
               {r.deadlineRequiresVerification && (
                 <div className="muted-sm mt-2">
                   <Icon name="alert" className="ic-sm" /> {r.deadlineType === 'relative'
@@ -561,6 +631,32 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             </div>
           ) : (
             <div className="card"><div className="deadline-none"><Icon name="alert" /><div><strong>{t('adminAi.result.deadlineNoneTitle')}</strong><br /><span className="muted-sm">{t('adminAi.result.deadlineNoneSub')}</span></div></div></div>
+          )}
+
+          {/* ⚠️⚠️ L'APPUNTAMENTO HA UNA SCHEDA SUA, E VIENE DOPO LA SCADENZA.
+              L'ordine non è estetico: chi apre questa colonna deve leggere
+              prima «nessun termine individuato» e poi «c'è un appuntamento il
+              …». Invertirli rimetterebbe la data dell'evento nel posto in cui
+              l'occhio cerca la scadenza — cioè il difetto del 2026-08-15 rifatto
+              con due schede invece che con una.
+
+              ⚠️ Nessun pulsante «crea attività» qui: da un appuntamento non
+              nasce un termine. Se qualcosa va preparato PRIMA, la data di quel
+              lavoro la decide una persona, non questa scheda — ed è esattamente
+              ciò che è mancato alle tre attività datate 10.09.2026. */}
+          {r.appointmentDate && (
+            <div className="card">
+              <div className="deadline-card">
+                <div className="dl-ico"><Icon name="calendar" /></div>
+                <div className="dl-main">
+                  <div className="dl-kicker">{t('adminAi.result.appointmentKicker')}</div>
+                  <div className="dl-date">{formatDate(r.appointmentDate)}</div>
+                  <div className="dl-rem"><AppointmentMark date={r.appointmentDate} /></div>
+                </div>
+              </div>
+              <div className="muted-sm mt-2">{t('adminAi.result.appointmentNotADeadline')}</div>
+              <EvidenceShown evidence={r.appointmentEvidence} onShow={setHighlight} />
+            </div>
           )}
 
           <div className="card ax-actions-card">
@@ -639,7 +735,10 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                 <div className="action-item py-2" key={`amt-${i}`}>
                   <span className="ai-main">
                     <span className="ai-text"><b>{m.display}</b>{m.description ? ` — ${m.description}` : ''} <Tag>{L.amountType(m.type)}</Tag></span>
-                    {m.evidence && <div className="ai-meta"><EvidenceButton evidence={m.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
+                    {/* Un importo fa partire regole di automazione e finisce in
+                        una richiesta di pagamento: la sua prova sta sotto, non
+                        dietro un clic. E se non c'è, si dice. */}
+                    <EvidenceShown evidence={m.evidence} onShow={setHighlight} />
                   </span>
                 </div>
               ))}

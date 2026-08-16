@@ -40,12 +40,21 @@ interface CalendarRow {
   assignee_user_id: string | null;
   assignee_name: string | null;
   document_id: string | null;
+  appointment_date: string | null;
+  on_date: string;
+  date_kind: string;
 }
 
 const toItem = (r: CalendarRow): CalendarTaskItem => ({
   id: r.id,
   title: r.title,
   dueDate: r.due_date,
+  appointmentDate: r.appointment_date ?? null,
+  // ⚠️ `on_date` e `date_kind` arrivano dal database e non si ricalcolano qui:
+  // la stessa attività può tornare due volte, e da fuori non si saprebbe quale
+  // delle due righe è il termine e quale l'appuntamento (0042).
+  onDate: r.on_date,
+  dateKind: r.date_kind === 'appointment' ? 'appointment' : 'deadline',
   priority: r.priority,
   status: r.status,
   source: r.source,

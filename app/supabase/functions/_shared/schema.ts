@@ -14,7 +14,8 @@
 
 export const SCHEMA_VERSION = 2;
 // 2026-07-25: la lingua dei testi generati segue quella dell'interfaccia (it/de/fr).
-export const PROMPT_VERSION = 'admin-ai-2026-07-25-multilang';
+// 2026-08-15: la data estratta dichiara CHE COSA È (termine · evento · riferimento).
+export const PROMPT_VERSION = 'admin-ai-2026-08-15-datekind';
 
 // ---- Enum normalizzati ------------------------------------------------------
 // ⚠️⚠️ `en` e `other` ci sono dal 2026-08-11, e la loro assenza era un DIFETTO,
@@ -47,6 +48,34 @@ export type AuthorityType = (typeof AUTHORITY_TYPES)[number];
 
 export const DEADLINE_TYPES = ['explicit', 'relative', 'inferred', 'none'] as const;
 export type DeadlineType = (typeof DEADLINE_TYPES)[number];
+
+// ⚠️⚠️ CHE COSA È QUESTA DATA — la domanda che mancava, aggiunta il 2026-08-15
+// su un caso reale. «Comune di Lugano — Controllo tassa rifiuti» ha prodotto
+// «Scadenza 10.09.2026 · fra 26 giorni · affidabilità ALTA», e la citazione a
+// supporto era esatta: «Il sopralluogo è previsto per il 10.09.2026 presso la
+// vostra sede». La data era giusta, la citazione era giusta, e il campo era
+// sbagliato — perché una data di sopralluogo non è un termine. Da quel campo
+// sono nate TRE attività, tutte datate 10.09.2026.
+//
+// `DEADLINE_TYPES` non poteva vederlo: dice se la data è assoluta o relativa,
+// cioè la sua FORMA. `obligesCompany` (2026-08-11) non poteva vederlo:
+// chiede CHI è obbligato, e da un sopralluogo l'azienda è coinvolta davvero —
+// deve esserci, deve preparare. Risponde «sì», ed è la risposta giusta alla
+// domanda sbagliata.
+//
+// Restava la terza domanda, che nessuno poneva: quella data è il TERMINE entro
+// cui agire, o il MOMENTO in cui accade qualcosa? Il termine per prepararsi a
+// un sopralluogo, se esiste, è PRECEDENTE e implicito — mai coincidente.
+//
+//   term      — termine entro cui l'azienda deve fare qualcosa (l'unico che
+//               può popolare il campo Scadenza).
+//   event     — data in cui accade un evento che coinvolge l'azienda:
+//               sopralluogo, controllo, udienza, assemblea, ritiro, appuntamento.
+//   reference — data amministrativa di riferimento: periodo, competenza,
+//               emissione, entrata in vigore, decorrenza.
+//   none      — nessuna data.
+export const DATE_KINDS = ['term', 'event', 'reference', 'none'] as const;
+export type DateKind = (typeof DATE_KINDS)[number];
 
 export const AMOUNT_TYPES = ['due', 'fine', 'fee', 'contribution', 'other'] as const;
 export type AmountType = (typeof AMOUNT_TYPES)[number];
@@ -88,6 +117,27 @@ export interface AiAnalysis {
      * e le loro scadenze restano valide. Solo un `false` esplicito declassa.
      */
     obligesCompany?: boolean;
+    /**
+     * CHE COSA è la data: termine · evento · riferimento (vedi `DATE_KINDS`).
+     *
+     * ⚠️ Facoltativo con la stessa logica a tre stati di `obligesCompany`:
+     * `undefined` è «non chiesto», e le analisi anteriori al 2026-08-15 non lo
+     * hanno. Ma a differenza di quello, il silenzio QUI non è innocuo — vuol
+     * dire che nessuno ha verificato l'interpretazione — e il validatore lo
+     * marca DA VERIFICARE invece di azzerare la data.
+     */
+    dateKind?: DateKind;
+    /**
+     * Quanto è certa la NATURA della data (non il suo valore).
+     *
+     * ⚠️⚠️ SONO DUE NUMERI PERCHÉ SONO DUE DOMANDE, e confonderle è il difetto
+     * che ha prodotto «affidabilità ALTA» su una data-evento presa per termine:
+     * `confidence` diceva «sono sicuro di aver letto 10.09.2026», ed era vero.
+     * Nessun numero diceva «sono sicuro che sia una scadenza», che era falso.
+     * Il validatore tiene il MINIMO dei due: un'estrazione non può essere più
+     * sicura della più debole delle sue due certezze.
+     */
+    kindConfidence?: number;
     sourceText: string | null;
     confidence: number;
     evidence: AiEvidence | null;
@@ -163,6 +213,8 @@ export const ANALYSIS_JSON_SCHEMA = obj({
     date: nullable({ type: 'string' }),
     type: { type: 'string', enum: [...DEADLINE_TYPES] },
     obligesCompany: { type: 'boolean' },
+    dateKind: { type: 'string', enum: [...DATE_KINDS] },
+    kindConfidence: { type: 'number' },
     sourceText: nullable({ type: 'string' }),
     confidence: { type: 'number' },
     evidence: evidenceSchema,

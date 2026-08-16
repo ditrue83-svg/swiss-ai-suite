@@ -151,6 +151,24 @@ export function MarkLegend() {
               <span className="mark mark-due md-verify"><MarkGlyph name="question" />{t('marks.deadline.toVerify')}</span>
             </div>
           </div>
+          {/* ⚠️ UNA FAMIGLIA SUA, accanto al termine e non dentro. Le due
+              portano entrambe delle cifre, e proprio per questo la legenda deve
+              metterle una accanto all'altra: la differenza fra «fra 12 giorni»
+              e «Appuntamento · fra 12 giorni» è tutto ciò che separa un lavoro
+              da fare da un giorno in cui presentarsi. */}
+          <div>
+            <div className="ml-fam-title">{t('marks.legend.appointment')}</div>
+            <div className="ml-item">
+              <span className="mark mark-appt ma-future">
+                <MarkGlyph name="pin" />{t('marks.appointment.label')} · {t('marks.appointment.inDays', { n: 12 })}
+              </span>
+            </div>
+            <div className="ml-item">
+              <span className="mark mark-appt ma-past">
+                <MarkGlyph name="pin" />{t('marks.appointment.label')} · {t('marks.appointment.daysAgo', { n: 3 })}
+              </span>
+            </div>
+          </div>
           <div>
             <div className="ml-fam-title">{t('marks.legend.state')}</div>
             {(Object.keys(TASK_STATES) as TaskStatus[]).map((k) => (

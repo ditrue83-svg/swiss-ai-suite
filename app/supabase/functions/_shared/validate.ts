@@ -9,10 +9,10 @@
 //  - impone le regole sulla scadenza (§11) e deriva la primaryAction (§14).
 // ============================================================================
 import type {
-  AiAnalysis, AiEvidence, AuthorityType, DeadlineType, DocumentType, Language, Severity,
+  AiAnalysis, AiEvidence, AuthorityType, DateKind, DeadlineType, DocumentType, Language, Severity,
 } from './schema.ts';
 import {
-  AUTHORITY_TYPES, DEADLINE_TYPES, DOCUMENT_TYPES, LANGUAGES, SEVERITIES,
+  AUTHORITY_TYPES, DATE_KINDS, DEADLINE_TYPES, DOCUMENT_TYPES, LANGUAGES, SEVERITIES,
 } from './schema.ts';
 // ⚠️ Si IMPORTA la normalizzazione delle valute invece di riscriverla: è la
 // stessa domanda che si pone Finanze, e due risposte diverse alla stessa
@@ -60,11 +60,33 @@ export interface NormalizedAnalysis {
   deadline: {
     date: string | null;
     type: DeadlineType;
+    /**
+     * Che cosa il modello ha DICHIARATO di aver estratto.
+     *
+     * `null` = non dichiarato: un'analisi anteriore al 2026-08-15, o un output
+     * monco. Non è un `term` sottinteso — è una domanda senza risposta, e si
+     * legge così (`requiresVerification`).
+     */
+    dateKind: DateKind | null;
     sourceText: string | null;
+    /** Il MINIMO fra la fiducia sul valore e quella sulla natura (vedi schema). */
     confidence: number;
     evidence: Evidence | null;
     requiresVerification: boolean;
   };
+  /**
+   * La data in cui accade qualcosa, quando il documento ne fissa una.
+   *
+   * ⚠️ NON è una scadenza e non deve mai finire nel campo che ne fa le veci: da
+   * lì nascono attività con la data sbagliata (tre, il 2026-07-26, dal
+   * sopralluogo del Comune di Lugano). Ha un posto suo perché è un'altra cosa.
+   */
+  appointment: {
+    date: string;
+    sourceText: string | null;
+    confidence: number;
+    evidence: Evidence | null;
+  } | null;
   amounts: { amount: number; currency: string | null; type: string; description: string; confidence: number; evidence: Evidence | null }[];
   actions: NormAction[];
   primaryAction: NormAction | null;
@@ -180,6 +202,63 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
     dType = 'none';
     dDate = null;
   }
+
+  // ⚠️⚠️ CHE COSA È QUELLA DATA — la domanda del 2026-08-15, e la terza dello
+  // stesso genere delle due qui sopra. Il caso: «Comune di Lugano — Controllo
+  // tassa rifiuti» ha prodotto «Scadenza 10.09.2026 · fra 26 giorni ·
+  // affidabilità ALTA», sostenuta da una citazione esatta e verificata — «Il
+  // sopralluogo è previsto per il 10.09.2026 presso la vostra sede». Nessuna
+  // guardia poteva vederlo:
+  //   · `type` guarda la FORMA (assoluta/relativa): explicit, ed era vero;
+  //   · `obligesCompany` guarda CHI è obbligato: da un sopralluogo l'azienda è
+  //     coinvolta eccome — risposta «sì», giusta, alla domanda sbagliata;
+  //   · `evidence` guarda se la citazione ESISTE nel testo: c'era.
+  // Tre guardie verdi su un dato falso, e da quel campo sono nate TRE attività
+  // datate 10.09.2026.
+  //
+  // Una data di sopralluogo non è un termine: è il giorno in cui l'evento
+  // ACCADE. Il termine per prepararsi, se esiste, è PRECEDENTE e implicito —
+  // e ciò che non è scritto non si inventa. Quindi la data non sparisce (è
+  // un'informazione vera e utile): cambia posto.
+  //
+  // ⚠️ NON È UN'EURISTICA SUL TESTO. Qui non si cercano le parole
+  // «sopralluogo» o «controllo»: si legge un campo che il modello ha
+  // COMPILATO dichiarando che cosa ha estratto. Una euristica testuale
+  // sbaglierebbe sulle stesse parole in tedesco, in francese, o in una frase
+  // costruita al contrario — e sarebbe una quarta guardia che guarda la forma.
+  const dateKind: DateKind | null =
+    typeof ai.deadline?.dateKind === 'string' && (DATE_KINDS as readonly string[]).includes(ai.deadline.dateKind)
+      ? ai.deadline.dateKind as DateKind
+      : null;
+
+  // La data che l'evento fissa: si conserva PRIMA di azzerare la scadenza.
+  let appointmentDate: string | null = null;
+  if (dateKind === 'event' && obliga !== false && isIsoDate(dDate)) {
+    appointmentDate = dDate;
+  }
+  if ((dateKind === 'event' || dateKind === 'reference') && dType !== 'none') {
+    warnings.push(dateKind === 'event'
+      ? 'deadline: data di un evento (appuntamento), non un termine → spostata fuori dalla scadenza'
+      : 'deadline: data amministrativa di riferimento, non un termine → non è una scadenza');
+    dType = 'none';
+    dDate = null;
+    uncertainties.push(dateKind === 'event'
+      ? {
+        field: 'deadline',
+        // ⚠️ `medium` e non `high`: una `high` manderebbe in `needs_review` ogni
+        // avviso di sopralluogo, e qui l'analisi NON è dubbia — ha riconosciuto
+        // bene un appuntamento. Ciò che manca è il termine, e il fatto che manchi
+        // va detto a chi legge, non trasformato in un allarme sull'analisi.
+        description: 'Il documento fissa un appuntamento, non un termine: se esiste una scadenza per prepararsi è anteriore e non è scritta nel documento',
+        severity: 'medium',
+      }
+      : {
+        field: 'deadline',
+        description: 'La data trovata è un riferimento amministrativo (periodo, emissione, decorrenza), non un termine da rispettare',
+        severity: 'medium',
+      });
+  }
+
   if (dType === 'explicit') {
     if (!isIsoDate(dDate)) {
       warnings.push('deadline.date non valida per un tipo explicit: azzerata');
@@ -193,10 +272,43 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
   // la citazione che la sostiene esiste davvero nel testo. Senza citazione
   // verificata resta la data (è l'unica informazione che abbiamo) ma va
   // dichiarata DA VERIFICARE, esattamente come si declassano azioni e rischi.
-  const deadlineEvidence = ver(ai.deadline?.evidence ?? null);
+  const dateEvidence = ver(ai.deadline?.evidence ?? null);
+  // La citazione segue la data: se il 10.09.2026 è diventato un appuntamento, la
+  // frase che lo prova sta sull'appuntamento — non su una scadenza che non c'è.
+  const deadlineEvidence = appointmentDate ? null : dateEvidence;
   const deadlineUnverified = dType === 'explicit' && dDate != null && !deadlineEvidence?.verified;
+
+  // ⚠️⚠️ LA NATURA NON DICHIARATA NON È UN «TERMINE» SOTTINTESO. Un output che
+  // non risponde alla domanda (analisi anteriori al 2026-08-15, risposta monca)
+  // lascia l'interpretazione NON verificata: la data resta — è l'unica
+  // informazione che abbiamo, e buttarla cancellerebbe scadenze vere — ma non
+  // può presentarsi come un fatto. È la stessa scelta fatta per una scadenza
+  // esplicita senza citazione verificata: si tiene e si dichiara.
+  const kindUndeclared = dateKind === null && dType === 'explicit' && dDate != null;
   const deadlineRequiresVerification =
-    dType === 'relative' || dType === 'inferred' || (dType === 'explicit' && dDate == null) || deadlineUnverified;
+    dType === 'relative' || dType === 'inferred' || (dType === 'explicit' && dDate == null)
+    || deadlineUnverified || kindUndeclared;
+
+  if (kindUndeclared) {
+    warnings.push('deadline: natura della data non dichiarata dal modello → marcata da verificare');
+    uncertainties.push({
+      field: 'deadline',
+      description: 'Non è stato dichiarato se questa data sia un termine o la data di un appuntamento: verificarlo sul documento',
+      severity: 'medium',
+    });
+  }
+
+  // ⚠️⚠️ IL MINIMO, NON LA MEDIA E NON IL VALORE. `confidence` risponde a «ho
+  // letto bene la data?», `kindConfidence` a «ho capito che cos'è?». Il
+  // 2026-08-15 la prima valeva 0.9 ed era giusta, la seconda non esisteva, e
+  // l'interfaccia ha scritto «●●● alta» su una data-evento presa per scadenza.
+  // Una lettura non può essere più sicura della più debole delle sue certezze:
+  // un valore perfetto nel campo sbagliato resta un dato sbagliato.
+  const valueConfidence = clamp01(ai.deadline?.confidence);
+  const rawKindConfidence = ai.deadline?.kindConfidence;
+  const deadlineConfidence = typeof rawKindConfidence === 'number' && Number.isFinite(rawKindConfidence)
+    ? Math.min(valueConfidence, clamp01(rawKindConfidence))
+    : valueConfidence;
 
   if (dType === 'relative') {
     uncertainties.push({ field: 'deadline', description: 'Scadenza relativa: data esatta da verificare in base alla data di ricezione', severity: 'medium' });
@@ -293,6 +405,17 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
 
   const docDate = cleanStr(ai.documentDate);
 
+  // ⚠️⚠️ UN'ANALISI NON PUÒ DICHIARARSI PIÙ SICURA DEL SUO DATO PIÙ CONSEGUENTE.
+  // `overallConfidence` alimenta l'etichetta «●●● alta» in testa alla schermata,
+  // ed è la frase che toglie a chi legge il motivo di controllare. Quando c'è
+  // una scadenza, quella scadenza è l'unico campo da cui nascono attività e
+  // promemoria: se la lettura di quella data non è sicura, l'analisi non lo è.
+  // Il taglio vale SOLO in presenza di una data — senza, la scadenza non ha
+  // opinioni da imporre al resto.
+  const overallConfidence = dDate != null
+    ? Math.min(clamp01(ai.overallConfidence), deadlineConfidence)
+    : clamp01(ai.overallConfidence);
+
   const normalized: NormalizedAnalysis = {
     // ⚠️ Il ripiego è `other`, non `it`. Prima era `it`, e siccome l'elenco non
     // conteneva l'inglese, OGNI documento inglese usciva «italiano»: un dato
@@ -319,11 +442,20 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
     deadline: {
       date: dDate,
       type: dType,
+      dateKind,
       sourceText: cleanStr(ai.deadline?.sourceText),
-      confidence: clamp01(ai.deadline?.confidence),
+      confidence: deadlineConfidence,
       evidence: deadlineEvidence,   // già verificata sopra: non ri-verificare (falserebbe il conteggio)
       requiresVerification: deadlineRequiresVerification,
     },
+    appointment: appointmentDate
+      ? {
+        date: appointmentDate,
+        sourceText: cleanStr(ai.deadline?.sourceText),
+        confidence: deadlineConfidence,
+        evidence: dateEvidence,
+      }
+      : null,
     amounts,
     actions,
     primaryAction,
@@ -336,7 +468,7 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
       .filter((l) => l.text),
     replyNeeded: typeof ai.replyNeeded === 'boolean' ? ai.replyNeeded : false,
     uncertainties: [],
-    overallConfidence: clamp01(ai.overallConfidence),
+    overallConfidence,
     meta: { droppedEvidence: dropped, warnings },
   };
 

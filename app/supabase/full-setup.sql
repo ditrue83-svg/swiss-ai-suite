@@ -75,6 +75,9 @@
 --   0037_subsidy_catalog_review
 --   0038_subsidy_review_source_url
 --   0039_audit_logs
+--   0040_deadline_nature
+--   0041_task_appointment
+--   0042_calendar_appointments
 --
 -- SERVE A INSTALLARE DA ZERO. Su un database già in esercizio si applica UNA
 -- MIGRAZIONE ALLA VOLTA: questo file non aggiunge niente e in caso di errore
@@ -24952,4 +24955,723 @@ drop trigger if exists trg_audit_member_change on public.company_members;
 create trigger trg_audit_member_change
   after insert or update or delete on public.company_members
   for each row execute function public.audit_on_member_change();
+
+-- >>>>>>>>>>>>>>>>>>>>  0040_deadline_nature  <<<<<<<<<<<<<<<<<<<<
+
+-- ============================================================================
+-- 0040 — UNA DATA DICHIARA CHE COSA È
+--
+-- ⚠️⚠️ IL CASO. «Comune di Lugano — Controllo tassa rifiuti» mostrava
+-- «Scadenza 10.09.2026 · fra 26 giorni · affidabilità ALTA». La citazione a
+-- supporto era esatta e verificata: «Il sopralluogo è previsto per il
+-- 10.09.2026 presso la vostra sede». La data era giusta, la citazione era
+-- giusta, il campo era sbagliato — una data di sopralluogo è il giorno in cui
+-- un evento ACCADE, non il termine entro cui l'azienda deve agire. Da quel
+-- campo sono nate tre attività, tutte datate 10.09.2026.
+--
+-- Le due guardie esistenti non potevano vederlo: "deadline_type" dice che
+-- FORMA ha la data (assoluta/relativa), "obligesCompany" (2026-08-11) dice CHI
+-- è obbligato — e da un sopralluogo l'azienda è coinvolta davvero. Mancava la
+-- terza domanda: CHE COSA è quella data.
+--
+--   deadline_kind      term | event | reference | none  — null = mai dichiarato
+--   appointment_date   la data in cui accade l'evento, in una colonna SUA
+--
+-- ⚠️ PERCHÉ UNA COLONNA SUA E NON UN FLAG ACCANTO A "deadline": un flag lo si
+-- dimentica. "deadline" è letta da list_documents, dalle automazioni
+-- (analysis.deadline), da Finanze, dall'assistente e da chi crea un'attività da
+-- un documento: basta un lettore che ignori il flag perché la data
+-- dell'appuntamento torni a essere un termine. Una colonna diversa non si
+-- legge per sbaglio.
+--
+-- ⚠️ NESSUN AGGIORNAMENTO DELLE RIGHE ESISTENTI, ED È DELIBERATO. L'analisi è
+-- un verbale immutabile (0010): scrivere oggi deadline_kind = 'event' su una
+-- riga del 26 luglio metterebbe in bocca al modello una risposta che il modello
+-- non ha mai dato. Le righe anteriori restano con deadline_kind NULL, e la
+-- LETTURA sa che cosa farne: deadlineNature.ts dichiara «da verificare» ogni
+-- scadenza la cui natura non è mai stata stabilita. È la lezione già pagata due
+-- volte — una regola applicata solo in scrittura non protegge i dati già
+-- scritti.
+--
+-- ⚠️⚠️ ORDINE DI APPLICAZIONE — PRIMA QUESTA, POI LA FUNZIONE.
+-- `analyze-document` è l'unica Edge Function che scrive un'analisi, e da questo
+-- lavoro in poi la sua riga contiene `deadline_kind` e `appointment_date`.
+-- Deployarla PRIMA di applicare questa migrazione fa fallire OGNI analisi con
+-- un errore di colonna inesistente (verificato il 2026-08-15: la colonna oggi
+-- non c'è, e PostgREST risponde 42703). Non è un guasto silenzioso — l'analisi
+-- si dichiara fallita e il documento resta — ma è un fermo evitabile.
+-- Il frontend invece regge in entrambi gli ordini: legge con `select *` e con
+-- `list_documents`, e una colonna assente vale «natura non dichiarata», cioè
+-- «da verificare».
+-- ============================================================================
+
+alter table public.document_analyses add column if not exists deadline_kind text;              -- term | event | reference | none
+alter table public.document_analyses add column if not exists appointment_date date;
+alter table public.document_analyses add column if not exists appointment_evidence jsonb;
+alter table public.document_analyses add column if not exists appointment_source_text text;
+
+comment on column public.document_analyses.deadline_kind is
+  'Natura della data estratta: term | event | reference | none. NULL = analisi anteriore al 2026-08-15, natura mai dichiarata: in lettura vale «da verificare», non «termine».';
+comment on column public.document_analyses.appointment_date is
+  'Data in cui accade un evento che coinvolge l''azienda (sopralluogo, udienza, ritiro). NON è una scadenza e non deve mai alimentare un termine.';
+
+-- Un appuntamento si cerca come si cerca una scadenza: per data.
+create index if not exists idx_analyses_appointment on public.document_analyses (appointment_date);
+
+-- ---------------------------------------------------------------------------
+-- list_documents — due colonne in più.
+--
+-- ⚠️ "drop" e non "create or replace": cambia la RETURNS TABLE, e Postgres non
+-- sostituisce una funzione che cambia tipo di ritorno. I permessi se ne vanno
+-- col drop e vanno riassegnati sotto — dimenticarlo lascerebbe la lista
+-- documenti muta per chiunque.
+--
+-- ⚠️ QUI SI PORTANO GLI INGREDIENTI, NON SI CALCOLA LA REGOLA.
+-- "deadline_requires_verification" resta il flag GREZZO scritto dal validatore;
+-- il «da verificare» effettivo (grezzo OPPURE natura mai dichiarata) lo calcola
+-- deadlineNature.ts, in un posto solo, per tutti i lettori. Riscriverlo anche
+-- qui creerebbe una seconda fonte di verità, e due copie della stessa regola
+-- col tempo divergono.
+-- ---------------------------------------------------------------------------
+drop function if exists public.list_documents(uuid, text, public.document_category, boolean, public.document_source_type, text, uuid[], date, date, boolean, boolean, text, integer, integer, uuid);
+
+create or replace function public.list_documents(
+  p_company_id      uuid,
+  p_query           text default null,
+  p_category        public.document_category default null,
+  p_uncategorized   boolean default false,
+  p_source          public.document_source_type default null,
+  p_state           text default null,      -- to_verify | analyzed | failed | processing | none
+  p_tag_ids         uuid[] default null,
+  p_date_from       date default null,
+  p_date_to         date default null,
+  p_has_deadline    boolean default false,
+  p_archived        boolean default false,
+  p_sort            text default 'recent',  -- recent | oldest | document_date | title | deadline
+  p_limit           integer default 25,
+  p_offset          integer default 0,
+  -- Un solo documento. Serve al DETTAGLIO, e non è una comodità: la riga della
+  -- lista e la testata del dettaglio devono dire la stessa cosa sullo stesso
+  -- documento — stessa analisi scelta, stesse correzioni applicate. Con due
+  -- implementazioni diverse prima o poi divergono, e a divergere sarebbero
+  -- proprio mittente e scadenza.
+  p_document_id     uuid default null
+)
+returns table (
+  id uuid,
+  title text,
+  original_filename text,
+  mime_type text,
+  file_size bigint,
+  storage_path text,
+  source_type public.document_source_type,
+  status public.document_status,
+  page_count integer,
+  created_at timestamptz,
+  archived_at timestamptz,
+  category public.document_category,
+  category_source public.document_category_source,
+  analysis_id uuid,
+  analysis_status public.analysis_status,
+  last_attempt_failed boolean,
+  error_code text,
+  document_type text,
+  document_type_corrected boolean,
+  sender text,
+  sender_corrected boolean,
+  sender_authority_type text,
+  document_date date,
+  deadline date,
+  deadline_corrected boolean,
+  deadline_requires_verification boolean,
+  deadline_kind text,
+  appointment_date date,
+  amount numeric,
+  amount_currency text,
+  amount_corrected boolean,
+  confidence text,
+  tags jsonb,
+  open_task_count bigint,
+  task_count bigint,
+  email_count bigint,
+  snippet text,
+  total_count bigint
+)
+language sql
+stable
+set search_path = ''
+as $$
+  with params as (
+    select
+      -- I caratteri jolly digitati da una persona devono cercare sé stessi:
+      -- un `%` in una ricerca è un per cento, non «qualsiasi cosa».
+      nullif(btrim(left(coalesce(p_query, ''), 120)), '') as q,
+      replace(replace(replace(
+        btrim(left(coalesce(p_query, ''), 120)), '\', '\\'), '%', '\%'), '_', '\_') as q_like
+  ),
+  base as (
+    select
+      d.*,
+      -- L'ULTIMO tentativo: dice lo STATO, anche quando è un fallimento.
+      last_try.id            as try_id,
+      last_try.analysis_status as try_status,
+      last_try.error_code    as try_error,
+      -- L'ultima analisi VALIDA: dice il CONTENUTO. Se l'ultimo tentativo è
+      -- fallito ma prima esisteva un risultato buono, quel risultato non
+      -- scompare — è la stessa regola di `analysisService.getForDocument`,
+      -- e averne due diverse farebbe dire due cose alla stessa schermata.
+      good.id                as good_id,
+      good.document_type     as a_document_type,
+      good.sender            as a_sender,
+      good.sender_authority_type as a_authority,
+      good.document_date     as a_document_date,
+      good.deadline          as a_deadline,
+      good.deadline_requires_verification as a_deadline_verify,
+      good.deadline_kind     as a_deadline_kind,
+      good.appointment_date  as a_appointment,
+      good.amount            as a_amount,
+      good.amount_currency   as a_currency,
+      good.confidence        as a_confidence,
+      corr.v                 as corrections,
+      count(*) over ()       as n_total
+    from public.documents d
+    left join lateral (
+      select a.id, a.analysis_status, a.error_code
+      from public.document_analyses a
+      -- Il confronto sull'azienda accompagna la RLS, non la sostituisce: è la
+      -- disciplina di questo progetto, e qui evita anche che un'analisi
+      -- agganciata per errore a un documento altrui possa mai essere letta.
+      where a.document_id = d.id and a.company_id = d.company_id
+      order by a.created_at desc, a.id desc
+      limit 1
+    ) last_try on true
+    left join lateral (
+      select a.*
+      from public.document_analyses a
+      where a.document_id = d.id and a.company_id = d.company_id
+        and a.analysis_status <> 'failed'
+      order by a.created_at desc, a.id desc
+      limit 1
+    ) good on true
+    left join lateral (
+      -- Un solo passaggio sulle correzioni del documento: le più recenti
+      -- sovrascrivono le precedenti perché `jsonb_object_agg` tiene l'ultimo
+      -- valore di ogni chiave.
+      select jsonb_object_agg(c.field, c.corrected_value) as v
+      from (
+        select c2.field, c2.corrected_value
+        from public.analysis_corrections c2
+        where c2.document_id = d.id and c2.company_id = d.company_id
+        order by c2.corrected_at asc
+      ) c
+    ) corr on true
+    where d.company_id = p_company_id
+      -- Sottointerrogazione scalare: l'appartenenza si verifica UNA volta per
+      -- interrogazione e non una volta per riga.
+      and (select public.is_company_member(p_company_id))
+      and (p_document_id is null or d.id = p_document_id)
+      -- Chiedendo UN documento non si applica il filtro di archiviazione: il suo
+      -- indirizzo deve funzionare anche dopo che è stato archiviato, altrimenti
+      -- «archivia» diventerebbe indistinguibile da «fai sparire».
+      and (p_document_id is not null
+           or (case when p_archived then d.archived_at is not null else d.archived_at is null end))
+      and (p_category is null or d.category = p_category)
+      and (not p_uncategorized or d.category is null)
+      and (p_source is null or d.source_type = p_source)
+      and (p_tag_ids is null or array_length(p_tag_ids, 1) is null or exists (
+            select 1 from public.document_tag_links l
+            where l.document_id = d.id and l.company_id = d.company_id
+              and l.tag_id = any (p_tag_ids)
+          ))
+      and (not p_has_deadline or coalesce(
+            public.try_date(corr.v ->> 'deadline'), good.deadline) is not null)
+      and (p_date_from is null or coalesce(
+            public.try_date(corr.v ->> 'document_date'), good.document_date,
+            d.created_at::date) >= p_date_from)
+      and (p_date_to is null or coalesce(
+            public.try_date(corr.v ->> 'document_date'), good.document_date,
+            d.created_at::date) <= p_date_to)
+      and (
+        p_state is null
+        or (p_state = 'failed'     and last_try.analysis_status = 'failed')
+        or (p_state = 'to_verify'  and last_try.analysis_status = 'needs_review')
+        or (p_state = 'analyzed'   and last_try.analysis_status = 'completed')
+        -- «In elaborazione» è uno stato del DOCUMENTO, non dell'analisi: fra il
+        -- caricamento e la prima riga di analisi non esiste ancora nulla da
+        -- interrogare, ed è proprio il momento in cui una persona si chiede
+        -- dove sia finito il suo file.
+        or (p_state = 'processing' and d.status in ('extracting', 'analyzing', 'processing'))
+        or (p_state = 'none'       and last_try.id is null
+              and d.status not in ('extracting', 'analyzing', 'processing'))
+      )
+      and (
+        (select q from params) is null
+        or d.title ilike '%' || (select q_like from params) || '%'
+        or coalesce(d.original_filename, '') ilike '%' || (select q_like from params) || '%'
+        or coalesce(good.sender, '') ilike '%' || (select q_like from params) || '%'
+        or coalesce(good.subject, '') ilike '%' || (select q_like from params) || '%'
+        or coalesce(good.recipient, '') ilike '%' || (select q_like from params) || '%'
+        or coalesce(good.document_type, '') ilike '%' || (select q_like from params) || '%'
+        or coalesce(good.reference_numbers::text, '') ilike '%' || (select q_like from params) || '%'
+        or coalesce(corr.v::text, '') ilike '%' || (select q_like from params) || '%'
+        or exists (
+             select 1 from public.document_tag_links l
+             join public.document_tags g on g.id = l.tag_id and g.company_id = l.company_id
+             where l.document_id = d.id and l.company_id = d.company_id
+               and g.name ilike '%' || (select q_like from params) || '%'
+           )
+        or exists (
+             select 1 from public.document_extractions e
+             where e.document_id = d.id and e.company_id = d.company_id
+               and e.search_tsv @@ plainto_tsquery('simple'::regconfig, (select q from params))
+           )
+      )
+    order by
+      case when p_sort = 'oldest' then d.created_at end asc nulls last,
+      case when p_sort = 'title' then lower(d.title) end asc nulls last,
+      case when p_sort = 'document_date'
+           then coalesce(public.try_date(corr.v ->> 'document_date'), good.document_date) end desc nulls last,
+      case when p_sort = 'deadline'
+           then coalesce(public.try_date(corr.v ->> 'deadline'), good.deadline) end asc nulls last,
+      case when p_sort in ('oldest', 'title', 'document_date', 'deadline')
+           then null else d.created_at end desc nulls last,
+      -- Ultimo criterio SEMPRE presente: senza, due righe uguali possono
+      -- scambiarsi di posto fra una pagina e l'altra.
+      d.id desc
+    limit greatest(1, least(coalesce(p_limit, 25), 100))
+    offset greatest(0, coalesce(p_offset, 0))
+  )
+  select
+    b.id, b.title, b.original_filename, b.mime_type, b.file_size, b.storage_path,
+    b.source_type, b.status, b.page_count, b.created_at, b.archived_at,
+    b.category, b.category_source,
+    coalesce(b.good_id, b.try_id) as analysis_id,
+    b.try_status as analysis_status,
+    -- `coalesce` fino in fondo: senza analisi queste espressioni valgono NULL, e
+    -- un NULL che arriva al posto di un «no» diventa, nel browser, un «forse».
+    coalesce(b.try_status = 'failed' and b.good_id is not null, false) as last_attempt_failed,
+    b.try_error as error_code,
+    -- Valore EFFETTIVO: la correzione umana se c'è, altrimenti il dato
+    -- dell'analisi. Il valore originale dell'AI non viene toccato e resta
+    -- leggibile nel dettaglio: qui si mostra ciò che l'azienda ritiene vero.
+    coalesce(b.corrections ->> 'document_type', b.a_document_type) as document_type,
+    coalesce(b.corrections ? 'document_type', false) as document_type_corrected,
+    coalesce(b.corrections ->> 'sender', b.a_sender) as sender,
+    coalesce(b.corrections ? 'sender', false) as sender_corrected,
+    b.a_authority as sender_authority_type,
+    coalesce(public.try_date(b.corrections ->> 'document_date'), b.a_document_date) as document_date,
+    coalesce(public.try_date(b.corrections ->> 'deadline'), b.a_deadline) as deadline,
+    coalesce(b.corrections ? 'deadline', false) as deadline_corrected,
+    coalesce(b.a_deadline_verify, false) as deadline_requires_verification,
+    b.a_deadline_kind as deadline_kind,
+    b.a_appointment   as appointment_date,
+    coalesce(public.try_numeric(b.corrections ->> 'amount'), b.a_amount) as amount,
+    b.a_currency as amount_currency,
+    coalesce(b.corrections ? 'amount', false) as amount_corrected,
+    b.a_confidence as confidence,
+    coalesce(tg.v, '[]'::jsonb) as tags,
+    coalesce(tk.open_count, 0) as open_task_count,
+    coalesce(tk.all_count, 0) as task_count,
+    coalesce(em.n, 0) as email_count,
+    -- L'estratto si calcola SOLO sulle righe che si mostrano davvero, ed è
+    -- testo semplice: i due delimitatori li interpreta React costruendo
+    -- elementi, non inserendo HTML. Nel Document Hub non esiste markup
+    -- proveniente da un documento.
+    case
+      when (select q from params) is null then null
+      else (
+        -- I delimitatori sono fra virgolette perché l'elenco delle opzioni è
+        -- separato da virgole: un valore non quotato che contiene caratteri
+        -- speciali verrebbe interpretato male.
+        select ts_headline('simple'::regconfig, left(coalesce(e.full_text, ''), 500000),
+                 plainto_tsquery('simple'::regconfig, (select q from params)),
+                 'StartSel="[[", StopSel="]]", MaxWords=22, MinWords=8, MaxFragments=1')
+        from public.document_extractions e
+        where e.document_id = b.id and e.company_id = b.company_id
+          and e.search_tsv @@ plainto_tsquery('simple'::regconfig, (select q from params))
+        limit 1
+      )
+    end as snippet,
+    b.n_total as total_count
+  from base b
+  left join lateral (
+    select jsonb_agg(jsonb_build_object('id', g.id, 'name', g.name) order by g.name) as v
+    from public.document_tag_links l
+    join public.document_tags g on g.id = l.tag_id and g.company_id = l.company_id
+    where l.document_id = b.id and l.company_id = b.company_id
+  ) tg on true
+  left join lateral (
+    select
+      count(*) filter (where t.status <> 'completed' and t.archived_at is null) as open_count,
+      count(*) as all_count
+    from public.tasks t where t.document_id = b.id and t.company_id = b.company_id
+  ) tk on true
+  left join lateral (
+    select count(*) as n
+    from public.email_message_documents m
+    where m.document_id = b.id and m.company_id = b.company_id
+  ) em on true
+  -- Lo stesso ordine della selezione, espressione per espressione. Ordinare
+  -- l'esterno in modo diverso dall'interno vorrebbe dire scegliere venticinque
+  -- righe secondo un criterio e mostrarle secondo un altro: la pagina due non
+  -- verrebbe dopo la pagina uno.
+  order by
+    case when p_sort = 'oldest' then b.created_at end asc nulls last,
+    case when p_sort = 'title' then lower(b.title) end asc nulls last,
+    case when p_sort = 'document_date'
+         then coalesce(public.try_date(b.corrections ->> 'document_date'), b.a_document_date) end desc nulls last,
+    case when p_sort = 'deadline'
+         then coalesce(public.try_date(b.corrections ->> 'deadline'), b.a_deadline) end asc nulls last,
+    case when p_sort in ('oldest', 'title', 'document_date', 'deadline')
+         then null else b.created_at end desc nulls last,
+    b.id desc;
+$$;
+revoke all on function public.list_documents(uuid, text, public.document_category, boolean, public.document_source_type, text, uuid[], date, date, boolean, boolean, text, integer, integer, uuid) from public, anon;
+grant execute on function public.list_documents(uuid, text, public.document_category, boolean, public.document_source_type, text, uuid[], date, date, boolean, boolean, text, integer, integer, uuid) to authenticated;
+
+-- >>>>>>>>>>>>>>>>>>>>  0041_task_appointment  <<<<<<<<<<<<<<<<<<<<
+
+-- ============================================================================
+-- 0041 — UN'ATTIVITÀ PUÒ AVERE UN APPUNTAMENTO SENZA AVERE UN TERMINE
+--
+-- ⚠️⚠️ IL SEGUITO DELLA 0040. Là si è stabilito che la data di un sopralluogo
+-- non è una scadenza e le si è dato un posto suo sull'ANALISI. Restava scoperto
+-- il pezzo di mondo in cui il difetto si era manifestato davvero: le ATTIVITÀ.
+-- Dal sopralluogo del Comune di Lugano ne erano nate tre, tutte datate
+-- 10.09.2026, che è la data in cui il Comune si presenta — non il giorno entro
+-- cui l'azienda deve aver preparato i giustificativi.
+--
+-- Tolta quella data (2026-08-15), le tre attività sono diventate «Nessuna
+-- scadenza»: non mentivano più, e avevano perso un'informazione vera. Un lavoro
+-- che va fatto PRIMA del 10.09.2026 non è un lavoro senza tempo.
+--
+--   appointment_date   il giorno dell'evento a cui il lavoro si riferisce.
+--                      NON è un termine e non deve mai comportarsi come tale.
+--
+-- ⚠️ NON POPOLA LE FASCE DELLO SCADENZIARIO. «Entro 30 giorni», «In scadenza
+-- oggi», l'ordinamento per termine e il conto dei ritardi continuano a leggere
+-- SOLO "due_date". Se questa colonna vi entrasse anche solo per comodità di
+-- ordinamento, avremmo rifatto il difetto con un nome nuovo.
+--
+-- ⚠️ IL CALENDARIO RESTA FUORI, per scelta e non per dimenticanza.
+-- "calendar_tasks" seleziona, ordina e raggruppa per "due_date": farvi entrare
+-- gli appuntamenti vuol dire decidere come una casella-giorno mostri due
+-- generi di data, ed è una decisione sul calendario, non una correzione di
+-- questo difetto. Oggi quelle attività nel calendario non compaiono affatto —
+-- il che è corretto: non hanno un termine.
+--
+-- ⚠️ UNA COPIA, NON UNA SECONDA FONTE. Il valore arriva da
+-- "document_analyses.appointment_date" al momento in cui l'attività nasce, ed è
+-- una derivazione UNA TANTUM esattamente come "due_date" lo è già da
+-- "document_analyses.deadline": da lì in poi le due liste non si inseguono. È
+-- il disegno che questo prodotto ha scelto per le attività, non una deroga
+-- introdotta qui.
+-- ============================================================================
+
+alter table public.tasks add column if not exists appointment_date date;
+
+comment on column public.tasks.appointment_date is
+  'Giorno dell''evento a cui il lavoro si riferisce (sopralluogo, udienza, ritiro). NON è un termine: non entra nelle fasce dello scadenziario né nel conto dei ritardi.';
+
+-- Si cerca come si cerca un termine: per data.
+create index if not exists idx_tasks_appointment on public.tasks (appointment_date)
+  where appointment_date is not null;
+
+-- ---------------------------------------------------------------------------
+-- Il registro sorveglia anche questa data.
+--
+-- ⚠️ Se non la sorvegliasse, spostare un appuntamento sarebbe l'unico modo di
+-- cambiare quando un lavoro va fatto senza lasciare traccia — e le tre righe
+-- del Comune sono già state corrette una volta a mano.
+-- "create or replace" basta: la firma non cambia, il trigger resta agganciato.
+-- ---------------------------------------------------------------------------
+create or replace function public.audit_on_task_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_changes jsonb := '{}'::jsonb;
+begin
+  if new.title is distinct from old.title then
+    v_changes := v_changes || jsonb_build_object('title', public.audit_pair(old.title, new.title));
+  end if;
+  if new.status is distinct from old.status then
+    v_changes := v_changes || jsonb_build_object('status', public.audit_pair(old.status::text, new.status::text));
+  end if;
+  if new.priority is distinct from old.priority then
+    v_changes := v_changes || jsonb_build_object('priority', public.audit_pair(old.priority::text, new.priority::text));
+  end if;
+  if new.due_date is distinct from old.due_date then
+    v_changes := v_changes || jsonb_build_object('due_date', public.audit_pair(old.due_date::text, new.due_date::text));
+  end if;
+  if new.appointment_date is distinct from old.appointment_date then
+    v_changes := v_changes || jsonb_build_object('appointment_date', public.audit_pair(old.appointment_date::text, new.appointment_date::text));
+  end if;
+  if new.assignee_user_id is distinct from old.assignee_user_id then
+    v_changes := v_changes || jsonb_build_object('assignee', public.audit_pair(old.assignee_user_id::text, new.assignee_user_id::text));
+  end if;
+  if new.archived_at is distinct from old.archived_at then
+    v_changes := v_changes || jsonb_build_object('archived_at', public.audit_pair(old.archived_at::text, new.archived_at::text));
+  end if;
+
+  if v_changes = '{}'::jsonb then
+    return new;
+  end if;
+
+  perform public.audit_log_write(
+    new.company_id,
+    auth.uid(),
+    'task_updated'::public.audit_action,
+    'task'::public.audit_entity_type,
+    new.id,
+    v_changes,
+    new.id
+  );
+  return new;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- list_tasks — una colonna in più.
+--
+-- ⚠️ "drop" e non "create or replace": cambia la RETURNS TABLE. I permessi se
+-- ne vanno col drop e vanno riassegnati sotto — dimenticarlo lascerebbe muto
+-- l'elenco delle attività per chiunque.
+--
+-- ⚠️ NESSUN FILTRO E NESSUN ORDINAMENTO usa la colonna nuova: entra solo fra i
+-- valori restituiti. "p_view = 'overdue'", l'ordinamento per termine e il
+-- conteggio continuano a guardare "due_date", che è l'unica data che obbliga.
+-- ---------------------------------------------------------------------------
+drop function if exists public.list_tasks(uuid, text, public.task_status, public.task_priority, public.task_source, uuid, text, integer, integer);
+
+create or replace function public.list_tasks(
+  p_company_id  uuid,
+  p_view        text default 'todo',      -- todo | mine | overdue | completed | archived | all
+  p_status      public.task_status default null,
+  p_priority    public.task_priority default null,
+  p_source      public.task_source default null,
+  p_assignee    uuid default null,
+  p_search      text default null,
+  p_limit       integer default 25,
+  p_offset      integer default 0
+)
+returns table (
+  id uuid, company_id uuid, created_by uuid, document_id uuid, subsidy_case_id uuid,
+  title text, description text, authority text, due_date date, appointment_date date,
+  priority public.task_priority, status public.task_status, source public.task_source,
+  assignee_user_id uuid, completed_at timestamptz, completed_by uuid,
+  archived_at timestamptz, archived_by uuid, created_at timestamptz, updated_at timestamptz,
+  assignee_name text, email_message_id uuid, total_count bigint
+)
+language sql
+stable
+set search_path = ''
+as $$
+  with filtered as (
+    select t.*
+    from public.tasks t
+    where t.company_id = p_company_id
+      -- Le viste. «archived» è l'unica che mostra le archiviate: ovunque
+      -- altrove restano fuori, che è il senso dell'archiviazione.
+      and case p_view
+            when 'todo'      then t.status <> 'completed' and t.archived_at is null
+            when 'mine'      then t.assignee_user_id = auth.uid() and t.status <> 'completed' and t.archived_at is null
+            when 'overdue'   then t.status <> 'completed' and t.archived_at is null
+                                  and t.due_date is not null and t.due_date < current_date
+            when 'completed' then t.status = 'completed' and t.archived_at is null
+            when 'archived'  then t.archived_at is not null
+            else t.archived_at is null
+          end
+      and (p_status   is null or t.status = p_status)
+      and (p_priority is null or t.priority = p_priority)
+      and (p_source   is null or t.source = p_source)
+      and (p_assignee is null or t.assignee_user_id = p_assignee)
+      and (
+        p_search is null or btrim(p_search) = ''
+        or t.title ilike '%' || btrim(p_search) || '%'
+        or coalesce(t.description, '') ilike '%' || btrim(p_search) || '%'
+        or coalesce(t.authority, '') ilike '%' || btrim(p_search) || '%'
+      )
+  )
+  select
+    f.id, f.company_id, f.created_by, f.document_id, f.subsidy_case_id,
+    f.title, f.description, f.authority, f.due_date, f.appointment_date,
+    f.priority, f.status, f.source,
+    f.assignee_user_id, f.completed_at, f.completed_by,
+    f.archived_at, f.archived_by, f.created_at, f.updated_at,
+    nullif(btrim(coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), '') as assignee_name,
+    -- La comunicazione da cui nasce, quando il documento collegato viene dalla
+    -- posta. Non serve una colonna su `tasks`: la relazione esiste già.
+    (select d.email_message_id
+       from public.email_message_documents d
+      where d.document_id = f.document_id
+      order by d.created_at asc
+      limit 1) as email_message_id,
+    count(*) over () as total_count
+  from filtered f
+  left join public.profiles p on p.id = f.assignee_user_id
+  order by
+    -- 1. scadute
+    case when f.status <> 'completed' and f.due_date is not null and f.due_date < current_date
+         then 0 else 1 end,
+    -- 2. priorità alta
+    case f.priority when 'high' then 0 when 'medium' then 1 else 2 end,
+    -- 3. scadenza più vicina, 4. senza scadenza in fondo
+    f.due_date asc nulls last,
+    -- 5. a parità di tutto, le più recenti
+    f.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 25), 100))
+  offset greatest(0, coalesce(p_offset, 0));
+$$;
+revoke all on function public.list_tasks(uuid, text, public.task_status, public.task_priority, public.task_source, uuid, text, integer, integer) from public, anon;
+grant execute on function public.list_tasks(uuid, text, public.task_status, public.task_priority, public.task_source, uuid, text, integer, integer) to authenticated;
+
+-- >>>>>>>>>>>>>>>>>>>>  0042_calendar_appointments  <<<<<<<<<<<<<<<<<<<<
+
+-- ============================================================================
+-- 0042 — IL CALENDARIO SA CHE UN APPUNTAMENTO NON È UNA SCADENZA
+--
+-- ⚠️⚠️ IL TERZO PEZZO. La 0040 ha dato una natura alle date estratte, la 0041
+-- ha dato alle attività un appuntamento che non è un termine. Restava il
+-- calendario, che è il posto in cui un riferimento temporale dovrebbe vedersi
+-- più che altrove — e dove invece le tre attività del sopralluogo del Comune di
+-- Lugano non comparivano affatto, perché `calendar_tasks` selezionava,
+-- ordinava e raggruppava per "due_date" e loro non ne hanno.
+--
+-- ⚠️ LA DECISIONE CHE QUESTA MIGRAZIONE PRENDE, e va detta: una riga per
+-- (attività, genere di data). Un'attività che ha un termine il 5 e un
+-- sopralluogo il 10 compare DUE volte, una per giorno, ciascuna col proprio
+-- segno. Un calendario risponde a «che cosa succede questo giorno», e in quei
+-- due giorni succedono due cose vere e diverse. Sceglierne una avrebbe
+-- significato nascondere l'altra proprio nella schermata fatta per vederla.
+--
+--   on_date     il giorno in cui la riga va collocata
+--   date_kind   'deadline' | 'appointment' — PERCHÉ è finita in quel giorno
+--
+-- ⚠️ Il chiamante non deve dedurre il genere confrontando le date: lo riceve
+-- scritto. Dedurlo vorrebbe dire riscrivere questa scelta in ogni lettore, e
+-- due copie della stessa deduzione col tempo divergono.
+--
+-- ⚠️ GLI APPUNTAMENTI NON HANNO RITARDO, e la differenza sta nella clausola:
+-- il ramo dei termini raccoglie anche le scadute fuori finestra (è la ragione
+-- per cui "p_include_overdue" esiste), quello degli appuntamenti no. Un
+-- sopralluogo passato è passato, non mancato: tirarlo dentro la finestra come
+-- si fa con una scadenza lo trasformerebbe nell'allarme che non è.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Le attività del calendario, per giorno e per genere di data.
+--
+-- ⚠️ "drop" e non "create or replace": cambia la RETURNS TABLE. I permessi se
+-- ne vanno col drop e vanno riassegnati sotto.
+-- ---------------------------------------------------------------------------
+drop function if exists public.calendar_tasks(uuid, date, date, boolean, public.task_status, public.task_priority, uuid, boolean, integer);
+
+create or replace function public.calendar_tasks(
+  p_company_id      uuid,
+  p_from            date,
+  p_to              date,
+  p_mine            boolean default false,
+  p_status          public.task_status default null,
+  p_priority        public.task_priority default null,
+  p_assignee        uuid default null,
+  p_include_overdue boolean default true,
+  p_limit           integer default 500
+)
+returns table (
+  id uuid, title text, due_date date, appointment_date date,
+  on_date date, date_kind text,
+  priority public.task_priority, status public.task_status, source public.task_source,
+  assignee_user_id uuid, assignee_name text, document_id uuid
+)
+language sql
+stable
+set search_path = ''
+as $$
+  with base as (
+    select
+      t.id, t.title, t.due_date, t.appointment_date, t.priority, t.status, t.source,
+      t.assignee_user_id, t.document_id, t.created_at,
+      nullif(btrim(coalesce(p.first_name, '') || ' ' || coalesce(p.last_name, '')), '') as assignee_name
+    from public.tasks t
+    left join public.profiles p on p.id = t.assignee_user_id
+    where t.company_id = p_company_id
+      and t.archived_at is null
+      and (not coalesce(p_mine, false) or t.assignee_user_id = auth.uid())
+      and (p_status   is null or t.status = p_status)
+      and (p_priority is null or t.priority = p_priority)
+      and (p_assignee is null or t.assignee_user_id = p_assignee)
+  ),
+  placed as (
+    -- I TERMINI: la finestra, più le scadute che restano pertinenti.
+    select b.*, b.due_date as on_date, 'deadline'::text as date_kind
+    from base b
+    where b.due_date is not null
+      and (
+        (b.due_date >= p_from and b.due_date <= p_to)
+        -- ⚠️ "<=" e non "<". Il database vive in UTC, l'utente in Europe/Zurich:
+        -- alle 00:30 locali di giovedì, per Postgres è ancora mercoledì, e
+        -- un'attività scaduta mercoledì non rientrerebbe in "due_date <
+        -- current_date". Un giorno di margine costa una riga in più e chiude la
+        -- finestra. Qui si SELEZIONA soltanto: che cosa sia «in ritardo» lo
+        -- decide "isOverdue()" in taskFormat, la stessa funzione che usano
+        -- Attività e Panoramica. Due definizioni di «scaduta» sono due
+        -- schermate che prima o poi si contraddicono.
+        or (coalesce(p_include_overdue, true)
+            and b.status <> 'completed'
+            and b.due_date <= current_date)
+      )
+
+    union all
+
+    -- GLI APPUNTAMENTI: la finestra e basta. Nessun recupero del passato.
+    select b.*, b.appointment_date as on_date, 'appointment'::text as date_kind
+    from base b
+    where b.appointment_date is not null
+      and b.appointment_date >= p_from
+      and b.appointment_date <= p_to
+  )
+  select
+    u.id, u.title, u.due_date, u.appointment_date,
+    u.on_date, u.date_kind,
+    u.priority, u.status, u.source,
+    u.assignee_user_id, u.assignee_name, u.document_id
+  from placed u
+  order by u.on_date asc,
+    case u.priority when 'high' then 0 when 'medium' then 1 else 2 end,
+    u.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 500), 1000));
+$$;
+
+revoke all on function public.calendar_tasks(uuid, date, date, boolean, public.task_status, public.task_priority, uuid, boolean, integer) from public, anon;
+grant execute on function public.calendar_tasks(uuid, date, date, boolean, public.task_status, public.task_priority, uuid, boolean, integer) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- «Senza data» vuol dire senza NESSUNA delle due.
+--
+-- ⚠️ Il pannello che usa questo conteggio dice «N attività senza scadenza, non
+-- compaiono nel calendario» e rimanda ad Attività. Da adesso un'attività con un
+-- appuntamento nel calendario ci compare eccome: continuare a contarla qui
+-- farebbe dire alla stessa schermata due cose incompatibili, e quella scritta
+-- vincerebbe su quella disegnata.
+-- ---------------------------------------------------------------------------
+create or replace function public.calendar_undated_count(
+  p_company_id uuid,
+  p_mine       boolean default true
+)
+returns integer
+language sql
+stable
+set search_path = ''
+as $$
+  select count(*)::integer
+  from public.tasks t
+  where t.company_id = p_company_id
+    and t.archived_at is null
+    and t.due_date is null
+    and t.appointment_date is null
+    and t.status <> 'completed'
+    and (not coalesce(p_mine, false) or t.assignee_user_id = auth.uid());
+$$;
 

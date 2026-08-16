@@ -43,8 +43,8 @@ import { buildReminderEmail, createResendProvider } from '../supabase/functions/
 // invece di una sua imitazione.
 import { deliverEmails, generateReminders, type NotifyDeps } from '../supabase/functions/_shared/calendar/notify.ts';
 import {
-  MAX_PER_DAY, addDays, agendaGroups, buildMonthGrid, gridRange, groupByDay,
-  overdueItems, shiftMonth, shortTitle, todayISO,
+  MAX_PER_DAY, addDays, agendaGroups, buildMonthGrid, currentItems, gridRange, groupByDay,
+  groupKind, itemKey, overdueItems, shiftMonth, shortTitle, todayISO,
 } from '../src/features/calendar/calendarModel';
 import { badgeLabel, notificationLink, notificationTitleKey, relativeTime } from '../src/features/notifications/notificationFormat';
 // ⚠️ Si importa il modulo dei DEFAULT, non il service: quello tira dentro il
@@ -635,10 +635,23 @@ section('9 · Griglia del mese e agenda');
 }
 
 {
-  const item = (over: Partial<CalendarTaskItem>): CalendarTaskItem => ({
-    id: 'x', title: 'A', dueDate: '2026-08-31', priority: 'medium', status: 'open',
-    source: 'manual', assigneeUserId: null, assigneeName: null, documentId: null, ...over,
-  });
+  // ⚠️ `onDate` segue la data che colloca la riga: per un termine è la
+  // scadenza, per un appuntamento è l'appuntamento. Scriverlo a mano in ogni
+  // caso renderebbe facile una prova che passa su un dato incoerente.
+  const item = (over: Partial<CalendarTaskItem>): CalendarTaskItem => {
+    const base = {
+      id: 'x', title: 'A', dueDate: '2026-08-31' as string | null, appointmentDate: null as string | null,
+      dateKind: 'deadline' as 'deadline' | 'appointment', priority: 'medium' as const, status: 'open' as const,
+      source: 'manual' as const, assigneeUserId: null, assigneeName: null, documentId: null,
+    };
+    const merged = { ...base, ...over };
+    return {
+      ...merged,
+      onDate: over.onDate
+        ?? (merged.dateKind === 'appointment' ? merged.appointmentDate : merged.dueDate)
+        ?? '2026-08-31',
+    } as CalendarTaskItem;
+  };
   const items = [
     item({ id: '1', dueDate: '2026-08-31', priority: 'low', title: 'Zeta' }),
     item({ id: '2', dueDate: '2026-08-31', priority: 'high', title: 'Alfa' }),
@@ -670,6 +683,64 @@ section('9 · Griglia del mese e agenda');
   ok(!shortTitle('Trasmettere il rendiconto IVA del secondo trimestre').includes('trime'),
     '…senza tagliare a metà una parola');
   ok(shortTitle('Breve') === 'Breve', 'un titolo corto resta intero');
+
+  // ⚠️⚠️ GLI APPUNTAMENTI NEL CALENDARIO (0042). Le tre attività nate dal
+  // sopralluogo del Comune di Lugano non hanno un termine: fino alla 0042 nel
+  // calendario non comparivano affatto, cioè la schermata fatta per vedere
+  // «quando» taceva proprio su di loro.
+  const sopralluogo = item({
+    id: 's1', title: 'Preparare il formulario compilato',
+    dueDate: null, appointmentDate: '2026-09-10', dateKind: 'appointment',
+  });
+  const misti = [...items, sopralluogo];
+
+  ok(groupByDay(misti).get('2026-09-10')?.length === 1,
+    'un’attività col solo appuntamento entra nel calendario, nel giorno dell’evento');
+
+  // ⚠️⚠️ IL CASO CHE RENDE VERE QUESTE DUE PROVE, e la prima versione non lo
+  // era: con un'attività che ha SOLO l'appuntamento, `isOverdue` risponde già
+  // «no» per conto suo (la scadenza è nulla), quindi togliere il filtro sul
+  // genere non faceva cadere niente. Provato guastando la regola apposta.
+  //
+  // Il caso vero è un'attività con TUTTE E DUE: una scadenza già passata e un
+  // sopralluogo che deve ancora avvenire. Ne escono due righe che portano la
+  // stessa `dueDate` scaduta, e senza il filtro sul genere la riga
+  // dell'appuntamento verrebbe contata in ritardo insieme all'altra — l'evento
+  // del 10 settembre presentato come un termine mancato il 20 agosto.
+  const scadutaConEvento = { dueDate: '2026-08-20', appointmentDate: '2026-09-10' };
+  const rigaTermine = item({ id: 's2', ...scadutaConEvento, dateKind: 'deadline' });
+  const rigaEvento = item({ id: 's2', ...scadutaConEvento, dateKind: 'appointment' });
+
+  const inRitardo = overdueItems([rigaTermine, rigaEvento], oggi);
+  ok(inRitardo.length === 1 && inRitardo[0].dateKind === 'deadline',
+    'di un’attività scaduta CON un sopralluogo futuro, in ritardo è solo il termine',
+    inRitardo.map((t) => t.dateKind).join(', '));
+  ok(currentItems([rigaTermine, rigaEvento], oggi).some((t) => t.dateKind === 'appointment'),
+    'e il sopralluogo resta disegnato nella sua casella, invece di sparire dalla griglia col termine');
+  // CONTROPROVA: senza l'appuntamento, quella stessa data è scaduta e basta.
+  ok(overdueItems([rigaTermine], oggi).length === 1,
+    'CONTROPROVA: il termine scaduto è scaduto eccome');
+
+  // ⚠️ LA STESSA ATTIVITÀ IN DUE GIORNI: un termine il 5 e un sopralluogo il
+  // 10 sono due fatti veri, ciascuno nel suo giorno. Le chiavi devono
+  // distinguerli, o React ne disegnerebbe uno solo.
+  const dueVolte = [
+    item({ id: 'd1', dueDate: '2026-09-05', appointmentDate: '2026-09-10', dateKind: 'deadline' }),
+    item({ id: 'd1', dueDate: '2026-09-05', appointmentDate: '2026-09-10', dateKind: 'appointment' }),
+  ];
+  const g = groupByDay(dueVolte);
+  ok(g.get('2026-09-05')?.length === 1 && g.get('2026-09-10')?.length === 1,
+    'la stessa attività compare nel giorno del termine E in quello dell’appuntamento');
+  ok(itemKey(dueVolte[0]) !== itemKey(dueVolte[1]),
+    'e le due righe hanno chiavi diverse, altrimenti una sparirebbe');
+
+  // La testata del giorno porta il segno giusto.
+  ok(groupKind([sopralluogo]) === 'appointment',
+    'una giornata di soli appuntamenti si dichiara tale');
+  ok(groupKind([sopralluogo, rigaTermine]) === 'deadline',
+    'ma basta UN termine perché la giornata sia una giornata di termini');
+  ok(groupKind([]) === 'deadline',
+    'e una giornata vuota non inventa un appuntamento');
 }
 
 // ===========================================================================

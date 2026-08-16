@@ -227,6 +227,12 @@
 /* Un'attività conclusa resta visibile — vedere che una cosa è stata fatta ha
    valore — ma non compete con ciò che c'è ancora da fare. */
 .cal-item.is-done { opacity: .6; text-decoration: line-through; }
+/* ⚠️ UN APPUNTAMENTO NON HA IL BORDO PIENO DI UN TERMINE. Nella casella del
+   mese non c'è spazio per la parola «Appuntamento» — c'è un filetto e basta —
+   quindi la differenza la porta la FORMA del filetto: tratteggiato, come tutto
+   ciò che in questo prodotto non è un fatto duro. Il colore resta quello della
+   priorità, perché la priorità è un'altra domanda. */
+.cal-item.is-appt { border-left-style: dashed; }
 .cal-more {
   display: flex; align-items: center; width: 100%; min-height: 24px; padding: 0 var(--sp-1);
   border: 0; border-radius: var(--radius-sm); background: transparent;
@@ -279,6 +285,13 @@
   .cal-item.p-high { background: var(--red); }
   .cal-item.p-medium { background: var(--amber-fill); }
   .cal-item.p-low { background: var(--green-fill); }
+  /* Da telefono la barra è alta cinque pixel e il tratteggio non si vede: qui
+     la differenza è PIENO contro VUOTO, che regge anche a quella dimensione e
+     non dipende dal colore. */
+  .cal-item.is-appt { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent-line); }
+  .cal-item.is-appt.p-high { background: transparent; box-shadow: inset 0 0 0 1.5px var(--red); }
+  .cal-item.is-appt.p-medium { background: transparent; box-shadow: inset 0 0 0 1.5px var(--amber-fill); }
+  .cal-item.is-appt.p-low { background: transparent; box-shadow: inset 0 0 0 1.5px var(--green-fill); }
   .cal-more { font-size: var(--fs-label); }
   .bell-panel { width: calc(100vw - 28px); }
 }

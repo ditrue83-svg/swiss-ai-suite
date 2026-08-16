@@ -12,7 +12,7 @@
 // Nessuna rete, nessuna credenziale: sono regole, e le regole si provano.
 // ============================================================================
 import {
-  calendarDaysUntil, compareTasks, dueLabel, eventLabelKey, isOverdue,
+  calendarDaysUntil, compareTasks, dueLabel, eventLabelKey, isOverdue, taskDateKind,
   sortTasks, sourceLabelKey, statusLabelKey, stepsFromActions,
 } from '../src/features/tasks/taskFormat';
 import {
@@ -32,7 +32,7 @@ const section = (title: string) => console.log(`\n${B}${title}${X}`);
 const task = (over: Partial<Task> = {}): Task => ({
   id: over.id ?? 'x', companyId: 'c', createdBy: null, documentId: null, subsidyCaseId: null,
   title: over.title ?? 'Attività', description: null, authority: null,
-  dueDate: null, priority: 'medium', status: 'open', source: 'manual',
+  dueDate: null, appointmentDate: null, priority: 'medium', status: 'open', source: 'manual',
   assigneeUserId: null, completedAt: null, completedBy: null,
   archivedAt: null, archivedBy: null,
   createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
@@ -87,6 +87,32 @@ section('3 · In ritardo');
   ok(!isOverdue(task({ dueDate: null }), today), 'senza scadenza non si è in ritardo');
   ok(isOverdue(task({ dueDate: '2026-03-09', status: 'waiting' }), today),
     'in attesa di terzi ma scaduta: resta in ritardo, perché il termine è passato comunque');
+
+  // ⚠️⚠️ UN APPUNTAMENTO PASSATO NON È UN RITARDO. Il sopralluogo del Comune di
+  // Lugano si è tenuto o no: in nessuno dei due casi l'azienda ha «mancato un
+  // termine», perché quel termine non è mai stato scritto da nessuno. Se questa
+  // cadesse, la data dell'evento sarebbe tornata a comportarsi come una
+  // scadenza — con un nome nuovo e lo stesso difetto.
+  ok(!isOverdue(task({ dueDate: null, appointmentDate: '2026-03-01' }), today),
+    'un APPUNTAMENTO passato non mette in ritardo: non era un termine');
+  ok(dueLabel(task({ dueDate: null, appointmentDate: '2026-03-01' }).dueDate).key === 'tasks.dueNone',
+    'e la frase del termine continua a dire «nessuna scadenza», perché è vero');
+}
+
+// ===========================================================================
+section('3-bis · Quale data occupa lo slot della riga');
+// ===========================================================================
+{
+  ok(taskDateKind(task({ dueDate: '2026-03-11', appointmentDate: null })) === 'deadline',
+    'con un termine si mostra il termine');
+  ok(taskDateKind(task({ dueDate: null, appointmentDate: '2026-09-10' })) === 'appointment',
+    'senza termine ma con un appuntamento si mostra l’appuntamento — «Nessuna scadenza» sarebbe monco');
+  // ⚠️ LA COPPIA che tiene l'ordine: quando ci sono ENTRAMBE vince il termine,
+  // perché è la data che obbliga. L'appuntamento resta nel dettaglio.
+  ok(taskDateKind(task({ dueDate: '2026-03-11', appointmentDate: '2026-09-10' })) === 'deadline',
+    'con tutte e due vince il TERMINE: è l’unica che obbliga');
+  ok(taskDateKind(task({ dueDate: null, appointmentDate: null })) === 'deadline',
+    'senza nessuna delle due resta lo slot del termine, che dirà «nessuna scadenza»');
 }
 
 // ===========================================================================

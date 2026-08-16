@@ -24,8 +24,9 @@ import { toUserMessage } from '@/lib/errors';
 import { useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
-import { dueLabel, sourceLabelKey } from './taskFormat';
+import { dueLabel, sourceLabelKey, taskDateKind } from './taskFormat';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
+import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { StatusMark } from '@/components/ui/StatusMark';
 import { PriorityMark } from '@/components/ui/PriorityMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
@@ -318,9 +319,20 @@ function TaskRow({ task, assigneeName }: { task: TaskWithPeople; assigneeName: s
       {/* ⚠️ Un'attività CONCLUSA non è «in ritardo» (regola di isOverdue): la
           sua scadenza passata torna testo muto, non un segno rosso che chiede
           attenzione per un lavoro già fatto. */}
+      {/* ⚠️⚠️ LO SLOT DELLA DATA NE OSPITA UNA SOLA, E VINCE IL TERMINE.
+          Un'attività con una scadenza mostra la scadenza: è la data che
+          obbliga, quella da cui dipendono ritardo e urgenza. Solo quando non
+          c'è alcun termine lo slot dice l'altra cosa vera che sappiamo — «va
+          fatto prima del 10.09.2026» — con un segno che non si può scambiare
+          per una scadenza. Senza, quelle tre attività direbbero «Nessuna
+          scadenza», che è vero e monco: sembrerebbero lavoro senza tempo.
+          Quando ci sono entrambe, l'appuntamento resta nel dettaglio: quattro
+          segni in una riga non si leggono più. */}
       {task.status === 'completed'
         ? <span className="muted-sm">{t(due.key, due.params)}</span>
-        : <DeadlineMark date={task.dueDate} />}
+        : taskDateKind(task) === 'deadline'
+          ? <DeadlineMark date={task.dueDate} />
+          : <AppointmentMark date={task.appointmentDate} />}
     </Link>
   );
 }

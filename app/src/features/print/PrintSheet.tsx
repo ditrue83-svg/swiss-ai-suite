@@ -25,6 +25,16 @@ export interface PrintSheetProps {
   facts?: { labelKey: TKey; value: string | null | undefined }[];
   /** Scadenza già formattata, con la chiave del suo tipo. */
   deadline?: { value: string; kindKey: TKey | null } | null;
+  /**
+   * Appuntamento già formattato: il giorno in cui l'evento accade.
+   *
+   * ⚠️ Una riga SUA e non `deadline`: in un fascicolo stampato la confusione
+   * non si può più correggere, e questo foglio finisce in mano a qualcuno che
+   * il documento originale non ce l'ha davanti. ⚠️ E si stampa: da quando la
+   * data di un sopralluogo non è più una scadenza (0040), senza questa riga
+   * l'unica data del documento sparirebbe dal foglio in silenzio.
+   */
+  appointment?: { value: string } | null;
   /** Importi già formattati, con la chiave del loro tipo. */
   amounts?: { display: string; typeKey: TKey | null; description?: string | null }[];
   /** Azioni divise per provenienza (vedi `splitActions`). */
@@ -39,7 +49,7 @@ export interface PrintSheetProps {
 }
 
 export function PrintSheet({
-  title, facts = [], deadline = null, amounts = [], actions = null,
+  title, facts = [], deadline = null, appointment = null, amounts = [], actions = null,
   citations = [], toVerify = [], sources = [], footer,
 }: PrintSheetProps) {
   const t = useT();
@@ -61,7 +71,7 @@ export function PrintSheet({
         </>
       )}
 
-      {(deadline || amounts.length > 0) && (
+      {(deadline || appointment || amounts.length > 0) && (
         <>
           <h3>{t('print.section.deadlineAndAmounts')}</h3>
           {deadline && (
@@ -71,6 +81,14 @@ export function PrintSheet({
                   verificare» stampata come una data qualunque diventa un
                   termine accertato dentro un fascicolo. */}
               <dd>{deadline.value}{deadline.kindKey ? ` — ${t(deadline.kindKey)}` : ''}</dd>
+            </dl>
+          )}
+          {appointment && (
+            <dl className="print-kv">
+              <dt>{t('print.appointment.label')}</dt>
+              {/* La parola «non è un termine» accanto alla data, come il tipo
+                  accanto alla scadenza: su carta non c'è modo di chiedere. */}
+              <dd>{appointment.value} — {t('print.appointment.note')}</dd>
             </dl>
           )}
           {amounts.map((a, i) => (
