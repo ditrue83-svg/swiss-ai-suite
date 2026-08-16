@@ -1208,12 +1208,29 @@ valori, lo stesso predefinito — e che `theme-color` corrisponda a `--card`,
 **confrontato numericamente**, perché il token è in `hsl()` e il meta in
 esadecimale.
 
-⛔ **APERTO — la vetrina non segue ancora questa decisione.** `~/ai-swisse-landing`
-serve il suo tema scuro su `prefers-color-scheme`: un visitatore con il portatile
-in tema scuro vede il sito scuro e, appena entrato, l'app chiara — il salto che
-`sync-tokens.mjs` esiste per evitare. Allinearla è una riga in quello script, ma
-cambia ciò che vede il pubblico: è una decisione del titolare. La divergenza è
-dichiarata nel commento della funzione.
+✅ **CHIUSO — anche la vetrina ha il chiaro come predefinito.** La divergenza è
+durata poche ore: `~/ai-swisse-landing`, branch `improve/vetrina-base-chiara`
+(commit `fdd178b`, **non pubblicato**). I due blocchi scuri — quello generato in
+`tokens.css` e i due valori propri in `style.css` — passano a
+`:root[data-theme="dark"]`, la stessa forma dell'app; `theme-color` diventa una
+sola dichiarazione e compare `color-scheme`. La vetrina è statica e senza
+JavaScript, quindi **nessuno scrive mai quell'attributo**: il tema scuro resta
+scritto per intero e allineato all'app, e dormiente. Non si cancella un tema, si
+smette di accenderlo.
+
+⚠️ **E ora esiste un controllo**, perché la vetrina non ha una suite: se
+`style.css` o `build.mjs` tornano ad agganciare il tema a `prefers-color-scheme`,
+`node sync-tokens.mjs --check` esce 1. Guarda le regole e non la prosa — in tutte
+e tre le forme di commento, `/* */`, `//` e `<!-- -->`, perché entrambi i file
+SPIEGANO perché quella media query è stata tolta e il controllo si accendeva
+sulla propria documentazione.
+
+Verificato sul sito costruito con il sistema in tema scuro: **zero** regole
+`prefers-color-scheme` nel CSS servito, un solo `theme-color`, `--bg` e `--card`
+chiari, `color-scheme: light`. Delle 13 sezioni ne restano scure 4 — eroe,
+limiti, richiamo finale, piè di pagina — e sono i campi navy voluti dal disegno,
+scuri anche nel tema chiaro. ⚠️ Il pannello del browser non fotografa una pagina
+lunga: le sezioni sono state **lette**, non guardate.
 
 ⚠️ **Trovato risincronizzando i token, e corretto: la vetrina si era rotta in
 cinque punti.** `--surface-2` è stato rinominato `--fill-subtle` nell'app l'11
