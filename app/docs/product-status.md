@@ -1232,15 +1232,29 @@ limiti, richiamo finale, piè di pagina — e sono i campi navy voluti dal diseg
 scuri anche nel tema chiaro. ⚠️ Il pannello del browser non fotografa una pagina
 lunga: le sezioni sono state **lette**, non guardate.
 
-⚠️ **Trovato risincronizzando i token, e corretto: la vetrina si era rotta in
-cinque punti.** `--surface-2` è stato rinominato `--fill-subtle` nell'app l'11
-agosto, e da allora `tokens.css` era disallineato (`--check` lo diceva già prima
-di questo lavoro). Alla risincronizzazione `--surface-2` è tornato con il suo
-significato NUOVO — un livello di superficie, `transparent` — mentre `style.css`
-lo usava ancora come riempimento pieno in cinque regole: i riquadri delle icone
-sarebbero diventati invisibili. Non è un token fantasma, ed è peggio: un token
-che esiste e vale un'altra cosa. Corretto in `var(--fill-subtle)` e verificato
-sul sito costruito (fondo da `transparent` a `rgb(42, 50, 60)`).
+⚠️⚠️ **IL SUO SPECCHIO ERA STANTIO, E IL LAVORO SULLA VETRINA È STATO RIFATTO
+SUL `site/` VERO.** La vetrina si lavora in `~/ai-swisse-landing`, che è uno
+specchio senza remote come quello dell'app — ma a differenza di quello **era
+rimasto indietro rispetto a `site/` del monorepo**: gli mancavano la correzione
+di `--surface-2` → `--fill-subtle` (PR #34/#35, 11 agosto), l'esclusione
+deliberata della `font-family` da `sync-tokens.mjs` e la riga `font-family` sul
+`:root` di `style.css`. Rigiocare quello specchio dentro `site/` avrebbe
+**cancellato tre correzioni già pubblicate**. Le modifiche sono quindi state
+riscritte a mano sul file vero.
+
+Il difetto dei cinque riquadri — `--surface-2` usato come riempimento dopo che
+il nome era passato a significare un livello di superficie `transparent` — era
+**reale ma già chiuso in produzione dall'11 agosto**: qui si è ripetuto solo
+nello specchio. Vale però la lezione, ed è nuova: **prima di lavorare su
+`~/ai-swisse-landing`, confrontarlo con `~/swiss-ai-suite-repo/site`.** Lo
+specchio dell'app è allineato, quello della vetrina no.
+
+⚠️ **E la divergenza ha prodotto un disegno migliore.** Sullo specchio avevo
+fatto portare `color-scheme` a `sync-tokens.mjs`; sul file vero non serve, e non
+si deve: lì è dichiarato che lo script sincronizza i TOKEN e non le altre
+dichiarazioni — la volta che ne portò una (`font-family`) la pubblicazione della
+vetrina restò ferma due giorni. `color-scheme: light` sta quindi in `style.css`,
+accanto a `--ms-font`, dove la vetrina tiene le proprie scelte.
 
 ✅ **CHIUSO — il pallino delle notifiche raggiunge AA, e con lui tutta la
 famiglia.** Era testo di 12px in grassetto su `--red`: **3,78:1 in chiaro**,

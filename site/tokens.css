@@ -16,6 +16,14 @@
 
    La documentazione delle scelte sta in docs/design-system.md del progetto
    principale.
+
+   ⚠️ IL TEMA CHIARO È IL PREDEFINITO, E NON SEGUE PIÙ IL SISTEMA OPERATIVO.
+   Fino al 2026-08-16 il blocco scuro era `@media (prefers-color-scheme: dark)`:
+   chi arrivava con il portatile in tema scuro vedeva il sito scuro e, appena
+   entrato, l'applicazione chiara — il salto che questo file esiste per evitare.
+   Ora è `:root[data-theme="dark"]`, esattamente come nell'app, e siccome la
+   vetrina è fatta di file statici senza JavaScript nessuno scrive mai
+   quell'attributo: il tema scuro resta scritto per intero e DORMIENTE.
    ========================================================================== */
 :root {
 
@@ -113,6 +121,19 @@
      stata svolta. Restano separati dal colore d'azione, così un pulsante non
      compete mai con un avviso. (Valori invariati in questo passo: vanno
      ritoccati insieme ai componenti che li usano, non prima.) */
+  /* ⚠️ I DUE ROSSI FANNO DUE MESTIERI, e confonderli costa una soglia.
+     `--red` è il rosso che si RICONOSCE: barre, pallini, bordi, riempimenti —
+     posti dove non c'è testo sopra, e dove serve che salti all'occhio.
+     `--red-dark` è il rosso che porta CONTRASTO, e le sue due parti sono
+     simmetriche: inchiostro rosso su una superficie chiara, e superficie rossa
+     sotto `--on-accent`. Sono lo stesso requisito — la massima distanza dal
+     neutro della pagina — e si ribaltano insieme quando il tema si ribalta,
+     che è la ragione per cui basta un token e non ne servono due.
+     ⚠️ Fino al 2026-08-16 il pallino delle notifiche scriveva sopra `--red`:
+     3,78:1 in chiaro, sotto AA da sempre. Con `--red-dark` fa 5,83 · 7,34 · 21
+     nei tre temi. Un colore che deve essere leggibile e un colore che deve
+     essere riconoscibile non sono lo stesso colore — la stessa lezione che
+     ambra e verde avevano già insegnato con il marrone della barra «Media». */
   --red: hsl(0, 84%, 60%);
   --red-soft: hsl(0, 84%, 96%);
   --red-line: hsl(0, 84%, 86%);
@@ -181,8 +202,12 @@
   --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Dormiente sulla vetrina: nessuno scrive data-theme su file statici senza
+   JavaScript. Resta scritto per intero e allineato all'app — non si cancella un
+   tema, si smette di accenderlo. Vedi la testata.
+   (Niente apici inversi in questo blocco: vive dentro una stringa template e
+   un apice inverso la chiude, con un errore di sintassi che non nomina il CSS.) */
+:root[data-theme="dark"] {
 
     /* Fondo e superficie distanziati di 8 punti di luminosità: le schede si
        staccano dalla pagina. Il bordo delle schede è decorativo e non deve
@@ -210,7 +235,11 @@
     --red-soft: hsl(0, 35%, 17%);
     --red-line: hsl(0, 32%, 30%);
     --red-hover: hsl(0, 35%, 23%);
-    --red-dark: hsl(0, 75%, 74%);       /* è il colore del TESTO: in scuro schiarisce */
+    /* Il rosso che porta CONTRASTO: in scuro schiarisce, perché il neutro da
+       cui deve staccarsi è diventato scuro. Vale per entrambe le sue parti —
+       inchiostro sulla scheda (6,56:1) e superficie sotto `--on-accent`, che
+       qui è inchiostro scuro (7,34:1). */
+    --red-dark: hsl(0, 75%, 74%);
 
     --green: hsl(151, 45%, 62%);
     --green-soft: hsl(151, 30%, 14%);
@@ -243,5 +272,4 @@
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
 
     --focus: hsl(207, 80%, 66%);
-  }
 }

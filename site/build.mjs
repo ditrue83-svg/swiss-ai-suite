@@ -199,8 +199,17 @@ function head(locale, { title, description, canonical, extraLd, legalKey }) {
     <meta name="twitter:image" content="${SITE_URL}/og.png" />
     <!-- Lo stesso accento dell'applicazione, hsl(207 88% 39%): era rimasto un
          blu diverso, scritto a mano quando i token vivevano in due copie. -->
-    <meta name="theme-color" content="#0b6bc0" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <!-- UNA SOLA DICHIARAZIONE, SENZA attributo media, dal 2026-08-16. Erano
+         due, legate a prefers-color-scheme: da quando il chiaro è il
+         predefinito, la seconda avrebbe fatto seguire al telefono il SISTEMA
+         mentre la pagina segue sé stessa — barra scura sopra un sito chiaro.
+         È la stessa correzione fatta in app/index.html.
+         Il meta color-scheme serve nell'istante prima che il foglio di stile
+         arrivi; style.css lo ridichiara sul :root.
+         ⚠️ Niente apici inversi qui dentro: questo commento vive in una stringa
+         template, e un apice inverso la chiude. -->
+    <meta name="theme-color" content="#0b6bc0" />
+    <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href="${p}favicon.svg" />
     <link rel="preload" href="${p}fonts/inter-tight-var-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="${p}style.css" />${extraLd ? `\n    <script type="application/ld+json">${extraLd}</script>` : ''}`;

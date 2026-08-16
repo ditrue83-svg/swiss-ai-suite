@@ -62,12 +62,20 @@ function rootBlock(text) {
   return blockAt(text, m.index + m[0].length - 1);
 }
 
-/** Il `:root` dentro `@media (prefers-color-scheme: dark)`: la variante scura. */
+/**
+ * La variante scura dei token.
+ *
+ * ⚠️ DAL 2026-08-16 NON È PIÙ UNA MEDIA QUERY. Nell'app il tema ha smesso di
+ * seguire il sistema operativo — il predefinito è chiaro perché l'aspetto del
+ * prodotto è una decisione di prodotto — e il blocco scuro è diventato
+ * `:root[data-theme="dark"]`. Cercando ancora `@media (prefers-color-scheme:
+ * dark)` questo script si fermava con «blocco del tema scuro non trovato»: non
+ * inventava nulla, il che è giusto, ma non sincronizzava più niente.
+ */
 function darkRootBlock(text) {
-  const m = /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{/.exec(text);
-  if (!m) throw new Error('blocco del tema scuro non trovato');
-  const inside = blockAt(text, m.index + m[0].length - 1);
-  return rootBlock(inside);
+  const m = /(^|\n)[ \t]*:root\[data-theme="dark"\]\s*\{/.exec(text);
+  if (!m) throw new Error('blocco del tema scuro (:root[data-theme="dark"]) non trovato');
+  return blockAt(text, m.index + m[0].length - 1);
 }
 
 // ----------------------------------------------------------------------------
@@ -165,15 +173,26 @@ const out = `/* ================================================================
 
    La documentazione delle scelte sta in docs/design-system.md del progetto
    principale.
+
+   ⚠️ IL TEMA CHIARO È IL PREDEFINITO, E NON SEGUE PIÙ IL SISTEMA OPERATIVO.
+   Fino al 2026-08-16 il blocco scuro era \`@media (prefers-color-scheme: dark)\`:
+   chi arrivava con il portatile in tema scuro vedeva il sito scuro e, appena
+   entrato, l'applicazione chiara — il salto che questo file esiste per evitare.
+   Ora è \`:root[data-theme="dark"]\`, esattamente come nell'app, e siccome la
+   vetrina è fatta di file statici senza JavaScript nessuno scrive mai
+   quell'attributo: il tema scuro resta scritto per intero e DORMIENTE.
    ========================================================================== */
 :root {
 ${light}
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Dormiente sulla vetrina: nessuno scrive data-theme su file statici senza
+   JavaScript. Resta scritto per intero e allineato all'app — non si cancella un
+   tema, si smette di accenderlo. Vedi la testata.
+   (Niente apici inversi in questo blocco: vive dentro una stringa template e
+   un apice inverso la chiude, con un errore di sintassi che non nomina il CSS.) */
+:root[data-theme="dark"] {
 ${dark}
-  }
 }
 `;
 
@@ -203,6 +222,36 @@ if (/font-family\s*:/.test(visibile)) {
   console.error('\n  Estrazione non valida: è entrata una font-family.');
   console.error('  La vetrina compone in Inter Tight — vedi IL CARATTERE NON PASSA DI QUI.\n');
   process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
+// ⚠️ IL TEMA NON DEVE TORNARE AD AGGANCIARSI AL SISTEMA OPERATIVO.
+//
+// `tokens.css` è generato e quindi non può divergere. `style.css` e `build.mjs`
+// sono scritti a mano, e lì una `@media (prefers-color-scheme: dark)` rimessa
+// per abitudine riaprirebbe in silenzio il difetto che questo file esiste per
+// chiudere: sito scuro e applicazione chiara sulla stessa macchina. `site.yml`
+// gira su push di main e chiama questo comando: è l'unico posto che c'è.
+//
+// I COMMENTI NON CONTANO, in tutte e TRE le forme — `/* */`, `//` e `<!-- -->`.
+// Entrambi i file SPIEGANO perché quella media query è stata tolta, e citarla è
+// il modo giusto di documentarlo: senza togliere anche i commenti HTML (che in
+// `build.mjs` vivono dentro stringhe template) il controllo si accenderebbe
+// sulla propria documentazione, e si chiuderebbe cancellando la frase.
+// ---------------------------------------------------------------------------
+const senzaCommenti = (s) => s
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/<!--[\s\S]*?-->/g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
+for (const f of ['style.css', 'build.mjs']) {
+  const percorso = join(ROOT, f);
+  if (!existsSync(percorso)) continue;
+  if (/prefers-color-scheme/.test(senzaCommenti(readFileSync(percorso, 'utf8')))) {
+    console.error(`\n  ${f} aggancia ancora il tema a prefers-color-scheme.`);
+    console.error('  Il chiaro è il predefinito della vetrina come dell\'app: lo scuro si accende');
+    console.error('  su :root[data-theme="dark"], e sulla vetrina statica resta dormiente.\n');
+    process.exit(1);
+  }
 }
 
 if (checkOnly) {

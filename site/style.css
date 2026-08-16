@@ -57,6 +57,18 @@
   --ms-font: 'Inter Tight', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-family: var(--ms-font);
 
+  /* ⚠️ Anche questa riga sta QUI e non nel file generato, per la stessa ragione
+     del carattere: `sync-tokens.mjs` porta i token, non le dichiarazioni che
+     non sono token — la volta che ne portò una, la pubblicazione della vetrina
+     restò ferma due giorni.
+     Che cosa fa: veste i controlli che disegna il BROWSER — barra di
+     scorrimento, tendine, campi — che altrimenti seguirebbero il sistema
+     operativo. Da quando il chiaro è il predefinito, senza di essa una macchina
+     in tema scuro mostrerebbe una barra di scorrimento nera lungo una pagina
+     bianca. Una parola sola, non `light dark`: dichiararne due rimetterebbe la
+     scelta al sistema, che è il punto da cui si è partiti. */
+  color-scheme: light;
+
   /* Scala tipografica del manifesto: il salto H1/corpo è ~4:1, contro il
      2:1 della scala applicativa. */
   --ms-fs-h1: clamp(2.75rem, 6vw, 4.5rem);      /* 44 → 72px */
@@ -126,11 +138,14 @@
      po' del colore della pagina. */
   --ms-shadow: 0 1px 2px rgba(11, 26, 46, 0.07), 0 16px 40px -12px rgba(11, 26, 46, 0.16);
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ms-well: hsl(213, 28%, 9%);
-    --ms-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 20px 48px -12px rgba(0, 0, 0, 0.6);
-  }
+/* I due valori che la vetrina ha in proprio e che il tema scuro cambierebbe.
+   ⚠️ Dal 2026-08-16 non è più `@media (prefers-color-scheme: dark)`: il chiaro è
+   il predefinito anche qui, e lo scuro si accende su `data-theme` come nell'app.
+   La vetrina è statica e nessuno scrive quell'attributo, quindi questo blocco
+   resta DORMIENTE — allineato, non cancellato. */
+:root[data-theme="dark"] {
+  --ms-well: hsl(213, 28%, 9%);
+  --ms-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 20px 48px -12px rgba(0, 0, 0, 0.6);
 }
 
 /* ---------- base ---------- */
