@@ -1153,6 +1153,91 @@ colonna `text`. Marcare da `task.source` scriverebbe «suggerimento» su azioni
 richieste nero su bianco. Il divario è dichiarato dal 2026-08-13 e resta;
 chiuderlo richiede una **migrazione**.
 
+## La base chiara è il predefinito — 2026-08-16, NON ancora deployato
+
+Il §60 chiedeva base chiara, navy, accento azzurro. L'app deployata appariva
+scura, e la diagnosi ha corretto la premessa: **l'app non era scura, seguiva il
+sistema operativo di chi guardava.** La palette chiara era già la definizione
+canonica — 45 token nel `:root` nudo, zero buchi, contrasti AA già misurati — e
+il tema scuro un `@media (prefers-color-scheme: dark)` che ne riscriveva 36.
+Non c'era un tema da costruire: c'era una decisione da dichiarare.
+
+Ora il predefinito è chiaro **sempre**, e la preferenza a tre stati — Chiaro ·
+Scuro · Segui il sistema — sta accanto alla lingua, dove il prodotto tiene già
+le impostazioni personali.
+
+| | Stato al 2026-08-16 |
+|---|---|
+| Implementato | sì — `lib/theme.ts`, `ui/ThemeSwitcher.tsx`, `app.css` (blocco scuro su `:root[data-theme="dark"]`, `color-scheme` nei due temi), `index.html` (script in linea, meta), `extra.css`, i tre dizionari |
+| Deployato | **no** — branch locale, nessuna PR aperta |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 187 (sezione 11 nuova, 19 asserzioni), `test:print-unit` 64, `design:lint` 34 casi d'autoverifica. Ogni controllo nuovo provato sul rosso che deve dare |
+| Provato contro la cosa reale | **in parte.** Le **6 combinazioni** (tre preferenze × sistema chiaro e scuro) provate a schermo sul banco che monta la testata VERA di `index.html`: in tutte e sei il tema è già corretto quando il `<head>` finisce di essere analizzato. ⚠️ L'app vera dietro autenticazione non è stata aperta |
+| Disponibile a clienti esterni | no — non deployato |
+
+⚠️⚠️ **IL DIFETTO CHE QUESTO LAVORO STAVA PER INTRODURRE, e che nessuno aveva
+previsto.** Finché il tema scuro era `@media (prefers-color-scheme: dark) {
+:root { … } }`, il suo selettore era `:root` — specificità (0,1,0), **identica**
+a quella del blocco di stampa — e bastava tenere la stampa in fondo al file
+perché vincesse. Passando a `:root[data-theme="dark"]` la specificità sale a
+(0,2,0) e **vince su `:root` dovunque stia nel file**: stampando da un tema
+scuro sarebbe uscito un foglio nero, con il blocco di stampa al suo posto e
+`test:print-unit` tutto verde. Il rimedio è nel selettore della stampa,
+`:root, :root[data-theme]`, che pareggia la specificità e restituisce la
+decisione all'ordine.
+
+**Provato nel browser, non dedotto**: con `data-theme="dark"` attivo, un blocco
+`:root` scritto DOPO non riesce a riportare `--bg` al bianco (resta
+`hsl(213, 30%, 6%)`), mentre `:root, :root[data-theme]` ci riesce (`#ffffff`).
+
+⚠️ **`color-scheme` non è un doppione dei token.** I token vestono ciò che
+disegniamo noi; quella riga veste ciò che disegna il sistema — barra di
+scorrimento, tendina di una `select`, calendario di un `input[type=date]`,
+autocompletamento. Finché il tema seguiva il sistema i due concordavano sempre e
+la riga non serviva a niente. Misurato sul banco con il sistema in tema scuro e
+l'app in chiaro: un `input[type=date]` senza alcun nostro stile (`all: revert`)
+esce **bianco con testo nero**. Senza la riga sarebbe stato nero dentro una
+scheda bianca.
+
+⚠️ **La logica del tema esiste due volte, ed è inevitabile.** Lo script in linea
+di `index.html` deve girare prima della prima pittura o il tema lampeggia a ogni
+caricamento, e nessun modulo dell'app può girare prima del primo fotogramma. La
+copia non è lasciata alla buona volontà: la sezione 11 di `test:shell-unit`
+rilegge `index.html` come testo e pretende la stessa chiave, gli stessi tre
+valori, lo stesso predefinito — e che `theme-color` corrisponda a `--card`,
+**confrontato numericamente**, perché il token è in `hsl()` e il meta in
+esadecimale.
+
+⛔ **APERTO — la vetrina non segue ancora questa decisione.** `~/ai-swisse-landing`
+serve il suo tema scuro su `prefers-color-scheme`: un visitatore con il portatile
+in tema scuro vede il sito scuro e, appena entrato, l'app chiara — il salto che
+`sync-tokens.mjs` esiste per evitare. Allinearla è una riga in quello script, ma
+cambia ciò che vede il pubblico: è una decisione del titolare. La divergenza è
+dichiarata nel commento della funzione.
+
+⚠️ **Trovato risincronizzando i token, e corretto: la vetrina si era rotta in
+cinque punti.** `--surface-2` è stato rinominato `--fill-subtle` nell'app l'11
+agosto, e da allora `tokens.css` era disallineato (`--check` lo diceva già prima
+di questo lavoro). Alla risincronizzazione `--surface-2` è tornato con il suo
+significato NUOVO — un livello di superficie, `transparent` — mentre `style.css`
+lo usava ancora come riempimento pieno in cinque regole: i riquadri delle icone
+sarebbero diventati invisibili. Non è un token fantasma, ed è peggio: un token
+che esiste e vale un'altra cosa. Corretto in `var(--fill-subtle)` e verificato
+sul sito costruito (fondo da `transparent` a `rgb(42, 50, 60)`).
+
+⚠️ **Il pallino delle notifiche è sotto AA, e lo era già.** `#fff` su `--red` era
+l'ultimo colore di stile scritto a mano: ora è `var(--on-accent)`, come chiesto.
+Il contrasto in chiaro non cambia (3,78:1 — in chiaro il token *vale* bianco) e
+in scuro sale da 4,07:1 a 4,35:1: **entrambi sotto la soglia di 4,5:1**, perché è
+testo di 12px in grassetto su un fondo rosso pieno. Chiuderlo davvero vuol dire
+toccare `--red` — che riempie barre e bordi ovunque — o la taglia del testo: due
+decisioni fuori da un cambio di base cromatica. Misurato, dichiarato, non fatto.
+
+**I 20 stati dei segni di fiducia restano 20/20 su AA nel tema chiaro**
+(rimisurati dopo la modifica). Non sono stati toccati: il secondo canale — la
+triade di punti pieni e vuoti, gli stili del filetto, i glifi, le cifre — c'era
+già in tutte e cinque le famiglie.
+
 ## L'Inbox non mostra più tutto allo stesso modo — 2026-08-16, NON ancora deployato
 
 Il triage funzionava già: «Attempted Absolution» di Andrew Tate portava

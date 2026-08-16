@@ -130,6 +130,12 @@ export const it = {
     signOutAria: 'Esci dall’account',
     menu: 'Menu',
     language: 'Lingua',
+    theme: 'Aspetto',
+    themeOption: {
+      chiaro: 'Chiaro',
+      scuro: 'Scuro',
+      sistema: 'Segui il sistema',
+    },
     mainNav: 'Navigazione principale',
     openMenu: 'Apri il menu di navigazione',
     closeMenu: 'Chiudi il menu',

@@ -128,7 +128,16 @@
    rimpicciolisce il testo sotto la soglia leggibile (§80). */
 .bell-badge {
   position: absolute; top: 0; right: 0; min-width: 18px; height: 18px;
-  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red); color: #fff;
+  /* ⚠️ `--on-accent` e non `#fff`: era l'ultimo colore di stile scritto a mano
+     del progetto. In chiaro il token VALE bianco, quindi non cambia niente; in
+     scuro diventa inchiostro scuro sopra il rosso schiarito, che è come il tema
+     scuro tratta ogni fondo pieno — e il contrasto sale da 4,07:1 a 4,35:1.
+     ⚠️⚠️ Resta comunque SOTTO la soglia AA di 4,5:1, e non è colpa di questa
+     riga: il pallino è testo di 12px in grassetto su `--red`, e lo è da sempre
+     (3,78:1 in chiaro). Chiuderlo davvero vuol dire toccare `--red` — che
+     riempie barre e bordi ovunque — o la taglia del testo: due decisioni fuori
+     da un cambio di base cromatica. Misurato, dichiarato, non fatto. */
+  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red); color: var(--on-accent);
   font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
 }
 .bell-panel {

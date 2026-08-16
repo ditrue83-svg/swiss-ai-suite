@@ -16,6 +16,7 @@ import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 import { NotificationBell, useUnreadCount } from '@/features/notifications/NotificationBell';
 
 // I ruoli restano in chiave: l'etichetta si traduce al render.
@@ -149,8 +150,11 @@ function AccountBox() {
           <div className="account-email">{email}</div>
         </div>
       </div>
-      {/* La lingua si cambia dove l'utente si aspetta le impostazioni personali. */}
+      {/* La lingua e l'aspetto si cambiano dove l'utente si aspetta le
+          impostazioni personali. Sono due preferenze dello stesso genere — di
+          chi guarda, su questo computer — e stanno insieme. */}
       <div className="mb-2"><LanguageSwitcher compact /></div>
+      <div className="mb-2"><ThemeSwitcher compact /></div>
       <div className="account-actions">
         <button className="btn btn-sm" onClick={handleSignOut} disabled={busy} aria-label={t('nav.signOutAria')}>
           {busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="logout" className="ic-sm" />} {t('nav.signOut')}

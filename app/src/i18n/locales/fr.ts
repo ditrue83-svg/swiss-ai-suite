@@ -120,6 +120,12 @@ export const fr: Dictionary = {
     signOutAria: 'Se déconnecter du compte',
     menu: 'Menu',
     language: 'Langue',
+    theme: 'Apparence',
+    themeOption: {
+      chiaro: 'Clair',
+      scuro: 'Sombre',
+      sistema: 'Suivre le système',
+    },
     mainNav: 'Navigation principale',
     openMenu: 'Ouvrir le menu de navigation',
     auditLog: 'Journal d’activité',
