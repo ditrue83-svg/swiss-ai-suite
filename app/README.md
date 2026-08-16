@@ -42,6 +42,10 @@ supabase/
                                          evento (sopralluogo, udienza) o riferimento
                                          amministrativo. Solo la prima popola la
                                          Scadenza; la seconda ha una colonna sua.
+                0041_task_appointment  — la stessa distinzione sulle ATTIVITÀ:
+                                         `appointment_date` dice prima di quando
+                                         un lavoro va fatto, senza essere un
+                                         termine (niente fasce, niente ritardo).
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

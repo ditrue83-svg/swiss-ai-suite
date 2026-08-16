@@ -597,6 +597,16 @@ export interface Task {
   description: string | null;
   authority: string | null;
   dueDate: string | null;
+  /**
+   * Il giorno dell'EVENTO a cui il lavoro si riferisce (0041).
+   *
+   * ⚠️ NON è un termine e non si comporta come tale: non entra nelle fasce
+   * dello scadenziario, non fa scattare «in ritardo», non ordina l'elenco.
+   * Dice «questo va fatto prima del 10.09.2026», che è un'altra frase da
+   * «questo scade il 10.09.2026» — e le tre attività nate dal sopralluogo del
+   * Comune di Lugano sono la ragione per cui il prodotto le distingue.
+   */
+  appointmentDate: string | null;
   priority: TaskPriority;
   status: TaskStatus;
   source: TaskSource;

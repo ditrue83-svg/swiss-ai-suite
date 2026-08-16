@@ -45,6 +45,14 @@ export interface CreateFromDocumentInput {
   /** Ente e scadenza già risolti (valori EFFETTIVI del Hub, correzioni comprese). */
   authority?: string | null;
   dueDate?: string | null;
+  /**
+   * Il giorno dell'evento, quando il documento ne fissa uno (0040/0041).
+   *
+   * ⚠️ NON è un ripiego della scadenza. Se il chiamante non lo passa si prende
+   * dall'analisi, e se l'analisi non ne ha resta `null`: un'attività senza
+   * termine e senza appuntamento è una cosa legittima, non un buco da riempire.
+   */
+  appointmentDate?: string | null;
   priority?: TaskPriority;
   /**
    * Chi se ne occupa. Arriva dal modulo di revisione, che è lo stesso
@@ -89,6 +97,14 @@ export function documentTaskDraft(input: CreateFromDocumentInput): {
       title: input.title,
       authority: input.authority !== undefined ? input.authority : analysis?.sender ?? null,
       dueDate: input.dueDate !== undefined ? input.dueDate : analysis?.deadline ?? null,
+      // ⚠️⚠️ LE DUE DATE VIAGGIANO SEPARATE, e questa riga è il punto esatto in
+      // cui il difetto del 2026-07-26 è entrato nel mondo: da un'analisi che
+      // metteva un sopralluogo nel campo Scadenza sono nate tre attività
+      // datate 10.09.2026. Ora ciò che è un evento arriva come evento, e ciò
+      // che è un termine come termine — nessuna delle due si travasa nell'altra.
+      appointmentDate: input.appointmentDate !== undefined
+        ? input.appointmentDate
+        : analysis?.appointmentDate ?? null,
       priority: input.priority
         ?? (analysis ? URGENCY_TO_PRIORITY[analysis.urgency] ?? 'medium' : 'medium'),
       assigneeUserId: input.assigneeUserId ?? null,

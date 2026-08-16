@@ -239,6 +239,9 @@ export function DocumentDetailPage() {
         title: values.title,
         analysis: detail.analysis,
         authority: detail.item.sender,
+        // ⚠️ `appointmentDate` NON si passa: non è un campo del modulo, e la
+        // derivazione lo prende dall'analisi. Passarlo da qui vorrebbe dire
+        // che qualcuno lo ha digitato — cioè inventato.
         dueDate: values.dueDate,
         priority: values.priority,
         assigneeUserId: values.assigneeUserId,
@@ -857,6 +860,7 @@ export function DocumentDetailPage() {
               saving={savingTask}
               error={taskError}
               members={members}
+              appointmentDate={analysis?.appointmentDate ?? null}
               submitLabel={t('documents.createTask')}
               autoFocus
             />

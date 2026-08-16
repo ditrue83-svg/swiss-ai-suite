@@ -47,6 +47,26 @@ export function dueLabel(dueDate: string | null | undefined, today: Date = new D
   return { key: 'tasks.dueInDays', params: { n: d } };
 }
 
+/**
+ * Quale delle due date occupa lo slot nella riga: il TERMINE o l'APPUNTAMENTO.
+ *
+ * ⚠️⚠️ VINCE SEMPRE IL TERMINE, anche quando c'è anche un appuntamento: è la
+ * data che obbliga, quella da cui dipendono ritardo e urgenza. L'appuntamento
+ * prende lo slot SOLO quando non c'è alcun termine — perché lì l'alternativa
+ * sarebbe «Nessuna scadenza», che è vero e monco: farebbe sembrare lavoro
+ * senza tempo un lavoro da fare prima del 10.09.2026.
+ *
+ * ⚠️ È una funzione e non tre righe dentro il JSX perché è una REGOLA, e una
+ * regola dentro una riga di markup non la prova nessuno. Se un giorno
+ * l'appuntamento cominciasse a scavalcare il termine, questo è il posto in cui
+ * diventa rosso.
+ */
+export function taskDateKind(
+  task: Pick<Task, 'dueDate' | 'appointmentDate'>,
+): 'deadline' | 'appointment' {
+  return task.dueDate || !task.appointmentDate ? 'deadline' : 'appointment';
+}
+
 /** In ritardo: scaduta e non conclusa. Una conclusa non è più «in ritardo». */
 export function isOverdue(task: Pick<Task, 'dueDate' | 'status'>, today: Date = new Date()): boolean {
   if (task.status === 'completed') return false;

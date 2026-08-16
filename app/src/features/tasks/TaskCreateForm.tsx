@@ -19,6 +19,8 @@
 // ============================================================================
 import { useEffect, useRef } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { AppointmentMark } from '@/components/ui/AppointmentMark';
+import { formatDate } from '@/lib/format';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import {
@@ -46,11 +48,21 @@ interface Props {
   submitLabel?: string;
   /** Il fuoco entra nel primo campo quando il modulo compare. */
   autoFocus?: boolean;
+  /**
+   * L'appuntamento che l'attività EREDITERÀ dall'analisi (0041).
+   *
+   * ⚠️ Non è un campo: non lo si sceglie, e non deve sembrare che lo si possa
+   * inventare. Ma va MOSTRATO, perché la regola di questo modulo è che i valori
+   * a schermo siano gli stessi che finiscono nel database — ed è la lezione
+   * delle Automazioni, dove la tendina mostrava CHF e la configurazione salvata
+   * non lo conteneva.
+   */
+  appointmentDate?: string | null;
 }
 
 export function TaskCreateForm({
   values, onChange, onSubmit, onCancel, saving, error, members, idPrefix,
-  submitLabel, autoFocus,
+  submitLabel, autoFocus, appointmentDate,
 }: Props) {
   const t = useT();
   const L = useLabels();
@@ -115,6 +127,14 @@ export function TaskCreateForm({
           ))}
         </select>
       </div>
+
+      {/* Ciò che l'attività porterà con sé senza che nessuno lo digiti. */}
+      {appointmentDate && (
+        <div className="muted-sm" style={{ gridColumn: '1 / -1' }}>
+          <AppointmentMark date={appointmentDate} display={formatDate(appointmentDate)} />
+          {' '}{t('tasks.appointmentInherited')}
+        </div>
+      )}
 
       {/* Un guasto va ANNUNCIATO: chi usa un lettore di schermo non vede il
           riquadro rosso comparire sotto il pulsante. */}
