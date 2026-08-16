@@ -25,6 +25,7 @@ import { emailConnectionService, inboxErrorMessage } from '@/services/emailConne
 import { inboxService } from '@/services/inboxService';
 import { INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES } from './constants';
 import { MessageDetail } from './MessageDetail';
+import { inboxEmphasis, type InboxEmphasis } from './emphasis';
 import { AttentionBadge, ProcessingNote, senderLabel, subjectLabel } from './parts';
 import type { EmailConnection, EmailMessageSummary, EmailProvider, InboxFilter } from '@/types/models';
 
@@ -36,6 +37,48 @@ const FILTER_KEY = {
   to_verify: 'inbox.filters.toVerify',
   handled: 'inbox.filters.handled',
 } as const;
+
+/**
+ * Una riga dell'elenco.
+ *
+ * Il PESO della riga arriva dalla classificazione, non dalla posizione: è tutta
+ * qui la differenza fra un modulo che classifica e un modulo che si vede
+ * classificare. Nel gruppo compresso la pastiglia non si ripete — direbbe «Non
+ * amministrativa» su ogni riga di un gruppo che si chiama già così.
+ */
+function InboxRow({ message, emphasis, showBadge = true, onOpen }: {
+  message: EmailMessageSummary;
+  emphasis: InboxEmphasis;
+  showBadge?: boolean;
+  onOpen: () => void;
+}) {
+  const t = useT();
+  const { localeTag } = useI18n();
+  return (
+    <button
+      className={`inbox-row${emphasis === 'action' ? '' : ` is-${emphasis}`}${message.seenAt ? '' : ' is-unseen'}`}
+      onClick={onOpen}
+    >
+      <span className="inbox-row-main">
+        <span className="inbox-sender">{senderLabel(message, t)}</span>
+        <span className="inbox-subject">{subjectLabel(message.subject, t)}</span>
+        <span className="inbox-meta">
+          {formatReceived(message.receivedAt, localeTag)}
+          {message.attachmentCount > 0 && (
+            <> · {message.attachmentCount === 1 ? t('inbox.attachmentOne') : t('inbox.attachmentMany', { n: message.attachmentCount })}</>
+          )}
+          {message.deadline && <> · {t('inbox.deadlineFound', { date: formatDate(message.deadline) })}</>}
+        </span>
+        <ProcessingNote message={message} />
+      </span>
+      {showBadge && (
+        <span className="inbox-row-side">
+          <AttentionBadge message={message} />
+        </span>
+      )}
+    </button>
+  );
+}
 
 /** Data e ora nel formato locale: la posta si distingue anche per l'ora. */
 function formatReceived(iso: string, localeTag: string): string {
@@ -67,6 +110,16 @@ export function InboxPage() {
   const filter = (FILTERS.includes(params.get('filter') as InboxFilter) ? params.get('filter') : 'all') as InboxFilter;
   const connectionFilter = params.get('account');
 
+  // ⚠️ SI DIVIDE SOLO «TUTTE», ed è una scelta, non una dimenticanza. Gli altri
+  // quattro filtri sono una domanda esplicita dell'utente — «fammi vedere le
+  // messe via» — e a una domanda esplicita si risponde per intero: comprimere
+  // là significherebbe rispondere a metà a chi ha già detto cosa vuole.
+  // È il DEFAULT a essere sbagliato oggi, non il filtro.
+  const splitByEmphasis = filter === 'all';
+  // Nell'indirizzo e non nello stato React: chi apre le compresse e ricarica la
+  // pagina deve ritrovarle aperte, e il collegamento deve poter essere condiviso.
+  const collapsedOpen = params.get('compresse') === '1';
+
   const [searchInput, setSearchInput] = useState(params.get('q') ?? '');
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [connections, setConnections] = useState<EmailConnection[]>([]);
@@ -75,6 +128,15 @@ export function InboxPage() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  // I compressi: quanti sono, e — solo se aperti — quali. Finché la riga resta
+  // chiusa quei messaggi non si scaricano affatto; il numero sì, perché una
+  // riga che dicesse «alcuni messaggi» non direbbe niente.
+  const [evidenceCount, setEvidenceCount] = useState<number | null>(null);
+  const [collapsedCount, setCollapsedCount] = useState<number | null>(null);
+  const [collapsedItems, setCollapsedItems] = useState<EmailMessageSummary[]>([]);
+  const [collapsedCursor, setCollapsedCursor] = useState<string | null>(null);
+  const [collapsedLoading, setCollapsedLoading] = useState(false);
+  const [collapsedError, setCollapsedError] = useState<string | null>(null);
   // Due errori distinti, di proposito. «Non riesco a leggere le caselle
   // collegate» e «non riesco a leggere i messaggi» sono guasti diversi, e
   // soprattutto NESSUNO dei due è «non hai caselle collegate»: mostrare lo
@@ -98,6 +160,10 @@ export function InboxPage() {
   useEffect(() => {
     setItems([]);
     setCursor(null);
+    setEvidenceCount(null);
+    setCollapsedCount(null);
+    setCollapsedItems([]);
+    setCollapsedCursor(null);
     setConnections([]);
     setProviders(null);
     setConnectionsLoaded(false);
@@ -127,15 +193,34 @@ export function InboxPage() {
   const loadPage = useCallback(async (reset: boolean, from: string | null) => {
     if (reset) setLoading(true); else setLoadingMore(true);
     try {
-      const page = await inboxService.list({
+      const base = {
         companyId,
         filter,
         search: search || null,
         connectionId: connectionFilter,
-        cursor: from,
-      });
+      };
+      // ⚠️ ELENCO E CONTEGGIO VIAGGIANO INSIEME, e non è un'ottimizzazione.
+      // Separandoli esisterebbe un istante — e un caso di errore permanente —
+      // in cui la pagina ha l'elenco vuoto e non sa ancora dei compressi: lì
+      // direbbe «Inbox vuota» con 72 messaggi dietro. Se il conteggio non si
+      // legge, non si legge nemmeno l'elenco, e si vede un errore con «riprova»
+      // invece di una pagina serenamente vuota.
+      const conta = reset && splitByEmphasis;
+      const [page, nEvidenza, nCompressi] = await Promise.all([
+        inboxService.list({
+          ...base,
+          emphasis: splitByEmphasis ? 'in_evidence' : undefined,
+          cursor: from,
+        }),
+        conta ? inboxService.count({ ...base, emphasis: 'in_evidence' }) : Promise.resolve(null),
+        conta ? inboxService.count({ ...base, emphasis: 'collapsed' }) : Promise.resolve(null),
+      ]);
       setItems((prev) => (reset ? page.items : [...prev, ...page.items]));
       setCursor(page.nextCursor);
+      if (reset) {
+        setEvidenceCount(nEvidenza);
+        setCollapsedCount(splitByEmphasis ? (nCompressi ?? 0) : null);
+      }
       setListError(null);
     } catch (e) {
       setListError(toUserMessage(e));
@@ -143,10 +228,51 @@ export function InboxPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [companyId, filter, search, connectionFilter]);
+  }, [companyId, filter, search, connectionFilter, splitByEmphasis]);
+
+  /**
+   * I compressi, quando qualcuno li chiede. Paginati come l'elenco principale:
+   * settantadue righe non si scaricano in blocco solo perché stanno dietro un
+   * clic.
+   */
+  const loadCollapsed = useCallback(async (reset: boolean, from: string | null) => {
+    setCollapsedLoading(true);
+    try {
+      const page = await inboxService.list({
+        companyId,
+        filter: 'all',
+        emphasis: 'collapsed',
+        search: search || null,
+        connectionId: connectionFilter,
+        cursor: from,
+      });
+      setCollapsedItems((prev) => (reset ? page.items : [...prev, ...page.items]));
+      setCollapsedCursor(page.nextCursor);
+      setCollapsedError(null);
+    } catch (e) {
+      setCollapsedError(toUserMessage(e));
+    } finally {
+      setCollapsedLoading(false);
+    }
+  }, [companyId, search, connectionFilter]);
 
   useEffect(() => { void loadConnections(); }, [loadConnections]);
   useEffect(() => { void loadPage(true, null); }, [loadPage]);
+  useEffect(() => {
+    if (!splitByEmphasis || !collapsedOpen) {
+      setCollapsedItems([]);
+      setCollapsedCursor(null);
+      setCollapsedError(null);
+      return;
+    }
+    void loadCollapsed(true, null);
+  }, [splitByEmphasis, collapsedOpen, loadCollapsed]);
+
+  /** Dopo un cambiamento vero (sincronizzazione, «messa via») si rilegge ciò che è a schermo. */
+  const reloadVisible = () => {
+    void loadPage(true, null);
+    if (splitByEmphasis && collapsedOpen) void loadCollapsed(true, null);
+  };
 
 
   // Esito del ritorno dal consenso OAuth. Il codice arriva nell'URL, mai un token.
@@ -221,9 +347,10 @@ export function InboxPage() {
     const timer = setInterval(() => {
       void loadConnections();
       void loadPage(true, null);
+      if (splitByEmphasis && collapsedOpen) void loadCollapsed(true, null);
     }, 10_000);
     return () => clearInterval(timer);
-  }, [syncInProgress, loadConnections, loadPage]);
+  }, [syncInProgress, loadConnections, loadPage, loadCollapsed, splitByEmphasis, collapsedOpen]);
 
   const lastSync = useMemo(() => {
     const times = activeConnections
@@ -253,7 +380,7 @@ export function InboxPage() {
       else if (truncated) showToast(inboxErrorMessage('TIME_BUDGET') ?? t('inbox.syncNothingNew'));
       else showToast(added === 0 ? t('inbox.syncNothingNew') : added === 1 ? t('inbox.syncNewOne') : t('inbox.syncNew', { n: added }));
       await loadConnections();
-      await loadPage(true, null);
+      reloadVisible();
     } catch (e) {
       showToast(toUserMessage(e));
     } finally {
@@ -268,12 +395,16 @@ export function InboxPage() {
       <MessageDetail
         messageId={selectedId}
         onBack={() => updateParam('msg', null)}
-        onChanged={() => { void loadPage(true, null); }}
+        onChanged={reloadVisible}
       />
     );
   }
 
   const hasConnection = activeConnections.length > 0;
+  // Quanti messaggi sono piegati in fondo. Arriva dal server insieme
+  // all'elenco, non dal conteggio delle righe già caricate: la pagina ne tiene
+  // 30 alla volta, e su questa casella i compressi sono 72.
+  const compressi = splitByEmphasis ? (collapsedCount ?? 0) : 0;
 
   return (
     <>
@@ -393,10 +524,22 @@ export function InboxPage() {
           {loading && <><SkeletonLine width="70%" /><SkeletonLine width="85%" /><SkeletonLine width="60%" /></>}
           {listError && !loading && <ErrorState message={listError} onRetry={() => loadPage(true, null)} />}
 
+          {/* ⚠️ «Non c'è niente» e «non c'è niente DA GESTIRE» sono due frasi
+              diverse, e dirne una per l'altra sarebbe assurdo: una pagina vuota
+              con sotto «72 messaggi nascosti» racconta due cose che non stanno
+              insieme. Quando qualcosa è stato compresso, lo stato vuoto parla
+              solo dell'insieme che ha davvero svuotato. */}
           {!loading && !listError && items.length === 0 && (
             <div className="empty">
-              {search ? t('inbox.search.none') : filter === 'all' ? t('inbox.emptyInbox.title') : t('inbox.emptyFilter')}
-              {!search && filter === 'all' && <div className="muted-sm mt-10">{t('inbox.emptyInbox.subtitle')}</div>}
+              {compressi > 0
+                ? (search ? t('inbox.search.noneInEvidence') : t('inbox.emptyAdministrative.title'))
+                : (search ? t('inbox.search.none') : filter === 'all' ? t('inbox.emptyInbox.title') : t('inbox.emptyFilter'))}
+              {compressi > 0 && !search && (
+                <div className="muted-sm mt-10">{t('inbox.emptyAdministrative.subtitle')}</div>
+              )}
+              {compressi === 0 && !search && filter === 'all' && (
+                <div className="muted-sm mt-10">{t('inbox.emptyInbox.subtitle')}</div>
+              )}
             </div>
           )}
 
@@ -404,26 +547,7 @@ export function InboxPage() {
             <ul className="inbox-list" aria-label={t('inbox.listAria')}>
               {items.map((m) => (
                 <li key={m.id}>
-                  <button
-                    className={`inbox-row${m.seenAt ? '' : ' is-unseen'}`}
-                    onClick={() => openMessage(m.id)}
-                  >
-                    <span className="inbox-row-main">
-                      <span className="inbox-sender">{senderLabel(m, t)}</span>
-                      <span className="inbox-subject">{subjectLabel(m.subject, t)}</span>
-                      <span className="inbox-meta">
-                        {formatReceived(m.receivedAt, localeTag)}
-                        {m.attachmentCount > 0 && (
-                          <> · {m.attachmentCount === 1 ? t('inbox.attachmentOne') : t('inbox.attachmentMany', { n: m.attachmentCount })}</>
-                        )}
-                        {m.deadline && <> · {t('inbox.deadlineFound', { date: formatDate(m.deadline) })}</>}
-                      </span>
-                      <ProcessingNote message={m} />
-                    </span>
-                    <span className="inbox-row-side">
-                      <AttentionBadge message={m} />
-                    </span>
-                  </button>
+                  <InboxRow message={m} emphasis={inboxEmphasis(m)} onOpen={() => openMessage(m.id)} />
                 </li>
               ))}
             </ul>
@@ -434,9 +558,80 @@ export function InboxPage() {
               <Button loading={loadingMore} onClick={() => loadPage(false, cursor)}>{t('inbox.loadMore')}</Button>
             </div>
           )}
+          {/* ⚠️ Il numero dichiara l'INSIEME, non la memoria del browser: con 76
+              in evidenza e 30 caricate, «30 comunicazioni» sarebbe falso di 46.
+              La forma «30 di 76» compare solo quando le due cifre differiscono —
+              a elenco completo un «76 di 76» sarebbe rumore. */}
           {!loading && !listError && items.length > 0 && (
             <div className="muted-sm mt-10">
-              {items.length === 1 ? t('inbox.shownOne') : t('inbox.shown', { n: items.length })}
+              {splitByEmphasis
+                ? (evidenceCount !== null && evidenceCount > items.length
+                    ? t('inbox.shownEvidenceOf', { shown: items.length, total: evidenceCount })
+                    : items.length === 1 ? t('inbox.shownEvidenceOne') : t('inbox.shownEvidence', { n: items.length }))
+                : (items.length === 1 ? t('inbox.shownOne') : t('inbox.shown', { n: items.length }))}
+            </div>
+          )}
+
+          {/* ---- I compressi ---------------------------------------------
+              Una riga sola, in fondo, che dice quanti sono e li riapre. Non
+              sono archiviati, non sono messi via, non sono usciti dalla
+              ricerca: sono soltanto piegati. */}
+          {!loading && !listError && splitByEmphasis && compressi > 0 && (
+            <div className="inbox-collapsed">
+              <div className="inbox-collapsed-head">
+                <span className="inbox-collapsed-count">
+                  {compressi === 1 ? t('inbox.collapsed.one') : t('inbox.collapsed.many', { n: compressi })}
+                </span>
+                {' — '}
+                <button
+                  type="button"
+                  className="btn-link"
+                  aria-expanded={collapsedOpen}
+                  aria-controls="inbox-collapsed-list"
+                  onClick={() => updateParam('compresse', collapsedOpen ? null : '1')}
+                >
+                  {collapsedOpen ? t('inbox.collapsed.hide') : t('inbox.collapsed.show')}
+                </button>
+              </div>
+
+              <div id="inbox-collapsed-list">
+                {collapsedOpen && collapsedError && (
+                  <ErrorState message={collapsedError} onRetry={() => loadCollapsed(true, null)} />
+                )}
+                {collapsedOpen && collapsedLoading && !collapsedItems.length && (
+                  <><SkeletonLine width="70%" /><SkeletonLine width="55%" /></>
+                )}
+                {collapsedOpen && collapsedItems.length > 0 && (
+                  <>
+                    <ul className="inbox-list" aria-label={t('inbox.collapsed.listAria')}>
+                      {collapsedItems.map((m) => (
+                        <li key={m.id}>
+                          <InboxRow
+                            message={m}
+                            emphasis="collapsed"
+                            showBadge={false}
+                            onOpen={() => openMessage(m.id)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                    {collapsedCursor && (
+                      <div className="inbox-more">
+                        <Button loading={collapsedLoading} onClick={() => loadCollapsed(false, collapsedCursor)}>
+                          {t('inbox.loadMore')}
+                        </Button>
+                      </div>
+                    )}
+                    {/* Il numero in cima promette 72; qui sotto se ne vedono 30.
+                        Ogni conteggio dichiara il proprio insieme, o si contraddicono. */}
+                    {collapsedItems.length < compressi && (
+                      <div className="muted-sm mt-10">
+                        {t('inbox.collapsed.shown', { shown: collapsedItems.length, total: compressi })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -1804,6 +1804,17 @@ export const de: Dictionary = {
     loadMore: 'Weitere anzeigen',
     shown: '{n} Mitteilungen',
     shownOne: '1 Mitteilung',
+    shownEvidence: '{n} hervorgehobene Mitteilungen',
+    shownEvidenceOne: '1 hervorgehobene Mitteilung',
+    shownEvidenceOf: '{shown} von {total} hervorgehoben',
+    collapsed: {
+      one: '1 nicht administrative Mitteilung',
+      many: '{n} nicht administrative Mitteilungen',
+      show: 'anzeigen',
+      hide: 'ausblenden',
+      listAria: 'Nicht administrative Mitteilungen',
+      shown: '{shown} von {total} angezeigt',
+    },
     filters: {
       all: 'Alle',
       toHandle: 'Zu erledigen',
@@ -1816,6 +1827,7 @@ export const de: Dictionary = {
       placeholder: 'Nach Betreff oder Absender suchen',
       aria: 'In den Mitteilungen suchen',
       none: 'Keine Mitteilung entspricht der Suche.',
+      noneInEvidence: 'Keine administrative Mitteilung entspricht der Suche.',
     },
     account: {
       all: 'Alle Konten',
@@ -1845,6 +1857,10 @@ export const de: Dictionary = {
     emptyInbox: {
       title: 'Keine Mitteilung erfordert Aufmerksamkeit.',
       subtitle: 'Neue Mitteilungen erscheinen hier nach der Synchronisierung.',
+    },
+    emptyAdministrative: {
+      title: 'Keine administrative Mitteilung zu erledigen.',
+      subtitle: 'Darunter bleiben die nicht administrativen Mitteilungen, in einer einzigen Zeile.',
     },
     emptyFilter: 'Keine Mitteilung mit diesem Filter.',
     detail: {

@@ -1153,6 +1153,66 @@ colonna `text`. Marcare da `task.source` scriverebbe «suggerimento» su azioni
 richieste nero su bianco. Il divario è dichiarato dal 2026-08-13 e resta;
 chiuderlo richiede una **migrazione**.
 
+## L'Inbox non mostra più tutto allo stesso modo — 2026-08-16, NON ancora deployato
+
+Il triage funzionava già: «Attempted Absolution» di Andrew Tate portava
+l'etichetta «Non amministrativa» e la ricevuta di Anthropic «Informativa», e
+nessuna delle due era sbagliata. Ma le due righe avevano la stessa altezza, lo
+stesso peso e la stessa posizione di «[Action needed] Your Claude API access is
+turned off». **Il modulo faceva il lavoro di triage e poi lo buttava via
+all'ultimo passo**, lasciando all'utente il compito di rifarlo a mano con gli
+occhi. Ora «Tutte» mostra in evidenza ciò che è amministrativo, dà peso ridotto
+alle informative e piega il resto in una riga sola in fondo.
+
+| | Stato al 2026-08-16 |
+|---|---|
+| Implementato | sì — `features/inbox/emphasis.ts` (la regola, in un posto solo), `inboxService` (la divisione lato server e `count`), `InboxPage`, `app.css`, i tre dizionari |
+| Deployato | **no** — branch locale, nessuna PR aperta |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:inbox-unit` 285 casi, di cui ~50 nuovi. La sezione nuova è stata provata su **tre mutazioni** che DEVONO farla fallire: togliere la clausola sulla fiducia dal filtro «in evidenza» (2 rossi), spostare la soglia in una sola delle due scritture (4 rossi), comprimere anche ciò che non è «non amministrativo» (7 rossi) |
+| Provato contro la cosa reale | **in parte, e va detto DOVE si ferma.** La DIVISIONE è misurata sul database di produzione (`npm run inbox:diagnose`, sezione nuova): 148 messaggi, 76 in evidenza, 72 compressi, somma che ricompone l'elenco. Il DISEGNO è guardato su un banco usa-e-getta fuori da `src/` che sostituisce **due soli moduli** (`inboxService`, `emailConnectionService`) e monta la pagina vera con **i dati veri esportati** — mittenti, oggetti, stati e fiducia di quella casella. ⚠️ **L'app vera dietro autenticazione NON è stata aperta**: l'unico membro di quell'azienda è il titolare, e da questa postazione non si entra senza le sue credenziali |
+| Disponibile a clienti esterni | no — non deployato |
+
+**Che cosa si vede, sui dati del 2026-08-16.** In «Tutte»: 76 comunicazioni in
+evidenza (32 che chiedono un'azione, 44 informative a peso ridotto) e 72 piegate
+in «72 comunicazioni non amministrative — mostra». Fra le 72 ci sono le tre
+righe che avevano fatto nascere la richiesta: la guida a Claude Code, la
+promozione di Saily e la newsletter di Andrew Tate.
+
+⚠️ **La regola è scritta due volte, ed è una scelta con un prezzo.** Un
+predicato per il browser e due filtri per PostgREST: se divergessero, il numero
+sulla riga compressa e l'elenco che si apre parlerebbero di due insiemi diversi.
+Il test le confronta caso per caso con un valutatore che riproduce la **logica a
+tre valori** di SQL — `relevance_confidence.lt.0.9` su un NULL non è falso, è
+ignoto — e verifica che le due viste siano un **complemento esatto**: nessuna
+riga può stare in nessuna delle due.
+
+⚠️ **La soglia di fiducia oggi non sposta niente, ed è giusto dirlo.** Sotto 0.9
+una classificazione «non amministrativa» non basta a comprimere. Sui 72
+compressi reali, 63 vengono dal filtro deterministico (fiducia `null`, che non è
+fiducia bassa: è l'assenza di una probabilità) e 9 dal modello, a 0.97–0.98.
+**Nessuno sta sotto la soglia.** È una protezione, non un filtro, e contarla
+come lavoro che agisce sarebbe un verde falso.
+
+⚠️ **Perché una lettera dell'AFC non può finire compressa.** Non è una speranza,
+è la forma della regola in `_shared/email/classify.ts`: `bulk_only` — l'unica
+via che scrive `clearly_irrelevant` senza modello — richiede posta di massa **e
+nessun indizio amministrativo**, e un mittente `*.admin.ch` è uno di quegli
+indizi. Chi ha un indizio prosegue.
+
+**I cinque filtri in cima — misurati, non stimati.** Su questi dati restituiscono
+**4 insiemi distinti su 5**: coincidono solo «Con scadenza vicina» e «Messe
+via», ed è perché **sono entrambi vuoti**. Non sono quindi tre filtri decorativi
+da togliere, ma **due bottoni su cinque che portano a una schermata vuota senza
+dirlo prima**. Le cause sono diverse e vanno separate: «Messe via» è a zero
+perché nessuno ha mai messo via un messaggio; «Con scadenza vicina» è a zero
+perché in tutta la casella **un solo messaggio su 148 ha una scadenza
+rilevata**, ed è il 2027-01-22 — fuori dai 30 giorni. La misura si rifà con
+`npm run inbox:diagnose`. ⛔ **Che cosa farne è una decisione di prodotto** —
+mostrare il conteggio sul bottone (l'interrogazione `inboxService.counts` esiste
+già e non la chiama nessuno), spegnere un filtro vuoto, o lasciarli così — e non
+è stata presa qui.
+
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 
 Trovato il 2026-08-14 guardando la produzione con **due** aziende. **Non è

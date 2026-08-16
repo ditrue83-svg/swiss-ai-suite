@@ -1473,6 +1473,35 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .inbox-processing { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-label); color: var(--muted); margin-top: var(--sp-05); }
 .inbox-processing.is-failed { color: var(--red-dark); }
 .inbox-more { margin-top: var(--sp-4); }
+
+/* ---- Il peso di una riga --------------------------------------------------
+   Fino al 2026-08-16 tutte le righe avevano la stessa altezza, lo stesso peso
+   e la stessa posizione: il modulo classificava e poi mostrava tutto uguale.
+   Le tre classi qui sotto sono la classificazione resa visibile.
+
+   ⚠️ Il peso si abbassa con la DIMENSIONE e con lo spazio, non spegnendo il
+   contrasto: `--ink-soft` e `--muted` restano leggibili su fondo chiaro e su
+   fondo scuro. Una gerarchia che si ottiene rendendo un testo quasi invisibile
+   non è una gerarchia: è un testo che non si può leggere. */
+
+/* Informativa: riguarda l'azienda, non chiede niente. Resta intera, pesa meno. */
+.inbox-row.is-informational { padding: var(--sp-2) 0; }
+.inbox-row.is-informational .inbox-subject { color: var(--ink-soft); }
+/* La specificità è più alta di `.is-unseen` di proposito: il grassetto del non
+   letto è una comodità visiva, e non deve poter risalire sopra la gerarchia. */
+.inbox-row.is-informational.is-unseen .inbox-subject,
+.inbox-row.is-collapsed.is-unseen .inbox-subject { font-weight: 400; }
+
+/* Non amministrativa: la riga esiste, ed è la più leggera delle tre. */
+.inbox-row.is-collapsed { padding: var(--sp-1) 0; }
+.inbox-row.is-collapsed .inbox-subject { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-row.is-collapsed .inbox-sender { color: var(--muted); }
+
+/* La riga che le tiene piegate. Sta in fondo, non è un pulsante grande e non
+   somiglia a un'azione distruttiva: comprimere è reversibile con un clic. */
+.inbox-collapsed { margin-top: var(--sp-4); border-top: 1px solid var(--line); padding-top: var(--sp-3); }
+.inbox-collapsed-head { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-collapsed-count { color: var(--muted); }
 .inbox-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
 
 .inbox-fields { display: grid; gap: var(--sp-2); margin: 0; }

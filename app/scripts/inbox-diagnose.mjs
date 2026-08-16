@@ -9,6 +9,10 @@
 // ============================================================================
 import WebSocket from 'ws';
 import { createClient } from '@supabase/supabase-js';
+// ⚠️ La soglia e la regola arrivano dal modulo che le usa a schermo, non da una
+// copia scritta qui: un diagnostico che si riscrive la regola misura sé stesso.
+// È il motivo per cui questo file gira con `--import tsx`.
+import { comprimibile, SOGLIA_COMPRESSIONE } from '../src/features/inbox/emphasis.ts';
 if (!globalThis.WebSocket) globalThis.WebSocket = WebSocket;   // Node < 22
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { persistSession: false, autoRefreshToken: false } });
@@ -63,6 +67,74 @@ for (const col of ['processing_status','attention_status','relevance']) {
 const { data: err } = await sb.from('email_messages').select('error_code').not('error_code','is',null);
 const me = {}; for (const r of err ?? []) me[r.error_code]=(me[r.error_code]??0)+1;
 console.log(`  errori            ${Object.entries(me).map(([k,v])=>`${k}=${v}`).join('  ') || 'nessuno'}`);
+
+// ---------------------------------------------------------------------------
+// I FILTRI IN CIMA — quante di quelle cinque voci mostrano davvero cose diverse
+//
+// Cinque bottoni quasi equivalenti a colpo d'occhio non sono cinque strumenti:
+// sono una barra da leggere ogni volta. La domanda non si risponde guardando il
+// codice — i cinque predicati SONO diversi — ma guardando i dati: due filtri
+// distinti che oggi pescano lo stesso insieme, o nessuno, sono decorazione.
+//
+// Si confrontano gli INSIEMI DI ID, non i conteggi: due filtri da 22 righe
+// possono pescarne 22 diverse. Degli id non si stampa nulla.
+// ---------------------------------------------------------------------------
+console.log(`\n${B}FILTRI — quante viste sono davvero distinte${X}`);
+const { data: righe, error: erroreRighe } = await sb.from('email_messages')
+  .select('id, company_id, attention_status, relevance_confidence, analysis_deadline');
+if (erroreRighe) {
+  // Nessun fallback silenzioso: senza le righe non si dice «tutto a posto».
+  console.log(`  ✗ non è stato possibile leggere i messaggi: ${erroreRighe.message}`);
+} else {
+  const limite = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  const FILTRI = {
+    'Tutte':                (r) => r.attention_status !== 'handled',
+    'Da gestire':           (r) => r.attention_status === 'needs_attention',
+    'Con scadenza vicina':  (r) => r.analysis_deadline != null && r.analysis_deadline <= limite
+                                   && r.attention_status !== 'handled',
+    'Da verificare':        (r) => r.attention_status === 'to_verify',
+    'Messe via':            (r) => r.attention_status === 'handled',
+  };
+  const aziende = [...new Set((righe ?? []).map((r) => r.company_id))];
+  for (const azienda of aziende) {
+    const mie = righe.filter((r) => r.company_id === azienda);
+    console.log(`  azienda …${azienda.slice(-6)}   ${mie.length} messaggi`);
+    const insiemi = {};
+    for (const [nome, f] of Object.entries(FILTRI)) {
+      insiemi[nome] = JSON.stringify(mie.filter(f).map((r) => r.id).sort());
+      const n = JSON.parse(insiemi[nome]).length;
+      console.log(`    ${nome.padEnd(22)} ${String(n).padStart(4)}${n === 0 ? `   ${D}(schermata vuota)${X}` : ''}`);
+    }
+    const nomi = Object.keys(FILTRI);
+    const coppie = [];
+    for (let i = 0; i < nomi.length; i++) {
+      for (let j = i + 1; j < nomi.length; j++) {
+        if (insiemi[nomi[i]] === insiemi[nomi[j]]) coppie.push(`${nomi[i]} = ${nomi[j]}`);
+      }
+    }
+    console.log(`    ${B}viste distinte${X}        ${new Set(Object.values(insiemi)).size} su ${nomi.length}`
+      + (coppie.length ? `   ${D}coincidono: ${coppie.join(' · ')}${X}` : ''));
+
+    // ---- La divisione di «Tutte»: in evidenza e compressi -----------------
+    // ⚠️ L'INVARIANTE: le due metà devono ricomporre l'elenco intero. Se la
+    // somma non torna, qualche messaggio non è in nessuna delle due viste — ed
+    // è sparito dalla pagina senza che nulla lo dichiari.
+    const nonMesseVia = mie.filter((r) => r.attention_status !== 'handled');
+    const compressi = nonMesseVia.filter((r) => comprimibile({
+      attentionStatus: r.attention_status, relevanceConfidence: r.relevance_confidence,
+    }));
+    const inEvidenza = nonMesseVia.length - compressi.length;
+    const informative = nonMesseVia.filter((r) => r.attention_status === 'informational').length;
+    console.log(`    ${B}«Tutte» divisa${X}        in evidenza ${inEvidenza} (di cui ${informative} informative,`
+      + ` ${inEvidenza - informative} che chiedono un'azione)   compressi ${compressi.length}`);
+    console.log(`    somma                 ${inEvidenza} + ${compressi.length} = ${inEvidenza + compressi.length}`
+      + `   ${inEvidenza + compressi.length === nonMesseVia.length ? '✓ ricompone l\'elenco' : '✗ QUALCOSA È SPARITO'}`);
+    const dubbi = compressi.filter((r) => r.relevance_confidence != null
+      && r.relevance_confidence < SOGLIA_COMPRESSIONE).length;
+    console.log(`    sotto la soglia ${SOGLIA_COMPRESSIONE}   ${dubbi} compressi con fiducia insufficiente`
+      + `   ${dubbi === 0 ? '✓ nessuno' : '✗ non dovrebbe accadere'}`);
+  }
+}
 
 console.log(`\n${B}ALLEGATI E DOCUMENTI${X}`);
 const { data: att } = await sb.from('email_attachments').select('import_status');
