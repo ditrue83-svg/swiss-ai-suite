@@ -1153,7 +1153,7 @@ colonna `text`. Marcare da `task.source` scriverebbe «suggerimento» su azioni
 richieste nero su bianco. Il divario è dichiarato dal 2026-08-13 e resta;
 chiuderlo richiede una **migrazione**.
 
-## La base chiara è il predefinito — 2026-08-16, NON ancora deployato
+## La base chiara è il predefinito — IN PRODUZIONE dal 2026-08-16
 
 Il §60 chiedeva base chiara, navy, accento azzurro. L'app deployata appariva
 scura, e la diagnosi ha corretto la premessa: **l'app non era scura, seguiva il
@@ -1169,9 +1169,9 @@ le impostazioni personali.
 | | Stato al 2026-08-16 |
 |---|---|
 | Implementato | sì — `lib/theme.ts`, `ui/ThemeSwitcher.tsx`, `app.css` (blocco scuro su `:root[data-theme="dark"]`, `color-scheme` nei due temi), `index.html` (script in linea, meta), `extra.css`, i tre dizionari |
-| Deployato | **no** — branch locale, nessuna PR aperta |
+| Deployato | **sì** — PR #58 unita (merge `308184e`); **verificato il 2026-08-16 nel bundle SERVITO** da `app.ai-swisse.com` (`index-CF2AzeD0.css` / `index-3AemQQkG.js`): `:root[data-theme="dark"]`, `color-scheme:light`, il selettore di stampa `:root,:root[data-theme]`, `ai-swisse.tema` e `data-theme-pref` nel JS, **zero** regole `prefers-color-scheme`; in `index.html` un solo `<meta name="theme-color" content="#ffffff">` e `<meta name="color-scheme" content="light">` |
 | Configurato | non richiede configurazione |
-| Testato | **sì** — `test:shell-unit` 187 (sezione 11 nuova, 19 asserzioni), `test:print-unit` 64, `design:lint` 34 casi d'autoverifica. Ogni controllo nuovo provato sul rosso che deve dare |
+| Testato | **sì** — `test:shell-unit` 193 (sezioni 11 e 12 nuove), `test:print-unit` 64, `design:lint` 34 casi d'autoverifica. Ogni controllo nuovo provato sul rosso che deve dare |
 | Provato contro la cosa reale | **in parte.** Le **6 combinazioni** (tre preferenze × sistema chiaro e scuro) provate a schermo sul banco che monta la testata VERA di `index.html`: in tutte e sei il tema è già corretto quando il `<head>` finisce di essere analizzato. ⚠️ L'app vera dietro autenticazione non è stata aperta |
 | Disponibile a clienti esterni | no — non deployato |
 
@@ -1208,9 +1208,12 @@ valori, lo stesso predefinito — e che `theme-color` corrisponda a `--card`,
 **confrontato numericamente**, perché il token è in `hsl()` e il meta in
 esadecimale.
 
-✅ **CHIUSO — anche la vetrina ha il chiaro come predefinito.** La divergenza è
-durata poche ore: `~/ai-swisse-landing`, branch `improve/vetrina-base-chiara`
-(commit `fdd178b`, **non pubblicato**). I due blocchi scuri — quello generato in
+✅ **CHIUSO — anche la vetrina ha il chiaro come predefinito, e È IN ESERCIZIO.**
+Verificato il 2026-08-16 su `ai-swisse.com` servito: **zero** regole
+`prefers-color-scheme` nel CSS, due blocchi `:root[data-theme="dark"]` dormienti,
+`color-scheme: light`, un solo `<meta name="theme-color" content="#0b6bc0">` e
+`<meta name="color-scheme" content="light">`, e nessun `--surface-2` usato come
+riempimento. I due blocchi scuri — quello generato in
 `tokens.css` e i due valori propri in `style.css` — passano a
 `:root[data-theme="dark"]`, la stessa forma dell'app; `theme-color` diventa una
 sola dichiarazione e compare `color-scheme`. La vetrina è statica e senza
@@ -1298,7 +1301,7 @@ un parser rotto darebbe zero violazioni e un verde falso.
 triade di punti pieni e vuoti, gli stili del filetto, i glifi, le cifre — c'era
 già in tutte e cinque le famiglie.
 
-## L'Inbox non mostra più tutto allo stesso modo — 2026-08-16, NON ancora deployato
+## L'Inbox non mostra più tutto allo stesso modo — IN PRODUZIONE dal 2026-08-16
 
 Il triage funzionava già: «Attempted Absolution» di Andrew Tate portava
 l'etichetta «Non amministrativa» e la ricevuta di Anthropic «Informativa», e
@@ -1312,11 +1315,11 @@ alle informative e piega il resto in una riga sola in fondo.
 | | Stato al 2026-08-16 |
 |---|---|
 | Implementato | sì — `features/inbox/emphasis.ts` (la regola, in un posto solo), `inboxService` (la divisione lato server e `count`), `InboxPage`, `app.css`, i tre dizionari |
-| Deployato | **no** — branch locale, nessuna PR aperta |
+| Deployato | **sì** — PR #58 unita (merge `308184e`); **verificato nel bundle SERVITO**: `.inbox-collapsed`, `.is-informational`, `.is-collapsed` nel CSS e «comunicazioni non amministrative» / «nicht administrative» / «in evidenza» nel JS |
 | Configurato | non richiede configurazione |
 | Testato | **sì** — `test:inbox-unit` 285 casi, di cui ~50 nuovi. La sezione nuova è stata provata su **tre mutazioni** che DEVONO farla fallire: togliere la clausola sulla fiducia dal filtro «in evidenza» (2 rossi), spostare la soglia in una sola delle due scritture (4 rossi), comprimere anche ciò che non è «non amministrativo» (7 rossi) |
 | Provato contro la cosa reale | **in parte, e va detto DOVE si ferma.** La DIVISIONE è misurata sul database di produzione (`npm run inbox:diagnose`, sezione nuova): 148 messaggi, 76 in evidenza, 72 compressi, somma che ricompone l'elenco. Il DISEGNO è guardato su un banco usa-e-getta fuori da `src/` che sostituisce **due soli moduli** (`inboxService`, `emailConnectionService`) e monta la pagina vera con **i dati veri esportati** — mittenti, oggetti, stati e fiducia di quella casella. ⚠️ **L'app vera dietro autenticazione NON è stata aperta**: l'unico membro di quell'azienda è il titolare, e da questa postazione non si entra senza le sue credenziali |
-| Disponibile a clienti esterni | no — non deployato |
+| Disponibile a clienti esterni | **sì** — è la base cromatica che vedono tutti |
 
 **Che cosa si vede, sui dati del 2026-08-16.** In «Tutte»: 76 comunicazioni in
 evidenza (32 che chiedono un'azione, 44 informative a peso ridotto) e 72 piegate
