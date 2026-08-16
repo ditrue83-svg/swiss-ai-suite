@@ -137,7 +137,6 @@ const EXCEPTIONS = [
   { file: 'src/styles/extra.css', contesto: '.print-kv dt', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
   { file: 'src/styles/extra.css', contesto: '.print-url', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
   { file: 'src/styles/extra.css', contesto: '.print-foot', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
-  { file: 'src/styles/extra.css', contesto: '.bell-badge', frammento: 'color: #fff', motivo: 'bianco sul riempimento --red in tutt\'e due i temi; unico fondo pieno rosso dell\'app: il token nascerà col secondo caso' },
   { file: 'src/styles/app.css', contesto: '.state-list li::before', frammento: 'font-size: 11px', motivo: 'la spunta segue il cerchio che la contiene, non la gerarchia del testo (documentato nella scala tipografica)' },
   // `.verify-box li::before` non è più qui: il blocco «da verificare» è la
   // `.verify-note` delle marcature (2026-08-12), e il «?» è un glifo SVG, non
@@ -214,6 +213,32 @@ export function scanCss(file, src, tokens) {
     }
   };
 
+  /**
+   * È un blocco DOVE SI DEFINISCONO I TOKEN?
+   *
+   * ⚠️ Fino al 2026-08-16 questa domanda era `sel === ':root'`, uguaglianza
+   * stretta, e ha smesso di funzionare nel momento esatto in cui il tema scuro è
+   * passato da `@media (prefers-color-scheme: dark) { :root { … } }` a
+   * `:root[data-theme="dark"] { … }`: **65 violazioni in un colpo**, tutte
+   * false, tutte sui 36 token che il tema scuro ha sempre avuto. Un controllo
+   * che diventa rosso perché il codice è cambiato in modo legittimo insegna una
+   * cosa sola — a disattivarlo.
+   *
+   * Che cosa si accetta adesso: `:root` con eventuali qualificatori sullo STESSO
+   * elemento (`[data-theme="dark"]`, `.classe`, `:not(…)`), anche più di uno, ed
+   * eventualmente in un elenco (`:root, :root[data-theme]` — il selettore della
+   * stampa). Che cosa NON si accetta: qualunque cosa introduca un DISCENDENTE
+   * (`:root[data-theme="dark"] .sidebar`), perché lì non si definiscono token,
+   * si dipinge — ed è esattamente il posto dove un colore scritto a mano deve
+   * ancora essere segnalato.
+   */
+  const isRootSel = (sel) => {
+    const parti = sel.split(',').map((p) => p.trim()).filter(Boolean);
+    if (!parti.length) return false;
+    // Nessuno spazio e nessun combinatore: un solo elemento, e comincia da :root.
+    return parti.every((p) => /^:root(?![\w-])[^\s>+~]*$/.test(p));
+  };
+
   // `buf` accumula selettori E dichiarazioni; i commenti non vi entrano MAI.
   // La prima versione ricavava il selettore affettando il sorgente «dall'ultimo
   // punto e virgola alla graffa»: il commento di testata finiva nel selettore,
@@ -231,7 +256,7 @@ export function scanCss(file, src, tokens) {
     }
     if (c === '{') {
       const sel = buf.replace(/\s+/g, ' ').trim();
-      stack.push({ sel, isRoot: sel === ':root' });
+      stack.push({ sel, isRoot: isRootSel(sel) });
       buf = ''; i++; continue;
     }
     if (c === '}') {
@@ -416,6 +441,23 @@ const SELF_TEST_CASES = [
     src: '@media (prefers-color-scheme: dark) { :root { --bg: hsl(213, 30%, 6%); } }' },
   { name: 'colore in :root della stampa non conta', kind: 'css', expected: 0,
     src: '@media print { :root { --bg: #ffffff; } }' },
+  // ⚠️ IL GUASTO DEL 2026-08-16, e i tre casi che impediscono di riaprirlo.
+  // Il tema scuro non è più una media query: è un attributo sulla radice. Con
+  // l'uguaglianza stretta di prima, i 36 token qui dentro diventavano 65
+  // violazioni false in un colpo solo.
+  { name: 'colore in :root[data-theme="dark"] non conta', kind: 'css', expected: 0,
+    src: ':root[data-theme="dark"] { --bg: hsl(213, 30%, 6%); --card: #1c232c; }' },
+  // Il selettore della stampa, che deve pareggiare la specificità del tema scuro.
+  { name: 'colore in «:root, :root[data-theme]» non conta', kind: 'css', expected: 0,
+    src: '@media print { :root, :root[data-theme] { --bg: #ffffff; } }' },
+  // ⚠️⚠️ IL CASO CHE DEVE RESTARE ROSSO. Un DISCENDENTE di :root non è più il
+  // posto dove si definiscono i token: è il posto dove si dipinge, e lì un
+  // colore scritto a mano è la violazione di sempre. Senza questo caso,
+  // «accetta :root con qualcosa attaccato» sarebbe scivolato in «accetta tutto
+  // ciò che comincia per :root», che è il modo in cui un controllo smette di
+  // controllare.
+  { name: 'colore in un DISCENDENTE di :root conta ancora', kind: 'css', expected: 1,
+    src: ':root[data-theme="dark"] .sidebar { background: #1c232c; }' },
   { name: 'token locale con colore fuori da :root conta', kind: 'css', expected: 1,
     src: '.panel { --line-local: #eee; }' },
   { name: 'padding sul gradino, ma scritto in px', kind: 'css', expected: 1,

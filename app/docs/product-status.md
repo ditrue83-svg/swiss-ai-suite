@@ -1153,6 +1153,211 @@ colonna `text`. Marcare da `task.source` scriverebbe «suggerimento» su azioni
 richieste nero su bianco. Il divario è dichiarato dal 2026-08-13 e resta;
 chiuderlo richiede una **migrazione**.
 
+## La base chiara è il predefinito — 2026-08-16, NON ancora deployato
+
+Il §60 chiedeva base chiara, navy, accento azzurro. L'app deployata appariva
+scura, e la diagnosi ha corretto la premessa: **l'app non era scura, seguiva il
+sistema operativo di chi guardava.** La palette chiara era già la definizione
+canonica — 45 token nel `:root` nudo, zero buchi, contrasti AA già misurati — e
+il tema scuro un `@media (prefers-color-scheme: dark)` che ne riscriveva 36.
+Non c'era un tema da costruire: c'era una decisione da dichiarare.
+
+Ora il predefinito è chiaro **sempre**, e la preferenza a tre stati — Chiaro ·
+Scuro · Segui il sistema — sta accanto alla lingua, dove il prodotto tiene già
+le impostazioni personali.
+
+| | Stato al 2026-08-16 |
+|---|---|
+| Implementato | sì — `lib/theme.ts`, `ui/ThemeSwitcher.tsx`, `app.css` (blocco scuro su `:root[data-theme="dark"]`, `color-scheme` nei due temi), `index.html` (script in linea, meta), `extra.css`, i tre dizionari |
+| Deployato | **no** — branch locale, nessuna PR aperta |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 187 (sezione 11 nuova, 19 asserzioni), `test:print-unit` 64, `design:lint` 34 casi d'autoverifica. Ogni controllo nuovo provato sul rosso che deve dare |
+| Provato contro la cosa reale | **in parte.** Le **6 combinazioni** (tre preferenze × sistema chiaro e scuro) provate a schermo sul banco che monta la testata VERA di `index.html`: in tutte e sei il tema è già corretto quando il `<head>` finisce di essere analizzato. ⚠️ L'app vera dietro autenticazione non è stata aperta |
+| Disponibile a clienti esterni | no — non deployato |
+
+⚠️⚠️ **IL DIFETTO CHE QUESTO LAVORO STAVA PER INTRODURRE, e che nessuno aveva
+previsto.** Finché il tema scuro era `@media (prefers-color-scheme: dark) {
+:root { … } }`, il suo selettore era `:root` — specificità (0,1,0), **identica**
+a quella del blocco di stampa — e bastava tenere la stampa in fondo al file
+perché vincesse. Passando a `:root[data-theme="dark"]` la specificità sale a
+(0,2,0) e **vince su `:root` dovunque stia nel file**: stampando da un tema
+scuro sarebbe uscito un foglio nero, con il blocco di stampa al suo posto e
+`test:print-unit` tutto verde. Il rimedio è nel selettore della stampa,
+`:root, :root[data-theme]`, che pareggia la specificità e restituisce la
+decisione all'ordine.
+
+**Provato nel browser, non dedotto**: con `data-theme="dark"` attivo, un blocco
+`:root` scritto DOPO non riesce a riportare `--bg` al bianco (resta
+`hsl(213, 30%, 6%)`), mentre `:root, :root[data-theme]` ci riesce (`#ffffff`).
+
+⚠️ **`color-scheme` non è un doppione dei token.** I token vestono ciò che
+disegniamo noi; quella riga veste ciò che disegna il sistema — barra di
+scorrimento, tendina di una `select`, calendario di un `input[type=date]`,
+autocompletamento. Finché il tema seguiva il sistema i due concordavano sempre e
+la riga non serviva a niente. Misurato sul banco con il sistema in tema scuro e
+l'app in chiaro: un `input[type=date]` senza alcun nostro stile (`all: revert`)
+esce **bianco con testo nero**. Senza la riga sarebbe stato nero dentro una
+scheda bianca.
+
+⚠️ **La logica del tema esiste due volte, ed è inevitabile.** Lo script in linea
+di `index.html` deve girare prima della prima pittura o il tema lampeggia a ogni
+caricamento, e nessun modulo dell'app può girare prima del primo fotogramma. La
+copia non è lasciata alla buona volontà: la sezione 11 di `test:shell-unit`
+rilegge `index.html` come testo e pretende la stessa chiave, gli stessi tre
+valori, lo stesso predefinito — e che `theme-color` corrisponda a `--card`,
+**confrontato numericamente**, perché il token è in `hsl()` e il meta in
+esadecimale.
+
+✅ **CHIUSO — anche la vetrina ha il chiaro come predefinito.** La divergenza è
+durata poche ore: `~/ai-swisse-landing`, branch `improve/vetrina-base-chiara`
+(commit `fdd178b`, **non pubblicato**). I due blocchi scuri — quello generato in
+`tokens.css` e i due valori propri in `style.css` — passano a
+`:root[data-theme="dark"]`, la stessa forma dell'app; `theme-color` diventa una
+sola dichiarazione e compare `color-scheme`. La vetrina è statica e senza
+JavaScript, quindi **nessuno scrive mai quell'attributo**: il tema scuro resta
+scritto per intero e allineato all'app, e dormiente. Non si cancella un tema, si
+smette di accenderlo.
+
+⚠️ **E ora esiste un controllo**, perché la vetrina non ha una suite: se
+`style.css` o `build.mjs` tornano ad agganciare il tema a `prefers-color-scheme`,
+`node sync-tokens.mjs --check` esce 1. Guarda le regole e non la prosa — in tutte
+e tre le forme di commento, `/* */`, `//` e `<!-- -->`, perché entrambi i file
+SPIEGANO perché quella media query è stata tolta e il controllo si accendeva
+sulla propria documentazione.
+
+Verificato sul sito costruito con il sistema in tema scuro: **zero** regole
+`prefers-color-scheme` nel CSS servito, un solo `theme-color`, `--bg` e `--card`
+chiari, `color-scheme: light`. Delle 13 sezioni ne restano scure 4 — eroe,
+limiti, richiamo finale, piè di pagina — e sono i campi navy voluti dal disegno,
+scuri anche nel tema chiaro. ⚠️ Il pannello del browser non fotografa una pagina
+lunga: le sezioni sono state **lette**, non guardate.
+
+⚠️⚠️ **IL SUO SPECCHIO ERA STANTIO, E IL LAVORO SULLA VETRINA È STATO RIFATTO
+SUL `site/` VERO.** La vetrina si lavora in `~/ai-swisse-landing`, che è uno
+specchio senza remote come quello dell'app — ma a differenza di quello **era
+rimasto indietro rispetto a `site/` del monorepo**: gli mancavano la correzione
+di `--surface-2` → `--fill-subtle` (PR #34/#35, 11 agosto), l'esclusione
+deliberata della `font-family` da `sync-tokens.mjs` e la riga `font-family` sul
+`:root` di `style.css`. Rigiocare quello specchio dentro `site/` avrebbe
+**cancellato tre correzioni già pubblicate**. Le modifiche sono quindi state
+riscritte a mano sul file vero.
+
+Il difetto dei cinque riquadri — `--surface-2` usato come riempimento dopo che
+il nome era passato a significare un livello di superficie `transparent` — era
+**reale ma già chiuso in produzione dall'11 agosto**: qui si è ripetuto solo
+nello specchio. Vale però la lezione, ed è nuova: **prima di lavorare su
+`~/ai-swisse-landing`, confrontarlo con `~/swiss-ai-suite-repo/site`.** Lo
+specchio dell'app è allineato, quello della vetrina no.
+
+⚠️ **E la divergenza ha prodotto un disegno migliore.** Sullo specchio avevo
+fatto portare `color-scheme` a `sync-tokens.mjs`; sul file vero non serve, e non
+si deve: lì è dichiarato che lo script sincronizza i TOKEN e non le altre
+dichiarazioni — la volta che ne portò una (`font-family`) la pubblicazione della
+vetrina restò ferma due giorni. `color-scheme: light` sta quindi in `style.css`,
+accanto a `--ms-font`, dove la vetrina tiene le proprie scelte.
+
+✅ **CHIUSO — il pallino delle notifiche raggiunge AA, e con lui tutta la
+famiglia.** Era testo di 12px in grassetto su `--red`: **3,78:1 in chiaro**,
+sotto la soglia da sempre. Non si è toccato `--red` (riempie barre, pallini e
+bordi in dieci punti) né la taglia del testo: il fondo passa a `--red-dark`.
+
+**Perché bastava un token esistente e non ne serviva uno nuovo.** I due rossi
+fanno due mestieri: `--red` è il rosso che si RICONOSCE — barre, bordi,
+riempimenti, dove non c'è testo sopra — e `--red-dark` è il rosso che porta
+CONTRASTO. Le due parti di `--red-dark` sono simmetriche: inchiostro rosso su
+una superficie chiara, e superficie rossa sotto `--on-accent`. È lo stesso
+requisito — la massima distanza dal neutro della pagina — e si ribaltano insieme
+quando il tema si ribalta. Un token nuovo sarebbe stato il suo quasi-gemello in
+tutti e tre i temi.
+
+| | prima | dopo |
+|---|---|---|
+| chiaro | 3,78:1 ✗ | **5,83:1** ✓ |
+| scuro | 4,35:1 ✗ | **7,34:1** ✓ |
+| stampa | 21:1 ✓ | 21:1 ✓ |
+| pastiglia contro la scheda | 3,78 / 3,89 | **5,83 / 6,56** |
+
+Il pallino ci guadagna anche in evidenza: più scuro non vuol dire più timido.
+Misurato **nel browser**, sul CSS vero — `rgb(197, 32, 32)` con testo bianco in
+chiaro, `rgb(238, 139, 139)` con inchiostro scuro in scuro.
+
+⚠️ **E ora esiste un controllo che sa fare un conto.** Nessuno vedeva questo
+difetto perché `design:lint` guarda che i colori vengano dai token, non che due
+token accostati si leggano: una regola che dice «usa i token» non protegge da
+due token che insieme non si vedono. La **sezione 12** di `test:shell-unit`
+risolve ogni regola di `app.css` e `extra.css` che dichiara insieme un fondo e un
+testo presi dai token, nei tre temi, e ne pesa il contrasto. **Sono 90 coppie, e
+il pallino era l'unica sotto soglia** — il difetto era isolato, e adesso si sa.
+Nessuna eccezione dichiarata: se un giorno servisse (testo grande, che ad AA si
+accontenta di 3:1) va scritta con il suo motivo. Il controllo ha due controprove
+sul proprio lettore — le tavolozze lette e il numero di coppie trovate — perché
+un parser rotto darebbe zero violazioni e un verde falso.
+
+**I 20 stati dei segni di fiducia restano 20/20 su AA nel tema chiaro**
+(rimisurati dopo la modifica). Non sono stati toccati: il secondo canale — la
+triade di punti pieni e vuoti, gli stili del filetto, i glifi, le cifre — c'era
+già in tutte e cinque le famiglie.
+
+## L'Inbox non mostra più tutto allo stesso modo — 2026-08-16, NON ancora deployato
+
+Il triage funzionava già: «Attempted Absolution» di Andrew Tate portava
+l'etichetta «Non amministrativa» e la ricevuta di Anthropic «Informativa», e
+nessuna delle due era sbagliata. Ma le due righe avevano la stessa altezza, lo
+stesso peso e la stessa posizione di «[Action needed] Your Claude API access is
+turned off». **Il modulo faceva il lavoro di triage e poi lo buttava via
+all'ultimo passo**, lasciando all'utente il compito di rifarlo a mano con gli
+occhi. Ora «Tutte» mostra in evidenza ciò che è amministrativo, dà peso ridotto
+alle informative e piega il resto in una riga sola in fondo.
+
+| | Stato al 2026-08-16 |
+|---|---|
+| Implementato | sì — `features/inbox/emphasis.ts` (la regola, in un posto solo), `inboxService` (la divisione lato server e `count`), `InboxPage`, `app.css`, i tre dizionari |
+| Deployato | **no** — branch locale, nessuna PR aperta |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:inbox-unit` 285 casi, di cui ~50 nuovi. La sezione nuova è stata provata su **tre mutazioni** che DEVONO farla fallire: togliere la clausola sulla fiducia dal filtro «in evidenza» (2 rossi), spostare la soglia in una sola delle due scritture (4 rossi), comprimere anche ciò che non è «non amministrativo» (7 rossi) |
+| Provato contro la cosa reale | **in parte, e va detto DOVE si ferma.** La DIVISIONE è misurata sul database di produzione (`npm run inbox:diagnose`, sezione nuova): 148 messaggi, 76 in evidenza, 72 compressi, somma che ricompone l'elenco. Il DISEGNO è guardato su un banco usa-e-getta fuori da `src/` che sostituisce **due soli moduli** (`inboxService`, `emailConnectionService`) e monta la pagina vera con **i dati veri esportati** — mittenti, oggetti, stati e fiducia di quella casella. ⚠️ **L'app vera dietro autenticazione NON è stata aperta**: l'unico membro di quell'azienda è il titolare, e da questa postazione non si entra senza le sue credenziali |
+| Disponibile a clienti esterni | no — non deployato |
+
+**Che cosa si vede, sui dati del 2026-08-16.** In «Tutte»: 76 comunicazioni in
+evidenza (32 che chiedono un'azione, 44 informative a peso ridotto) e 72 piegate
+in «72 comunicazioni non amministrative — mostra». Fra le 72 ci sono le tre
+righe che avevano fatto nascere la richiesta: la guida a Claude Code, la
+promozione di Saily e la newsletter di Andrew Tate.
+
+⚠️ **La regola è scritta due volte, ed è una scelta con un prezzo.** Un
+predicato per il browser e due filtri per PostgREST: se divergessero, il numero
+sulla riga compressa e l'elenco che si apre parlerebbero di due insiemi diversi.
+Il test le confronta caso per caso con un valutatore che riproduce la **logica a
+tre valori** di SQL — `relevance_confidence.lt.0.9` su un NULL non è falso, è
+ignoto — e verifica che le due viste siano un **complemento esatto**: nessuna
+riga può stare in nessuna delle due.
+
+⚠️ **La soglia di fiducia oggi non sposta niente, ed è giusto dirlo.** Sotto 0.9
+una classificazione «non amministrativa» non basta a comprimere. Sui 72
+compressi reali, 63 vengono dal filtro deterministico (fiducia `null`, che non è
+fiducia bassa: è l'assenza di una probabilità) e 9 dal modello, a 0.97–0.98.
+**Nessuno sta sotto la soglia.** È una protezione, non un filtro, e contarla
+come lavoro che agisce sarebbe un verde falso.
+
+⚠️ **Perché una lettera dell'AFC non può finire compressa.** Non è una speranza,
+è la forma della regola in `_shared/email/classify.ts`: `bulk_only` — l'unica
+via che scrive `clearly_irrelevant` senza modello — richiede posta di massa **e
+nessun indizio amministrativo**, e un mittente `*.admin.ch` è uno di quegli
+indizi. Chi ha un indizio prosegue.
+
+**I cinque filtri in cima — misurati, non stimati.** Su questi dati restituiscono
+**4 insiemi distinti su 5**: coincidono solo «Con scadenza vicina» e «Messe
+via», ed è perché **sono entrambi vuoti**. Non sono quindi tre filtri decorativi
+da togliere, ma **due bottoni su cinque che portano a una schermata vuota senza
+dirlo prima**. Le cause sono diverse e vanno separate: «Messe via» è a zero
+perché nessuno ha mai messo via un messaggio; «Con scadenza vicina» è a zero
+perché in tutta la casella **un solo messaggio su 148 ha una scadenza
+rilevata**, ed è il 2027-01-22 — fuori dai 30 giorni. La misura si rifà con
+`npm run inbox:diagnose`. ⛔ **Che cosa farne è una decisione di prodotto** —
+mostrare il conteggio sul bottone (l'interrogazione `inboxService.counts` esiste
+già e non la chiama nessuno), spegnere un filtro vuoto, o lasciarli così — e non
+è stata presa qui.
+
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 
 Trovato il 2026-08-14 guardando la produzione con **due** aziende. **Non è

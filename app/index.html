@@ -69,13 +69,57 @@
     <!--
       ⚠️ `theme-color` non è decorazione: è il colore che il telefono dipinge
       attorno alla pagina (barra di stato su Android, bordo della scheda). Senza,
-      resta bianco anche in tema scuro e l'app sembra tagliata a metà. Sono DUE
-      dichiarazioni con `media`, perché il colore giusto dipende dal tema: i
-      valori vengono da `--card` di app.css (chiaro e scuro), non dal marchio —
-      è la superficie che continua, non il segno.
+      resta bianco anche in tema scuro e l'app sembra tagliata a metà. Il valore
+      viene da `--card` di app.css, non dal marchio: è la superficie che
+      continua, non il segno.
+
+      ⚠️⚠️ UNA SOLA DICHIARAZIONE, SENZA `media`, dal 2026-08-16. Erano due,
+      legate a `prefers-color-scheme`: da quando il tema lo sceglie l'APP, quelle
+      due avrebbero fatto seguire al telefono il SISTEMA mentre l'app segue sé
+      stessa — barra scura sopra un'app chiara. Il valore lo scrive lo script qui
+      sotto, insieme al tema. Quello scritto qui è il predefinito del prodotto:
+      è ciò che si vede se JavaScript non parte, ed è il chiaro, come dev'essere.
+
+      `color-scheme` fa lo stesso lavoro per i controlli del SISTEMA (barra di
+      scorrimento, tendine, calendari): il CSS lo ridichiara, questo meta serve
+      nell'istante prima che il CSS arrivi.
     -->
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1c232c" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light" />
+    <!--
+      ⚠️⚠️ QUESTO SCRIPT DEVE RESTARE IN LINEA, SINCRONO E NEL `<head>`. Un
+      modulo dell'applicazione non può girare prima del primo fotogramma: se il
+      tema si applicasse dopo, chi ha scelto «scuro» vedrebbe un lampo bianco a
+      ogni caricamento. È l'unica ragione per cui questa logica esiste due volte.
+
+      L'ALTRA COPIA è `src/lib/theme.ts`, ed è quella autorevole. Chiave, valori
+      e predefinito sono gli stessi, e `test:shell-unit` rilegge questo file come
+      testo per pretenderlo: se divergono, la suite è rossa. Chi cambia una
+      copia deve cambiare l'altra — il controllo esiste perché quel «deve» da
+      solo non ha mai funzionato in questo progetto.
+    -->
+    <script>
+      (function () {
+        try {
+          var pref = localStorage.getItem('ai-swisse.tema');
+          if (pref !== 'chiaro' && pref !== 'scuro' && pref !== 'sistema') pref = 'chiaro';
+          var risolto = pref === 'sistema'
+            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : (pref === 'scuro' ? 'dark' : 'light');
+          var r = document.documentElement;
+          r.setAttribute('data-theme', risolto);
+          r.setAttribute('data-theme-pref', pref);
+          if (risolto === 'dark') {
+            var m = document.querySelector('meta[name="theme-color"]');
+            if (m) m.setAttribute('content', '#1c232c');
+            var s = document.querySelector('meta[name="color-scheme"]');
+            if (s) s.setAttribute('content', 'dark');
+          }
+        } catch (e) {
+          /* Deposito non leggibile: resta il predefinito chiaro del `:root` nudo. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

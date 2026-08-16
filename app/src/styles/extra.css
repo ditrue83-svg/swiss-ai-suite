@@ -128,7 +128,21 @@
    rimpicciolisce il testo sotto la soglia leggibile (§80). */
 .bell-badge {
   position: absolute; top: 0; right: 0; min-width: 18px; height: 18px;
-  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red); color: #fff;
+  /* ⚠️ IL FONDO È `--red-dark`, NON `--red`, e la differenza è il contrasto.
+     `--red` è il rosso che si RICONOSCE — barre, pallini, bordi, dove non c'è
+     testo sopra — ed è troppo chiaro per portarne: bianco su `--red` faceva
+     3,78:1 in chiaro e 4,35:1 in scuro, sotto la soglia AA di 4,5, da sempre.
+     `--red-dark` è il rosso che porta CONTRASTO, e regge le due parti in tutti
+     e tre i temi: 5,83 · 7,34 · 21. Il pallino ci guadagna anche in evidenza —
+     contro la scheda passa da 3,78:1 a 5,83:1: più scuro non vuol dire più
+     timido.
+     ⚠️ Non si è toccato `--red`: riempie barre e bordi ovunque, e scurirlo per
+     un pallino avrebbe spostato un colore usato in dieci punti per correggerne
+     uno. Il testo resta `--on-accent`, che è già «ciò che si scrive sopra un
+     fondo pieno colorato» e si inverte da sé nel tema scuro.
+     Il guardiano che tiene ferma questa misura è la sezione 12 di
+     `test:shell-unit`, che pesa tutte e 90 le coppie fondo/testo del progetto. */
+  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red-dark); color: var(--on-accent);
   font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
 }
 .bell-panel {

@@ -54,10 +54,14 @@ import { isUuid } from '../src/lib/ids';
 import {
   documentStateFromStatus, messageDocumentRows, primaryDocumentOf,
 } from '../src/features/inbox/messageDocuments';
+import {
+  comprimibile, inboxEmphasis, SOGLIA_COMPRESSIONE, QUERY_COMPRESSI, QUERY_IN_EVIDENZA,
+  type InboxEmphasis,
+} from '../src/features/inbox/emphasis';
 import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
-import type { EmailAttachment, EmailLinkedDocument } from '../src/types/models';
+import type { EmailAttachment, EmailAttentionStatus, EmailLinkedDocument } from '../src/types/models';
 import type { AnalysisStatus, DocumentStatus } from '../src/types/database';
 // Importati anche per farli passare dal typecheck: `sync.ts` e `store.ts` non
 // sono raggiungibili da `src/`, quindi senza questo import `npm run typecheck`
@@ -1065,6 +1069,130 @@ section('11 · Perché una classificazione è caduta — e se va ripresa');
   ok(!/riprova|versuchen Sie es erneut|réessayer/i.test(
     (it.inbox as { errors: Record<string, string> }).errors.aiCreditExhausted),
     '⚠️ il testo del credito NON invita a riprovare: aspettare non risolve, e dirlo manderebbe la persona a premere invano');
+}
+
+// ===========================================================================
+section('PESO DELLE RIGHE — la classificazione che cambia la forma della pagina');
+// ===========================================================================
+// La regola è scritta DUE volte: un predicato per il browser e due filtri per
+// PostgREST. Devono dire la stessa cosa su ogni riga possibile, perché se
+// divergessero un messaggio potrebbe non stare né in evidenza né fra i
+// compressi — e sparirebbe dalla pagina senza che nessuno lo dichiari.
+//
+// La trappola è la logica a TRE VALORI di SQL: `relevance_confidence.lt.0.9`
+// su una fiducia NULL non è falso, è ignoto, e un `or` che restituisce ignoto
+// non fa passare la riga. Sessantatré messaggi su settantadue hanno la fiducia
+// a NULL, quindi non è un caso di scuola: è il caso normale.
+{
+  /** Un valore di verità SQL: vero, falso, o ignoto. */
+  type Tri = true | false | null;
+
+  /** Valutatore minimo di una condizione PostgREST (`campo.operatore.valore`). */
+  function valutaCondizione(cond: string, riga: Record<string, unknown>): Tri {
+    const punto1 = cond.indexOf('.');
+    const punto2 = cond.indexOf('.', punto1 + 1);
+    const campo = cond.slice(0, punto1);
+    const op = cond.slice(punto1 + 1, punto2);
+    const atteso = cond.slice(punto2 + 1);
+    const v = riga[campo] ?? null;
+    // `is null` è l'unico operatore che sa rispondere su un NULL: tutti gli
+    // altri, davanti a un NULL, restituiscono ignoto. È la regola di SQL, ed è
+    // esattamente ciò che questo test esiste per non dimenticare.
+    if (op === 'is') return atteso === 'null' ? v === null : null;
+    if (v === null) return null;
+    switch (op) {
+      case 'eq': return String(v) === atteso;
+      case 'neq': return String(v) !== atteso;
+      case 'gte': return Number(v) >= Number(atteso);
+      case 'lt': return Number(v) < Number(atteso);
+      default: throw new Error(`operatore non gestito dal valutatore: ${op}`);
+    }
+  }
+
+  /** Un `or=` di PostgREST: vero se una condizione è vera, ignoto se nessuna lo è ma una è ignota. */
+  function valutaOr(or: string, riga: Record<string, unknown>): Tri {
+    let esito: Tri = false;
+    for (const cond of or.split(',')) {
+      const v = valutaCondizione(cond, riga);
+      if (v === true) return true;
+      if (v === null) esito = null;
+    }
+    return esito;
+  }
+
+  ok(valutaCondizione('relevance_confidence.lt.0.9', { relevance_confidence: null }) === null,
+    'CONTROPROVA del valutatore: un confronto con NULL è ignoto, non falso');
+  ok(valutaOr('a.is.null,a.gte.0.9', { a: null }) === true,
+    'CONTROPROVA del valutatore: `is.null` risponde su un NULL');
+
+  const S = SOGLIA_COMPRESSIONE;
+  const CASI: { riga: Record<string, unknown>; comprimibile: boolean; peso: InboxEmphasis; nota: string }[] = [
+    { riga: { attention_status: 'needs_attention', relevance_confidence: 0.85 }, comprimibile: false, peso: 'action', nota: 'chiede un’azione' },
+    { riga: { attention_status: 'to_verify', relevance_confidence: 0.55 }, comprimibile: false, peso: 'action', nota: 'incerta: resta in evidenza' },
+    { riga: { attention_status: 'to_verify', relevance_confidence: null }, comprimibile: false, peso: 'action', nota: 'non classificata' },
+    { riga: { attention_status: 'informational', relevance_confidence: 0.9 }, comprimibile: false, peso: 'informational', nota: 'informativa' },
+    { riga: { attention_status: 'handled', relevance_confidence: null }, comprimibile: false, peso: 'informational', nota: 'messa via a mano' },
+    { riga: { attention_status: 'ignored', relevance_confidence: null }, comprimibile: true, peso: 'collapsed', nota: 'filtro deterministico: nessuna probabilità' },
+    { riga: { attention_status: 'ignored', relevance_confidence: 0.97 }, comprimibile: true, peso: 'collapsed', nota: 'modello sicuro' },
+    { riga: { attention_status: 'ignored', relevance_confidence: S }, comprimibile: true, peso: 'collapsed', nota: 'esattamente sulla soglia' },
+    { riga: { attention_status: 'ignored', relevance_confidence: S - 0.01 }, comprimibile: false, peso: 'action', nota: '⚠️ un filo sotto la soglia: NON si comprime' },
+    { riga: { attention_status: 'ignored', relevance_confidence: 0.5 }, comprimibile: false, peso: 'action', nota: '⚠️ dubbio vero: resta in evidenza' },
+  ];
+
+  for (const caso of CASI) {
+    const m = {
+      attentionStatus: caso.riga.attention_status as EmailAttentionStatus,
+      relevanceConfidence: caso.riga.relevance_confidence as number | null,
+    };
+    ok(comprimibile(m) === caso.comprimibile,
+      `${String(caso.riga.attention_status).padEnd(15)} conf=${String(caso.riga.relevance_confidence).padEnd(5)} → ${caso.comprimibile ? 'compressa' : 'in evidenza'} (${caso.nota})`);
+    ok(inboxEmphasis(m) === caso.peso, `  …e il suo peso è «${caso.peso}»`);
+
+    // La stessa riga, letta come la leggerebbe il database.
+    const sqlCompressa =
+      caso.riga.attention_status === QUERY_COMPRESSI.eq.attention_status
+      && valutaOr(QUERY_COMPRESSI.or, caso.riga) === true;
+    const sqlInEvidenza = valutaOr(QUERY_IN_EVIDENZA.or, caso.riga) === true;
+
+    ok(sqlCompressa === caso.comprimibile,
+      `  …e il filtro PostgREST dei compressi dice la stessa cosa del predicato`);
+    // ⚠️ L'INVARIANTE CHE CONTA: le due viste sono un complemento esatto. Una
+    // riga in nessuna delle due è un messaggio sparito dalla pagina.
+    ok(sqlInEvidenza !== sqlCompressa,
+      `  …e la riga sta in ESATTAMENTE una delle due viste`,
+      `inEvidenza=${sqlInEvidenza} compressa=${sqlCompressa}`);
+  }
+
+  // ⚠️ La garanzia strutturale: nessuno stato diverso da `ignored` può finire
+  // compresso, qualunque sia la fiducia. «Da gestire» con fiducia 1.0 resta in
+  // evidenza — comprimere una lettera dell'AFC costa una scadenza.
+  const STATI: EmailAttentionStatus[] = ['needs_attention', 'to_verify', 'informational', 'ignored', 'handled'];
+  const mai = STATI.filter((s) => s !== 'ignored').flatMap((s) =>
+    [null, 0, 0.5, S, 1].map((c) => ({ attentionStatus: s, relevanceConfidence: c })));
+  ok(mai.every((m) => !comprimibile(m)),
+    `nessuno dei ${mai.length} casi non-«ignored» è comprimibile, a qualunque fiducia`);
+
+  // I testi della riga compressa esistono in tutte e tre le lingue, e il numero
+  // ci arriva davvero: una riga che dicesse «{n} comunicazioni» sarebbe peggio
+  // di nessuna riga.
+  for (const [lang, dict] of Object.entries({ it, de, fr })) {
+    const inbox = dict.inbox as Record<string, unknown>;
+    const collapsed = inbox.collapsed as Record<string, string> | undefined;
+    const vuoto = inbox.emptyAdministrative as Record<string, string> | undefined;
+    ok(!!collapsed && ['one', 'many', 'show', 'hide', 'listAria', 'shown'].every((k) => !!collapsed[k]),
+      `${lang}: la riga compressa ha tutte le sue voci`);
+    ok(!!collapsed?.many?.includes('{n}') && !!collapsed?.shown?.includes('{shown}') && !!collapsed?.shown?.includes('{total}'),
+      `${lang}: i conteggi hanno i loro segnaposto`);
+    ok(!!vuoto?.title && !!vuoto?.subtitle && !!inbox.shownEvidence && !!inbox.shownEvidenceOne,
+      `${lang}: lo stato «nessuna comunicazione amministrativa» ha titolo e sottotitolo`);
+    // ⚠️ Anche il piè di pagina dell'elenco in evidenza dichiara il suo insieme:
+    // «30 comunicazioni» con 76 in evidenza descriveva la memoria del browser.
+    const parziale = inbox.shownEvidenceOf as string | undefined;
+    ok(!!parziale?.includes('{shown}') && !!parziale?.includes('{total}'),
+      `${lang}: «{shown} di {total} in evidenza» ha entrambi i segnaposto`);
+    ok(!!(inbox.search as Record<string, string>).noneInEvidence,
+      `${lang}: la ricerca senza risultati amministrativi ha la sua frase`);
+  }
 }
 
 // ===========================================================================

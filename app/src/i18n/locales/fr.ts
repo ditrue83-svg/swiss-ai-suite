@@ -120,6 +120,12 @@ export const fr: Dictionary = {
     signOutAria: 'Se déconnecter du compte',
     menu: 'Menu',
     language: 'Langue',
+    theme: 'Apparence',
+    themeOption: {
+      chiaro: 'Clair',
+      scuro: 'Sombre',
+      sistema: 'Suivre le système',
+    },
     mainNav: 'Navigation principale',
     openMenu: 'Ouvrir le menu de navigation',
     auditLog: 'Journal d’activité',
@@ -1791,6 +1797,17 @@ export const fr: Dictionary = {
     loadMore: 'Afficher les suivantes',
     shown: '{n} communications',
     shownOne: '1 communication',
+    shownEvidence: '{n} communications mises en évidence',
+    shownEvidenceOne: '1 communication mise en évidence',
+    shownEvidenceOf: '{shown} sur {total} mises en évidence',
+    collapsed: {
+      one: '1 communication non administrative',
+      many: '{n} communications non administratives',
+      show: 'afficher',
+      hide: 'masquer',
+      listAria: 'Communications non administratives',
+      shown: '{shown} affichées sur {total}',
+    },
     filters: {
       all: 'Toutes',
       toHandle: 'À traiter',
@@ -1803,6 +1820,7 @@ export const fr: Dictionary = {
       placeholder: 'Rechercher par objet ou expéditeur',
       aria: 'Rechercher parmi les communications',
       none: 'Aucune communication ne correspond à la recherche.',
+      noneInEvidence: 'Aucune communication administrative ne correspond à la recherche.',
     },
     account: {
       all: 'Tous les comptes',
@@ -1832,6 +1850,10 @@ export const fr: Dictionary = {
     emptyInbox: {
       title: 'Aucune communication ne requiert votre attention.',
       subtitle: 'Les nouvelles communications apparaissent ici après la synchronisation.',
+    },
+    emptyAdministrative: {
+      title: 'Aucune communication administrative à traiter.',
+      subtitle: 'En dessous restent les communications non administratives, sur une seule ligne.',
     },
     emptyFilter: 'Aucune communication avec ce filtre.',
     detail: {

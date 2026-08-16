@@ -439,9 +439,9 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   const items = NAV.filter((e): e is NavItem => !isSection(e));
   for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
     const labels = [
-      ...items.map((i) => (dict.nav as Record<string, string>)[i.labelKey.replace('nav.', '')]),
-      ...NAV_SETTINGS.map((s) => (dict.nav as Record<string, string>)[s.labelKey.replace('nav.', '')]),
-      (dict.nav as Record<string, string>).settings,
+      ...items.map((i) => (dict.nav as unknown as Record<string, string>)[i.labelKey.replace('nav.', '')]),
+      ...NAV_SETTINGS.map((s) => (dict.nav as unknown as Record<string, string>)[s.labelKey.replace('nav.', '')]),
+      (dict.nav as unknown as Record<string, string>).settings,
     ];
     const missing = labels.some((l) => l === undefined);
     const tooLong = labels.filter((l) => l !== undefined && l.length > 24);
@@ -1295,6 +1295,227 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
     const n = contaSegni(finto(c.nodi));
     check(`conteggio dei segni — ${c.nome}: ${c.atteso}`, n === c.atteso, `trovati ${n}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+section('11. Il tema — una decisione di prodotto, e le due copie che devono concordare');
+// ---------------------------------------------------------------------------
+// Dal 2026-08-16 il tema NON segue più il sistema operativo: il predefinito è
+// chiaro perché l'aspetto del prodotto è una decisione di prodotto, e la
+// preferenza a tre stati sta in `localStorage`.
+//
+// ⚠️ LA LOGICA ESISTE DUE VOLTE, e non si può evitare: `src/lib/theme.ts` è la
+// copia autorevole, ma lo script in linea di `index.html` deve girare PRIMA
+// della prima pittura o il tema lampeggia a ogni caricamento — e nessun modulo
+// dell'applicazione può girare prima del primo fotogramma. Questa sezione è il
+// prezzo di quella copia: chiave, valori e predefinito si rileggono da entrambe
+// e devono coincidere. Senza, la divergenza si scopre da un utente che ha
+// scelto scuro e vede un lampo bianco.
+{
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const theme = readFileSync(join(root, 'src/lib/theme.ts'), 'utf8');
+  const appCss = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
+
+  // (a) LA CHIAVE DEL DEPOSITO è la stessa nelle due copie.
+  const chiaveTs = theme.match(/CHIAVE_TEMA\s*=\s*'([^']+)'/)?.[1] ?? '';
+  check('index.html usa la stessa chiave di localStorage di theme.ts',
+    chiaveTs !== '' && html.includes(`localStorage.getItem('${chiaveTs}')`),
+    `theme.ts dice «${chiaveTs}»`);
+
+  // (b) I TRE VALORI sono gli stessi, e sono tre.
+  const temiTs = [...(theme.match(/TEMI = \[([^\]]+)\]/)?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+  check('theme.ts dichiara esattamente tre preferenze', temiTs.length === 3, temiTs.join(', '));
+  check('index.html riconosce le stesse tre preferenze',
+    temiTs.every((v) => html.includes(`'${v}'`)), temiTs.join(', '));
+
+  // (c) IL PREDEFINITO è lo stesso — ed è «chiaro». È LA decisione: se un
+  // giorno cambia, deve cambiare in due posti, e questo rosso lo ricorda.
+  const predefinitoTs = theme.match(/TEMA_PREDEFINITO: Tema = '([^']+)'/)?.[1] ?? '';
+  check('il predefinito di theme.ts è «chiaro»', predefinitoTs === 'chiaro', `letto: ${predefinitoTs}`);
+  check('index.html ricade sullo stesso predefinito',
+    new RegExp(`pref = '${predefinitoTs}'`).test(html), `atteso «pref = '${predefinitoTs}'»`);
+
+  // (d) LO SCRIPT È IN LINEA E NEL <head>: se diventasse un modulo o scendesse
+  // nel body, girerebbe dopo la prima pittura e il lampo tornerebbe.
+  const head = html.slice(0, html.indexOf('</head>'));
+  check('lo script del tema è in linea, sincrono e dentro <head>',
+    /<script>\s*\(function \(\) \{/.test(head) && head.includes("setAttribute('data-theme'"),
+    'atteso uno <script> senza src e senza type=module dentro <head>');
+
+  // (e) IL CSS SELEZIONA SU CIÒ CHE LO SCRIPT SCRIVE. Lo script scrive
+  // `light`/`dark`; il foglio di stile ha il blocco scuro su `dark`. Un
+  // disallineamento qui è un tema che non si applica mai, in silenzio.
+  check('app.css ha il blocco scuro su :root[data-theme="dark"]',
+    appCss.includes(':root[data-theme="dark"] {'));
+  // ⚠️ SENZA I COMMENTI. Il file SPIEGA perché non usa più quella media query,
+  // e citarla è il modo giusto di documentarlo: cercarla nel sorgente grezzo
+  // renderebbe questo controllo rosso per una frase invece che per una regola.
+  const appCssRegole = appCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  check('app.css non aggancia più il tema a prefers-color-scheme',
+    !/@media \(prefers-color-scheme: dark\)\s*\{/.test(appCssRegole),
+    'il tema è una scelta dell\'app, non del sistema operativo');
+
+  // (f) `color-scheme` È DICHIARATO IN ENTRAMBI I TEMI. Senza, i controlli che
+  // disegna il SISTEMA — barra di scorrimento, tendina di una select,
+  // calendario di un input[type=date] — restano scuri dentro un'app chiara.
+  // Finché il tema seguiva il sistema i due concordavano sempre: è un difetto
+  // che questo lavoro poteva introdurre, non uno che aveva già.
+  const rootChiaro = appCss.slice(appCss.indexOf(':root {'), appCss.indexOf(':root[data-theme="dark"]'));
+  const rootScuro = appCss.slice(appCss.indexOf(':root[data-theme="dark"]'), appCss.indexOf('* { margin: 0'));
+  check('il tema chiaro dichiara color-scheme: light', /color-scheme:\s*light/.test(rootChiaro));
+  check('il tema scuro dichiara color-scheme: dark', /color-scheme:\s*dark/.test(rootScuro));
+  check('index.html porta il meta color-scheme per l\'istante prima del CSS',
+    /<meta name="color-scheme" content="light"/.test(html));
+
+  // (g) `theme-color` NON è più legato al sistema operativo. Erano due
+  // dichiarazioni con `media`: la barra del telefono avrebbe seguito il
+  // sistema mentre l'app segue sé stessa.
+  const themeColorMeta = [...html.matchAll(/<meta name="theme-color"[^>]*>/g)].map((m) => m[0]!);
+  check('c\'è una sola dichiarazione theme-color', themeColorMeta.length === 1, themeColorMeta.join(' | '));
+  check('e non è legata a prefers-color-scheme',
+    !themeColorMeta.some((m) => m.includes('media=')), themeColorMeta.join(' | '));
+  // Il valore statico è il predefinito del prodotto: ciò che si vede se
+  // JavaScript non parte. Deve essere il chiaro, e deve essere `--card`.
+  const cardChiaro = /--card:\s*([^;]+);/.exec(rootChiaro)?.[1]?.trim() ?? '';
+  check('il theme-color statico è il --card del tema chiaro',
+    themeColorMeta[0]?.includes(cardChiaro) ?? false, `--card chiaro = ${cardChiaro}`);
+
+  // ⚠️ E IL VALORE SCURO DEVE ESSERE `--card` DEL TEMA SCURO, che è scritto in
+  // `hsl()`. Il confronto è quindi NUMERICO, non testuale: `#1c232c` e
+  // `hsl(213, 22%, 14%)` sono lo stesso colore scritto in due modi, e un test
+  // che confrontasse le stringhe fallirebbe sempre — o, peggio, verrebbe tolto.
+  // Serve perché è già successo: `theme-color` era rimasto su un blu che
+  // l'accento dell'app non aveva più. Ora quel valore vive in tre punti — il
+  // meta statico, lo script in linea, `theme.ts` — e tutti e tre devono
+  // rispondere a `--card`.
+  const hslToHex = (v: string): string | null => {
+    const m = /^hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)$/.exec(v.trim());
+    if (!m) return /^#[0-9a-f]{6}$/i.test(v.trim()) ? v.trim().toLowerCase() : null;
+    const h = Number(m[1]) / 360, s = Number(m[2]) / 100, l = Number(m[3]) / 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => {
+      const k = (n + h * 12) % 12;
+      return Math.round((l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)))) * 255);
+    };
+    return `#${[f(0), f(8), f(4)].map((x) => x.toString(16).padStart(2, '0')).join('')}`;
+  };
+  const cardScuroHex = hslToHex(/--card:\s*([^;]+);/.exec(rootScuro)?.[1]?.trim() ?? '');
+  for (const [dove, testo] of [['index.html', html], ['theme.ts', theme]] as const) {
+    check(`${dove}: il theme-color scuro è il --card del tema scuro`,
+      cardScuroHex !== null && testo.toLowerCase().includes(cardScuroHex),
+      `--card scuro = ${cardScuroHex ?? 'illeggibile'}`);
+  }
+
+  // (h) LE TRE PREFERENZE HANNO UN'ETICHETTA NELLE TRE LINGUE. Un'opzione
+  // senza parola in una lingua sola è una tendina con una riga vuota.
+  for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
+    const nav = dict.nav as unknown as Record<string, unknown>;
+    const opts = nav.themeOption as Record<string, string> | undefined;
+    check(`${lang}: le tre preferenze di aspetto hanno la loro parola`,
+      typeof nav.theme === 'string' && !!nav.theme
+        && !!opts && temiTs.every((v) => typeof opts[v] === 'string' && opts[v]!.length > 0),
+      temiTs.map((v) => `${v}=${opts?.[v] ?? '—'}`).join(' '));
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
+// ---------------------------------------------------------------------------
+// ⚠️ PERCHÉ ESISTE, e la data conta. Il pallino delle notifiche scriveva
+// `--on-accent` sopra `--red`: **3,78:1 in chiaro**, sotto la soglia AA di 4,5
+// da quando esiste. Nessun controllo lo vedeva, perché nessun controllo sapeva
+// FARE UN CONTO: `design:lint` guarda che i colori vengano dai token, non che i
+// token accostati si leggano. Una regola che dice «usa i token» non protegge da
+// due token che insieme non si vedono.
+//
+// Qui non si controlla il pallino: si controlla la FAMIGLIA. Ogni regola di
+// `app.css` e `extra.css` che dichiara INSIEME un fondo e un colore di testo
+// presi dai token viene risolta nei tre temi — chiaro, scuro, stampa — e pesata.
+// Sono 90 coppie, e al 2026-08-16 nessuna è sotto la soglia. Un'eccezione qui
+// non esiste per scelta: se un giorno servisse (testo grande, che ad AA si
+// accontenta di 3:1), va dichiarata con il suo motivo, come fa `design:lint`.
+{
+  const senzaCommenti = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '');
+  const app = senzaCommenti(readFileSync(join(root, 'src/styles/app.css'), 'utf8'));
+  const extra = senzaCommenti(readFileSync(join(root, 'src/styles/extra.css'), 'utf8'));
+
+  const canale = (v: number) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  const luminanza = (c: [number, number, number]) => 0.2126 * canale(c[0]) + 0.7152 * canale(c[1]) + 0.0722 * canale(c[2]);
+  const contrasto = (a: [number, number, number], b: [number, number, number]) => {
+    const [x, y] = [luminanza(a), luminanza(b)].sort((p, q) => q - p);
+    return (x! + 0.05) / (y! + 0.05);
+  };
+  const colore = (v: string | undefined): [number, number, number] | null => {
+    if (!v) return null;
+    const t = v.trim();
+    let m = /^#([0-9a-f]{6})$/i.exec(t);
+    if (m) return [0, 2, 4].map((i) => parseInt(m![1]!.slice(i, i + 2), 16)) as [number, number, number];
+    m = /^#([0-9a-f]{3})$/i.exec(t);
+    if (m) return [...m[1]!].map((c) => parseInt(c + c, 16)) as [number, number, number];
+    m = /^hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)$/i.exec(t);
+    if (!m) return null;
+    const h = Number(m[1]) / 360, s = Number(m[2]) / 100, l = Number(m[3]) / 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => {
+      const k = (n + h * 12) % 12;
+      return Math.round((l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)))) * 255);
+    };
+    return [f(0), f(8), f(4)];
+  };
+
+  const dichiarazioni = (src: string) => {
+    const m = new Map<string, string>();
+    for (const x of src.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;{}]+);/g)) m.set(x[1]!, x[2]!.trim());
+    return m;
+  };
+  const fetta = (da: string, a?: string) => app.slice(app.indexOf(da), a ? app.indexOf(a) : undefined);
+  const CHIARO = dichiarazioni(fetta(':root {', ':root[data-theme="dark"]'));
+  const SCURO = new Map([...CHIARO, ...dichiarazioni(fetta(':root[data-theme="dark"] {', ':root[data-theme="dark"] .sidebar'))]);
+  const STAMPA = new Map([...CHIARO, ...dichiarazioni(fetta('@media print'))]);
+  // ⚠️ CONTROPROVA DEL LETTORE: se una delle tre tavolozze si leggesse vuota,
+  // ogni coppia resterebbe «non calcolabile» e la sezione passerebbe in
+  // silenzio — il verde falso che questo progetto ha già pagato tre volte.
+  for (const [nome, m] of [['chiaro', CHIARO], ['scuro', SCURO], ['stampa', STAMPA]] as const) {
+    check(`la tavolozza «${nome}» è stata letta (--card e --ink ci sono)`,
+      !!m.get('--card') && !!m.get('--ink'), `${m.size} dichiarazioni lette`);
+  }
+
+  const risolvi = (v: string | undefined, m: Map<string, string>): string | undefined => {
+    let g = 0;
+    while (v && v.startsWith('var(') && g++ < 6) v = m.get(v.slice(4, v.indexOf(')')).trim());
+    return v;
+  };
+
+  const coppie: { sel: string; bg: string; fg: string }[] = [];
+  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const bg = /(?:^|;|\s)background(?:-color)?:\s*(var\(--[a-z0-9-]+\))/.exec(corpo!)?.[1];
+    const fg = /(?:^|;|\s)color:\s*(var\(--[a-z0-9-]+\))/.exec(corpo!)?.[1];
+    if (bg && fg) coppie.push({ sel: sel!.replace(/\s+/g, ' ').trim(), bg, fg });
+  }
+  // Se il lettore delle REGOLE si rompesse, zero coppie darebbero zero
+  // violazioni: anche questo va dichiarato, non dedotto.
+  check('le regole con fondo e testo dai token sono state trovate',
+    coppie.length >= 80, `trovate ${coppie.length}`);
+
+  const sotto: string[] = [];
+  for (const c of coppie) {
+    for (const [tema, m] of [['chiaro', CHIARO], ['scuro', SCURO], ['stampa', STAMPA]] as const) {
+      const f = colore(risolvi(c.bg, m)), t = colore(risolvi(c.fg, m));
+      if (!f || !t) continue;                       // token non risolvibile: non si finge un esito
+      const k = contrasto(f, t);
+      if (k < 4.5) sotto.push(`${tema}: ${c.sel} — ${c.fg} su ${c.bg} = ${k.toFixed(2)}:1`);
+    }
+  }
+  check(`tutte le ${coppie.length} coppie fondo/testo raggiungono AA nei tre temi`,
+    sotto.length === 0, sotto.join('\n     '));
+
+  // ⚠️ E il caso che ha fatto nascere la sezione, nominato: se qualcuno
+  // rimettesse `--red` sotto il pallino, il conto sopra lo direbbe — ma non
+  // direbbe PERCHÉ. Questa riga lo dice.
+  const pallino = /\.bell-badge\s*\{([^}]*)\}/.exec(extra)?.[1] ?? '';
+  check('il pallino delle notifiche scrive su --red-dark, non su --red',
+    /background:\s*var\(--red-dark\)/.test(pallino),
+    'su --red il bianco fa 3,78:1 in chiaro: --red riempie, --red-dark porta testo');
 }
 
 // ---------------------------------------------------------------------------

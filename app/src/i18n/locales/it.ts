@@ -130,6 +130,12 @@ export const it = {
     signOutAria: 'Esci dall’account',
     menu: 'Menu',
     language: 'Lingua',
+    theme: 'Aspetto',
+    themeOption: {
+      chiaro: 'Chiaro',
+      scuro: 'Scuro',
+      sistema: 'Segui il sistema',
+    },
     mainNav: 'Navigazione principale',
     openMenu: 'Apri il menu di navigazione',
     closeMenu: 'Chiudi il menu',
@@ -1885,6 +1891,17 @@ export const it = {
     loadMore: 'Mostra altre',
     shown: '{n} comunicazioni',
     shownOne: '1 comunicazione',
+    shownEvidence: '{n} comunicazioni in evidenza',
+    shownEvidenceOne: '1 comunicazione in evidenza',
+    shownEvidenceOf: '{shown} di {total} in evidenza',
+    collapsed: {
+      one: '1 comunicazione non amministrativa',
+      many: '{n} comunicazioni non amministrative',
+      show: 'mostra',
+      hide: 'nascondi',
+      listAria: 'Comunicazioni non amministrative',
+      shown: '{shown} di {total} mostrate',
+    },
     filters: {
       all: 'Tutte',
       toHandle: 'Da gestire',
@@ -1897,6 +1914,7 @@ export const it = {
       placeholder: 'Cerca per oggetto o mittente',
       aria: 'Cerca fra le comunicazioni',
       none: 'Nessuna comunicazione corrisponde alla ricerca.',
+      noneInEvidence: 'Nessuna comunicazione amministrativa corrisponde alla ricerca.',
     },
     account: {
       all: 'Tutti gli account',
@@ -1926,6 +1944,10 @@ export const it = {
     emptyInbox: {
       title: 'Nessuna comunicazione richiede attenzione.',
       subtitle: 'Le nuove comunicazioni compaiono qui dopo la sincronizzazione.',
+    },
+    emptyAdministrative: {
+      title: 'Nessuna comunicazione amministrativa da gestire.',
+      subtitle: 'Qui sotto restano le comunicazioni non amministrative, in una riga sola.',
     },
     emptyFilter: 'Nessuna comunicazione con questo filtro.',
     detail: {

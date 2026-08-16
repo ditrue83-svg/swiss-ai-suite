@@ -79,7 +79,27 @@ function mediaBlock(css: string, condition: string): { body: string; start: numb
 
 const printApp = mediaBlock(APP, 'print');
 const printExtra = mediaBlock(EXTRA, 'print');
-const darkApp = mediaBlock(APP, '(prefers-color-scheme: dark)');
+
+/**
+ * Il blocco del TEMA SCURO.
+ *
+ * ⚠️ Dal 2026-08-16 non è più `@media (prefers-color-scheme: dark)`: il tema lo
+ * sceglie l'app, e lo scuro è `:root[data-theme="dark"]`. Qui non si cerca più
+ * una media query — si cerca quel selettore, e si prende il blocco per intero
+ * con lo stesso conteggio di graffe, per la stessa ragione di `mediaBlock`.
+ */
+function selectorBlock(css: string, selector: string): { body: string; start: number } | null {
+  const at = css.indexOf(`${selector} {`);
+  if (at < 0) return null;
+  const open = css.indexOf('{', at);
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === '{') depth++;
+    else if (css[i] === '}') { depth--; if (depth === 0) return { body: css.slice(open + 1, i), start: at }; }
+  }
+  return null;
+}
+const darkApp = selectorBlock(APP, ':root[data-theme="dark"]');
 
 // ---------------------------------------------------------------------------
 section('0. I blocchi ci sono, e il lettore li ha letti davvero');
@@ -120,16 +140,35 @@ check('`.print-only` compare DENTRO la stampa',
 // ---------------------------------------------------------------------------
 section('2. Tema scuro: il foglio resta bianco');
 
-// ⚠️⚠️ L'ASSERZIONE CHE DECIDE DAVVERO. `:root` in `@media print` e `:root` in
-// `@media (prefers-color-scheme: dark)` hanno la STESSA specificità: quando si
-// stampa da un sistema in tema scuro entrambe le media query sono vere, e vince
-// quella scritta DOPO. Se qualcuno sposta il blocco di stampa più in alto, ogni
-// altra riga di questo file resta verde e la pagina esce nera.
-check('⚠️ il blocco di stampa viene DOPO quello del tema scuro (è l’ordine a decidere)',
+// ⚠️⚠️ LE DUE ASSERZIONI CHE DECIDONO DAVVERO — e dal 2026-08-16 sono DUE.
+//
+// Prima il tema scuro era `@media (prefers-color-scheme: dark) { :root { … } }`:
+// selettore `:root`, specificità (0,1,0), identica a quella della stampa. Fra
+// due dichiarazioni di pari specificità vince quella scritta DOPO, e bastava
+// tenere il blocco di stampa in fondo.
+//
+// Ora lo scuro è `:root[data-theme="dark"]` — specificità (0,2,0) — e su `:root`
+// nudo VINCE PER SPECIFICITÀ, dovunque stia nel file. Stampando da un tema scuro
+// sarebbe uscito un foglio nero con il blocco al suo posto e questo file tutto
+// verde. Il rimedio è nel selettore della stampa, `:root, :root[data-theme]`, che
+// pareggia (0,2,0) e restituisce la decisione all'ordine.
+//
+// Servono quindi entrambe: la stampa pareggia la specificità, E viene dopo.
+check('⚠️ il selettore della stampa pareggia la specificità del tema scuro',
+  /:root,\s*:root\[data-theme\]\s*\{/.test(P.slice(0, 200)) || /:root,\s*:root\[data-theme\]\s*\{/.test(P),
+  'atteso «:root, :root[data-theme] {» in cima al blocco di stampa');
+check('⚠️ il blocco di stampa viene DOPO quello del tema scuro (a pari specificità decide l’ordine)',
   (printApp?.start ?? -1) > (darkApp?.start ?? Infinity),
   `stampa a ${printApp?.start}, scuro a ${darkApp?.start}`);
 
-const printRoot = /:root\s*\{([^}]*)\}/.exec(P)?.[1] ?? '';
+// ⚠️ CONTROPROVA DEL LETTORE: il blocco scuro trovato deve essere quello VERO,
+// non tre righe. Se `selectorBlock` sbagliasse, l'asserzione sull'ordine sarebbe
+// verde per la ragione sbagliata.
+check('il blocco del tema scuro è stato estratto per intero',
+  (darkApp?.body.length ?? 0) > 1000 && /--bg:/.test(darkApp?.body ?? ''),
+  `lunghezza estratta: ${darkApp?.body.length ?? 0}`);
+
+const printRoot = /:root,\s*:root\[data-theme\]\s*\{([^}]*)\}/.exec(P)?.[1] ?? '';
 const token = (name: string) => new RegExp(`--${name}:\\s*([^;]+);`).exec(printRoot)?.[1]?.trim() ?? null;
 const isWhite = (v: string | null) => v !== null && /^(#fff(fff)?|white|rgb\(255,\s*255,\s*255\))$/i.test(v);
 const isBlack = (v: string | null) => v !== null && /^(#000(000)?|black|rgb\(0,\s*0,\s*0\))$/i.test(v);

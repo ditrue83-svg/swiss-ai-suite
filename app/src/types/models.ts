@@ -1113,6 +1113,14 @@ export interface EmailMessageSummary {
   processingStatus: EmailProcessingStatus;
   attentionStatus: EmailAttentionStatus;
   relevance: EmailRelevance | null;
+  /**
+   * Quanto la classificazione è sicura di sé. Sta nella RIGA DI LISTA, non solo
+   * nel dettaglio, perché è ciò che decide se un messaggio può essere compresso
+   * (`features/inbox/emphasis.ts`): una conclusione incerta resta in evidenza,
+   * e per saperlo bisogna averla sotto mano mentre si disegna l'elenco.
+   * `null` = decisa dal filtro deterministico, che non produce probabilità.
+   */
+  relevanceConfidence: number | null;
   seenAt: string | null;
   handledAt: string | null;
   errorCode: string | null;
@@ -1166,7 +1174,6 @@ export interface EmailMessageDetail extends EmailMessageSummary {
   importance: string | null;
   /** Motivazione breve del classificatore. Operativa, mai promozionale (§61). */
   relevanceReason: string | null;
-  relevanceConfidence: number | null;
   errorMessageSafe: string | null;
   attachments: EmailAttachment[];
   documents: EmailLinkedDocument[];

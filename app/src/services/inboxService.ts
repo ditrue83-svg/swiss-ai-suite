@@ -15,6 +15,7 @@ import { etichettaDaRigaDocumento } from '@/lib/documentTitle';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { daysUntil } from '@/lib/format';
 import { deadlineLevel } from '@/features/admin-ai/engine';
+import { QUERY_COMPRESSI, QUERY_IN_EVIDENZA } from '@/features/inbox/emphasis';
 import type {
   EmailAttachment, EmailLink, EmailLinkedDocument, EmailMessageDetail, EmailMessageSummary,
   EmailRecipient, InboxFilter, InboxPage,
@@ -31,7 +32,10 @@ export const URGENT_WITHIN_DAYS = 30;
 const SUMMARY_COLUMNS =
   'id, company_id, connection_id, provider_thread_id, subject, sender_name, sender_email, ' +
   'received_at, body_preview, has_attachments, attachment_count, processing_status, ' +
-  'attention_status, relevance, seen_at, handled_at, error_code, analysis_deadline';
+  // `relevance_confidence` sta qui e non nel solo dettaglio perché la LISTA
+  // decide con essa che peso dare a una riga (§emphasis): senza, «nel dubbio si
+  // mostra» sarebbe una regola che il disegno dell'elenco non può applicare.
+  'attention_status, relevance, relevance_confidence, seen_at, handled_at, error_code, analysis_deadline';
 
 function toSummary(row: Partial<MessageRow> & { id: string }): EmailMessageSummary {
   const deadline = (row.analysis_deadline as string | null) ?? null;
@@ -51,6 +55,7 @@ function toSummary(row: Partial<MessageRow> & { id: string }): EmailMessageSumma
     processingStatus: row.processing_status as EmailMessageSummary['processingStatus'],
     attentionStatus: row.attention_status as EmailMessageSummary['attentionStatus'],
     relevance: row.relevance ?? null,
+    relevanceConfidence: row.relevance_confidence ?? null,
     seenAt: row.seen_at ?? null,
     handledAt: row.handled_at ?? null,
     errorCode: row.error_code ?? null,
@@ -97,6 +102,19 @@ function decodeCursor(cursor: string | null): { receivedAt: string; id: string }
 export interface InboxQuery {
   companyId: string;
   filter: InboxFilter;
+  /**
+   * Quale metà di «Tutte» si vuole: ciò che sta in evidenza o ciò che è
+   * compresso in fondo. Assente = le due insieme, com'era prima della
+   * divisione — ed è ancora la risposta giusta per gli altri filtri, che sono
+   * una domanda esplicita dell'utente e non vanno riscritte da una regola di
+   * presentazione.
+   *
+   * ⚠️ Le due metà sono un COMPLEMENTO, non due filtri indipendenti: insieme
+   * danno esattamente l'elenco intero. Le espressioni stanno in
+   * `features/inbox/emphasis.ts`, non qui, perché la stessa regola serve anche
+   * al browser per decidere il peso di una riga.
+   */
+  emphasis?: 'in_evidence' | 'collapsed';
   /** Testo cercato su oggetto, mittente e anteprima. */
   search?: string | null;
   connectionId?: string | null;
@@ -107,53 +125,85 @@ export interface InboxQuery {
   pageSize?: number;
 }
 
+/**
+ * Le sole operazioni che servono a comporre l'ambito di una query di Inbox.
+ *
+ * Esiste perché lista e conteggio devono restringere ESATTAMENTE allo stesso
+ * modo: se la riga compressa dicesse «72» e l'elenco che si apre ne mostrasse
+ * 68, il numero non descriverebbe più l'insieme che promette. Un solo posto
+ * che decide, due query che lo usano.
+ */
+interface AmbitoQuery {
+  eq(column: string, value: unknown): AmbitoQuery;
+  neq(column: string, value: unknown): AmbitoQuery;
+  not(column: string, operator: string, value: unknown): AmbitoQuery;
+  lte(column: string, value: unknown): AmbitoQuery;
+  gte(column: string, value: unknown): AmbitoQuery;
+  ilike(column: string, pattern: string): AmbitoQuery;
+  or(filters: string): AmbitoQuery;
+}
+
+function applicaAmbito<Q>(builder: Q, query: InboxQuery): Q {
+  let q = builder as unknown as AmbitoQuery;
+
+  switch (query.filter) {
+    case 'to_handle':
+      q = q.eq('attention_status', 'needs_attention');
+      break;
+    case 'to_verify':
+      q = q.eq('attention_status', 'to_verify');
+      break;
+    case 'urgent': {
+      // «Urgente» qui significa una cosa sola e verificabile: l'analisi ha
+      // trovato una scadenza, ed è passata o è vicina. Non è un punteggio.
+      const limit = new Date(Date.now() + URGENT_WITHIN_DAYS * 86_400_000).toISOString().slice(0, 10);
+      q = q.not('analysis_deadline', 'is', null).lte('analysis_deadline', limit).neq('attention_status', 'handled');
+      break;
+    }
+    case 'handled':
+      q = q.eq('attention_status', 'handled');
+      break;
+    case 'all':
+    default:
+      // «Tutti» è la vista operativa: contiene tutto ciò che non è stato
+      // messo via, comprese le comunicazioni giudicate non amministrative —
+      // che restano visibili, perché un errore di classificazione non deve
+      // essere irreversibile.
+      q = q.neq('attention_status', 'handled');
+      if (query.emphasis === 'collapsed') {
+        q = q.eq('attention_status', QUERY_COMPRESSI.eq.attention_status).or(QUERY_COMPRESSI.or);
+      } else if (query.emphasis === 'in_evidence') {
+        q = q.or(QUERY_IN_EVIDENZA.or);
+      }
+      break;
+  }
+
+  if (query.connectionId) q = q.eq('connection_id', query.connectionId);
+  if (query.withAttachments) q = q.eq('has_attachments', true);
+  if (query.since) q = q.gte('received_at', query.since);
+
+  const search = (query.search ?? '').trim();
+  if (search) {
+    // `search_text` è la colonna generata dalla 0013, con indice trigram.
+    // I caratteri jolly di LIKE vengono neutralizzati: `%` digitato da un
+    // utente deve cercare un per cento, non «qualsiasi cosa».
+    const escaped = search.replace(/[\\%_]/g, (c) => `\\${c}`).slice(0, 100);
+    q = q.ilike('search_text', `%${escaped.toLowerCase()}%`);
+  }
+
+  return q as unknown as Q;
+}
+
 export const inboxService = {
   async list(query: InboxQuery): Promise<InboxPage> {
     const size = query.pageSize ?? INBOX_PAGE_SIZE;
-    let q = requireSupabase()
-      .from('email_messages')
-      .select(SUMMARY_COLUMNS)
-      .eq('company_id', query.companyId);
-
-    switch (query.filter) {
-      case 'to_handle':
-        q = q.eq('attention_status', 'needs_attention');
-        break;
-      case 'to_verify':
-        q = q.eq('attention_status', 'to_verify');
-        break;
-      case 'urgent': {
-        // «Urgente» qui significa una cosa sola e verificabile: l'analisi ha
-        // trovato una scadenza, ed è passata o è vicina. Non è un punteggio.
-        const limit = new Date(Date.now() + URGENT_WITHIN_DAYS * 86_400_000).toISOString().slice(0, 10);
-        q = q.not('analysis_deadline', 'is', null).lte('analysis_deadline', limit).neq('attention_status', 'handled');
-        break;
-      }
-      case 'handled':
-        q = q.eq('attention_status', 'handled');
-        break;
-      case 'all':
-      default:
-        // «Tutti» è la vista operativa: contiene tutto ciò che non è stato
-        // messo via, comprese le comunicazioni giudicate non amministrative —
-        // che restano visibili, perché un errore di classificazione non deve
-        // essere irreversibile.
-        q = q.neq('attention_status', 'handled');
-        break;
-    }
-
-    if (query.connectionId) q = q.eq('connection_id', query.connectionId);
-    if (query.withAttachments) q = q.eq('has_attachments', true);
-    if (query.since) q = q.gte('received_at', query.since);
-
-    const search = (query.search ?? '').trim();
-    if (search) {
-      // `search_text` è la colonna generata dalla 0013, con indice trigram.
-      // I caratteri jolly di LIKE vengono neutralizzati: `%` digitato da un
-      // utente deve cercare un per cento, non «qualsiasi cosa».
-      const escaped = search.replace(/[\\%_]/g, (c) => `\\${c}`).slice(0, 100);
-      q = q.ilike('search_text', `%${escaped.toLowerCase()}%`);
-    }
+    let q = applicaAmbito(
+      requireSupabase()
+        .from('email_messages')
+        .select(SUMMARY_COLUMNS)
+        .eq('company_id', query.companyId),
+      query,
+    );
 
     const cursor = decodeCursor(query.cursor ?? null);
     if (cursor) {
@@ -175,6 +225,35 @@ export const inboxService = {
       items,
       nextCursor: hasMore && items.length ? encodeCursor(items[items.length - 1]) : null,
     };
+  },
+
+  /**
+   * Quante righe ha l'insieme che questa query descrive.
+   *
+   * ⚠️ NON si contano le righe caricate. La lista è paginata a 30: «30
+   * comunicazioni in evidenza» quando ce ne sono 76, o «30 non amministrative»
+   * quando ce ne sono 72, sono due conteggi che descrivono la memoria del
+   * browser spacciandola per l'insieme. È il difetto dei «19 documenti» contro
+   * «2 di 2», e la regola che ne è uscita vale anche qui: ogni numero dichiara
+   * l'insieme che conta.
+   *
+   * Prende la stessa `InboxQuery` della lista — emphasis compreso — perché
+   * ricerca e casella devono restringere anche il conteggio: cercando
+   * «Nespresso», «72 non amministrative» sarebbe falso.
+   *
+   * Query di sola testata: non scarica alcuna riga.
+   */
+  async count(query: Omit<InboxQuery, 'cursor' | 'pageSize'>): Promise<number> {
+    const q = applicaAmbito(
+      requireSupabase()
+        .from('email_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', query.companyId),
+      query,
+    );
+    const { count, error } = await q;
+    if (error) throw new AppError(toUserMessage(error), error);
+    return count ?? 0;
   },
 
   /** Conteggi per i filtri. Query di sola testata: non scarica alcuna riga. */
@@ -269,8 +348,10 @@ export const inboxService = {
       bodyLinks: parseLinks(row.body_links),
       isBulk: row.is_bulk,
       importance: row.importance,
+      // `relevanceConfidence` arriva da `toSummary`: da quando la lista ne ha
+      // bisogno per decidere il peso di una riga, la fiducia è un campo del
+      // riassunto e ripeterla qui sarebbe una seconda scrittura dello stesso dato.
       relevanceReason: row.relevance_reason,
-      relevanceConfidence: row.relevance_confidence,
       errorMessageSafe: row.error_message_safe,
       attachments: attachmentList,
       documents,

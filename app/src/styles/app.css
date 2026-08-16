@@ -100,6 +100,19 @@
      stata svolta. Restano separati dal colore d'azione, così un pulsante non
      compete mai con un avviso. (Valori invariati in questo passo: vanno
      ritoccati insieme ai componenti che li usano, non prima.) */
+  /* ⚠️ I DUE ROSSI FANNO DUE MESTIERI, e confonderli costa una soglia.
+     `--red` è il rosso che si RICONOSCE: barre, pallini, bordi, riempimenti —
+     posti dove non c'è testo sopra, e dove serve che salti all'occhio.
+     `--red-dark` è il rosso che porta CONTRASTO, e le sue due parti sono
+     simmetriche: inchiostro rosso su una superficie chiara, e superficie rossa
+     sotto `--on-accent`. Sono lo stesso requisito — la massima distanza dal
+     neutro della pagina — e si ribaltano insieme quando il tema si ribalta,
+     che è la ragione per cui basta un token e non ne servono due.
+     ⚠️ Fino al 2026-08-16 il pallino delle notifiche scriveva sopra `--red`:
+     3,78:1 in chiaro, sotto AA da sempre. Con `--red-dark` fa 5,83 · 7,34 · 21
+     nei tre temi. Un colore che deve essere leggibile e un colore che deve
+     essere riconoscibile non sono lo stesso colore — la stessa lezione che
+     ambra e verde avevano già insegnato con il marrone della barra «Media». */
   --red: hsl(0, 84%, 60%);
   --red-soft: hsl(0, 84%, 96%);
   --red-line: hsl(0, 84%, 86%);
@@ -167,6 +180,16 @@
 
   --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
   --topbar-h: 56px;
+
+  /* ⚠️ IL TEMA DEI CONTROLLI DEL SISTEMA, che i token non possono vestire.
+     Barra di scorrimento, menu a tendina di una `select`, calendario di un
+     `input[type=date]`, riquadro dell'autocompletamento: li disegna il browser,
+     e senza questa riga li disegna secondo il SISTEMA OPERATIVO. Finché il tema
+     dell'app seguiva il sistema i due concordavano sempre; da quando l'app
+     sceglie, `chiaro` su una macchina in tema scuro darebbe campi neri dentro
+     una scheda bianca. Si dichiara UNA sola parola per tema, non `light dark`:
+     dichiararne due significherebbe di nuovo «decida il sistema». */
+  color-scheme: light;
   /* Inter è dichiarato in `fonts.css` e servito da noi. La coda resta quella di
      prima e non è decorativa: è ciò che si legge nel secondo che precede il
      caricamento (`font-display: swap`) e ciò che disegna i caratteri che il
@@ -175,8 +198,27 @@
   font-family: 'Inter', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 /* ============================================================================
-   Tema scuro. Segue la preferenza del sistema operativo: nessun interruttore
-   nell'app, nessuna scelta da ricordare all'utente.
+   Tema scuro — dal 2026-08-16 una SCELTA, non più il riflesso del sistema.
+
+   ⚠️ PERCHÉ NON È PIÙ `@media (prefers-color-scheme: dark)`. L'aspetto
+   predefinito del prodotto è una decisione di prodotto: una fiduciaria che
+   mostra l'app a un cliente, uno screenshot, una demo e una stampa devono avere
+   lo stesso aspetto, e dev'essere quello scelto qui — non quello che aveva in
+   quel momento il portatile di chi guarda. Il `:root` nudo (la palette chiara)
+   è quindi il predefinito, e questo blocco si accende solo su
+   `data-theme="dark"`.
+
+   ⚠️⚠️ «SEGUI IL SISTEMA» NON RIAPRE UNA SECONDA MEDIA QUERY QUI, e la scelta
+   è deliberata: scrivere `@media (prefers-color-scheme: dark) { :root[data-theme
+   ="system"] { … } }` significherebbe una SECONDA COPIA di questi 36 token, cioè
+   la seconda fonte di verità che questo progetto vieta. La media query si
+   consulta lo stesso — con `matchMedia`, in `lib/theme.ts`, e SOLO quando la
+   preferenza è «sistema» — e il risultato arriva qui come `data-theme`. In
+   `data-theme` c'è sempre un tema RISOLTO («light» o «dark»); la preferenza a
+   tre stati vive accanto, in `data-theme-pref`.
+
+   Conseguenza felice: senza JavaScript non c'è attributo, quindi si vede il
+   `:root` nudo — che è esattamente il predefinito voluto.
 
    Non è un'inversione dei valori chiari. Su fondo scuro l'occhio percepisce il
    contrasto in modo diverso: le superfici salgono per gradi invece di scendere,
@@ -186,8 +228,7 @@
    `--on-accent` diventa scuro: con l'accento schiarito per staccarsi dal fondo,
    il testo bianco sopra non reggerebbe il contrasto.
    ========================================================================== */
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-theme="dark"] {
     /* Fondo e superficie distanziati di 8 punti di luminosità: le schede si
        staccano dalla pagina. Il bordo delle schede è decorativo e non deve
        raggiungere 3:1 — quella soglia WCAG vale per i CONTROLLI (input, select,
@@ -214,7 +255,11 @@
     --red-soft: hsl(0, 35%, 17%);
     --red-line: hsl(0, 32%, 30%);
     --red-hover: hsl(0, 35%, 23%);
-    --red-dark: hsl(0, 75%, 74%);       /* è il colore del TESTO: in scuro schiarisce */
+    /* Il rosso che porta CONTRASTO: in scuro schiarisce, perché il neutro da
+       cui deve staccarsi è diventato scuro. Vale per entrambe le sue parti —
+       inchiostro sulla scheda (6,56:1) e superficie sotto `--on-accent`, che
+       qui è inchiostro scuro (7,34:1). */
+    --red-dark: hsl(0, 75%, 74%);
 
     --green: hsl(151, 45%, 62%);
     --green-soft: hsl(151, 30%, 14%);
@@ -247,17 +292,34 @@
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
 
     --focus: hsl(207, 80%, 66%);
-  }
 
-  /* La barra laterale e il drawer usavano il bianco della card come superficie
-     propria: in scuro devono staccarsi dal fondo, non confondersi. */
-  .sidebar, .drawer, .topbar { background: var(--card); }
-
-  /* I campi compilabili sono controlli: il loro bordo deve raggiungere 3:1
-     sulla superficie, mentre quello delle schede può restare discreto. */
-  .field input, .field select, .field textarea,
-  .select-inline, .draft-editor textarea, .upload-zone { border-color: var(--line-strong); }
+  /* ⚠️ `color-scheme` NON è un doppione di questo blocco: i token vestono ciò
+     che disegniamo noi, questa riga veste ciò che disegna il SISTEMA — barra di
+     scorrimento, menu di una `select`, calendario di un `input[type=date]`,
+     riquadro dell'autocompletamento. Finché il tema seguiva il sistema operativo
+     i due concordavano sempre e la riga non serviva. Da quando l'app sceglie,
+     senza di essa una macchina in tema scuro mostrerebbe campi neri dentro una
+     scheda bianca. */
+    color-scheme: dark;
 }
+
+/* Le due sole regole del tema scuro che non sono un token. Stavano dentro la
+   media query e restano qui, con lo stesso selettore del blocco sopra. */
+
+/* La barra laterale e il drawer usavano il bianco della card come superficie
+   propria: in scuro devono staccarsi dal fondo, non confondersi. */
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .drawer,
+:root[data-theme="dark"] .topbar { background: var(--card); }
+
+/* I campi compilabili sono controlli: il loro bordo deve raggiungere 3:1
+   sulla superficie, mentre quello delle schede può restare discreto. */
+:root[data-theme="dark"] .field input,
+:root[data-theme="dark"] .field select,
+:root[data-theme="dark"] .field textarea,
+:root[data-theme="dark"] .select-inline,
+:root[data-theme="dark"] .draft-editor textarea,
+:root[data-theme="dark"] .upload-zone { border-color: var(--line-strong); }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -1473,6 +1535,35 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .inbox-processing { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-label); color: var(--muted); margin-top: var(--sp-05); }
 .inbox-processing.is-failed { color: var(--red-dark); }
 .inbox-more { margin-top: var(--sp-4); }
+
+/* ---- Il peso di una riga --------------------------------------------------
+   Fino al 2026-08-16 tutte le righe avevano la stessa altezza, lo stesso peso
+   e la stessa posizione: il modulo classificava e poi mostrava tutto uguale.
+   Le tre classi qui sotto sono la classificazione resa visibile.
+
+   ⚠️ Il peso si abbassa con la DIMENSIONE e con lo spazio, non spegnendo il
+   contrasto: `--ink-soft` e `--muted` restano leggibili su fondo chiaro e su
+   fondo scuro. Una gerarchia che si ottiene rendendo un testo quasi invisibile
+   non è una gerarchia: è un testo che non si può leggere. */
+
+/* Informativa: riguarda l'azienda, non chiede niente. Resta intera, pesa meno. */
+.inbox-row.is-informational { padding: var(--sp-2) 0; }
+.inbox-row.is-informational .inbox-subject { color: var(--ink-soft); }
+/* La specificità è più alta di `.is-unseen` di proposito: il grassetto del non
+   letto è una comodità visiva, e non deve poter risalire sopra la gerarchia. */
+.inbox-row.is-informational.is-unseen .inbox-subject,
+.inbox-row.is-collapsed.is-unseen .inbox-subject { font-weight: 400; }
+
+/* Non amministrativa: la riga esiste, ed è la più leggera delle tre. */
+.inbox-row.is-collapsed { padding: var(--sp-1) 0; }
+.inbox-row.is-collapsed .inbox-subject { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-row.is-collapsed .inbox-sender { color: var(--muted); }
+
+/* La riga che le tiene piegate. Sta in fondo, non è un pulsante grande e non
+   somiglia a un'azione distruttiva: comprimere è reversibile con un clic. */
+.inbox-collapsed { margin-top: var(--sp-4); border-top: 1px solid var(--line); padding-top: var(--sp-3); }
+.inbox-collapsed-head { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-collapsed-count { color: var(--muted); }
 .inbox-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
 
 .inbox-fields { display: grid; gap: var(--sp-2); margin: 0; }
@@ -1736,12 +1827,22 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    deciso per QUELLA carta, non per «far funzionare la stampa in generale».
 
    ⚠️ QUESTO BLOCCO STA IN FONDO AL FILE, E NON È UN CASO. Il tema scuro
-   (riga ~112) ridefinisce i token dentro `@media (prefers-color-scheme: dark)`
-   con la stessa specificità (`:root`). Con un sistema in tema scuro ENTRAMBE le
-   media query sono vere durante la stampa: a decidere è l'ORDINE. Spostare
+   ridefinisce gli stessi token: a decidere fra i due è l'ORDINE. Spostare
    questo blocco più in alto significa stampare un foglio a fondo nero — che è
    l'errore più probabile di tutta la funzione, e costa un serbatoio di toner
    prima che qualcuno capisca perché.
+
+   ⚠️⚠️ E DAL 2026-08-16 L'ORDINE DA SOLO NON BASTA PIÙ. Finché il tema scuro
+   era `@media (prefers-color-scheme: dark) { :root { … } }`, il suo selettore
+   era `:root` — specificità (0,1,0), identica a quella di qui, e l'ordine
+   decideva. Ora è `:root[data-theme="dark"]`: **(0,2,0), che VINCE su `:root`
+   per specificità, e la posizione nel file non conta più.** Stampando da un
+   tema scuro sarebbe uscito un foglio nero, con questo blocco al suo posto e
+   ogni riga di `test:print-unit` verde. Per questo il selettore qui sotto è
+   `:root, :root[data-theme]`: la seconda metà pareggia la specificità del tema
+   scuro, e da lì in poi torna a decidere l'ordine — che è la ragione per cui il
+   blocco resta comunque in fondo. `[data-theme]` senza valore copre «dark»,
+   «light» e qualunque valore futuro: la carta è bianca in ogni caso.
 
    ⚠️ SI RIDEFINISCONO I TOKEN, non le singole regole. Tutta l'interfaccia
    deriva da `--bg`, `--card`, `--ink`…: cambiarli alla fonte porta al bianco
@@ -1753,7 +1854,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .print-only { display: none; }
 
 @media print {
-  :root {
+  :root, :root[data-theme] {
+    /* Il foglio non ha un tema: ha inchiostro. */
+    color-scheme: light;
+
     /* Neutri: fondo bianco, inchiostro nero. `--muted` non scende sotto un
        grigio che una stampante laser rende ancora leggibile: sotto il 45% i
        metadati spariscono in una retinatura sporca. */
