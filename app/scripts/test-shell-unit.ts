@@ -1419,6 +1419,106 @@ section('11. Il tema — una decisione di prodotto, e le due copie che devono co
 }
 
 // ---------------------------------------------------------------------------
+section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
+// ---------------------------------------------------------------------------
+// ⚠️ PERCHÉ ESISTE, e la data conta. Il pallino delle notifiche scriveva
+// `--on-accent` sopra `--red`: **3,78:1 in chiaro**, sotto la soglia AA di 4,5
+// da quando esiste. Nessun controllo lo vedeva, perché nessun controllo sapeva
+// FARE UN CONTO: `design:lint` guarda che i colori vengano dai token, non che i
+// token accostati si leggano. Una regola che dice «usa i token» non protegge da
+// due token che insieme non si vedono.
+//
+// Qui non si controlla il pallino: si controlla la FAMIGLIA. Ogni regola di
+// `app.css` e `extra.css` che dichiara INSIEME un fondo e un colore di testo
+// presi dai token viene risolta nei tre temi — chiaro, scuro, stampa — e pesata.
+// Sono 90 coppie, e al 2026-08-16 nessuna è sotto la soglia. Un'eccezione qui
+// non esiste per scelta: se un giorno servisse (testo grande, che ad AA si
+// accontenta di 3:1), va dichiarata con il suo motivo, come fa `design:lint`.
+{
+  const senzaCommenti = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '');
+  const app = senzaCommenti(readFileSync(join(root, 'src/styles/app.css'), 'utf8'));
+  const extra = senzaCommenti(readFileSync(join(root, 'src/styles/extra.css'), 'utf8'));
+
+  const canale = (v: number) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  const luminanza = (c: [number, number, number]) => 0.2126 * canale(c[0]) + 0.7152 * canale(c[1]) + 0.0722 * canale(c[2]);
+  const contrasto = (a: [number, number, number], b: [number, number, number]) => {
+    const [x, y] = [luminanza(a), luminanza(b)].sort((p, q) => q - p);
+    return (x! + 0.05) / (y! + 0.05);
+  };
+  const colore = (v: string | undefined): [number, number, number] | null => {
+    if (!v) return null;
+    const t = v.trim();
+    let m = /^#([0-9a-f]{6})$/i.exec(t);
+    if (m) return [0, 2, 4].map((i) => parseInt(m![1]!.slice(i, i + 2), 16)) as [number, number, number];
+    m = /^#([0-9a-f]{3})$/i.exec(t);
+    if (m) return [...m[1]!].map((c) => parseInt(c + c, 16)) as [number, number, number];
+    m = /^hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)$/i.exec(t);
+    if (!m) return null;
+    const h = Number(m[1]) / 360, s = Number(m[2]) / 100, l = Number(m[3]) / 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => {
+      const k = (n + h * 12) % 12;
+      return Math.round((l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)))) * 255);
+    };
+    return [f(0), f(8), f(4)];
+  };
+
+  const dichiarazioni = (src: string) => {
+    const m = new Map<string, string>();
+    for (const x of src.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;{}]+);/g)) m.set(x[1]!, x[2]!.trim());
+    return m;
+  };
+  const fetta = (da: string, a?: string) => app.slice(app.indexOf(da), a ? app.indexOf(a) : undefined);
+  const CHIARO = dichiarazioni(fetta(':root {', ':root[data-theme="dark"]'));
+  const SCURO = new Map([...CHIARO, ...dichiarazioni(fetta(':root[data-theme="dark"] {', ':root[data-theme="dark"] .sidebar'))]);
+  const STAMPA = new Map([...CHIARO, ...dichiarazioni(fetta('@media print'))]);
+  // ⚠️ CONTROPROVA DEL LETTORE: se una delle tre tavolozze si leggesse vuota,
+  // ogni coppia resterebbe «non calcolabile» e la sezione passerebbe in
+  // silenzio — il verde falso che questo progetto ha già pagato tre volte.
+  for (const [nome, m] of [['chiaro', CHIARO], ['scuro', SCURO], ['stampa', STAMPA]] as const) {
+    check(`la tavolozza «${nome}» è stata letta (--card e --ink ci sono)`,
+      !!m.get('--card') && !!m.get('--ink'), `${m.size} dichiarazioni lette`);
+  }
+
+  const risolvi = (v: string | undefined, m: Map<string, string>): string | undefined => {
+    let g = 0;
+    while (v && v.startsWith('var(') && g++ < 6) v = m.get(v.slice(4, v.indexOf(')')).trim());
+    return v;
+  };
+
+  const coppie: { sel: string; bg: string; fg: string }[] = [];
+  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const bg = /(?:^|;|\s)background(?:-color)?:\s*(var\(--[a-z0-9-]+\))/.exec(corpo!)?.[1];
+    const fg = /(?:^|;|\s)color:\s*(var\(--[a-z0-9-]+\))/.exec(corpo!)?.[1];
+    if (bg && fg) coppie.push({ sel: sel!.replace(/\s+/g, ' ').trim(), bg, fg });
+  }
+  // Se il lettore delle REGOLE si rompesse, zero coppie darebbero zero
+  // violazioni: anche questo va dichiarato, non dedotto.
+  check('le regole con fondo e testo dai token sono state trovate',
+    coppie.length >= 80, `trovate ${coppie.length}`);
+
+  const sotto: string[] = [];
+  for (const c of coppie) {
+    for (const [tema, m] of [['chiaro', CHIARO], ['scuro', SCURO], ['stampa', STAMPA]] as const) {
+      const f = colore(risolvi(c.bg, m)), t = colore(risolvi(c.fg, m));
+      if (!f || !t) continue;                       // token non risolvibile: non si finge un esito
+      const k = contrasto(f, t);
+      if (k < 4.5) sotto.push(`${tema}: ${c.sel} — ${c.fg} su ${c.bg} = ${k.toFixed(2)}:1`);
+    }
+  }
+  check(`tutte le ${coppie.length} coppie fondo/testo raggiungono AA nei tre temi`,
+    sotto.length === 0, sotto.join('\n     '));
+
+  // ⚠️ E il caso che ha fatto nascere la sezione, nominato: se qualcuno
+  // rimettesse `--red` sotto il pallino, il conto sopra lo direbbe — ma non
+  // direbbe PERCHÉ. Questa riga lo dice.
+  const pallino = /\.bell-badge\s*\{([^}]*)\}/.exec(extra)?.[1] ?? '';
+  check('il pallino delle notifiche scrive su --red-dark, non su --red',
+    /background:\s*var\(--red-dark\)/.test(pallino),
+    'su --red il bianco fa 3,78:1 in chiaro: --red riempie, --red-dark porta testo');
+}
+
+// ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);
 process.exit(fail === 0 ? 0 : 1);

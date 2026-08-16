@@ -1242,13 +1242,42 @@ sarebbero diventati invisibili. Non è un token fantasma, ed è peggio: un token
 che esiste e vale un'altra cosa. Corretto in `var(--fill-subtle)` e verificato
 sul sito costruito (fondo da `transparent` a `rgb(42, 50, 60)`).
 
-⚠️ **Il pallino delle notifiche è sotto AA, e lo era già.** `#fff` su `--red` era
-l'ultimo colore di stile scritto a mano: ora è `var(--on-accent)`, come chiesto.
-Il contrasto in chiaro non cambia (3,78:1 — in chiaro il token *vale* bianco) e
-in scuro sale da 4,07:1 a 4,35:1: **entrambi sotto la soglia di 4,5:1**, perché è
-testo di 12px in grassetto su un fondo rosso pieno. Chiuderlo davvero vuol dire
-toccare `--red` — che riempie barre e bordi ovunque — o la taglia del testo: due
-decisioni fuori da un cambio di base cromatica. Misurato, dichiarato, non fatto.
+✅ **CHIUSO — il pallino delle notifiche raggiunge AA, e con lui tutta la
+famiglia.** Era testo di 12px in grassetto su `--red`: **3,78:1 in chiaro**,
+sotto la soglia da sempre. Non si è toccato `--red` (riempie barre, pallini e
+bordi in dieci punti) né la taglia del testo: il fondo passa a `--red-dark`.
+
+**Perché bastava un token esistente e non ne serviva uno nuovo.** I due rossi
+fanno due mestieri: `--red` è il rosso che si RICONOSCE — barre, bordi,
+riempimenti, dove non c'è testo sopra — e `--red-dark` è il rosso che porta
+CONTRASTO. Le due parti di `--red-dark` sono simmetriche: inchiostro rosso su
+una superficie chiara, e superficie rossa sotto `--on-accent`. È lo stesso
+requisito — la massima distanza dal neutro della pagina — e si ribaltano insieme
+quando il tema si ribalta. Un token nuovo sarebbe stato il suo quasi-gemello in
+tutti e tre i temi.
+
+| | prima | dopo |
+|---|---|---|
+| chiaro | 3,78:1 ✗ | **5,83:1** ✓ |
+| scuro | 4,35:1 ✗ | **7,34:1** ✓ |
+| stampa | 21:1 ✓ | 21:1 ✓ |
+| pastiglia contro la scheda | 3,78 / 3,89 | **5,83 / 6,56** |
+
+Il pallino ci guadagna anche in evidenza: più scuro non vuol dire più timido.
+Misurato **nel browser**, sul CSS vero — `rgb(197, 32, 32)` con testo bianco in
+chiaro, `rgb(238, 139, 139)` con inchiostro scuro in scuro.
+
+⚠️ **E ora esiste un controllo che sa fare un conto.** Nessuno vedeva questo
+difetto perché `design:lint` guarda che i colori vengano dai token, non che due
+token accostati si leggano: una regola che dice «usa i token» non protegge da
+due token che insieme non si vedono. La **sezione 12** di `test:shell-unit`
+risolve ogni regola di `app.css` e `extra.css` che dichiara insieme un fondo e un
+testo presi dai token, nei tre temi, e ne pesa il contrasto. **Sono 90 coppie, e
+il pallino era l'unica sotto soglia** — il difetto era isolato, e adesso si sa.
+Nessuna eccezione dichiarata: se un giorno servisse (testo grande, che ad AA si
+accontenta di 3:1) va scritta con il suo motivo. Il controllo ha due controprove
+sul proprio lettore — le tavolozze lette e il numero di coppie trovate — perché
+un parser rotto darebbe zero violazioni e un verde falso.
 
 **I 20 stati dei segni di fiducia restano 20/20 su AA nel tema chiaro**
 (rimisurati dopo la modifica). Non sono stati toccati: il secondo canale — la
