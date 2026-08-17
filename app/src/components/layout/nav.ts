@@ -92,20 +92,42 @@ export const NAV: NavEntry[] = [
   { id: 'finance', labelKey: 'nav.finance', icon: 'receipt', path: '/finanze' },
 ];
 
-// IMPOSTAZIONI — in fondo alla barra, dietro una voce sola che si apre.
-// Ciò che sta qui si configura una volta e poi si lascia stare: chi si è
-// (Azienda), le regole che lavorano da sole (Automazioni), come l'azienda si
-// guarda da fuori (Registro attività, riservato a titolari e amministratori),
-// che cosa si paga (Abbonamento — dentro l'app non si vende, si gestisce:
-// «Prezzi» era il nome della vetrina). Le sottovoci non hanno icona: sono
-// voci di secondo livello, e il rientro è la loro gerarchia.
-export interface NavSubItem { id: string; labelKey: TKey; path: string; adminOnly?: boolean }
+// IMPOSTAZIONI — in fondo alla barra, e dal 2026-08-17 dietro una FINESTRA.
+// Ciò che sta qui si configura una volta e poi si lascia stare: le preferenze
+// di chi guarda (Preferenze), chi si è (Azienda), le regole che lavorano da
+// sole (Automazioni), come l'azienda si guarda da fuori (Registro attività,
+// riservato a titolari e amministratori), che cosa si paga (Abbonamento —
+// dentro l'app non si vende, si gestisce: «Prezzi» era il nome della vetrina).
+//
+// ⚠️ FINO AL 2026-08-17 ERA UN GRUPPO CHE SI APRIVA DENTRO LA BARRA, e le
+// quattro sottovoci allungavano una colonna che già non ci stava: 124px in più
+// nel momento esatto in cui si va a cercare qualcosa. Una finestra non ruba
+// spazio alla navigazione, e mette le impostazioni tutte insieme davanti agli
+// occhi invece che una rotta alla volta.
+//
+// ⚠️ `apre` NON è cosmesi, è la differenza fra un'impostazione e un'AREA.
+//   `pannello` il contenuto sta dentro la finestra: un modulo, delle tendine.
+//   `pagina`   la finestra si chiude e si va alla rotta. Automazioni ha un
+//              costruttore con cinque sotto-rotte e il Registro è una tabella
+//              lunga: sono luoghi in cui si LAVORA, non pannelli da sfogliare,
+//              e ficcarli in un riquadro da 560px sarebbe stato peggio del
+//              gruppo che si apriva.
+// La rotta resta in ogni caso: `/azienda` e `/prezzi` continuano a rispondere,
+// per i segnalibri e per chi arriva da un collegamento.
+export type ApreCome = 'pannello' | 'pagina';
+export interface NavSubItem { id: string; labelKey: TKey; path: string; adminOnly?: boolean; apre: ApreCome }
 export const NAV_SETTINGS: NavSubItem[] = [
-  { id: 'company', labelKey: 'nav.company', path: '/azienda' },
-  { id: 'automations', labelKey: 'nav.automations', path: '/automazioni' },
-  { id: 'audit', labelKey: 'nav.auditLog', path: '/registro', adminOnly: true },
-  { id: 'pricing', labelKey: 'nav.subscription', path: '/prezzi' },
+  { id: 'preferences', labelKey: 'nav.preferences', path: '/preferenze', apre: 'pannello' },
+  { id: 'company', labelKey: 'nav.company', path: '/azienda', apre: 'pannello' },
+  { id: 'pricing', labelKey: 'nav.subscription', path: '/prezzi', apre: 'pannello' },
+  { id: 'automations', labelKey: 'nav.automations', path: '/automazioni', apre: 'pagina' },
+  { id: 'audit', labelKey: 'nav.auditLog', path: '/registro', adminOnly: true, apre: 'pagina' },
 ];
+
+/** Dove un modulo di impostazioni è montato. Cambia SOLO l'intestazione, mai i
+ *  campi: nella finestra il titolo lo portano già la finestra e la voce scelta
+ *  nella colonnina, e ripeterlo sarebbe la stessa parola tre volte. */
+export type Sede = 'pagina' | 'pannello';
 
 export function isSection(e: NavEntry): e is NavSection {
   return (e as NavSection).sectionKey !== undefined;

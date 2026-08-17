@@ -39,6 +39,7 @@ import { AutomationBuilderPage } from '@/features/automations/AutomationBuilderP
 import { AutomationDetailPage } from '@/features/automations/AutomationDetailPage';
 import { RunDetailPage } from '@/features/automations/RunDetailPage';
 import { PricingPage } from '@/features/pricing/PricingPage';
+import { PreferencesPage } from '@/features/settings/PreferencesPanel';
 import { AuditLogPage } from '@/features/audit/AuditLogPage';
 import { useT } from '@/i18n';
 
@@ -193,6 +194,10 @@ export default function App() {
                 `/incentivi/revisioni`. */}
             <Route path="/registro" element={<AuditLogPage />} />
             <Route path="/prezzi" element={<PricingPage />} />
+            {/* Le preferenze hanno un indirizzo proprio come ogni altra voce delle
+                impostazioni: quello che si raggiunge solo aprendo una finestra non
+                si può mandare a qualcuno in un collegamento. */}
+            <Route path="/preferenze" element={<PreferencesPage />} />
           </Route>
         </Route>
       </Route>

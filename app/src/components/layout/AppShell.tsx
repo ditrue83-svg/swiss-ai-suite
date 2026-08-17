@@ -18,26 +18,22 @@ import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 import { NotificationBell, useUnreadCount } from '@/features/notifications/NotificationBell';
+import { SettingsDialog } from '@/features/settings/SettingsDialog';
 
 // I ruoli restano in chiave: l'etichetta si traduce al render.
 const ROLE_KEY: Record<string, TKey> = { owner: 'roles.owner', admin: 'roles.admin', member: 'roles.member' };
 
-function NavList({ onNavigate }: { onNavigate?: () => void }) {
+function NavList({ onNavigate, onSettings }: { onNavigate?: () => void; onSettings: () => void }) {
   const t = useT();
   // Le voci riservate spariscono per chi non è titolare o amministratore. Il
   // permesso però NON è questo: è la RLS della pagina (vedi nav.ts).
   const { isAdmin } = useCompany();
   const { pathname } = useLocation();
-  // L'id del gruppo Impostazioni viene da useId perché nell'albero i NavList
-  // sono DUE — colonna laterale e drawer — e un id scritto a mano sarebbe
-  // duplicato nel documento.
-  const settingsId = useId();
-  // Il gruppo si apre da sé quando la pagina corrente ci abita: arrivare a
-  // /azienda da una scorciatoia e trovare la propria voce invisibile sarebbe
-  // una barra che mente. Resta uno stato locale: chiuderlo è sempre permesso.
+  // La voce resta ACCESA quando si è dentro una delle rotte delle impostazioni:
+  // arrivare a /azienda da un segnalibro e trovare la barra che non lo dice
+  // sarebbe una barra che mente. Era la stessa ragione per cui il gruppo si
+  // apriva da sé, quando era un gruppo.
   const inSettings = NAV_SETTINGS.some((item) => navItemMatches(item, pathname));
-  const [settingsOpen, setSettingsOpen] = useState(inSettings);
-  useEffect(() => { if (inSettings) setSettingsOpen(true); }, [inSettings]);
 
   return (
     <nav className="nav" aria-label={t('nav.mainNav')}>
@@ -61,30 +57,22 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
       )}
 
       {/* IMPOSTAZIONI — in fondo, separato: ciò che si configura una volta
-          non sta in mezzo al lavoro di ogni giorno (vedi nav.ts). */}
+          non sta in mezzo al lavoro di ogni giorno (vedi nav.ts).
+          ⚠️ APRE UNA FINESTRA, non più un gruppo dentro la colonna. Il gruppo
+          aggiungeva quattro voci — 124px — a una colonna che ne aveva 3,42 di
+          margine, e proprio nel momento in cui si cerca qualcosa. `aria-haspopup`
+          e i tre puntini dicono che il clic porta a un riquadro, non a una
+          pagina: un pulsante che non lo dichiara è un pulsante che sorprende. */}
       <div className="nav-foot">
         <button
-          className="nav-btn"
-          aria-expanded={settingsOpen}
-          aria-controls={settingsId}
-          onClick={() => setSettingsOpen((v) => !v)}
+          className={`nav-btn${inSettings ? ' active' : ''}`}
+          aria-haspopup="dialog"
+          onClick={() => { onNavigate?.(); onSettings(); }}
         >
           <Icon name="settings" />
           <span>{t('nav.settings')}</span>
-          <Icon name={settingsOpen ? 'arrowUp' : 'arrowDown'} className="ic-sm nav-caret" />
+          <span className="nav-ellipsis" aria-hidden="true">…</span>
         </button>
-        <div id={settingsId} hidden={!settingsOpen}>
-          {NAV_SETTINGS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.path}
-              className={({ isActive }) => `nav-btn nav-subitem${isActive ? ' active' : ''}`}
-              onClick={onNavigate}
-            >
-              <span>{t(item.labelKey)}</span>
-            </NavLink>
-          ))}
-        </div>
       </div>
     </nav>
   );
@@ -192,6 +180,11 @@ export function AppShell() {
   // interrogazioni per ogni caricamento, una delle quali per un pulsante che
   // nessuno può premere.
   const { count, setCount } = useUnreadCount(activeCompanyId);
+  // La finestra delle impostazioni vive QUI e non nei due NavList, per la
+  // stessa ragione del conteggio della campanella: nell'albero i NavList sono
+  // due — colonna e cassetto — e due finestre indipendenti vorrebbero dire due
+  // riquadri modali possibili nello stesso documento.
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Chiudi il drawer al cambio pagina.
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
@@ -229,7 +222,7 @@ export function AppShell() {
           <NotificationBell count={count} setCount={setCount} />
         </div>
         <CompanySwitch />
-        <NavList />
+        <NavList onSettings={() => setSettingsOpen(true)} />
         <AccountBox />
       </aside>
 
@@ -241,7 +234,7 @@ export function AppShell() {
           <BrandMark />
         </div>
         <CompanySwitch />
-        <NavList onNavigate={() => setDrawerOpen(false)} />
+        <NavList onNavigate={() => setDrawerOpen(false)} onSettings={() => setSettingsOpen(true)} />
         <AccountBox />
       </aside>
 
@@ -250,6 +243,11 @@ export function AppShell() {
           navigazione, il selettore azienda e l'uscita. Attorno a tutto avrebbe
           spento anche quelli, ed è esattamente la pagina bianca da cui veniamo.
           La chiave è il percorso: cambiata pagina, la rete si riarma. */}
+      {/* ⚠️ FUORI dalla rete di `ErrorBoundary`, come la navigazione: un guasto
+          della schermata sotto non deve portarsi via le impostazioni — è da lì
+          che si cambia lingua e si esce. */}
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
       <main className="main">
         <ErrorBoundary chiave={location.pathname}>
           <Outlet />

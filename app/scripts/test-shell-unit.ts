@@ -373,12 +373,38 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
     `atteso ${expected.join(' · ')}\n     trovato ${shape.join(' · ')}`,
   );
 
+  // ⚠️ L'ORDINE È UNA DECISIONE, non l'ordine in cui le voci sono nate: prima
+  // ciò che vale per CHI GUARDA (preferenze), poi chi si è (azienda), poi che
+  // cosa si paga (abbonamento) — e in fondo, dopo la riga, i due luoghi in cui
+  // si lavora invece di configurare.
   const settingsShape = NAV_SETTINGS.map((s) => s.id);
   check(
-    'Impostazioni raccoglie azienda · automazioni · registro · abbonamento',
-    JSON.stringify(settingsShape) === JSON.stringify(['company', 'automations', 'audit', 'pricing']),
+    'Impostazioni raccoglie preferenze · azienda · abbonamento · automazioni · registro',
+    JSON.stringify(settingsShape) === JSON.stringify(['preferences', 'company', 'pricing', 'automations', 'audit']),
     `trovato ${settingsShape.join(' · ')}`,
   );
+  // I pannelli PRIMA, le pagine DOPO: una colonnina che alterna «si apre qui» e
+  // «ti porto via» costringe a leggere la freccia di ogni riga per sapere che
+  // cosa succede al clic.
+  const apre = NAV_SETTINGS.map((s) => s.apre);
+  check(
+    'i pannelli vengono tutti prima delle voci che portano a una pagina',
+    apre.indexOf('pagina') === -1 || !apre.slice(apre.indexOf('pagina')).includes('pannello'),
+    `trovato ${apre.join(' · ')}`,
+  );
+  // ⚠️ E OGNI PANNELLO DEVE ESSERE DAVVERO MONTATO. Un `apre: 'pannello'` senza
+  // il suo ramo in `SettingsDialog` non dà un errore: dà un riquadro VUOTO, che
+  // è il modo peggiore di rompersi — sembra che l'impostazione non ci sia.
+  const dialogSrc = readFileSync(join(root, 'src/features/settings/SettingsDialog.tsx'), 'utf8');
+  for (const v of NAV_SETTINGS.filter((s) => s.apre === 'pannello')) {
+    check(`il pannello «${v.id}» è montato nella finestra`,
+      new RegExp(`attivo === '${v.id}'`).test(dialogSrc),
+      'senza il suo ramo la finestra mostra un riquadro vuoto');
+  }
+  // E il contrario: nessun ramo per una voce che non esiste più.
+  const rami = [...dialogSrc.matchAll(/attivo === '([a-z]+)'/g)].map((m) => m[1]!);
+  const orfani = rami.filter((r) => !NAV_SETTINGS.some((s) => s.id === r && s.apre === 'pannello'));
+  check('nessun pannello montato per una voce che non c\'è', orfani.length === 0, orfani.join(', '));
   check(
     'il Registro attività è l\'UNICA voce riservata',
     NAV_SETTINGS.filter((s) => s.adminOnly).map((s) => s.id).join() === 'audit'
@@ -1406,6 +1432,26 @@ section('11. Il tema — una decisione di prodotto, e le due copie che devono co
       `--card scuro = ${cardScuroHex ?? 'illeggibile'}`);
   }
 
+  // (g bis) ⚠️ LE COPIE DEL SELETTORE DEVONO CONCORDARE, e fino al 2026-08-17
+  // non concordavano: `ThemeSwitcher` teneva la preferenza in uno `useState`
+  // suo, e nell'albero autenticato le copie erano due (colonna e cassetto).
+  // Chi cambiava aspetto da una vedeva l'altra ferma sul valore vecchio. Con la
+  // finestra delle impostazioni le copie sono TRE e due si vedono nella stessa
+  // schermata: il difetto è diventato ciò che si guarda.
+  // Il rimedio è che la preferenza non sia stato di un componente ma del
+  // documento — `sottoscriviTema` in `theme.ts` — e queste tre righe lo tengono
+  // fermo. Provate sul rosso: togliendo l'avviso agli ascoltatori, la suite era
+  // rimasta VERDE, ed è la ragione per cui esistono.
+  const switcher = readFileSync(join(root, 'src/components/ui/ThemeSwitcher.tsx'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  check('il selettore dell\'aspetto LEGGE la preferenza, non la possiede',
+    /useSyncExternalStore\(sottoscriviTema/.test(switcher) && !/useState/.test(switcher),
+    'con uno useState le copie divergono: l\'app scura e la tendina che dice «Chiaro»');
+  check('theme.ts offre una sottoscrizione', /export function sottoscriviTema/.test(theme));
+  check('e scegliere il tema avvisa chi ascolta',
+    /for \(const cb of ascoltatori\) cb\(\);/.test(theme),
+    'senza l\'avviso la sottoscrizione esiste e non serve a niente: il difetto resta, silenzioso');
+
   // (h) LE TRE PREFERENZE HANNO UN'ETICHETTA NELLE TRE LINGUE. Un'opzione
   // senza parola in una lingua sola è una tendina con una riga vuota.
   for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
@@ -1846,6 +1892,86 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
     check(`${nome}: l'id viene da useId, non è scritto a mano`,
       /useId\(\)/.test(codice) && !/id="[a-z-]+"/.test(codice));
   }
+}
+
+// ---------------------------------------------------------------------------
+section('14. La finestra — un modale che non intrappola');
+// ---------------------------------------------------------------------------
+// ⚠️ PERCHÉ ESISTE. Dal 2026-08-17 le impostazioni sono un dialogo modale, ed è
+// il primo del progetto. Un modale fatto male non si vede: la schermata è
+// giusta, i colori sono giusti, e chi naviga da tastiera esce dal riquadro e
+// continua a tabulare dentro la pagina SOTTO il velo — senza sapere dov'è, e
+// senza un modo ovvio di tornare. Non c'è schermata che lo mostri e non c'è
+// occhio che lo veda: o lo si controlla, o si scopre da una segnalazione.
+//
+// Le quattro cose che rendono un dialogo un dialogo si leggono dal sorgente,
+// perché il comportamento vero (fuoco, Esc, velo) è stato provato al banco in
+// Chrome e riprovarlo qui vorrebbe dire montare un DOM finto e provare quello.
+// Qui si sorveglia che le quattro righe non spariscano in un ritocco.
+{
+  // ⚠️ I COMMENTI VANNO VIA PRIMA DI GUARDARE, ed è la SECONDA volta in questo
+  // file: qui sotto si pretende che `requestAnimationFrame` non compaia, e il
+  // commento che spiega perché lo NOMINA. Chi legge il sorgente con i commenti
+  // dentro sta leggendo la spiegazione invece del codice.
+  const senzaNote = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const dialogSrc = senzaNote(readFileSync(join(root, 'src/components/ui/Dialog.tsx'), 'utf8'));
+  const shell = senzaNote(readFileSync(join(root, 'src/components/layout/AppShell.tsx'), 'utf8'));
+  const css = readFileSync(join(root, 'src/styles/extra.css'), 'utf8');
+
+  // (a) È dichiarato un dialogo, e ha un NOME.
+  check('role="dialog" con aria-modal', /role="dialog"/.test(dialogSrc) && /aria-modal="true"/.test(dialogSrc));
+  check('la finestra ha un nome (aria-labelledby sul titolo)',
+    /aria-labelledby=\{titleId\}/.test(dialogSrc) && /id=\{titleId\}/.test(dialogSrc),
+    'senza nome un lettore di schermo annuncia «finestra di dialogo» e nient\'altro');
+
+  // (b) Il fuoco entra e TORNA. La riga del ritorno è quella che si dimentica.
+  check('il fuoco entra all\'apertura', /\.focus\(\)/.test(dialogSrc));
+  check('e torna da dove veniva alla chiusura',
+    /provenienza\.current\?\.focus\?\.\(\)/.test(dialogSrc),
+    'senza, la tabulazione riparte dall\'inizio del documento, cioè dal marchio');
+  // ⚠️ E NON attraverso `requestAnimationFrame`: è sospeso quando il documento
+  // non è in primo piano, e al banco il fuoco non entrava mai. Il caso è
+  // nominato perché la riga sembra innocua e ci si ricasca.
+  check('il fuoco non passa da requestAnimationFrame',
+    !/requestAnimationFrame/.test(dialogSrc),
+    'rAF è sospeso a documento non in primo piano: la finestra si apriva senza fuoco');
+
+  // (c) Il fuoco non ESCE: serve il ramo per Tab e quello per Maiusc+Tab.
+  check('Tab è intercettato in tutt\'e due i versi',
+    /e\.key !== 'Tab'/.test(dialogSrc) && /e\.shiftKey/.test(dialogSrc) && /preventDefault/.test(dialogSrc));
+
+  // (d) I due gesti che tutti provano.
+  check('Esc chiude', /e\.key === 'Escape'/.test(dialogSrc));
+  check('il velo chiude, e solo il velo',
+    /e\.target === e\.currentTarget/.test(dialogSrc),
+    'senza il confronto, un clic dentro il riquadro chiuderebbe la finestra');
+
+  // (e) Va in un PORTALE: dentro la colonna laterale, che è sticky e ha un
+  //     overflow suo, un figlio `fixed` verrebbe ritagliato.
+  check('la finestra è appesa al corpo del documento', /createPortal/.test(dialogSrc));
+
+  // (f) Lo scorrimento del corpo si ferma, e RIPARTE.
+  check('il corpo non scorre sotto la finestra', /body\.style\.overflow = 'hidden'/.test(dialogSrc));
+  check('e lo scorrimento viene ripristinato com\'era',
+    /const prima = document\.body\.style\.overflow/.test(dialogSrc)
+      && /document\.body\.style\.overflow = prima/.test(dialogSrc),
+    'rimetterlo a \'\' invece che al valore di prima romperebbe il cassetto aperto sotto');
+
+  // (g) UNA SOLA finestra nell'albero. I NavList sono due — colonna e cassetto —
+  //     e una finestra per ciascuno vorrebbe dire due modali possibili insieme.
+  const montaggi = [...shell.matchAll(/<SettingsDialog/g)].length;
+  check('la finestra è montata UNA volta sola nell\'AppShell', montaggi === 1, `trovate ${montaggi}`);
+
+  // (h) Il pulsante dichiara che apre un riquadro.
+  check('il pulsante Impostazioni dichiara aria-haspopup="dialog"',
+    /aria-haspopup="dialog"/.test(shell),
+    'un pulsante che apre un modale senza dirlo è un pulsante che sorprende');
+
+  // (i) Il velo copre tutto e sta sopra il cassetto (z-index 60).
+  const velo = /\.dialog-scrim\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+  const z = Number(/z-index:\s*(\d+)/.exec(velo)?.[1] ?? NaN);
+  check('il velo sta SOPRA il cassetto', z > 60, `z-index del velo: ${z || 'non letto'}`);
+  check('il velo copre tutto lo schermo', /position:\s*fixed/.test(velo) && /inset:\s*0/.test(velo));
 }
 
 // ---------------------------------------------------------------------------

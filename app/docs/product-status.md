@@ -1472,14 +1472,11 @@ un `id` a mano. Il documento aveva quindi due `#lang-select` e due
 la tendina che nessuno vede. Ora l'id viene da `useId`, come già faceva il
 gruppo Impostazioni nello stesso albero.
 
-⛔ **APERTO, trovato per strada e NON corretto**: `ThemeSwitcher` tiene il tema
-in uno stato **locale**, e nell'albero autenticato ce ne sono due copie. Chi
-cambia aspetto dalla colonna e poi restringe la finestra fino al cassetto trova
-là il valore vecchio — l'app è scura e la tendina dice «Chiaro». È preesistente
-e indipendente da questo lavoro (le due copie non si vedono mai insieme), e si
-chiuderebbe alzando lo stato nell'`AppShell`, **esattamente come è già stato
-fatto per il conteggio della campanella**. Non è stato fatto qui perché cambia
-l'interfaccia del componente, e questo lavoro era sull'altezza della colonna.
+✅ **CHIUSO il 2026-08-17** (era: `ThemeSwitcher` tiene il tema in uno stato
+locale, e le copie nell'albero divergono). Lo ha chiuso la finestra delle
+impostazioni, che ne ha aggiunta una terza e ha reso il difetto visibile nella
+stessa schermata: la preferenza è passata da uno `useState` a una
+sottoscrizione in `theme.ts`. Vedi «Le impostazioni sono una finestra».
 
 ## L'azzurro #37AEEF — IN PRODUZIONE dal 2026-08-17
 
@@ -1607,6 +1604,81 @@ due pallini decorativi da 7–8px sull'azzurro chiaro — quello del non letto (
 il grassetto e il fondo dichiarano già) e quello della cronologia CRM. Se un
 giorno si volesse 3:1 anche sui bordi, serve un token in più — non un ritocco
 di questo.
+
+## Le impostazioni sono una finestra — implementato il 2026-08-17, NON deployato
+
+«Impostazioni» era una voce che si **apriva dentro la barra** e ne aggiungeva
+quattro. Due difetti nello stesso gesto: le quattro sottovoci valgono **124px**
+in una colonna che ne ha 3,42 di margine — quindi il momento in cui si va a
+cercare un'impostazione era esattamente il momento in cui la navigazione
+cominciava a scorrere — e le impostazioni si vedevano **una rotta alla volta**:
+per sapere che cosa si può configurare bisognava aprirle tutte.
+
+Ora il clic apre una **finestra**: colonnina di voci a sinistra, pannello a
+destra, tutto sotto gli occhi.
+
+| | Stato al 2026-08-17 |
+|---|---|
+| Implementato | sì — `ui/Dialog.tsx` (il primo dialogo modale del progetto), `features/settings/` (la finestra e il pannello Preferenze), `nav.ts` (`apre`), `AppShell`, `lib/theme.ts` (la sottoscrizione), `CompanySettingsPage` e `PricingPage` divisi in pagina e pannello, `extra.css`, i tre dizionari |
+| Deployato | **no** — nessun push e nessuna PR: non sono stati chiesti |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 241 passi, **sezione 14** nuova più tre controlli nella 11. Provati su **sette mutazioni** che DEVONO farli fallire: il fuoco che non torna, il velo che chiude anche col clic dentro, lo scorrimento non ripristinato, una voce che dichiara un pannello che nessuno monta, l'avviso agli ascoltatori tolto, il selettore che si riprende uno `useState`, `requestAnimationFrame` rimesso |
+| Provato contro la cosa reale | **in parte.** Guardata al banco in Chrome, a 1280×800 e a 375×812, nei due temi: apertura, Esc, clic sul velo, clic dentro, Tab e Maiusc+Tab in cerchio, ritorno del fuoco al pulsante, i tre pannelli, le due voci che portano a una pagina. ⚠️ L'app dietro autenticazione non è stata aperta |
+| Disponibile a clienti esterni | no — non deployato |
+
+**Che cosa c'è dentro, e che cosa no.** `nav.ts` dichiara per ogni voce come si
+apre, e non è cosmesi:
+
+| voce | `apre` | perché |
+|---|---|---|
+| Preferenze | `pannello` | lingua e aspetto: due tendine |
+| Azienda | `pannello` | un modulo, sta in un riquadro |
+| Abbonamento | `pannello` | quattro schede di piano |
+| Automazioni | **`pagina`** | ha un costruttore con **cinque sotto-rotte** |
+| Registro attività | **`pagina`** | una tabella lunga, e riservata |
+
+Le ultime due sono **luoghi in cui si lavora**, non pannelli da sfogliare:
+ficcarle in un riquadro da 880px sarebbe stato peggio del gruppo che si apriva.
+Le loro voci ci sono — è da lì che le si è sempre raggiunte — ma chiudono la
+finestra e aprono la pagina, e **lo dicono con una freccia** invece di fingere
+un pannello.
+
+⚠️ **Le rotte restano tutte vive**, e ne nasce una: `/preferenze` accanto a
+`/azienda` e `/prezzi`. Un'impostazione raggiungibile solo aprendo una finestra
+non si può mandare a qualcuno in un collegamento, e chi arriva da un segnalibro
+non deve trovare un 404. I moduli sono gli stessi in tutt'e due le sedi: cambia
+solo l'intestazione (`Sede`), mai i campi.
+
+⚠️⚠️ **UN MODALE FATTO MALE NON SI VEDE**, ed è la ragione della sezione 14. La
+schermata è giusta, i colori sono giusti, e chi naviga da tastiera esce dal
+riquadro e continua a tabulare **dentro la pagina sotto il velo** — senza sapere
+dov'è. Il dialogo fa quindi quattro cose, tutte provate a schermo: si dichiara
+(`role="dialog"`, `aria-modal`, un nome), il fuoco **entra e torna** da dove
+veniva, il fuoco **non esce** (Tab in cerchio nei due versi), Esc e il velo
+chiudono. E va in un **portale**: nasce dentro la colonna laterale, che è
+`sticky` e ha un overflow suo, dove un figlio `fixed` verrebbe ritagliato.
+
+⚠️ **Un difetto trovato al banco, e non nei test**: il fuoco non entrava mai.
+La prima stesura lo metteva dentro un `requestAnimationFrame` — «prima che il
+riquadro sia dipinto» — e `rAF` è **sospeso quando il documento non è in primo
+piano**. Un `useEffect` gira a DOM già montato e basta. Ora un controllo pretende
+che quella riga non torni.
+
+✅ **CHIUSO un difetto che era dichiarato APERTO ieri.** `ThemeSwitcher` teneva
+la preferenza in uno `useState` suo, e le copie nell'albero erano due: cambiando
+aspetto da una, l'altra restava sul valore vecchio. Con la finestra le copie
+sono **tre e due si vedono nella stessa schermata**, quindi il difetto è
+diventato ciò che si guarda. La preferenza non è stato di un componente ma del
+**documento** — sta in `localStorage` e negli attributi di `<html>` — e ora vive
+in `theme.ts` con una sottoscrizione (`useSyncExternalStore`, nessun provider).
+Misurato al banco: si sceglie «chiaro» nel pannello e la tendina del piede della
+colonna cambia insieme.
+
+⚠️ **E questo buco la suite non lo vedeva.** Togliendo l'avviso agli ascoltatori
+i test restavano **verdi**: la sottoscrizione esisteva e non serviva a niente.
+Tre controlli nuovi nella sezione 11 lo tengono fermo. **Quando una mutazione
+resta verde, il buco è nel controllo, non nella mutazione** — è la seconda volta
+in due giorni.
 
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 
