@@ -1605,7 +1605,7 @@ il grassetto e il fondo dichiarano già) e quello della cronologia CRM. Se un
 giorno si volesse 3:1 anche sui bordi, serve un token in più — non un ritocco
 di questo.
 
-## Le impostazioni sono una finestra — implementato il 2026-08-17, NON deployato
+## Le impostazioni sono una finestra — IN PRODUZIONE dal 2026-08-17
 
 «Impostazioni» era una voce che si **apriva dentro la barra** e ne aggiungeva
 quattro. Due difetti nello stesso gesto: le quattro sottovoci valgono **124px**
@@ -1620,11 +1620,11 @@ destra, tutto sotto gli occhi.
 | | Stato al 2026-08-17 |
 |---|---|
 | Implementato | sì — `ui/Dialog.tsx` (il primo dialogo modale del progetto), `features/settings/` (la finestra e il pannello Preferenze), `nav.ts` (`apre`), `AppShell`, `lib/theme.ts` (la sottoscrizione), `CompanySettingsPage` e `PricingPage` divisi in pagina e pannello, `extra.css`, i tre dizionari |
-| Deployato | **no** — nessun push e nessuna PR: non sono stati chiesti |
+| Deployato | **sì** — PR #62 unita (merge `b659072`); **verificato nel bundle SERVITO**: in `index-CD1bPGxe.css` ci sono `.dialog-scrim`, `.dialog-title`, `.settings-rail`, `.settings-rail-btn.active`, `.settings-pane`, `.nav-ellipsis`; in `index-CVes2eK8.js` `aria-modal`, `aria-haspopup`, `settings-rail`, `dialog.close`, `nav.preferences`, `useSyncExternalStore` e la rotta `preferenze` |
 | Configurato | non richiede configurazione |
-| Testato | **sì** — `test:shell-unit` 241 passi, **sezione 14** nuova più tre controlli nella 11. Provati su **sette mutazioni** che DEVONO farli fallire: il fuoco che non torna, il velo che chiude anche col clic dentro, lo scorrimento non ripristinato, una voce che dichiara un pannello che nessuno monta, l'avviso agli ascoltatori tolto, il selettore che si riprende uno `useState`, `requestAnimationFrame` rimesso |
-| Provato contro la cosa reale | **in parte.** Guardata al banco in Chrome, a 1280×800 e a 375×812, nei due temi: apertura, Esc, clic sul velo, clic dentro, Tab e Maiusc+Tab in cerchio, ritorno del fuoco al pulsante, i tre pannelli, le due voci che portano a una pagina. ⚠️ L'app dietro autenticazione non è stata aperta |
-| Disponibile a clienti esterni | no — non deployato |
+| Testato | **sì** — `test:shell-unit` 246 passi, **sezione 14** nuova più tre controlli nella 11. Provati su **sette mutazioni** che DEVONO farli fallire: il fuoco che non torna, il velo che chiude anche col clic dentro, lo scorrimento non ripristinato, una voce che dichiara un pannello che nessuno monta, l'avviso agli ascoltatori tolto, il selettore che si riprende uno `useState`, `requestAnimationFrame` rimesso |
+| Provato contro la cosa reale | **in parte, e va detto DOVE si ferma.** Guardata al banco in Chrome, a 1280×800 e a 375×812, nei due temi e in due lingue: apertura, Esc, clic sul velo, clic dentro, Tab e Maiusc+Tab in cerchio, ritorno del fuoco al pulsante, **tutte e cinque le voci**, e il giro rifatto da membro **non** amministratore. ⚠️ NON provato il **salvataggio** del modulo Azienda: il servizio è quello vero e scriverebbe sull'azienda in produzione. ⚠️ L'app dietro autenticazione non è stata aperta |
+| Disponibile a clienti esterni | **sì** — chi apre l'app la vede |
 
 **Che cosa c'è dentro, e che cosa no.** `nav.ts` dichiara per ogni voce come si
 apre, e non è cosmesi:
@@ -1679,6 +1679,19 @@ i test restavano **verdi**: la sottoscrizione esisteva e non serviva a niente.
 Tre controlli nuovi nella sezione 11 lo tengono fermo. **Quando una mutazione
 resta verde, il buco è nel controllo, non nella mutazione** — è la seconda volta
 in due giorni.
+
+⚠️ **Due regole morte sono arrivate in produzione, e le ha trovate il SERVITO.**
+`.nav-caret` (la freccia su/giù) e `.nav-subitem` (il rientro delle quattro
+sottovoci) vestivano il gruppo che si apriva nella colonna. Il componente ha
+smesso di renderle, il foglio no: sono state pubblicate con la PR #62 e sono
+comparse nel controllo dei marcatori sul bundle servito — **non in una
+rilettura del codice**, che le aveva lasciate passare due volte. Non è una
+questione di byte: una regola per una classe che nessuno scrive è un **indizio
+falso**, perché chi legge il foglio conclude che la barra ha ancora delle
+sottovoci, e chi rifà il conto della sezione 13 se le aspetta nel bilancio.
+Tolte con la PR #63, e la sezione 14 ora pretende che non tornino — né nel
+foglio né in un componente, con la controprova che il lettore dei componenti
+non sia a vuoto.
 
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 
