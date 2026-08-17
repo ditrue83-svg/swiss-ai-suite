@@ -1480,6 +1480,85 @@ chiuderebbe alzando lo stato nell'`AppShell`, **esattamente come è già stato
 fatto per il conteggio della campanella**. Non è stato fatto qui perché cambia
 l'interfaccia del componente, e questo lavoro era sull'altezza della colonna.
 
+## L'azzurro #37AEEF — implementato il 2026-08-17, NON deployato
+
+Andrea ha scelto il colore: **#37AEEF**. L'accento era `hsl(207, 88%, 39%)` =
+#0c6cbb, un blu fondo su cui si scriveva in bianco.
+
+**Il colore ha una conseguenza, e la conseguenza ha deciso il lavoro.** #37AEEF
+è chiaro (luminosità 58%): il bianco sopra fa **2,48:1**, e come inchiostro su
+bianco fa lo stesso. Sotto ogni soglia. Non c'era modo di «mettere il colore
+nuovo» e basta: o l'azzurro riempie e ci si scrive sopra scuro, o resta
+l'identità e i pieni usano un tono più fondo. **Andrea ha scelto il primo** —
+l'azzurro esatto, con l'inchiostro scuro sopra — e ha deciso che **il marchio
+resta #00AEEF**.
+
+| | Stato al 2026-08-17 |
+|---|---|
+| Implementato | sì — `app.css` (i sei token della famiglia nei tre temi, `--on-accent`, il nuovo `--on-red`, `--focus`), `extra.css` (il pallino, due segni di testo), le cinque caselle native |
+| Deployato | **no** — nessun push e nessuna PR: non sono stati chiesti |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 215 passi. Sei controlli nuovi, provati su **sei mutazioni** che DEVONO farli fallire: un segno che torna a scrivere con `--accent` (1 rosso), una casella nativa che torna sul riempimento (1), il pallino che torna a `--on-accent` (2), il bianco rimesso sopra l'azzurro (1), `--accent-line` scuro lasciato sul tono vecchio (1), `--focus` lasciato indietro (1) |
+| Provato contro la cosa reale | **in parte.** Misurato **a schermo** su un banco che monta le classi vere dei fogli veri, nei due temi: `.btn-primary` 7,14:1 · pastiglia premuta 7,15 · collegamento 7,92 · casella spuntata 7,92. E la **vetrina** ricostruita con i token risincronizzati: `.btn-primary` 7,14:1, chip 7,15, marchio invariato. ⚠️ L'app dietro autenticazione non è stata aperta |
+| Disponibile a clienti esterni | no — non deployato |
+
+**La famiglia, prima e dopo.** Tutto il tono passa da 207 a 201: un accento
+nuovo accanto a derivati del tono vecchio sono due azzurri, non uno.
+
+| token | prima | dopo | mestiere |
+|---|---|---|---|
+| `--accent` | `hsl(207,88%,39%)` | **`#37AEEF`** | riempie, non scrive |
+| `--accent-dark` | `hsl(207,90%,31%)` | `hsl(201,85%,48%)` | hover: qui l'accento è chiaro, l'hover **scende** |
+| `--accent-text` | `hsl(207,90%,30%)` | `hsl(201,85%,27%)` | scrive: 7,92:1 su bianco (era 7,91) |
+| `--accent-soft` | `hsl(207,65%,95%)` | `hsl(201,65%,95%)` | fondi tenui |
+| `--accent-line` | `hsl(207,58%,82%)` | `hsl(201,58%,82%)` | bordi su `--accent-soft` |
+| `--focus` | `hsl(207,88%,42%)` | `hsl(201,88%,42%)` | anello del focus: 3,94:1, non 2,48 |
+| `--on-accent` | `#ffffff` | `hsl(213,35%,10%)` | **7,14:1 sopra l'azzurro** |
+| `--on-red` | *(non esisteva)* | `#ffffff` | il pallino delle notifiche |
+
+⚠️ **`--on-red` è nuovo, e non è burocrazia.** `--on-accent` valeva «ciò che si
+scrive sopra un fondo pieno colorato», e un token solo bastava perché in tema
+chiaro **tutti** i fondi pieni erano scuri e in tema scuro tutti chiari. Con
+l'accento diventato chiaro, il tema chiaro ha ora fondi pieni su **tutt'e due i
+lati della linea** — azzurro chiaro e rosso scuro — e `--on-accent` è diventato
+inchiostro. Sopra il rosso del pallino avrebbe fatto **3,04:1**: la stessa
+soglia persa che il 2026-08-16 era costata la correzione del pallino.
+
+⚠️ **Tre segni scrivevano con `--accent`** — il pallino degli elenchi,
+un'etichetta del calendario, la data di oggi — e sono passati a `--accent-text`.
+Le 90 coppie non li vedevano: una regola che dichiara `color:` **senza** un
+`background:` accanto non forma una coppia. Il controllo nuovo guarda proprio
+quella forma.
+
+⚠️ **Le cinque caselle native usano `accent-color: var(--accent-text)`**, non
+`--accent`, ed è l'unico posto dell'app in cui un riempimento prende
+l'inchiostro. La ragione: la spunta la disegna il **browser**, in bianco, e
+sopra #37AEEF farebbe 2,48:1 — una casella spuntata indistinguibile da una
+vuota.
+
+⚠️ **I due temi ora condividono l'accento.** Il tema scuro schiariva l'accento a
+`hsl(207,75%,58%)` per staccarlo dal fondo: la stessa luminosità di #37AEEF. Da
+oggi il valore è **lo stesso** nei due temi, e non c'è più una coppia da tenere
+allineata a mano.
+
+⚠️ **LA VETRINA VA RISINCRONIZZATA AL MOMENTO DELLA PUBBLICAZIONE.**
+`site/tokens.css` è **derivato** da `app.css` e ora è disallineato: nel monorepo
+va rilanciato `node sync-tokens.mjs`. **Verificato che funziona** — ricostruita e
+guardata: `.btn-primary` prende l'azzurro con l'inchiostro scuro (7,14:1), i chip
+7,15, il marchio resta #00AEEF. L'albero del monorepo è stato **riportato
+pulito** dopo la verifica: è su `main`, e su `main` non si lavora.
+
+⚠️ **Ciò che il colore chiaro ha peggiorato, e va detto.** `--accent` fa anche da
+**bordo** in ~25 regole (voce attiva, scheda attiva, pastiglia premuta, campo a
+fuoco, zona di caricamento): contro il bianco passa da 5,41:1 a **2,48:1**. In
+ognuno di quei casi lo stato è portato **anche** dal fondo (`--accent-soft`) e
+dal testo (`--accent-text`), quindi non è un'informazione affidata al solo
+bordo; e il fuoco da tastiera ha il proprio anello, che resta a 3,94:1. Restano
+due pallini decorativi da 7–8px sull'azzurro chiaro — quello del non letto (che
+il grassetto e il fondo dichiarano già) e quello della cronologia CRM. Se un
+giorno si volesse 3:1 anche sui bordi, serve un token in più — non un ritocco
+di questo.
+
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 
 Trovato il 2026-08-14 guardando la produzione con **due** aziende. **Non è

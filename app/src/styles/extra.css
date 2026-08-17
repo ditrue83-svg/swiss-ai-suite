@@ -166,11 +166,15 @@
      timido.
      ⚠️ Non si è toccato `--red`: riempie barre e bordi ovunque, e scurirlo per
      un pallino avrebbe spostato un colore usato in dieci punti per correggerne
-     uno. Il testo resta `--on-accent`, che è già «ciò che si scrive sopra un
-     fondo pieno colorato» e si inverte da sé nel tema scuro.
+     uno. Il testo è `--on-red`, che si inverte da sé nel tema scuro.
+     ⚠️ Era `--on-accent` fino al 2026-08-17: quel token voleva dire «ciò che si
+     scrive sopra un fondo pieno colorato», e con l'accento diventato azzurro
+     CHIARO è diventato inchiostro scuro — sopra questo rosso avrebbe fatto
+     3,04:1. Il perché di due token invece di uno sta in app.css, accanto a
+     `--red-dark`.
      Il guardiano che tiene ferma questa misura è la sezione 12 di
      `test:shell-unit`, che pesa tutte e 90 le coppie fondo/testo del progetto. */
-  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red-dark); color: var(--on-accent);
+  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red-dark); color: var(--on-red);
   font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
 }
 .bell-panel {
@@ -278,7 +282,7 @@
 .cal-more {
   display: flex; align-items: center; width: 100%; min-height: 24px; padding: 0 var(--sp-1);
   border: 0; border-radius: var(--radius-sm); background: transparent;
-  color: var(--accent); font-size: var(--fs-label); text-align: left;
+  color: var(--accent-text); font-size: var(--fs-label); text-align: left;
 }
 .cal-more:hover { background: var(--bg); }
 
@@ -294,7 +298,7 @@
    già maiuscoli, ed è per questo che il difetto si vedeva in due lingue su tre. */
 .cal-agenda-date { font-size: var(--fs-strong); font-weight: 600; }
 .cal-agenda-date::first-letter { text-transform: uppercase; }
-.cal-agenda-date.is-today { color: var(--accent); }
+.cal-agenda-date.is-today { color: var(--accent-text); }
 
 .cal-overdue { border-left: 3px solid var(--red); }
 

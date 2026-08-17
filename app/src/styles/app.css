@@ -7,15 +7,32 @@
    ========================================================================== */
 :root {
   /* --- Colore d'azione -----------------------------------------------------
-     Blu più fondo del precedente hsl(199,100%,50%), che era saturo quasi al
-     massimo. Qui accompagna solleciti dell'AFC, termini di pagamento e importi:
-     stessa famiglia cromatica, tono meno clamoroso. I tre token derivati sono
-     usati in 52 punti dell'app, quindi restano con gli stessi nomi. */
-  --accent: hsl(207, 88%, 39%);        /* fondo dei pulsanti, elementi attivi   */
-  --accent-dark: hsl(207, 90%, 31%);   /* stato premuto / hover                 */
-  --accent-text: hsl(207, 90%, 30%);   /* testo e link: contrasto AA su bianco  */
-  --accent-soft: hsl(207, 65%, 95%);   /* fondi tenui, chip informativi         */
-  --accent-line: hsl(207, 58%, 82%);   /* bordo di ciò che sta su --accent-soft */
+     ⚠️ L'AZZURRO È #37AEEF, deciso da Andrea il 2026-08-17. Prima era
+     hsl(207, 88%, 39%) = #0c6cbb, un blu fondo su cui si scriveva in bianco.
+     Il tono passa da 207 a 201 in tutta la famiglia: un accento nuovo accanto a
+     derivati del tono vecchio sarebbero due azzurri, non uno.
+
+     ⚠️⚠️ E LA CONSEGUENZA CHE DECIDE TUTTO IL RESTO: #37AEEF **non può portare
+     testo bianco**. Il bianco sopra fa 2,48:1 e come inchiostro su bianco fa lo
+     stesso — sotto ogni soglia. Non è un difetto del colore, è la sua
+     luminosità (58%): un azzurro chiaro sta da questa parte della linea.
+     Quindi la famiglia si divide in due mestieri, esattamente come i due rossi
+     qui sotto:
+       · `--accent` è il colore che si RICONOSCE — riempimenti, filetti, bordi,
+         stati attivi. Ci si scrive sopra SCURO (`--on-accent`, 7,14:1).
+       · `--accent-text` è il colore che porta CONTRASTO — testo, link, e ogni
+         segno che deve leggersi su un neutro chiaro (7,92:1 su bianco: la
+         stessa distanza che teneva il blu di prima).
+     ⛔ `color: var(--accent)` su fondo chiaro è quindi un ERRORE: dà 2,48:1.
+     Il posto giusto è `--accent-text`. Erano tre — il segno di elenco, una
+     etichetta del calendario e la data di oggi — e sono stati spostati.
+     La sezione 12 di `test:shell-unit` pesa ogni coppia fondo/testo e non
+     lascia rientrare la scrittura chiara su chiaro. */
+  --accent: #37AEEF;                   /* = hsl(201, 85%, 58%) — riempimenti, filetti, stati attivi */
+  --accent-dark: hsl(201, 85%, 48%);   /* hover: qui l'accento è chiaro, quindi l'hover SCENDE      */
+  --accent-text: hsl(201, 85%, 27%);   /* testo e link: 7,92:1 su bianco                            */
+  --accent-soft: hsl(201, 65%, 95%);   /* fondi tenui, chip informativi                             */
+  --accent-line: hsl(201, 58%, 82%);   /* bordo di ciò che sta su --accent-soft                     */
 
   /* --- Il colore del MARCHIO, che non è il colore dell'azione ---------------
      ⚠️ #00AEEF è il blu del titolare: quello dei contorni che la vetrina serve
@@ -27,7 +44,14 @@
      due blu divergevano: due marchi, uno dei quali non era di nessuno.
      ⚠️ Questi tre token vestono SOLO il marchio (le regole `.bm-*`). Usarli per
      un pulsante o per un testo è il modo di riaprire il difetto: #00AEEF su
-     bianco fa 2,3:1, sotto ogni soglia leggibile. */
+     bianco fa 2,3:1, sotto ogni soglia leggibile.
+     ⚠️⚠️ DAL 2026-08-17 I DUE BLU SI SOMIGLIANO, e la scelta è di Andrea:
+     l'accento è #37AEEF, il marchio resta #00AEEF — sei gradi di tono e due
+     punti di luminosità li separano. Non sono lo stesso colore e non vanno
+     confusi: il marchio è il segno del titolare, e vive anche in
+     `site/static/`, nella favicon di `index.html` e nel logo che `brand:check`
+     riconcilia carattere per carattere. Chi un giorno volesse UN solo azzurro
+     deve cambiarli tutti insieme, in tutt'e due i repository — non qui da solo. */
   --brand: #00AEEF;                    /* il blocco della sigla                 */
   --brand-ink: #ffffff;                /* la sigla DENTRO il blocco, sempre     */
   --brand-word: #00AEEF;               /* la parola accanto: segue il tema      */
@@ -46,7 +70,13 @@
   --line-subtle: rgba(127, 127, 127, 0.15);
   --bg: hsl(210, 20%, 98%);
   --card: #ffffff;
-  --on-accent: #ffffff;               /* testo sopra i fondi pieni colorati */
+  /* ⚠️ SCURO, e non è un refuso: dal 2026-08-17 `--accent` è l'azzurro chiaro
+     #37AEEF, e il bianco sopra farebbe 2,48:1. Questo inchiostro ne fa 7,14.
+     È lo stesso valore che il tema scuro usa da sempre per la stessa ragione:
+     là l'accento si schiarisce per staccarsi dal fondo, qui è chiaro per
+     scelta, e in tutt'e due i casi ciò che ci si scrive sopra è scuro. */
+  --on-accent: hsl(213, 35%, 10%);    /* testo sopra --accent (l'azzurro)   */
+  --on-red: #ffffff;                  /* testo sopra --red-dark (il pallino) */
   /* Riempimento tenue di una pastiglia neutra o di un hover. ⚠️ Si chiamava
      `--surface-2` fino al 2026-08-11, e il nome mentiva: non è un LIVELLO di
      superficie, è un colore di riempimento. Quando i tre livelli sono stati
@@ -105,9 +135,20 @@
      posti dove non c'è testo sopra, e dove serve che salti all'occhio.
      `--red-dark` è il rosso che porta CONTRASTO, e le sue due parti sono
      simmetriche: inchiostro rosso su una superficie chiara, e superficie rossa
-     sotto `--on-accent`. Sono lo stesso requisito — la massima distanza dal
+     sotto testo bianco. Sono lo stesso requisito — la massima distanza dal
      neutro della pagina — e si ribaltano insieme quando il tema si ribalta,
      che è la ragione per cui basta un token e non ne servono due.
+     ⚠️⚠️ CIÒ CHE SI SCRIVE SOPRA IL ROSSO HA UN TOKEN SUO — `--on-red` — dal
+     2026-08-17, e la ragione è l'azzurro nuovo. Fino a quel giorno il pallino
+     usava `--on-accent`, che valeva «ciò che si scrive sopra un fondo pieno
+     colorato»: reggeva perché in tema chiaro TUTTI i fondi pieni erano scuri e
+     in tema scuro tutti chiari, quindi un token solo bastava per entrambi.
+     Con `--accent` diventato un azzurro CHIARO, il tema chiaro ha ora fondi
+     pieni su tutt'e due i lati della linea — azzurro chiaro e rosso scuro — e
+     `--on-accent` è diventato inchiostro scuro. Sopra il rosso avrebbe fatto
+     3,04:1. Un token per l'accento e uno per il rosso: la simmetria che
+     permetteva di averne uno solo non c'è più, e fingere che ci sia costa
+     esattamente la soglia che la sezione 12 misura. */
      ⚠️ Fino al 2026-08-16 il pallino delle notifiche scriveva sopra `--red`:
      3,78:1 in chiaro, sotto AA da sempre. Con `--red-dark` fa 5,83 · 7,34 · 21
      nei tre temi. Un colore che deve essere leggibile e un colore che deve
@@ -178,7 +219,12 @@
      diversi (0,0,0/.35 e 16,24,40/.4): stesso ruolo, una voce sola. */
   --scrim: rgba(16, 24, 40, 0.4);
 
-  --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
+  /* ⚠️ NON È `--accent`, ed è la stessa ragione di `--accent-text`: l'anello
+     del focus è un indicatore di stato e WCAG 1.4.11 gli chiede 3:1 contro ciò
+     che ha accanto. #37AEEF su bianco ne fa 2,48 — sarebbe un anello che non si
+     vede sulla superficie su cui compare più spesso. Questo azzurro, dello
+     stesso tono ma più fondo, ne fa 3,94 su `--card` e 3,77 su `--bg`. */
+  --focus: hsl(201, 88%, 42%);         /* anello del focus da tastiera */
   --topbar-h: 56px;
 
   /* ⚠️ IL TEMA DEI CONTROLLI DEL SISTEMA, che i token non possono vestire.
@@ -245,11 +291,20 @@
     --muted: hsl(210, 10%, 64%);
     --on-ink: hsl(213, 30%, 10%);      /* il toast inverte: fondo chiaro, testo scuro */
 
-    --accent: hsl(207, 75%, 58%);
-    --accent-dark: hsl(207, 78%, 66%);  /* in scuro l'hover SCHIARISCE            */
-    --accent-text: hsl(207, 80%, 72%);
-    --accent-soft: hsl(207, 40%, 20%);
+    /* ⚠️ L'ACCENTO È LO STESSO DEI DUE TEMI, e adesso è vero alla lettera: qui
+       era hsl(207,75%,58%) — un azzurro schiarito apposta per staccarsi dal
+       fondo scuro — e la sua luminosità era già quella di #37AEEF. Da quando il
+       tema chiaro ha scelto quell'azzurro, i due temi condividono l'accento e
+       non c'è più un valore da tenere allineato a mano. 6,38:1 sulla scheda
+       scura: si stacca. */
+    --accent: #37AEEF;
+    --accent-dark: hsl(201, 85%, 66%);  /* in scuro l'hover SCHIARISCE            */
+    --accent-text: hsl(201, 80%, 72%);
+    --accent-soft: hsl(201, 40%, 20%);
     --on-accent: hsl(213, 35%, 10%);    /* testo scuro sopra l'accento chiaro     */
+    /* Sopra il rosso, che in scuro si schiarisce, si scrive scuro: è il
+       ribaltamento che il commento di --red-dark descrive. */
+    --on-red: hsl(213, 35%, 10%);
 
     --red: hsl(0, 62%, 58%);
     --red-soft: hsl(0, 35%, 17%);
@@ -269,7 +324,7 @@
     --amber-soft: hsl(38, 35%, 15%);
     --amber-line: hsl(38, 30%, 28%);
 
-    --accent-line: hsl(207, 40%, 34%);
+    --accent-line: hsl(201, 40%, 34%);
     --amber-fill: hsl(38, 80%, 58%);
     --green-fill: hsl(151, 48%, 50%);
 
@@ -291,7 +346,7 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
 
-    --focus: hsl(207, 80%, 66%);
+    --focus: hsl(201, 80%, 66%);
 
   /* ⚠️ `color-scheme` NON è un doppione di questo blocco: i token vestono ciò
      che disegniamo noi, questa riga veste ciò che disegna il SISTEMA — barra di
@@ -893,9 +948,19 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    resta quella predefinita del browser — 13 pixel e l'azzurro di sistema —
    dentro un'interfaccia che altrove usa 18 pixel e l'accento del prodotto.
    È lo stesso difetto già corretto per la checklist delle attività, e si vede
-   solo aprendo la schermata. */
+   solo aprendo la schermata.
+
+   ⚠️ `accent-color` VUOLE `--accent-text`, NON `--accent`, e la ragione è che
+   qui la spunta non la disegniamo noi: il browser la traccia in BIANCO sopra il
+   colore che gli diamo. Sopra #37AEEF farebbe 2,48:1 — una casella spuntata
+   indistinguibile da una vuota se non per una sfumatura. `--accent-text` è
+   l'azzurro fondo della stessa famiglia e la spunta ci si legge a 7,92:1.
+   È l'unico posto dell'app in cui il colore di un riempimento lo sceglie
+   `--accent-text`: non è un'incoerenza, è che il testo sopra non è nostro.
+   ⚠️ Vale per tutte e cinque le caselle native del progetto: se ne nasce una
+   sesta, questa riga è il modello. */
 .check-pill input[type="checkbox"] {
-  width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer;
+  width: 18px; height: 18px; flex: none; accent-color: var(--accent-text); cursor: pointer;
 }
 .check-pill:has(input[type="checkbox"]) { min-height: 26px; }
 
@@ -903,7 +968,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .result-row:first-child { border-top: none; }
 .result-label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); }
 .checklist-item { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) 0; cursor: pointer; }
-.checklist-item input { margin-top: var(--sp-1); accent-color: var(--accent); }
+.checklist-item input { margin-top: var(--sp-1); accent-color: var(--accent-text); }
 .checklist-item.done span { text-decoration: line-through; color: var(--muted); }
 .draft-box { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: var(--sp-4); white-space: pre-wrap; font-size: var(--fs-body); }
 .warn-box { background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: 8px; padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); font-weight: 600; display: flex; gap: var(--sp-3); align-items: flex-start; }
@@ -965,7 +1030,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .match-score.mid { border-color: var(--amber); color: var(--amber); }
 .detail-list { list-style: none; }
 .detail-list li { padding: var(--sp-1) 0 var(--sp-1) var(--sp-6); position: relative; font-size: var(--fs-body); }
-.detail-list li::before { content: '•'; position: absolute; left: 8px; color: var(--accent); font-weight: 600; }
+.detail-list li::before { content: '•'; position: absolute; left: 8px; color: var(--accent-text); font-weight: 600; }
 .detail-list.ok li::before { content: '✓'; color: var(--green); }
 .detail-list.warn li::before { content: '?'; color: var(--amber); }
 .detail-list.bad li::before { content: '✕'; color: var(--red-dark); }
@@ -1133,7 +1198,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ax-progress .meter-track { height: 8px; }
 .action-item { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
 .action-item:first-of-type { border-top: none; }
-.action-item input[type=checkbox] { width: 18px; height: 18px; margin-top: var(--sp-05); accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+.action-item input[type=checkbox] { width: 18px; height: 18px; margin-top: var(--sp-05); accent-color: var(--accent-text); flex-shrink: 0; cursor: pointer; }
 .action-item .ai-main { flex: 1; min-width: 0; }
 .action-item .ai-text { font-size: var(--fs-body); font-weight: 500; }
 /* Il testo dell'azione è un <label>: si spunta cliccando la frase, non solo il
@@ -1648,7 +1713,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    TaskDetailPage ora è ridondante, non contraddittorio. */
 .task-check { min-height: 26px; display: flex; align-items: center; gap: var(--sp-2); }
 .task-check input[type="checkbox"] {
-  width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer;
+  width: 18px; height: 18px; flex: none; accent-color: var(--accent-text); cursor: pointer;
 }
 
 /* ============================================================================
@@ -1697,7 +1762,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* Il bersaglio della casella è la label, non il quadratino: 26px di altezza,
    come nella checklist delle attività. */
 .doc-check { display: flex; align-items: center; min-height: 26px; min-width: 26px; padding-top: var(--sp-05); }
-.doc-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+.doc-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent-text); cursor: pointer; }
 /* Tutta la riga è il collegamento: centrare una freccia di sedici pixel su un
    trackpad è una prova di mira. */
 .doc-row-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1; color: var(--ink); text-decoration: none; }
@@ -1917,6 +1982,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
     --accent-soft: #ffffff;
     --accent-line: #b0b0b0;
     --on-accent: #ffffff;
+    --on-red: #ffffff;
 
     /* Gli stati NON diventano tutti neri: «da verificare» e «scaduto» devono
        restare distinguibili anche su una stampante in bianco e nero, dove la

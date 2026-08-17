@@ -1516,6 +1516,69 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
   check('il pallino delle notifiche scrive su --red-dark, non su --red',
     /background:\s*var\(--red-dark\)/.test(pallino),
     'su --red il bianco fa 3,78:1 in chiaro: --red riempie, --red-dark porta testo');
+  check('e ci scrive con --on-red, non con --on-accent',
+    /color:\s*var\(--on-red\)/.test(pallino),
+    "dal 2026-08-17 --on-accent è inchiostro SCURO (l'accento è l'azzurro chiaro): sopra questo rosso farebbe 3,04:1");
+
+  // ⚠️ L'AZZURRO RIEMPIE, NON SCRIVE — e il conto delle 90 coppie non può
+  // vederlo. Una regola che dichiara `color:` SENZA un `background:` accanto
+  // non forma una coppia: sta scrivendo sopra ciò che eredita, e il lettore qui
+  // sopra la salta. È esattamente la forma dei tre segni trovati il 2026-08-17
+  // — il pallino degli elenchi, un'etichetta del calendario e la data di oggi —
+  // che scrivevano `color: var(--accent)` su fondo chiaro: 2,48:1, e nessuna
+  // coppia da pesare. Da qui in poi `--accent` è un colore di RIEMPIMENTO:
+  // l'inchiostro della sua famiglia si chiama `--accent-text`.
+  const scriventi: string[] = [];
+  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (/(?:^|;|\s)color:\s*var\(--accent\)/.test(corpo!)) scriventi.push(sel!.replace(/\s+/g, ' ').trim());
+  }
+  check("nessuna regola SCRIVE con --accent (l'inchiostro è --accent-text)",
+    scriventi.length === 0,
+    `${scriventi.join('; ')} — #37AEEF come testo su bianco fa 2,48:1`);
+
+  // ⚠️ E le caselle native, dove la spunta la disegna il BROWSER, in bianco:
+  // il colore che gli si dà è un fondo, e sopra un azzurro chiaro quella spunta
+  // sparisce. `accent-color` vuole quindi l'inchiostro, non il riempimento.
+  const caselle: string[] = [];
+  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (/accent-color:\s*var\(--accent\)\s*[;}]/.test(`${corpo!};`)) caselle.push(sel!.replace(/\s+/g, ' ').trim());
+  }
+  check('le caselle native usano accent-color: var(--accent-text)',
+    caselle.length === 0,
+    `${caselle.join('; ')} — la spunta bianca sopra #37AEEF fa 2,48:1`);
+
+  // ⚠️ UN SOLO AZZURRO, NON DUE. La famiglia dell'accento è fatta di gradazioni
+  // dello STESSO tono: cambiare `--accent` e lasciare un derivato sul tono
+  // vecchio non dà un colore sbagliato — dà due colori che quasi coincidono,
+  // che è peggio, perché nessuno lo nota e nessuno sa quale dei due è quello
+  // giusto. È successo il 2026-08-17 spostando la famiglia da 207 a 201:
+  // `--accent-line` del tema scuro è rimasto indietro, in un blocco lontano
+  // dagli altri quattro, e nessun conto di contrasto poteva vederlo — due toni
+  // vicini hanno la stessa luminosità, quindi le 90 coppie restano verdi.
+  // Qui non si misura il contrasto: si misura il TONO.
+  const tono = (rgb: [number, number, number]): number => {
+    const [r, g, b] = rgb.map((v) => v / 255) as [number, number, number];
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    if (d === 0) return -1;                       // grigio: non ha tono da confrontare
+    const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return Math.round(((h * 60) + 360) % 360);
+  };
+  const FAMIGLIA = ['--accent', '--accent-dark', '--accent-text', '--accent-soft', '--accent-line', '--focus'];
+  for (const [tema, m] of [['chiaro', CHIARO], ['scuro', SCURO]] as const) {
+    const toni = FAMIGLIA.map((t) => [t, tono(colore(risolvi(`var(${t})`, m)) ?? [0, 0, 0])] as const)
+      .filter(([, h]) => h >= 0);
+    // Controprova del lettore: se i token non si risolvessero, l'elenco sarebbe
+    // vuoto e «tutti uguali» sarebbe vero per vacuità — il verde falso di sempre.
+    check(`${tema}: la famiglia dell'accento è stata letta (${FAMIGLIA.length} token)`,
+      toni.length === FAMIGLIA.length, `letti ${toni.length}: ${toni.map(([t]) => t).join(', ')}`);
+    // ±2 gradi: hsl→rgb→hsl passa da tre interi, e un arrotondamento di un
+    // punto sposta il tono di un grado. Due FAMIGLIE diverse distano decine.
+    const base = toni[0]?.[1] ?? 0;
+    const fuori = toni.filter(([, h]) => Math.abs(h - base) > 2);
+    check(`${tema}: un solo azzurro — tutta la famiglia sullo stesso tono (${base}°)`,
+      fuori.length === 0,
+      fuori.map(([t, h]) => `${t} è a ${h}°`).join(', '));
+  }
 }
 
 // ---------------------------------------------------------------------------
