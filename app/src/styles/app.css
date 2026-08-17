@@ -357,8 +357,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* 264px e non 240: con il corpo a 15px la voce "Admin AI — Documenti" andava
    a capo. Allargare la colonna costa nulla; rimpicciolire la navigazione
    principale avrebbe disfatto il passo appena compiuto. */
-.sidebar { width: 264px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
-.brand { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1) var(--sp-2) var(--sp-4); }
+.sidebar { width: 264px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
+/* Il padding inferiore è --sp-2 e non --sp-4: sotto il marchio comincia il
+   selettore azienda, che ha già un padding suo — 16px erano due respiri
+   sommati, e sopra una navigazione che scorreva valevano mezza voce. */
+.brand { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1) var(--sp-2) var(--sp-2); }
 /* IL MARCHIO — il perché della forma sta in `BrandMark.tsx`. Qui c'è solo il
    perché delle misure.
    `min-width: 0` sul contenitore: senza, in una colonna da 264px il lockup si
@@ -421,11 +424,19 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* L'etichetta di gruppo è ORIENTAMENTO, non una voce: pesa meno delle voci
    (400 contro 500 — prima era 600, e PIATTAFORMA gridava quanto le sue voci).
    La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso. */
-.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-4) var(--sp-3) var(--sp-2); border-left: 3px solid transparent; }
+.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-3) var(--sp-3) var(--sp-1); border-left: 3px solid transparent; }
 /* Il bordo sinistro c'è SEMPRE, trasparente: comparisse solo con .active, il
    testo di ogni voce si sposterebbe di 3px a ogni cambio pagina. */
 .nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; border-left: 3px solid transparent; background: none; border-radius: var(--radius-sm); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
+/* ⚠️ NELLA COLONNA LA VOCE È PIÙ BASSA CHE NEL DRAWER, e la differenza è
+   voluta: di là si tocca con un dito, di qua si punta con un mouse. 8px sopra
+   e sotto facevano una voce da 39px; 4 ne fanno una da 31, e dieci voci
+   restituiscono 80px alla navigazione — due voci e mezzo. Il bersaglio resta
+   31×232, molto oltre i 24×24 di WCAG 2.2, che è la soglia per il puntatore;
+   quella da 44 vale per il dito, e il dito qui non arriva mai (sotto i 900px
+   la colonna non esiste, c'è il drawer, dove `.nav-btn` è rimasto com'era). */
+.sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); }
 /* La voce attiva parla il vocabolario della fiducia: il filetto verticale
    pieno — la barra di revisione di .mark-prov — non solo un fondo colorato.
    Gli angoli sinistri a 0 come .verify-note: un filetto non si curva. */
@@ -513,6 +524,14 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .drawer-overlay { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .22s; }
   .drawer-overlay.open { opacity: 1; pointer-events: auto; }
   .drawer-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink-soft); }
+  /* ⚠️ QUI SI TOCCA CON UN DITO. La riga dei tre comandi personali sta alta 28
+     px nella colonna del desktop — è la misura delle tendine compatte, giusta
+     per un puntatore. Un bersaglio da 28px sotto un pollice è il modo di
+     sbagliare tendina, o di uscire dall'account per errore: nel cassetto
+     tornano tutti e tre a 44, che è la soglia di WCAG 2.2 per il tocco. Il
+     cassetto ha 343px utili, quindi la riga ci sta lo stesso. */
+  .drawer .account-prefs select,
+  .drawer .account-prefs .btn { min-height: 44px; }
 }
 
 /* La cornice della tela: lati più larghi del sopra (in orizzontale il vuoto

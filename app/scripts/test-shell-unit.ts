@@ -1519,6 +1519,233 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
 }
 
 // ---------------------------------------------------------------------------
+section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
+// ---------------------------------------------------------------------------
+// ⚠️ PERCHÉ ESISTE. Fino al 2026-08-16 la colonna chiedeva 962px e ne aveva
+// 720: la navigazione — unica parte elastica — ne nascondeva 242, cioè
+// «Incentivi», l'intestazione ARCHIVIO e le sue quattro voci. Chi apriva
+// l'applicazione vedeva sei voci su dieci e doveva scorrere per sapere che le
+// altre esistevano. Nessun controllo lo vedeva: `design:lint` guarda che le
+// misure vengano dai token, non che le misure SOMMATE ci stiano nello schermo.
+// È lo stesso buco della sezione 12 — una regola che dice «usa i token» non
+// protegge da dieci token che insieme non entrano.
+//
+// Questa sezione FA IL CONTO. Legge le geometrie dai fogli di stile e dalla
+// tabella NAV, e ricostruisce l'altezza della colonna come la costruisce il
+// browser: ogni riga di testo è `font-size × line-height`, ogni scatola è il
+// suo contenuto più i suoi padding. Il modello NON è dedotto: è stato
+// verificato contro il browser (banco locale, Chrome, 1280×720, 2026-08-16) e
+// riproduce ogni blocco al centesimo — voce 31,25 · sezione 34,59 · piede
+// 40,25 · marchio 81,32 · azienda 66,89 · box account 88,40.
+//
+// ⚠️ IL MARGINE È SOTTILE E VA DETTO: a 720 la colonna chiede ~716,5 e ne
+// avanzano ~3,5. Non è un caso fortunato, è un bilancio: chi aggiunge una riga
+// qui dentro deve toglierne un'altra, e questo controllo è il posto in cui se
+// ne accorge PRIMA di pubblicare. Dove stanno i pixel, se servissero: la riga
+// di sottotitolo del marchio (24), il passo di 2px fra le voci (24 in tutto),
+// il padding verticale della colonna (8).
+{
+  const senzaCommenti = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '');
+  const app = senzaCommenti(readFileSync(join(root, 'src/styles/app.css'), 'utf8'));
+  const extra = senzaCommenti(readFileSync(join(root, 'src/styles/extra.css'), 'utf8'));
+  const shell = readFileSync(join(root, 'src/components/layout/AppShell.tsx'), 'utf8');
+  const brandArt = readFileSync(join(root, 'src/components/ui/brandArt.ts'), 'utf8');
+  const lingua = readFileSync(join(root, 'src/components/ui/LanguageSwitcher.tsx'), 'utf8');
+  const aspetto = readFileSync(join(root, 'src/components/ui/ThemeSwitcher.tsx'), 'utf8');
+  const css = `${app}\n${extra}`;
+
+  // La scala: i px dei token, così il modello parla la lingua dei fogli.
+  const scala = new Map<string, number>();
+  for (const m of app.matchAll(/(--(?:sp|fs)-[a-z0-9]+)\s*:\s*([\d.]+)px/g)) scala.set(m[1]!, Number(m[2]));
+
+  /** Il corpo della PRIMA regola che dichiara esattamente questo selettore.
+   *  `(?:^|\})` àncora l'inizio: senza, `.nav-btn` peschèrebbe dentro
+   *  `.sidebar .nav-btn`, che è proprio la coppia che qui va distinta. */
+  const regola = (sel: string, fonte = css): string => {
+    const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^|\\})\\s*${esc}\\s*\\{([^}]*)\\}`).exec(fonte)?.[1] ?? '';
+  };
+  const dichiarazione = (corpo: string, prop: string): string | undefined =>
+    new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`).exec(corpo)?.[1]?.trim();
+  /** Un valore in px, sia scritto (`44px`) sia preso da un token (`var(--sp-2)`). */
+  const px = (v: string | undefined): number | null => {
+    if (v === undefined) return null;
+    const t = v.trim();
+    if (t === '0') return 0;
+    const tok = /^var\((--[a-z0-9-]+)\)$/.exec(t);
+    if (tok) return scala.get(tok[1]!) ?? null;
+    const n = /^(-?[\d.]+)px$/.exec(t);
+    return n ? Number(n[1]) : null;
+  };
+  /** Sopra e sotto di uno shorthand `padding`/`margin` a 1, 2, 3 o 4 valori. */
+  const verticali = (corpo: string, prop: string): [number, number] | null => {
+    const v = dichiarazione(corpo, prop);
+    if (v === undefined) return null;
+    const parti = v.split(/\s+/).map((x) => px(x));
+    if (parti.some((x) => x === null)) return null;
+    const [a, , c] = parti as number[];
+    return [a!, parti.length >= 3 ? c! : a!];
+  };
+
+  const interlinea = Number(/(?:^|;)\s*line-height:\s*([\d.]+)/.exec(regola('body', app))?.[1] ?? NaN);
+  const riga = (token: string) => (scala.get(token) ?? NaN) * interlinea;
+
+  // --- le geometrie, lette una per una -------------------------------------
+  const gCol = regola('.sidebar');
+  const gMarchio = regola('.brand');
+  const gAzienda = regola('.company-switch');
+  const gNav = regola('.nav');
+  const gSezione = regola('.nav-section');
+  const gVoce = regola('.sidebar .nav-btn');
+  const gPiede = regola('.nav-foot');
+  const gBox = regola('.account-box');
+  const gRiga = regola('.account-row');
+  const gPrefs = regola('.account-prefs');
+
+  const colPad = verticali(gCol, 'padding');
+  const marchioPad = verticali(gMarchio, 'padding');
+  const aziendaPad = verticali(gAzienda, 'padding');
+  const aziendaMarg = verticali(gAzienda, 'margin-bottom');
+  const sezionePad = verticali(gSezione, 'padding');
+  const vocePad = verticali(gVoce, 'padding');
+  const navGap = px(dichiarazione(gNav, 'gap'));
+  const boxGap = px(dichiarazione(gBox, 'gap'));
+  const boxPad = px(dichiarazione(gBox, 'padding-top'));
+  const rigaPad = verticali(gRiga, 'padding');
+  const piedePad = px(dichiarazione(gPiede, 'padding-top'));
+  const logoW = px(dichiarazione(regola('.brand-logo'), 'width'));
+  const subMarg = px(dichiarazione(regola('.brand-sub'), 'margin-top'));
+  const campanella = px(dichiarazione(regola('.bell-btn'), 'height')) ?? 36;
+  const vb = /MARCHIO_VIEWBOX\s*=\s*'([\d\s.]+)'/.exec(brandArt)?.[1]?.trim().split(/\s+/).map(Number);
+
+  // ⚠️ CONTROPROVA DEL LETTORE, prima di ogni conto: se una geometria si
+  // leggesse `null`, il modello sommerebbe NaN e il confronto `NaN <= 720`
+  // sarebbe FALSO — cioè rosso, non verde falso. Ma un rosso senza nome manda
+  // a caccia nel posto sbagliato: qui si dice QUALE misura non si è letta.
+  const letture: [string, unknown][] = [
+    ['.sidebar padding', colPad], ['.brand padding', marchioPad],
+    ['.company-switch padding', aziendaPad], ['.company-switch margin-bottom', aziendaMarg],
+    ['.nav gap', navGap], ['.nav-section padding', sezionePad],
+    ['.sidebar .nav-btn padding', vocePad], ['.nav-foot padding-top', piedePad],
+    ['.account-box gap', boxGap], ['.account-box padding-top', boxPad],
+    ['.account-row padding', rigaPad], ['.brand-logo width', logoW],
+    ['.brand-sub margin-top', subMarg], ['MARCHIO_VIEWBOX', vb?.length === 4 ? vb : null],
+    ['body line-height', Number.isFinite(interlinea) ? interlinea : null],
+  ];
+  const illeggibili = letture.filter(([, v]) => v === null || v === undefined).map(([k]) => k);
+  check('tutte le geometrie della colonna si leggono dai fogli',
+    illeggibili.length === 0, `non lette: ${illeggibili.join(', ')}`);
+
+  // --- il conto -------------------------------------------------------------
+  const BORDO = 1;                       // i filetti di .nav-foot e .account-box
+  const PREFS = 28;                      // ⚠️ MISURATO, non calcolabile: l'altezza
+  // della riga lingua/aspetto/uscita la decidono le tendine compatte, e il loro
+  // padding è scritto IN LINEA nei due componenti (`padding: '4px 8px'`,
+  // `fontSize: '0.85rem'`), non in un foglio. Un `<select>` per giunta non usa
+  // il line-height del corpo. 28px è ciò che il browser produce, verificato al
+  // banco il 2026-08-16; se un giorno quelle misure passassero al CSS, questo
+  // numero diventerà un conto come gli altri.
+
+  const logoH = logoW! * (vb![3]! / vb![2]!);
+  const marchio = marchioPad![0] + Math.max(logoH + subMarg! + riga('--fs-meta'), campanella) + marchioPad![1];
+  const azienda = aziendaPad![0] + riga('--fs-label') + riga('--fs-meta') * 2 + aziendaPad![1] + aziendaMarg![1];
+  const voce = riga('--fs-body') + vocePad![0] + vocePad![1];
+  const sezione = riga('--fs-label') + sezionePad![0] + sezionePad![1];
+  const piede = BORDO + piedePad! + voce;
+
+  const nVoci = NAV.filter((e): e is NavItem => !isSection(e)).length;
+  const nSezioni = NAV.filter(isSection).length;
+  const nFigliNav = nVoci + nSezioni + 1;                       // +1: il piede
+  const navContenuto = nVoci * voce + nSezioni * sezione + piede + (nFigliNav - 1) * navGap!;
+
+  const rigaAccount = rigaPad![0] + riga('--fs-body') + riga('--fs-meta') + rigaPad![1];
+  const account = BORDO + boxPad! + rigaAccount + boxGap! + PREFS;
+
+  const ALTEZZA = 720;                                          // 1280×720, lo schermo stretto di riferimento
+  const nFigliCol = 4;                                          // marchio, azienda, navigazione, box account
+  const colGap = px(dichiarazione(gCol, 'gap'))!;
+  const totale = colPad![0] + marchio + azienda + navContenuto + account + colPad![1] + (nFigliCol - 1) * colGap;
+  const avanzo = ALTEZZA - totale;
+
+  console.log(`  ${DIM}marchio ${marchio.toFixed(2)} · azienda ${azienda.toFixed(2)} · navigazione ${navContenuto.toFixed(2)} (${nVoci} voci da ${voce.toFixed(2)}, ${nSezioni} sezioni da ${sezione.toFixed(2)}, piede ${piede.toFixed(2)}) · account ${account.toFixed(2)} → ${totale.toFixed(2)} su ${ALTEZZA}${X}`);
+
+  check(`a ${ALTEZZA}px la colonna intera ci sta, senza scorrere`,
+    totale <= ALTEZZA,
+    `chiede ${totale.toFixed(2)}px: ne mancano ${(-avanzo).toFixed(2)}. La navigazione è l'unica parte elastica, quindi il di più lo nasconde LEI — e ciò che sparisce sono le ultime voci, ARCHIVIO per primo.`);
+
+  // Il conto sopra dice «ci sta». Questo dice CHE COSA ci sta: tutte e dieci le
+  // voci, non otto. Sono la stessa disuguaglianza vista dalla parte del lettore.
+  const spazioNav = ALTEZZA - colPad![0] - marchio - azienda - account - colPad![1] - (nFigliCol - 1) * colGap;
+  const vociVisibili = Math.min(nVoci, Math.max(0, Math.floor((spazioNav - nSezioni * (sezione + navGap!) - piede - navGap!) / (voce + navGap!))));
+  check(`si vedono tutte e ${nVoci} le voci senza toccare la rotella`,
+    vociVisibili >= nVoci, `se ne vedrebbero ${vociVisibili}`);
+
+  // --- le decisioni che producono il bilancio, ciascuna col suo perché -------
+
+  // (a) LA DENSITÀ È DEL PUNTATORE, NON DEL DITO. La voce stretta vale nella
+  //     colonna (mouse); il drawer, che si tocca, tiene la sua.
+  const voceBase = verticali(regola('.nav-btn'), 'padding');
+  check('la voce stretta vale SOLO nella colonna (.sidebar .nav-btn)',
+    vocePad !== null && voceBase !== null && vocePad[0] < voceBase[0],
+    `colonna ${vocePad?.[0]}px, base ${voceBase?.[0]}px: se fossero uguali, la stretta sarebbe finita anche sotto il dito`);
+  check('nel drawer la voce resta quella da dito (--sp-2)',
+    voceBase?.[0] === scala.get('--sp-2'),
+    `${voceBase?.[0]}px: sotto i 900px la colonna non esiste, c'è il cassetto`);
+
+  // (b) I TRE COMANDI PERSONALI STANNO SU UNA RIGA SOLA. Erano tre righe
+  //     impilate: 202px di piede sotto una navigazione che ne cercava 242.
+  const colonnePrefs = dichiarazione(gPrefs, 'grid-template-columns')?.split(/\s+/).length ?? 0;
+  check('lingua, aspetto e uscita stanno su UNA riga (griglia a tre colonne)',
+    /display:\s*grid/.test(gPrefs) && colonnePrefs === 3, `colonne dichiarate: ${colonnePrefs}`);
+  check("l'AppShell li mette davvero lì dentro",
+    /className="account-prefs"[\s\S]{0,600}?<LanguageSwitcher[\s\S]{0,600}?<ThemeSwitcher[\s\S]{0,600}?handleSignOut/.test(shell));
+  check('la vecchia pila di tre righe non è tornata',
+    !/account-actions/.test(shell) && !/account-actions/.test(css)
+      && !/className="mb-2"><(?:Language|Theme)Switcher/.test(shell),
+    'la .account-actions e i due involucri .mb-2 erano 65px di margine sommato');
+
+  // (c) L'USCITA HA PERSO L'ETICHETTA VISIBILE: deve conservare il nome. Un
+  //     pulsante che è solo un'icona e non ha né aria-label né title è un
+  //     comando anonimo — e questo, per giunta, fa uscire dall'account.
+  const bottoneUscita = /<button[^>]*onClick=\{handleSignOut\}[\s\S]*?>/.exec(shell)?.[0] ?? '';
+  check("l'uscita, ormai sola icona, conserva nome e titolo",
+    /aria-label=\{t\('nav\.signOutAria'\)\}/.test(bottoneUscita) && /title=\{t\('nav\.signOut'\)\}/.test(bottoneUscita),
+    'aria-label per il lettore di schermo, title per il puntatore');
+
+  // (d) NEL CASSETTO IL BERSAGLIO TORNA DA DITO. 28px sotto un pollice sono un
+  //     modo di sbagliare tendina, o di uscire dall'account per errore.
+  const gPrefsDrawer = regola('.drawer .account-prefs select,\n  .drawer .account-prefs .btn');
+  check('nel drawer i tre comandi tornano a 44px (WCAG 2.2, tocco)',
+    px(dichiarazione(gPrefsDrawer, 'min-height')) === 44,
+    'la riga compatta è una misura da puntatore, e sotto i 900px non c\'è un puntatore');
+
+  // (e) L'ETICHETTA DELL'ASPETTO STA IN UNA TENDINA DA 91px. «Segui il sistema»
+  //     e «Systemeinstellung folgen» ci entravano a metà: chi sceglie non
+  //     leggeva che cosa aveva scelto. Nello spazio utile — 57px misurati a
+  //     0,85rem — ci stanno una parola e circa dieci caratteri.
+  for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
+    const opts = (dict.nav as unknown as { themeOption: Record<string, string> }).themeOption;
+    const larghe = Object.values(opts).filter((v) => v.includes(' ') || v.length > 10);
+    check(`${lang}: le opzioni dell'aspetto stanno nella tendina compatta`,
+      larghe.length === 0, `troppo lunghe: ${larghe.join(', ')}`);
+  }
+
+  // (f) DUE COPIE NELL'ALBERO, UN ID SOLO. I due selettori sono montati nella
+  //     colonna E nel cassetto: un id scritto a mano era duplicato nel
+  //     documento, e un `htmlFor` trova sempre il primo — cioè può etichettare
+  //     la tendina che nessuno vede. Stessa cura del gruppo Impostazioni.
+  for (const [nome, src] of [['LanguageSwitcher', lingua], ['ThemeSwitcher', aspetto]] as const) {
+    // ⚠️ I COMMENTI VANNO VIA PRIMA DI GUARDARE: il commento che spiega questa
+    // regola CITA l'id sbagliato (`id="lang-select"`), e la prima stesura del
+    // controllo lo trovava lì dentro — rosso su un codice corretto, per aver
+    // letto la spiegazione invece del codice.
+    const codice = src.replace(/\/\/[^\n]*/g, '');
+    check(`${nome}: l'id viene da useId, non è scritto a mano`,
+      /useId\(\)/.test(codice) && !/id="[a-z-]+"/.test(codice));
+  }
+}
+
+// ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);
 process.exit(fail === 0 ? 0 : 1);

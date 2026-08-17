@@ -134,7 +134,13 @@ export const it = {
     themeOption: {
       chiaro: 'Chiaro',
       scuro: 'Scuro',
-      sistema: 'Segui il sistema',
+      // ⚠️ UNA PAROLA, e la ragione è una misura. Dal 2026-08-16 la tendina
+      // dell'aspetto divide una riga con quella della lingua e con l'uscita:
+      // 91px. «Segui il sistema» ci entrava per metà, e il tedesco
+      // («Systemeinstellung folgen») mostrava «Systemeins…» — chi sceglie non
+      // legge che cosa ha scelto. È anche la parola che usano i sistemi
+      // operativi in quella stessa tendina.
+      sistema: 'Sistema',
     },
     mainNav: 'Navigazione principale',
     openMenu: 'Apri il menu di navigazione',

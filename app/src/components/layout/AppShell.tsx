@@ -97,7 +97,8 @@ function CompanySwitch() {
   return (
     <div className="company-switch">
       <div className="cs-label">{t('nav.activeCompany')}</div>
-      <div className="cs-name">{activeCompany.legalName}</div>
+      {/* Il titolo porta il nome INTERO: la riga lo tronca (vedi extra.css). */}
+      <div className="cs-name" title={activeCompany.legalName}>{activeCompany.legalName}</div>
       <div className="cs-meta">
         {activeCompany.canton ?? '—'} · <span className="role-chip">{role ? t(ROLE_KEY[role]) : ''}</span>
       </div>
@@ -152,12 +153,28 @@ function AccountBox() {
       </div>
       {/* La lingua e l'aspetto si cambiano dove l'utente si aspetta le
           impostazioni personali. Sono due preferenze dello stesso genere — di
-          chi guarda, su questo computer — e stanno insieme. */}
-      <div className="mb-2"><LanguageSwitcher compact /></div>
-      <div className="mb-2"><ThemeSwitcher compact /></div>
-      <div className="account-actions">
-        <button className="btn btn-sm" onClick={handleSignOut} disabled={busy} aria-label={t('nav.signOutAria')}>
-          {busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="logout" className="ic-sm" />} {t('nav.signOut')}
+          chi guarda, su questo computer — e stanno insieme.
+          ⚠️ SU UNA RIGA SOLA, con l'uscita, dal 2026-08-16. Erano tre righe
+          impilate — due tendine a tutta larghezza e un pulsante — e il piede
+          della colonna ne usciva alto 202px: misurato a 1280×720, la
+          navigazione aveva 308px per 550 di voci e ne nascondeva 242, cioè
+          «Incentivi», tutto l'ARCHIVIO e le sue quattro voci. Tre comandi
+          personali affiancati stanno in 28. La riduzione della colonna è
+          questa, e la prova è la sezione 13 di test:shell-unit.
+          L'uscita è la sola a perdere la propria etichetta: resta nel titolo
+          (puntatore) e in aria-label (lettore di schermo), e nel drawer il
+          bersaglio torna da dito. */}
+      <div className="account-prefs">
+        <LanguageSwitcher compact />
+        <ThemeSwitcher compact />
+        <button
+          className="btn btn-sm"
+          onClick={handleSignOut}
+          disabled={busy}
+          aria-label={t('nav.signOutAria')}
+          title={t('nav.signOut')}
+        >
+          {busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="logout" className="ic-sm" />}
         </button>
       </div>
     </div>

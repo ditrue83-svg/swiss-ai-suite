@@ -1163,8 +1163,10 @@ il tema scuro un `@media (prefers-color-scheme: dark)` che ne riscriveva 36.
 Non c'era un tema da costruire: c'era una decisione da dichiarare.
 
 Ora il predefinito è chiaro **sempre**, e la preferenza a tre stati — Chiaro ·
-Scuro · Segui il sistema — sta accanto alla lingua, dove il prodotto tiene già
-le impostazioni personali.
+Scuro · Sistema — sta accanto alla lingua, dove il prodotto tiene già le
+impostazioni personali. (La terza opzione si chiamava «Segui il sistema» fino
+al 2026-08-17: una riga sola per lingua, aspetto e uscita l'ha ristretta a una
+parola — vedi «La colonna mostra tutte le sue voci».)
 
 | | Stato al 2026-08-16 |
 |---|---|
@@ -1395,6 +1397,88 @@ farli sparire. È un difetto **preesistente**, indipendente da questo lavoro
 (si vede solo dove la pastiglia c'è, e infatti nel gruppo compresso — che non
 la mostra — le righe stanno bene). Si chiuderebbe con un `flex-wrap: wrap` su
 `.inbox-row`, ma è un cambio di impaginazione fuori da «mostra i conteggi».
+
+## La colonna mostra tutte le sue voci — implementato il 2026-08-17, NON deployato
+
+La barra laterale ha dieci voci in tre gruppi. A 1280×720 se ne vedevano
+**sei**: la colonna chiedeva 962px e ne aveva 720, e la navigazione — l'unica
+parte elastica — ne nascondeva 242. Sotto la piega finivano «Incentivi»,
+l'intestazione ARCHIVIO e le sue quattro voci: Documenti, Contratti, Clienti,
+Finanze. **Quattro moduli su nove esistevano solo dopo uno scroll**, e chi apre
+l'applicazione la prima volta non sa che ci sia qualcosa da scorrere.
+
+I 242px non erano nella navigazione: erano nel resto. Il piede della colonna ne
+prendeva 202 per tre righe impilate — la tendina della lingua, quella
+dell'aspetto, il pulsante «Esci» — ognuna a tutta larghezza, con un margine
+proprio **sommato** allo spazio che il contenitore già dava.
+
+| | Stato al 2026-08-17 |
+|---|---|
+| Implementato | sì — `layout/AppShell.tsx` (box account, titolo sul nome azienda), `app.css` (`.sidebar`, `.brand`, `.nav-section`, `.sidebar .nav-btn`, bersaglio da dito nel cassetto), `extra.css` (`.account-box`, `.account-prefs`, `.company-switch`), `ui/LanguageSwitcher.tsx` e `ui/ThemeSwitcher.tsx` (`useId`), i tre dizionari |
+| Deployato | **no** — nessun push e nessuna PR: non sono stati chiesti |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 208 passi, sezione 13 nuova. Provata su **cinque mutazioni** che DEVONO farla fallire: voce di nuovo a `--sp-2` (3 rossi), tre righe impilate rimesse nell'AppShell (2), «Segui il sistema» rimessa in dizionario (1), bersaglio del cassetto sceso a 24px (1), una geometria resa illeggibile (1 — la controprova del lettore, che impedisce il verde falso) |
+| Provato contro la cosa reale | **in parte, e va detto DOVE si ferma.** Misurato al banco su un `AppShell` **vero** con i fogli veri — solo i due contesti che vogliono la rete sono finti — in Chrome a 1280×720 e a 375×812, nei due temi e nelle tre lingue. ⚠️ **L'app dietro autenticazione non è stata aperta**: da questa postazione non si entra senza le credenziali del titolare |
+| Disponibile a clienti esterni | no — non deployato |
+
+**Il conto, prima e dopo (misurato al banco, non stimato).**
+
+| | prima | dopo |
+|---|---|---|
+| marchio | 89,00 | 81,33 |
+| azienda attiva | 83,00 | 70,90 |
+| navigazione (contenuto) | 550,00 | 445,95 |
+| box account | 202,00 | 88,40 |
+| **totale chiesto** | **962** | **716,58** |
+| nascosto a 720px | **242** | **0** |
+| voci visibili su 10 | 6 | **10** |
+
+**Le quattro decisioni.** (1) Lingua, aspetto e uscita su **una riga sola**:
+202px diventano 88. L'uscita perde l'etichetta visibile — resta nel `title` per
+il puntatore e in `aria-label` per il lettore di schermo — ed è l'unico prezzo
+pagato qui. (2) La voce della colonna passa da 39 a **31px**: `--sp-1` invece di
+`--sp-2`, e **solo dentro `.sidebar`**. (3) Marchio, azienda attiva e
+intestazioni di gruppo restituiscono i respiri sommati due volte. (4) Il nome
+dell'azienda va su **una riga sola** con l'ellissi: «Genossenschaft für
+Schweizer Treuhand und Revision AG» ne prendeva due, e venti pixel decisi dal
+**dato del cliente** — non dal disegno — rimettevano la barra di scorrimento
+per quel solo cliente. Il nome intero resta nel `title`.
+
+⚠️ **La densità è del PUNTATORE, non del dito.** `.nav-btn` di base — quello che
+usa il cassetto sotto i 900px — è rimasto a 39px, e nel cassetto i tre comandi
+personali tornano a **44px**, la soglia di WCAG 2.2 per il tocco. Nella colonna
+il bersaglio è 31×232, molto oltre i 24×24 che valgono per il puntatore. Se la
+misura stretta finisse su `.nav-btn` invece che su `.sidebar .nav-btn`, il test
+diventa rosso: è una delle cinque mutazioni provate.
+
+⚠️ **«Segui il sistema» non ci stava più**, e il tedesco nemmeno: in una tendina
+da 91px «Systemeinstellung folgen» mostrava «Systemeins…», cioè **chi sceglie
+non legge che cosa ha scelto**. Le tre etichette sono ora di una parola —
+Sistema · System · Système — che è anche la parola che i sistemi operativi usano
+nella stessa tendina. Il controllo pretende una parola e dieci caratteri al
+massimo: è il proxy della larghezza misurata (57px utili a 0,85rem).
+
+⚠️ **Il margine è sottile e va detto: a 720px avanzano 3,42px.** Non è fortuna,
+è un bilancio, e la sezione 13 è il posto in cui chi aggiunge una riga se ne
+accorge **prima** di pubblicare. Dove stanno i pixel, se servissero: la riga di
+sottotitolo del marchio (24), il passo di 2px fra le voci (24 in tutto), il
+padding verticale della colonna (8).
+
+⚠️ **Trovato per strada e corretto**: i due selettori di lingua e aspetto sono
+montati **due volte** nell'albero autenticato — colonna e cassetto — e scrivevano
+un `id` a mano. Il documento aveva quindi due `#lang-select` e due
+`#theme-select`, e un `htmlFor` trova sempre il primo: cioè poteva etichettare
+la tendina che nessuno vede. Ora l'id viene da `useId`, come già faceva il
+gruppo Impostazioni nello stesso albero.
+
+⛔ **APERTO, trovato per strada e NON corretto**: `ThemeSwitcher` tiene il tema
+in uno stato **locale**, e nell'albero autenticato ce ne sono due copie. Chi
+cambia aspetto dalla colonna e poi restringe la finestra fino al cassetto trova
+là il valore vecchio — l'app è scura e la tendina dice «Chiaro». È preesistente
+e indipendente da questo lavoro (le due copie non si vedono mai insieme), e si
+chiuderebbe alzando lo stato nell'`AppShell`, **esattamente come è già stato
+fatto per il conteggio della campanella**. Non è stato fatto qui perché cambia
+l'interfaccia del componente, e questo lavoro era sull'altezza della colonna.
 
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 
