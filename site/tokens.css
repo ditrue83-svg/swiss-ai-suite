@@ -169,7 +169,13 @@
      `--on-accent` è diventato inchiostro scuro. Sopra il rosso avrebbe fatto
      3,04:1. Un token per l'accento e uno per il rosso: la simmetria che
      permetteva di averne uno solo non c'è più, e fingere che ci sia costa
-     esattamente la soglia che la sezione 12 misura. */
+     esattamente la soglia che la sezione 12 misura.
+
+     ⚠️ Fino al 2026-08-16 il pallino delle notifiche scriveva sopra `--red`:
+     3,78:1 in chiaro, sotto AA da sempre. Con `--red-dark` fa 5,83 · 7,34 · 21
+     nei tre temi. Un colore che deve essere leggibile e un colore che deve
+     essere riconoscibile non sono lo stesso colore — la stessa lezione che
+     ambra e verde avevano già insegnato con il marrone della barra «Media». */
   --red: hsl(0, 84%, 60%);
   --red-soft: hsl(0, 84%, 96%);
   --red-line: hsl(0, 84%, 86%);
