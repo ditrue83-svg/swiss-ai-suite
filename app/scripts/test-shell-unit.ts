@@ -2001,6 +2001,50 @@ section('14. La finestra — un modale che non intrappola');
 }
 
 // ---------------------------------------------------------------------------
+section('15. I fogli come li legge il BROWSER — un commento che si chiude due volte');
+// ---------------------------------------------------------------------------
+// ⚠️⚠️ PERCHÉ ESISTE, e perché sta PRIMA del conto della sezione 16. In CSS il
+// commento non si annida: `/*` apre e il PRIMO `*/` chiude. Un commento lungo
+// che ne contiene un altro — o che cita una riga di codice commentata — si
+// chiude a metà, e da lì in avanti il testo rimasto è spazzatura che il parser
+// butta via INSIEME alla regola successiva. Senza un errore, senza un avviso.
+//
+// Non è un caso di scuola. Il 2026-08-17, in `app.css`, un commento dentro
+// `:root` si chiudeva due volte: il parser ha mangiato la dichiarazione che
+// seguiva e `--red` è rimasto NON DEFINITO in tema chiaro, cioè nel tema
+// predefinito. Dodici usi — il pallino delle notifiche, il bordo di
+// `.btn-danger`, il filetto di `.kpi.alert`, la barra `.bar-fill.s-alta`, il
+// `.dot-alta` — con `background: var(--red)` che diventa trasparente e
+// `border-left: 3px solid var(--red)` che diventa nessun bordo.
+//
+// ⚠️ E NESSUN CONTROLLO POTEVA VEDERLO, perché tutti leggono il CSS con
+// un'espressione regolare: nel FILE `--red: hsl(0, 84%, 60%)` c'è, e la sezione
+// 12 ne pesava tranquillamente il contrasto. Verde su un colore che il browser
+// non aveva. Lo ha trovato il banco, aprendo la pagina e chiedendo il valore
+// calcolato. Qui si controlla la sola cosa che si può controllare leggendo:
+// che tagliando i commenti come li taglia un parser non avanzi un `*/` orfano.
+{
+  const FOGLI = ['src/styles/app.css', 'src/styles/extra.css', 'src/styles/fonts.css'];
+  let commentiTotali = 0;
+  for (const f of FOGLI) {
+    const testo = readFileSync(join(root, f), 'utf8');
+    // Non greedy: si ferma al PRIMO `*/`, esattamente come il parser.
+    const commenti = testo.match(/\/\*[\s\S]*?\*\//g) ?? [];
+    commentiTotali += commenti.length;
+    const resto = testo.replace(/\/\*[\s\S]*?\*\//g, '');
+    const i = resto.indexOf('*/');
+    const dove = i < 0 ? '' : `…${resto.slice(Math.max(0, i - 90), i + 2).replace(/\s+/g, ' ')}`;
+    check(`${f}: nessun \`*/\` orfano — nessun commento chiuso due volte`,
+      i < 0,
+      `${dove}\n     Il testo prima di questo \`*/\` non è un commento: il parser lo scarta INSIEME alla regola che segue.`);
+  }
+  // ⚠️ CONTROPROVA DEL LETTORE: se i fogli si leggessero vuoti, «nessun orfano»
+  // sarebbe vero per vacuità — e lo sarebbe per sempre.
+  check(`i tre fogli sono stati letti davvero (${commentiTotali} commenti)`,
+    commentiTotali > 200, `trovati ${commentiTotali} commenti: troppo pochi perché la lettura sia avvenuta`);
+}
+
+// ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);
 process.exit(fail === 0 ? 0 : 1);
