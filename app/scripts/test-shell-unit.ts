@@ -1431,7 +1431,11 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
 // Qui non si controlla il pallino: si controlla la FAMIGLIA. Ogni regola di
 // `app.css` e `extra.css` che dichiara INSIEME un fondo e un colore di testo
 // presi dai token viene risolta nei tre temi — chiaro, scuro, stampa — e pesata.
-// Sono 90 coppie, e al 2026-08-16 nessuna è sotto la soglia. Un'eccezione qui
+// Sono 89 coppie — erano 90 fino al 2026-08-17, quando le due regole gemelle
+// della pastiglia premuta (`.on` e `[aria-pressed]`) sono diventate una sola —
+// e nessuna è sotto la soglia. Il numero lo stampa il controllo: se scende
+// molto, è il LETTORE che si è rotto, ed è la ragione della soglia a 80 più
+// sotto. Un'eccezione qui
 // non esiste per scelta: se un giorno servisse (testo grande, che ad AA si
 // accontenta di 3:1), va dichiarata con il suo motivo, come fa `design:lint`.
 {
@@ -1520,7 +1524,7 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
     /color:\s*var\(--on-red\)/.test(pallino),
     "dal 2026-08-17 --on-accent è inchiostro SCURO (l'accento è l'azzurro chiaro): sopra questo rosso farebbe 3,04:1");
 
-  // ⚠️ L'AZZURRO RIEMPIE, NON SCRIVE — e il conto delle 90 coppie non può
+  // ⚠️ L'AZZURRO RIEMPIE, NON SCRIVE — e il conto delle coppie non può
   // vederlo. Una regola che dichiara `color:` SENZA un `background:` accanto
   // non forma una coppia: sta scrivendo sopra ciò che eredita, e il lettore qui
   // sopra la salta. È esattamente la forma dei tre segni trovati il 2026-08-17
@@ -1547,6 +1551,42 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
     caselle.length === 0,
     `${caselle.join('; ')} — la spunta bianca sopra #37AEEF fa 2,48:1`);
 
+  // ⚠️ CHI STA DENTRO UN RIEMPIMENTO D'ACCENTO SCRIVE CON --on-accent, e il
+  // conto delle coppie non può dirlo: `.nav-btn.active .ic { color: … }` non
+  // dichiara un fondo, quindi non forma una coppia — il fondo glielo dà il
+  // genitore. È il buco esatto trovato il 2026-08-17 provando una mutazione che
+  // NON diventava rossa: rimettendo `--accent-text` sull'icona della voce
+  // attiva, l'icona faceva 2,99:1 sull'azzurro e la suite restava verde.
+  // Qui si guarda la PARENTELA: per ogni selettore che riempie con `--accent`,
+  // ogni regola discendente che dichiara un colore di testo deve scrivere con
+  // `--on-accent`. È l'unico inchiostro garantito su quel fondo — in tutt'e tre
+  // i temi, perché il token si ribalta con loro.
+  const riempieAccento = new Set<string>();
+  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (!/(?:^|;|\s)background(?:-color)?:\s*var\(--accent\)\s*[;}]/.test(`${corpo!};`)) continue;
+    for (const p of sel!.split(',')) riempieAccento.add(p.replace(/\s+/g, ' ').trim());
+  }
+  check('i riempimenti che usano --accent sono stati trovati',
+    riempieAccento.size >= 8, `trovati ${riempieAccento.size}`);
+
+  const dentro: string[] = [];
+  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const inchiostro = /(?:^|;|\s)color:\s*([^;}]+)/.exec(corpo!)?.[1]?.trim();
+    if (!inchiostro) continue;
+    for (const p of sel!.split(',')) {
+      const parte = p.replace(/\s+/g, ' ').trim();
+      // `+ ' '` e non `startsWith` nudo: `.check-pill.on:hover` è lo STESSO
+      // elemento, non un discendente, e il suo colore lo decide la regola sua.
+      for (const f of riempieAccento) {
+        if (!parte.startsWith(`${f} `) && !parte.startsWith(`${f}>`)) continue;
+        if (inchiostro !== 'var(--on-accent)') dentro.push(`${parte} scrive ${inchiostro}`);
+      }
+    }
+  }
+  check("dentro un riempimento d'accento si scrive solo con --on-accent",
+    dentro.length === 0,
+    `${dentro.join('; ')} — sull'azzurro pieno --accent-text fa 2,99:1`);
+
   // ⚠️ UN SOLO AZZURRO, NON DUE. La famiglia dell'accento è fatta di gradazioni
   // dello STESSO tono: cambiare `--accent` e lasciare un derivato sul tono
   // vecchio non dà un colore sbagliato — dà due colori che quasi coincidono,
@@ -1554,7 +1594,7 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
   // giusto. È successo il 2026-08-17 spostando la famiglia da 207 a 201:
   // `--accent-line` del tema scuro è rimasto indietro, in un blocco lontano
   // dagli altri quattro, e nessun conto di contrasto poteva vederlo — due toni
-  // vicini hanno la stessa luminosità, quindi le 90 coppie restano verdi.
+  // vicini hanno la stessa luminosità, quindi le coppie restano tutte verdi.
   // Qui non si misura il contrasto: si misura il TONO.
   const tono = (rgb: [number, number, number]): number => {
     const [r, g, b] = rgb.map((v) => v / 255) as [number, number, number];

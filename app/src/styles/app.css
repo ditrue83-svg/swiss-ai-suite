@@ -495,7 +495,20 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* La voce attiva parla il vocabolario della fiducia: il filetto verticale
    pieno — la barra di revisione di .mark-prov — non solo un fondo colorato.
    Gli angoli sinistri a 0 come .verify-note: un filetto non si curva. */
-.nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; border-left-color: var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+/* ⚠️ AZZURRO PIENO, NON PIÙ VELATURA — deciso da Andrea il 2026-08-17, e la
+   regola generale che ne esce vale per tutta l'app:
+     · fondo PIENO (`--accent` + `--on-accent`) = SELEZIONE — ciò che l'utente
+       ha scelto, o dove si trova adesso;
+     · VELATURA (`--accent-soft` + `--accent-text`) = INFORMAZIONE — un avviso,
+       un'icona di contorno, una pastiglia che etichetta.
+   Prima la voce attiva era una velatura chiarissima (#eaf5fb) con sopra il blu
+   fondo: in tema chiaro l'azzurro del prodotto non si vedeva proprio dove
+   l'occhio guarda per primo. Ora il fondo È l'azzurro, e ci si scrive sopra
+   scuro (7,14:1).
+   Il filetto verticale resta e resta dello stesso colore del fondo: non serve
+   più a colorare, serve a tenere il bordo sinistro squadrato — vedi il
+   commento di `.mark-prov`. */
+.nav-btn.active { background: var(--accent); color: var(--on-accent); font-weight: 600; border-left-color: var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 /* Il piede della barra: separato da un filetto orizzontale e spinto in fondo
    (margin-top: auto dentro il flex della .nav) — le impostazioni non sono
    lavoro quotidiano e non stanno in mezzo.
@@ -530,7 +543,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    proprietà è giusta di là e sbagliata di qua. */
 .nav-btn > span:last-child { hyphens: auto; }
 .nav-btn .ic { color: var(--muted); }
-.nav-btn:hover .ic, .nav-btn.active .ic { color: var(--accent-text); }
+/* ⚠️ LE DUE ICONE NON SONO PIÙ LO STESSO COLORE, e la ragione è il fondo su cui
+   stanno: l'hover lascia la voce su `--bg` (chiaro), la voce attiva la mette su
+   `--accent` (l'azzurro pieno). Il blu fondo sopra l'azzurro farebbe 2,99:1 —
+   un'icona che sbiadisce proprio nella voce in cui ci si trova. Erano una riga
+   sola finché i due stati avevano lo stesso fondo. */
+.nav-btn:hover .ic { color: var(--accent-text); }
+.nav-btn.active .ic { color: var(--on-accent); }
 .sidebar-footer { margin-top: auto; padding: var(--sp-3) var(--sp-3) var(--sp-05); font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line); line-height: 1.5; }
 
 /* top bar mobile + drawer (nascosti su desktop) */
@@ -941,8 +960,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .checks { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .check-pill { display: inline-flex; align-items: center; gap: var(--sp-2); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-body); font-weight: 500; color: var(--ink-soft); background: var(--card); cursor: pointer; user-select: none; transition: background .12s, border-color .12s, color .12s; }
 .check-pill:hover { border-color: var(--line-strong); background: var(--bg); }
-.check-pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-.check-pill[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+/* Premuta = selezione, quindi fondo pieno (vedi `.nav-btn.active`). Una
+   pastiglia premuta e una non premuta si distinguevano per una velatura da
+   #eaf5fb contro il bianco della scheda: 1,08:1 di differenza fra i due fondi,
+   cioè quasi nulla — a dire quale filtro fosse acceso restavano il grassetto e
+   il bordo. Ora lo dice il colore, che è ciò che si vede per primo. */
+.check-pill.on,
+.check-pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 /* ⚠️ La pastiglia nasce come PULSANTE; le automazioni (0020) sono le prime a
    metterci dentro una casella di spunta vera. Senza questa regola la casella
    resta quella predefinita del browser — 13 pixel e l'azzurro di sistema —
@@ -1743,9 +1767,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   color: var(--ink); font: inherit; font-size: var(--fs-meta); text-align: left; cursor: pointer;
 }
 .doc-cat:hover { background: var(--fill-subtle); }
-.doc-cat.is-active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); font-weight: 600; }
+/* La categoria scelta è una selezione, come la voce della barra: fondo pieno. */
+.doc-cat.is-active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .doc-cat-n { color: var(--muted); font-variant-numeric: tabular-nums; }
-.doc-cat.is-active .doc-cat-n { color: var(--accent-text); }
+.doc-cat.is-active .doc-cat-n { color: var(--on-accent); }
 
 .doc-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .doc-filter-wide { grid-column: 1 / -1; }

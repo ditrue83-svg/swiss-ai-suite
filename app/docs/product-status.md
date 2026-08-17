@@ -1526,7 +1526,7 @@ soglia persa che il 2026-08-16 era costata la correzione del pallino.
 
 ⚠️ **Tre segni scrivevano con `--accent`** — il pallino degli elenchi,
 un'etichetta del calendario, la data di oggi — e sono passati a `--accent-text`.
-Le 90 coppie non li vedevano: una regola che dichiara `color:` **senza** un
+Le coppie fondo/testo non li vedevano: una regola che dichiara `color:` **senza** un
 `background:` accanto non forma una coppia. Il controllo nuovo guarda proprio
 quella forma.
 
@@ -1547,6 +1547,40 @@ va rilanciato `node sync-tokens.mjs`. **Verificato che funziona** — ricostruit
 guardata: `.btn-primary` prende l'azzurro con l'inchiostro scuro (7,14:1), i chip
 7,15, il marchio resta #00AEEF. L'albero del monorepo è stato **riportato
 pulito** dopo la verifica: è su `main`, e su `main` non si lavora.
+
+**E poi Andrea ha chiesto di vederlo anche nel tema chiaro.** Nel chiaro
+l'azzurro c'era già sui pieni (pulsanti, barre, filetti), ma gli **stati
+attivi** erano una velatura chiarissima (`#eaf5fb`) con sopra il blu fondo: fra
+una pastiglia premuta e una non premuta correvano **1,08:1** di differenza fra i
+due fondi, cioè quasi niente — a dire quale filtro fosse acceso restavano il
+grassetto e il bordo. Ora il fondo **è** l'azzurro, con l'inchiostro scuro sopra
+(7,14:1, misurato a schermo su voce attiva, icona della voce attiva, pastiglia
+premuta e pulsante primario).
+
+Ne esce una **regola generale**, scritta accanto a `.nav-btn.active`:
+
+| | fondo | quando |
+|---|---|---|
+| **selezione** | `--accent` pieno + `--on-accent` | ciò che l'utente ha scelto, o dove si trova adesso |
+| **informazione** | `--accent-soft` + `--accent-text` | un avviso, un'icona di contorno, una pastiglia che etichetta |
+
+Sono passate al pieno **tre famiglie**: la voce attiva della barra, la pastiglia
+premuta (`.check-pill.on` e `[aria-pressed="true"]`, ora una regola sola invece
+di due gemelle) e la categoria scelta in Documenti. Sono rimaste alla velatura
+le superfici che **informano**: il banner dimostrativo, il richiamo `.ax-callout`,
+le icone di contorno (KPI, stato vuoto, caricamento), l'avatar, la riga non
+letta, le pastiglie `.badge-*` — dove il blu è uno di cinque colori di famiglia,
+e alzarne uno solo lo farebbe gridare più di «priorità alta».
+
+⚠️ **La scheda attiva non è passata al pieno**, e la ragione è che il suo segno
+di stato è già l'azzurro: `.tab.active` porta `border-bottom-color: var(--accent)`.
+Farne una pastiglia piena in mezzo a schede di solo testo avrebbe cambiato il
+componente, non il colore.
+
+⚠️ **L'icona della voce attiva ha dovuto separarsi dall'hover.** Erano una riga
+sola (`.nav-btn:hover .ic, .nav-btn.active .ic`) finché i due stati avevano lo
+stesso fondo chiaro. Sull'azzurro pieno il blu fondo fa **2,99:1**: l'icona
+sbiadiva proprio nella voce in cui ci si trova.
 
 ⚠️ **Ciò che il colore chiaro ha peggiorato, e va detto.** `--accent` fa anche da
 **bordo** in ~25 regole (voce attiva, scheda attiva, pastiglia premuta, campo a
