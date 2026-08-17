@@ -58,6 +58,7 @@ import {
   comprimibile, inboxEmphasis, SOGLIA_COMPRESSIONE, QUERY_COMPRESSI, QUERY_IN_EVIDENZA,
   type InboxEmphasis,
 } from '../src/features/inbox/emphasis';
+import { applicaAmbito, INBOX_FILTERS } from '../src/features/inbox/scope';
 import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
@@ -1192,6 +1193,81 @@ section('PESO DELLE RIGHE — la classificazione che cambia la forma della pagin
       `${lang}: «{shown} di {total} in evidenza» ha entrambi i segnaposto`);
     ok(!!(inbox.search as Record<string, string>).noneInEvidence,
       `${lang}: la ricerca senza risultati amministrativi ha la sua frase`);
+  }
+}
+
+// ===========================================================================
+section('I CONTEGGI SUI FILTRI — un numero che descrive l\'elenco che si apre');
+// ===========================================================================
+// Dal 2026-08-16 ogni bottone della barra porta il suo conteggio, perché sui
+// dati veri due filtri su cinque erano a ZERO e nessuno lo diceva prima del
+// clic. Il numero vale però solo se descrive l'elenco che quel bottone apre, e
+// l'unico modo di garantirlo è che entrambi passino da `applicaAmbito`.
+//
+// ⚠️ IL DIFETTO CHE QUESTA SEZIONE ASPETTA. Lo switch di `applicaAmbito` ha un
+// ramo `default`, quindi **non è mai esaustivo per TypeScript**: un filtro
+// nuovo aggiunto a `INBOX_FILTERS` — e quindi mostrato nella barra — cadrebbe
+// nel `default` e prenderebbe l'ambito di «Tutte». Il bottone mostrerebbe 148,
+// il compilatore resterebbe verde, e l'elenco aperto sarebbe un altro.
+{
+  /** Un costruttore di query FINTO che registra ciò che gli viene chiesto. */
+  function registratore() {
+    const chiamate: string[] = [];
+    const q: Record<string, (...a: unknown[]) => unknown> = {};
+    for (const op of ['eq', 'neq', 'not', 'lte', 'gte', 'ilike', 'or']) {
+      q[op] = (...a: unknown[]) => { chiamate.push(`${op}(${a.join('|')})`); return q; };
+    }
+    return { q, chiamate };
+  }
+
+  const impronta = (query: Parameters<typeof applicaAmbito>[1]) => {
+    const { q, chiamate } = registratore();
+    applicaAmbito(q, query);
+    return chiamate.join(' & ');
+  };
+
+  // CONTROPROVA DEL REGISTRATORE: se non registrasse nulla, ogni impronta
+  // sarebbe la stringa vuota e «tutte diverse» fallirebbe — ma «nessuna vuota»
+  // è l'asserzione che lo dice per prima, e con un nome.
+  const impronte = new Map<string, string>();
+  for (const f of INBOX_FILTERS) impronte.set(f, impronta({ companyId: 'az', filter: f }));
+  ok([...impronte.values()].every((v) => v.length > 0),
+    'ogni filtro restringe qualcosa (il registratore funziona)',
+    [...impronte].map(([f, v]) => `${f}=«${v}»`).join('  '));
+  ok(new Set(impronte.values()).size === INBOX_FILTERS.length,
+    `i ${INBOX_FILTERS.length} filtri restringono in ${INBOX_FILTERS.length} modi DIVERSI`,
+    [...impronte].map(([f, v]) => `${f} → ${v}`).join('\n     '));
+
+  // Le due metà di «Tutte» sono ambiti a sé, e diversi fra loro e da «Tutte».
+  const tutte = impronta({ companyId: 'az', filter: 'all' });
+  const evidenza = impronta({ companyId: 'az', filter: 'all', emphasis: 'in_evidence' });
+  const compressi = impronta({ companyId: 'az', filter: 'all', emphasis: 'collapsed' });
+  ok(new Set([tutte, evidenza, compressi]).size === 3,
+    'le due metà di «Tutte» sono ambiti distinti, e distinti da «Tutte» intera',
+    `tutte=${tutte}\n     evidenza=${evidenza}\n     compressi=${compressi}`);
+
+  // ⚠️ L'AMBITO SI RESTRINGE ANCHE CON LA RICERCA E LA CASELLA. Un conteggio
+  // che le ignorasse risponderebbe a un'altra domanda: cercando «Nespresso»,
+  // «Da gestire 22» sarebbe il numero di ieri sull'insieme di prima.
+  for (const [nome, extra] of [
+    ['la ricerca', { search: 'nespresso' }],
+    ['la casella', { connectionId: 'c1' }],
+  ] as const) {
+    const senza = impronta({ companyId: 'az', filter: 'to_handle' });
+    const con = impronta({ companyId: 'az', filter: 'to_handle', ...extra });
+    ok(con !== senza && con.startsWith(senza), `${nome} restringe ulteriormente il conteggio`,
+      `senza=${senza}\n     con=${con}`);
+  }
+
+  // Ogni filtro mostrato ha la sua etichetta nelle tre lingue: un bottone con
+  // il numero e senza la parola sarebbe un numero che non dichiara l'insieme.
+  const CHIAVI: Record<string, string> = {
+    all: 'all', to_handle: 'toHandle', urgent: 'urgent', to_verify: 'toVerify', handled: 'handled',
+  };
+  for (const [lang, dict] of Object.entries({ it, de, fr })) {
+    const filtri = (dict.inbox as { filters: Record<string, string> }).filters;
+    const mancanti = INBOX_FILTERS.filter((f) => !filtri[CHIAVI[f]!]);
+    ok(mancanti.length === 0, `${lang}: ogni filtro della barra ha la sua parola`, mancanti.join(', '));
   }
 }
 

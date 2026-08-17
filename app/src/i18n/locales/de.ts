@@ -124,7 +124,7 @@ export const de: Dictionary = {
     themeOption: {
       chiaro: 'Hell',
       scuro: 'Dunkel',
-      sistema: 'Systemeinstellung folgen',
+      sistema: 'System',
     },
     mainNav: 'Hauptnavigation',
     openMenu: 'Navigationsmenü öffnen',

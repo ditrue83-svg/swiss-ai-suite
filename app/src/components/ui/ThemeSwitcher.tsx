@@ -12,13 +12,16 @@
 // portatile passa a scuro al tramonto. L'ascolto serve a quello, e si spegne
 // quando la preferenza non è più «sistema»: un listener che resta acceso
 // riscriverebbe il tema di chi ha appena scelto «chiaro».
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useT } from '@/i18n';
 import { applicaTema, leggiTema, scegliTema, TEMI, type Tema } from '@/lib/theme';
 
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const [tema, setTema] = useState<Tema>(() => leggiTema());
+  // Stessa ragione del selettore di lingua: due copie nell'albero (colonna e
+  // drawer) e un id scritto a mano sarebbe duplicato nel documento.
+  const id = useId();
 
   useEffect(() => {
     if (tema !== 'sistema') return;
@@ -30,9 +33,9 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="field m-0">
-      {!compact && <label htmlFor="theme-select" className="group-label">{t('nav.theme')}</label>}
+      {!compact && <label htmlFor={id} className="group-label">{t('nav.theme')}</label>}
       <select
-        id="theme-select"
+        id={id}
         aria-label={t('nav.theme')}
         value={tema}
         onChange={(e) => {

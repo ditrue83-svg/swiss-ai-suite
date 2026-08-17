@@ -124,7 +124,7 @@ export const fr: Dictionary = {
     themeOption: {
       chiaro: 'Clair',
       scuro: 'Sombre',
-      sistema: 'Suivre le système',
+      sistema: 'Système',
     },
     mainNav: 'Navigation principale',
     openMenu: 'Ouvrir le menu de navigation',

@@ -1163,8 +1163,10 @@ il tema scuro un `@media (prefers-color-scheme: dark)` che ne riscriveva 36.
 Non c'era un tema da costruire: c'era una decisione da dichiarare.
 
 Ora il predefinito è chiaro **sempre**, e la preferenza a tre stati — Chiaro ·
-Scuro · Segui il sistema — sta accanto alla lingua, dove il prodotto tiene già
-le impostazioni personali.
+Scuro · Sistema — sta accanto alla lingua, dove il prodotto tiene già le
+impostazioni personali. (La terza opzione si chiamava «Segui il sistema» fino
+al 2026-08-17: una riga sola per lingua, aspetto e uscita l'ha ristretta a una
+parola — vedi «La colonna mostra tutte le sue voci».)
 
 | | Stato al 2026-08-16 |
 |---|---|
@@ -1356,10 +1358,240 @@ dirlo prima**. Le cause sono diverse e vanno separate: «Messe via» è a zero
 perché nessuno ha mai messo via un messaggio; «Con scadenza vicina» è a zero
 perché in tutta la casella **un solo messaggio su 148 ha una scadenza
 rilevata**, ed è il 2027-01-22 — fuori dai 30 giorni. La misura si rifà con
-`npm run inbox:diagnose`. ⛔ **Che cosa farne è una decisione di prodotto** —
-mostrare il conteggio sul bottone (l'interrogazione `inboxService.counts` esiste
-già e non la chiama nessuno), spegnere un filtro vuoto, o lasciarli così — e non
-è stata presa qui.
+`npm run inbox:diagnose`.
+
+✅ **DECISO E FATTO il 2026-08-16: ogni bottone porta il suo conteggio.**
+`Tutte 148 · Da gestire 22 · Con scadenza vicina 0 · Da verificare 10 ·
+Messe via 0`. Lo zero si mostra e il bottone resta premibile: spegnerlo
+toglierebbe anche il modo di verificare che è davvero vuoto, e lo stato vuoto
+della pagina lo spiega meglio di un bottone spento. Un numero **assente** è
+«non lo so ancora» e si tace — diverso da zero, e da non confondere con esso.
+
+⚠️ **`inboxService.counts` è stata RISCRITTA, non semplicemente invocata.**
+Riscriveva a mano le condizioni di tre filtri su cinque accanto a un `list()`
+che le scriveva già: due scritture della stessa domanda, e il giorno in cui una
+cambiasse il numero sul bottone e l'elenco che si apre direbbero due cose
+diverse — su due schermate diverse, quindi senza che nessuno lo veda. Ora ogni
+conteggio passa da `count()` → `applicaAmbito`, lo stesso codice che costruisce
+la lista: **per costruzione** il numero descrive l'elenco che si apre.
+
+⚠️ **`applicaAmbito` e `INBOX_FILTERS` sono usciti dal servizio** e stanno in
+`features/inbox/scope.ts`. Non è estetica: il servizio importa `lib/supabase`,
+che legge `import.meta.env` e quindi esiste solo dentro Vite — finché la regola
+dei filtri viveva là, nessun test poteva caricarla. Il guardiano ora c'è, esegue
+`applicaAmbito` con un costruttore finto e pretende che i cinque filtri
+restringano in **cinque modi diversi**: lo switch ha un ramo `default`, quindi
+un filtro nuovo aggiunto alla barra vi cadrebbe dentro e mostrerebbe in silenzio
+il conteggio di «Tutte», con TypeScript verde.
+
+⚠️ **Trovata e chiusa una regressione mia, misurata**: a 375px la barra dei
+filtri chiedeva già 429px in 341px di spazio — sforava di 88px, con le due voci
+di destra tagliate dal bordo della scheda — e i conteggi portavano lo sforo a
+233px. Sotto i 900px la barra ora va a capo (`flex-wrap: wrap`): niente è più
+tagliato, e su desktop resta una riga sola di 41px, invariata.
+
+⛔ **APERTO, trovato per strada e NON corretto**: sotto i 600px la riga di un
+messaggio si schiaccia — `.inbox-row-side { flex-basis: 100% }` sta dentro un
+flex che non va a capo, quindi la pastiglia comprime mittente e oggetto fino a
+farli sparire. È un difetto **preesistente**, indipendente da questo lavoro
+(si vede solo dove la pastiglia c'è, e infatti nel gruppo compresso — che non
+la mostra — le righe stanno bene). Si chiuderebbe con un `flex-wrap: wrap` su
+`.inbox-row`, ma è un cambio di impaginazione fuori da «mostra i conteggi».
+
+## La colonna mostra tutte le sue voci — implementato il 2026-08-17, NON deployato
+
+La barra laterale ha dieci voci in tre gruppi. A 1280×720 se ne vedevano
+**sei**: la colonna chiedeva 962px e ne aveva 720, e la navigazione — l'unica
+parte elastica — ne nascondeva 242. Sotto la piega finivano «Incentivi»,
+l'intestazione ARCHIVIO e le sue quattro voci: Documenti, Contratti, Clienti,
+Finanze. **Quattro moduli su nove esistevano solo dopo uno scroll**, e chi apre
+l'applicazione la prima volta non sa che ci sia qualcosa da scorrere.
+
+I 242px non erano nella navigazione: erano nel resto. Il piede della colonna ne
+prendeva 202 per tre righe impilate — la tendina della lingua, quella
+dell'aspetto, il pulsante «Esci» — ognuna a tutta larghezza, con un margine
+proprio **sommato** allo spazio che il contenitore già dava.
+
+| | Stato al 2026-08-17 |
+|---|---|
+| Implementato | sì — `layout/AppShell.tsx` (box account, titolo sul nome azienda), `app.css` (`.sidebar`, `.brand`, `.nav-section`, `.sidebar .nav-btn`, bersaglio da dito nel cassetto), `extra.css` (`.account-box`, `.account-prefs`, `.company-switch`), `ui/LanguageSwitcher.tsx` e `ui/ThemeSwitcher.tsx` (`useId`), i tre dizionari |
+| Deployato | **no** — nessun push e nessuna PR: non sono stati chiesti |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 208 passi, sezione 13 nuova. Provata su **cinque mutazioni** che DEVONO farla fallire: voce di nuovo a `--sp-2` (3 rossi), tre righe impilate rimesse nell'AppShell (2), «Segui il sistema» rimessa in dizionario (1), bersaglio del cassetto sceso a 24px (1), una geometria resa illeggibile (1 — la controprova del lettore, che impedisce il verde falso) |
+| Provato contro la cosa reale | **in parte, e va detto DOVE si ferma.** Misurato al banco su un `AppShell` **vero** con i fogli veri — solo i due contesti che vogliono la rete sono finti — in Chrome a 1280×720 e a 375×812, nei due temi e nelle tre lingue. ⚠️ **L'app dietro autenticazione non è stata aperta**: da questa postazione non si entra senza le credenziali del titolare |
+| Disponibile a clienti esterni | no — non deployato |
+
+**Il conto, prima e dopo (misurato al banco, non stimato).**
+
+| | prima | dopo |
+|---|---|---|
+| marchio | 89,00 | 81,33 |
+| azienda attiva | 83,00 | 70,90 |
+| navigazione (contenuto) | 550,00 | 445,95 |
+| box account | 202,00 | 88,40 |
+| **totale chiesto** | **962** | **716,58** |
+| nascosto a 720px | **242** | **0** |
+| voci visibili su 10 | 6 | **10** |
+
+**Le quattro decisioni.** (1) Lingua, aspetto e uscita su **una riga sola**:
+202px diventano 88. L'uscita perde l'etichetta visibile — resta nel `title` per
+il puntatore e in `aria-label` per il lettore di schermo — ed è l'unico prezzo
+pagato qui. (2) La voce della colonna passa da 39 a **31px**: `--sp-1` invece di
+`--sp-2`, e **solo dentro `.sidebar`**. (3) Marchio, azienda attiva e
+intestazioni di gruppo restituiscono i respiri sommati due volte. (4) Il nome
+dell'azienda va su **una riga sola** con l'ellissi: «Genossenschaft für
+Schweizer Treuhand und Revision AG» ne prendeva due, e venti pixel decisi dal
+**dato del cliente** — non dal disegno — rimettevano la barra di scorrimento
+per quel solo cliente. Il nome intero resta nel `title`.
+
+⚠️ **La densità è del PUNTATORE, non del dito.** `.nav-btn` di base — quello che
+usa il cassetto sotto i 900px — è rimasto a 39px, e nel cassetto i tre comandi
+personali tornano a **44px**, la soglia di WCAG 2.2 per il tocco. Nella colonna
+il bersaglio è 31×232, molto oltre i 24×24 che valgono per il puntatore. Se la
+misura stretta finisse su `.nav-btn` invece che su `.sidebar .nav-btn`, il test
+diventa rosso: è una delle cinque mutazioni provate.
+
+⚠️ **«Segui il sistema» non ci stava più**, e il tedesco nemmeno: in una tendina
+da 91px «Systemeinstellung folgen» mostrava «Systemeins…», cioè **chi sceglie
+non legge che cosa ha scelto**. Le tre etichette sono ora di una parola —
+Sistema · System · Système — che è anche la parola che i sistemi operativi usano
+nella stessa tendina. Il controllo pretende una parola e dieci caratteri al
+massimo: è il proxy della larghezza misurata (57px utili a 0,85rem).
+
+⚠️ **Il margine è sottile e va detto: a 720px avanzano 3,42px.** Non è fortuna,
+è un bilancio, e la sezione 13 è il posto in cui chi aggiunge una riga se ne
+accorge **prima** di pubblicare. Dove stanno i pixel, se servissero: la riga di
+sottotitolo del marchio (24), il passo di 2px fra le voci (24 in tutto), il
+padding verticale della colonna (8).
+
+⚠️ **Trovato per strada e corretto**: i due selettori di lingua e aspetto sono
+montati **due volte** nell'albero autenticato — colonna e cassetto — e scrivevano
+un `id` a mano. Il documento aveva quindi due `#lang-select` e due
+`#theme-select`, e un `htmlFor` trova sempre il primo: cioè poteva etichettare
+la tendina che nessuno vede. Ora l'id viene da `useId`, come già faceva il
+gruppo Impostazioni nello stesso albero.
+
+⛔ **APERTO, trovato per strada e NON corretto**: `ThemeSwitcher` tiene il tema
+in uno stato **locale**, e nell'albero autenticato ce ne sono due copie. Chi
+cambia aspetto dalla colonna e poi restringe la finestra fino al cassetto trova
+là il valore vecchio — l'app è scura e la tendina dice «Chiaro». È preesistente
+e indipendente da questo lavoro (le due copie non si vedono mai insieme), e si
+chiuderebbe alzando lo stato nell'`AppShell`, **esattamente come è già stato
+fatto per il conteggio della campanella**. Non è stato fatto qui perché cambia
+l'interfaccia del componente, e questo lavoro era sull'altezza della colonna.
+
+## L'azzurro #37AEEF — implementato il 2026-08-17, NON deployato
+
+Andrea ha scelto il colore: **#37AEEF**. L'accento era `hsl(207, 88%, 39%)` =
+#0c6cbb, un blu fondo su cui si scriveva in bianco.
+
+**Il colore ha una conseguenza, e la conseguenza ha deciso il lavoro.** #37AEEF
+è chiaro (luminosità 58%): il bianco sopra fa **2,48:1**, e come inchiostro su
+bianco fa lo stesso. Sotto ogni soglia. Non c'era modo di «mettere il colore
+nuovo» e basta: o l'azzurro riempie e ci si scrive sopra scuro, o resta
+l'identità e i pieni usano un tono più fondo. **Andrea ha scelto il primo** —
+l'azzurro esatto, con l'inchiostro scuro sopra — e ha deciso che **il marchio
+resta #00AEEF**.
+
+| | Stato al 2026-08-17 |
+|---|---|
+| Implementato | sì — `app.css` (i sei token della famiglia nei tre temi, `--on-accent`, il nuovo `--on-red`, `--focus`), `extra.css` (il pallino, due segni di testo), le cinque caselle native |
+| Deployato | **no** — nessun push e nessuna PR: non sono stati chiesti |
+| Configurato | non richiede configurazione |
+| Testato | **sì** — `test:shell-unit` 215 passi. Sei controlli nuovi, provati su **sei mutazioni** che DEVONO farli fallire: un segno che torna a scrivere con `--accent` (1 rosso), una casella nativa che torna sul riempimento (1), il pallino che torna a `--on-accent` (2), il bianco rimesso sopra l'azzurro (1), `--accent-line` scuro lasciato sul tono vecchio (1), `--focus` lasciato indietro (1) |
+| Provato contro la cosa reale | **in parte.** Misurato **a schermo** su un banco che monta le classi vere dei fogli veri, nei due temi: `.btn-primary` 7,14:1 · pastiglia premuta 7,15 · collegamento 7,92 · casella spuntata 7,92. E la **vetrina** ricostruita con i token risincronizzati: `.btn-primary` 7,14:1, chip 7,15, marchio invariato. ⚠️ L'app dietro autenticazione non è stata aperta |
+| Disponibile a clienti esterni | no — non deployato |
+
+**La famiglia, prima e dopo.** Tutto il tono passa da 207 a 201: un accento
+nuovo accanto a derivati del tono vecchio sono due azzurri, non uno.
+
+| token | prima | dopo | mestiere |
+|---|---|---|---|
+| `--accent` | `hsl(207,88%,39%)` | **`#37AEEF`** | riempie, non scrive |
+| `--accent-dark` | `hsl(207,90%,31%)` | `hsl(201,85%,48%)` | hover: qui l'accento è chiaro, l'hover **scende** |
+| `--accent-text` | `hsl(207,90%,30%)` | `hsl(201,85%,27%)` | scrive: 7,92:1 su bianco (era 7,91) |
+| `--accent-soft` | `hsl(207,65%,95%)` | `hsl(201,65%,95%)` | fondi tenui |
+| `--accent-line` | `hsl(207,58%,82%)` | `hsl(201,58%,82%)` | bordi su `--accent-soft` |
+| `--focus` | `hsl(207,88%,42%)` | `hsl(201,88%,42%)` | anello del focus: 3,94:1, non 2,48 |
+| `--on-accent` | `#ffffff` | `hsl(213,35%,10%)` | **7,14:1 sopra l'azzurro** |
+| `--on-red` | *(non esisteva)* | `#ffffff` | il pallino delle notifiche |
+
+⚠️ **`--on-red` è nuovo, e non è burocrazia.** `--on-accent` valeva «ciò che si
+scrive sopra un fondo pieno colorato», e un token solo bastava perché in tema
+chiaro **tutti** i fondi pieni erano scuri e in tema scuro tutti chiari. Con
+l'accento diventato chiaro, il tema chiaro ha ora fondi pieni su **tutt'e due i
+lati della linea** — azzurro chiaro e rosso scuro — e `--on-accent` è diventato
+inchiostro. Sopra il rosso del pallino avrebbe fatto **3,04:1**: la stessa
+soglia persa che il 2026-08-16 era costata la correzione del pallino.
+
+⚠️ **Tre segni scrivevano con `--accent`** — il pallino degli elenchi,
+un'etichetta del calendario, la data di oggi — e sono passati a `--accent-text`.
+Le coppie fondo/testo non li vedevano: una regola che dichiara `color:` **senza** un
+`background:` accanto non forma una coppia. Il controllo nuovo guarda proprio
+quella forma.
+
+⚠️ **Le cinque caselle native usano `accent-color: var(--accent-text)`**, non
+`--accent`, ed è l'unico posto dell'app in cui un riempimento prende
+l'inchiostro. La ragione: la spunta la disegna il **browser**, in bianco, e
+sopra #37AEEF farebbe 2,48:1 — una casella spuntata indistinguibile da una
+vuota.
+
+⚠️ **I due temi ora condividono l'accento.** Il tema scuro schiariva l'accento a
+`hsl(207,75%,58%)` per staccarlo dal fondo: la stessa luminosità di #37AEEF. Da
+oggi il valore è **lo stesso** nei due temi, e non c'è più una coppia da tenere
+allineata a mano.
+
+⚠️ **LA VETRINA VA RISINCRONIZZATA AL MOMENTO DELLA PUBBLICAZIONE.**
+`site/tokens.css` è **derivato** da `app.css` e ora è disallineato: nel monorepo
+va rilanciato `node sync-tokens.mjs`. **Verificato che funziona** — ricostruita e
+guardata: `.btn-primary` prende l'azzurro con l'inchiostro scuro (7,14:1), i chip
+7,15, il marchio resta #00AEEF. L'albero del monorepo è stato **riportato
+pulito** dopo la verifica: è su `main`, e su `main` non si lavora.
+
+**E poi Andrea ha chiesto di vederlo anche nel tema chiaro.** Nel chiaro
+l'azzurro c'era già sui pieni (pulsanti, barre, filetti), ma gli **stati
+attivi** erano una velatura chiarissima (`#eaf5fb`) con sopra il blu fondo: fra
+una pastiglia premuta e una non premuta correvano **1,08:1** di differenza fra i
+due fondi, cioè quasi niente — a dire quale filtro fosse acceso restavano il
+grassetto e il bordo. Ora il fondo **è** l'azzurro, con l'inchiostro scuro sopra
+(7,14:1, misurato a schermo su voce attiva, icona della voce attiva, pastiglia
+premuta e pulsante primario).
+
+Ne esce una **regola generale**, scritta accanto a `.nav-btn.active`:
+
+| | fondo | quando |
+|---|---|---|
+| **selezione** | `--accent` pieno + `--on-accent` | ciò che l'utente ha scelto, o dove si trova adesso |
+| **informazione** | `--accent-soft` + `--accent-text` | un avviso, un'icona di contorno, una pastiglia che etichetta |
+
+Sono passate al pieno **tre famiglie**: la voce attiva della barra, la pastiglia
+premuta (`.check-pill.on` e `[aria-pressed="true"]`, ora una regola sola invece
+di due gemelle) e la categoria scelta in Documenti. Sono rimaste alla velatura
+le superfici che **informano**: il banner dimostrativo, il richiamo `.ax-callout`,
+le icone di contorno (KPI, stato vuoto, caricamento), l'avatar, la riga non
+letta, le pastiglie `.badge-*` — dove il blu è uno di cinque colori di famiglia,
+e alzarne uno solo lo farebbe gridare più di «priorità alta».
+
+⚠️ **La scheda attiva non è passata al pieno**, e la ragione è che il suo segno
+di stato è già l'azzurro: `.tab.active` porta `border-bottom-color: var(--accent)`.
+Farne una pastiglia piena in mezzo a schede di solo testo avrebbe cambiato il
+componente, non il colore.
+
+⚠️ **L'icona della voce attiva ha dovuto separarsi dall'hover.** Erano una riga
+sola (`.nav-btn:hover .ic, .nav-btn.active .ic`) finché i due stati avevano lo
+stesso fondo chiaro. Sull'azzurro pieno il blu fondo fa **2,99:1**: l'icona
+sbiadiva proprio nella voce in cui ci si trova.
+
+⚠️ **Ciò che il colore chiaro ha peggiorato, e va detto.** `--accent` fa anche da
+**bordo** in ~25 regole (voce attiva, scheda attiva, pastiglia premuta, campo a
+fuoco, zona di caricamento): contro il bianco passa da 5,41:1 a **2,48:1**. In
+ognuno di quei casi lo stato è portato **anche** dal fondo (`--accent-soft`) e
+dal testo (`--accent-text`), quindi non è un'informazione affidata al solo
+bordo; e il fuoco da tastiera ha il proprio anello, che resta a 3,94:1. Restano
+due pallini decorativi da 7–8px sull'azzurro chiaro — quello del non letto (che
+il grassetto e il fondo dichiarano già) e quello della cronologia CRM. Se un
+giorno si volesse 3:1 anche sui bordi, serve un token in più — non un ritocco
+di questo.
 
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 

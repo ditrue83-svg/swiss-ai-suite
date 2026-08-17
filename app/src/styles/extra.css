@@ -10,21 +10,49 @@
 @media (max-width: 900px) { .app-shell { flex-direction: column; } }
 
 /* ---- Box account (sidebar/drawer) + logout ---- */
-.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
-.account-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1); }
+/* ⚠️ IL PIEDE DELLA COLONNA È SPAZIO TOLTO ALLA NAVIGAZIONE, e la misura è la
+   ragione di ogni valore qui sotto. Al 2026-08-16, a 1280×720: la colonna
+   chiedeva 962px e ne aveva 720 — marchio 89, azienda 83, navigazione 550, box
+   account 202 — e la navigazione, unica parte elastica, ne nascondeva 242. Chi
+   apriva l'app vedeva sei voci su dieci: «Incentivi» e l'intero ARCHIVIO
+   (Documenti, Contratti, Clienti, Finanze) esistevano solo dopo uno scroll.
+   Qui il box account passa da 202 a 88: due righe invece di quattro. */
+.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
+/* Niente padding verticale: chi lo dà è il box, e darlo due volte sono 8px in
+   fondo a una colonna che ne cercava 242. */
+.account-row { display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-1); }
 .account-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; font-weight: 600; font-size: var(--fs-body); flex-shrink: 0; }
 .account-info { min-width: 0; }
 .account-name { font-weight: 600; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .account-email { font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.account-actions { display: flex; gap: var(--sp-2); }
-.account-actions .btn { flex: 1; }
+/* I TRE COMANDI PERSONALI SU UNA RIGA: lingua, aspetto, uscita. Le due tendine
+   si dividono lo spazio in parti uguali, l'uscita prende ciò che le serve.
+   ⚠️ `min-width: 0` sui figli è obbligatorio: in una griglia il minimo di un
+   elemento è la sua larghezza intrinseca, e una tendina con «Systemeinstellung
+   folgen» dentro si rifiuterebbe di scendere sotto i ~150px — la colonna, che
+   ne ha 232 utili, uscirebbe dai propri 264.
+   ⚠️ Nessun `align-items`: lo stiramento predefinito è ciò che dà al pulsante
+   dell'uscita la stessa altezza delle tendine senza scrivere un numero. */
+.account-prefs { display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--sp-2); }
+.account-prefs > * { min-width: 0; }
+.account-prefs select { width: 100%; }
+/* L'uscita è un'icona sola: il testo lo porta il titolo. Il padding è quello
+   delle tendine compatte, perché i tre comandi sono una riga sola e non tre
+   controlli affiancati per caso. */
+.account-prefs .btn { padding: var(--sp-1) var(--sp-2); }
 
 /* ---- Selettore azienda (multi-tenant ready) ---- */
 /* Niente cornice né fondo: l'azienda attiva è CONTESTO, non contenuto — una
    scatola da scheda la faceva concorrere con le voci di navigazione. */
-.company-switch { padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2); }
+.company-switch { padding: var(--sp-1) var(--sp-3); margin-bottom: var(--sp-1); }
 .company-switch .cs-label { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.company-switch .cs-name { font-weight: 600; font-size: var(--fs-meta); letter-spacing: -0.2px; }
+/* ⚠️ UNA RIGA SOLA, come il nome dell'utente qui sotto. La ragione è che
+   l'altezza della colonna non deve dipendere da COME SI CHIAMA IL CLIENTE:
+   «Rossi SA» sta in una riga, «Müller & Partner Treuhand AG» ne prendeva due, e
+   venti pixel decisi dal dato — non dal disegno — rimettevano la barra di
+   scorrimento nella navigazione di quel solo cliente. Il nome intero resta nel
+   titolo (`title`), che è dove il troncamento lo mette sempre. */
+.company-switch .cs-name { font-weight: 600; font-size: var(--fs-meta); letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .company-switch .cs-meta { font-size: var(--fs-meta); color: var(--muted); }
 .company-switch select { width: 100%; margin-top: var(--sp-1); }
 .role-chip { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: var(--sp-05) var(--sp-2); }
@@ -138,11 +166,15 @@
      timido.
      ⚠️ Non si è toccato `--red`: riempie barre e bordi ovunque, e scurirlo per
      un pallino avrebbe spostato un colore usato in dieci punti per correggerne
-     uno. Il testo resta `--on-accent`, che è già «ciò che si scrive sopra un
-     fondo pieno colorato» e si inverte da sé nel tema scuro.
+     uno. Il testo è `--on-red`, che si inverte da sé nel tema scuro.
+     ⚠️ Era `--on-accent` fino al 2026-08-17: quel token voleva dire «ciò che si
+     scrive sopra un fondo pieno colorato», e con l'accento diventato azzurro
+     CHIARO è diventato inchiostro scuro — sopra questo rosso avrebbe fatto
+     3,04:1. Il perché di due token invece di uno sta in app.css, accanto a
+     `--red-dark`.
      Il guardiano che tiene ferma questa misura è la sezione 12 di
      `test:shell-unit`, che pesa tutte e 90 le coppie fondo/testo del progetto. */
-  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red-dark); color: var(--on-accent);
+  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red-dark); color: var(--on-red);
   font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
 }
 .bell-panel {
@@ -250,7 +282,7 @@
 .cal-more {
   display: flex; align-items: center; width: 100%; min-height: 24px; padding: 0 var(--sp-1);
   border: 0; border-radius: var(--radius-sm); background: transparent;
-  color: var(--accent); font-size: var(--fs-label); text-align: left;
+  color: var(--accent-text); font-size: var(--fs-label); text-align: left;
 }
 .cal-more:hover { background: var(--bg); }
 
@@ -266,7 +298,7 @@
    già maiuscoli, ed è per questo che il difetto si vedeva in due lingue su tre. */
 .cal-agenda-date { font-size: var(--fs-strong); font-weight: 600; }
 .cal-agenda-date::first-letter { text-transform: uppercase; }
-.cal-agenda-date.is-today { color: var(--accent); }
+.cal-agenda-date.is-today { color: var(--accent-text); }
 
 .cal-overdue { border-left: 3px solid var(--red); }
 

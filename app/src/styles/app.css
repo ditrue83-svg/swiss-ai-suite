@@ -7,15 +7,32 @@
    ========================================================================== */
 :root {
   /* --- Colore d'azione -----------------------------------------------------
-     Blu più fondo del precedente hsl(199,100%,50%), che era saturo quasi al
-     massimo. Qui accompagna solleciti dell'AFC, termini di pagamento e importi:
-     stessa famiglia cromatica, tono meno clamoroso. I tre token derivati sono
-     usati in 52 punti dell'app, quindi restano con gli stessi nomi. */
-  --accent: hsl(207, 88%, 39%);        /* fondo dei pulsanti, elementi attivi   */
-  --accent-dark: hsl(207, 90%, 31%);   /* stato premuto / hover                 */
-  --accent-text: hsl(207, 90%, 30%);   /* testo e link: contrasto AA su bianco  */
-  --accent-soft: hsl(207, 65%, 95%);   /* fondi tenui, chip informativi         */
-  --accent-line: hsl(207, 58%, 82%);   /* bordo di ciò che sta su --accent-soft */
+     ⚠️ L'AZZURRO È #37AEEF, deciso da Andrea il 2026-08-17. Prima era
+     hsl(207, 88%, 39%) = #0c6cbb, un blu fondo su cui si scriveva in bianco.
+     Il tono passa da 207 a 201 in tutta la famiglia: un accento nuovo accanto a
+     derivati del tono vecchio sarebbero due azzurri, non uno.
+
+     ⚠️⚠️ E LA CONSEGUENZA CHE DECIDE TUTTO IL RESTO: #37AEEF **non può portare
+     testo bianco**. Il bianco sopra fa 2,48:1 e come inchiostro su bianco fa lo
+     stesso — sotto ogni soglia. Non è un difetto del colore, è la sua
+     luminosità (58%): un azzurro chiaro sta da questa parte della linea.
+     Quindi la famiglia si divide in due mestieri, esattamente come i due rossi
+     qui sotto:
+       · `--accent` è il colore che si RICONOSCE — riempimenti, filetti, bordi,
+         stati attivi. Ci si scrive sopra SCURO (`--on-accent`, 7,14:1).
+       · `--accent-text` è il colore che porta CONTRASTO — testo, link, e ogni
+         segno che deve leggersi su un neutro chiaro (7,92:1 su bianco: la
+         stessa distanza che teneva il blu di prima).
+     ⛔ `color: var(--accent)` su fondo chiaro è quindi un ERRORE: dà 2,48:1.
+     Il posto giusto è `--accent-text`. Erano tre — il segno di elenco, una
+     etichetta del calendario e la data di oggi — e sono stati spostati.
+     La sezione 12 di `test:shell-unit` pesa ogni coppia fondo/testo e non
+     lascia rientrare la scrittura chiara su chiaro. */
+  --accent: #37AEEF;                   /* = hsl(201, 85%, 58%) — riempimenti, filetti, stati attivi */
+  --accent-dark: hsl(201, 85%, 48%);   /* hover: qui l'accento è chiaro, quindi l'hover SCENDE      */
+  --accent-text: hsl(201, 85%, 27%);   /* testo e link: 7,92:1 su bianco                            */
+  --accent-soft: hsl(201, 65%, 95%);   /* fondi tenui, chip informativi                             */
+  --accent-line: hsl(201, 58%, 82%);   /* bordo di ciò che sta su --accent-soft                     */
 
   /* --- Il colore del MARCHIO, che non è il colore dell'azione ---------------
      ⚠️ #00AEEF è il blu del titolare: quello dei contorni che la vetrina serve
@@ -27,7 +44,14 @@
      due blu divergevano: due marchi, uno dei quali non era di nessuno.
      ⚠️ Questi tre token vestono SOLO il marchio (le regole `.bm-*`). Usarli per
      un pulsante o per un testo è il modo di riaprire il difetto: #00AEEF su
-     bianco fa 2,3:1, sotto ogni soglia leggibile. */
+     bianco fa 2,3:1, sotto ogni soglia leggibile.
+     ⚠️⚠️ DAL 2026-08-17 I DUE BLU SI SOMIGLIANO, e la scelta è di Andrea:
+     l'accento è #37AEEF, il marchio resta #00AEEF — sei gradi di tono e due
+     punti di luminosità li separano. Non sono lo stesso colore e non vanno
+     confusi: il marchio è il segno del titolare, e vive anche in
+     `site/static/`, nella favicon di `index.html` e nel logo che `brand:check`
+     riconcilia carattere per carattere. Chi un giorno volesse UN solo azzurro
+     deve cambiarli tutti insieme, in tutt'e due i repository — non qui da solo. */
   --brand: #00AEEF;                    /* il blocco della sigla                 */
   --brand-ink: #ffffff;                /* la sigla DENTRO il blocco, sempre     */
   --brand-word: #00AEEF;               /* la parola accanto: segue il tema      */
@@ -46,7 +70,13 @@
   --line-subtle: rgba(127, 127, 127, 0.15);
   --bg: hsl(210, 20%, 98%);
   --card: #ffffff;
-  --on-accent: #ffffff;               /* testo sopra i fondi pieni colorati */
+  /* ⚠️ SCURO, e non è un refuso: dal 2026-08-17 `--accent` è l'azzurro chiaro
+     #37AEEF, e il bianco sopra farebbe 2,48:1. Questo inchiostro ne fa 7,14.
+     È lo stesso valore che il tema scuro usa da sempre per la stessa ragione:
+     là l'accento si schiarisce per staccarsi dal fondo, qui è chiaro per
+     scelta, e in tutt'e due i casi ciò che ci si scrive sopra è scuro. */
+  --on-accent: hsl(213, 35%, 10%);    /* testo sopra --accent (l'azzurro)   */
+  --on-red: #ffffff;                  /* testo sopra --red-dark (il pallino) */
   /* Riempimento tenue di una pastiglia neutra o di un hover. ⚠️ Si chiamava
      `--surface-2` fino al 2026-08-11, e il nome mentiva: non è un LIVELLO di
      superficie, è un colore di riempimento. Quando i tre livelli sono stati
@@ -105,9 +135,20 @@
      posti dove non c'è testo sopra, e dove serve che salti all'occhio.
      `--red-dark` è il rosso che porta CONTRASTO, e le sue due parti sono
      simmetriche: inchiostro rosso su una superficie chiara, e superficie rossa
-     sotto `--on-accent`. Sono lo stesso requisito — la massima distanza dal
+     sotto testo bianco. Sono lo stesso requisito — la massima distanza dal
      neutro della pagina — e si ribaltano insieme quando il tema si ribalta,
      che è la ragione per cui basta un token e non ne servono due.
+     ⚠️⚠️ CIÒ CHE SI SCRIVE SOPRA IL ROSSO HA UN TOKEN SUO — `--on-red` — dal
+     2026-08-17, e la ragione è l'azzurro nuovo. Fino a quel giorno il pallino
+     usava `--on-accent`, che valeva «ciò che si scrive sopra un fondo pieno
+     colorato»: reggeva perché in tema chiaro TUTTI i fondi pieni erano scuri e
+     in tema scuro tutti chiari, quindi un token solo bastava per entrambi.
+     Con `--accent` diventato un azzurro CHIARO, il tema chiaro ha ora fondi
+     pieni su tutt'e due i lati della linea — azzurro chiaro e rosso scuro — e
+     `--on-accent` è diventato inchiostro scuro. Sopra il rosso avrebbe fatto
+     3,04:1. Un token per l'accento e uno per il rosso: la simmetria che
+     permetteva di averne uno solo non c'è più, e fingere che ci sia costa
+     esattamente la soglia che la sezione 12 misura. */
      ⚠️ Fino al 2026-08-16 il pallino delle notifiche scriveva sopra `--red`:
      3,78:1 in chiaro, sotto AA da sempre. Con `--red-dark` fa 5,83 · 7,34 · 21
      nei tre temi. Un colore che deve essere leggibile e un colore che deve
@@ -178,7 +219,12 @@
      diversi (0,0,0/.35 e 16,24,40/.4): stesso ruolo, una voce sola. */
   --scrim: rgba(16, 24, 40, 0.4);
 
-  --focus: hsl(207, 88%, 42%);         /* anello del focus da tastiera */
+  /* ⚠️ NON È `--accent`, ed è la stessa ragione di `--accent-text`: l'anello
+     del focus è un indicatore di stato e WCAG 1.4.11 gli chiede 3:1 contro ciò
+     che ha accanto. #37AEEF su bianco ne fa 2,48 — sarebbe un anello che non si
+     vede sulla superficie su cui compare più spesso. Questo azzurro, dello
+     stesso tono ma più fondo, ne fa 3,94 su `--card` e 3,77 su `--bg`. */
+  --focus: hsl(201, 88%, 42%);         /* anello del focus da tastiera */
   --topbar-h: 56px;
 
   /* ⚠️ IL TEMA DEI CONTROLLI DEL SISTEMA, che i token non possono vestire.
@@ -245,11 +291,20 @@
     --muted: hsl(210, 10%, 64%);
     --on-ink: hsl(213, 30%, 10%);      /* il toast inverte: fondo chiaro, testo scuro */
 
-    --accent: hsl(207, 75%, 58%);
-    --accent-dark: hsl(207, 78%, 66%);  /* in scuro l'hover SCHIARISCE            */
-    --accent-text: hsl(207, 80%, 72%);
-    --accent-soft: hsl(207, 40%, 20%);
+    /* ⚠️ L'ACCENTO È LO STESSO DEI DUE TEMI, e adesso è vero alla lettera: qui
+       era hsl(207,75%,58%) — un azzurro schiarito apposta per staccarsi dal
+       fondo scuro — e la sua luminosità era già quella di #37AEEF. Da quando il
+       tema chiaro ha scelto quell'azzurro, i due temi condividono l'accento e
+       non c'è più un valore da tenere allineato a mano. 6,38:1 sulla scheda
+       scura: si stacca. */
+    --accent: #37AEEF;
+    --accent-dark: hsl(201, 85%, 66%);  /* in scuro l'hover SCHIARISCE            */
+    --accent-text: hsl(201, 80%, 72%);
+    --accent-soft: hsl(201, 40%, 20%);
     --on-accent: hsl(213, 35%, 10%);    /* testo scuro sopra l'accento chiaro     */
+    /* Sopra il rosso, che in scuro si schiarisce, si scrive scuro: è il
+       ribaltamento che il commento di --red-dark descrive. */
+    --on-red: hsl(213, 35%, 10%);
 
     --red: hsl(0, 62%, 58%);
     --red-soft: hsl(0, 35%, 17%);
@@ -269,7 +324,7 @@
     --amber-soft: hsl(38, 35%, 15%);
     --amber-line: hsl(38, 30%, 28%);
 
-    --accent-line: hsl(207, 40%, 34%);
+    --accent-line: hsl(201, 40%, 34%);
     --amber-fill: hsl(38, 80%, 58%);
     --green-fill: hsl(151, 48%, 50%);
 
@@ -291,7 +346,7 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
 
-    --focus: hsl(207, 80%, 66%);
+    --focus: hsl(201, 80%, 66%);
 
   /* ⚠️ `color-scheme` NON è un doppione di questo blocco: i token vestono ciò
      che disegniamo noi, questa riga veste ciò che disegna il SISTEMA — barra di
@@ -357,8 +412,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* 264px e non 240: con il corpo a 15px la voce "Admin AI — Documenti" andava
    a capo. Allargare la colonna costa nulla; rimpicciolire la navigazione
    principale avrebbe disfatto il passo appena compiuto. */
-.sidebar { width: 264px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
-.brand { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1) var(--sp-2) var(--sp-4); }
+.sidebar { width: 264px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
+/* Il padding inferiore è --sp-2 e non --sp-4: sotto il marchio comincia il
+   selettore azienda, che ha già un padding suo — 16px erano due respiri
+   sommati, e sopra una navigazione che scorreva valevano mezza voce. */
+.brand { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-1) var(--sp-2) var(--sp-2); }
 /* IL MARCHIO — il perché della forma sta in `BrandMark.tsx`. Qui c'è solo il
    perché delle misure.
    `min-width: 0` sul contenitore: senza, in una colonna da 264px il lockup si
@@ -421,15 +479,36 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* L'etichetta di gruppo è ORIENTAMENTO, non una voce: pesa meno delle voci
    (400 contro 500 — prima era 600, e PIATTAFORMA gridava quanto le sue voci).
    La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso. */
-.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-4) var(--sp-3) var(--sp-2); border-left: 3px solid transparent; }
+.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-3) var(--sp-3) var(--sp-1); border-left: 3px solid transparent; }
 /* Il bordo sinistro c'è SEMPRE, trasparente: comparisse solo con .active, il
    testo di ogni voce si sposterebbe di 3px a ogni cambio pagina. */
 .nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; border-left: 3px solid transparent; background: none; border-radius: var(--radius-sm); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
+/* ⚠️ NELLA COLONNA LA VOCE È PIÙ BASSA CHE NEL DRAWER, e la differenza è
+   voluta: di là si tocca con un dito, di qua si punta con un mouse. 8px sopra
+   e sotto facevano una voce da 39px; 4 ne fanno una da 31, e dieci voci
+   restituiscono 80px alla navigazione — due voci e mezzo. Il bersaglio resta
+   31×232, molto oltre i 24×24 di WCAG 2.2, che è la soglia per il puntatore;
+   quella da 44 vale per il dito, e il dito qui non arriva mai (sotto i 900px
+   la colonna non esiste, c'è il drawer, dove `.nav-btn` è rimasto com'era). */
+.sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); }
 /* La voce attiva parla il vocabolario della fiducia: il filetto verticale
    pieno — la barra di revisione di .mark-prov — non solo un fondo colorato.
    Gli angoli sinistri a 0 come .verify-note: un filetto non si curva. */
-.nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; border-left-color: var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+/* ⚠️ AZZURRO PIENO, NON PIÙ VELATURA — deciso da Andrea il 2026-08-17, e la
+   regola generale che ne esce vale per tutta l'app:
+     · fondo PIENO (`--accent` + `--on-accent`) = SELEZIONE — ciò che l'utente
+       ha scelto, o dove si trova adesso;
+     · VELATURA (`--accent-soft` + `--accent-text`) = INFORMAZIONE — un avviso,
+       un'icona di contorno, una pastiglia che etichetta.
+   Prima la voce attiva era una velatura chiarissima (#eaf5fb) con sopra il blu
+   fondo: in tema chiaro l'azzurro del prodotto non si vedeva proprio dove
+   l'occhio guarda per primo. Ora il fondo È l'azzurro, e ci si scrive sopra
+   scuro (7,14:1).
+   Il filetto verticale resta e resta dello stesso colore del fondo: non serve
+   più a colorare, serve a tenere il bordo sinistro squadrato — vedi il
+   commento di `.mark-prov`. */
+.nav-btn.active { background: var(--accent); color: var(--on-accent); font-weight: 600; border-left-color: var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 /* Il piede della barra: separato da un filetto orizzontale e spinto in fondo
    (margin-top: auto dentro il flex della .nav) — le impostazioni non sono
    lavoro quotidiano e non stanno in mezzo.
@@ -464,7 +543,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    proprietà è giusta di là e sbagliata di qua. */
 .nav-btn > span:last-child { hyphens: auto; }
 .nav-btn .ic { color: var(--muted); }
-.nav-btn:hover .ic, .nav-btn.active .ic { color: var(--accent-text); }
+/* ⚠️ LE DUE ICONE NON SONO PIÙ LO STESSO COLORE, e la ragione è il fondo su cui
+   stanno: l'hover lascia la voce su `--bg` (chiaro), la voce attiva la mette su
+   `--accent` (l'azzurro pieno). Il blu fondo sopra l'azzurro farebbe 2,99:1 —
+   un'icona che sbiadisce proprio nella voce in cui ci si trova. Erano una riga
+   sola finché i due stati avevano lo stesso fondo. */
+.nav-btn:hover .ic { color: var(--accent-text); }
+.nav-btn.active .ic { color: var(--on-accent); }
 .sidebar-footer { margin-top: auto; padding: var(--sp-3) var(--sp-3) var(--sp-05); font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line); line-height: 1.5; }
 
 /* top bar mobile + drawer (nascosti su desktop) */
@@ -513,6 +598,14 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .drawer-overlay { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .22s; }
   .drawer-overlay.open { opacity: 1; pointer-events: auto; }
   .drawer-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink-soft); }
+  /* ⚠️ QUI SI TOCCA CON UN DITO. La riga dei tre comandi personali sta alta 28
+     px nella colonna del desktop — è la misura delle tendine compatte, giusta
+     per un puntatore. Un bersaglio da 28px sotto un pollice è il modo di
+     sbagliare tendina, o di uscire dall'account per errore: nel cassetto
+     tornano tutti e tre a 44, che è la soglia di WCAG 2.2 per il tocco. Il
+     cassetto ha 343px utili, quindi la riga ci sta lo stesso. */
+  .drawer .account-prefs select,
+  .drawer .account-prefs .btn { min-height: 44px; }
 }
 
 /* La cornice della tela: lati più larghi del sopra (in orizzontale il vuoto
@@ -867,16 +960,31 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .checks { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .check-pill { display: inline-flex; align-items: center; gap: var(--sp-2); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-body); font-weight: 500; color: var(--ink-soft); background: var(--card); cursor: pointer; user-select: none; transition: background .12s, border-color .12s, color .12s; }
 .check-pill:hover { border-color: var(--line-strong); background: var(--bg); }
-.check-pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-.check-pill[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+/* Premuta = selezione, quindi fondo pieno (vedi `.nav-btn.active`). Una
+   pastiglia premuta e una non premuta si distinguevano per una velatura da
+   #eaf5fb contro il bianco della scheda: 1,08:1 di differenza fra i due fondi,
+   cioè quasi nulla — a dire quale filtro fosse acceso restavano il grassetto e
+   il bordo. Ora lo dice il colore, che è ciò che si vede per primo. */
+.check-pill.on,
+.check-pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 /* ⚠️ La pastiglia nasce come PULSANTE; le automazioni (0020) sono le prime a
    metterci dentro una casella di spunta vera. Senza questa regola la casella
    resta quella predefinita del browser — 13 pixel e l'azzurro di sistema —
    dentro un'interfaccia che altrove usa 18 pixel e l'accento del prodotto.
    È lo stesso difetto già corretto per la checklist delle attività, e si vede
-   solo aprendo la schermata. */
+   solo aprendo la schermata.
+
+   ⚠️ `accent-color` VUOLE `--accent-text`, NON `--accent`, e la ragione è che
+   qui la spunta non la disegniamo noi: il browser la traccia in BIANCO sopra il
+   colore che gli diamo. Sopra #37AEEF farebbe 2,48:1 — una casella spuntata
+   indistinguibile da una vuota se non per una sfumatura. `--accent-text` è
+   l'azzurro fondo della stessa famiglia e la spunta ci si legge a 7,92:1.
+   È l'unico posto dell'app in cui il colore di un riempimento lo sceglie
+   `--accent-text`: non è un'incoerenza, è che il testo sopra non è nostro.
+   ⚠️ Vale per tutte e cinque le caselle native del progetto: se ne nasce una
+   sesta, questa riga è il modello. */
 .check-pill input[type="checkbox"] {
-  width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer;
+  width: 18px; height: 18px; flex: none; accent-color: var(--accent-text); cursor: pointer;
 }
 .check-pill:has(input[type="checkbox"]) { min-height: 26px; }
 
@@ -884,7 +992,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .result-row:first-child { border-top: none; }
 .result-label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); }
 .checklist-item { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) 0; cursor: pointer; }
-.checklist-item input { margin-top: var(--sp-1); accent-color: var(--accent); }
+.checklist-item input { margin-top: var(--sp-1); accent-color: var(--accent-text); }
 .checklist-item.done span { text-decoration: line-through; color: var(--muted); }
 .draft-box { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: var(--sp-4); white-space: pre-wrap; font-size: var(--fs-body); }
 .warn-box { background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: 8px; padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); font-weight: 600; display: flex; gap: var(--sp-3); align-items: flex-start; }
@@ -946,7 +1054,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .match-score.mid { border-color: var(--amber); color: var(--amber); }
 .detail-list { list-style: none; }
 .detail-list li { padding: var(--sp-1) 0 var(--sp-1) var(--sp-6); position: relative; font-size: var(--fs-body); }
-.detail-list li::before { content: '•'; position: absolute; left: 8px; color: var(--accent); font-weight: 600; }
+.detail-list li::before { content: '•'; position: absolute; left: 8px; color: var(--accent-text); font-weight: 600; }
 .detail-list.ok li::before { content: '✓'; color: var(--green); }
 .detail-list.warn li::before { content: '?'; color: var(--amber); }
 .detail-list.bad li::before { content: '✕'; color: var(--red-dark); }
@@ -1114,7 +1222,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ax-progress .meter-track { height: 8px; }
 .action-item { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
 .action-item:first-of-type { border-top: none; }
-.action-item input[type=checkbox] { width: 18px; height: 18px; margin-top: var(--sp-05); accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+.action-item input[type=checkbox] { width: 18px; height: 18px; margin-top: var(--sp-05); accent-color: var(--accent-text); flex-shrink: 0; cursor: pointer; }
 .action-item .ai-main { flex: 1; min-width: 0; }
 .action-item .ai-text { font-size: var(--fs-body); font-weight: 500; }
 /* Il testo dell'azione è un <label>: si spunta cliccando la frase, non solo il
@@ -1349,6 +1457,16 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .action-bar-more { margin-left: auto; }
 .push-right { margin-left: auto; }
 .filter-group { margin-left: auto; display: flex; gap: var(--sp-2); }
+/* Il conteggio accanto all'etichetta del filtro.
+   ⚠️ NESSUN COLORE PROPRIO, ed è deliberato: eredita quello del bottone, che
+   cambia fra riposo e stato attivo (dove il fondo è `--accent` e il testo
+   `--on-accent`). Un token fisso qui avrebbe retto su un fondo solo — è il
+   difetto che la sezione 12 di `test:shell-unit` pesa, e il modo più semplice
+   di non averlo è non introdurre un secondo colore.
+   La gerarchia la fa la MISURA, non il contrasto: un gradino di scala sotto
+   l'etichetta. Cifre tabulari perché il numero cambia e la barra non deve
+   ballare — la stessa regola di `.dl-date` e `.rb-num`. */
+.filter-count { margin-left: var(--sp-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
 .muted-sm { color: var(--muted); font-size: var(--fs-body); }
 .text-muted { color: var(--muted); }
 .hint-accent { font-size: var(--fs-meta); color: var(--accent-text); }
@@ -1490,7 +1608,15 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .list-row, .action-row { gap: var(--sp-3); }
   .badge { white-space: nowrap; }
   .list-main, .action-main { flex-basis: 100%; }
-  .filter-group { width: 100%; margin-left: 0; }
+  /* ⚠️ `flex-wrap: wrap` dal 2026-08-16, e viene da una MISURA. A 375px la
+     barra dei filtri chiedeva 429px in 341px di spazio: sforava già di 88px, e
+     le due voci di destra erano tagliate dal bordo della scheda — un filtro che
+     esiste e non si può premere. Aggiungendo i conteggi lo sforo saliva a 233px,
+     quindi la riga andava chiusa insieme a loro.
+     Si è scelto di ANDARE A CAPO e non di far scorrere: uno scorrimento
+     orizzontale nasconde le voci dietro un gesto che nessuno indovina, mentre
+     qui l'ingombro è di due righe e si vede tutto. */
+  .filter-group { width: 100%; margin-left: 0; flex-wrap: wrap; }
   .filter-group .btn { flex: 1; }
   .kpi-value { font-size: var(--fs-h1); }
 }
@@ -1611,7 +1737,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    TaskDetailPage ora è ridondante, non contraddittorio. */
 .task-check { min-height: 26px; display: flex; align-items: center; gap: var(--sp-2); }
 .task-check input[type="checkbox"] {
-  width: 18px; height: 18px; flex: none; accent-color: var(--accent); cursor: pointer;
+  width: 18px; height: 18px; flex: none; accent-color: var(--accent-text); cursor: pointer;
 }
 
 /* ============================================================================
@@ -1641,9 +1767,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   color: var(--ink); font: inherit; font-size: var(--fs-meta); text-align: left; cursor: pointer;
 }
 .doc-cat:hover { background: var(--fill-subtle); }
-.doc-cat.is-active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); font-weight: 600; }
+/* La categoria scelta è una selezione, come la voce della barra: fondo pieno. */
+.doc-cat.is-active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .doc-cat-n { color: var(--muted); font-variant-numeric: tabular-nums; }
-.doc-cat.is-active .doc-cat-n { color: var(--accent-text); }
+.doc-cat.is-active .doc-cat-n { color: var(--on-accent); }
 
 .doc-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .doc-filter-wide { grid-column: 1 / -1; }
@@ -1660,7 +1787,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* Il bersaglio della casella è la label, non il quadratino: 26px di altezza,
    come nella checklist delle attività. */
 .doc-check { display: flex; align-items: center; min-height: 26px; min-width: 26px; padding-top: var(--sp-05); }
-.doc-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+.doc-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent-text); cursor: pointer; }
 /* Tutta la riga è il collegamento: centrare una freccia di sedici pixel su un
    trackpad è una prova di mira. */
 .doc-row-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1; color: var(--ink); text-decoration: none; }
@@ -1880,6 +2007,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
     --accent-soft: #ffffff;
     --accent-line: #b0b0b0;
     --on-accent: #ffffff;
+    --on-red: #ffffff;
 
     /* Gli stati NON diventano tutti neri: «da verificare» e «scaduto» devono
        restare distinguibili anche su una stampante in bianco e nero, dove la
