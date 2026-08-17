@@ -1,26 +1,27 @@
 // Scelta dell'aspetto: chiaro, scuro, o quello del sistema.
 //
-// Sta accanto al selettore della lingua, e non sotto «Impostazioni», per la
-// ragione che quel commento dichiara già: è lì che l'utente si aspetta le
-// impostazioni PERSONALI. Lingua e aspetto sono la stessa cosa — preferenze di
-// chi guarda, su questo computer, che non riguardano l'azienda — e metterle in
-// due posti diversi vorrebbe dire cercarle in due posti diversi. Stessa forma
-// del selettore di lingua, di proposito: due controlli gemelli si imparano una
-// volta sola.
+// Sta in DUE posti, e non è un doppione: nel piede della colonna, dove si
+// raggiunge con un clic, e nel pannello «Preferenze» della finestra delle
+// impostazioni, dove si va a cercarlo insieme alla lingua. Sono lo stesso
+// controllo sullo stesso stato — vedi `sottoscriviTema` in `lib/theme.ts`, che
+// è ciò che tiene d'accordo tutte le copie.
 //
 // ⚠️ Con «Segui il sistema» il tema può cambiare mentre l'app è aperta — il
 // portatile passa a scuro al tramonto. L'ascolto serve a quello, e si spegne
 // quando la preferenza non è più «sistema»: un listener che resta acceso
 // riscriverebbe il tema di chi ha appena scelto «chiaro».
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useSyncExternalStore } from 'react';
 import { useT } from '@/i18n';
-import { applicaTema, leggiTema, scegliTema, TEMI, type Tema } from '@/lib/theme';
+import { applicaTema, scegliTema, sottoscriviTema, temaCorrente, TEMI, type Tema } from '@/lib/theme';
 
 export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const t = useT();
-  const [tema, setTema] = useState<Tema>(() => leggiTema());
-  // Stessa ragione del selettore di lingua: due copie nell'albero (colonna e
-  // drawer) e un id scritto a mano sarebbe duplicato nel documento.
+  // ⚠️ NON `useState`: la preferenza è uno stato del DOCUMENTO, non di questo
+  // componente, e le copie devono concordare. Il perché per esteso sta accanto
+  // a `sottoscriviTema`.
+  const tema = useSyncExternalStore(sottoscriviTema, temaCorrente, () => temaCorrente());
+  // Stessa ragione del selettore di lingua: più copie nell'albero, e un id
+  // scritto a mano sarebbe duplicato nel documento.
   const id = useId();
 
   useEffect(() => {
@@ -38,11 +39,7 @@ export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
         id={id}
         aria-label={t('nav.theme')}
         value={tema}
-        onChange={(e) => {
-          const v = e.target.value as Tema;
-          setTema(v);
-          scegliTema(v);
-        }}
+        onChange={(e) => scegliTema(e.target.value as Tema)}
         style={compact ? { padding: '4px 8px', fontSize: '0.85rem' } : undefined}
       >
         {TEMI.map((v) => <option key={v} value={v}>{t(`nav.themeOption.${v}` as const)}</option>)}

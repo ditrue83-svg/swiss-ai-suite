@@ -112,6 +112,11 @@ export const de: Dictionary = {
     documents: 'Dokumente',
     finance: 'Finanzen',
     settings: 'Einstellungen',
+    // ⚠️ NON «Einstellungen»: è già il nome della finestra che la contiene, e
+    // due voci con la stessa parola nella stessa colonnina non distinguono
+    // niente. «Persönlich» dice ciò che le altre voci non sono — vale per chi
+    // guarda, non per l'azienda.
+    preferences: 'Persönlich',
     company: 'Unternehmen',
     subscription: 'Abonnement',
     activeCompany: 'Aktives Unternehmen',
@@ -130,6 +135,13 @@ export const de: Dictionary = {
     openMenu: 'Navigationsmenü öffnen',
     auditLog: 'Aktivitätsprotokoll',
     closeMenu: 'Menü schliessen',
+  },
+  settings: {
+    preferencesDesc: 'Sprache und Erscheinungsbild gelten für Sie auf diesem Computer, nicht für das Unternehmen.',
+    railAria: 'Bereiche der Einstellungen',
+  },
+  dialog: {
+    close: 'Schliessen',
   },
   roles: {
     owner: 'Inhaber:in',

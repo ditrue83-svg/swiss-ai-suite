@@ -1,5 +1,6 @@
 import { useToast } from '@/components/ui/Toast';
 import { useT } from '@/i18n';
+import type { Sede } from '@/features/companies/CompanySettingsPage';
 
 import type { TKey } from '@/i18n';
 
@@ -13,17 +14,24 @@ const PLANS: Plan[] = [
   { nome: 'Fiduciarie', prezzo: null, targetKey: 'pricing.plans.fiduciaryTarget', featureKeys: ['pricing.plans.f.multiClient', 'pricing.plans.f.aggregated', 'pricing.plans.f.portfolioReports', 'pricing.plans.f.dedicated', 'pricing.plans.f.customPrice'] },
 ];
 
+/** La rotta `/prezzi`: resta viva, e mostra ciò che mostra il pannello. */
 export function PricingPage() {
+  return <Pricing sede="pagina" />;
+}
+
+export function Pricing({ sede }: { sede: Sede }) {
   const t = useT();
   const { showToast } = useToast();
   return (
     <>
       <div className="page-head">
-        <div className="page-title">{t('nav.subscription')}</div>
+        {sede === 'pagina' && <div className="page-title">{t('nav.subscription')}</div>}
         <div className="page-desc">{t('pricing.subtitle')}</div>
       </div>
 
-      <div className="grid-4">
+      {/* ⚠️ Quattro colonne stanno in una pagina larga 1160px, non nei 560 utili
+          di una finestra: dentro il pannello i piani vanno a capo da soli. */}
+      <div className={sede === 'pannello' ? 'grid-2' : 'grid-4'}>
         {PLANS.map((p) => (
           <div key={p.nome} className={`card price-card${p.featured ? ' featured' : ''}`}>
             {p.featured && <div className="featured-flag">{t('pricing.plans.recommended')}</div>}

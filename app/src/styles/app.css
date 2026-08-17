@@ -519,6 +519,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    trasparenza sotto il piede. */
 .nav-foot { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); position: sticky; bottom: 0; background: var(--card); }
 .nav-caret { margin-left: auto; color: var(--muted); }
+/* I tre puntini dicono che il clic apre un RIQUADRO, non una pagina. È la
+   convenzione più vecchia dell'interfaccia grafica, e costa un carattere:
+   senza, «Impostazioni» sembra una voce di navigazione come le altre e la
+   finestra che compare è una sorpresa. */
+.nav-ellipsis { margin-left: auto; color: var(--muted); font-weight: 400; }
+.nav-btn.active .nav-ellipsis { color: var(--on-accent); }
 /* Le sottovoci non hanno icona: il rientro È la gerarchia. Il padding
    sinistro allinea il testo a quello delle voci con icona: il padding base
    (--sp-3) più l'ingombro di icona e distanza (20px + --sp-3 = --sp-8). */

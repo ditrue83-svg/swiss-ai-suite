@@ -35,7 +35,31 @@ import {
   CANTONI, FASCE_FATTURATO, FORME_GIURIDICHE, NO_REVENUE, SETTORI,
 } from '@/features/subsidy-ai/programs';
 
+/** Dove sta questo modulo. Cambia SOLO l'intestazione, mai i campi.
+ *  · `pagina`   la rotta `/azienda`: titolo e sottotitolo, come ogni schermata.
+ *  · `pannello` dentro la finestra delle impostazioni, dove il titolo lo porta
+ *    già la finestra e la voce scelta nella colonnina: ripeterlo sarebbe la
+ *    stessa parola tre volte in dieci centimetri. Resta il sottotitolo, che
+ *    dice a che cosa servono i campi. */
+export type Sede = 'pagina' | 'pannello';
+
+function Intestazione({ sede }: { sede: Sede }) {
+  const t = useT();
+  return (
+    <div className="page-head">
+      {sede === 'pagina' && <div className="page-title">{t('companySettings.title')}</div>}
+      <div className="page-desc">{t('companySettings.subtitle')}</div>
+    </div>
+  );
+}
+
+/** La rotta `/azienda`: resta viva per i segnalibri e per chi arriva da un
+ *  indirizzo profondo, e mostra esattamente ciò che mostra il pannello. */
 export function CompanySettingsPage() {
+  return <CompanySettings sede="pagina" />;
+}
+
+export function CompanySettings({ sede }: { sede: Sede }) {
   const t = useT();
   const { showToast } = useToast();
   const {
@@ -152,9 +176,7 @@ export function CompanySettingsPage() {
   if (loading && !activeCompany) {
     return (
       <>
-        <div className="page-head">
-          <div className="page-title">{t('companySettings.title')}</div>
-        </div>
+        <Intestazione sede={sede} />
         <div className="card"><SkeletonLine width="60%" /><SkeletonLine width="80%" /></div>
       </>
     );
@@ -165,9 +187,7 @@ export function CompanySettingsPage() {
   if (error) {
     return (
       <>
-        <div className="page-head">
-          <div className="page-title">{t('companySettings.title')}</div>
-        </div>
+        <Intestazione sede={sede} />
         <div className="card"><ErrorState message={error} onRetry={() => void refresh()} /></div>
       </>
     );
@@ -175,10 +195,7 @@ export function CompanySettingsPage() {
 
   return (
     <>
-      <div className="page-head">
-        <div className="page-title">{t('companySettings.title')}</div>
-        <div className="page-desc">{t('companySettings.subtitle')}</div>
-      </div>
+      <Intestazione sede={sede} />
 
       <form className="card" onSubmit={saveCompany}>
         <div className="card-title">{t('companySettings.identityTitle')}</div>

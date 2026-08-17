@@ -82,6 +82,11 @@ const FEATURES = {
   'dashboard':     { moduleName: null, why: 'la Panoramica: mostra i moduli, non è un modulo' },
   'notifications': { moduleName: null, why: 'la campanella, parte di «Calendario e notifiche»' },
   'pricing':       { moduleName: null, why: 'pagina commerciale' },
+  // La finestra delle impostazioni non è un modulo: è il CONTENITORE in cui i
+  // moduli di configurazione degli altri si vanno a scegliere — preferenze,
+  // azienda, abbonamento. Non possiede un dato suo e nessun cliente la
+  // sceglie: ci si arriva dal piede della barra.
+  'settings':      { moduleName: null, why: 'la finestra che raccoglie le impostazioni degli altri, non un modulo' },
   // Il Registro attività (0039) NON è un modulo di prodotto: è come l'azienda
   // si guarda da fuori — una schermata sola, riservata a titolari e
   // amministratori, che indicizza i fatti degli altri moduli senza possederne
