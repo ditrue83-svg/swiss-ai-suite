@@ -102,12 +102,24 @@
 
   /* IL CAMPO — l'unica superficie di colore pieno della pagina.
      È il blu dell'applicazione portato alla profondità che serve perché il
-     bianco ci stia sopra: 10.2:1. FISSO nei due temi, come la carta della
+     bianco ci stia sopra: 10.4:1. FISSO nei due temi, come la carta della
      lettera: il colore del marchio non cambia con le preferenze di chi
-     guarda. ⚠️ Su questo fondo l'accento dell'app fa 1.9:1 — sul campo
-     l'azione è BIANCA, non blu. Misurate: bianco 10.24, bianco 82% 7.44,
-     bianco 70% 5.87, bordo bianco 45% 3.35 (soglia controlli 3:1). */
-  --ms-field: hsl(207, 88%, 24%);
+     guarda. ⚠️ Sul campo l'azione è BIANCA, non blu. Misurate: bianco 10.38,
+     bianco 82% 7.51, bianco 70% 5.95, bordo bianco 45% 3.38 (soglia controlli
+     3:1).
+     ⚠️ TONO 201 E LUMINOSITÀ 21% DAL 2026-08-17, ed è un aggiustamento, non un
+     ritocco: era hsl(207, 88%, 24%). Quel valore era «il blu dell'applicazione
+     portato in profondità», e l'applicazione ha cambiato blu — l'accento è
+     #37AEEF, tono 201. Restare a 207 avrebbe messo nella STESSA pagina il
+     pulsante del prodotto e il ritratto del prodotto su due blu diversi.
+     La luminosità scende di tre punti perché a 24% il tono nuovo dava 9,06:1
+     invece di 10,24 e il bordo bianco al 45% scendeva a 3,13, cioè a un dito
+     dalla soglia dei controlli: 21% ripristina i margini documentati qui sopra.
+     ⚠️ E una nota che era vera e non lo è più: il commento diceva che l'accento
+     dell'app su questo campo fa 1,9:1. L'azzurro nuovo ne fa 4,18 — abbastanza
+     per un segno grafico, non per il testo corrente. Il campo resta bianco
+     perché è ciò che regge a 10,4, non perché l'azzurro sia illeggibile. */
+  --ms-field: hsl(201, 88%, 21%);
   --ms-on-field: #ffffff;
   --ms-on-field-soft: rgba(255, 255, 255, 0.82);
   --ms-on-field-muted: rgba(255, 255, 255, 0.70);
@@ -123,8 +135,11 @@
   --ms-paper-line: hsl(45, 8%, 85%);
   --ms-paper-hl: hsl(48, 100%, 78%);
   --ms-paper-on-hl: hsl(45, 60%, 12%);
-  --ms-paper-ref-bg: hsl(207, 65%, 93%);
-  --ms-paper-ref-fg: hsl(207, 90%, 30%);
+  /* Il riferimento evidenziato nella lettera: stesso tono dell'accento nuovo
+     (201), stesse saturazione e luminosità di prima. 5,81:1 fra i due, e 6,31
+     del testo contro la carta. */
+  --ms-paper-ref-bg: hsl(201, 65%, 93%);
+  --ms-paper-ref-fg: hsl(201, 90%, 30%);
 
   /* Inversione totale (sezione limiti): puro rimappaggio dei token del tema
      opposto — fondo --ink, testo --on-ink, gradazioni per miscela. Nel tema
@@ -474,9 +489,18 @@ main.narrow { max-width: var(--wrap-narrow); margin: 0 auto; padding: 0 var(--sp
   padding: var(--sp-6);
   box-shadow: var(--ms-shadow);
 }
+/* ⚠️ QUESTA SPUNTA È UN RITRATTO DI UN SEGNO DELL'APP, e fino al 2026-08-17
+   portava il vecchio accento SCRITTO A MANO — `hsl(207, 88%, 39%)`, cioè una
+   copia congelata di `--accent` fatta prima che i token esistessero. Il giorno
+   in cui l'app ha cambiato blu, la vetrina ha continuato a disegnare il
+   prodotto com'era: un pulsante azzurro accanto a una schermata blu, nella
+   stessa pagina. Ora prende i token, come il pulsante lì sopra, e il bianco
+   lascia il posto a `--on-accent` — sull'azzurro chiaro farebbe 2,48:1, mentre
+   l'inchiostro ne fa 7,14. È la stessa coppia con cui l'app disegna il proprio
+   pallino «fatto» (`.step-dot.done`), che è esattamente ciò che questo ritrae. */
 .ms-proof-check {
   width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
-  background: hsl(207, 88%, 39%); color: #ffffff;
+  background: var(--accent); color: var(--on-accent);
   display: grid; place-items: center;
 }
 .ms-proof-check .ic { width: 14px; height: 14px; stroke-width: 2.5; }
