@@ -2577,7 +2577,6 @@ export const fr: Dictionary = {
     subtitle: 'Interrogez les tâches, les documents, les finances, les contrats et les clients. Chaque réponse cite ses sources.',
     readOnly: 'Cette version lit vos données et n’en modifie aucune.',
     emptyTitle: 'Que voulez-vous savoir sur votre entreprise ?',
-    emptySubtitle: 'Je réponds avec les données d’AI-Swisse et je montre d’où vient chaque élément.',
     suggestions: {
       attention: 'Qu’est-ce qui demande de l’attention aujourd’hui ?',
       finance: 'Quelles factures arrivent bientôt à échéance ?',
@@ -2643,7 +2642,6 @@ export const fr: Dictionary = {
       title: 'Sources',
       subtitle: 'D’où vient cette réponse.',
       empty: 'Cette réponse ne cite aucune source.',
-      selectHint: 'Choisissez une réponse pour voir ses sources.',
       open: 'Ouvrir la source',
       page: 'Page {page}',
       group: '{count} éléments',

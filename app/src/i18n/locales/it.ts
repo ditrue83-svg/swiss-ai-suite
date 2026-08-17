@@ -2729,7 +2729,6 @@ export const it = {
     subtitle: 'Interroga attività, documenti, finanze, contratti e clienti. Ogni risposta porta le sue fonti.',
     readOnly: 'Questa versione legge i tuoi dati e non ne modifica nessuno.',
     emptyTitle: 'Che cosa vuoi sapere sulla tua azienda?',
-    emptySubtitle: 'Rispondo con i dati di AI-Swisse e mostro da dove viene ogni cosa.',
     suggestions: {
       attention: 'Che cosa richiede attenzione oggi?',
       finance: 'Quali fatture scadono presto?',
@@ -2795,7 +2794,6 @@ export const it = {
       title: 'Fonti',
       subtitle: 'Da dove viene questa risposta.',
       empty: 'Questa risposta non cita fonti.',
-      selectHint: 'Scegli una risposta per vederne le fonti.',
       open: 'Apri la fonte',
       page: 'Pagina {page}',
       group: '{count} elementi',
