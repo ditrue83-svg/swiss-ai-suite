@@ -1360,7 +1360,8 @@ perché in tutta la casella **un solo messaggio su 148 ha una scadenza
 rilevata**, ed è il 2027-01-22 — fuori dai 30 giorni. La misura si rifà con
 `npm run inbox:diagnose`.
 
-✅ **DECISO E FATTO il 2026-08-16: ogni bottone porta il suo conteggio.**
+✅ **DECISO E FATTO il 2026-08-16, IN PRODUZIONE dal 2026-08-17** (PR #60,
+merge `537daf1`): ogni bottone porta il suo conteggio.
 `Tutte 148 · Da gestire 22 · Con scadenza vicina 0 · Da verificare 10 ·
 Messe via 0`. Lo zero si mostra e il bottone resta premibile: spegnerlo
 toglierebbe anche il modo di verificare che è davvero vuoto, e lo stato vuoto
@@ -1398,7 +1399,7 @@ farli sparire. È un difetto **preesistente**, indipendente da questo lavoro
 la mostra — le righe stanno bene). Si chiuderebbe con un `flex-wrap: wrap` su
 `.inbox-row`, ma è un cambio di impaginazione fuori da «mostra i conteggi».
 
-## La colonna mostra tutte le sue voci — implementato il 2026-08-17, NON deployato
+## La colonna mostra tutte le sue voci — IN PRODUZIONE dal 2026-08-17
 
 La barra laterale ha dieci voci in tre gruppi. A 1280×720 se ne vedevano
 **sei**: la colonna chiedeva 962px e ne aveva 720, e la navigazione — l'unica
@@ -1415,11 +1416,11 @@ proprio **sommato** allo spazio che il contenitore già dava.
 | | Stato al 2026-08-17 |
 |---|---|
 | Implementato | sì — `layout/AppShell.tsx` (box account, titolo sul nome azienda), `app.css` (`.sidebar`, `.brand`, `.nav-section`, `.sidebar .nav-btn`, bersaglio da dito nel cassetto), `extra.css` (`.account-box`, `.account-prefs`, `.company-switch`), `ui/LanguageSwitcher.tsx` e `ui/ThemeSwitcher.tsx` (`useId`), i tre dizionari |
-| Deployato | **no** — nessun push e nessuna PR: non sono stati chiesti |
+| Deployato | **sì** — PR #60 unita (merge `537daf1`); **verificato nel bundle SERVITO** da `app.ai-swisse.com`: in `index-o1BPt9S2.css` ci sono `.account-prefs`, `grid-template-columns:1fr 1fr auto` e `.sidebar .nav-btn{padding:var(--sp-1) var(--sp-3)}`; in `index-lE_HACuW.js` `account-prefs`, `nav.signOutAria`, `cs-name` e le tre etichette di una parola (`Sistema` · `System` · `Système`) |
 | Configurato | non richiede configurazione |
 | Testato | **sì** — `test:shell-unit` 208 passi, sezione 13 nuova. Provata su **cinque mutazioni** che DEVONO farla fallire: voce di nuovo a `--sp-2` (3 rossi), tre righe impilate rimesse nell'AppShell (2), «Segui il sistema» rimessa in dizionario (1), bersaglio del cassetto sceso a 24px (1), una geometria resa illeggibile (1 — la controprova del lettore, che impedisce il verde falso) |
-| Provato contro la cosa reale | **in parte, e va detto DOVE si ferma.** Misurato al banco su un `AppShell` **vero** con i fogli veri — solo i due contesti che vogliono la rete sono finti — in Chrome a 1280×720 e a 375×812, nei due temi e nelle tre lingue. ⚠️ **L'app dietro autenticazione non è stata aperta**: da questa postazione non si entra senza le credenziali del titolare |
-| Disponibile a clienti esterni | no — non deployato |
+| Provato contro la cosa reale | **in parte, e va detto DOVE si ferma.** Misurato al banco su un `AppShell` **vero** con i fogli veri — solo i due contesti che vogliono la rete sono finti — in Chrome a 1280×720 e a 375×812, nei due temi e nelle tre lingue. ⚠️ **L'app dietro autenticazione non è stata aperta**: da questa postazione non si entra senza le credenziali del titolare, quindi la colonna a dieci voci non è stata vista nel prodotto servito — solo le sue regole, nel CSS servito |
+| Disponibile a clienti esterni | **sì** — chi apre l'app la vede |
 
 **Il conto, prima e dopo (misurato al banco, non stimato).**
 
@@ -1480,7 +1481,7 @@ chiuderebbe alzando lo stato nell'`AppShell`, **esattamente come è già stato
 fatto per il conteggio della campanella**. Non è stato fatto qui perché cambia
 l'interfaccia del componente, e questo lavoro era sull'altezza della colonna.
 
-## L'azzurro #37AEEF — implementato il 2026-08-17, NON deployato
+## L'azzurro #37AEEF — IN PRODUZIONE dal 2026-08-17
 
 Andrea ha scelto il colore: **#37AEEF**. L'accento era `hsl(207, 88%, 39%)` =
 #0c6cbb, un blu fondo su cui si scriveva in bianco.
@@ -1496,11 +1497,11 @@ resta #00AEEF**.
 | | Stato al 2026-08-17 |
 |---|---|
 | Implementato | sì — `app.css` (i sei token della famiglia nei tre temi, `--on-accent`, il nuovo `--on-red`, `--focus`), `extra.css` (il pallino, due segni di testo), le cinque caselle native |
-| Deployato | **no** — nessun push e nessuna PR: non sono stati chiesti |
+| Deployato | **sì** — PR #60 unita (merge `537daf1`); **verificato nel bundle SERVITO**: `index-o1BPt9S2.css` porta `--accent: #37AEEF`, `--on-red`, tutta la famiglia su `hsl(201, …)`, `.nav-btn.active{background:var(--accent);color:var(--on-accent)…}` e `.nav-btn.active .ic{color:var(--on-accent)}` — e **non porta più** né `hsl(207` né `#0c6cbb`. Il marchio `#00AEEF` è ancora lì, invariato. La **vetrina servita** da `ai-swisse.com` porta gli stessi token |
 | Configurato | non richiede configurazione |
 | Testato | **sì** — `test:shell-unit` 215 passi. Sei controlli nuovi, provati su **sei mutazioni** che DEVONO farli fallire: un segno che torna a scrivere con `--accent` (1 rosso), una casella nativa che torna sul riempimento (1), il pallino che torna a `--on-accent` (2), il bianco rimesso sopra l'azzurro (1), `--accent-line` scuro lasciato sul tono vecchio (1), `--focus` lasciato indietro (1) |
-| Provato contro la cosa reale | **in parte.** Misurato **a schermo** su un banco che monta le classi vere dei fogli veri, nei due temi: `.btn-primary` 7,14:1 · pastiglia premuta 7,15 · collegamento 7,92 · casella spuntata 7,92. E la **vetrina** ricostruita con i token risincronizzati: `.btn-primary` 7,14:1, chip 7,15, marchio invariato. ⚠️ L'app dietro autenticazione non è stata aperta |
-| Disponibile a clienti esterni | no — non deployato |
+| Provato contro la cosa reale | **sì per la vetrina, in parte per l'app.** La **vetrina in produzione** è stata aperta e misurata: pulsante primario 7,14:1, chip 7,15, spunta del mockup 7,14, riferimento 5,81. Per l'app: misurato a schermo su un banco che monta le classi vere dei fogli veri, nei due temi. ⚠️ L'app dietro autenticazione non è stata aperta |
+| Disponibile a clienti esterni | **sì** — è il colore che vedono tutti, sull'app e sulla vetrina |
 
 **La famiglia, prima e dopo.** Tutto il tono passa da 207 a 201: un accento
 nuovo accanto a derivati del tono vecchio sono due azzurri, non uno.
@@ -1541,12 +1542,26 @@ vuota.
 oggi il valore è **lo stesso** nei due temi, e non c'è più una coppia da tenere
 allineata a mano.
 
-⚠️ **LA VETRINA VA RISINCRONIZZATA AL MOMENTO DELLA PUBBLICAZIONE.**
-`site/tokens.css` è **derivato** da `app.css` e ora è disallineato: nel monorepo
-va rilanciato `node sync-tokens.mjs`. **Verificato che funziona** — ricostruita e
-guardata: `.btn-primary` prende l'azzurro con l'inchiostro scuro (7,14:1), i chip
-7,15, il marchio resta #00AEEF. L'albero del monorepo è stato **riportato
-pulito** dopo la verifica: è su `main`, e su `main` non si lavora.
+⚠️⚠️ **LA VETRINA MOSTRAVA DUE BLU, E IL CONTROLLO ERA VERDE.** `site/tokens.css`
+è derivato da `app.css` e la PR #60 lo ha risincronizzato: `sync-tokens.mjs
+--check` verde, `site.yml` verde. Ma **aprendo la pagina servita** dopo il merge,
+`ai-swisse.com/style.css` portava l'azzurro nuovo nei token **e** il blu vecchio
+in quattro dichiarazioni vive — `--ms-field`, `--ms-paper-ref-bg/fg` e una
+`hsl(207, 88%, 39%)` scritta a mano dentro `.ms-proof-check`. Non sono token
+dell'app: sono la tavolozza del **mockup**, la schermata del prodotto disegnata
+dentro la pagina. Risultato: il pulsante «Chiedi una dimostrazione» in #37AEEF
+accanto a un ritratto dell'applicazione ancora in blu, nella stessa schermata.
+
+Corretto con la **PR #61**: la tavolozza del mockup passa al tono 201 e
+`.ms-proof-check` prende `var(--accent)` + `var(--on-accent)` invece della copia
+congelata. `--ms-field` scende da 24% a 21% di luminosità perché a parità di
+lightness il tono nuovo dava 9,06:1 col bianco invece di 10,24, e il bordo
+bianco al 45% scendeva a 3,13 — a un dito dalla soglia dei controlli.
+
+**La lezione, che vale oltre questo caso:** `sync-tokens.mjs --check` sorveglia i
+token DERIVATI, non i valori che la vetrina si è scritta da sé copiandoli
+dall'app. Quelli si vedono solo **aprendo la pagina**, ed è la ragione per cui
+la verifica dopo il merge non è una formalità.
 
 **E poi Andrea ha chiesto di vederlo anche nel tema chiaro.** Nel chiaro
 l'azzurro c'era già sui pieni (pulsanti, barre, filetti), ma gli **stati
