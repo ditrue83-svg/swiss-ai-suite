@@ -518,17 +518,23 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    è la superficie della barra (--card), altrimenti le voci scorrerebbero in
    trasparenza sotto il piede. */
 .nav-foot { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); position: sticky; bottom: 0; background: var(--card); }
-.nav-caret { margin-left: auto; color: var(--muted); }
 /* I tre puntini dicono che il clic apre un RIQUADRO, non una pagina. È la
    convenzione più vecchia dell'interfaccia grafica, e costa un carattere:
    senza, «Impostazioni» sembra una voce di navigazione come le altre e la
    finestra che compare è una sorpresa. */
 .nav-ellipsis { margin-left: auto; color: var(--muted); font-weight: 400; }
 .nav-btn.active .nav-ellipsis { color: var(--on-accent); }
-/* Le sottovoci non hanno icona: il rientro È la gerarchia. Il padding
-   sinistro allinea il testo a quello delle voci con icona: il padding base
-   (--sp-3) più l'ingombro di icona e distanza (20px + --sp-3 = --sp-8). */
-.nav-subitem { padding-left: calc(var(--sp-3) + var(--sp-8)); }
+/* ⚠️ QUI STAVANO `.nav-caret` E `.nav-subitem`, e sono state TOLTE il
+   2026-08-17 — non per pulizia, ma perché erano diventate una BUGIA. Vestivano
+   il gruppo «Impostazioni» che si apriva dentro la colonna: la freccia su/giù e
+   il rientro delle quattro sottovoci. Da quando le impostazioni sono una
+   finestra nessun componente le rende, e una regola per una classe che nessuno
+   scrive è un indizio falso — chi legge il foglio conclude che la barra ha
+   ancora delle sottovoci, e chi conta i pixel della colonna se le aspetta.
+   Erano rimaste in produzione per un merge: le ha trovate il controllo dei
+   marcatori sul bundle SERVITO, non una rilettura del codice.
+   Il guardiano che impedisce loro di tornare sta nella sezione 14 di
+   `test:shell-unit`. */
 /* ⚠️ L'ETICHETTA DELLA VOCE SI SILLABA, e la barra ha una larghezza fissa (264px)
    che NON si tocca: è la struttura della pagina, non un contenitore di testo.
    In tedesco «Unternehmenseinstellungen» è una parola sola di 25 caratteri senza

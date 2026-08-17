@@ -1967,6 +1967,32 @@ section('14. La finestra — un modale che non intrappola');
     /aria-haspopup="dialog"/.test(shell),
     'un pulsante che apre un modale senza dirlo è un pulsante che sorprende');
 
+  // (h bis) ⚠️ IL GRUPPO CHE SI APRIVA NON DEVE TORNARE, e con lui le due
+  // classi che lo vestivano. `.nav-caret` era la freccia su/giù, `.nav-subitem`
+  // il rientro delle quattro sottovoci: da quando le impostazioni sono una
+  // finestra nessun componente le rende.
+  // Non è pulizia. Sono rimaste in produzione per un merge, e le ha trovate il
+  // controllo dei marcatori sul bundle SERVITO — non una rilettura del codice.
+  // Una regola per una classe che nessuno scrive è un INDIZIO FALSO: chi legge
+  // il foglio conclude che la barra ha ancora delle sottovoci, e chi rifà il
+  // conto della sezione 13 se le aspetta nel bilancio. E se un giorno tornasse
+  // il gruppo, tornerebbero i 124px in una colonna che ne ha 3,42 di margine.
+  const appCss = readFileSync(join(root, 'src/styles/app.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const tsx = readdirSync(join(root, 'src'), { recursive: true, encoding: 'utf8' })
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => readFileSync(join(root, 'src', f), 'utf8')).join('\n');
+  for (const classe of ['nav-caret', 'nav-subitem']) {
+    check(`la classe .${classe} non è tornata nei fogli`,
+      !new RegExp(`\\.${classe}\\b`).test(appCss),
+      'vestiva il gruppo che si apriva nella colonna: se torna, o è morta o è tornato il gruppo');
+    check(`e nessun componente la scrive`,
+      !new RegExp(`\\b${classe}\\b`).test(tsx));
+  }
+  // ⚠️ CONTROPROVA DEL LETTORE: se `tsx` si leggesse vuoto, «nessun componente
+  // la scrive» sarebbe vero per vacuità — e lo sarebbe per sempre.
+  check('i componenti sono stati letti davvero (il lettore non è a vuoto)',
+    tsx.includes('nav-ellipsis') && tsx.length > 50_000, `${tsx.length} caratteri letti`);
+
   // (i) Il velo copre tutto e sta sopra il cassetto (z-index 60).
   const velo = /\.dialog-scrim\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
   const z = Number(/z-index:\s*(\d+)/.exec(velo)?.[1] ?? NaN);
