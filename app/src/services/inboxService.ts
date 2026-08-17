@@ -15,7 +15,11 @@ import { etichettaDaRigaDocumento } from '@/lib/documentTitle';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { daysUntil } from '@/lib/format';
 import { deadlineLevel } from '@/features/admin-ai/engine';
-import { QUERY_COMPRESSI, QUERY_IN_EVIDENZA } from '@/features/inbox/emphasis';
+// L'ambito dei filtri sta in un modulo PURO, importabile da un test: il perché
+// è scritto lì. Si ri-esporta ciò che i chiamanti prendevano da questo file.
+import { applicaAmbito, INBOX_FILTERS, URGENT_WITHIN_DAYS, type InboxQuery } from '@/features/inbox/scope';
+export { applicaAmbito, INBOX_FILTERS, URGENT_WITHIN_DAYS };
+export type { InboxQuery };
 import type {
   EmailAttachment, EmailLink, EmailLinkedDocument, EmailMessageDetail, EmailMessageSummary,
   EmailRecipient, InboxFilter, InboxPage,
@@ -25,8 +29,6 @@ import type { Database } from '@/types/database';
 type MessageRow = Database['public']['Tables']['email_messages']['Row'];
 
 export const INBOX_PAGE_SIZE = 30;
-/** «Urgenti»: scadenza già passata o entro questo numero di giorni. */
-export const URGENT_WITHIN_DAYS = 30;
 
 /** Colonne della LISTA: niente corpo, niente collegamenti, niente destinatari. */
 const SUMMARY_COLUMNS =
@@ -99,101 +101,6 @@ function decodeCursor(cursor: string | null): { receivedAt: string; id: string }
   return { receivedAt, id };
 }
 
-export interface InboxQuery {
-  companyId: string;
-  filter: InboxFilter;
-  /**
-   * Quale metà di «Tutte» si vuole: ciò che sta in evidenza o ciò che è
-   * compresso in fondo. Assente = le due insieme, com'era prima della
-   * divisione — ed è ancora la risposta giusta per gli altri filtri, che sono
-   * una domanda esplicita dell'utente e non vanno riscritte da una regola di
-   * presentazione.
-   *
-   * ⚠️ Le due metà sono un COMPLEMENTO, non due filtri indipendenti: insieme
-   * danno esattamente l'elenco intero. Le espressioni stanno in
-   * `features/inbox/emphasis.ts`, non qui, perché la stessa regola serve anche
-   * al browser per decidere il peso di una riga.
-   */
-  emphasis?: 'in_evidence' | 'collapsed';
-  /** Testo cercato su oggetto, mittente e anteprima. */
-  search?: string | null;
-  connectionId?: string | null;
-  withAttachments?: boolean;
-  /** Data ISO minima di ricezione. */
-  since?: string | null;
-  cursor?: string | null;
-  pageSize?: number;
-}
-
-/**
- * Le sole operazioni che servono a comporre l'ambito di una query di Inbox.
- *
- * Esiste perché lista e conteggio devono restringere ESATTAMENTE allo stesso
- * modo: se la riga compressa dicesse «72» e l'elenco che si apre ne mostrasse
- * 68, il numero non descriverebbe più l'insieme che promette. Un solo posto
- * che decide, due query che lo usano.
- */
-interface AmbitoQuery {
-  eq(column: string, value: unknown): AmbitoQuery;
-  neq(column: string, value: unknown): AmbitoQuery;
-  not(column: string, operator: string, value: unknown): AmbitoQuery;
-  lte(column: string, value: unknown): AmbitoQuery;
-  gte(column: string, value: unknown): AmbitoQuery;
-  ilike(column: string, pattern: string): AmbitoQuery;
-  or(filters: string): AmbitoQuery;
-}
-
-function applicaAmbito<Q>(builder: Q, query: InboxQuery): Q {
-  let q = builder as unknown as AmbitoQuery;
-
-  switch (query.filter) {
-    case 'to_handle':
-      q = q.eq('attention_status', 'needs_attention');
-      break;
-    case 'to_verify':
-      q = q.eq('attention_status', 'to_verify');
-      break;
-    case 'urgent': {
-      // «Urgente» qui significa una cosa sola e verificabile: l'analisi ha
-      // trovato una scadenza, ed è passata o è vicina. Non è un punteggio.
-      const limit = new Date(Date.now() + URGENT_WITHIN_DAYS * 86_400_000).toISOString().slice(0, 10);
-      q = q.not('analysis_deadline', 'is', null).lte('analysis_deadline', limit).neq('attention_status', 'handled');
-      break;
-    }
-    case 'handled':
-      q = q.eq('attention_status', 'handled');
-      break;
-    case 'all':
-    default:
-      // «Tutti» è la vista operativa: contiene tutto ciò che non è stato
-      // messo via, comprese le comunicazioni giudicate non amministrative —
-      // che restano visibili, perché un errore di classificazione non deve
-      // essere irreversibile.
-      q = q.neq('attention_status', 'handled');
-      if (query.emphasis === 'collapsed') {
-        q = q.eq('attention_status', QUERY_COMPRESSI.eq.attention_status).or(QUERY_COMPRESSI.or);
-      } else if (query.emphasis === 'in_evidence') {
-        q = q.or(QUERY_IN_EVIDENZA.or);
-      }
-      break;
-  }
-
-  if (query.connectionId) q = q.eq('connection_id', query.connectionId);
-  if (query.withAttachments) q = q.eq('has_attachments', true);
-  if (query.since) q = q.gte('received_at', query.since);
-
-  const search = (query.search ?? '').trim();
-  if (search) {
-    // `search_text` è la colonna generata dalla 0013, con indice trigram.
-    // I caratteri jolly di LIKE vengono neutralizzati: `%` digitato da un
-    // utente deve cercare un per cento, non «qualsiasi cosa».
-    const escaped = search.replace(/[\\%_]/g, (c) => `\\${c}`).slice(0, 100);
-    q = q.ilike('search_text', `%${escaped.toLowerCase()}%`);
-  }
-
-  return q as unknown as Q;
-}
-
 export const inboxService = {
   async list(query: InboxQuery): Promise<InboxPage> {
     const size = query.pageSize ?? INBOX_PAGE_SIZE;
@@ -256,24 +163,41 @@ export const inboxService = {
     return count ?? 0;
   },
 
-  /** Conteggi per i filtri. Query di sola testata: non scarica alcuna riga. */
-  async counts(companyId: string): Promise<{ toHandle: number; toVerify: number; urgent: number }> {
-    const sb = requireSupabase();
-    const urgentLimit = new Date(Date.now() + URGENT_WITHIN_DAYS * 86_400_000).toISOString().slice(0, 10);
-    const [toHandle, toVerify, urgent] = await Promise.all([
-      sb.from('email_messages').select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId).eq('attention_status', 'needs_attention'),
-      sb.from('email_messages').select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId).eq('attention_status', 'to_verify'),
-      sb.from('email_messages').select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId).neq('attention_status', 'handled')
-        .not('analysis_deadline', 'is', null).lte('analysis_deadline', urgentLimit),
-    ]);
-    return {
-      toHandle: toHandle.count ?? 0,
-      toVerify: toVerify.count ?? 0,
-      urgent: urgent.count ?? 0,
-    };
+  /**
+   * Quante righe ha OGNI filtro, più i compressi di «Tutte».
+   *
+   * ⚠️ NON C'È PIÙ UN'INTERROGAZIONE SCRITTA A MANO PER FILTRO, ed è la sola
+   * differenza che conta. Fino al 2026-08-16 questo metodo riscriveva a mano le
+   * condizioni di tre filtri su cinque — `needs_attention`, `to_verify`, la
+   * scadenza entro trenta giorni — accanto a un `list()` che le scriveva già.
+   * Due scritture della stessa domanda: il giorno in cui una cambiasse, il
+   * numero sul bottone e l'elenco che si apre direbbero due cose diverse, e non
+   * se ne accorgerebbe nessuno perché sono due schermate. Ora ogni conteggio
+   * passa da `count()` → `applicaAmbito`, cioè dallo stesso codice che
+   * costruisce la lista: **per costruzione** il numero descrive l'elenco che si
+   * apre. Il metodo esisteva già e non lo chiamava nessuno:
+   * questo è il suo primo uso, ed è la ragione per cui è stato riscritto invece
+   * che semplicemente invocato.
+   *
+   * Riceve l'ambito — ricerca, casella — perché i numeri devono restringersi con
+   * esso: cercando «Nespresso», «Da gestire 22» sarebbe la risposta a un'altra
+   * domanda.
+   *
+   * Sei interrogazioni di sola testata, in parallelo: nessuna scarica righe.
+   */
+  async counts(
+    query: Omit<InboxQuery, 'cursor' | 'pageSize' | 'emphasis' | 'filter'>,
+  ): Promise<Record<InboxFilter, number> & { collapsed: number }> {
+    const ambiti: { chiave: InboxFilter | 'collapsed'; q: InboxQuery }[] = [
+      ...INBOX_FILTERS.map((f) => ({ chiave: f, q: { ...query, filter: f } })),
+      { chiave: 'collapsed', q: { ...query, filter: 'all', emphasis: 'collapsed' } },
+    ];
+    // ⚠️ `inboxService.count` e non `this.count`: destrutturando il servizio
+    // (`const { counts } = inboxService`) `this` sarebbe `undefined`, e il
+    // guasto arriverebbe a schermo invece che qui.
+    const esiti = await Promise.all(ambiti.map(({ q }) => inboxService.count(q)));
+    return Object.fromEntries(ambiti.map((a, i) => [a.chiave, esiti[i]!])) as
+      Record<InboxFilter, number> & { collapsed: number };
   },
 
   async get(messageId: string): Promise<EmailMessageDetail | null> {

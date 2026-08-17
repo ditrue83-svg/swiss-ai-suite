@@ -1349,6 +1349,16 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .action-bar-more { margin-left: auto; }
 .push-right { margin-left: auto; }
 .filter-group { margin-left: auto; display: flex; gap: var(--sp-2); }
+/* Il conteggio accanto all'etichetta del filtro.
+   ⚠️ NESSUN COLORE PROPRIO, ed è deliberato: eredita quello del bottone, che
+   cambia fra riposo e stato attivo (dove il fondo è `--accent` e il testo
+   `--on-accent`). Un token fisso qui avrebbe retto su un fondo solo — è il
+   difetto che la sezione 12 di `test:shell-unit` pesa, e il modo più semplice
+   di non averlo è non introdurre un secondo colore.
+   La gerarchia la fa la MISURA, non il contrasto: un gradino di scala sotto
+   l'etichetta. Cifre tabulari perché il numero cambia e la barra non deve
+   ballare — la stessa regola di `.dl-date` e `.rb-num`. */
+.filter-count { margin-left: var(--sp-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
 .muted-sm { color: var(--muted); font-size: var(--fs-body); }
 .text-muted { color: var(--muted); }
 .hint-accent { font-size: var(--fs-meta); color: var(--accent-text); }
@@ -1490,7 +1500,15 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .list-row, .action-row { gap: var(--sp-3); }
   .badge { white-space: nowrap; }
   .list-main, .action-main { flex-basis: 100%; }
-  .filter-group { width: 100%; margin-left: 0; }
+  /* ⚠️ `flex-wrap: wrap` dal 2026-08-16, e viene da una MISURA. A 375px la
+     barra dei filtri chiedeva 429px in 341px di spazio: sforava già di 88px, e
+     le due voci di destra erano tagliate dal bordo della scheda — un filtro che
+     esiste e non si può premere. Aggiungendo i conteggi lo sforo saliva a 233px,
+     quindi la riga andava chiusa insieme a loro.
+     Si è scelto di ANDARE A CAPO e non di far scorrere: uno scorrimento
+     orizzontale nasconde le voci dietro un gesto che nessuno indovina, mentre
+     qui l'ingombro è di due righe e si vede tutto. */
+  .filter-group { width: 100%; margin-left: 0; flex-wrap: wrap; }
   .filter-group .btn { flex: 1; }
   .kpi-value { font-size: var(--fs-h1); }
 }

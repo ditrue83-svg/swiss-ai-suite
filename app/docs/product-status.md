@@ -1356,10 +1356,45 @@ dirlo prima**. Le cause sono diverse e vanno separate: «Messe via» è a zero
 perché nessuno ha mai messo via un messaggio; «Con scadenza vicina» è a zero
 perché in tutta la casella **un solo messaggio su 148 ha una scadenza
 rilevata**, ed è il 2027-01-22 — fuori dai 30 giorni. La misura si rifà con
-`npm run inbox:diagnose`. ⛔ **Che cosa farne è una decisione di prodotto** —
-mostrare il conteggio sul bottone (l'interrogazione `inboxService.counts` esiste
-già e non la chiama nessuno), spegnere un filtro vuoto, o lasciarli così — e non
-è stata presa qui.
+`npm run inbox:diagnose`.
+
+✅ **DECISO E FATTO il 2026-08-16: ogni bottone porta il suo conteggio.**
+`Tutte 148 · Da gestire 22 · Con scadenza vicina 0 · Da verificare 10 ·
+Messe via 0`. Lo zero si mostra e il bottone resta premibile: spegnerlo
+toglierebbe anche il modo di verificare che è davvero vuoto, e lo stato vuoto
+della pagina lo spiega meglio di un bottone spento. Un numero **assente** è
+«non lo so ancora» e si tace — diverso da zero, e da non confondere con esso.
+
+⚠️ **`inboxService.counts` è stata RISCRITTA, non semplicemente invocata.**
+Riscriveva a mano le condizioni di tre filtri su cinque accanto a un `list()`
+che le scriveva già: due scritture della stessa domanda, e il giorno in cui una
+cambiasse il numero sul bottone e l'elenco che si apre direbbero due cose
+diverse — su due schermate diverse, quindi senza che nessuno lo veda. Ora ogni
+conteggio passa da `count()` → `applicaAmbito`, lo stesso codice che costruisce
+la lista: **per costruzione** il numero descrive l'elenco che si apre.
+
+⚠️ **`applicaAmbito` e `INBOX_FILTERS` sono usciti dal servizio** e stanno in
+`features/inbox/scope.ts`. Non è estetica: il servizio importa `lib/supabase`,
+che legge `import.meta.env` e quindi esiste solo dentro Vite — finché la regola
+dei filtri viveva là, nessun test poteva caricarla. Il guardiano ora c'è, esegue
+`applicaAmbito` con un costruttore finto e pretende che i cinque filtri
+restringano in **cinque modi diversi**: lo switch ha un ramo `default`, quindi
+un filtro nuovo aggiunto alla barra vi cadrebbe dentro e mostrerebbe in silenzio
+il conteggio di «Tutte», con TypeScript verde.
+
+⚠️ **Trovata e chiusa una regressione mia, misurata**: a 375px la barra dei
+filtri chiedeva già 429px in 341px di spazio — sforava di 88px, con le due voci
+di destra tagliate dal bordo della scheda — e i conteggi portavano lo sforo a
+233px. Sotto i 900px la barra ora va a capo (`flex-wrap: wrap`): niente è più
+tagliato, e su desktop resta una riga sola di 41px, invariata.
+
+⛔ **APERTO, trovato per strada e NON corretto**: sotto i 600px la riga di un
+messaggio si schiaccia — `.inbox-row-side { flex-basis: 100% }` sta dentro un
+flex che non va a capo, quindi la pastiglia comprime mittente e oggetto fino a
+farli sparire. È un difetto **preesistente**, indipendente da questo lavoro
+(si vede solo dove la pastiglia c'è, e infatti nel gruppo compresso — che non
+la mostra — le righe stanno bene). Si chiuderebbe con un `flex-wrap: wrap` su
+`.inbox-row`, ma è un cambio di impaginazione fuori da «mostra i conteggi».
 
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 

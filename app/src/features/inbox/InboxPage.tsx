@@ -23,13 +23,16 @@ import { toUserMessage } from '@/lib/errors';
 import { isUuid } from '@/lib/ids';
 import { emailConnectionService, inboxErrorMessage } from '@/services/emailConnectionService';
 import { inboxService } from '@/services/inboxService';
+// L'elenco dei filtri arriva dal modulo PURO, non dal servizio: la barra li
+// disegna, `counts()` li conta, e la fonte dev'essere una sola.
+import { INBOX_FILTERS } from './scope';
 import { INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES } from './constants';
 import { MessageDetail } from './MessageDetail';
 import { inboxEmphasis, type InboxEmphasis } from './emphasis';
 import { AttentionBadge, ProcessingNote, senderLabel, subjectLabel } from './parts';
 import type { EmailConnection, EmailMessageSummary, EmailProvider, InboxFilter } from '@/types/models';
 
-const FILTERS: InboxFilter[] = ['all', 'to_handle', 'urgent', 'to_verify', 'handled'];
+const FILTERS = INBOX_FILTERS;
 const FILTER_KEY = {
   all: 'inbox.filters.all',
   to_handle: 'inbox.filters.toHandle',
@@ -131,6 +134,10 @@ export function InboxPage() {
   // I compressi: quanti sono, e — solo se aperti — quali. Finché la riga resta
   // chiusa quei messaggi non si scaricano affatto; il numero sì, perché una
   // riga che dicesse «alcuni messaggi» non direbbe niente.
+  // ⚠️ `null` finché non si sa, e MAI zero come ripiego: un bottone che dice
+  // «0» prima di aver contato afferma che quella vista è vuota, ed è la stessa
+  // bugia del fallback silenzioso — solo scritta più piccola.
+  const [counts, setCounts] = useState<Record<InboxFilter, number> | null>(null);
   const [evidenceCount, setEvidenceCount] = useState<number | null>(null);
   const [collapsedCount, setCollapsedCount] = useState<number | null>(null);
   const [collapsedItems, setCollapsedItems] = useState<EmailMessageSummary[]>([]);
@@ -160,6 +167,7 @@ export function InboxPage() {
   useEffect(() => {
     setItems([]);
     setCursor(null);
+    setCounts(null);
     setEvidenceCount(null);
     setCollapsedCount(null);
     setCollapsedItems([]);
@@ -205,21 +213,30 @@ export function InboxPage() {
       // direbbe «Inbox vuota» con 72 messaggi dietro. Se il conteggio non si
       // legge, non si legge nemmeno l'elenco, e si vede un errore con «riprova»
       // invece di una pagina serenamente vuota.
-      const conta = reset && splitByEmphasis;
-      const [page, nEvidenza, nCompressi] = await Promise.all([
+      const [page, conteggi] = await Promise.all([
         inboxService.list({
           ...base,
           emphasis: splitByEmphasis ? 'in_evidence' : undefined,
           cursor: from,
         }),
-        conta ? inboxService.count({ ...base, emphasis: 'in_evidence' }) : Promise.resolve(null),
-        conta ? inboxService.count({ ...base, emphasis: 'collapsed' }) : Promise.resolve(null),
+        // ⚠️ I CONTEGGI VIAGGIANO CON L'ELENCO, e non è un'ottimizzazione: è la
+        // stessa ragione di prima. Separandoli esisterebbe un istante in cui la
+        // pagina ha l'elenco vuoto e non sa ancora quanto ha compresso, e lì
+        // direbbe «Inbox vuota» con 72 messaggi dietro. Costa sei
+        // interrogazioni di sola testata anche quando si cambia solo filtro:
+        // il prezzo è misurabile, la contraddizione no.
+        reset ? inboxService.counts(base) : Promise.resolve(null),
       ]);
       setItems((prev) => (reset ? page.items : [...prev, ...page.items]));
       setCursor(page.nextCursor);
-      if (reset) {
-        setEvidenceCount(nEvidenza);
-        setCollapsedCount(splitByEmphasis ? (nCompressi ?? 0) : null);
+      if (reset && conteggi) {
+        setCounts(conteggi);
+        // ⚠️ «In evidenza» non si conta: SI SOTTRAE. Le due metà di «Tutte»
+        // sono un complemento esatto (`emphasis.ts`), quindi una sesta
+        // interrogazione direbbe un numero che questi due già dicono — e il
+        // giorno in cui non coincidessero avremmo due verità invece di un rosso.
+        setEvidenceCount(splitByEmphasis ? conteggi.all - conteggi.collapsed : null);
+        setCollapsedCount(splitByEmphasis ? conteggi.collapsed : null);
       }
       setListError(null);
     } catch (e) {
@@ -485,6 +502,17 @@ export function InboxPage() {
         <div className="card">
           <div className="card-title">
             <span className="filter-group" role="group" aria-label={t('inbox.filtersAria')}>
+              {/* ⚠️ IL NUMERO STA SUL BOTTONE, e serve a una cosa sola: dire
+                  PRIMA del clic che cosa si trova. Misurato il 2026-08-16 sulla
+                  casella vera: dei cinque filtri, «Con scadenza vicina» e
+                  «Messe via» erano entrambi a zero — due bottoni su cinque che
+                  portavano a una schermata vuota senza dirlo. Non erano
+                  ridondanti: erano muti.
+                  Lo zero si MOSTRA, e il bottone resta premibile: spegnerlo
+                  toglierebbe anche il modo di verificare che è davvero vuoto, e
+                  lo stato vuoto della pagina lo spiega meglio di un bottone
+                  spento. Un numero assente (`null`) è «non lo so ancora», e si
+                  tace: è diverso da zero e non va confuso con esso. */}
               {FILTERS.map((f) => (
                 <button
                   key={f}
@@ -493,6 +521,7 @@ export function InboxPage() {
                   aria-pressed={filter === f}
                 >
                   {t(FILTER_KEY[f])}
+                  {counts && <span className="filter-count">{counts[f]}</span>}
                 </button>
               ))}
             </span>
