@@ -2045,6 +2045,222 @@ section('15. I fogli come li legge il BROWSER — un commento che si chiude due 
 }
 
 // ---------------------------------------------------------------------------
+section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900, contato');
+// ---------------------------------------------------------------------------
+// ⚠️ PERCHÉ ESISTE. È il gemello orizzontale della sezione 13, e nasce dalla
+// stessa cecità: `design:lint` controlla che le misure vengano dai token, non
+// che le misure SOMMATE lascino spazio alla cosa per cui la schermata esiste.
+// Fino al 2026-08-17 «Chiedi ad AI-Swisse» aveva tre colonne e la conversazione
+// era la più stretta di tutte: 468px misurati al banco a 1440×900, contro 264
+// di barra, 264 di elenco e 300 di fonti. La pagina si chiama «Chiedi», e la
+// parte in cui si chiede era un terzo dello schermo.
+//
+// Qui il conto si rifà dai fogli: larghezza della colonna dell'applicazione,
+// margini di `.main`, colonne della griglia, gap. Il modello è stato verificato
+// contro il browser (banco locale, Chrome, 1440×900, 2026-08-17) e dà gli
+// stessi numeri al pixel: conversazione 800, elenco 264, pagina 1080.
+{
+  const senzaCommenti = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '');
+  const appRaw = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
+  const extraRaw = readFileSync(join(root, 'src/styles/extra.css'), 'utf8');
+  const app = senzaCommenti(appRaw);
+  const extra = senzaCommenti(extraRaw);
+  // ⚠️ I COMMENTI VANNO VIA PRIMA DI GUARDARE, ed è la TERZA volta in questo
+  // file: qui sotto si pretende che `requestAnimationFrame` non compaia nella
+  // pagina, e il commento che spiega perché lo NOMINA. Alla prima stesura il
+  // controllo era rosso su un codice corretto — leggeva la spiegazione.
+  const pagina = readFileSync(join(root, 'src/features/assistant/AssistantPage.tsx'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+  /** Il corpo di un blocco `@media`, chiuso contando le graffe.
+   *  ⚠️ E SI SCEGLIE QUELLO GIUSTO: di `@media (max-width: 900px)` ce n'è più
+   *  d'uno per foglio, e un `[\s\S]*?` che parte dal primo arriva a pescare la
+   *  regola FUORI dai media — alla prima stesura leggeva i token del desktop e
+   *  li dichiarava giusti per il telefono. */
+  const bloccoMedia = (larghezza: string, fonte: string, deveContenere: string): string => {
+    const re = new RegExp(`@media \\(max-width: ${larghezza}\\)\\s*\\{`, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(fonte))) {
+      let i = m.index + m[0].length;
+      const inizio = i;
+      let prof = 1;
+      while (i < fonte.length && prof > 0) {
+        if (fonte[i] === '{') prof++; else if (fonte[i] === '}') prof--;
+        i++;
+      }
+      const corpo = fonte.slice(inizio, i - 1);
+      if (corpo.includes(deveContenere)) return corpo;
+    }
+    return '';
+  };
+
+  const scala = new Map<string, number>();
+  for (const m of app.matchAll(/(--(?:sp|topbar)-[a-z0-9]+|--content-max)\s*:\s*([\d.]+)px/g)) scala.set(m[1]!, Number(m[2]));
+
+  /** Il corpo della PRIMA regola che dichiara esattamente questo selettore.
+   *  `(?:^|\})` àncora l'inizio — ed è anche ciò che rende ROSSO, e non verde
+   *  falso, un foglio con un commento chiuso due volte: dopo lo spazzatura la
+   *  regola non è più preceduta da una graffa. */
+  const regola = (sel: string, fonte: string): string => {
+    const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^|\\})\\s*${esc}\\s*\\{([^}]*)\\}`).exec(fonte)?.[1] ?? '';
+  };
+  const dichiarazione = (corpo: string, prop: string): string | undefined =>
+    new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`).exec(corpo)?.[1]?.trim();
+  const px = (v: string | undefined): number | null => {
+    if (v === undefined) return null;
+    const t = v.trim();
+    if (t === '0') return 0;
+    const tok = /^var\((--[a-z0-9-]+)\)$/.exec(t);
+    if (tok) return scala.get(tok[1]!) ?? null;
+    const n = /^(-?[\d.]+)px$/.exec(t);
+    return n ? Number(n[1]) : null;
+  };
+  /** I token nominati da una somma `calc(var(--a) + var(--b))`, nell'ordine. */
+  const tokenDi = (v: string | undefined): string[] =>
+    [...(v ?? '').matchAll(/var\((--[a-z0-9-]+)\)/g)].map((m) => m[1]!);
+
+  const gColonna = regola('.sidebar', app);
+  const gMain = regola('.main', app);
+  const gPage = regola('.as-page', extra);
+  const gLayout = regola('.as-layout', extra);
+  const gConv = regola('.as-main', extra);
+
+  const colonnaW = px(dichiarazione(gColonna, 'width'));
+  const mainPad = (dichiarazione(gMain, 'padding') ?? '').split(/\s+/);
+  const padOrizz = px(mainPad[1]);
+  const griglia = dichiarazione(gLayout, 'grid-template-columns') ?? '';
+  const gap = px(dichiarazione(gLayout, 'gap'));
+  const colonne = [...griglia.matchAll(/minmax\(0,\s*([^)]+)\)/g)].map((m) => m[1]!.trim());
+
+  const letture: [string, unknown][] = [
+    ['.sidebar width', colonnaW], ['.main padding (orizzontale)', padOrizz],
+    ['.as-layout grid-template-columns', colonne.length ? colonne : null],
+    ['.as-layout gap', gap],
+    ['.as-page --as-shell-y', dichiarazione(gPage, '--as-shell-y') ?? null],
+    ['.as-main max-width', dichiarazione(gConv, 'max-width') ?? null],
+  ];
+  const illeggibili = letture.filter(([, v]) => v === null || v === undefined).map(([k]) => k);
+  check('tutte le geometrie della schermata si leggono dai fogli',
+    illeggibili.length === 0, `non lette: ${illeggibili.join(', ')}`);
+
+  // --- (a) DUE colonne, non tre: le fonti non sono più una colonna fissa -----
+  check('la griglia ha DUE colonne: le conversazioni e la conversazione',
+    colonne.length === 2, `ne dichiara ${colonne.length}: ${griglia}`);
+  check("la seconda colonna è quella elastica (è la conversazione a prendersi l'avanzo)",
+    colonne[1] === '1fr', `la seconda è «${colonne[1]}»`);
+  // ⚠️ La colonna morta non deve tornare, come `.nav-caret` e `.nav-subitem`:
+  // una classe che nessuno rende è un indizio falso per chi rifà questo conto.
+  check('la colonna «Fonti» non è tornata: nessun `.as-side-right` nei fogli',
+    !/\.as-side-right\b/.test(app) && !/\.as-side-right\b/.test(extra));
+  check('e nessun componente la scrive',
+    !/as-side-right/.test(pagina),
+    'le fonti sono un pannello: se torna la colonna, torna anche la conversazione stretta');
+
+  // --- (b) IL CONTO, a 1440×900 ---------------------------------------------
+  const FINESTRA = 1440;
+  const elenco = px(colonne[0]);
+  const conversazione = FINESTRA - colonnaW! - padOrizz! * 2 - elenco! - gap!;
+  const attorno = FINESTRA - conversazione;                  // barra, elenco, margini, gap
+
+  console.log(`  ${DIM}barra ${colonnaW} · margini ${padOrizz! * 2} · elenco ${elenco} · gap ${gap} → conversazione ${conversazione} su ${FINESTRA}${X}`);
+
+  check(`a ${FINESTRA}px la conversazione è più larga di TUTTO il resto messo insieme`,
+    conversazione > attorno,
+    `conversazione ${conversazione}, resto ${attorno}: la pagina si chiama «Chiedi» e la parte in cui si chiede non è la maggiore`);
+  check('e i conti tornano: niente scorrimento orizzontale',
+    colonnaW! + padOrizz! * 2 + elenco! + gap! + conversazione === FINESTRA,
+    `sommano ${colonnaW! + padOrizz! * 2 + elenco! + gap! + conversazione}`);
+
+  // --- (c) La riga di testo resta leggibile, e il tetto viene da un token ----
+  const tettoConv = dichiarazione(gConv, 'max-width');
+  check('la conversazione ha un tetto di lettura, e viene dal token --content-max',
+    tettoConv === 'var(--content-max)',
+    `dichiara «${tettoConv}»: su uno schermo da 1920 senza tetto la riga arriva a ~170 caratteri`);
+  check('il tetto non stringe la conversazione a 1440 (là comanda lo spazio, non il tetto)',
+    (scala.get('--content-max') ?? 0) >= conversazione,
+    `--content-max ${scala.get('--content-max')} < ${conversazione}: il tetto starebbe togliendo larghezza invece di darla`);
+  check("il tetto di `.main` è tolto solo QUI, e solo dove c'è questa pagina",
+    /\.main:has\(\.as-page\)\s*\{[^}]*max-width:\s*none/.test(extra),
+    'senza, a 1920 la pagina si ferma a 1160 e lascia 496px di vuoto');
+
+  // --- (d) L'ALTEZZA: gli stessi token del padding di `.main`, non due numeri -
+  // ⚠️ È il difetto che questo controllo nasce per non far tornare: `94px` con
+  // accanto un commento «30 + 64» quando i token facevano 80, e sotto i 900px
+  // 68 dichiarati dove ne servivano 128 (la barra in cima non era contata).
+  const PUNTI: [string, string, string[]][] = [
+    ['schermo largo', gPage, ['--sp-8', '--sp-12']],
+    ['fino a 900px', regola('.as-page', bloccoMedia('900px', extra, '--as-shell-y')),
+      ['--topbar-h', '--sp-6', '--sp-12']],
+    ['fino a 600px', regola('.as-page', bloccoMedia('600px', extra, '--as-shell-y')),
+      ['--topbar-h', '--sp-4', '--sp-12']],
+  ];
+  for (const [dove, corpo, attesi] of PUNTI) {
+    const usati = tokenDi(dichiarazione(corpo, '--as-shell-y'));
+    check(`${dove}: --as-shell-y somma i token giusti (${attesi.join(' + ')})`,
+      usati.length === attesi.length && attesi.every((t, i) => usati[i] === t),
+      `somma ${usati.length ? usati.join(' + ') : '«niente»'} — un numero scritto a mano qui invecchia in silenzio`);
+  }
+  // E i token dichiarati sono davvero quelli che `.main` usa là.
+  const padMain900 = regola('.main', bloccoMedia('900px', app, '.main'));
+  const padMain600 = regola('.main', bloccoMedia('600px', app, '.main'));
+  const vertDi = (corpo: string): string[] => {
+    const p = (dichiarazione(corpo, 'padding') ?? '').split(/\s+/);
+    return p.length >= 3 ? [p[0]!, p[2]!] : p.length === 2 ? [p[0]!, p[0]!] : [];
+  };
+  for (const [dove, corpoMain, corpoPage] of [
+    ['schermo largo', gMain, gPage],
+    ['fino a 900px', padMain900, PUNTI[1]![1]],
+    ['fino a 600px', padMain600, PUNTI[2]![1]],
+  ] as const) {
+    const vert = vertDi(corpoMain).map((v) => /var\((--[a-z0-9-]+)\)/.exec(v)?.[1] ?? v);
+    const usati = tokenDi(dichiarazione(corpoPage, '--as-shell-y')).filter((t) => t !== '--topbar-h');
+    check(`${dove}: sono gli STESSI token del padding verticale di .main`,
+      vert.length === 2 && usati.length === 2 && vert[0] === usati[0] && vert[1] === usati[1],
+      `.main ha [${vert.join(', ')}], --as-shell-y usa [${usati.join(', ')}]`);
+  }
+  // La barra in cima esiste solo sotto i 900px: sopra NON va contata.
+  check('la barra in cima entra nel conto solo dove esiste (sotto i 900px)',
+    !tokenDi(dichiarazione(gPage, '--as-shell-y')).includes('--topbar-h')
+      && /@media \(max-width: 900px\)/.test(extra),
+    'su desktop `.topbar` è `display: none`: contarla toglierebbe 56px per niente');
+
+  // --- (e) IL PANNELLO DELLE FONTI: raggiungibile, e chiuso davvero ---------
+  const gDrawer = regola('.as-drawer', extra);
+  check('un pannello chiuso esce dalla catena del Tab (visibility: hidden)',
+    /visibility:\s*hidden/.test(gDrawer),
+    '`translateX` sposta i pixel e basta: i collegamenti restano tabulabili fuori schermo');
+  check("in apertura la visibilità cambia a durata zero (il fuoco dev'entrare subito)",
+    /\.as-drawer\.open\s*\{[^}]*transition:[^;]*visibility 0s/.test(extra),
+    'interpolata, nell’istante zero vale ancora `hidden` e il .focus() non prende');
+  check('la pastiglia delle fonti dichiara che cosa apre e se è aperto',
+    /aria-controls=\{panelId\}/.test(pagina) && /aria-expanded=\{panelOpen\}/.test(pagina));
+  check('il pannello si chiude con Esc', /e\.key === 'Escape'/.test(pagina));
+  check('il fuoco entra nel pannello e TORNA da dove veniva',
+    /chiusura\.current\?\.focus\(\)/.test(pagina) && /provenienza\.current\?\.focus\?\.\(\)/.test(pagina));
+  check('e non passa da requestAnimationFrame',
+    !/requestAnimationFrame/.test(pagina),
+    'rAF è sospeso a documento non in primo piano: il fuoco non entrerebbe mai');
+  check('su schermo largo il pannello non vela la risposta che sta citando',
+    /\.as-overlay\s*\{\s*display:\s*none/.test(extra),
+    'il velo vive nel blocco dei 900px: le fonti si leggono ACCANTO alla risposta');
+  // ⚠️ DENTRO L'EFFETTO, non «da qualche parte nel file»: `setSourcesOpen(false)`
+  // c'è anche nella chiusura del pannello, e cercarlo nel testo intero lasciava
+  // il controllo VERDE con l'azzeramento tolto (visto alla prova avversaria).
+  const azzeramento = /useEffect\(\(\) => \{([\s\S]*?)\}, \[activeCompanyId\]\);/.exec(pagina)?.[1] ?? '';
+  check("al cambio azienda il pannello si chiude (§33: non resta aperto su un'altra impresa)",
+    /setSourcesOpen\(false\)/.test(azzeramento),
+    azzeramento ? "l'effetto su activeCompanyId non lo chiude" : "l'effetto su activeCompanyId non è stato letto");
+
+  // --- (f) L'intestazione è una riga sola ------------------------------------
+  check('la testata della pagina non porta più il sottotitolo',
+    !/page-desc/.test(pagina),
+    'titolo e sottotitolo costavano 121px degli 806 della pagina');
+  check('e il sottotitolo non è sparito: è sceso nel vuoto iniziale',
+    /subtitle=\{t\('assistant\.subtitle'\)\}/.test(pagina));
+}
+
+// ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);
 process.exit(fail === 0 ? 0 : 1);

@@ -1,9 +1,17 @@
 // ============================================================================
 // Chiedi ad AI-Swisse — la schermata
 //
-// Tre colonne su schermo largo: conversazioni a sinistra, la conversazione al
-// centro, le fonti a destra. Su telefono una colonna sola, con elenco e fonti
-// in due pannelli che si aprono.
+// Due colonne su schermo largo: le conversazioni a sinistra, LA CONVERSAZIONE
+// che si prende tutto il resto. Le fonti sono un pannello che si apre dalla
+// pastiglia «N fonti» di una risposta. Su telefono una colonna sola, con
+// l'elenco in un secondo pannello.
+//
+// ⚠️ LE FONTI SONO UN DETTAGLIO A RICHIESTA, NON UNA COLONNA. Erano una terza
+// colonna fissa da 300px che per la maggior parte del tempo diceva «scegli una
+// risposta per vederne le fonti», mentre la conversazione — la ragione della
+// schermata — stava in 468px su 1440. Ciò che si è spostato nel pannello è il
+// DETTAGLIO (testo citato nella lingua della fonte, pagina, grado di verifica):
+// le citazioni restano in linea sotto ogni risposta, e sono già collegamenti.
 //
 // ⚠️ NESSUN PULSANTE CHE AGISCE. Questa versione legge. Le pastiglie delle
 // fonti dicono «Apri», mai «Crea» o «Correggi»: §132 — un pulsante che il
@@ -15,7 +23,7 @@
 // riporta a zero e interrompe una risposta eventualmente in arrivo. Senza,
 // resterebbe a schermo la risposta di un'altra impresa sotto il nome nuovo.
 // ============================================================================
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -78,6 +86,9 @@ export function AssistantPage() {
 
   const [threadsOpen, setThreadsOpen] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
+  // Il pannello delle fonti è UNO e le pastiglie che lo aprono sono tante: il
+  // nome serve a ciascuna per dichiarare `aria-controls`, cioè che cosa apre.
+  const sourcesPanelId = useId();
 
   const abortRef = useRef<AbortController | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -99,6 +110,9 @@ export function AssistantPage() {
     setSelectedMessageId(null);
     setAskError(null);
     setMessagesError(null);
+    // ⚠️ E il pannello si CHIUDE: aperto sulle fonti di un'altra impresa, alla
+    // riga dopo non avrebbe più una risposta da cui dipendere.
+    setSourcesOpen(false);
   }, [activeCompanyId]);
 
   // -- Elenco delle conversazioni -------------------------------------------
@@ -326,11 +340,14 @@ export function AssistantPage() {
 
   return (
     <div className="as-page">
+      {/* ⚠️ UNA RIGA SOLA, e il sottotitolo è sceso nel vuoto iniziale (sotto,
+          nella EmptyCta): titolo e sottotitolo insieme costavano 121px degli
+          806 che questa pagina ha in tutto, e lo dicevano a chi sta guardando
+          una conversazione in corso, cioè a chi non li legge più. Il titolo
+          resta: è il nome della schermata per chi arriva da un collegamento e
+          per chi la sente leggere. */}
       <div className="page-head">
-        <div>
-          <h1 className="page-title">{t('assistant.title')}</h1>
-          <p className="page-desc">{t('assistant.subtitle')}</p>
-        </div>
+        <h1 className="page-title">{t('assistant.title')}</h1>
       </div>
 
       <div className="as-layout">
@@ -381,7 +398,10 @@ export function AssistantPage() {
               <EmptyCta
                 icon="fileSearch"
                 title={t('assistant.emptyTitle')}
-                subtitle={t('assistant.emptySubtitle')}
+                // Il sottotitolo della pagina, sceso qui: dice le stesse due
+                // cose che diceva l'altro — che cosa si può chiedere e che ogni
+                // risposta porta le sue fonti — ma nomina i cinque moduli.
+                subtitle={t('assistant.subtitle')}
                 action={
                   <div className="as-suggestions">
                     {(['attention', 'finance', 'contracts', 'tasks', 'clients'] as const).map((k) => (
@@ -402,6 +422,8 @@ export function AssistantPage() {
                     key={m.id}
                     message={m}
                     selected={m.id === selectedMessageId}
+                    panelId={sourcesPanelId}
+                    panelOpen={sourcesOpen && m.id === selectedMessageId}
                     onSelect={() => { setSelectedMessageId(m.id); setSourcesOpen(true); }}
                     onFollowUp={(text) => void ask(text)}
                     onFeedback={(rating, reason) => void sendFeedback(m.id, rating, reason)}
@@ -466,10 +488,11 @@ export function AssistantPage() {
           <p className="legal-note as-note">{t('assistant.readOnly')} {t('assistant.privacy')}</p>
         </section>
 
-        {/* ---- Fonti ---------------------------------------------------- */}
-        <SourcesColumn
+        {/* ---- Fonti: un pannello, non una colonna ----------------------- */}
+        <SourcesPanel
+          panelId={sourcesPanelId}
           message={selected}
-          drawerOpen={sourcesOpen}
+          open={sourcesOpen}
           onClose={() => setSourcesOpen(false)}
         />
       </div>
@@ -509,10 +532,12 @@ function QuestionBubble({ message }: { message: AssistantMessage }) {
 }
 
 function AnswerBlock({
-  message, selected, onSelect, onFollowUp, onFeedback,
+  message, selected, panelId, panelOpen, onSelect, onFollowUp, onFeedback,
 }: {
   message: AssistantMessage;
   selected: boolean;
+  panelId: string;
+  panelOpen: boolean;
   onSelect: () => void;
   onFollowUp: (text: string) => void;
   onFeedback: (rating: 'helpful' | 'not_helpful', reason?: AssistantFeedbackReason) => void;
@@ -546,7 +571,18 @@ function AnswerBlock({
       {citations.length > 0 && (
         <div className="as-chips">
           {citations.map((c) => <CitationChip key={c.index} citation={c} />)}
-          <button type="button" className="as-chip as-chip-more" onClick={onSelect}>
+          {/* ⚠️ È il SOLO modo di arrivare al dettaglio delle fonti, da quando
+              la colonna non c'è più: quindi dichiara che apre un pannello
+              (`aria-controls`) e se quel pannello è aperto (`aria-expanded`).
+              Un comando che apre qualcosa senza dirlo è un comando che
+              sorprende — la stessa regola del pulsante Impostazioni. */}
+          <button
+            type="button"
+            className="as-chip as-chip-more"
+            onClick={onSelect}
+            aria-controls={panelId}
+            aria-expanded={panelOpen}
+          >
             <Icon name="eye" className="ic-sm" />
             {citations.length === 1
               ? t('assistant.sources.countOne')
@@ -703,43 +739,79 @@ function ThreadColumn(props: {
   );
 }
 
-function SourcesColumn({
-  message, drawerOpen, onClose,
-}: { message: AssistantMessage | null; drawerOpen: boolean; onClose: () => void }) {
+/**
+ * Le fonti della risposta scelta — un pannello, a ogni larghezza.
+ *
+ * ⚠️ NON È UN MODALE, ed è una decisione: su schermo largo si aprono le fonti
+ * PER CONFRONTARLE con la risposta che le cita, quindi dietro non c'è nessun
+ * velo e la conversazione resta leggibile e usabile. Ma un pannello che si apre
+ * deve comunque riprendere il fuoco e restituirlo, e deve chiudersi con Esc:
+ * senza, chi naviga da tastiera preme «3 fonti» e resta esattamente dov'era,
+ * con un riquadro comparso da qualche parte che non sa raggiungere.
+ *
+ * ⚠️ Il fuoco NON passa da `requestAnimationFrame` (lezione di `Dialog.tsx`:
+ * rAF è sospeso quando il documento non è in primo piano, e al banco il fuoco
+ * non entrava MAI). Un `useEffect` gira a DOM già montato e basta.
+ */
+function SourcesPanel({
+  panelId, message, open, onClose,
+}: { panelId: string; message: AssistantMessage | null; open: boolean; onClose: () => void }) {
   const t = useT();
   const citations = useMemo(() => dedupeCitations(message?.citations ?? []), [message?.citations]);
-  const body = (
-    <>
-      <div className="as-col-head">
-        <span className="section-title">{t('assistant.sources.title')}</span>
-      </div>
-      <p className="muted-sm">{t('assistant.sources.subtitle')}</p>
+  const chiusura = useRef<HTMLButtonElement | null>(null);
+  const provenienza = useRef<HTMLElement | null>(null);
 
-      {!message && <div className="empty">{t('assistant.sources.selectHint')}</div>}
-      {message && !citations.length && <div className="empty">{t('assistant.sources.empty')}</div>}
+  useEffect(() => {
+    if (!open) return;
+    provenienza.current = document.activeElement as HTMLElement | null;
+    chiusura.current?.focus();
+    return () => { provenienza.current?.focus?.(); };
+  }, [open]);
 
-      {message && citations.length > 0 && (
-        <ul className="crm-list as-sources">
-          {citations.map((c) => <SourceCard key={c.index} citation={c} />)}
-        </ul>
-      )}
-    </>
-  );
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [open, onClose]);
 
   return (
     <>
-      <aside className="as-side as-side-right" aria-label={t('assistant.sources.title')}>{body}</aside>
-
-      <div className={`as-overlay${drawerOpen ? ' open' : ''}`} hidden={!drawerOpen} onClick={onClose} />
+      {/* Il velo esiste solo sotto i 900px (il CSS lo tiene spento sopra): là il
+          pannello copre quasi tutto e toccare fuori è il gesto che tutti
+          provano. */}
+      <div className={`as-overlay${open ? ' open' : ''}`} hidden={!open} onClick={onClose} />
       <aside
-        className={`as-drawer as-drawer-right${drawerOpen ? ' open' : ''}`}
+        id={panelId}
+        className={`as-drawer as-drawer-right${open ? ' open' : ''}`}
         aria-label={t('assistant.sources.title')}
-        aria-hidden={!drawerOpen}
+        aria-hidden={!open}
       >
-        <button type="button" className="as-drawer-close" onClick={onClose} aria-label={t('assistant.sources.close')}>
+        <button
+          ref={chiusura}
+          type="button"
+          className="as-drawer-close"
+          onClick={onClose}
+          aria-label={t('assistant.sources.close')}
+        >
           <Icon name="close" />
         </button>
-        {body}
+
+        <div className="as-col-head">
+          <span className="section-title">{t('assistant.sources.title')}</span>
+        </div>
+        <p className="muted-sm">{t('assistant.sources.subtitle')}</p>
+
+        {/* Il pannello si apre SEMPRE da una risposta, e al cambio azienda si
+            chiude: un «scegli una risposta» qui dentro sarebbe un cartello per
+            un caso che non esiste. */}
+        {message && !citations.length && <div className="empty">{t('assistant.sources.empty')}</div>}
+
+        {message && citations.length > 0 && (
+          <ul className="crm-list as-sources">
+            {citations.map((c) => <SourceCard key={c.index} citation={c} />)}
+          </ul>
+        )}
       </aside>
     </>
   );

@@ -682,8 +682,21 @@
 
 /* ==========================================================================
    CHIEDI AD AI-SWISSE (0027)
-   Prefisso `as-`. Tre colonne su schermo largo, una su telefono con due
-   pannelli che si aprono.
+   Prefisso `as-`. DUE colonne su schermo largo — le conversazioni e la
+   conversazione — e una su telefono. Le fonti sono un pannello a richiesta a
+   ogni larghezza.
+
+   ⚠️ LA CONVERSAZIONE È LA PAGINA. Fino al 2026-08-17 le colonne erano tre e la
+   conversazione era la più stretta: 468px misurati a 1440×900, cioè il 33 %
+   della finestra, stretta fra la barra dell'applicazione (264), l'elenco delle
+   conversazioni (264) e una colonna «Fonti» da 300 che per la maggior parte del
+   tempo diceva soltanto «scegli una risposta per vederne le fonti». Ora la
+   conversazione prende ~800px a 1440 — più della somma di tutto ciò che le sta
+   accanto — e le fonti si aprono dalla pastiglia «N fonti» che ogni risposta
+   porta già con sé. Le citazioni NON sono sparite dalla vista: restano in linea
+   sotto ogni risposta, ed è il DETTAGLIO (testo citato, pagina, grado di
+   verifica) che si apre a richiesta. Il conto sta nella sezione 15 di
+   `test:shell-unit`, che lo rifà dai fogli.
 
    ⚠️ NON si riusano `.drawer` / `.drawer-overlay`: appartengono al menu
    dell'AppShell, esistono solo sotto 900px e stanno a sinistra a z-index 60.
@@ -702,19 +715,40 @@
    la piega, con il pulsante «Chiedi» invisibile.
 
    `--as-shell-y` sono le spaziature verticali di `.main` (app.css), ripetute
-   qui ai suoi stessi tre punti di rottura. Sono gli unici numeri che questo
-   file condivide con l'involucro: se cambiano là, vanno cambiati qui.
+   qui ai suoi stessi tre punti di rottura.
+
+   ⚠️⚠️ E SI RIPETONO COI TOKEN, NON COL RISULTATO. Fino al 2026-08-17 qui c'era
+   scritto «94px», con accanto un commento che diceva «30 + 64»: due numeri che
+   i token non facevano più da un pezzo — `--sp-8` è 32 e `--sp-12` è 48, cioè
+   80. Quattordici pixel di altezza tolti alla conversazione da un commento che
+   nessuno rileggeva, e sotto i 900px il segno era pure invertito (68 dichiarati
+   contro 72 veri: la pagina sfondava di 4). Con la somma scritta in `calc()` il
+   valore non può più restare indietro, e la sezione 15 di `test:shell-unit`
+   controlla che i token sommati qui siano gli STESSI del padding di `.main` là.
    `dvh` con `vh` di riserva — su telefono la barra degli indirizzi entra ed
    esce, e con `100vh` il composer resterebbe sotto il bordo proprio mentre si
    scrive. Chi non conosce `dvh` ignora la seconda riga. */
-.as-page { --as-shell-y: 94px; /* 30 + 64 */
+.as-page { --as-shell-y: calc(var(--sp-8) + var(--sp-12));
   display: flex; flex-direction: column; min-height: 0;
   height: calc(100vh - var(--as-shell-y));
   height: calc(100dvh - var(--as-shell-y)); }
 
+/* ⚠️ QUI IL TETTO DI 1160px NON VALE. `.main` lo porta perché una pagina di
+   contenuto oltre quella misura diventa illeggibile; una conversazione no — a
+   1440 quel tetto lasciava 16px di vuoto a destra, a 1920 ne lasciava 496, e
+   intanto la conversazione stava in 468. Il `:has()` tiene la deroga QUI, nella
+   sezione della pagina che se la prende, invece di far sapere all'involucro che
+   esiste una schermata speciale. La riga di lettura resta protetta dal tetto
+   sulla conversazione, qui sotto. */
+.main:has(.as-page) { max-width: none; }
+
+/* Il titolo sta su UNA riga: il sottotitolo diceva ciò che il vuoto iniziale
+   dice già, e insieme costavano 121px degli 806 della pagina. */
+.as-page .page-head { margin-bottom: var(--sp-4); }
+
 .as-layout { display: grid; align-items: stretch; gap: var(--sp-4);
   flex: 1 1 auto; min-height: 0;
-  grid-template-columns: minmax(0, 264px) minmax(0, 1fr) minmax(0, 300px); }
+  grid-template-columns: minmax(0, 264px) minmax(0, 1fr); }
 
 /* Il pulsante che apre l'elenco esiste solo dove le colonne spariscono. */
 .as-only-narrow { display: none; }
@@ -764,8 +798,17 @@
 
 /* ---- La conversazione --------------------------------------------------- */
 /* A scorrere è il FLUSSO, non la pagina: il composer resta sempre a schermo. */
+/* ⚠️ IL TETTO TOLTO A `.main` SI RIMETTE QUI, e non è un ripensamento: sono due
+   misure diverse. Là il tetto teneva stretta la PAGINA, cioè anche le colonne e
+   i margini; qui tiene la riga di TESTO. Senza, su uno schermo da 1920 una
+   risposta si stenderebbe su 1280px — circa 170 caratteri per riga, dove
+   `--content-max` esiste proprio per dire quanto è larga una colonna che si
+   legge. Sotto i ~1520px di finestra il tetto non tocca niente: la colonna è
+   già più stretta. `margin-inline: auto` la centra nella cella, così ciò che
+   avanza si divide invece di ammucchiarsi tutto a destra. */
 .as-main { display: flex; flex-direction: column; min-width: 0;
-  height: 100%; min-height: 0; }
+  height: 100%; min-height: 0;
+  max-width: var(--content-max); margin-inline: auto; width: 100%; }
 .as-stream { display: flex; flex-direction: column; gap: var(--sp-3);
   flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
@@ -864,44 +907,83 @@
   font-size: var(--fs-meta); }
 .as-group > li { padding: var(--sp-05) 0; overflow-wrap: anywhere; }
 
-/* ---- I pannelli su telefono --------------------------------------------- */
-.as-overlay, .as-drawer { display: none; }
+/* ---- I pannelli ---------------------------------------------------------- */
+/* Il pannello delle FONTI vale a ogni larghezza (è la sola sede del dettaglio
+   di una citazione); quello delle CONVERSAZIONI solo sotto i 900px, dove la
+   colonna non c'è.
+
+   ⚠️⚠️ CHIUSO NON VUOL DIRE FUORI DALLA TABULAZIONE. Un pannello spostato con
+   `translateX` resta visibile per il browser: i suoi collegamenti restano nella
+   catena del Tab, e chi naviga da tastiera cade dentro un pannello che non vede
+   — fuori dallo schermo, a destra. `visibility: hidden` lo toglie davvero.
+   Prima valeva solo sotto i 900px e il difetto si vedeva su un telefono; ora
+   che le fonti sono un pannello ovunque, varrebbe su ogni schermo.
+
+   ⚠️ E LE DUE DIREZIONI HANNO DUE TRANSIZIONI DIVERSE, che non è pignoleria.
+   In CHIUSURA la visibilità va INTERPOLATA (`visibility .2s`): è una proprietà
+   a scatti, e la regola vuole che resti `visible` per tutta la durata e cambi
+   in fondo — così il pannello si vede per tutto il tempo in cui scorre via.
+   In APERTURA quella stessa scrittura dice che nell'ISTANTE ZERO il valore è
+   ancora `hidden`: il `.focus()` che il pannello fa entrando gira in un
+   `useEffect`, cioè prima del primo fotogramma, e trova un elemento invisibile
+   — il fuoco non entra. Misurato al banco il 2026-08-17: restava sulla
+   pastiglia «4 fonti». Quindi `.open` la commuta a DURATA ZERO, e il cambio non
+   dipende più dall'orologio dei fotogrammi.
+   ⚠️ Ed è la stessa lezione del `requestAnimationFrame` in `Dialog.tsx`: a
+   documento non in primo piano quell'orologio è FERMO (al banco `rAF` non è mai
+   scattato e `document.hidden` era vero), e una transizione ferma all'istante
+   zero non è un ritardo — è uno stato che non finisce più. Ciò che regge il
+   fuoco non deve passare di lì. */
+.as-overlay { display: none; }
+.as-drawer { position: fixed; top: 0; bottom: 0; z-index: 50;
+  width: 300px; max-width: 84vw; background: var(--card);
+  border: 1px solid var(--line); padding: var(--sp-4) var(--sp-3);
+  overflow-y: auto; box-shadow: var(--shadow-md);
+  visibility: hidden; transition: transform .2s ease, visibility .2s ease; }
+.as-drawer.open { transform: translateX(0); visibility: visible;
+  transition: transform .2s ease, visibility 0s linear 0s; }
+/* Sopra i 900px la colonna delle conversazioni c'è: il suo pannello no. */
+.as-drawer-left { display: none; left: 0; transform: translateX(-100%); }
+.as-drawer-right { right: 0; transform: translateX(100%); }
+/* ⚠️ 44px, non 26: è un bersaglio per un dito, non per un puntatore. E
+   l'intestazione gli lascia il posto — con la × sovrapposta al pulsante
+   «Nuova» (22×15px di sovrapposizione, misurati il 2026-07-30) chi mirava
+   all'angolo del pulsante chiudeva il pannello. */
+.as-drawer-close { position: absolute; top: var(--sp-1); right: var(--sp-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--ink); border: 0; cursor: pointer;
+  min-width: 44px; min-height: 44px; border-radius: var(--radius-sm); }
+.as-drawer-close:hover { background: var(--fill-subtle); }
+.as-drawer .as-col-head { padding-right: var(--sp-12); }
 
 @media (max-width: 900px) {
-  /* Una colonna: le due laterali diventano pannelli. */
-  .as-page { --as-shell-y: 68px; /* 20 + 48 */ }
+  /* Una colonna: le due laterali diventano pannelli.
+     ⚠️ E QUI C'È ANCHE LA BARRA IN CIMA, che su desktop non esiste: 56px in
+     flusso sopra `.main`. Non è mai stata contata — dichiarati 68 dove ne
+     servivano 128 — e su telefono la pagina sfondava di 60px, cioè proprio il
+     composer, che è la ragione per cui questa schermata sta dentro lo schermo.
+     Misurato al banco il 2026-08-17 a 800×900: documento 956 su 900. */
+  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-6) + var(--sp-12)); }
   .as-layout { grid-template-columns: minmax(0, 1fr); }
   .as-side { display: none; }
   .as-only-narrow { display: inline-flex; align-self: flex-start; }
+  .as-drawer-left { display: block; }
 
+  /* Il velo è del TELEFONO. Su schermo largo le fonti si leggono ACCANTO alla
+     risposta che le cita — velarla mentre la si verifica sarebbe togliere
+     proprio il confronto per cui il pannello si apre. Là il pannello si chiude
+     con la × o con Esc; qui, dove copre quasi tutto, si chiude anche toccando
+     fuori. */
   .as-overlay { display: block; position: fixed; inset: 0; z-index: 45;
     background: var(--scrim); opacity: 0; pointer-events: none;
     transition: opacity .18s ease; }
   .as-overlay.open { opacity: 1; pointer-events: auto; }
 
-  .as-drawer { display: block; position: fixed; top: 0; bottom: 0; z-index: 50;
-    width: 300px; max-width: 84vw; background: var(--card);
-    border: 1px solid var(--line); padding: var(--sp-4) var(--sp-3);
-    overflow-y: auto; transition: transform .2s ease; }
-  .as-drawer-left { left: 0; transform: translateX(-100%); }
-  .as-drawer-right { right: 0; transform: translateX(100%); }
-  .as-drawer.open { transform: translateX(0); }
-  /* ⚠️ 44px, non 26: è un bersaglio per un dito, non per un puntatore. E
-     l'intestazione gli lascia il posto — con la × sovrapposta al pulsante
-     «Nuova» (22×15px di sovrapposizione, misurati il 2026-07-30) chi mirava
-     all'angolo del pulsante chiudeva il pannello. */
-  .as-drawer-close { position: absolute; top: var(--sp-1); right: var(--sp-1);
-    display: inline-flex; align-items: center; justify-content: center;
-    background: transparent; color: var(--ink); border: 0; cursor: pointer;
-    min-width: 44px; min-height: 44px; border-radius: var(--radius-sm); }
-  .as-drawer-close:hover { background: var(--fill-subtle); }
-  .as-drawer .as-col-head { padding-right: var(--sp-12); }
-
   .as-q { max-width: 100%; }
 }
 
 @media (max-width: 600px) {
-  .as-page { --as-shell-y: 60px; /* 16 + 44 */ }
+  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-4) + var(--sp-12)); }
 }
 
 /* Chi ha chiesto meno movimento non deve vedere i pannelli scorrere. */

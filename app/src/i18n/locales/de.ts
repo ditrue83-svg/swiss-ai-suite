@@ -2587,7 +2587,6 @@ export const de: Dictionary = {
     subtitle: 'Fragen Sie zu Aufgaben, Dokumenten, Finanzen, Verträgen und Kunden. Jede Antwort nennt ihre Quellen.',
     readOnly: 'Diese Version liest Ihre Daten und ändert nichts daran.',
     emptyTitle: 'Was möchten Sie über Ihr Unternehmen wissen?',
-    emptySubtitle: 'Ich antworte mit den Daten aus AI-Swisse und zeige, woher jede Angabe stammt.',
     suggestions: {
       attention: 'Was braucht heute Aufmerksamkeit?',
       finance: 'Welche Rechnungen werden bald fällig?',
@@ -2653,7 +2652,6 @@ export const de: Dictionary = {
       title: 'Quellen',
       subtitle: 'Woher diese Antwort stammt.',
       empty: 'Diese Antwort nennt keine Quellen.',
-      selectHint: 'Wählen Sie eine Antwort, um ihre Quellen zu sehen.',
       open: 'Quelle öffnen',
       page: 'Seite {page}',
       group: '{count} Einträge',
