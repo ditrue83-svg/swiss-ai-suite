@@ -1093,6 +1093,11 @@ check('con il catalogo vuoto e nessun lavoro il blocco NON compare',
   !decidiBlocchi(base).opportunita);
 check('una pratica aperta tiene il blocco anche senza catalogo',
   decidiBlocchi({ ...base, openCases: 1 }).opportunita);
+// ⚠️ Difetto trovato AL BANCO, non previsto: col guasto di lettura il blocco
+// spariva — «non leggibile» collassato su «non esiste», la stessa confusione
+// che questa pagina combatte. Un guasto è un errore esplicito, mai un'assenza.
+check('catalogo NON LEGGIBILE (null): il blocco compare per dichiararlo',
+  decidiBlocchi({ ...base, programmiInCatalogo: null }).opportunita);
 
 // ===========================================================================
 section('17. La revisione del catalogo: che cosa è cambiato sulla fonte');

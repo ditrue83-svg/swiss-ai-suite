@@ -274,7 +274,9 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
     daVerificare: data.daVerificare.attivi + data.daVerificare.archiviati,
     fallite: data.fallite.attivi + data.fallite.archiviati,
     maiAnalizzati: data.maiAnalizzati.attivi + data.maiAnalizzati.archiviati,
-    programmiInCatalogo: data.incentivi.catalogo?.programs ?? 0,
+    // `null` = lettura fallita, e NON si collassa sullo zero: il blocco deve
+    // comparire per dire «non leggibile», non sparire come se non esistesse.
+    programmiInCatalogo: data.incentivi.catalogo === null ? null : data.incentivi.catalogo.programs,
     openCases: data.incentivi.summary?.openCases ?? 0,
     activeProjects: data.incentivi.summary?.activeProjects ?? 0,
   });

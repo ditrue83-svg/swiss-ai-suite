@@ -144,7 +144,13 @@ export interface BlocchiInput {
   daVerificare: number;
   fallite: number;
   maiAnalizzati: number;
-  programmiInCatalogo: number;
+  /**
+   * `null` = il catalogo NON si è potuto leggere, che non è un catalogo vuoto:
+   * il blocco compare e dichiara il guasto. Collassare il null sullo zero
+   * farebbe sparire il blocco proprio quando c'è qualcosa da dire — la stessa
+   * confusione «non ho guardato = niente da fare» che questa pagina combatte.
+   */
+  programmiInCatalogo: number | null;
   /** Pratiche e progetti già esistenti: se ci sono, il blocco ha numeri veri. */
   openCases: number;
   activeProjects: number;
@@ -166,7 +172,9 @@ export function decidiBlocchi(i: BlocchiInput): Blocchi {
   const sistema = i.daVerificare > 0 || i.fallite > 0 || i.maiAnalizzati > 0;
   // Il catalogo è condiviso: finché contiene programmi, lo stato della
   // valutazione aziendale è un'informazione che esiste per OGNI azienda.
-  const opportunita = i.programmiInCatalogo > 0 || i.openCases > 0 || i.activeProjects > 0;
+  // E un catalogo NON LEGGIBILE (null) è un'informazione anche lui.
+  const opportunita = i.programmiInCatalogo === null || i.programmiInCatalogo > 0
+    || i.openCases > 0 || i.activeProjects > 0;
   return {
     decisioni,
     daFare,
