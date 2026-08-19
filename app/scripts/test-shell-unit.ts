@@ -45,6 +45,7 @@ import { it } from '../src/i18n/locales/it.ts';
 import { de } from '../src/i18n/locales/de.ts';
 import { fr } from '../src/i18n/locales/fr.ts';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches, type NavItem } from '../src/components/layout/nav.ts';
+import { contaNature, decidiBlocchi, splitOpenTasks } from '../src/features/dashboard/overviewBlocks.ts';
 import { GLYPH_NAMES, type MarkGlyphName } from '../src/components/ui/MarkGlyph.tsx';
 import { PROVENANCE_KINDS } from '../src/components/ui/ProvenanceMark.tsx';
 import { CONFIDENCE_LEVELS } from '../src/components/ui/ConfidenceBadge.tsx';
@@ -1194,54 +1195,75 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
 }
 
 {
-  // (d) OGNI SCHEDA NUMERICA DELLA PANORAMICA PORTA A UN ELENCO.
-  // La regola in una riga: un numero senza elenco che lo spieghi non è un KPI.
-  // Il controllo conta i `.kpi` nel sorgente e pretende che siano tutti `Link`.
+  // (d) LA PANORAMICA DISEGNATA DAI NUMERI (censimento 2026-08-19).
+  // Non più una griglia di KPI: blocchi che compaiono solo con contenuto,
+  // nell'ordine «decisioni → lavoro → limiti del sistema → opportunità».
+  // Le decisioni per prime perché sbloccano il resto: il gate delle attività
+  // dipende letteralmente da loro.
+  // ⚠️ SENZA COMMENTI, tutti e tre i tipi: il preambolo di questa pagina NOMINA
+  // `subsidy-worker` per spiegare perché il pulsante non c'è, e un lettore a
+  // regex non distingue una riga che fa una cosa da una riga che la racconta —
+  // è la guardia di `scope.ts` nata rossa da sola, la stessa lezione.
   const home = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8')
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
-  const schede = [...home.matchAll(/<(\w+)[^>]*className="kpi[ "][^>]*>/g)];
-  check('la Panoramica ha ancora le sue schede numeriche', schede.length >= 4, `trovate ${schede.length}`);
-  const nonCollegate = schede.filter((m) => m[1] !== 'Link').map((m) => m[0].slice(0, 60));
-  check(
-    'ogni scheda numerica è un collegamento',
-    nonCollegate.length === 0,
-    `${nonCollegate.join('\n     ')}\n     Un numero senza elenco che lo spieghi non è un KPI: si toglie, non si lascia muto.`,
-  );
-  // Le destinazioni, una per una: sono le stesse interrogazioni che producono i
-  // numeri. `?stato=to_verify` e `?vista=high` non sono decorazioni — vedi
-  // `documentHubService.attention` e `list_subsidy_opportunities`.
-  for (const to of ['/attivita', '/calendario', '/documenti?stato=to_verify', '/incentivi?vista=high']) {
-    check(`una scheda porta a ${to}`, home.includes(`"${to}"`) || home.includes(`'${to}'`));
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  const corpo = home.slice(home.indexOf('function OverviewBody'));
+  const ordine = ['BloccoDecisioni', 'BloccoDaFare', 'BloccoSistema', 'BloccoOpportunita']
+    .map((b) => corpo.indexOf(`<${b} `));
+  check('i quattro blocchi ci sono, nell\'ordine deciso',
+    ordine.every((i) => i >= 0) && ordine.every((i, k) => k === 0 || i > ordine[k - 1]!),
+    `posizioni: ${ordine.join(', ')}`);
+  // Le destinazioni, una per una: ogni numero porta alla pagina che rende LO
+  // STESSO numero — e le popolazioni sono dichiarate nell'indirizzo
+  // (`archiviati=1`), perché `list_documents` ne mostra una alla volta.
+  for (const to of [
+    '/documenti?appartenenza=1',
+    '/attivita',
+    '/documenti?stato=to_verify', '/documenti?stato=to_verify&archiviati=1',
+    '/documenti?stato=failed', '/documenti?stato=failed&archiviati=1',
+    '/documenti?stato=none', '/documenti?stato=none&archiviati=1',
+    '/incentivi?scheda=progetti',
+  ]) {
+    check(`un blocco porta a ${to}`, home.includes(`"${to}"`) || home.includes(`'${to}'`));
   }
-  check(
-    'ogni scheda mostra la freccia che dice «si può premere»',
-    (home.match(/<KpiGo \/>/g) ?? []).length === schede.length,
-    `${(home.match(/<KpiGo \/>/g) ?? []).length} frecce per ${schede.length} schede`,
-  );
+  // COSA NON C'È, DI PROPOSITO — e deve restare così:
+  check('nessun grafico: non esiste una serie storica da mostrare',
+    !home.includes('<Bars') && !/meter-fill/.test(home));
+  check('nessun pulsante che chiami una funzione non invocabile («Avvia la verifica»)',
+    !/subsidy-worker|functions\.invoke/.test(home),
+    'il worker è dello scheduler: l\'azione vera è descrivere un progetto');
+  check('il piè di pagina dichiara l\'insieme UNA volta, per tutta la pagina',
+    home.includes('home.footPopulation') && home.includes('home.footUpdated'));
+  check('lo stato vuoto dice cosa è stato controllato, non «tutto a posto»',
+    home.includes('home.emptyChecked'));
+  check('l\'esempio di un blocco passa dalla regola del titolo, mai dal grezzo',
+    home.includes('documentLabelText') && !/item\.title|latest\.title/.test(home),
+    'la prima riga di questa pagina è già stata «2.5» una volta');
 
-  // (e) LO ZERO PROPONE — ogni scheda ha un ramo per il proprio zero.
-  const dizionari = [{ lang: 'it', d: it.dashboard }, { lang: 'de', d: de.dashboard }, { lang: 'fr', d: fr.dashboard }];
+  // (e) OGNI ZERO PORTA CON SÉ COSA HA ESCLUSO — le frasi esistono nelle tre
+  // lingue e la pagina le usa. «Nessun termine» e «nessuno scaduto» sono
+  // affermazioni, non assenze.
+  const dizionari = [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }];
   for (const { lang, d } of dizionari) {
     for (const [chiave, testo] of Object.entries({
-      kpiTasksNone: d.kpiTasksNone, kpiDueNone: d.kpiDueNone,
-      kpiToVerifyNone: d.kpiToVerifyNone, kpiToVerifyNoDocs: d.kpiToVerifyNoDocs,
-      kpiSubsidiesNone: d.kpiSubsidiesNone,
+      tasksTermsNone: d.tasksTermsNone, tasksOverdueNone: d.tasksOverdueNone,
+      datesNoTermMany: d.datesNoTermMany, assessNever: d.assessNever,
+      emptyChecked: d.emptyChecked, footPopulation: d.footPopulation,
     })) {
-      check(`${lang}: lo zero di ${chiave} ha una frase`, typeof testo === 'string' && testo.trim().length > 0);
+      check(`${lang}: la frase di ${chiave} esiste`, typeof testo === 'string' && testo.trim().length > 0);
     }
   }
-  for (const chiave of ['kpiTasksNone', 'kpiDueNone', 'kpiToVerifyNone', 'kpiToVerifyNoDocs', 'kpiSubsidiesNone']) {
-    check(`la Panoramica usa dashboard.${chiave}`, home.includes(`dashboard.${chiave}`));
+  for (const chiave of ['tasksTermsNone', 'tasksOverdueNone', 'assessNever', 'emptyChecked']) {
+    check(`la Panoramica usa home.${chiave}`, home.includes(`home.${chiave}`));
   }
-  // ⚠️ E il numero «da verificare» viene dal totale del filtro, non da un
-  // conteggio fatto sulle analisi caricate: è la condizione perché la scheda e
-  // la pagina a cui porta dicano lo stesso numero.
+  // ⚠️ Il conteggio «da verificare» resta il totale della STESSA interrogazione
+  // a cui porta il collegamento (stateTotals → list_documents), mai un
+  // ricalcolo locale sulle analisi caricate.
+  check('i totali dei documenti vengono da stateTotals, per popolazione',
+    home.includes('daVerificare.attivi') && home.includes('daVerificare.archiviati'));
   check(
-    'il numero «da verificare» è il totale della stessa interrogazione',
-    home.includes('documentsToVerify'),
-  );
-  check(
-    'e non è più ricalcolato sulle analisi in memoria',
+    'e nessun numero è ricalcolato sulla confidence in memoria',
     !/confidence\s*!==\s*'alta'/.test(home),
     'un conteggio locale e un filtro del database sono due verità sullo stesso fatto',
   );
@@ -2385,6 +2407,69 @@ section('17. Il conto dei giorni e il FUSO — una scadenza di oggi non è «sca
       readFileSync(new URL(`../${f}`, import.meta.url), 'utf8')));
   check('nessuno dei tre punti si è riscritto il conto in casa', conteggi.length === 0,
     conteggi.join(', '));
+}
+
+// ---------------------------------------------------------------------------
+section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
+// ⚠️ PERCHÉ QUI. `useOverview` importa i servizi e non si carica da Node: ogni
+// decisione della Home — chi compare, come si dividono le attività, che cosa
+// significa uno zero — sta in `overviewBlocks`, dove QUESTO banco può romperla.
+// I numeri che seguono sono quelli del censimento 2026-08-19.
+
+{
+  const T = (over: Partial<{ title: string; dueDate: string | null; appointmentDate: string | null }> = {}) => ({
+    title: 'x', dueDate: null, appointmentDate: null, ...over,
+  });
+  const OGGI = '2026-08-19';
+
+  // (a) La divisione delle attività: termini ≠ appuntamenti (0041).
+  const rossi = splitOpenTasks(
+    [T({ appointmentDate: '2026-09-01' }), T({ appointmentDate: '2026-09-02' }), T({ appointmentDate: '2026-09-03' })],
+    3, OGGI,
+  );
+  check('le tre di Rossi sono APPUNTAMENTI: nessun termine, nessuno scaduto',
+    rossi.appuntamenti === 3 && rossi.termini === 0 && rossi.scadute === 0 && rossi.senzaData === 0);
+  check('un\'attività con ENTRAMBE le date è un termine, non due righe',
+    (() => { const s = splitOpenTasks([T({ dueDate: '2026-09-01', appointmentDate: '2026-08-25' })], 1, OGGI);
+      return s.termini === 1 && s.appuntamenti === 0; })());
+  check('senza nessuna data è «senza data», non un appuntamento',
+    splitOpenTasks([T()], 1, OGGI).senzaData === 1);
+  check('scaduta = due_date PRIMA di oggi, in ora locale passata da fuori',
+    (() => { const s = splitOpenTasks([T({ dueDate: '2026-08-18' }), T({ dueDate: '2026-08-19' })], 2, OGGI);
+      return s.scadute === 1; })());
+  check('il diviso parziale si dichiara: lette < aperte',
+    (() => { const s = splitOpenTasks([T()], 5, OGGI); return s.parziale && s.lette === 1 && s.aperte === 5; })());
+  check('il primo è la testa dell\'elenco già ordinato, non una scelta locale',
+    splitOpenTasks([T({ title: 'primo' }), T({ title: 'secondo' })], 2, OGGI).primo?.title === 'primo');
+
+  // (b) Le nature delle date: NULL e lo storico 'none' NON sono «nessuna
+  // scadenza» — sono natura non registrata. In produzione: 2 date, entrambe
+  // NULL, zero termini.
+  const produzione = contaNature([null, null]);
+  check('le due date di produzione: natura non registrata, zero termini',
+    produzione.nonRegistrate === 2 && produzione.termini === 0 && produzione.totale === 2);
+  check('term è termine; event e reference non obbligano; \'none\' e l\'ignoto non sono registrati',
+    (() => { const c = contaNature(['term', 'event', 'reference', 'none', 'boh', null]);
+      return c.termini === 1 && c.nonObbliganti === 2 && c.nonRegistrate === 3; })());
+
+  // (c) La visibilità dei blocchi: compaiono solo con contenuto.
+  const zero = {
+    ownership: 0, aperte: 0, dateRilevate: 0, daVerificare: 0, fallite: 0,
+    maiAnalizzati: 0, programmiInCatalogo: 0, openCases: 0, activeProjects: 0,
+  };
+  check('il blocco decisioni esiste solo con appartenenze da confermare',
+    decidiBlocchi({ ...zero, ownership: 7 }).decisioni && !decidiBlocchi(zero).decisioni);
+  check('ownership NULL (lettura fallita) non è un contenuto: il blocco tace',
+    !decidiBlocchi({ ...zero, ownership: null }).decisioni);
+  check('le sole date rilevate bastano a «Da fare»: sono informazione, non silenzio',
+    decidiBlocchi({ ...zero, dateRilevate: 2 }).daFare);
+  check('16 non conclusive accendono il blocco del sistema anche a Home «vuota»',
+    decidiBlocchi({ ...zero, daVerificare: 16 }).sistema);
+  check('lo stato vuoto operativo dichiara il controllato, anche col catalogo pieno',
+    (() => { const b = decidiBlocchi({ ...zero, programmiInCatalogo: 7 });
+      return b.vuotoOperativo && b.opportunita; })());
+  check('con una decisione aperta lo stato vuoto NON compare',
+    !decidiBlocchi({ ...zero, ownership: 1 }).vuotoOperativo);
 }
 
 // ---------------------------------------------------------------------------

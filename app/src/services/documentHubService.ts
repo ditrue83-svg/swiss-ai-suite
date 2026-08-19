@@ -31,24 +31,26 @@ import { etichettaDocumento } from '@/lib/documentTitle';
 import { analysisService } from './analysisService';
 import type { Database } from '@/types/database';
 import type {
-  ActionCompletion, AnalysisCorrection, DocumentAttention, DocumentCategory, DocumentDetail,
+  AnalysisCorrection, DocumentCategory, DocumentDetail,
   DocumentEmailSource, DocumentHubFilters, DocumentHubItem, DocumentLinkedTask, DocumentPage,
   DocumentRecord, DocumentStatsRow, DocumentStatsSet, DocumentTag, DocumentTechnicalInfo,
 } from '@/types/models';
 
 /**
- * I TETTI DELLE STATISTICHE, e perché sono due numeri diversi.
- *
- * Le statistiche dell'archivio leggono quattro campi per documento: mille righe
- * sono qualche decina di kilobyte. Il completamento deve invece scaricare le
- * checklist intere per contarne le voci, e una checklist è un oggetto vero:
- * duecento documenti è il punto in cui quella lettura resta onesta.
+ * IL TETTO DELLE STATISTICHE: quattro campi per documento, mille righe sono
+ * qualche decina di kilobyte.
  *
  * ⚠️ Quando il tetto morde, chi legge lo SA — `truncated`, e l'etichetta lo
  * dice. Una statistica che tace di essere parziale è peggio di una assente.
  */
 export const STATS_MAX_DOCUMENTS = 1000;
-export const COMPLETION_MAX_DOCUMENTS = 200;
+/**
+ * I tetti delle letture per pagina di `list_documents`: `toListArgs` blocca
+ * `p_limit` a 100, quindi 100 È il tetto — un numero più alto qui sarebbe una
+ * promessa che la RPC non mantiene. Dove morde, `parziale` lo dichiara.
+ */
+export const DATE_MAX_DOCUMENTS = 100;
+export const OWNERSHIP_LIST_MAX = 100;
 
 type ListRow = Database['public']['Functions']['list_documents']['Returns'][number];
 type DocRow = Database['public']['Tables']['documents']['Row'];
@@ -200,31 +202,6 @@ export const documentHubService = {
   },
 
   /**
-   * I documenti che richiedono attenzione (§61): analisi da verificare o non
-   * riuscita. Serve alla Home, che NON deve diventare un elenco di documenti —
-   * per questo è una interrogazione filtrata e non una lista troncata.
-   *
-   * ⚠️ RENDE ANCHE I DUE TOTALI, e non è un di più: la Panoramica mostra il
-   * numero «Documenti da verificare» e da lì si arriva a `/documenti?stato=
-   * to_verify`. Il numero e l'elenco devono venire dalla STESSA interrogazione,
-   * altrimenti la scheda dice 16 e la pagina ne mostra 4 — due verità sullo
-   * stesso fatto. `total` conta prima di paginare (funzione finestra), quindi
-   * è il totale vero anche se le righe rese sono `limit`. Nessuna query in più:
-   * questi due totali arrivavano già e venivano buttati via.
-   */
-  async attention(companyId: string, limit = 8): Promise<DocumentAttention> {
-    const [toVerify, failed] = await Promise.all([
-      documentHubService.list(companyId, { state: 'to_verify', limit }),
-      documentHubService.list(companyId, { state: 'failed', limit }),
-    ]);
-    return {
-      items: [...failed.items, ...toVerify.items].slice(0, limit),
-      toVerifyTotal: toVerify.total,
-      failedTotal: failed.total,
-    };
-  },
-
-  /**
    * GLI INGREDIENTI DEI CONTEGGI — una riga per documento, con l'ultima analisi
    * VALIDA agganciata. È l'unica lettura da cui nascono le statistiche dei
    * documenti, e ci passano sia la sezione dell'archivio sia il completamento
@@ -250,13 +227,9 @@ export const documentHubService = {
    */
   async statsRows(companyId: string, opts: {
     archived?: boolean;
-    /** Serve solo al completamento: le checklist pesano, non si scaricano per niente. */
-    withActions?: boolean;
     limit: number;
   }): Promise<DocumentStatsRow[]> {
-    const inner = opts.withActions
-      ? 'id, document_type, language, deadline, actions'
-      : 'id, document_type, language, deadline';
+    const inner = 'id, document_type, language, deadline';
     let q = requireSupabase()
       .from('documents')
       .select(`id, document_analyses(${inner})`)
@@ -275,7 +248,7 @@ export const documentHubService = {
 
     type Embedded = {
       id: string; document_type: string | null; language: string | null;
-      deadline: string | null; actions?: unknown;
+      deadline: string | null;
     };
     type Row = { id: string; document_analyses: Embedded[] };
     return ((data ?? []) as unknown as Row[]).map((r) => {
@@ -287,7 +260,6 @@ export const documentHubService = {
         deadline: a?.deadline ?? null,
         analysisId: a?.id ?? null,
         hasAnalysis: a !== null,
-        actionCount: !opts.withActions ? null : Array.isArray(a?.actions) ? a.actions.length : 0,
       };
     });
   },
@@ -308,52 +280,6 @@ export const documentHubService = {
     ]);
     const total = [...counts.values()].reduce((a, b) => a + b, 0);
     return { rows, total, truncated: rows.length < total, archived };
-  },
-
-  /**
-   * Quante azioni della checklist sono spuntate, sui documenti ATTIVI.
-   *
-   * ⚠️ DUE FONTI, ED È VOLUTO. Il denominatore viene dallo SNAPSHOT, che è
-   * l'unico posto in cui si sa quante azioni esistono; il numeratore viene da
-   * `action_progress`, che dalla 0010 è l'unico posto in cui si sa quali sono
-   * fatte (nello snapshot `done` è sempre `false`, e infatti la Panoramica
-   * mostrava «0 di 40» — un numero che nessuna spunta poteva far salire).
-   *
-   * ⚠️ SOLO I DOCUMENTI ATTIVI: le azioni di un documento archiviato non sono
-   * lavoro in sospeso, e contarle abbasserebbe una percentuale che descrive
-   * ciò che resta da fare oggi.
-   */
-  async actionCompletion(companyId: string): Promise<ActionCompletion> {
-    const [rows, documentsTotal] = await Promise.all([
-      documentHubService.statsRows(companyId, {
-        archived: false, withActions: true, limit: COMPLETION_MAX_DOCUMENTS,
-      }),
-      documentHubService.activeCount(companyId),
-    ]);
-    const total = rows.reduce((n, r) => n + (r.actionCount ?? 0), 0);
-    const analysisIds = rows.map((r) => r.analysisId).filter((id): id is string => !!id);
-    if (!analysisIds.length) return { done: 0, total, documents: rows.length, documentsTotal };
-
-    // ⚠️ A BLOCCHI, e non è prudenza generica: qui gli identificativi possono
-    // essere `COMPLETION_MAX_DOCUMENTS`, cioè 200, e 200 UUID in un `in.(…)`
-    // sfiorano il limite di 8 kB dell'URL — il guasto sarebbe toccato proprio
-    // alle aziende con più documenti. I blocchi sono disgiunti e ogni riga
-    // porta un solo `analysis_id`: la somma dei conteggi È il conteggio.
-    const sb = requireSupabase();
-    const conteggi = await Promise.all(aBlocchi(analysisIds, BLOCCO_IN).map(async (blocco) => {
-      const { count, error } = await sb
-        .from('action_progress')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .eq('done', true)
-        .in('analysis_id', blocco);
-      if (error) throw new AppError(documentErrorMessage(error), error);
-      return count ?? 0;
-    }));
-    return {
-      done: conteggi.reduce((a, b) => a + b, 0),
-      total, documents: rows.length, documentsTotal,
-    };
   },
 
   /**
@@ -461,6 +387,115 @@ export const documentHubService = {
     let n = 0;
     for (const s of segnali.values()) if (s.ownershipToConfirm) n++;
     return n;
+  },
+
+  /**
+   * L'appartenenza per la Panoramica: il conteggio E il documento più recente
+   * fra quelli da confermare, già passato dalla regola del titolo mostrabile.
+   *
+   * ⚠️ L'esempio NON si legge da `documents` grezza: la prima riga della Home
+   * è già stata «2.5» una volta. Si riusa `get`, che passa da `list_documents`
+   * e quindi da `etichettaDocumento` — la stessa strada di ogni altra riga.
+   *
+   * ⚠️ «Più recente» = il primo nell'ordine delle analisi (created_at
+   * discendente), lo stesso ordine di `ownershipToConfirm`: due metodi che
+   * scegliessero il «più recente» con due regole diverse finirebbero per
+   * indicare due documenti diversi.
+   */
+  async ownershipOverview(companyId: string, company: TrustCompany): Promise<{
+    count: number; latest: DocumentHubItem | null;
+  }> {
+    const sb = requireSupabase();
+    const { data: analisi, error } = await sb.from('document_analyses')
+      .select('document_id, created_at')
+      .eq('company_id', companyId)
+      .neq('analysis_status', 'failed')
+      .order('created_at', { ascending: false })
+      .limit(STATS_MAX_DOCUMENTS);
+    if (error) throw new AppError(documentErrorMessage(error), error);
+    const ids = [...new Set((analisi ?? []).map((r) => r.document_id))];
+    const segnali = await documentHubService.trustSignals(companyId, ids, company);
+    const daConfermare = ids.filter((id) => segnali.get(id)?.ownershipToConfirm);
+    if (!daConfermare.length) return { count: 0, latest: null };
+    const dettaglio = await documentHubService.get(daConfermare[0], companyId);
+    return { count: daConfermare.length, latest: dettaglio?.item ?? null };
+  },
+
+  /**
+   * I due totali di uno stato, uno per popolazione — più la riga più recente
+   * come esempio. `list_documents` mostra UNA popolazione alla volta
+   * (`p_archived`), quindi il totale della pagina è la SOMMA di due
+   * interrogazioni: le stesse due a cui portano i collegamenti, così il numero
+   * del blocco e il numero della destinazione non possono divergere.
+   */
+  async stateTotals(companyId: string, state: 'to_verify' | 'failed' | 'none'): Promise<{
+    attivi: number; archiviati: number; esempio: DocumentHubItem | null;
+  }> {
+    const [att, arch] = await Promise.all([
+      documentHubService.list(companyId, { state, limit: 1 }),
+      documentHubService.list(companyId, { state, archived: true, limit: 1 }),
+    ]);
+    // L'esempio è il più recente fra le due popolazioni: le liste sono già
+    // ordinate per data discendente, resta solo il confronto fra le due teste.
+    const a = att.items[0] ?? null;
+    const b = arch.items[0] ?? null;
+    const esempio = a && b ? (a.createdAt >= b.createdAt ? a : b) : a ?? b;
+    return { attivi: att.total, archiviati: arch.total, esempio };
+  },
+
+  /**
+   * Le nature delle date presenti nei documenti, su ENTRAMBE le popolazioni.
+   * Serve alla riga «N date rilevate, nessuna riconosciuta come termine»:
+   * finché in produzione non esiste un `term`, un blocco scadenze sarebbe una
+   * scatola vuota o due date incerte vestite da termini.
+   *
+   * ⚠️ Il tetto è dichiarato: `parziale` dice che il conteggio delle NATURE è
+   * fatto su meno righe del totale. Il totale resta esatto (funzione finestra).
+   */
+  async deadlineKinds(companyId: string): Promise<{
+    kinds: (string | null)[]; totale: number; parziale: boolean;
+  }> {
+    const [att, arch] = await Promise.all([
+      documentHubService.list(companyId, { hasDeadline: true, limit: DATE_MAX_DOCUMENTS }),
+      documentHubService.list(companyId, { hasDeadline: true, archived: true, limit: DATE_MAX_DOCUMENTS }),
+    ]);
+    const righe = [...att.items, ...arch.items];
+    return {
+      kinds: righe.map((r) => r.deadlineKind),
+      totale: att.total + arch.total,
+      parziale: righe.length < att.total + arch.total,
+    };
+  },
+
+  /**
+   * L'elenco dei documenti con appartenenza da confermare, per la pagina
+   * Documenti (`?appartenenza=1`). La destinazione del blocco della Home deve
+   * rendere LO STESSO numero del blocco: questa è la stessa regola
+   * (`trustSignals`) applicata alle stesse righe.
+   *
+   * ⚠️ La regola vive in TypeScript (`analysisTrust`), quindi il database non
+   * può filtrare per lei: si leggono le righe di ENTRAMBE le popolazioni fino
+   * al tetto e si filtra qui. `parziale` è dichiarato: con più documenti del
+   * tetto l'elenco dice di essere incompleto invece di sembrare intero.
+   */
+  async listOwnership(companyId: string, company: TrustCompany): Promise<{
+    items: DocumentHubItem[]; total: number; parziale: boolean;
+  }> {
+    const [att, arch] = await Promise.all([
+      documentHubService.list(companyId, { limit: OWNERSHIP_LIST_MAX }),
+      documentHubService.list(companyId, { archived: true, limit: OWNERSHIP_LIST_MAX }),
+    ]);
+    const righe = [...att.items, ...arch.items]
+      .sort((x, y) => y.createdAt.localeCompare(x.createdAt));
+    const segnali = await documentHubService.trustSignals(
+      companyId, righe.map((r) => r.id), company,
+    );
+    const items = righe.filter((r) => segnali.get(r.id)?.ownershipToConfirm);
+    return {
+      items,
+      total: items.length,
+      parziale: att.items.length < att.total || arch.items.length < arch.total,
+    };
   },
 
   /** Quanti documenti attivi ha l'azienda. Interrogazione di sola testata. */

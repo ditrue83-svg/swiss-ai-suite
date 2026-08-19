@@ -295,7 +295,8 @@ export function hasActiveFilters(f: DocumentHubFilters): boolean {
     || f.dateFrom
     || f.dateTo
     || f.hasDeadline
-    || f.archived,
+    || f.archived
+    || f.ownership,
   );
 }
 
@@ -323,6 +324,7 @@ export function filtersFromParams(params: URLSearchParams): DocumentHubFilters {
     dateTo: params.get('a') || null,
     hasDeadline: params.get('scadenza') === '1',
     archived: params.get('archiviati') === '1',
+    ownership: params.get('appartenenza') === '1',
     sort: isOneOf(SORTS, params.get('ordine')) ?? 'recent',
   };
 }
@@ -340,6 +342,7 @@ export function paramsFromFilters(f: DocumentHubFilters): URLSearchParams {
   if (f.dateTo) p.set('a', f.dateTo);
   if (f.hasDeadline) p.set('scadenza', '1');
   if (f.archived) p.set('archiviati', '1');
+  if (f.ownership) p.set('appartenenza', '1');
   if (f.sort && f.sort !== 'recent') p.set('ordine', f.sort);
   return p;
 }

@@ -659,6 +659,43 @@ export const incentivesService = {
     };
   },
 
+  /**
+   * Quante VALUTAZIONI il motore ha mai scritto per l'azienda.
+   *
+   * ⚠️ È il numero che distingue «valutato: niente per te» da «mai valutato»:
+   * `subsidy_home_summary` restituisce gli stessi sette zeri in entrambi i
+   * casi, e la Panoramica deve dire quale dei due è vero. Il censimento del
+   * 2026-08-19 ha misurato 0 valutazioni in tutta la produzione: senza questa
+   * lettura, quello zero si vestirebbe da «nessuna opportunità».
+   *
+   * `null` = la lettura è fallita: non si inventa nessuno dei due stati.
+   */
+  async assessmentCount(companyId: string): Promise<number | null> {
+    const { count, error } = await requireSupabase()
+      .from('subsidy_assessments')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId);
+    if (error) return null;
+    return count ?? null;
+  },
+
+  /**
+   * Il catalogo in due numeri: quanti programmi e quanti verificati.
+   * Due interrogazioni di sola testata: la Home non ha bisogno delle schede
+   * intere per dire «7 programmi in banca dati, verificati».
+   */
+  async catalogState(): Promise<{ programs: number; verified: number } | null> {
+    const sb = requireSupabase();
+    const [tot, ver] = await Promise.all([
+      sb.from('subsidy_programs').select('id', { count: 'exact', head: true }),
+      sb.from('subsidy_programs').select('id', { count: 'exact', head: true })
+        .eq('data_status', 'verified'),
+    ]);
+    if (tot.error || ver.error) return null;
+    if (tot.count == null || ver.count == null) return null;
+    return { programs: tot.count, verified: ver.count };
+  },
+
   // -------------------------------------------------------------------------
   // Il catalogo — SOLA LETTURA
   //
