@@ -32,10 +32,28 @@ import type {
   CrmOpportunity, CrmOrganization, CrmOrganizationDetail, CrmOrganizationOption,
   CrmPerson, CrmPipelineCell, CrmTimelineEntry,
 } from '@/types/models';
-import { CRM_PAGE_SIZE, CRM_TIMELINE_PAGE_SIZE, effectiveRole, type CrmFilters } from '@/features/crm/crmModel';
+import { CRM_PAGE_SIZE, CRM_TIMELINE_PAGE_SIZE, effectiveRole, safeWebsite, type CrmFilters } from '@/features/crm/crmModel';
 
 function fail(error: unknown): never {
   throw new Error(crmErrorMessage(error));
+}
+
+/**
+ * Il sito web da scrivere in colonna: `null` se non c'è, ERRORE se c'è e non è
+ * http/https.
+ *
+ * ⚠️ SI RIFIUTA, NON SI RIPULISCE IN SILENZIO. Salvare `null` al posto di un
+ * `javascript:…` toglierebbe il pericolo e anche la notizia: chi ha scritto
+ * quel valore vedrebbe il campo svuotarsi senza sapere perché, e chi l'ha
+ * scritto APPOSTA saprebbe solo che deve riprovare in un altro modo. Un guasto
+ * è un errore esplicito, mai un risultato plausibile.
+ */
+function websiteDaSalvare(raw: string | null | undefined): string | null {
+  const value = (raw ?? '').trim();
+  if (!value) return null;
+  const safe = safeWebsite(value);
+  if (!safe) throw new Error('crm.errors.websiteNotHttp');
+  return safe;
 }
 
 /**
@@ -319,7 +337,7 @@ export const crmService = {
       legal_name: input.legalName?.trim() || null,
       uid_che: input.uidChe?.trim() || null,
       vat_number: input.vatNumber?.trim() || null,
-      website: input.website?.trim() || null,
+      website: websiteDaSalvare(input.website),
       street: input.street?.trim() || null,
       postal_code: input.postalCode?.trim() || null,
       city: input.city?.trim() || null,
@@ -358,7 +376,7 @@ export const crmService = {
     if (patch.legalName !== undefined) row.legal_name = patch.legalName?.trim() || null;
     if (patch.uidChe !== undefined) row.uid_che = patch.uidChe?.trim() || null;
     if (patch.vatNumber !== undefined) row.vat_number = patch.vatNumber?.trim() || null;
-    if (patch.website !== undefined) row.website = patch.website?.trim() || null;
+    if (patch.website !== undefined) row.website = websiteDaSalvare(patch.website);
     if (patch.street !== undefined) row.street = patch.street?.trim() || null;
     if (patch.postalCode !== undefined) row.postal_code = patch.postalCode?.trim() || null;
     if (patch.city !== undefined) row.city = patch.city?.trim() || null;

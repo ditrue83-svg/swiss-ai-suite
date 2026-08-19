@@ -2566,6 +2566,7 @@ export const fr: Dictionary = {
       suggestionNotFound: 'Cette proposition n’est plus en attente : quelqu’un l’a déjà traitée.',
       suggestionNotLinked: 'La fiche a été créée, mais le lien avec le document d’origine n’a pas été enregistré. Vous pouvez le créer depuis la fiche.',
       suggestionSourceUnsupported: 'Cette proposition ne peut pas être acceptée ici.',
+      websiteNotHttp: 'Le site web doit commencer par http:// ou https://. Les autres adresses ne peuvent pas être enregistrées.',
     },
   },
   // ==========================================================================

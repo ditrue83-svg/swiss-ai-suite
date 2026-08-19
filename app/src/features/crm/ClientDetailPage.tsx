@@ -44,7 +44,7 @@ import { AskAbout } from '@/features/assistant/AskAbout';
 import {
   CRM_TIMELINE_PAGE_SIZE, DEFAULT_STALE_DAYS, daysSince,
   organizationState, organizationStateKey, opportunityState, opportunityStateKey,
-  secondaryName,
+  safeWebsite, secondaryName,
 } from './crmModel';
 
 type Tab = 'overview' | 'people' | 'opportunities' | 'tasks'
@@ -331,8 +331,15 @@ function OverviewTab(props: {
             <dd>{o.vatNumber ?? '—'}</dd>
             <dt>{t('crm.form.website')}</dt>
             <dd>
+              {/* ⚠️ Il valore in colonna non decide da solo di diventare un
+                  collegamento: un `javascript:…` scritto qui dentro eseguirebbe
+                  codice a chi lo clicca. Se non è http/https resta TESTO —
+                  visibile, perché nasconderlo nasconderebbe anche il problema
+                  a chi deve correggerlo. */}
               {o.website
-                ? <a href={o.website} target="_blank" rel="noreferrer noopener">{o.website}</a>
+                ? (safeWebsite(o.website)
+                  ? <a href={o.website} target="_blank" rel="noreferrer noopener">{o.website}</a>
+                  : o.website)
                 : '—'}
             </dd>
             <dt>{t('crm.detail.source')}</dt>
