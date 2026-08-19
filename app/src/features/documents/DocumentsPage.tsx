@@ -51,17 +51,29 @@ import type {
  * ne abbiamo caricati.
  */
 function useDocumentList(companyId: string, filters: DocumentHubFilters) {
+  // Il filtro per appartenenza dipende da CHI è l'azienda: la regola
+  // (`analysisTrust`) confronta destinatario, ragione sociale e cognomi della
+  // rubrica. Per questo nome e cognomi entrano nella chiave: quando arrivano,
+  // l'interrogazione si rifà da sola.
+  const { activeCompany } = useCompany();
+  const { members } = useMembers();
+  const legalName = activeCompany?.legalName ?? '';
+  const surnames = useMemo(() => cognomiDaRubrica(members.map((m) => m.name)), [members]);
+
   // Le dipendenze sono i VALORI dei filtri, non l'oggetto: un oggetto nuovo a
   // ogni render rifarebbe la richiesta a ogni battuta di tasto.
-  const key = JSON.stringify({ companyId, ...filters, limit: undefined, offset: undefined });
+  const key = JSON.stringify({
+    companyId, ...filters, limit: undefined, offset: undefined,
+    ...(filters.ownership ? { legalName, surnames } : {}),
+  });
 
   // ⚠️ I risultati portano con sé la CHIAVE a cui appartengono, e non si
   // svuotano in un effetto. Svuotarli in un effetto lascerebbe un fotogramma in
   // cui la schermata mostra i documenti dell'azienda precedente sotto il nome
   // di quella nuova — il «lampo di dati di prima» che, su un prodotto
   // multi-azienda, è un difetto e non un dettaglio estetico.
-  const [state, setState] = useState<{ key: string; items: DocumentHubItem[]; total: number }>(
-    { key, items: [], total: 0 },
+  const [state, setState] = useState<{ key: string; items: DocumentHubItem[]; total: number; parziale: boolean }>(
+    { key, items: [], total: 0, parziale: false },
   );
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -79,7 +91,19 @@ function useDocumentList(companyId: string, filters: DocumentHubFilters) {
     let active = true;
     setLoading(true);
     setError(null);
-    documentHubService.list(companyId, { ...filters, limit: DOCUMENTS_PAGE_SIZE, offset })
+    // ⚠️ Senza la ragione sociale la regola d'appartenenza non si può valutare:
+    // si resta in caricamento invece di mostrare uno zero falso. Il nome arriva
+    // col contesto azienda ed entra nella chiave, quindi l'attesa si risolve da
+    // sola alla prima lettura completa.
+    if (filters.ownership && !legalName) return () => { active = false; };
+    const carica = filters.ownership
+      ? documentHubService
+        .listOwnership(companyId, { legalName, memberSurnames: surnames })
+        .then((r) => ({ items: r.items, total: r.total, parziale: r.parziale }))
+      : documentHubService
+        .list(companyId, { ...filters, limit: DOCUMENTS_PAGE_SIZE, offset })
+        .then((page) => ({ items: page.items, total: page.total, parziale: false }));
+    carica
       .then((page) => {
         if (!active) return;
         // `offset === 0` è sempre una lista nuova; e l'accodamento avviene solo
@@ -87,10 +111,11 @@ function useDocumentList(companyId: string, filters: DocumentHubFilters) {
         setState((prev) => ({
           key,
           total: page.total,
+          parziale: page.parziale,
           items: offset === 0 || prev.key !== key ? page.items : [...prev.items, ...page.items],
         }));
       })
-      .catch((e) => { if (active) { setError(toUserMessage(e)); setState({ key, items: [], total: 0 }); } })
+      .catch((e) => { if (active) { setError(toUserMessage(e)); setState({ key, items: [], total: 0, parziale: false }); } })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,7 +125,11 @@ function useDocumentList(companyId: string, filters: DocumentHubFilters) {
   const total = fresh ? state.total : 0;
   return {
     items, total, loading: loading || !fresh, error,
-    hasMore: items.length < total,
+    parziale: fresh && state.parziale,
+    // Il modo appartenenza consegna l'elenco INTERO (fino al tetto dichiarato):
+    // una «pagina due» non esiste, e fingere che esista rifarebbe la stessa
+    // lettura per niente.
+    hasMore: !filters.ownership && items.length < total,
     loadMore: () => setOffset((n) => n + DOCUMENTS_PAGE_SIZE),
     reload: () => { setOffset(0); setTick((n) => n + 1); },
   };
@@ -223,7 +252,13 @@ export function DocumentsPage() {
   }, [companyId, filters.archived, list.total]);
 
   function update(change: Partial<DocumentHubFilters>) {
-    setParams(paramsFromFilters({ ...filters, ...change }));
+    // ⚠️ Il filtro per appartenenza è un MODO, non un filtro componibile: copre
+    // ENTRAMBE le popolazioni (la conferma è lavoro anche per un archiviato),
+    // quindi «Attivi/Archiviati» non ha senso dentro di lui, e comporlo con gli
+    // altri filtri produrrebbe interrogazioni che nessuna pagina sa spiegare.
+    // Toccare qualunque altro filtro ne esce, dichiaratamente.
+    const next = 'ownership' in change ? change : { ...change, ownership: false };
+    setParams(paramsFromFilters({ ...filters, ...next }));
     setSelected(new Set());
   }
 
@@ -352,6 +387,27 @@ export function DocumentsPage() {
                 </button>
               </span>
             </div>
+
+            {/* IL MODO «APPARTENENZA DA CONFERMARE» (`?appartenenza=1`), la
+                destinazione del blocco decisioni della Panoramica. Copre
+                ENTRAMBE le popolazioni — la conferma è lavoro anche per un
+                documento archiviato — e la fascia lo dichiara, insieme al
+                numero: lo STESSO che il blocco ha promesso. Se il tetto di
+                lettura ha morso, anche quello si dichiara. */}
+            {filters.ownership && (
+              <div className="info-box mt-10" role="status">
+                <Icon name="alert" className="ic-sm" />
+                <span>
+                  {list.total === 1
+                    ? t('documents.ownershipFilterOne')
+                    : t('documents.ownershipFilterMany', { n: list.total })}
+                  {list.parziale ? ` — ${t('documents.ownershipFilterPartial')}` : ''}
+                </span>
+                <button className="btn btn-sm" onClick={() => update({ ownership: false })}>
+                  {t('documents.ownershipFilterClear')}
+                </button>
+              </div>
+            )}
 
             {showFilters && (
               <div className="doc-filters">

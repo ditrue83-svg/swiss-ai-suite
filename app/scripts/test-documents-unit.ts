@@ -184,6 +184,17 @@ section('5 · I filtri nell\'indirizzo, e ritorno');
   ok(!hasActiveFilters({}), 'senza filtri non si propone di rimuoverli');
   ok(hasActiveFilters({ query: 'x' }) && hasActiveFilters({ archived: true }), 'con un filtro attivo sì');
   ok(!hasActiveFilters({ query: '   ' }), 'una ricerca di soli spazi non conta come filtro attivo');
+
+  // Il modo «appartenenza da confermare» (`?appartenenza=1`), destinazione del
+  // blocco decisioni della Panoramica: sopravvive al giro, non sporca un
+  // indirizzo pulito, e conta come filtro attivo (c'è da poterlo togliere).
+  const own = filtersFromParams(paramsFromFilters({ ownership: true }));
+  ok(own.ownership === true, 'il filtro per appartenenza sopravvive al giro indirizzo→filtri');
+  ok(filtersFromParams(new URLSearchParams()).ownership === false,
+    'senza parametro il modo è spento, non indefinito');
+  ok(!paramsFromFilters({ ownership: false }).has('appartenenza'),
+    'spento non scrive nell\'indirizzo');
+  ok(hasActiveFilters({ ownership: true }), 'ed è un filtro attivo: si può rimuovere');
 }
 
 // ===========================================================================
@@ -731,7 +742,7 @@ section('9. Statistiche documenti — l’insieme, e chi non ha analisi');
 {
   const riga = (over: Partial<DocumentStatsRow> = {}): DocumentStatsRow => ({
     id: 'd1', documentType: 'request_for_documents', language: 'it', deadline: null,
-    analysisId: 'a1', hasAnalysis: true, actionCount: null, ...over,
+    analysisId: 'a1', hasAnalysis: true, ...over,
   });
   // Giorni fissi: le soglie si provano senza dipendere dal giorno in cui gira.
   const mai = () => null;
@@ -1006,7 +1017,9 @@ section('11. Il guardiano: nessuna schermata legge il titolo grezzo');
   ];
 
   const SCHERMATE = [
-    'src/features/dashboard/overview.ts',
+    // La Panoramica: l'esempio del blocco decisioni è un titolo di documento,
+    // e la prima riga di quella pagina è già stata «2.5» una volta.
+    'src/features/dashboard/HomePage.tsx',
     'src/features/documents/DocumentsPage.tsx',
     'src/features/documents/DocumentDetailPage.tsx',
     'src/features/admin-ai/ResultView.tsx',
@@ -1117,10 +1130,11 @@ section('13. Duecento identificativi non entrano in un URL');
 // ⚠️⚠️ IL LIMITE È DEL TRASPORTO, NON DELLA QUERY. PostgREST riceve i filtri
 // nella query string, e un URL oltre gli 8 kB viene rifiutato dal server prima
 // di diventare un'interrogazione: non un risultato sbagliato, un guasto secco.
-// `avanzamento` legge fino a `COMPLETION_MAX_DOCUMENTS` analisi e le passava
-// tutte a una `.in(...)` sola — quindi il tetto non era teorico, era il caso
-// NORMALE di un'azienda con molti documenti, e sarebbe toccato per primo a chi
-// ne ha di più.
+// `trustSignals` legge fino a `STATS_MAX_DOCUMENTS` documenti e senza blocchi
+// li passerebbe tutti a una `.in(...)` sola — quindi il tetto non è teorico, è
+// il caso NORMALE di un'azienda con molti documenti, e toccherebbe per primo
+// chi ne ha di più. (Qui viveva la stessa prova su `avanzamento`, morto con la
+// Panoramica vecchia: la classe di guasto resta, il chiamante è cambiato.)
 //
 // ⚠️ IL COSTO SI MISURA, non si stima: le due righe qui sotto costruiscono il
 // filtro come lo scrive PostgREST e lo PESANO. È la parte che rende questa
@@ -1134,7 +1148,7 @@ section('13. Duecento identificativi non entrano in un URL');
   // salisse, questa sezione deve misurare il numero nuovo, non quello di oggi.
   const servizio = readFileSync('src/services/documentHubService.ts', 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-  const tetto = Number(/COMPLETION_MAX_DOCUMENTS = (\d+)/.exec(servizio)?.[1] ?? 0);
+  const tetto = Number(/STATS_MAX_DOCUMENTS = (\d+)/.exec(servizio)?.[1] ?? 0);
   ok(tetto >= 100, 'il tetto delle analisi lette si trova nel servizio', String(tetto));
 
   const tutti = Array.from({ length: tetto }, () => UUID);
@@ -1152,8 +1166,8 @@ section('13. Duecento identificativi non entrano in un URL');
   // non perdono niente: è l'unica proprietà che la correzione deve garantire.
   ok(blocchi.flat().length === tutti.length,
     'i blocchi rimettono insieme esattamente l\'elenco di partenza');
-  ok(blocchi.every((b) => b.length <= BLOCCO_IN) && blocchi.length === 3,
-    `${tetto} in blocchi da ${BLOCCO_IN} fanno 3 richieste, nessuna oltre il tetto`,
+  ok(blocchi.every((b) => b.length <= BLOCCO_IN) && blocchi.length === Math.ceil(tetto / BLOCCO_IN),
+    `${tetto} in blocchi da ${BLOCCO_IN} fanno ${Math.ceil(tetto / BLOCCO_IN)} richieste, nessuna oltre il tetto`,
     blocchi.map((b) => b.length).join('+'));
 
   // I casi limite, che è il motivo per cui la funzione è pura e sta fuori dal
@@ -1168,11 +1182,11 @@ section('13. Duecento identificativi non entrano in un URL');
   // ⚠️ LA GUARDIA SCOLLEGATA. Le prove qui sopra restano verdi anche se il
   // servizio continuasse a passare l'elenco intero: la funzione giusta che non
   // chiama nessuno non protegge niente. Senza commenti, perché il blocco che
-  // stai leggendo nomina `.in(` e `analysisIds`.
-  ok(/\.in\('analysis_id', blocco\)/.test(servizio)
-    && /aBlocchi\(analysisIds, BLOCCO_IN\)/.test(servizio),
+  // stai leggendo nomina `.in(` e `documentIds`.
+  ok(/\.in\('document_id', blocco\)/.test(servizio)
+    && /aBlocchi\(documentIds, BLOCCO_IN\)/.test(servizio),
     'e il servizio interroga UN BLOCCO per volta, non l\'elenco intero');
-  ok(!/\.in\('analysis_id', analysisIds\)/.test(servizio),
+  ok(!/\.in\('document_id', documentIds\)/.test(servizio),
     'l\'elenco intero non finisce più in una `.in(...)` sola');
 }
 

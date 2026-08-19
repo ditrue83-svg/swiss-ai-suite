@@ -433,22 +433,6 @@ export interface DocumentPage {
 }
 
 /**
- * I documenti che richiedono attenzione, con i due totali accanto.
- *
- * ⚠️ I totali NON sono `items.length`: `items` è troncato al limite della Home,
- * i totali contano tutto ciò che il filtro seleziona. È la differenza fra il
- * numero scritto su una scheda e la lunghezza di un elenco che sta in pagina —
- * la seconda mente appena i documenti superano il limite.
- */
-export interface DocumentAttention {
-  items: DocumentHubItem[];
-  /** Analisi che chiedono una verifica: lo stesso insieme di `?stato=to_verify`. */
-  toVerifyTotal: number;
-  /** Analisi non riuscite: lo stesso insieme di `?stato=failed`. */
-  failedTotal: number;
-}
-
-/**
  * L'INGREDIENTE DEI CONTEGGI: un documento, con l'ultima analisi valida
  * agganciata accanto.
  *
@@ -473,11 +457,6 @@ export interface DocumentStatsRow {
   deadline: string | null;
   analysisId: string | null;
   hasAnalysis: boolean;
-  /**
-   * Quante azioni ha la checklist dello snapshot. `null` quando non sono state
-   * chieste: `null` è «non lo sappiamo», che non è zero.
-   */
-  actionCount: number | null;
 }
 
 /** Le righe di un insieme dichiarato, con il totale vero accanto. */
@@ -494,25 +473,6 @@ export interface DocumentStatsSet {
   archived: boolean;
 }
 
-/**
- * Il completamento della checklist sui documenti ATTIVI.
- *
- * ⚠️ `done` viene da `action_progress` e NON dallo snapshot: dalla 0010
- * `document_analyses.actions[].done` è sempre `false`, e un numero che legge
- * quel campo non può salire nemmeno spuntando tutto.
- * ⚠️ `total` viene invece dallo snapshot, che è l'unico posto in cui si sa
- * QUANTE azioni esistono: `action_progress` ha una riga solo per le azioni già
- * toccate, e usarla come denominatore direbbe «0 di 1» dove le azioni sono 40.
- */
-export interface ActionCompletion {
-  done: number;
-  total: number;
-  /** Su quanti documenti attivi è stato calcolato. */
-  documents: number;
-  /** Quanti documenti attivi esistono. Se supera `documents`, si dichiara. */
-  documentsTotal: number;
-}
-
 /** I filtri della lista. Tipizzati, mai `Record<string, unknown>` (§103). */
 export interface DocumentHubFilters {
   query?: string | null;
@@ -527,6 +487,14 @@ export interface DocumentHubFilters {
   dateTo?: string | null;
   hasDeadline?: boolean;
   archived?: boolean;
+  /**
+   * Solo i documenti con appartenenza DA CONFERMARE — un modo, non un filtro
+   * componibile: copre entrambe le popolazioni (attivi e archiviati), perché
+   * la conferma è lavoro che un documento archiviato chiede lo stesso. La
+   * regola vive in `analysisTrust`, quindi il database non può filtrarla:
+   * vedi `documentHubService.listOwnership`.
+   */
+  ownership?: boolean;
   sort?: DocumentSort;
   limit?: number;
   offset?: number;

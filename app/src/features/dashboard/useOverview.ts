@@ -1,5 +1,4 @@
 import { useCompany } from '@/contexts/CompanyContext';
-import { useI18n } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { taskService } from '@/services/taskService';
 import { documentHubService } from '@/services/documentHubService';
@@ -7,133 +6,129 @@ import { memberService } from '@/services/memberService';
 import { cognomiDaRubrica } from '@/features/documents/analysisTrust';
 import { incentivesService } from '@/services/incentivesService';
 import { todayISO } from '@/features/incentives/incentivesModel';
-import type {
-  ActionCompletion, DocumentHubItem, IncentiveCase, IncentiveOpportunity,
-  IncentiveSummary, TaskWithPeople,
-} from '@/types/models';
-
-/** Quante attività servono davvero alla Home: le prime, già ordinate dal database. */
-const HOME_TASKS = 20;
+import {
+  contaNature, splitOpenTasks, type ContoDocumenti, type ContoNature, type TaskSplit,
+} from './overviewBlocks';
+import type { DocumentHubItem, IncentiveSummary } from '@/types/models';
 
 /**
- * La finestra dei numeri degli incentivi in Panoramica, in giorni.
- * ⚠️ Dichiarata qui e usata sia dalla funzione SQL sia dall'etichetta del KPI:
- * un riquadro che dice «entro 30 giorni» mentre il database ne conta 60 è la
- * classe di bugia che questo progetto insegue da mesi.
+ * Quante attività si LEGGONO per dividerle in termini e appuntamenti. Non è la
+ * pagina della Home: è il tetto oltre il quale il diviso si dichiara parziale
+ * (`TaskSplit.parziale`) invece di sembrare intero. I totali restano esatti:
+ * vengono dalla funzione finestra di `list_tasks`, non dalla lunghezza.
+ */
+const TASKS_SPLIT_MAX = 200;
+
+/**
+ * La finestra dei numeri degli incentivi, in giorni. Dichiarata qui e usata
+ * sia dalla funzione SQL sia dall'etichetta: un riquadro che dice «entro 30
+ * giorni» mentre il database ne conta 60 è la classe di bugia che questo
+ * progetto insegue da mesi.
  */
 export const INCENTIVE_DAYS = 30;
 
-interface BaseData {
-  tasks: TaskWithPeople[];
+export interface OverviewData {
+  /** Le attività aperte, divise: termini ≠ appuntamenti (0041). */
+  tasks: TaskSplit;
   /**
-   * Conteggi ESATTI, non la lunghezza di un elenco troncato: vengono dal
-   * `total` della funzione `list_tasks`, che conta prima di paginare. Un KPI
-   * che dice «20» perché ne ha caricate 20 è un KPI che mente.
+   * OGNI CONTEGGIO DEI DOCUMENTI COPRE LE DUE POPOLAZIONI, e il piè di pagina
+   * lo dichiara. Il censimento del 2026-08-19: 19 documenti su 19 archiviati —
+   * una Home «solo attivi» era una pagina bianca sopra 16 analisi non
+   * conclusive. Le due parti restano separate perché i collegamenti portano a
+   * `list_documents`, che mostra una popolazione alla volta: il blocco elenca
+   * una riga per popolazione, ciascuna col suo numero e la sua destinazione.
    */
-  counts: { open: number; overdue: number; inProgress: number; completed: number };
-  /** I documenti che richiedono attenzione, non tutti i documenti (§61). */
-  attention: DocumentHubItem[];
+  daVerificare: ContoDocumenti & { esempio: DocumentHubItem | null };
+  fallite: ContoDocumenti & { esempio: DocumentHubItem | null };
+  maiAnalizzati: ContoDocumenti & { esempio: DocumentHubItem | null };
+  /** Tutti i documenti dell'azienda, per popolazione (stessa fonte della
+   *  barra laterale di /documenti: `document_category_counts`). */
+  documenti: ContoDocumenti;
+  /** Le date rilevate nei documenti, contate per natura dichiarata. */
+  nature: ContoNature & { parziale: boolean };
   /**
-   * Quante analisi chiedono una verifica, in tutta l'azienda.
-   *
-   * ⚠️ NON è `attention.length`, che è troncato al limite della Home, e non è
-   * più un conteggio fatto qui sulle analisi caricate: è il totale della STESSA
-   * interrogazione a cui porta la scheda (`/documenti?stato=to_verify`). Una
-   * scheda che dice un numero e una pagina che ne mostra un altro sono due
-   * verità sullo stesso fatto — vedi `documentHubService.attention`.
+   * Appartenenza da confermare, archiviati COMPRESI, con l'esempio più
+   * recente già passato dalla regola del titolo. `null` = il numero non è
+   * disponibile: non si mostra niente, mai uno zero finto. (Eccezione
+   * DICHIARATA alla regola sul fallback silenzioso: il silenzio qui non
+   * inventa nulla.)
    */
-  documentsToVerify: number;
-  documentCount: number;
+  ownership: { count: number; latest: DocumentHubItem | null } | null;
   /**
-   * ⚠️ I NUMERI DEGLI INCENTIVI VENGONO DAL DATABASE (`subsidy_home_summary`),
-   * non da un conteggio fatto qui su un elenco troncato. È la stessa disciplina
-   * di `counts`: un KPI che dice «3» perché ne ha caricate 3 mente.
-   *
-   * ⚠️ `null` quando la funzione non risponde con un oggetto, e chi legge deve
-   * trattarlo come «non lo sappiamo» — non come sette zeri. Mostrare zeri a chi
-   * non ha accesso sarebbe un guasto travestito da stato legittimo.
+   * Il blocco Opportunità: catalogo condiviso + lo stato della valutazione.
+   * `assessments` distingue «valutato: niente per te» da «mai valutato» —
+   * `subsidy_home_summary` da sola restituisce gli stessi zeri in entrambi i
+   * casi. `null` = lettura fallita, e il blocco lo dice invece di scegliere.
    */
-  incentives: IncentiveSummary | null;
-  opportunities: IncentiveOpportunity[];
-  cases: IncentiveCase[];
-  /** Letto una volta sola al caricamento: le funzioni pure lo ricevono. */
+  incentivi: {
+    catalogo: { programs: number; verified: number } | null;
+    assessments: number | null;
+    summary: IncentiveSummary | null;
+  };
+  /** Oggi in `YYYY-MM-DD`, ora locale: le funzioni pure lo ricevono. */
   today: string;
+  /** L'istante della lettura, per il piè di pagina: una pagina di conteggi
+   *  senza il suo «quando» invecchia in silenzio. */
+  loadedAt: string;
 }
 
-export interface OverviewData extends BaseData {
-  /**
-   * Le spunte della checklist sui documenti ATTIVI.
-   *
-   * ⚠️ QUI STAVA `analyses: DocumentAnalysis[]`, cioè TUTTE le analisi
-   * dell'azienda, scaricate per disegnare tre grafici. Erano la sola ragione per
-   * cui questa schermata leggeva `document_analyses` — una tabella che non
-   * conosce `archived_at` — e il 2026-08-15 la misura su Rossi SA ha detto
-   * quanto costava: Panoramica «19 documenti», archivio «2 di 2», entrambi veri
-   * di due insiemi diversi che nessuna delle due schermate dichiarava. I grafici
-   * sono in `/documenti`, dove l'insieme lo sceglie chi guarda; qui resta il
-   * completamento, che è lavoro in sospeso e quindi una domanda d'azione.
-   * ⚠️ Fino al 2026-07-28 esisteva anche `useHome`, una versione ridotta per la
-   * Panoramica: due caricatori quasi uguali per due pagine quasi uguali. Fuse
-   * le pagine, è rimasto un caricatore solo.
-   */
-  completion: ActionCompletion;
-  /**
-   * Documenti con appartenenza da confermare, archiviati COMPRESI (la
-   * didascalia lo dichiara). `null` = il numero non è disponibile in questo
-   * momento: non si mostra niente, mai uno zero finto.
-   */
-  ownershipToConfirm: number | null;
-}
-
-/** Tutto ciò che la Panoramica mostra: attività, documenti, incentivi, statistiche. */
+/** Tutto ciò che la Panoramica mostra: blocchi decisi dai numeri. */
 export function useOverview() {
   const { activeCompanyId, activeCompany } = useCompany();
   const companyId = activeCompanyId as string;
   const legalName = activeCompany?.legalName ?? '';
 
   return useAsync<OverviewData>(async () => {
-    const [todo, overdue, inProgress, completed, attention, documentCount, completion,
-      incentives, opportunities, cases, ownershipToConfirm] =
-      await Promise.all([
-        taskService.list(companyId, { view: 'todo', limit: HOME_TASKS }),
-        taskService.list(companyId, { view: 'overdue', limit: 1 }),
-        taskService.list(companyId, { view: 'all', status: 'in_progress', limit: 1 }),
-        taskService.list(companyId, { view: 'completed', limit: 1 }),
-        documentHubService.attention(companyId, 6),
-        documentHubService.activeCount(companyId),
-        documentHubService.actionCompletion(companyId),
-        incentivesService.summary(companyId, INCENTIVE_DAYS),
-        // Già ordinate dal database per rilevanza, e senza quelle messe da
-        // parte: la vista predefinita le esclude.
-        incentivesService.opportunities(companyId, { view: 'all' }),
-        incentivesService.cases(companyId),
-        // ⚠️ `null` E NON UN LANCIO: questo numero è informazione in più, non
-        // la Panoramica. Se la lettura fallisce la pagina esce lo stesso e del
-        // conteggio non si dice niente — l'assenza dell'indicatore non è un
-        // segno, e un numero provvisorio sarebbe un valore falso. (Eccezione
-        // DICHIARATA alla regola sul fallback silenzioso: qui il silenzio non
-        // inventa nulla.) I cognomi arrivano dalla rubrica; se anche quella
-        // fallisce si va avanti senza — un cognome non confrontabile non fa
-        // scattare nessun avviso, per regola.
-        (async () => {
-          const members = await memberService.listAssignable(companyId).catch(() => []);
-          return documentHubService.ownershipToConfirm(companyId, {
-            legalName, memberSurnames: cognomiDaRubrica(members.map((m) => m.name)),
-          });
-        })().catch(() => null),
-      ]);
+    const today = todayISO();
+    const [
+      aperte, contiAttivi, contiArchiviati, daVerificare, fallite, maiAnalizzati,
+      kinds, ownership, catalogo, assessments, summary,
+    ] = await Promise.all([
+      taskService.list(companyId, { view: 'todo', limit: TASKS_SPLIT_MAX }),
+      documentHubService.counts(companyId, false),
+      documentHubService.counts(companyId, true),
+      documentHubService.stateTotals(companyId, 'to_verify'),
+      documentHubService.stateTotals(companyId, 'failed'),
+      documentHubService.stateTotals(companyId, 'none'),
+      documentHubService.deadlineKinds(companyId),
+      // ⚠️ `null` E NON UN LANCIO: questo numero è informazione in più, non la
+      // Panoramica. I cognomi arrivano dalla rubrica; se anche quella fallisce
+      // si va avanti senza — un cognome non confrontabile non fa scattare
+      // nessun avviso, per regola.
+      (async () => {
+        const members = await memberService.listAssignable(companyId).catch(() => []);
+        return documentHubService.ownershipOverview(companyId, {
+          legalName, memberSurnames: cognomiDaRubrica(members.map((m) => m.name)),
+        });
+      })().catch(() => null),
+      incentivesService.catalogState(),
+      incentivesService.assessmentCount(companyId),
+      incentivesService.summary(companyId, INCENTIVE_DAYS),
+    ]);
+
     return {
-      tasks: todo.items,
-      counts: {
-        open: todo.total, overdue: overdue.total,
-        inProgress: inProgress.total, completed: completed.total,
+      tasks: splitOpenTasks(
+        aperte.items.map((t) => ({
+          title: t.title, dueDate: t.dueDate, appointmentDate: t.appointmentDate,
+        })),
+        aperte.total,
+        today,
+      ),
+      daVerificare,
+      fallite,
+      maiAnalizzati,
+      documenti: {
+        attivi: [...contiAttivi.values()].reduce((a, b) => a + b, 0),
+        archiviati: [...contiArchiviati.values()].reduce((a, b) => a + b, 0),
       },
-      attention: attention.items,
-      documentsToVerify: attention.toVerifyTotal,
-      documentCount, completion,
-      incentives, opportunities: opportunities.items, cases,
-      ownershipToConfirm,
-      today: todayISO(),
+      // Il TOTALE è quello esatto della funzione finestra; le nature sono
+      // contate sulle righe lette, e `parziale` dichiara quando le due cose
+      // non coprono lo stesso insieme.
+      nature: { ...contaNature(kinds.kinds), totale: kinds.totale, parziale: kinds.parziale },
+      ownership,
+      incentivi: { catalogo, assessments, summary },
+      today,
+      loadedAt: new Date().toISOString(),
     };
   }, [companyId, legalName]);
 }

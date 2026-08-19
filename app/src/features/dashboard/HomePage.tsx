@@ -1,42 +1,52 @@
 // ============================================================================
-// PANORAMICA — l'unica schermata d'insieme del prodotto.
+// HomePage — la Panoramica, disegnata DAI NUMERI (censimento 2026-08-19).
 //
-// ⚠️ FINO AL 2026-07-28 ERANO DUE: «Panoramica» su `/` e «Dashboard» su
-// `/dashboard`. Rispondevano alla stessa domanda — che cosa richiede attenzione
-// adesso — e calcolavano l'elenco delle priorità con la STESSA funzione
-// (`collectPriorities`). La differenza era solo che una mostrava anche i numeri
-// e i grafici. Due voci nella barra laterale per due viste dello stesso dato
-// costringono chi lavora a chiedersi ogni volta quale delle due aprire, e la
-// risposta giusta era «tutte e due».
+// Non è il cruscotto di un'azienda operativa: è la schermata di un'azienda i
+// cui 19 documenti sono tutti archiviati, con 16 analisi non conclusive, zero
+// termini dichiarati e una valutazione incentivi mai eseguita. Il compito non
+// è «mostrarti il tuo lavoro»: è dire cosa il sistema sa, cosa non ha potuto
+// concludere e cosa non ha mai provato a fare.
 //
-// Ora è una sola: il saluto e le scorciatoie di prima, più i numeri, i grafici
-// e le pratiche che stavano nell'altra. `/dashboard` reindirizza qui, perché
-// quel collegamento sta negli appunti e nei segnalibri delle persone.
+// LA FORMA: quattro blocchi in quest'ordine — decisioni, lavoro, limiti del
+// sistema, opportunità. Le decisioni per prime perché SBLOCCANO il resto:
+// il gate delle attività (`canCreateTask`) dipende letteralmente da loro.
+// I blocchi compaiono solo con contenuto: è un elenco di cose da fare, non
+// una griglia fissa da riempire. La visibilità la decide `overviewBlocks`,
+// che è puro e provato.
 //
-// ⚠️ SONO SPARITE ANCHE LE DUE SCHEDE «MODULO 1 / MODULO 2» che comparivano a
-// azienda vuota. Presentavano Admin AI e Subsidy AI come se il prodotto ne
-// avesse due: i moduli sono sette, e una schermata che ne annuncia due descrive
-// un prodotto che non esiste più. Le scorciatoie in cima portano già dove
-// portavano quelle schede.
+// COSA NON C'È, DI PROPOSITO:
+//   · nessun grafico — non esiste una serie storica, e un grafico su quattro
+//     numeri è decorazione;
+//   · nessuna percentuale di completamento su zero elementi;
+//   · nessun blocco scadenze — zero `term` in produzione: le date di natura
+//     non registrata sono una riga che le chiama col loro nome;
+//   · nessun elenco piatto per data — 6 delle prime 10 voci erano la stessa
+//     email di Stripe: ogni blocco mostra conteggio, esempio più recente e
+//     collegamento all'elenco già filtrato;
+//   · nessun punteggio composito — con la gravità satura su 16 documenti su
+//     19, qualunque punteggio sarebbe inventato e vestito da intelligenza;
+//   · nessun pulsante «Avvia la verifica» — `subsidy-worker` è invocabile solo
+//     dallo scheduler col suo segreto e il matching parte dai progetti:
+//     l'azione vera è descrivere un progetto, e il blocco porta lì.
+//
+// UN SOLO INSIEME: ogni conteggio copre TUTTI i documenti, archiviati
+// compresi, e il piè di pagina lo dichiara una volta per tutta la pagina.
+// I collegamenti portano a `list_documents`, che mostra una popolazione alla
+// volta: perciò i blocchi elencano una riga PER POPOLAZIONE, ognuna col suo
+// numero e la sua destinazione — il numero del blocco e quello della pagina
+// d'arrivo non possono divergere.
 // ============================================================================
 import { Link } from 'react-router-dom';
-import { PriorityMark } from '@/components/ui/PriorityMark';
-import { Bars } from '@/components/ui/Bars';
-import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
-import { ErrorState, SkeletonCard, SkeletonKpiGrid } from '@/components/ui/states';
+import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useOverview, type OverviewData } from './useOverview';
-import { collectPriorities, type PriorityItem } from './overview';
-import { RELEVANCE_KEY } from '@/features/incentives/incentivesModel';
-import { EligibilityMark } from '@/components/ui/EligibilityMark';
-import { daysUntil } from '@/lib/format';
-// ⚠️ I giorni di CALENDARIO, non i millisecondi: alle 23:30 una scadenza di
-// domani non deve contare come «oggi». È la stessa funzione usata da Attività e
-// dal Calendario — tre definizioni di «oggi» sarebbero tre schermate che prima
-// o poi si contraddicono.
-import { calendarDaysUntil } from '@/features/tasks/taskFormat';
+import { decidiBlocchi, statoValutazione } from './overviewBlocks';
+import { formatDate, formatDateTime } from '@/lib/format';
+import { documentLabelText } from '@/i18n/documentLabel';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/contexts/CompanyContext';
 import { useT, type TKey } from '@/i18n';
+import type { DocumentHubItem } from '@/types/models';
 
 /**
  * Il saluto, con il nome quando lo sappiamo.
@@ -61,323 +71,245 @@ function greetingSlot(): keyof typeof GREETING {
   return 'evening';
 }
 
-/**
- * La freccia in fondo a una scheda numerica.
- *
- * ⚠️ È un INDIZIO, non un bersaglio: il collegamento è la scheda intera, come
- * nelle righe delle priorità qui sotto. Sta in `aria-hidden` perché il
- * collegamento si annuncia già da sé — etichetta, numero e didascalia sono il
- * suo nome accessibile — e una freccia letta ad alta voce non aggiunge niente.
- */
-function KpiGo() {
-  return <span className="kpi-go" aria-hidden="true"><Icon name="arrowRight" className="ic-sm" /></span>;
-}
-
-function PriorityRow({ it }: { it: PriorityItem }) {
-  // Il collegamento è la riga, non la freccia: su un portatile con trackpad
-  // centrare un bersaglio di 16 pixel è una prova di mira. La freccia resta
-  // come indizio di dove si va.
+/** L'esempio di un blocco: la voce più recente, col nome deciso dalla regola
+ *  del titolo (`label`) — la prima riga di questa pagina è già stata «2.5». */
+function Esempio({ item }: { item: DocumentHubItem | null }) {
+  const t = useT();
+  if (!item) return null;
   return (
-    <Link className="action-row is-link" to={it.to} aria-label={`${it.title} — ${it.cta}`}>
-      <div className={`action-ico p-${it.priority}`}><Icon name={it.icon} className="ic-sm" /></div>
-      <div className="action-main">
-        <div className="action-title">{it.title}</div>
-        <div className="action-sub">{it.sub}</div>
-      </div>
-      <div className="action-meta">
-        {/* Stessa famiglia della riga di un'attività: la priorità è una
-            direzione. Tre pastiglie di tre colori dicevano la stessa cosa a
-            colpo d'occhio solo a chi distingue i colori. */}
-        <PriorityMark level={it.priority} />
-        <span className="action-link" aria-hidden="true"><Icon name="arrowRight" className="ic-sm" /></span>
-      </div>
-    </Link>
+    <div className="muted-sm ov-example">
+      {t('home.latestExample', { title: documentLabelText(item.label) })}
+    </div>
   );
 }
 
-function OverviewBody({ data }: { data: OverviewData }) {
+/**
+ * Una riga di conteggio che è anche il collegamento alla pagina che rende LO
+ * STESSO numero. `count` è già stato verificato > 0 da chi chiama.
+ */
+function RigaConteggio({ count, one, many, dove, to }: {
+  count: number; one: TKey; many: TKey; dove: TKey; to: string;
+}) {
   const t = useT();
-  const { tasks, counts, completion, incentives, documentsToVerify, documentCount } = data;
-  // `tasks` sono le attività aperte più urgenti (le prime della lista ordinata
-  // dal database), non tutte: per i CONTEGGI si usa `counts`, che il database
-  // calcola prima di paginare. Un numero preso dalla lunghezza di un elenco
-  // troncato direbbe «20» qualunque sia la realtà.
-  const withDate = tasks.filter((task) => task.dueDate);
-  // ⚠️ I NUMERI DEGLI INCENTIVI VENGONO DAL MOTORE 2.0 (`subsidy_home_summary`),
-  // non più dal matcher 1.0 che girava nel browser. Fino al 2026-07-30 questa
-  // schermata diceva «6 incentivi rilevanti» mentre `/incentivi` diceva
-  // «nessun progetto, 0 opportunità»: la stessa domanda, due risposte.
-  //
-  // ⚠️ `incentives` è `null` quando la funzione non risponde, e `null` NON è
-  // zero: si mostra «—», perché «non lo sappiamo» e «non ce ne sono» portano a
-  // due gesti diversi.
-  const highRelevance = incentives?.highRelevance ?? null;
-  const newOpportunities = incentives?.newOpportunities ?? null;
-  const activeCases = incentives?.openCases ?? null;
-  const activeProjects = incentives?.activeProjects ?? null;
+  return (
+    <div className="ov-line">
+      <Link to={to}>{t(count === 1 ? one : many, { n: count, dove: t(dove) })}</Link>
+    </div>
+  );
+}
 
-  // ⚠️ IL COMPLETAMENTO NON LEGGE PIÙ LO SNAPSHOT. Fino al 2026-08-15 questa
-  // riga era `analyses.forEach((a) => a.actions.forEach(...))` e contava
-  // `c.done` dentro `document_analyses.actions`: dalla 0010 quel campo è SEMPRE
-  // `false` — lo stato delle spunte vive in `action_progress` — quindi il
-  // numeratore era zero per costruzione. Mostrava «0 di 40», che era per caso
-  // il valore giusto, e nessuna spunta avrebbe mai potuto farlo salire: un verde
-  // falso in attesa del giorno in cui qualcuno avesse spuntato qualcosa.
-  // Ora `done` viene da `action_progress` e il denominatore dallo snapshot (che
-  // è l'unico posto in cui si sa quante azioni ESISTONO), sui soli documenti
-  // attivi: le azioni di un documento archiviato non sono lavoro in sospeso.
-  const compPct = completion.total ? Math.round((completion.done / completion.total) * 100) : 0;
+function BloccoDecisioni({ data }: { data: OverviewData }) {
+  const t = useT();
+  const ownership = data.ownership as { count: number; latest: DocumentHubItem | null };
+  return (
+    <section className="card mt-16 ov-block" aria-labelledby="ov-decisioni">
+      <h2 className="card-title" id="ov-decisioni">{t('home.blockDecisions')}</h2>
+      <div className="ov-line">
+        {ownership.count === 1
+          ? t('home.ownershipOne')
+          : t('home.ownershipMany', { n: ownership.count })}
+      </div>
+      <Esempio item={ownership.latest} />
+      {/* Il perché queste vengono PRIME: il gate delle attività dipende da loro. */}
+      <div className="muted-sm">
+        {t(ownership.count === 1 ? 'home.ownershipGateOne' : 'home.ownershipGateMany')}
+      </div>
+      <Link className="btn btn-sm mt-10" to="/documenti?appartenenza=1">
+        {t('home.openList')} <Icon name="arrowRight" className="ic-sm" />
+      </Link>
+    </section>
+  );
+}
 
-  // Le fasce restano chiavi tecniche e diventano etichette solo al render:
-  // prima erano stringhe italiane usate sia come chiave sia come testo, e in
-  // tedesco il grafico mostrava «Entro 30 gg».
-  const horizon = { overdue: 0, d30: 0, d90: 0, beyond: 0 };
-  withDate.forEach((task) => {
-    const d = daysUntil(task.dueDate) ?? 0;
-    if (d < 0) horizon.overdue++; else if (d <= 30) horizon.d30++; else if (d <= 90) horizon.d90++; else horizon.beyond++;
+function BloccoDaFare({ data }: { data: OverviewData }) {
+  const t = useT();
+  const s = data.tasks;
+  // Le parti della riga, nell'ordine della bozza: ciò che esiste prima, poi le
+  // due dichiarazioni che pesano anche da zero — «nessun termine» e «nessuno
+  // scaduto» sono affermazioni, non assenze (regola 2 del brief).
+  const parti: string[] = [];
+  if (s.appuntamenti > 0) {
+    parti.push(t(s.appuntamenti === 1 ? 'home.tasksApptsOne' : 'home.tasksApptsMany', { n: s.appuntamenti }));
+  }
+  parti.push(
+    s.termini === 0 ? t('home.tasksTermsNone')
+      : t(s.termini === 1 ? 'home.tasksTermsOne' : 'home.tasksTermsMany', { n: s.termini }),
+  );
+  if (s.senzaData > 0) {
+    parti.push(t(s.senzaData === 1 ? 'home.tasksNoDateOne' : 'home.tasksNoDateMany', { n: s.senzaData }));
+  }
+  parti.push(
+    s.scadute === 0 ? t('home.tasksOverdueNone')
+      : t(s.scadute === 1 ? 'home.tasksOverdueOne' : 'home.tasksOverdueMany', { n: s.scadute }),
+  );
+
+  const primoData = s.primo ? (s.primo.dueDate ?? s.primo.appointmentDate) : null;
+  return (
+    <section className="card mt-16 ov-block" aria-labelledby="ov-dafare">
+      <h2 className="card-title" id="ov-dafare">{t('home.blockToDo')}</h2>
+      {s.aperte > 0 && <div className="ov-line">{parti.join(' · ')}</div>}
+      {/* Il diviso può essere parziale (tetto dichiarato): la frase lo dice,
+          con i due numeri — quante lette e quante sono. */}
+      {s.parziale && <div className="muted-sm">{t('home.tasksSplitPartial', { n: s.lette, tot: s.aperte })}</div>}
+      {s.primo && (
+        <div className="muted-sm ov-example">
+          {primoData
+            ? t('home.firstItem', { title: s.primo.title, date: formatDate(primoData) })
+            : t('home.firstItemNoDate', { title: s.primo.title })}
+        </div>
+      )}
+      {/* Le date dei documenti, chiamate col loro nome: finché non esiste un
+          `term`, un blocco scadenze sarebbe due date incerte vestite da
+          termini. Zero term in tutta la produzione, misurato il 2026-08-19. */}
+      {data.nature.totale > 0 && (
+        <div className="ov-line">
+          {data.nature.termini === 0
+            ? t(data.nature.totale === 1 ? 'home.datesNoTermOne' : 'home.datesNoTermMany', { n: data.nature.totale })
+            : t('home.datesMixed', {
+              n: data.nature.totale, t: data.nature.termini,
+              e: data.nature.nonObbliganti, r: data.nature.nonRegistrate,
+            })}
+        </div>
+      )}
+      {s.aperte > 0 && (
+        <Link className="btn btn-sm mt-10" to="/attivita">
+          {t('home.ctaTasks')} <Icon name="arrowRight" className="ic-sm" />
+        </Link>
+      )}
+    </section>
+  );
+}
+
+function BloccoSistema({ data }: { data: OverviewData }) {
+  const t = useT();
+  const { daVerificare, fallite, maiAnalizzati } = data;
+  // L'esempio del blocco è la voce più recente fra le categorie presenti.
+  const esempio = [daVerificare.esempio, fallite.esempio, maiAnalizzati.esempio]
+    .filter((x): x is DocumentHubItem => x !== null)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
+  return (
+    <section className="card mt-16 ov-block" aria-labelledby="ov-sistema">
+      <h2 className="card-title" id="ov-sistema">{t('home.blockSystem')}</h2>
+      {fallite.attivi > 0 && (
+        <RigaConteggio count={fallite.attivi} one="home.sysFailedOne" many="home.sysFailedMany"
+          dove="home.popActive" to="/documenti?stato=failed" />
+      )}
+      {fallite.archiviati > 0 && (
+        <RigaConteggio count={fallite.archiviati} one="home.sysFailedOne" many="home.sysFailedMany"
+          dove="home.popArchived" to="/documenti?stato=failed&archiviati=1" />
+      )}
+      {daVerificare.attivi > 0 && (
+        <RigaConteggio count={daVerificare.attivi} one="home.sysToVerifyOne" many="home.sysToVerifyMany"
+          dove="home.popActive" to="/documenti?stato=to_verify" />
+      )}
+      {daVerificare.archiviati > 0 && (
+        <RigaConteggio count={daVerificare.archiviati} one="home.sysToVerifyOne" many="home.sysToVerifyMany"
+          dove="home.popArchived" to="/documenti?stato=to_verify&archiviati=1" />
+      )}
+      {maiAnalizzati.attivi > 0 && (
+        <RigaConteggio count={maiAnalizzati.attivi} one="home.sysNeverOne" many="home.sysNeverMany"
+          dove="home.popActive" to="/documenti?stato=none" />
+      )}
+      {maiAnalizzati.archiviati > 0 && (
+        <RigaConteggio count={maiAnalizzati.archiviati} one="home.sysNeverOne" many="home.sysNeverMany"
+          dove="home.popArchived" to="/documenti?stato=none&archiviati=1" />
+      )}
+      <Esempio item={esempio} />
+    </section>
+  );
+}
+
+function BloccoOpportunita({ data, companyName }: { data: OverviewData; companyName: string }) {
+  const t = useT();
+  const { catalogo, assessments, summary } = data.incentivi;
+  const stato = statoValutazione(assessments);
+  return (
+    <section className="card mt-16 ov-block" aria-labelledby="ov-opportunita">
+      <h2 className="card-title" id="ov-opportunita">{t('home.blockOpportunities')}</h2>
+      <div className="ov-line">
+        {catalogo === null
+          ? t('home.catalogUnreadable')
+          : catalogo.verified === catalogo.programs
+            ? t(catalogo.programs === 1 ? 'home.catalogAllVerifiedOne' : 'home.catalogAllVerifiedMany', { n: catalogo.programs })
+            : t('home.catalogSomeVerified', { n: catalogo.programs, v: catalogo.verified })}
+      </div>
+      {stato === 'mai-eseguita' && (
+        <>
+          <div className="ov-line">{t('home.assessNever', { company: companyName })}</div>
+          <Link className="btn btn-sm mt-10" to="/incentivi?scheda=progetti">
+            {t('home.describeProject')} <Icon name="arrowRight" className="ic-sm" />
+          </Link>
+        </>
+      )}
+      {stato === 'non-misurabile' && (
+        <div className="muted-sm">{t('home.assessUnknown')}</div>
+      )}
+      {stato === 'eseguita' && (
+        <>
+          {summary === null
+            ? <div className="muted-sm">{t('home.summaryUnknown')}</div>
+            : (
+              <div className="ov-line">
+                {t('home.assessStats', {
+                  relevant: summary.highRelevance, fresh: summary.newOpportunities,
+                  cases: summary.openCases, projects: summary.activeProjects,
+                })}
+              </div>
+            )}
+          <Link className="btn btn-sm mt-10" to="/incentivi">
+            {t('home.ctaSubsidies')} <Icon name="arrowRight" className="ic-sm" />
+          </Link>
+        </>
+      )}
+    </section>
+  );
+}
+
+function OverviewBody({ data, companyName }: { data: OverviewData; companyName: string }) {
+  const t = useT();
+  const blocchi = decidiBlocchi({
+    ownership: data.ownership?.count ?? null,
+    aperte: data.tasks.aperte,
+    dateRilevate: data.nature.totale,
+    daVerificare: data.daVerificare.attivi + data.daVerificare.archiviati,
+    fallite: data.fallite.attivi + data.fallite.archiviati,
+    maiAnalizzati: data.maiAnalizzati.attivi + data.maiAnalizzati.archiviati,
+    programmiInCatalogo: data.incentivi.catalogo?.programs ?? 0,
+    openCases: data.incentivi.summary?.openCases ?? 0,
+    activeProjects: data.incentivi.summary?.activeProjects ?? 0,
   });
-
-  // Oggi e i prossimi sette giorni, contati sulle attività già caricate. Nessuna
-  // interrogazione in più: `data.tasks` sono le attività da fare, ordinate dal
-  // database, ed è esattamente l'insieme su cui la domanda ha senso.
-  const dueToday = tasks.filter((task) => calendarDaysUntil(task.dueDate) === 0).length;
-  const dueWeek = tasks.filter((task) => {
-    const d = calendarDaysUntil(task.dueDate);
-    return d != null && d >= 0 && d <= 7;
-  }).length;
-
-  const priorities = collectPriorities(data).slice(0, 8);
 
   return (
     <>
-      {/* ---- I numeri, con una gerarchia DICHIARATA -----------------------
-           Cinque schede uguali su una griglia da quattro colonne facevano un
-           3+2 con un buco in fondo: una forma che nessuno ha scelto, e cinque
-           numeri della stessa misura che non dicono quale guardare per primo.
-           Ora ce n'è UNO grande — le attività aperte, che è il conto su cui
-           questo prodotto lavora — e tre piccoli accanto.
-           ⚠️ Nessun settimo gradino tipografico: la differenza fra --fs-h1 e
-           --fs-h2 (30 e 22px) basta a dichiarare la gerarchia, e la scala resta
-           di sei gradini come dice docs/design-system.md.
+      {blocchi.decisioni && <BloccoDecisioni data={data} />}
+      {blocchi.daFare && <BloccoDaFare data={data} />}
+      {blocchi.sistema && <BloccoSistema data={data} />}
 
-           ⚠️⚠️ OGNI SCHEDA È UN COLLEGAMENTO, e la regola che ne deriva è più
-           importante della riga di CSS: un numero senza un elenco che lo spieghi
-           NON È UN KPI. Per questo «Azioni da completare» non c'è più — contava
-           le voci di checklist dentro le analisi, e nessuna pagina di questo
-           prodotto le elenca: sarebbe stata l'unica scheda che non porta da
-           nessuna parte. Le voci che contano diventano attività (regola di non
-           duplicazione, `overview.ts`), e le attività hanno il loro elenco.
-
-           ⚠️ E la destinazione deve rendere LO STESSO NUMERO, non un elenco
-           vagamente imparentato:
-             attività aperte      → /attivita             vista «da fare», che è
-                                                          la stessa di `counts.open`
-             in scadenza oggi     → /calendario           le stesse attività, per data
-             documenti da verif.  → ?stato=to_verify      lo stesso filtro che ha
-                                                          prodotto il conteggio
-             incentivi rilevanti  → ?vista=high           `p_view='high'` è la
-                                                          stessa condizione di
-                                                          `highRelevance` in SQL
-           ---------------------------------------------------------------- */}
-      <div className="kpi-lead">
-        <Link className="kpi kpi-hero kpi-link" to="/attivita">
-          <div className={`kpi-ico ${counts.overdue ? 'warn' : ''}`}><Icon name="clock" className="ic-sm" /></div>
-          <div className="kpi-label">{t('dashboard.kpiTasksOpen')}</div>
-          <div className={`kpi-value ${counts.overdue ? 'hot' : ''}`}>{counts.open}</div>
-          {/* Lo ZERO PROPONE: senza attività aperte le due frasi di sotto
-              direbbero «nessuna scaduta», che è vero e non serve a niente —
-              descrive l'assenza di un problema dentro un insieme vuoto. */}
-          <div className="kpi-sub">
-            {counts.open === 0
-              ? t('dashboard.kpiTasksNone')
-              : (
-                <>
-                  {counts.overdue
-                    ? t(counts.overdue === 1 ? 'dashboard.kpiOverdueOne' : 'dashboard.kpiOverdueMany', { n: counts.overdue })
-                    : t('dashboard.kpiNoneOverdue')}
-                  {counts.inProgress ? ` · ${t('dashboard.kpiTasksInProgress', { n: counts.inProgress })}` : ''}
-                </>
-              )}
+      {/* LO STATO DAVVERO VUOTO non dice «tutto a posto»: dice cosa è stato
+          controllato. Uno zero senza il suo insieme è indistinguibile da «non
+          ho guardato» — è la domanda 1 del censimento, risolta dichiarando. */}
+      {blocchi.vuotoOperativo && (
+        <section className="card mt-16 ov-block" aria-labelledby="ov-vuoto">
+          <h2 className="card-title" id="ov-vuoto">{t('home.emptyTitle')}</h2>
+          <div className="ov-line">
+            {t('home.emptyChecked', {
+              docs: data.documenti.attivi + data.documenti.archiviati,
+              tasks: data.tasks.aperte,
+            })}
           </div>
-          <KpiGo />
-        </Link>
-        <div className="kpi-lead-rest">
-          {/* §92 — UNA scheda, non una dashboard nuova. «Scadute» c'era già nella
-              scheda accanto: qui si aggiunge ciò che mancava, cioè oggi e la
-              settimana. I due numeri escono dalle STESSE attività, contate con
-              `calendarDaysUntil` — la stessa funzione che usano Attività e il
-              Calendario — perché tre definizioni di «oggi» sono tre schermate che
-              prima o poi si contraddicono. */}
-          <Link className="kpi kpi-sm kpi-link" to="/calendario">
-            <div className={`kpi-ico ${dueToday ? 'warn' : ''}`}><Icon name="calendar" className="ic-sm" /></div>
-            <div className="kpi-label">{t('dashboard.kpiDueToday')}</div>
-            <div className={`kpi-value ${dueToday ? 'hot' : ''}`}>{dueToday}</div>
-            {/* A zero non si ripete «Nei prossimi 7 giorni: 0»: si allarga la
-                finestra e si dice la cosa quieta che quel numero significa. */}
-            <div className="kpi-sub">
-              {dueToday === 0 && dueWeek === 0
-                ? t('dashboard.kpiDueNone')
-                : t('dashboard.kpiDueWeek', { n: dueWeek })}
-            </div>
-            <KpiGo />
-          </Link>
-          <Link className="kpi kpi-sm kpi-link" to="/documenti?stato=to_verify">
-            <div className={`kpi-ico ${documentsToVerify ? 'amb' : ''}`}><Icon name="fileSearch" className="ic-sm" /></div>
-            <div className="kpi-label">{t('dashboard.kpiToVerify')}</div>
-            <div className="kpi-value">{documentsToVerify}</div>
-            {/* Due zeri diversi: non c'è ancora nessun documento (e allora il
-                gesto è portarne uno) oppure ci sono e nessuno chiede una
-                verifica. La stessa distinzione già fatta per gli incentivi. */}
-            <div className="kpi-sub">
-              {documentsToVerify > 0
-                ? t('dashboard.kpiToVerifySub')
-                : documentCount === 0
-                  ? t('dashboard.kpiToVerifyNoDocs')
-                  : t('dashboard.kpiToVerifyNone')}
-            </div>
-            <KpiGo />
-          </Link>
-          {/* ⚠️ La destinazione SEGUE la frase: quando la frase dice «crea un
-              progetto», il collegamento porta ai progetti — non a un elenco di
-              opportunità che non esistono ancora. */}
-          <Link
-            className="kpi kpi-sm kpi-link"
-            to={highRelevance === null ? '/incentivi'
-              : activeProjects === 0 ? '/incentivi?scheda=progetti'
-              : '/incentivi?vista=high'}
-          >
-            <div className="kpi-ico"><Icon name="star" className="ic-sm" /></div>
-            <div className="kpi-label">{t('dashboard.kpiSubsidies')}</div>
-            <div className="kpi-value">{highRelevance ?? '—'}</div>
-            {/* ⚠️ QUATTRO frasi e non due, perché le situazioni sono quattro e
-                portano a gesti diversi: non lo sappiamo · non c'è ancora un
-                progetto (e senza progetto il motore non ha una domanda a cui
-                rispondere) · c'è un progetto ma nessuna opportunità molto
-                rilevante · ci sono opportunità. Un «completa il profilo»
-                indistinto le confondeva tutte. */}
-            <div className="kpi-sub">
-              {highRelevance === null
-                ? t('dashboard.kpiSubsidiesUnknown')
-                : activeProjects === 0
-                  ? t('dashboard.kpiSubsidiesNoProject')
-                  : highRelevance === 0
-                    ? t('dashboard.kpiSubsidiesNone')
-                    : t('dashboard.kpiSubsidiesSub')}
-            </div>
-            <KpiGo />
-          </Link>
-        </div>
-      </div>
-
-      {/* ---- Appartenenza da confermare ------------------------------------
-           Un contatore «analisi affidabili: 0» non sarebbe sbagliato, sarebbe
-           inutile: questo numero invece porta a un'azione — confermare o
-           rimuovere. Compare SOLO quando è maggiore di zero, e quando la
-           lettura fallisce non compare affatto (`null` non è zero: niente
-           numero provvisorio, niente zero finto). Archiviati compresi, e la
-           didascalia lo dichiara: la conferma è un lavoro che un documento
-           archiviato chiede lo stesso. */}
-      {data.ownershipToConfirm != null && data.ownershipToConfirm > 0 && (
-        <div className="info-box mt-12" role="status">
-          <Icon name="alert" className="ic-sm" />
-          <span>
-            <Link to="/documenti">
-              {data.ownershipToConfirm === 1
-                ? t('dashboard.ownershipToConfirmOne')
-                : t('dashboard.ownershipToConfirmMany', { n: data.ownershipToConfirm })}
-            </Link>
-            {' — '}{t('dashboard.ownershipToConfirmSub')}
-          </span>
-        </div>
+        </section>
       )}
 
-      <div className="card mt-16">
-        <div className="card-title">{t('dashboard.nextActions')}</div>
-        <div className="muted-sm dash-sorted">{t('dashboard.sortedByPriority')}</div>
-        {priorities.length === 0 ? (
-          <div className="priority-empty"><Icon name="checkCircle" /><div>{t('dashboard.allDone')}</div></div>
-        ) : priorities.map((it, i) => <PriorityRow key={i} it={it} />)}
+      {blocchi.opportunita && <BloccoOpportunita data={data} companyName={companyName} />}
+
+      {/* UNA VOLTA, PER TUTTA LA PAGINA: l'insieme e il quando. Ogni numero qui
+          sopra conta anche gli archiviati — è la dichiarazione che mancava
+          quando «da verificare: 0» e «appartenenza: 7» convivevano contando
+          due universi diversi. */}
+      <div className="footnote" role="contentinfo">
+        {t('home.footPopulation')}{' '}
+        {t('home.footUpdated', { time: formatDateTime(data.loadedAt) })}
       </div>
-
-      <div className="grid-2 mt-16">
-        <div className="card"><div className="card-title">{t('dashboard.upcomingDeadlines')}</div>
-          {withDate.length === 0 ? <div className="chart-empty">{t('dashboard.noDatedDeadlines')}</div> : (
-            <Bars rows={[
-              { cat: t('dashboard.horizonOverdue'), val: horizon.overdue, cls: horizon.overdue > 0 ? 's-alta' : '' },
-              { cat: t('dashboard.horizon30'), val: horizon.d30 },
-              { cat: t('dashboard.horizon90'), val: horizon.d90 },
-              { cat: t('dashboard.horizonBeyond'), val: horizon.beyond },
-            ]} />
-          )}
-        </div>
-        <div className="card"><div className="card-title">{t('dashboard.completion')}</div>
-          {completion.total === 0 ? <div className="chart-empty">{t('dashboard.noChecklist')}</div> : (
-            <>
-              <div className="meter"><div className="meter-num">{compPct}%</div>
-                <div className="meter-track"><div className="meter-fill" style={{ width: `${compPct}%` }} /></div></div>
-              {/* ⚠️ L'INSIEME NELLA FRASE, non sottinteso: «su tutti i documenti»
-                  era falso due volte — comprendeva gli archiviati e non li
-                  contava comunque. Ora dice su quanti documenti attivi è
-                  calcolato, e se il tetto ha morso lo dichiara invece di
-                  presentare una parte come il tutto. */}
-              <div className="kpi-sub mt-10">
-                {t('dashboard.completionSub', { done: completion.done, total: completion.total })}
-                {' · '}
-                {completion.documents < completion.documentsTotal
-                  ? t('dashboard.completionScopePartial', {
-                    n: completion.documents, total: completion.documentsTotal,
-                  })
-                  // Due chiavi per il singolare: «su 1 documenti attivi» è la
-                  // frase che esce fingendo che l'i18n abbia il plurale.
-                  : t(completion.documents === 1 ? 'dashboard.completionScopeOne' : 'dashboard.completionScope',
-                    { n: completion.documents })}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {incentives !== null && (highRelevance ?? 0) + (activeCases ?? 0) > 0 && (
-        <div className="card mt-16"><div className="card-title">{t('dashboard.subsidiesAndCases')}</div>
-          <div className="dash-inc-stats">
-            <span className="lang-chip">{highRelevance} <b>{t('dashboard.statRelevant')}</b></span>
-            <span className="lang-chip">{newOpportunities} <b>{t('dashboard.statNew')}</b></span>
-            <span className="lang-chip">{activeCases} <b>{t('dashboard.statActiveCases')}</b></span>
-          </div>
-          {data.opportunities.slice(0, 3).map((o) => (
-            // ⚠️ NIENTE PUNTEGGIO: la rilevanza è una FASCIA. «82/100» letto da
-            // un imprenditore diventa «82% di possibilità di ottenerlo», che è
-            // una cosa che questo prodotto non sa — ed è esattamente ciò che
-            // questa riga mostrava fino al 2026-07-30.
-            // Un solo colore forte per riga: lo prende l'idoneità.
-            <div className="list-row" key={o.id}>
-              <div className="list-main">
-                <div className="list-title">{o.programName}</div>
-                <div className="list-sub">
-                  {o.authority} · {t(RELEVANCE_KEY[o.relevanceLevel])}
-                </div>
-              </div>
-              {o.programAvailability === 'suspended'
-                ? <Tag tone="attention">{t('incentives.catalog.suspended')}</Tag>
-                : <EligibilityMark status={o.eligibilityStatus} />}
-            </div>
-          ))}
-          <Link className="btn btn-sm mt-10" to="/incentivi">{t('dashboard.allSubsidies')} <Icon name="arrowRight" className="ic-sm" /></Link>
-        </div>
-      )}
-
-      {/* ⚠️ QUI FINIVA «STATISTICHE DOCUMENTI» — urgenza, tipo, lingue — e dal
-          2026-08-15 sta in `/documenti`, in una sezione chiusa sotto la lista.
-          Non è un trasloco estetico: §37 dice che questa schermata è una
-          dashboard d'AZIONE, e «quanti documenti per lingua» non risponde a
-          «cosa richiede la mia attenzione oggi». Soprattutto, quei tre grafici
-          erano la SOLA ragione per cui la Panoramica leggeva tutte le analisi
-          dell'azienda — `document_analyses` filtrata per sola azienda, una
-          tabella che non sa cosa sia `archived_at`. Risultato misurato su Rossi
-          SA: la Panoramica diceva «19 documenti», l'archivio «2 di 2». Nessuno
-          dei due era falso, nessuno dei due diceva quale insieme contava.
-          Nell'archivio l'insieme lo sceglie chi guarda, con l'interruttore
-          Attivi/Archiviati che quella pagina ha già. */}
     </>
   );
 }
@@ -385,6 +317,7 @@ function OverviewBody({ data }: { data: OverviewData }) {
 export function HomePage() {
   const t = useT();
   const { profile } = useAuth();
+  const { activeCompany } = useCompany();
   const { loading, error, data, reload } = useOverview();
 
   const slot = GREETING[greetingSlot()];
@@ -409,12 +342,16 @@ export function HomePage() {
       </div>
 
       <div className="mt-16">
-        {loading && <><SkeletonKpiGrid lead /><div className="mt-16"><SkeletonCard /></div></>}
+        {/* Lo scheletro somiglia a ciò che arriva: blocchi, non una griglia
+            di KPI che questa pagina non ha più. */}
+        {loading && <><SkeletonCard /><div className="mt-16"><SkeletonCard /></div></>}
         {/* Il guasto viene PRIMA di qualunque interpretazione: senza questo ramo
             una panoramica che non ha potuto leggere niente sembrerebbe una
             panoramica senza niente da fare. */}
         {error && <ErrorState message={error} onRetry={reload} />}
-        {!loading && !error && data && <OverviewBody data={data} />}
+        {!loading && !error && data && (
+          <OverviewBody data={data} companyName={activeCompany?.legalName ?? ''} />
+        )}
       </div>
 
       <div className="footnote">{t('legal.disclaimer')}</div>

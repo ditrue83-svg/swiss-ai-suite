@@ -428,6 +428,12 @@ export const it = {
     filtersShow: 'Filtri',
     filtersHide: 'Nascondi i filtri',
     clearFilters: 'Rimuovi filtri',
+    // Il modo «appartenenza da confermare» (`?appartenenza=1`), destinazione
+    // del blocco decisioni della Panoramica: copre attivi E archiviati.
+    ownershipFilterOne: 'Filtro attivo: 1 documento con appartenenza da confermare, fra attivi e archiviati insieme',
+    ownershipFilterMany: 'Filtro attivo: {n} documenti con appartenenza da confermare, fra attivi e archiviati insieme',
+    ownershipFilterPartial: 'lettura al tetto: l’elenco può essere incompleto',
+    ownershipFilterClear: 'Togli il filtro',
     allCategories: 'Tutti',
     uncategorized: 'Da classificare',
     viewActive: 'Attivi',
@@ -1062,75 +1068,45 @@ export const it = {
     // italiano l'articolo faceva la differenza.
     analyzeDoc: 'Analizza documento',
     findSubsidies: 'Trova incentivi',
-    prioActivity: 'Attività',
-    prioNoDeadline: 'senza scadenza',
-    prioOverdue: 'scaduta da {n} gg', prioToday: 'scade oggi', prioInDays: 'tra {n} gg',
-    prioCaseOfficial: 'Pratica · termine dell’ente', prioCaseInternal: 'Pratica · scadenza interna',
-    // In Panoramica i documenti compaiono SOLO quando richiedono attenzione: un
-    // documento analizzato e archiviato correttamente non è una priorità.
-    prioDocToVerify: 'analisi da verificare', prioDocFailed: 'analisi non riuscita',
-    ctaTasks: 'Apri le attività', ctaDocument: 'Apri il documento', ctaSubsidies: 'Vai agli incentivi',
-  },
-  dashboard: {
-    sortedByPriority: 'Ordinate per priorità e scadenza.',
-    noDatedDeadlines: 'Nessuna scadenza con data.',
-    noChecklist: 'Nessuna checklist ancora. Analizza un documento.',
-    allSubsidies: 'Vedi tutti gli incentivi',
-    // Il sistema i18n non ha regole di plurale: dove il numero cambia la frase
-    // ci sono due chiavi e la scelta si fa nel componente. Cinque casi non
-    // giustificano una libreria, ma «1 documenti coinvolti» sì un intervento.
-    kpiTasksOpen: 'Attività aperte',
-    kpiTasksInProgress: '{n} in corso',
-    kpiOverdueOne: '{n} già scaduta',
-    kpiOverdueMany: '{n} già scadute',
-    kpiNoneOverdue: 'nessuna scaduta',
-    kpiDueToday: 'In scadenza oggi',
-    kpiDueWeek: 'Nei prossimi 7 giorni: {n}',
-    // ⚠️ «ATTIVI» NELL'ETICHETTA, e non è una parola di troppo: il numero conta
-    // i documenti non archiviati, e fino al 2026-08-15 la stessa schermata più
-    // in basso ne dichiarava 19 contando anche gli archiviati. Un numero che non
-    // dice cosa conta rende inaffidabile anche quello accanto.
-    kpiToVerify: 'Documenti attivi da verificare',
-    // ⚠️ «Incertezze gravi» e non «ente incerto»: dal 2026-08-14 il numero è il
-    // totale di `?stato=to_verify`, cioè ciò che il server chiama
-    // `needs_review` — confidenza sotto 0,45 oppure un'incertezza di gravità
-    // alta (`reviewStatus`, persist.ts). La didascalia dice la regola vera, non
-    // quella che il conteggio usava prima.
-    kpiToVerifySub: 'confidenza bassa o incertezze gravi',
-    ownershipToConfirmOne: '1 documento con appartenenza da confermare',
-    ownershipToConfirmMany: '{n} documenti con appartenenza da confermare',
-    ownershipToConfirmSub: 'archiviati compresi',
-    kpiSubsidies: 'Incentivi rilevanti',
-    kpiSubsidiesSub: 'idoneità da verificare',
-    kpiSubsidiesUnknown: 'dato non disponibile',
-    kpiSubsidiesNoProject: 'crea un progetto per cercare',
-    // ---- LO ZERO PROPONE ----------------------------------------------------
-    // Uno zero senza messaggio è spazio morto: la didascalia allarga la finestra
-    // («questa settimana») o dice il gesto successivo. Tono quieto, mai allarme:
-    // non c'è niente che non va: c'è qualcosa che si può fare.
-    kpiTasksNone: 'niente in sospeso: crea un’attività quando serve',
-    kpiDueNone: 'nessuna scadenza questa settimana',
-    kpiToVerifyNone: 'nessuna analisi in attesa',
-    kpiToVerifyNoDocs: 'analizza il primo documento',
-    kpiSubsidiesNone: 'nessuna opportunità molto rilevante',
-    statNew: 'nuove',
-    nextActions: 'Prossime azioni',
-    allDone: 'Nessuna azione prioritaria: sei in pari.',
-    upcomingDeadlines: 'Scadenze in arrivo',
-    completion: 'Completamento azioni',
-    completionSub: '{done} di {total} azioni completate',
-    // Due chiavi e non una: il sistema i18n non ha regole di plurale, e «su 1
-    // documenti attivi» è la frase che si ottiene fingendo che le abbia.
-    completionScopeOne: 'su 1 documento attivo',
-    completionScope: 'su {n} documenti attivi',
-    completionScopePartial: 'sui primi {n} di {total} documenti attivi',
-    subsidiesAndCases: 'Incentivi e pratiche',
-    statRelevant: 'rilevanti',
-    statActiveCases: 'pratiche attive',
-    horizonOverdue: 'Scadute',
-    horizon30: 'Entro 30 giorni',
-    horizon90: 'Da 31 a 90 giorni',
-    horizonBeyond: 'Oltre 90 giorni',
+    ctaTasks: 'Apri le attività', ctaSubsidies: 'Vai agli incentivi',
+    // --- I blocchi della Panoramica disegnata dai numeri (2026-08-19) -------
+    blockDecisions: 'Richiede una tua decisione',
+    ownershipOne: '1 documento con appartenenza da confermare',
+    ownershipMany: '{n} documenti con appartenenza da confermare',
+    ownershipGateOne: 'Finché non è confermato non può generare attività.',
+    ownershipGateMany: 'Finché non sono confermati non possono generare attività.',
+    latestExample: 'il più recente: «{title}»',
+    openList: 'Apri l’elenco',
+    blockToDo: 'Da fare',
+    tasksApptsOne: '1 appuntamento', tasksApptsMany: '{n} appuntamenti',
+    tasksTermsNone: 'nessun termine', tasksTermsOne: '1 termine', tasksTermsMany: '{n} termini',
+    tasksNoDateOne: '1 senza data', tasksNoDateMany: '{n} senza data',
+    tasksOverdueNone: 'nessuno scaduto', tasksOverdueOne: '1 scaduto', tasksOverdueMany: '{n} scaduti',
+    tasksSplitPartial: 'ripartizione calcolata sulle prime {n} attività di {tot}',
+    firstItem: 'la prima: «{title}» — {date}',
+    firstItemNoDate: 'la prima: «{title}»',
+    datesNoTermOne: '1 data rilevata nei documenti, non riconosciuta come termine',
+    datesNoTermMany: '{n} date rilevate nei documenti, nessuna riconosciuta come termine',
+    datesMixed: '{n} date nei documenti: {t} termini, {e} che non obbligano l’azienda, {r} di natura non registrata',
+    blockSystem: 'Il sistema non ha potuto concludere',
+    sysToVerifyOne: '1 analisi da verificare {dove}', sysToVerifyMany: '{n} analisi da verificare {dove}',
+    sysFailedOne: '1 analisi non riuscita {dove}', sysFailedMany: '{n} analisi non riuscite {dove}',
+    sysNeverOne: '1 documento caricato e mai analizzato {dove}', sysNeverMany: '{n} documenti caricati e mai analizzati {dove}',
+    popActive: 'fra i documenti attivi', popArchived: 'fra gli archiviati',
+    blockOpportunities: 'Opportunità',
+    catalogAllVerifiedOne: '1 programma in banca dati, verificato.',
+    catalogAllVerifiedMany: '{n} programmi in banca dati, verificati.',
+    catalogSomeVerified: '{n} programmi in banca dati, {v} verificati.',
+    catalogUnreadable: 'Il catalogo non è leggibile in questo momento.',
+    assessNever: 'La verifica di idoneità per {company} non è mai stata eseguita: parte da un progetto descritto.',
+    assessUnknown: 'Lo stato della verifica di idoneità non è leggibile in questo momento.',
+    describeProject: 'Descrivi un progetto',
+    assessStats: '{relevant} rilevanti · {fresh} nuove · {cases} pratiche aperte · {projects} progetti attivi',
+    summaryUnknown: 'I numeri degli incentivi non sono leggibili in questo momento.',
+    emptyTitle: 'Niente in sospeso',
+    emptyChecked: 'Documenti controllati: {docs} (archiviati compresi) · attività aperte: {tasks}. Niente richiede un gesto adesso.',
+    footPopulation: 'Questa pagina conta tutti i documenti dell’azienda, archiviati compresi.',
+    footUpdated: 'Ultimo aggiornamento: {time}.',
   },
   // ---- Stampa / esportazione PDF ------------------------------------------
   // Il foglio finisce nel fascicolo di un cliente: le parole sono quelle di un
