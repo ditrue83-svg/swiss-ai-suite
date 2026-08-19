@@ -272,6 +272,37 @@ Cancelleria comunale di Lugano`;
   ok(rm.deadline.requiresVerification === true,
     'MA marcata DA VERIFICARE: un\'interpretazione che nessuno ha fatto non è un fatto');
 
+  // ⚠️⚠️ E LA RISPOSTA CONTRADDITTORIA VALE QUANTO IL SILENZIO (2026-08-19).
+  // Il prompt definisce `none` come «se non c'è alcuna data». Un output che
+  // dichiara `type:"explicit"`, `date:"2026-09-10"` e `dateKind:"none"` non ha
+  // risposto alla domanda: si è contraddetto. Ma `kindUndeclared` scattava solo
+  // su `dateKind === null`, quindi quella riga passava il filtro e usciva come
+  // «Scadenza 10.09.2026 · affidabilità alta» — di nuovo il sopralluogo di
+  // Lugano, per un'altra strada.
+  //
+  // ⚠️ Non si legge il TESTO per capire se `none` sia sincero: si constata che
+  // due campi dello stesso oggetto dicono cose incompatibili. È un fatto
+  // strutturale, come tutto il resto di questo modulo.
+  const contraddetta = sopralluogo({ dateKind: 'none' });
+  const rc = validateAndNormalize(contraddetta as never, estrazione);
+  ok(rc.deadline.date === '2026-09-10',
+    'la data resta: una contraddizione del modello non cancella una scadenza vera');
+  ok(rc.deadline.requiresVerification === true,
+    '«none» su una data valorizzata è marcata DA VERIFICARE come il silenzio');
+  ok(rc.uncertainties.some((u) => u.field === 'deadline'),
+    'e il motivo arriva a chi legge, invece di restare un flag muto');
+
+  // ⚠️ LA CONTROPROVA CHE CONTA. `none` è la risposta GIUSTA quando davvero non
+  // c'è una data: se la guardia scattasse anche lì, ogni documento senza
+  // scadenza si porterebbe dietro un «da verificare» su una data che non esiste
+  // — che è il difetto di segno opposto, e altrettanto falso.
+  const senzaNiente = sopralluogo({ dateKind: 'none' });
+  (senzaNiente.deadline as unknown as Record<string, unknown>).date = null;
+  (senzaNiente.deadline as unknown as Record<string, unknown>).type = 'none';
+  const rn = validateAndNormalize(senzaNiente as never, estrazione);
+  ok(rn.deadline.requiresVerification === false,
+    'CONTROPROVA: «none» SENZA data è la risposta giusta e non fa scattare niente');
+
   // Una data di riferimento amministrativo: né scadenza, né appuntamento.
   const rif = validateAndNormalize(sopralluogo({ dateKind: 'reference' }) as never, estrazione);
   ok(rif.deadline.date === null && rif.appointment === null,
@@ -400,6 +431,31 @@ Cancelleria comunale di Lugano`;
     deadline: null, deadlineKind: null, storedFlag: false, corrected: true,
   }) === false,
     'senza data resta `false` per la sua ragione: la correzione non inventa una domanda');
+
+  // ⚠️⚠️ «none» CON UNA DATA ADDOSSO NON È UNA RISPOSTA (2026-08-19). Il
+  // prompt definisce `none` come «se non c'è alcuna data»: dichiararlo su una
+  // data valorizzata è una CONTRADDIZIONE, non una natura. Ma `none` stava
+  // nell'insieme delle nature dichiarate, quindi una riga così passava per
+  // «natura dichiarata» e la scadenza si presentava come un fatto — lo stesso
+  // difetto del sopralluogo di Lugano, imboccato da un'altra strada.
+  //
+  // ⚠️ Toglierlo dall'insieme non perde niente: senza data la funzione esce
+  // alla riga prima, quindi lì dentro `none` non serviva a nulla — serviva
+  // solo dove fa danno.
+  ok(deadlineRequiresVerification({
+    deadline: '2026-09-10', deadlineKind: 'none', storedFlag: false,
+  }) === true,
+    '«nessuna data» dichiarato SU una data è una contraddizione: da verificare');
+  ok(deadlineNatureDeclared({ deadline: '2026-09-10', deadlineKind: 'none' }) === false,
+    'e la constatazione da sola dice la stessa cosa');
+  ok(deadlineRequiresVerification({
+    deadline: null, deadlineKind: 'none', storedFlag: false,
+  }) === false,
+    'CONTROPROVA: «none» SENZA data resta la risposta giusta, e non fa scattare niente');
+  ok(deadlineNatureDeclared({ deadline: '2026-09-10', deadlineKind: 'term' }) === true
+    && deadlineNatureDeclared({ deadline: '2026-09-10', deadlineKind: 'event' }) === true
+    && deadlineNatureDeclared({ deadline: '2026-09-10', deadlineKind: 'reference' }) === true,
+    'CONTROPROVA: le altre tre nature continuano a valere — non si è svuotato l\'insieme');
 
   // ⚠️ La constatazione da sola, ESEGUITA e non solo esportata: è la domanda
   // «questa riga ha risposto?», e il resto della regola ci si appoggia.

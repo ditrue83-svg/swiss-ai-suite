@@ -30,8 +30,18 @@
 // modello non ha mai dato.
 // ============================================================================
 
-/** Le nature che una riga può dichiarare. Vuoto/assente = nessuna risposta. */
-const NATURE_DECLARED = new Set(['term', 'event', 'reference', 'none']);
+/**
+ * Le nature che una riga può dichiarare. Vuoto/assente = nessuna risposta.
+ *
+ * ⚠️ `none` NON È QUI, e la sua assenza è la regola (2026-08-19). Il prompt lo
+ * definisce come «se non c'è alcuna data»: su una riga che una data ce l'ha è
+ * una contraddizione, non una natura, e va trattata come il silenzio. Metterlo
+ * nell'insieme non serviva a niente e faceva danno in un punto solo: senza data
+ * la funzione qui sotto esce alla prima riga e non arriva mai a consultarlo;
+ * CON una data lo faceva passare per «dichiarata», e la scadenza si presentava
+ * come un fatto.
+ */
+const NATURE_DECLARED = new Set(['term', 'event', 'reference']);
 
 /**
  * La scadenza di un'analisi già salvata può presentarsi come un fatto?
