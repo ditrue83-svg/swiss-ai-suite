@@ -19,7 +19,8 @@ import { Tag } from '@/components/ui/Tag';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, ErrorState, SkeletonLine } from '@/components/ui/states';
-import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
+import { TrustIndicator } from '@/features/documents/TrustIndicator';
+import { useAnalysisTrust } from '@/features/documents/useAnalysisTrust';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
@@ -85,6 +86,9 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
 
   const message = data?.message ?? null;
   const analysis = data?.analysis ?? null;
+  // Il verdetto di attendibilità (vedi `useAnalysisTrust`): `null` = niente da
+  // mostrare, mai il campo grezzo al suo posto.
+  const trust = useAnalysisTrust(analysis);
 
   const refresh = useCallback(() => { reload(); onChanged(); }, [reload, onChanged]);
 
@@ -272,7 +276,17 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
                 <div><dt>{t('adminAi.result.whatToDoNow')}</dt><dd>{analysis.primaryAction}</dd></div>
               )}
               <div><dt>{t('adminAi.result.urgencyChip', { level: '' }).trim()}</dt><dd>{L.urgency(analysis.urgency)}</dd></div>
-              <div><dt>{t('adminAi.result.confidenceChip', { level: '' }).trim()}</dt><dd><ConfidenceBadge level={analysis.confidence} /></dd></div>
+              {/* ⚠️ L'ATTENDIBILITÀ, non il campo grezzo: la decide
+                  `analysisTrust`, la stessa funzione del dettaglio del
+                  documento — due schermate che dicessero due livelli sulla
+                  stessa analisi sarebbero il difetto di partenza. Finché il
+                  verdetto non c'è, la riga non c'è: mai un valore provvisorio. */}
+              {trust && (
+                <div>
+                  <dt>{t('documents.trust.title')}</dt>
+                  <dd><TrustIndicator verdict={trust} schemaVersion={analysis.schemaVersion} analysedAt={analysis.createdAt} withTitle={false} /></dd>
+                </div>
+              )}
             </dl>
 
             {/* §13/§119 — l'incertezza non è una nota a piè di pagina: sta

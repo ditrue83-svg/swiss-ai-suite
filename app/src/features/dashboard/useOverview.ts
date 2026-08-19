@@ -3,6 +3,8 @@ import { useI18n } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { taskService } from '@/services/taskService';
 import { documentHubService } from '@/services/documentHubService';
+import { memberService } from '@/services/memberService';
+import { cognomiDaRubrica } from '@/features/documents/analysisTrust';
 import { incentivesService } from '@/services/incentivesService';
 import { todayISO } from '@/features/incentives/incentivesModel';
 import type {
@@ -75,16 +77,23 @@ export interface OverviewData extends BaseData {
    * le pagine, è rimasto un caricatore solo.
    */
   completion: ActionCompletion;
+  /**
+   * Documenti con appartenenza da confermare, archiviati COMPRESI (la
+   * didascalia lo dichiara). `null` = il numero non è disponibile in questo
+   * momento: non si mostra niente, mai uno zero finto.
+   */
+  ownershipToConfirm: number | null;
 }
 
 /** Tutto ciò che la Panoramica mostra: attività, documenti, incentivi, statistiche. */
 export function useOverview() {
-  const { activeCompanyId } = useCompany();
+  const { activeCompanyId, activeCompany } = useCompany();
   const companyId = activeCompanyId as string;
+  const legalName = activeCompany?.legalName ?? '';
 
   return useAsync<OverviewData>(async () => {
     const [todo, overdue, inProgress, completed, attention, documentCount, completion,
-      incentives, opportunities, cases] =
+      incentives, opportunities, cases, ownershipToConfirm] =
       await Promise.all([
         taskService.list(companyId, { view: 'todo', limit: HOME_TASKS }),
         taskService.list(companyId, { view: 'overdue', limit: 1 }),
@@ -98,6 +107,20 @@ export function useOverview() {
         // parte: la vista predefinita le esclude.
         incentivesService.opportunities(companyId, { view: 'all' }),
         incentivesService.cases(companyId),
+        // ⚠️ `null` E NON UN LANCIO: questo numero è informazione in più, non
+        // la Panoramica. Se la lettura fallisce la pagina esce lo stesso e del
+        // conteggio non si dice niente — l'assenza dell'indicatore non è un
+        // segno, e un numero provvisorio sarebbe un valore falso. (Eccezione
+        // DICHIARATA alla regola sul fallback silenzioso: qui il silenzio non
+        // inventa nulla.) I cognomi arrivano dalla rubrica; se anche quella
+        // fallisce si va avanti senza — un cognome non confrontabile non fa
+        // scattare nessun avviso, per regola.
+        (async () => {
+          const members = await memberService.listAssignable(companyId).catch(() => []);
+          return documentHubService.ownershipToConfirm(companyId, {
+            legalName, memberSurnames: cognomiDaRubrica(members.map((m) => m.name)),
+          });
+        })().catch(() => null),
       ]);
     return {
       tasks: todo.items,
@@ -109,7 +132,8 @@ export function useOverview() {
       documentsToVerify: attention.toVerifyTotal,
       documentCount, completion,
       incentives, opportunities: opportunities.items, cases,
+      ownershipToConfirm,
       today: todayISO(),
     };
-  }, [companyId]);
+  }, [companyId, legalName]);
 }

@@ -515,13 +515,13 @@ export const it = {
     analysisFailedSub: 'L’analisi non è riuscita. Il documento è conservato e si può riprovare.',
     lastAttemptFailed: 'L’ultimo tentativo non è riuscito: qui sotto c’è l’analisi valida precedente.',
     sender: 'Mittente',
+    recipient: 'Destinatario',
     documentType: 'Tipo di documento',
     documentDate: 'Data del documento',
     deadline: 'Scadenza',
     appointment: 'Appuntamento',
     amount: 'Importo',
     references: 'Riferimenti',
-    confidence: 'Affidabilità',
     aiValue: 'L’analisi diceva: {value}',
     aiValueEmpty: 'L’analisi non l’aveva rilevato',
     correctedBadge: 'Corretto da una persona',
@@ -529,6 +529,52 @@ export const it = {
     // «Dichiarato / incerto». Il blocco ora porta il segno «da verificare»:
     // l'etichetta dice che cosa sono le righe, il segno dice lo stato.
     uncertainties: 'Punti da verificare',
+    // ---- attendibilità dell'analisi (2026-08-19) --------------------------
+    // ⚠️ Chiavi con PARAMETRI, mai frasi composte per concatenazione: in de e
+    // fr l'ordine delle parole non è quello italiano, e una frase incollata a
+    // pezzi esce con la sintassi italiana in tre lingue.
+    trust: {
+      title: 'Attendibilità dell’analisi',
+      unavailableOwnership: 'non valutabile · appartenenza da confermare',
+      pointsOne: '1 elemento da verificare',
+      pointsMany: '{n} elementi da verificare',
+      why: 'perché',
+      whyTitle: 'Perché questo livello',
+      whyModel: 'Confidenza di lettura del modello: {level}.',
+      whyNoCaps: 'Nessun limite attivo: il livello è quello del modello.',
+      capLine: '{reason} → livello al massimo «{level}»',
+      reasons: {
+        evidence_missing_one: 'Il campo «{fields}» ha un valore ma nessuna citazione verificata nel documento.',
+        evidence_missing_many: 'I campi {fields} hanno un valore ma nessuna citazione verificata nel documento.',
+        deadline_to_verify: 'La scadenza è marcata «da verificare» dall’analisi.',
+        deadline_nature_unrecorded: 'La natura di questa data non era registrata quando l’analisi è stata prodotta (schema v{version}, {date}).',
+        deadline_inferred: 'La scadenza è dedotta dal contesto, non scritta nel documento.',
+        point_high: 'L’analisi dichiara un dubbio grave su: {fields}.',
+        point_medium: 'L’analisi dichiara un dubbio su: {fields}.',
+      },
+      fields: {
+        sender: 'mittente', recipient: 'destinatario', documentType: 'tipo di documento',
+        documentDate: 'data del documento', deadline: 'scadenza', amounts: 'importi',
+        authenticity: 'autenticità',
+      },
+      shownLabel: 'Livello mostrato',
+      readingLabel: 'Confidenza di lettura',
+      readingDesc: 'Misura quanto il modello è certo di aver letto bene il testo: non dice se l’analisi sia corretta o pertinente.',
+      channelGap: 'Per destinatario, tipo di documento e data del documento l’analisi non registra ancora una citazione verificabile: la loro assenza non abbassa il livello.',
+    },
+    ownership: {
+      warnTitle: 'Questo documento potrebbe non riguardare {company}',
+      warnRecipient: 'Il destinatario indicato dall’analisi è «{recipient}».',
+      warnNoRecipient: 'L’analisi dichiara un dubbio grave su chi sia il destinatario.',
+      warnGate: 'Finché l’appartenenza non è confermata, il documento non crea scadenze né attività.',
+      confirm: 'Confermo che riguarda {company}',
+      remove: 'Rimuovi dall’archivio',
+      confirmDone: 'Appartenenza confermata.',
+      revokeDone: 'Conferma revocata.',
+      confirmedLine: 'Appartenenza confermata da {name} il {date}',
+      revoke: 'Revoca la conferma',
+      badge: 'appartenenza da confermare',
+    },
     // ---- origine ----
     origin: 'Origine',
     originUploadUnknown: 'Caricato manualmente',
@@ -871,7 +917,6 @@ export const it = {
       lastAttemptFailed: 'L’ultimo tentativo di rianalisi non è riuscito{reason} Qui sotto trovi l’analisi precedente, che resta valida.',
       needsReview: 'Da verificare',
       urgencyChip: 'urgenza {level}',
-      confidenceChip: 'confidenza {level}',
       recipientTitle: 'Destinatario individuato',
       recipientPrefix: 'A: {name}',
       engineTitle: 'Motore di analisi: {engine}',
@@ -1052,6 +1097,9 @@ export const it = {
     // alta (`reviewStatus`, persist.ts). La didascalia dice la regola vera, non
     // quella che il conteggio usava prima.
     kpiToVerifySub: 'confidenza bassa o incertezze gravi',
+    ownershipToConfirmOne: '1 documento con appartenenza da confermare',
+    ownershipToConfirmMany: '{n} documenti con appartenenza da confermare',
+    ownershipToConfirmSub: 'archiviati compresi',
     kpiSubsidies: 'Incentivi rilevanti',
     kpiSubsidiesSub: 'idoneità da verificare',
     kpiSubsidiesUnknown: 'dato non disponibile',

@@ -45,12 +45,21 @@ export interface PrintSheetProps {
   toVerify?: string[];
   /** Fonti ufficiali: l'URL si stampa per esteso accanto al collegamento. */
   sources?: { label: string; url: string }[];
+  /**
+   * L'attendibilità dell'analisi, già composta e tradotta dal chiamante.
+   * ⚠️ Su carta il «perché» non si può aprire: il livello mostrato porta con
+   * sé i motivi per esteso, e la confidenza di lettura del modello viaggia
+   * accanto col suo nome — sono due colonne, non una. Fuori dallo schermo un
+   * livello abbassato senza motivo sarebbe un giudizio inspiegabile dentro un
+   * fascicolo.
+   */
+  trust?: { shown: string; reading: string; reasons: string[] } | null;
   footer: PrintFooter;
 }
 
 export function PrintSheet({
   title, facts = [], deadline = null, appointment = null, amounts = [], actions = null,
-  citations = [], toVerify = [], sources = [], footer,
+  citations = [], toVerify = [], sources = [], trust = null, footer,
 }: PrintSheetProps) {
   const t = useT();
   const shownFacts = facts.filter((f) => (f.value ?? '').toString().trim() !== '');
@@ -58,6 +67,28 @@ export function PrintSheet({
   return (
     <section className="print-only print-sheet" aria-hidden="true">
       <h2>{title}</h2>
+
+      {trust && (
+        <>
+          <h3>{t('documents.trust.title')}</h3>
+          {/* Due righe NOMINATE, mai una sola: il livello mostrato e il
+              grezzo del modello sono due numeri diversi, e su carta la
+              differenza non si può chiedere. */}
+          <dl className="print-kv">
+            <dt>{t('documents.trust.shownLabel')}</dt>
+            <dd>{trust.shown}</dd>
+          </dl>
+          <dl className="print-kv">
+            <dt>{t('documents.trust.readingLabel')}</dt>
+            <dd>{trust.reading}</dd>
+          </dl>
+          {trust.reasons.length > 0 && (
+            <ul className="print-list">
+              {trust.reasons.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          )}
+        </>
+      )}
 
       {shownFacts.length > 0 && (
         <>

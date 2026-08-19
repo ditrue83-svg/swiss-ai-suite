@@ -1318,3 +1318,37 @@
   .settings-rail-out { margin-left: var(--sp-1); }
   .settings-pane { padding: var(--sp-4); }
 }
+
+/* ---- Attendibilità dell'analisi (2026-08-19) --------------------------------
+   L'indicatore nell'INTESTAZIONE della scheda «Analisi», non più una voce
+   dell'elenco dei campi: un giudizio di sintesi stampato alla pari dei campi
+   che riassume poteva contraddirli da pari. Il livello lo decide
+   `analysisTrust.ts`, in un posto solo; qui c'è soltanto la forma.
+   ⚠️ Nessun colore nuovo e nessun segno nuovo: i pallini sono ConfidenceBadge,
+   i toni sono i token esistenti. */
+.trust-head {
+  margin-left: auto; display: inline-flex; align-items: baseline;
+  gap: var(--sp-1); flex-wrap: wrap;
+  font-size: var(--fs-meta); font-weight: 500; color: var(--ink-soft);
+}
+/* «non valutabile» NON ha pallini: è l'assenza del giudizio, detta a parole. */
+.trust-unavailable { font-weight: 600; }
+.trust-points { color: var(--muted); font-weight: 400; }
+/* Il motivo del tetto: una riga intera sotto il titolo (il contenitore è un
+   flex con wrap, e la base al 100% manda a capo). */
+.trust-reason {
+  flex-basis: 100%; display: inline-flex; align-items: baseline;
+  gap: var(--sp-2); flex-wrap: wrap;
+  font-size: var(--fs-meta); font-weight: 400; color: var(--muted);
+}
+.trust-why { display: inline; }
+.trust-why summary { display: inline; cursor: pointer; color: var(--accent-text); }
+.trust-why-panel {
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  margin-top: var(--sp-1); padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--ink-soft);
+}
+.trust-why-title { font-weight: 600; color: var(--ink); }
+/* La riga della conferma di appartenenza sotto il campo «Destinatario». */
+.trust-confirmed { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
