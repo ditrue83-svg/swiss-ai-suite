@@ -1,5 +1,6 @@
 import { useT, type TKey } from '../../i18n';
 import { MarkGlyph, type MarkGlyphName } from './MarkGlyph';
+import { calendarDaysUntil } from '../../lib/calendarDays';
 
 /**
  * TERMINE — le CIFRE sono il segno: data tabellare + distanza in giorni.
@@ -24,16 +25,14 @@ export const DEADLINE_STATES: Record<DeadlineState, { cls: string; glyph: MarkGl
   toVerify: { cls: 'md-verify', glyph: 'question', labelKey: 'marks.deadline.toVerify' },
 };
 
-/** Giorni interi da oggi alla data, nel fuso locale (le scadenze sono giorni civili, non istanti). */
-function giorniA(dateIso: string, oggi: Date): number {
-  const a = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate());
-  const d = new Date(dateIso);
-  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
-}
-
 /**
  * Lo stato di un termine, come funzione pura: i casi limite si provano qui.
+ *
+ * ⚠️ IL CONTO DEI GIORNI NON È QUI. Sta in `lib/calendarDays`, insieme a quello
+ * dell'appuntamento e a quello delle Attività: erano tre copie, e due —
+ * questa e quella di `AppointmentMark` — leggevano la data con i getter LOCALI
+ * su un istante che è mezzanotte UTC. A ovest di Greenwich una scadenza di
+ * oggi si mostrava «scaduta ieri», in rosso.
  *
  * ⚠️ `today` È UN PARAMETRO e non `new Date()` letto dentro. Una funzione che
  * legge l'orologio da sé non si può provare su un istante scelto — è la stessa
@@ -50,7 +49,10 @@ export function deadlineState(
 ): { state: DeadlineState; days: number | null } {
   if (!date) return { state: 'none', days: null };
   if (toVerify) return { state: 'toVerify', days: null };
-  const days = giorniA(date, today);
+  const days = calendarDaysUntil(date, today);
+  // Una data che c'è ma non si legge non è «nessuna scadenza»: è una data da
+  // verificare. Prima diventava `NaN` e la pagina scriveva «fra NaN giorni».
+  if (days == null) return { state: 'toVerify', days: null };
   if (days < 0) return { state: 'over', days: -days };
   if (days === 0) return { state: 'today', days: 0 };
   return { state: days <= soonDays ? 'soon' : 'days', days };

@@ -52,6 +52,11 @@ import { ELIGIBILITY_STATES } from '../src/components/ui/EligibilityMark.tsx';
 import { SOURCE_STATES } from '../src/components/ui/SourceStamp.tsx';
 import { DEADLINE_STATES, deadlineState } from '../src/components/ui/DeadlineMark.tsx';
 import { APPOINTMENT_STATES, appointmentState } from '../src/components/ui/AppointmentMark.tsx';
+// ⚠️ DUE PORTE PER LA STESSA FUNZIONE, di proposito: quella del modulo
+// condiviso e quella da cui la prendono le Attività e la Panoramica. Se un
+// giorno la seconda smettesse di essere la prima, la sezione 17 lo dice.
+import { calendarDaysUntil } from '../src/lib/calendarDays.ts';
+import { calendarDaysUntil as calendarDaysUntilTasks } from '../src/features/tasks/taskFormat.ts';
 import { TASK_STATES } from '../src/components/ui/StatusMark.tsx';
 import { PRIORITY_LEVELS } from '../src/components/ui/PriorityMark.tsx';
 import { WINDOW_STATES } from '../src/components/ui/WindowMark.tsx';
@@ -2258,6 +2263,100 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
     'titolo e sottotitolo costavano 121px degli 806 della pagina');
   check('e il sottotitolo non è sparito: è sceso nel vuoto iniziale',
     /subtitle=\{t\('assistant\.subtitle'\)\}/.test(pagina));
+}
+
+// ---------------------------------------------------------------------------
+section('17. Il conto dei giorni e il FUSO — una scadenza di oggi non è «scaduta ieri»');
+
+// ⚠️⚠️ IL DIFETTO NON SI VEDE DA ZURIGO, ed è per questo che è arrivato in
+// produzione. `new Date('2026-08-20')` è mezzanotte UTC — la norma per una data
+// senza ora. `DeadlineMark` e `AppointmentMark` la rileggevano con i getter
+// LOCALI: a New York quell'istante è il 19 agosto alle 20:00, e `getDate()`
+// rispondeva 19. Una scadenza di OGGI si mostrava «scaduta ieri», in ROSSO, a
+// chiunque aprisse l'app a ovest di Greenwich. In Europe/Zurich il conto torna,
+// quindi nessuna prova scritta qui poteva vederlo: il fuso va SIMULATO.
+//
+// ⚠️ E ORA IL CONTO È UNO SOLO. Erano tre copie — `calendarDaysUntil` nelle
+// Attività, scritta bene, e due `giorniA` identici e sbagliati nello stesso
+// modo, nati copiandosi a vicenda. Le prove qui sotto passano dai TRE punti
+// d'ingresso: se uno tornasse ad avere la sua aritmetica, qui diventa rosso.
+{
+  const tzOriginale = process.env.TZ;
+  try {
+    // Un fuso a ovest di Greenwich: è la condizione in cui il difetto si vede.
+    process.env.TZ = 'America/New_York';
+    // Mezzogiorno del 20 agosto 2026 A NEW YORK. L'istante è assoluto: a
+    // cambiare è solo come lo leggono i getter locali.
+    const oggi = new Date('2026-08-20T12:00:00-04:00');
+    check('il fuso simulato è davvero a ovest (altrimenti la prova non prova niente)',
+      oggi.getTimezoneOffset() > 0, `offset ${oggi.getTimezoneOffset()}`);
+
+    check('New York · una scadenza di OGGI dista zero giorni, non meno uno',
+      calendarDaysUntil('2026-08-20', oggi) === 0,
+      String(calendarDaysUntil('2026-08-20', oggi)));
+    check('New York · il segno del TERMINE dice «oggi», non «scaduta»',
+      deadlineState('2026-08-20', false, 7, oggi).state === 'today',
+      deadlineState('2026-08-20', false, 7, oggi).state);
+    check('New York · il segno dell’APPUNTAMENTO dice «oggi», non «passato»',
+      appointmentState('2026-08-20', 7, oggi).state === 'today',
+      appointmentState('2026-08-20', 7, oggi).state);
+    check('New York · e la stessa funzione presa dalle ATTIVITÀ dà lo stesso numero',
+      calendarDaysUntilTasks('2026-08-20', oggi) === 0,
+      String(calendarDaysUntilTasks('2026-08-20', oggi)));
+
+    // I due giorni accanto, dove uno scarto di uno si vede subito.
+    check('New York · ieri è meno uno e il termine è scaduto DA UN GIORNO',
+      calendarDaysUntil('2026-08-19', oggi) === -1
+      && deadlineState('2026-08-19', false, 7, oggi).days === 1);
+    check('New York · domani è più uno, e non è ancora scaduto',
+      calendarDaysUntil('2026-08-21', oggi) === 1
+      && deadlineState('2026-08-21', false, 7, oggi).state === 'soon');
+
+    // ⚠️ LA CONTROPROVA — la copia vecchia, riprodotta qui riga per riga. Senza,
+    // «oggi dista zero» sarebbe verde anche su un'aritmetica che non è mai
+    // stata rotta, e questa sezione non proverebbe di aver corretto qualcosa.
+    const giorniALocale = (dateIso: string, o: Date): number => {
+      const a = new Date(o.getFullYear(), o.getMonth(), o.getDate());
+      const d = new Date(dateIso);
+      const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+    };
+    check('CONTROPROVA: la copia con i getter LOCALI dice −1 su una scadenza di oggi',
+      giorniALocale('2026-08-20', oggi) === -1, String(giorniALocale('2026-08-20', oggi)));
+
+    // ⚠️ E A EST NON DEVE CAMBIARE NIENTE: la correzione non doveva spostare il
+    // conto dove già tornava. Un fuso a est di Greenwich, con lo stesso giorno.
+    process.env.TZ = 'Europe/Zurich';
+    const oggiZurigo = new Date('2026-08-20T12:00:00+02:00');
+    check('Zurigo · una scadenza di oggi resta zero giorni',
+      calendarDaysUntil('2026-08-20', oggiZurigo) === 0);
+    check('Zurigo · e i due segni continuano a dire «oggi»',
+      deadlineState('2026-08-20', false, 7, oggiZurigo).state === 'today'
+      && appointmentState('2026-08-20', 7, oggiZurigo).state === 'today');
+    check('Zurigo · CONTROPROVA: qui anche la copia vecchia tornava — ecco perché non si vedeva',
+      giorniALocale('2026-08-20', oggiZurigo) === 0);
+  } finally {
+    // ⚠️ Il fuso si rimette com'era: le sezioni che seguono — e chi legge il
+    // risultato — non devono ereditare un ambiente che questa prova ha piegato.
+    if (tzOriginale === undefined) delete process.env.TZ; else process.env.TZ = tzOriginale;
+  }
+
+  // Una data che non si legge non diventa un numero: «nessuna scadenza» e
+  // «scade oggi» sono due cose diverse.
+  check('una data illeggibile dà null, non zero',
+    calendarDaysUntil('non-una-data') === null && calendarDaysUntil(null) === null);
+  check('e il termine la dichiara DA VERIFICARE, invece di scrivere «fra NaN giorni»',
+    deadlineState('non-una-data').state === 'toVerify',
+    deadlineState('non-una-data').state);
+
+  // ⚠️ LA GUARDIA SCOLLEGATA: nessuna quarta copia. Le prove qui sopra restano
+  // verdi il giorno in cui qualcuno riscrive il conto dentro un componente.
+  const conteggi = ['src/components/ui/DeadlineMark.tsx', 'src/components/ui/AppointmentMark.tsx',
+    'src/features/tasks/taskFormat.ts']
+    .filter((f) => /new Date\(\s*\w+\.getFullYear\(\)/.test(
+      readFileSync(new URL(`../${f}`, import.meta.url), 'utf8')));
+  check('nessuno dei tre punti si è riscritto il conto in casa', conteggi.length === 0,
+    conteggi.join(', '));
 }
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@
 // ============================================================================
 import type { TKey } from '@/i18n';
 import type { ChecklistAction, Task, TaskEventKind, TaskStatus } from '@/types/models';
+import { calendarDaysUntil } from '../../lib/calendarDays';
 
 /**
  * Chiave di traduzione + parametri: il testo lo compone la schermata.
@@ -26,15 +27,13 @@ export interface Phrase {
  * `daysUntil` in `lib/format` divide i millisecondi, quindi alle 23:00 una
  * scadenza di domani mattina dista «0 giorni». Qui contano i giorni del
  * calendario, che è ciò che una persona intende quando legge «Domani».
+ *
+ * ⚠️ ORA VIVE IN `lib/calendarDays`, e si ri-esporta da qui perché è di qui che
+ * la prendono la Panoramica e le Attività. Il perché del trasloco sta lì: la
+ * stessa aritmetica esisteva in tre copie, due delle quali sbagliate allo
+ * stesso modo.
  */
-export function calendarDaysUntil(dueDate: string | null | undefined, today: Date = new Date()): number | null {
-  if (!dueDate) return null;
-  const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return null;
-  const a = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
-  const b = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.round((a - b) / 86400000);
-}
+export { calendarDaysUntil };
 
 /** Come si legge una scadenza. Nessuna data inventata: senza scadenza si dice. */
 export function dueLabel(dueDate: string | null | undefined, today: Date = new Date()): Phrase {
