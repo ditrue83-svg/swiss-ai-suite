@@ -23,7 +23,8 @@ import { etichettaDocumento } from '@/lib/documentTitle';
 import { PdfViewer } from '@/features/admin-ai/PdfViewer';
 import { ActionOriginMark, ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { AppointmentMark } from '@/components/ui/AppointmentMark';
-import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
+import { TrustIndicator } from '@/features/documents/TrustIndicator';
+import { useAnalysisTrust } from '@/features/documents/useAnalysisTrust';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import type { AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence } from '@/types/models';
@@ -226,6 +227,12 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
   const { user } = useAuth();
   const { showToast } = useToast();
   const companyName = activeCompany?.legalName ?? null;
+  // L'attendibilità la decide `analysisTrust`, non il campo grezzo: questa
+  // testata è il PRIMO posto in cui si legge un'analisi appena prodotta, ed è
+  // dove il 2026-08-15 «●●● alta» copriva un sopralluogo preso per scadenza.
+  // Finché il verdetto non c'è (letture in corso o fallite) non si mostra
+  // niente — mai il grezzo al suo posto.
+  const trust = useAnalysisTrust(analysis);
 
   const isAI = analysis.engine.startsWith('claude');
   const [actions, setActions] = useState<ChecklistAction[]>(analysis.actions);
@@ -522,22 +529,22 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               <span className="ax-badge-key">{t('marks.legend.priority')}</span>
               <PriorityMark level={r.urgency} />
             </span>
-            <span className="ax-badge-pair">
-              <span className="ax-badge-key">{t('marks.legend.confidence')}</span>
-              <ConfidenceBadge level={r.confidence} />
-              {/* ⚠️⚠️ IL CAVEAT DOVE STAVA LA SICUREZZA FALSA. Il 2026-08-15
-                  questa testata diceva «●●● alta» sopra una data che era un
-                  sopralluogo preso per scadenza, e il «da verificare» stava
-                  quaranta centimetri più in basso, nella scheda del termine.
-                  Chi legge una schermata parte da qui.
-
-                  ⚠️ E NON SI DECLASSA L'ETICHETTA. Trasformare «alta» in
-                  «media» metterebbe in bocca al modello un giudizio che non ha
-                  dato: quello che manca non è fiducia, è una verifica. Le due
-                  cose hanno due segni, e restano due. */}
-              {r.deadlineRequiresVerification && r.analysisStatus !== 'needs_review'
-                && <ProvenanceMark kind="toVerify" />}
-            </span>
+            {/* ⚠️⚠️ QUI STAVA LA SICUREZZA FALSA. Il 2026-08-15 questa testata
+                diceva «●●● alta» sopra una data che era un sopralluogo preso
+                per scadenza, e il «da verificare» stava quaranta centimetri
+                più in basso. Dal 2026-08-19 il livello è l'ATTENDIBILITÀ —
+                il grezzo del modello abbassato dai tetti di `analysisTrust`,
+                col motivo accanto — e il grezzo si legge nei dettagli tecnici
+                del documento, col suo nome («confidenza di lettura»).
+                ⚠️ Il caveat del termine resta un segno suo: la verifica che
+                manca non è fiducia, e le due cose hanno due segni. */}
+            {trust && (
+              <span className="ax-badge-pair">
+                <TrustIndicator verdict={trust} schemaVersion={analysis.schemaVersion} analysedAt={analysis.createdAt} />
+                {r.deadlineRequiresVerification && r.analysisStatus !== 'needs_review'
+                  && <ProvenanceMark kind="toVerify" />}
+              </span>
+            )}
           </div>
         </div>
         <div className="ax-meta">
@@ -700,7 +707,9 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               </div>
             </div>
           ) : (
-            <div className="card"><div className="verify-ok"><Icon name="checkCircle" className="ic-sm" /> {t('adminAi.result.mainInfoConfirmed', { level: L.confidence(r.confidence) })}</div></div>
+            trust?.level
+              ? <div className="card"><div className="verify-ok"><Icon name="checkCircle" className="ic-sm" /> {t('adminAi.result.mainInfoConfirmed', { level: L.confidence(trust.level) })}</div></div>
+              : null
           )}
 
           {/* Il tag sta nella riga del titolo: quando il rischio non è

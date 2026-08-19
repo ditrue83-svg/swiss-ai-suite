@@ -208,6 +208,10 @@ export interface DocumentAnalysis {
   documentId: string;
   companyId: string;
   analysisVersion: number;
+  /** Versione dello SCHEMA con cui l'analisi è stata scritta (0006). Serve a
+   *  datare le lacune: un tetto che nasce da un campo introdotto dopo deve
+   *  poter dire «schema v2, 30.07.2026» invece di incolpare il documento. */
+  schemaVersion: number;
   engine: string;
   language: DocLanguage | string | null;
   languageLabel: string;

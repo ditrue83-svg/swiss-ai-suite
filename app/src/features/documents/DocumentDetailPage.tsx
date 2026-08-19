@@ -42,6 +42,12 @@ import {
 import { dueLabel, statusLabelKey, taskDateKind } from '@/features/tasks/taskFormat';
 import { useMembers } from '@/features/tasks/useMembers';
 import { NextStepCard, NextStepPrimary, NextStepSecondary, type NextStepActionProps } from './NextStepCard';
+import {
+  OWNERSHIP_CONFIRMED, OWNERSHIP_FIELD, OWNERSHIP_REVOKED,
+  analysisTrust, cognomiDaRubrica, ownershipConfirmation, segnoCampo, trustInputFromAnalysis,
+} from './analysisTrust';
+import { TrustIndicator, reasonText } from './TrustIndicator';
+import { correctionService } from '@/services/correctionService';
 import { nextStepFor, proposedTaskTitle } from './nextStep';
 import { formatBytes, formatCurrency, formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
@@ -51,13 +57,12 @@ import { useDocumentLabel } from '@/i18n/documentLabel';
 import { etichettaComposta } from '@/lib/documentTitle';
 import { CATEGORIES } from './documentModel';
 import { EvidenceLink } from '@/components/ui/EvidenceLink';
-import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { ActionOriginMark, ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
-import type { AnalysisCorrection, Confidence, DocumentCategory, DocumentDetail, DocumentTag, Evidence } from '@/types/models';
+import type { AnalysisCorrection, DocumentCategory, DocumentDetail, DocumentTag, Evidence } from '@/types/models';
 import { AskAbout } from '@/features/assistant/AskAbout';
 
 const TECH_METHOD_KEY: Record<string, TKey> = {
@@ -190,6 +195,9 @@ export function DocumentDetailPage() {
 
   function openTaskForm() {
     if (!detail || !user) return;
+    // ⚠️ Il gate dell'appartenenza vale anche qui: questo è l'unico ingresso
+    // del modulo, e un pulsante dimenticato altrove non deve poterlo aggirare.
+    if (!step.canCreateTask) return;
     // I valori iniziali NON si ricostruiscono qui: si chiedono alla funzione
     // che li userà per scrivere. Due derivazioni della stessa cosa prima o poi
     // mostrano una priorità e ne salvano un'altra.
@@ -328,6 +336,31 @@ export function DocumentDetailPage() {
     });
   }
 
+  // ---- appartenenza: conferma e revoca --------------------------------------
+  // ⚠️ Due righe nel registro delle correzioni, MAI una riscrittura: lo
+  // snapshot è un verbale (0010) e il punto del modello sul destinatario resta
+  // dov'è — confermare risponde a «di chi è», non a «quanto è affidabile».
+  // La revoca non cancella la conferma: la supera (vince la riga più recente).
+  async function writeOwnership(value: typeof OWNERSHIP_CONFIRMED | typeof OWNERSHIP_REVOKED) {
+    if (!detail?.item.analysisId || !user) return;
+    await withBusy(async () => {
+      await correctionService.save({
+        analysisId: detail.item.analysisId as string,
+        documentId: detail.document.id,
+        companyId,
+        userId: user.id,
+        field: OWNERSHIP_FIELD,
+        originalValue: detail.analysis?.recipient ?? null,
+        correctedValue: value,
+      });
+      showToast(value === OWNERSHIP_CONFIRMED
+        ? t('documents.ownership.confirmDone') : t('documents.ownership.revokeDone'));
+      reload();
+    });
+  }
+  const confirmOwnership = () => writeOwnership(OWNERSHIP_CONFIRMED);
+  const revokeOwnership = () => writeOwnership(OWNERSHIP_REVOKED);
+
   async function removeForever() {
     if (!detail) return;
     await withBusy(async () => {
@@ -375,10 +408,43 @@ export function DocumentDetailPage() {
   // caricato personalmente il documento. È la stessa regola della policy del
   // database — qui si nasconde un pulsante, là si impedisce l'operazione.
   const canDelete = isAdmin || (!!doc.uploadedBy && doc.uploadedBy === user?.id);
+  // ---- l'attendibilità dell'analisi, decisa in UN posto solo ---------------
+  // ⚠️ La conferma di appartenenza è una CORREZIONE (append-only), non una
+  // riscrittura del verbale: `ownershipConfirmation` legge l'ultima riga del
+  // registro, e il verdetto la riceve come ingresso.
+  const ownershipConf = ownershipConfirmation(detail.corrections);
+  // L'INGRESSO si tiene da parte: i segni dei campi senza canale (destinatario,
+  // tipo, data del documento) si decidono con `segnoCampo` sugli stessi stati.
+  const trustInput = analysis && analysis.analysisStatus !== 'failed'
+    ? trustInputFromAnalysis(analysis, {
+      legalName: activeCompany?.legalName ?? '',
+      memberSurnames: cognomiDaRubrica(members.map((m) => m.name)),
+    }, ownershipConf !== null)
+    : null;
+  const trust = trustInput ? analysisTrust(trustInput) : null;
+  /** Il segno di un campo SENZA canale di citazione: «da verificare» se il
+   *  modello ha dichiarato un dubbio su quel campo, NIENTE altrimenti. Un
+   *  «senza evidenza verificata» qui addebiterebbe al documento una lacuna
+   *  del nostro schema — la lacuna si dichiara una volta sola, nei dettagli
+   *  tecnici (decisione 1 del 2026-08-19). */
+  const segno = (campo: 'recipient' | 'documentType' | 'documentDate') =>
+    trustInput && analysis ? segnoCampo(campo, trustInput.campi[campo], analysis.uncertaintyItems) : null;
+  const ownershipDoubt = trust?.unavailable === 'ownership';
+  // Il punto del modello sul destinatario: il TESTO si mostra come conferma
+  // di ciò che il confronto strutturato ha deciso — mai come fonte.
+  const recipientPoint = ownershipDoubt
+    ? analysis?.uncertaintyItems.find((u) => u.field === 'recipient' && u.severity === 'high') ?? null
+    : null;
+
   // Che cosa conviene fare adesso. La decisione è una funzione PURA e vive in
   // `nextStep.ts`: una guardia di questo tipo si sbaglia in silenzio — propone
   // la cosa sbagliata e non lo dice nessuno.
-  const step = nextStepFor(detail, nome);
+  // ⚠️ APPARTENENZA IN DUBBIO = NIENTE ATTIVITÀ: finché nessuno conferma che
+  // il documento riguardi l'azienda, da qui non nascono scadenze né attività.
+  // Il gate sta su `canCreateTask`, che è l'unico interruttore che tutti i
+  // punti di creazione consultano.
+  const stepRaw = nextStepFor(detail, nome);
+  const step = ownershipDoubt ? { ...stepRaw, canCreateTask: false } : stepRaw;
   // §40 — le azioni dell'analisi e le attività sono cose diverse, e dopo la
   // conversione non esiste un collegamento fra le due liste. Perciò questo
   // avviso compare SOLO quando non è nata nessuna attività da questo documento:
@@ -488,9 +554,11 @@ export function DocumentDetailPage() {
            stato dell'analisi. In fondo, staccato dal margine automatico, il
            trabocco: archivia, stampa, elimina. ------------------------- */}
       <div className="action-bar mt-12">
-        <NextStepPrimary {...stepActions} />
+        {/* Sotto un dubbio di appartenenza l'azione del momento è UNA:
+            rispondere alla domanda. Il prossimo passo torna dopo. */}
+        {!ownershipDoubt && <NextStepPrimary {...stepActions} />}
         <div className="action-bar-secondary">
-          <NextStepSecondary {...stepActions} />
+          {!ownershipDoubt && <NextStepSecondary {...stepActions} />}
           {doc.storagePath && (
             <button className="btn btn-sm" onClick={() => void openFile()} disabled={busy}>
               <Icon name="eye" className="ic-sm" /> {t('documents.openFile')}
@@ -522,6 +590,41 @@ export function DocumentDetailPage() {
                 {busy ? <span className="spinner" aria-hidden="true" /> : null} {t('documents.deleteConfirm')}
               </button>
               <button className="btn btn-sm" onClick={() => setArmedDelete(false)}>{t('common.cancel')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- L'appartenenza in dubbio: PRIMA di ogni altra cosa ----------
+           Se non è chiaro che il documento riguardi l'azienda attiva, ogni
+           altro blocco della pagina parla di un documento che potrebbe essere
+           di qualcun altro. Le due azioni sono la risposta alla domanda; il
+           testo del punto del modello si mostra come conferma di ciò che il
+           confronto strutturato ha deciso — mai come fonte (§ decisione 3). */}
+      {ownershipDoubt && trust && (
+        <div className="warn-box mt-12" role="alert">
+          <Icon name="alert" className="ic-sm" />
+          <div>
+            <div><b>{t('documents.ownership.warnTitle', { company: activeCompany?.legalName ?? '' })}</b></div>
+            <div className="prose">
+              {trust.ownership.doubt && trust.ownership.other
+                ? t('documents.ownership.warnRecipient', { recipient: trust.ownership.other })
+                : t('documents.ownership.warnNoRecipient')}
+            </div>
+            {recipientPoint && <div className="muted-sm prose">{recipientPoint.description}</div>}
+            <div className="muted-sm">{t('documents.ownership.warnGate')}</div>
+            <div className="row-wrap mt-10">
+              <button className="btn btn-sm" onClick={() => void confirmOwnership()} disabled={busy}>
+                {t('documents.ownership.confirm', { company: activeCompany?.legalName ?? '' })}
+              </button>
+              {/* «Rimuovi dall'archivio» ARMA l'eliminazione esistente: la
+                  conferma rossa compare qui sopra, con la sua spiegazione.
+                  Niente secondo percorso distruttivo. */}
+              {canDelete && (
+                <button className="btn btn-sm" onClick={() => setArmedDelete(true)} disabled={busy}>
+                  {t('documents.ownership.remove')}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -581,11 +684,20 @@ export function DocumentDetailPage() {
            cosa devo fare? Non introduce dati nuovi — legge quelli che la pagina
            ha già — e ora non porta più pulsanti: quelli sono là sopra, uno
            solo primario. ---------------------------------------------- */}
-      <NextStepCard step={step} />
+      {!ownershipDoubt && <NextStepCard step={step} />}
 
       {/* ---- Analisi ---------------------------------------------------- */}
       <div className="surface-1 mt-16">
-        <div className="card-title">{t('documents.analysis')}</div>
+        <div className="card-title">
+          {t('documents.analysis')}
+          {/* L'indicatore sta QUI, nell'intestazione, non fra i campi: un
+              giudizio di sintesi stampato alla pari dei campi che riassume
+              poteva contraddirli da pari (visto il 2026-08-15: «alta» sopra
+              un sopralluogo preso per scadenza). */}
+          {trust && analysis && (
+            <TrustIndicator verdict={trust} schemaVersion={analysis.schemaVersion} analysedAt={analysis.createdAt} />
+          )}
+        </div>
 
         {item.lastAttemptFailed && (
           <div className="warn-box" role="status">{t('documents.lastAttemptFailed')}</div>
@@ -630,11 +742,31 @@ export function DocumentDetailPage() {
               <Field label={t('documents.sender')} value={item.sender}
                 corrected={item.senderCorrected} aiValue={aiValueOf(detail.corrections, 'sender')}
                 evidence={analysis ? (analysis.senderEvidence ?? null) : undefined} />
+              <Field label={t('documents.recipient')} value={analysis?.recipient ?? null}
+                mark={segno('recipient') === 'da-verificare' && analysis?.recipient
+                  ? <>{analysis.recipient} <ProvenanceMark kind="toVerify" /></>
+                  : undefined}
+                extra={ownershipConf && (
+                  <span className="trust-confirmed">
+                    {t('documents.ownership.confirmedLine', {
+                      name: assigneeName(ownershipConf.by),
+                      date: formatDate(ownershipConf.at),
+                    })}
+                    {' '}
+                    <button className="btn btn-sm btn-ghost" onClick={() => void revokeOwnership()} disabled={busy}>
+                      {t('documents.ownership.revoke')}
+                    </button>
+                  </span>
+                )} />
               <Field label={t('documents.documentType')} value={item.documentType ? L.docType(item.documentType) : null}
                 corrected={item.documentTypeCorrected} aiValue={aiValueOf(detail.corrections, 'document_type')}
-                evidence={analysis ? null : undefined} />
+                mark={segno('documentType') === 'da-verificare' && item.documentType
+                  ? <>{L.docType(item.documentType)} <ProvenanceMark kind="toVerify" /></>
+                  : undefined} />
               <Field label={t('documents.documentDate')} value={item.documentDate ? formatDate(item.documentDate) : null}
-                evidence={analysis ? null : undefined} />
+                mark={segno('documentDate') === 'da-verificare' && item.documentDate
+                  ? <>{formatDate(item.documentDate)} <ProvenanceMark kind="toVerify" /></>
+                  : undefined} />
               <Field
                 label={t('documents.deadline')}
                 // §36 — se l'analisi dichiara che la scadenza va verificata, non
@@ -661,10 +793,6 @@ export function DocumentDetailPage() {
                 <Field label={t('documents.references')}
                   value={analysis.referenceNumbers.map((r) => `${r.label ? `${r.label}: ` : ''}${r.value}`).join(' · ')} />
               ) : null}
-              <Field label={t('documents.confidence')} value={item.confidence ? L.confidence(item.confidence) : null}
-                mark={item.confidence === 'alta' || item.confidence === 'media' || item.confidence === 'bassa'
-                  ? <ConfidenceBadge level={item.confidence as Confidence} />
-                  : null} />
             </dl>
 
             {/* ⚠️ `prose`: il riassunto è testo CORRENTE, e correva per tutta la
@@ -772,6 +900,18 @@ export function DocumentDetailPage() {
           actions={splitActions(analysis.actions)}
           citations={collectCitations(analysis)}
           toVerify={analysis.uncertaintyItems.map((u) => u.description)}
+          // ⚠️ Su carta il «perché» non si può aprire: il livello porta con sé
+          // TUTTI i motivi, non solo quello che decide. E il grezzo del modello
+          // viaggia accanto, col suo nome — due colonne, mai una sola.
+          trust={trust ? {
+            shown: trust.level
+              ? `${L.confidence(trust.level)}${trust.pointCount ? ` · ${trust.pointCount === 1 ? t('documents.trust.pointsOne') : t('documents.trust.pointsMany', { n: trust.pointCount })}` : ''}`
+              : t('documents.trust.unavailableOwnership'),
+            reading: L.confidence(trust.modelLevel),
+            reasons: analysis
+              ? trust.caps.map((c) => reasonText(c, t, { schemaVersion: analysis.schemaVersion, analysedAt: analysis.createdAt }))
+              : [],
+          } : null}
           footer={buildFooter({
             companyName: activeCompany?.legalName,
             now: new Date(),
@@ -882,7 +1022,12 @@ export function DocumentDetailPage() {
                 sembra rotto: la spiegazione sta anche in cima, ma chi arriva
                 qui scorrendo non l'ha necessariamente letta. */}
             {!step.canCreateTask && (
-              <div className="muted-sm mt-8">{t('documents.nextStep.noticeProcessing')}</div>
+              <div className="muted-sm mt-8">
+                {/* Due gate, due ragioni: dire «la lettura non è finita» a chi
+                    è fermo sull'appartenenza manderebbe ad aspettare una cosa
+                    che non arriverà. */}
+                {ownershipDoubt ? t('documents.ownership.warnGate') : t('documents.nextStep.noticeProcessing')}
+              </div>
             )}
           </>
         )}
@@ -1010,7 +1155,24 @@ export function DocumentDetailPage() {
                 value={detail.technical.analysisCreatedAt ? formatDate(detail.technical.analysisCreatedAt) : null} />
             </>
           )}
+          {/* ⚠️ IL VALORE GREZZO DEL MODELLO, con il suo nome vero. Non è
+              l'attendibilità (quella sta nell'intestazione della scheda
+              Analisi, coi suoi tetti): misura quanto il modello è certo di
+              aver LETTO bene, e la riga sotto lo dice. */}
+          {analysis && analysis.analysisStatus !== 'failed' && (
+            <Field label={t('documents.trust.readingLabel')}
+              value={L.confidence(analysis.confidence)} />
+          )}
         </dl>
+        {analysis && analysis.analysisStatus !== 'failed' && (
+          <>
+            <p className="muted-sm">{t('documents.trust.readingDesc')}</p>
+            {/* La lacuna dei canali di citazione, detta UNA volta sola: è un
+                limite del sistema, non un dubbio su questo documento — per
+                questo non compare accanto ai singoli campi. */}
+            <p className="muted-sm">{t('documents.trust.channelGap')}</p>
+          </>
+        )}
         {detail.technical?.truncated && (
           <div className="warn-box">{t('documents.techTruncated')}</div>
         )}
@@ -1041,10 +1203,13 @@ export function DocumentDetailPage() {
  * `mark`: una marcatura al posto del testo piano (scadenza, confidenza).
  */
 function Field({
-  label, value, corrected, aiValue, evidence, mark,
+  label, value, corrected, aiValue, evidence, mark, extra,
 }: {
   label: string; value: string | null; corrected?: boolean; aiValue?: string | null;
   evidence?: Evidence | null; mark?: React.ReactNode;
+  /** Una riga in coda al valore: la conferma di appartenenza sotto il
+   *  destinatario. Non sostituisce il valore, gli si affianca. */
+  extra?: React.ReactNode;
 }) {
   const t = useT();
   if (!value && !corrected) return null;
@@ -1066,6 +1231,7 @@ function Field({
             <EvidenceLink quote={evidence?.quote ?? null} page={evidence?.pageNumber ?? null} />
           </div>
         )}
+        {extra}
       </dd>
     </>
   );

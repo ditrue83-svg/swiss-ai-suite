@@ -24,6 +24,9 @@ import { translate as tr } from '@/i18n';
 import { deadlineRequiresVerification } from '../../supabase/functions/_shared/deadlineNature.ts';
 import { aBlocchi, BLOCCO_IN } from '@/lib/blocchi';
 import { stateOf, toListArgs } from '@/features/documents/documentModel';
+import {
+  OWNERSHIP_FIELD, ownershipConfirmation, valutaAppartenenza, type TrustCompany,
+} from '@/features/documents/analysisTrust';
 import { etichettaDocumento } from '@/lib/documentTitle';
 import { analysisService } from './analysisService';
 import type { Database } from '@/types/database';
@@ -351,6 +354,113 @@ export const documentHubService = {
       done: conteggi.reduce((a, b) => a + b, 0),
       total, documents: rows.length, documentsTotal,
     };
+  },
+
+  /**
+   * I SEGNALI DI APPARTENENZA per un elenco di documenti (archivio, panoramica).
+   *
+   * ⚠️ PERCHÉ UNA SECONDA INTERROGAZIONE E NON `list_documents`: la RPC non
+   * restituisce destinatario né punti da verificare, e allargarla è una
+   * migrazione — esclusa da questo lavoro. Due letture a blocchi (analisi e
+   * conferme) e il calcolo dove gira il resto della regola: `analysisTrust`.
+   *
+   * ⚠️ QUI NON SI DECIDE NESSUN LIVELLO. L'archivio non mostra l'attendibilità
+   * — una colonna di «bassa» lunga quanto lo schermo smette di essere letta —
+   * ma solo lo stato ECCEZIONALE e azionabile: l'appartenenza da confermare.
+   * Il livello vive nel dettaglio, dove c'è lo spazio per il suo perché.
+   *
+   * ⚠️ Il chiamante tratta il fallimento come ASSENZA D'INFORMAZIONE, mai come
+   * un valore: niente livello provvisorio, niente campo grezzo al suo posto.
+   */
+  async trustSignals(
+    companyId: string, documentIds: string[], company: TrustCompany,
+  ): Promise<Map<string, { ownershipToConfirm: boolean; points: number }>> {
+    const out = new Map<string, { ownershipToConfirm: boolean; points: number }>();
+    if (!documentIds.length) return out;
+    const sb = requireSupabase();
+
+    const [analisiBlocchi, confermeBlocchi] = await Promise.all([
+      Promise.all(aBlocchi(documentIds, BLOCCO_IN).map(async (blocco) => {
+        const { data, error } = await sb.from('document_analyses')
+          .select('document_id, recipient, uncertainties, created_at')
+          .eq('company_id', companyId)
+          .neq('analysis_status', 'failed')
+          .in('document_id', blocco)
+          .order('created_at', { ascending: false });
+        if (error) throw new AppError(documentErrorMessage(error), error);
+        return data ?? [];
+      })),
+      Promise.all(aBlocchi(documentIds, BLOCCO_IN).map(async (blocco) => {
+        const { data, error } = await sb.from('analysis_corrections')
+          .select('document_id, field, corrected_value, corrected_by, corrected_at')
+          .eq('company_id', companyId)
+          .eq('field', OWNERSHIP_FIELD)
+          .in('document_id', blocco);
+        if (error) throw new AppError(documentErrorMessage(error), error);
+        return data ?? [];
+      })),
+    ]);
+
+    const confermePerDoc = new Map<string, { field: string; correctedValue: unknown; correctedBy: string | null; correctedAt: string }[]>();
+    for (const r of confermeBlocchi.flat()) {
+      const arr = confermePerDoc.get(r.document_id) ?? [];
+      arr.push({ field: r.field, correctedValue: r.corrected_value, correctedBy: r.corrected_by, correctedAt: r.corrected_at });
+      confermePerDoc.set(r.document_id, arr);
+    }
+
+    // L'ULTIMA analisi valida per documento: le righe arrivano già ordinate
+    // (created_at discendente) dentro ogni blocco, e i blocchi sono disgiunti.
+    for (const r of analisiBlocchi.flat()) {
+      if (out.has(r.document_id)) continue;
+      // §17 — i punti possono essere righe testuali (dati storici) o oggetti:
+      // qui servono solo campo e gravità, il resto non si interpreta.
+      const punti = (Array.isArray(r.uncertainties) ? r.uncertainties : [])
+        .map((u) => u as { field?: unknown; severity?: unknown; description?: unknown })
+        .filter((u) => u && typeof u === 'object')
+        .map((u) => ({
+          field: typeof u.field === 'string' ? u.field : 'generale',
+          severity: (u.severity === 'high' || u.severity === 'low' ? u.severity : 'medium') as 'high' | 'medium' | 'low',
+          description: typeof u.description === 'string' ? u.description : '',
+        }));
+      const dubbio = valutaAppartenenza(r.recipient, punti, company).doubt;
+      const confermata = ownershipConfirmation(confermePerDoc.get(r.document_id) ?? []) !== null;
+      out.set(r.document_id, {
+        ownershipToConfirm: dubbio && !confermata,
+        points: punti.length,
+      });
+    }
+    return out;
+  },
+
+  /**
+   * Quanti DOCUMENTI dell'azienda hanno l'appartenenza da confermare —
+   * archiviati COMPRESI, e la didascalia della Panoramica lo dichiara: la
+   * conferma è un lavoro che un documento archiviato chiede lo stesso.
+   * Tetto a STATS_MAX_DOCUMENTS come le statistiche: oltre, meglio un numero
+   * dichiaratamente parziale che un'interrogazione senza fine.
+   */
+  async ownershipToConfirm(companyId: string, company: TrustCompany): Promise<number> {
+    const sb = requireSupabase();
+    const [{ data: analisi, error: e1 }, { data: conferme, error: e2 }] = await Promise.all([
+      sb.from('document_analyses')
+        .select('document_id, recipient, uncertainties, created_at')
+        .eq('company_id', companyId)
+        .neq('analysis_status', 'failed')
+        .order('created_at', { ascending: false })
+        .limit(STATS_MAX_DOCUMENTS),
+      sb.from('analysis_corrections')
+        .select('document_id, field, corrected_value, corrected_by, corrected_at')
+        .eq('company_id', companyId)
+        .eq('field', OWNERSHIP_FIELD),
+    ]);
+    if (e1) throw new AppError(documentErrorMessage(e1), e1);
+    if (e2) throw new AppError(documentErrorMessage(e2), e2);
+
+    const ids = [...new Set((analisi ?? []).map((r) => r.document_id))];
+    const segnali = await documentHubService.trustSignals(companyId, ids, company);
+    let n = 0;
+    for (const s of segnali.values()) if (s.ownershipToConfirm) n++;
+    return n;
   },
 
   /** Quanti documenti attivi ha l'azienda. Interrogazione di sola testata. */

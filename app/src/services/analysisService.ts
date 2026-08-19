@@ -57,7 +57,10 @@ function engineToInsert(
   };
 }
 
-function rowToDomain(row: AnalysisRow): DocumentAnalysis {
+/** ⚠️ Esportata per il BANCO di prova (.temp): il banco serve dati veri
+ *  esportati e deve mapparli col mapper VERO, non con una copia che diverge.
+ *  Il prodotto continua a usarla solo da qui dentro. */
+export function rowToDomain(row: AnalysisRow): DocumentAnalysis {
   const days = daysUntil(row.deadline);
   const docType = row.document_type ?? 'informativa';
   const actions = (Array.isArray(row.actions) ? row.actions : []) as unknown as ChecklistAction[];
@@ -124,6 +127,7 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     documentId: row.document_id,
     companyId: row.company_id,
     analysisVersion: row.analysis_version,
+    schemaVersion: row.schema_version ?? 1,
     engine: row.engine,
     language: row.language,
     // §42 — come per il tipo di documento, l'etichetta della lingua segue la

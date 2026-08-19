@@ -269,6 +269,28 @@ function OverviewBody({ data }: { data: OverviewData }) {
         </div>
       </div>
 
+      {/* ---- Appartenenza da confermare ------------------------------------
+           Un contatore «analisi affidabili: 0» non sarebbe sbagliato, sarebbe
+           inutile: questo numero invece porta a un'azione — confermare o
+           rimuovere. Compare SOLO quando è maggiore di zero, e quando la
+           lettura fallisce non compare affatto (`null` non è zero: niente
+           numero provvisorio, niente zero finto). Archiviati compresi, e la
+           didascalia lo dichiara: la conferma è un lavoro che un documento
+           archiviato chiede lo stesso. */}
+      {data.ownershipToConfirm != null && data.ownershipToConfirm > 0 && (
+        <div className="info-box mt-12" role="status">
+          <Icon name="alert" className="ic-sm" />
+          <span>
+            <Link to="/documenti">
+              {data.ownershipToConfirm === 1
+                ? t('dashboard.ownershipToConfirmOne')
+                : t('dashboard.ownershipToConfirmMany', { n: data.ownershipToConfirm })}
+            </Link>
+            {' — '}{t('dashboard.ownershipToConfirmSub')}
+          </span>
+        </div>
+      )}
+
       <div className="card mt-16">
         <div className="card-title">{t('dashboard.nextActions')}</div>
         <div className="muted-sm dash-sorted">{t('dashboard.sortedByPriority')}</div>

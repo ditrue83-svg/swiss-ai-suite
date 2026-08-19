@@ -34,6 +34,8 @@ import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, SORTS, SOURCES, STATES,
   filtersFromParams, hasActiveFilters, paramsFromFilters, rowMarks, splitSnippet,
 } from './documentModel';
+import { cognomiDaRubrica } from './analysisTrust';
+import { useMembers } from '@/features/tasks/useMembers';
 import type {
   DocumentCategory, DocumentHubFilters, DocumentHubItem, DocumentSort, DocumentSourceType,
   DocumentState, DocumentTag,
@@ -104,6 +106,43 @@ function useDocumentList(companyId: string, filters: DocumentHubFilters) {
   };
 }
 
+/**
+ * I segnali di appartenenza per le righe in elenco — la SECONDA interrogazione.
+ *
+ * ⚠️ MAI IL VALORE GREZZO, NEMMENO PER UN ISTANTE: finché la risposta non è
+ * arrivata la mappa è `null` e la riga non mostra niente. Un livello
+ * provvisorio che vive mezzo secondo è peggio di uno sbagliato per sempre —
+ * sembra autorevole, l'occhio lo registra, e poi cambia sotto lo sguardo.
+ *
+ * ⚠️ E NESSUN RIPIEGO RUMOROSO: se la richiesta fallisce, l'elenco funziona e
+ * dell'appartenenza semplicemente non si dice nulla. Non è un errore da
+ * mostrare: è un'informazione che in quel momento non c'è. (È un'ECCEZIONE
+ * dichiarata alla regola «nessun fallback silenzioso»: qui il silenzio non
+ * inventa un valore — l'assenza dell'indicatore non è un segno.)
+ */
+function useTrustSignals(companyId: string, items: DocumentHubItem[]) {
+  const { activeCompany } = useCompany();
+  const { members } = useMembers();
+  const [signals, setSignals] = useState<Map<string, { ownershipToConfirm: boolean; points: number }> | null>(null);
+  const legalName = activeCompany?.legalName ?? '';
+  const surnames = useMemo(() => cognomiDaRubrica(members.map((m) => m.name)), [members]);
+  const ids = useMemo(() => items.filter((i) => i.analysisId).map((i) => i.id), [items]);
+  const idsKey = ids.join(',');
+
+  useEffect(() => {
+    let active = true;
+    setSignals(null);
+    if (!ids.length || !legalName) { setSignals(new Map()); return; }
+    documentHubService.trustSignals(companyId, ids, { legalName, memberSurnames: surnames })
+      .then((m) => { if (active) setSignals(m); })
+      .catch(() => { if (active) setSignals(null); });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, idsKey, legalName, surnames]);
+
+  return signals;
+}
+
 const SORT_KEY: Record<DocumentSort, TKey> = {
   recent: 'documents.sorts.recent',
   oldest: 'documents.sorts.oldest',
@@ -158,6 +197,10 @@ export function DocumentsPage() {
   }, [search]);
 
   const list = useDocumentList(companyId, filters);
+
+  // La seconda interrogazione: i segnali di appartenenza per le righe visibili.
+
+  const trustSignals = useTrustSignals(companyId, list.items);
   const [counts, setCounts] = useState<Map<DocumentCategory | 'none', number>>(new Map());
   const [tags, setTags] = useState<DocumentTag[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -444,6 +487,7 @@ export function DocumentsPage() {
                 docType={item.documentType ? L.docType(item.documentType) : null}
                 selected={selected.has(item.id)}
                 onSelect={() => toggleSelection(item.id)}
+                ownershipToConfirm={trustSignals?.get(item.id)?.ownershipToConfirm === true}
               />
             ))}
 
@@ -499,10 +543,15 @@ export function DocumentsPage() {
  * provenienza.
  */
 function DocumentRow({
-  item, t, category, docType, selected, onSelect,
+  item, t, category, docType, selected, onSelect, ownershipToConfirm,
 }: {
   item: DocumentHubItem; t: TFunction; category: string; docType: string | null;
   selected: boolean; onSelect: () => void;
+  /** L'unico segnale di attendibilità che l'elenco mostra: quello azionabile.
+   *  Il LIVELLO qui non compare per scelta — una colonna di «bassa» lunga
+   *  quanto lo schermo smette di essere letta; vive nel dettaglio, col suo
+   *  perché. `false` anche quando l'informazione non è ancora arrivata. */
+  ownershipToConfirm: boolean;
 }) {
   // ⚠️ IL NOME, non `item.title`: quando il titolo non è mostrabile qui
   // comparirebbe «2.5». La decisione l'ha già presa il servizio.
@@ -576,6 +625,7 @@ function DocumentRow({
             <AppointmentMark date={item.appointmentDate} display={formatDate(item.appointmentDate)} />
           )}
           {marks.toVerify && <ProvenanceMark kind="toVerify" />}
+          {ownershipToConfirm && <Tag tone="attention">{t('documents.ownership.badge')}</Tag>}
           {marks.state && (
             <span className={stateBadgeClass(marks.state)}>{t(STATE_KEY[item.state])}</span>
           )}

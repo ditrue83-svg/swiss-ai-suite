@@ -31,6 +31,11 @@ import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
 import { nextStepFor } from '../src/features/documents/nextStep';
+import {
+  OWNERSHIP_CONFIRMED, OWNERSHIP_FIELD, OWNERSHIP_REVOKED,
+  analysisTrust, cognomiDaRubrica, ownershipConfirmation, segnoCampo, trustInputFromAnalysis,
+  type TrustInput, type TrustVerdict,
+} from '../src/features/documents/analysisTrust';
 import { readFileSync } from 'node:fs';
 import { aBlocchi, BLOCCO_IN } from '../src/lib/blocchi';
 import {
@@ -39,7 +44,7 @@ import {
 } from '../src/lib/documentTitle';
 import { documentTaskDraft, runCreateFromDocument } from '../src/features/tasks/documentToTask';
 import type {
-  ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
+  AnalysisUncertainty, ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
   DocumentLinkedTask, DocumentStatsRow, Task,
 } from '../src/types/models';
 
@@ -236,7 +241,7 @@ const azione = (over: Partial<ChecklistAction> = {}): ChecklistAction => ({
 
 function analisi(over: Partial<DocumentAnalysis> = {}): DocumentAnalysis {
   return {
-    id: 'an-1', documentId: 'doc-1', companyId: 'co-1', analysisVersion: 1,
+    id: 'an-1', documentId: 'doc-1', companyId: 'co-1', analysisVersion: 1, schemaVersion: 2,
     engine: 'ai', language: 'it', languageLabel: 'Italiano',
     sender: 'Amministrazione federale delle contribuzioni', senderUncertain: false, senderEvidence: null,
     documentType: 'vat_statement', documentTypeLabel: 'Rendiconto IVA',
@@ -1169,6 +1174,302 @@ section('13. Duecento identificativi non entrano in un URL');
     'e il servizio interroga UN BLOCCO per volta, non l\'elenco intero');
   ok(!/\.in\('analysis_id', analysisIds\)/.test(servizio),
     'l\'elenco intero non finisce più in una `.in(...)` sola');
+}
+
+// ===========================================================================
+section('14 · L\'attendibilità dell\'analisi — i tetti, e ciò che NON è un tetto');
+{
+  const trust = (over: Partial<TrustInput> = {}): TrustVerdict => analysisTrust({
+    modelLevel: 'alta', recipient: null, uncertainties: [],
+    deadline: null, deadlineKind: null, deadlineType: null,
+    deadlineRequiresVerificationRaw: false, analysedAt: '2026-08-18T00:00:00Z',
+    campi: {}, company: { legalName: 'Rossi SA', memberSurnames: ['Cavalieri'] },
+    ...over,
+  });
+  const punto = (field: string, severity: AnalysisUncertainty['severity']): AnalysisUncertainty =>
+    ({ field, severity, description: `dubbio su ${field}` });
+  const campo = (hasValue: boolean, hasChannel: boolean, hasEvidence: boolean) =>
+    ({ hasValue, hasChannel, hasEvidence });
+
+  // --- niente da eccepire: passa il livello del modello ---------------------
+  ok(trust().level === 'alta', 'senza tetti passa il livello del modello');
+  ok(trust().caps.length === 0, 'e non dichiara tetti che non ci sono');
+  ok(trust({ modelLevel: 'bassa' }).level === 'bassa', 'il tetto non ALZA mai il livello del modello');
+
+  // --- il conteggio dei punti NON è un tetto (la regola ritirata) -----------
+  const seiPuntiInnocui = trust({
+    uncertainties: [
+      punto('language', 'low'), punto('language', 'low'), punto('content', 'low'),
+      punto('security', 'low'), punto('amounts.currency', 'low'), punto('language', 'low'),
+    ],
+  });
+  ok(seiPuntiInnocui.level === 'alta',
+    'SEI punti da verificare, tutti low o su campi non portanti, NON abbassano niente');
+  ok(seiPuntiInnocui.pointCount === 6,
+    'ma il conteggio resta un fatto suo, da mostrare accanto al livello');
+  // ⚠️ CONTROPROVA: è il caso che faceva fallire la regola vecchia. Se un
+  // giorno tornasse un tetto sul NUMERO, questa riga diventa rossa.
+  ok(seiPuntiInnocui.caps.length === 0,
+    'CONTROPROVA: il numero dei punti non compare fra i tetti');
+
+  // --- i punti pesano per GRAVITÀ e per campo -------------------------------
+  ok(trust({ uncertainties: [punto('deadline', 'high')] }).level === 'bassa',
+    'un punto high su campo portante porta a bassa');
+  ok(trust({ uncertainties: [punto('deadline', 'medium')] }).level === 'media',
+    'un punto medium su campo portante porta a media');
+  ok(trust({ uncertainties: [punto('deadline', 'low')] }).level === 'alta',
+    'un punto low non porta alcun tetto');
+  ok(trust({ uncertainties: [punto('language', 'high')] }).level === 'alta',
+    'un punto high su campo NON portante non porta alcun tetto');
+  ok(trust({ uncertainties: [punto('sender.authorityType', 'high')] }).level === 'bassa',
+    'il sotto-attributo conta come il campo: sender.authorityType è mittente');
+  ok(trust({ uncertainties: [punto('authenticity', 'high')] }).level === 'bassa',
+    'eccezione dichiarata: authenticity high vale come campo portante');
+  ok(trust({ uncertainties: [punto('authenticity', 'medium')] }).level === 'alta',
+    'ma authenticity MEDIUM no: l\'eccezione è solo per la gravità alta');
+  ok(trust({ uncertainties: [punto('deadline', 'high'), punto('sender', 'medium')] }).binding?.reason === 'point_high',
+    'con high e medium insieme decide il high');
+
+  // --- l'evidenza, solo dove il canale esiste -------------------------------
+  ok(trust({ campi: { sender: campo(true, true, false) } }).level === 'media',
+    'un campo portante CON canale e senza citazione porta a media');
+  ok(trust({ campi: { sender: campo(true, true, false), deadline: campo(true, true, false) } }).level === 'bassa',
+    'due campi idem portano a bassa');
+  // ⚠️ CONTROPROVA: è il difetto che la sonda ha trovato. Un campo SENZA
+  // canale non deve abbassare niente — sarebbe una lacuna nostra addebitata
+  // al documento, e portava ogni analisi a «bassa» per costruzione.
+  ok(trust({
+    campi: { recipient: campo(true, false, false), documentDate: campo(true, false, false) },
+  }).level === 'alta',
+    'CONTROPROVA: due campi SENZA canale non abbassano nulla');
+  ok(trust({ campi: { recipient: campo(true, false, false) } }).campiSenzaCanale.includes('recipient'),
+    'e la lacuna viene dichiarata, per dirla una volta sola nei dettagli tecnici');
+  ok(trust({ campi: { deadline: campo(false, true, false) } }).level === 'alta',
+    'un campo senza VALORE non è un campo senza citazione');
+
+  // --- la scadenza ----------------------------------------------------------
+  ok(trust({ deadline: null, deadlineType: 'inferred' }).level === 'alta',
+    'CONTROPROVA: «scadenza dedotta» senza una data non abbassa niente (6 righe nel database)');
+  ok(trust({ deadline: '2027-01-22', deadlineKind: 'term', deadlineType: 'inferred' }).level === 'bassa',
+    'con la data, la scadenza dedotta porta a bassa');
+  ok(trust({ deadline: '2027-01-22', deadlineKind: 'term', deadlineRequiresVerificationRaw: true }).level === 'media',
+    'la scadenza marcata «da verificare» dal validatore porta a media');
+  // ⚠️ La precedenza dichiarata: la LETTURA vince sul flag grezzo.
+  const naturaMai = trust({
+    deadline: '2027-01-22', deadlineKind: null, deadlineRequiresVerificationRaw: false,
+    analysedAt: '2026-07-30T21:45:35Z',
+  });
+  ok(naturaMai.level === 'media',
+    'natura mai dichiarata: «da verificare» anche se il flag grezzo dice false');
+  ok(naturaMai.binding?.reason === 'deadline_nature_unrecorded' && naturaMai.binding.fromOurGap,
+    'e il motivo dice che il tetto nasce da una LACUNA NOSTRA, non dal documento');
+  const naturaNonRisposta = trust({
+    deadline: '2027-01-22', deadlineKind: null, analysedAt: '2026-08-18T00:00:00Z',
+  });
+  ok(naturaNonRisposta.binding?.reason === 'deadline_to_verify' && !naturaNonRisposta.binding.fromOurGap,
+    'dopo la 0040 la stessa assenza è del DOCUMENTO: il campo c\'era e nessuno ha risposto');
+
+  // --- l'appartenenza: una condizione a sé ----------------------------------
+  const altrui = trust({ recipient: 'Hype My Media' });
+  ok(altrui.level === null && altrui.unavailable === 'ownership',
+    'destinatario che nomina un\'altra organizzazione: l\'indicatore SPARISCE');
+  ok(altrui.level !== 'bassa', 'e non scende a «bassa»: non è un quarto livello');
+  ok(trust({ recipient: 'Rossi SA' }).level === 'alta', 'la stessa azienda non fa scattare niente');
+  ok(trust({ recipient: 'Rossi' }).level === 'alta', 'e la forma giuridica non conta: «Rossi» è «Rossi SA»');
+  // ⚠️ I DUE FALSI POSITIVI trovati sul database vero.
+  ok(trust({ recipient: 'Spettabile Ditta' }).level === 'alta',
+    'CONTROPROVA: una formula di cortesia non è un\'altra azienda');
+  ok(trust({ recipient: 'signor Cavalieri' }).level === 'alta',
+    'CONTROPROVA: una persona il cui cognome è fra i membri non è un\'altra azienda');
+  ok(trust({ recipient: 'signor Bianchi' }).level === null,
+    'una persona che NON risulta fra i membri è invece un soggetto diverso');
+  ok(trust({ recipient: 'signor Bianchi', company: { legalName: 'Rossi SA' } }).level === 'alta',
+    'ma senza l\'elenco dei membri il cognome non è confrontabile, e non scatta nulla');
+  ok(trust({ recipient: null }).level === 'alta',
+    'CONTROPROVA: destinatario assente NON è appartenenza in dubbio');
+  const soloPunto = trust({ recipient: null, uncertainties: [punto('recipient', 'high')] });
+  ok(soloPunto.level === null && soloPunto.ownership.doubt && soloPunto.ownership.via === 'punto',
+    'ma un punto high su «recipient» sì, anche col destinatario vuoto (2 righe nel database)');
+  ok(trust({ recipient: null, uncertainties: [punto('recipient', 'medium')] }).level === 'media',
+    'un punto MEDIUM su recipient è un tetto, non un dubbio di appartenenza');
+  const concordi = trust({ recipient: 'Hype My Media', uncertainties: [punto('recipient', 'high')] }).ownership;
+  ok(concordi.doubt && concordi.via === 'entrambi',
+    'quando concordano, il verdetto lo dice: nome e punto insieme');
+
+  // --- il segno di campo -----------------------------------------------------
+  ok(segnoCampo('sender', campo(true, true, true), []) === 'evidenza', 'canale + citazione → «mostra nel documento»');
+  ok(segnoCampo('sender', campo(true, true, false), []) === 'senza-evidenza', 'canale senza citazione → «senza evidenza verificata»');
+  ok(segnoCampo('recipient', campo(true, false, false), [punto('recipient', 'medium')]) === 'da-verificare',
+    'nessun canale ma un punto del modello sul campo → «da verificare»');
+  ok(segnoCampo('recipient', campo(true, false, false), []) === null,
+    'nessun canale e nessun punto → nessun segno (la lacuna si dice una volta sola)');
+  ok(segnoCampo('deadline', campo(false, true, false), []) === null, 'un campo senza valore non porta segni');
+
+  // --- i due casi VERI, presi dal database ----------------------------------
+  // Stripe Radar, analisi e1996764 del 30.07.2026.
+  const stripe = trust({
+    modelLevel: 'alta', recipient: 'Hype My Media', analysedAt: '2026-07-30T21:45:35Z',
+    deadline: '2027-01-22', deadlineKind: null, deadlineType: 'explicit',
+    deadlineRequiresVerificationRaw: false,
+    uncertainties: [punto('recipient', 'high'), punto('documentDate', 'medium'), punto('deadline', 'low')],
+    campi: {
+      sender: campo(true, true, true), deadline: campo(true, true, true),
+      amounts: campo(true, true, true), recipient: campo(true, false, false),
+      documentType: campo(true, false, false), documentDate: campo(false, false, false),
+    },
+  });
+  ok(stripe.level === null && stripe.unavailable === 'ownership',
+    'Stripe Radar: non valutabile, appartenenza da confermare');
+  ok(stripe.pointCount === 3, 'Stripe Radar: 3 elementi da verificare, mostrati accanto');
+  // e dopo la conferma dell'appartenenza il livello dev'essere «bassa»
+  // ⚠️ LA CONFERMA È UN INGRESSO, NON UN VALORE RISCRITTO: il destinatario
+  // resta «Hype My Media» nello snapshot, e il punto high su `recipient` resta
+  // dov'è. Confermare risponde a «di chi è», non a «quanto è affidabile».
+  const stripeConfermato = trust({
+    modelLevel: 'alta', recipient: 'Hype My Media', analysedAt: '2026-07-30T21:45:35Z',
+    deadline: '2027-01-22', deadlineKind: null, deadlineType: 'explicit',
+    uncertainties: [punto('recipient', 'high'), punto('documentDate', 'medium'), punto('deadline', 'low')],
+    ownershipConfirmed: true,
+  });
+  ok(stripeConfermato.level === 'bassa',
+    'Stripe Radar, dopo la conferma: il livello diventa «bassa»');
+  ok(stripeConfermato.binding?.reason === 'point_high',
+    'e il tetto che decide è il punto high su «recipient», che la conferma non cancella');
+  // ⚠️ CONTROPROVA: senza l'ingresso della conferma l'avviso tornerebbe per
+  // sempre, perché lo snapshot è immutabile e il punto non se ne va.
+  ok(trust({
+    modelLevel: 'alta', recipient: 'Hype My Media',
+    uncertainties: [punto('recipient', 'high')],
+  }).level === null,
+    'CONTROPROVA: senza conferma lo stesso snapshot resta non valutabile');
+
+  // Comune di Lugano — l'unico «media» interessante dell'archivio.
+  const lugano = trust({
+    modelLevel: 'alta', recipient: 'Spettabile Ditta', analysedAt: '2026-07-30T00:00:00Z',
+    deadline: '2026-09-10', deadlineKind: null, deadlineType: 'explicit',
+    deadlineRequiresVerificationRaw: false,
+    uncertainties: [punto('documentDate', 'low')],
+    campi: { sender: campo(true, true, true), deadline: campo(true, true, true) },
+  });
+  ok(lugano.level === 'media', 'Comune di Lugano: modello «alta», mostrato «media»');
+  ok(lugano.binding?.reason === 'deadline_nature_unrecorded',
+    'e il motivo è la natura della data mai registrata');
+  ok(lugano.binding?.fromOurGap === true,
+    'che è una lacuna NOSTRA: la riga non deve offrire «Correggi»');
+}
+
+// ===========================================================================
+section('15 · L\'adattatore dal dominio, la conferma di appartenenza, la rubrica');
+{
+  // --- trustInputFromAnalysis: i canali sono scritti UNA volta, qui ---------
+  const a = analisi({
+    recipient: 'Hype My Media',
+    deadline: '2027-01-22', deadlineKind: null, deadlineType: 'explicit',
+    deadlineRequiresVerification: true,
+    senderEvidence: { quote: 'Il team di Stripe', start: 0, end: 17 },
+    deadlineEvidence: { quote: 'il 22 gennaio 2027', start: 0, end: 18 },
+    amount: 0.05, amountEvidence: null,
+    uncertaintyItems: [{ field: 'recipient', description: 'dubbio', severity: 'high' }],
+  });
+  const inp = trustInputFromAnalysis(a, { legalName: 'Rossi SA', memberSurnames: ['Cavalieri'] });
+  ok(inp.campi.sender?.hasChannel === true && inp.campi.sender.hasEvidence === true,
+    'mittente: canale e citazione presenti arrivano al verdetto');
+  ok(inp.campi.amounts?.hasChannel === true && inp.campi.amounts.hasEvidence === false,
+    'importi: canale presente, citazione assente — è il caso che il tetto sull\'evidenza pesa');
+  ok(inp.campi.recipient?.hasChannel === false && inp.campi.documentType?.hasChannel === false
+    && inp.campi.documentDate?.hasChannel === false,
+    'destinatario, tipo e data: SENZA canale — la lacuna è nostra, dichiarata nell\'adattatore');
+  ok(inp.ownershipConfirmed === undefined || inp.ownershipConfirmed === false,
+    'senza terzo argomento la conferma non si presume');
+  // Il flag EFFETTIVO al posto del grezzo è un'equivalenza, non un ripiego:
+  // quando la natura non è dichiarata il flag non viene consultato.
+  const v = analysisTrust(inp);
+  ok(v.level === null && v.unavailable === 'ownership',
+    'e il verdetto sul caso Stripe ricostruito dal dominio resta «non valutabile»');
+  ok(analysisTrust(trustInputFromAnalysis(a, { legalName: 'Rossi SA' }, true)).level === 'bassa',
+    'con la conferma passata dall\'adattatore il livello diventa «bassa»');
+
+  // --- ownershipConfirmation: vince la riga più RECENTE ---------------------
+  const riga = (value: string, at: string) =>
+    ({ field: OWNERSHIP_FIELD, correctedValue: value, correctedBy: 'u1', correctedAt: at });
+  ok(ownershipConfirmation([]) === null, 'nessuna riga: nessuna conferma');
+  ok(ownershipConfirmation([riga(OWNERSHIP_CONFIRMED, '2026-08-19T10:00:00Z')]) !== null,
+    'una conferma vale');
+  ok(ownershipConfirmation([
+    riga(OWNERSHIP_CONFIRMED, '2026-08-19T10:00:00Z'),
+    riga(OWNERSHIP_REVOKED, '2026-08-19T11:00:00Z'),
+  ]) === null, 'la revoca SUPERA la conferma: vince la riga più recente');
+  ok(ownershipConfirmation([
+    riga(OWNERSHIP_REVOKED, '2026-08-19T10:00:00Z'),
+    riga(OWNERSHIP_CONFIRMED, '2026-08-19T11:00:00Z'),
+  ]) !== null, 'e una conferma dopo la revoca vale di nuovo');
+  ok(ownershipConfirmation([
+    riga(OWNERSHIP_REVOKED, '2026-08-19T11:00:00Z'),
+    riga(OWNERSHIP_CONFIRMED, '2026-08-19T10:00:00Z'),
+  ]) === null, 'CONTROPROVA: l\'ordine delle righe non conta, conta il tempo');
+  ok(ownershipConfirmation([
+    { field: 'sender', correctedValue: OWNERSHIP_CONFIRMED, correctedBy: 'u1', correctedAt: '2026-08-19T12:00:00Z' },
+  ]) === null, 'una correzione di un ALTRO campo non è una conferma');
+
+  // --- cognomiDaRubrica ------------------------------------------------------
+  ok(JSON.stringify(cognomiDaRubrica(['Andrea Cavalieri', 'Maria Pilota'])) === '["Cavalieri","Pilota"]',
+    'la rubrica dà nomi completi: il cognome è l\'ultima parola');
+  ok(cognomiDaRubrica(['', '  ']).length === 0,
+    'un nome vuoto non produce un cognome inventato');
+}
+
+// ===========================================================================
+section('16. Il guardiano: nessuna schermata mostra il livello grezzo');
+// ⚠️⚠️ PERCHÉ ESISTE. Il livello mostrato è min(modello, tetti) e lo decide
+// `analysisTrust` in un posto solo: una schermata che stampasse di nuovo
+// `analysis.confidence` come livello riaprirebbe il difetto — «alta» sopra un
+// documento che potrebbe non essere nostro. Qui si leggono i SORGENTI delle
+// schermate che il 2026-08-19 lo facevano, e si pretende che non lo facciano
+// più e che passino dalla funzione.
+// ⚠️ I COMMENTI SI TOLGONO PRIMA DI LEGGERE (l'idioma di test-shell-unit): un
+// lettore a regex non distingue una riga che fa una cosa da una che la
+// racconta — la guardia di scope.ts è nata rossa così.
+{
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const leggi = (f: string) => senzaCommenti(readFileSync(f, 'utf8'));
+
+  const dettaglio = leggi('src/features/documents/DocumentDetailPage.tsx');
+  ok(!/ConfidenceBadge\s+level=\{item\.confidence/.test(dettaglio),
+    'il dettaglio non stampa più il campo grezzo come voce dell\'elenco');
+  ok(/analysisTrust\(trustInput\)/.test(dettaglio) && /trustInputFromAnalysis\(analysis/.test(dettaglio),
+    'il dettaglio passa dalla funzione di lettura');
+  ok(/segnoCampo\(/.test(dettaglio),
+    'e i campi senza canale prendono il segno da segnoCampo, non da «senza evidenza»');
+  ok(/TrustIndicator/.test(dettaglio), 'e l\'indicatore sta nell\'intestazione della scheda');
+  ok(/if \(!step\.canCreateTask\) return;/.test(dettaglio),
+    'il gate dell\'appartenenza protegge l\'unico ingresso del modulo attività');
+  ok(/ownershipDoubt \? \{ \.\.\.stepRaw, canCreateTask: false \}/.test(dettaglio),
+    'e con l\'appartenenza in dubbio la creazione di attività è spenta');
+  ok(/documents\.trust\.readingLabel/.test(dettaglio),
+    'il valore grezzo resta leggibile nei dettagli tecnici, col suo nome');
+
+  const resultView = leggi('src/features/admin-ai/ResultView.tsx');
+  ok(!/ConfidenceBadge\s+level=\{r\.confidence/.test(resultView),
+    'Admin AI non stampa più il campo grezzo in testata');
+  ok(/useAnalysisTrust\(/.test(resultView), 'Admin AI passa dal verdetto');
+
+  const messaggio = leggi('src/features/inbox/MessageDetail.tsx');
+  ok(!/ConfidenceBadge\s+level=\{analysis\.confidence/.test(messaggio),
+    'la Posta in arrivo non stampa più il campo grezzo');
+  ok(/useAnalysisTrust\(/.test(messaggio), 'la Posta in arrivo passa dal verdetto');
+
+  // L'archivio NON mostra il livello per scelta: solo lo stato azionabile.
+  const archivio = leggi('src/features/documents/DocumentsPage.tsx');
+  ok(!/ConfidenceBadge/.test(archivio),
+    'l\'archivio non mostra nessun livello: una colonna di «bassa» non si legge più');
+  ok(/trustSignals/.test(archivio) && /ownershipToConfirm/.test(archivio),
+    'l\'archivio mostra il solo stato azionabile, dalla seconda interrogazione');
+
+  // La CONTROPROVA del lettore: il componente che il livello lo mostra DAVVERO
+  // deve risultare positivo, o questo guardiano sta leggendo a vuoto.
+  const indicatore = leggi('src/features/documents/TrustIndicator.tsx');
+  ok(/ConfidenceBadge\s+level=\{verdict\.level/.test(indicatore),
+    'CONTROPROVA: TrustIndicator mostra il livello del VERDETTO — il lettore legge davvero');
 }
 
 // ===========================================================================
