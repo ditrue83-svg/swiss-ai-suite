@@ -179,6 +179,12 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
   // §11 — scadenza: la data assoluta è ammessa SOLO per il tipo explicit e se valida.
   let dType = oneOf<DeadlineType>(ai.deadline?.type, DEADLINE_TYPES, 'none');
   let dDate = cleanStr(ai.deadline?.date);
+  // ⚠️ La data COM'È ARRIVATA, prima che una qualsiasi guardia qui sotto azzeri
+  // `dDate`. Le guardie sono due e possono scattare tutte e due sullo stesso
+  // documento — «non obbliga l'azienda» e «è un evento» —, e la prima cancellava
+  // il dato che la seconda deve conservare: un avviso di sopralluogo perdeva la
+  // data del sopralluogo. Ciò che si azzera è la SCADENZA, non la data.
+  const rawDate = cleanStr(ai.deadline?.date);
 
   // ⚠️⚠️ CHI È OBBLIGATO DA QUELLA DATA — la domanda che mancava, aggiunta il
   // 2026-08-11 su un caso reale. Un'email di Stripe sulle nuove tariffe di Radar
@@ -231,10 +237,18 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
       ? ai.deadline.dateKind as DateKind
       : null;
 
-  // La data che l'evento fissa: si conserva PRIMA di azzerare la scadenza.
+  // La data che l'evento fissa: si legge da `rawDate`, non da `dDate` — a questo
+  // punto `dDate` può essere già stata azzerata dalla guardia di `obligesCompany`.
+  //
+  // ⚠️ E NON si richiede `obliga !== false`. «Che cosa è questa data» è una
+  // risposta più specifica di «chi obbliga»: se il modello dichiara un evento,
+  // la data è quella dell'evento anche quando l'azienda non è obbligata a nulla.
+  // Il caso vero: `{dateKind:'event', obligesCompany:false}` — un sopralluogo
+  // annunciato, non imposto. Con la vecchia condizione l'appuntamento spariva
+  // del tutto: né scadenza, né appuntamento, né dettaglio, né calendario.
   let appointmentDate: string | null = null;
-  if (dateKind === 'event' && obliga !== false && isIsoDate(dDate)) {
-    appointmentDate = dDate;
+  if (dateKind === 'event' && isIsoDate(rawDate)) {
+    appointmentDate = rawDate;
   }
   if ((dateKind === 'event' || dateKind === 'reference') && dType !== 'none') {
     warnings.push(dateKind === 'event'
