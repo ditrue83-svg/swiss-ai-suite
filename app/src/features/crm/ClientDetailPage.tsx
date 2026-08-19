@@ -19,7 +19,7 @@
 // è aperto, che cosa ci siamo scritti, quali contratti ci legano, a che punto
 // sono le trattative.
 // ============================================================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Tag } from '@/components/ui/Tag';
 import { Link, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
@@ -111,13 +111,21 @@ export function ClientDetailPage() {
    * parallela a quella vera. È la correzione già fatta nel dettaglio delle
    * Attività, dove lo storico restava fermo dopo un commento.
    */
+  // ⚠️ Quale risposta sta guardando la scheda. Cambiando cliente — o azienda —
+  // l'effetto rilancia `load`, ma la richiesta di prima resta in volo: se
+  // risolve dopo, la scheda si riempie dei dati del cliente PRECEDENTE sotto il
+  // nome di quello nuovo. Stesso schema di `useAsync` e della Inbox.
+  const richiesta = useRef(0);
+
   const load = useCallback(async () => {
     if (!company || !id) return;
+    const mia = ++richiesta.current;
     setLoading(true);
     setError(null);
     setNotFound(false);
     try {
       const found = await crmService.get(company.id, id);
+      if (mia !== richiesta.current) return;
       if (!found) { setNotFound(true); return; }
       setOrg(found);
       const [p, d, tk, em, dc, ct, fi, it, dup, tl, dir] = await Promise.all([
@@ -133,13 +141,15 @@ export function ClientDetailPage() {
         crmService.timeline(company.id, id, 0),
         memberService.listAssignable(company.id).catch(() => [] as AssignableMember[]),
       ]);
+      if (mia !== richiesta.current) return;
       setPeople(p); setDeals(d.items); setTasks(tk); setEmails(em); setDocs(dc);
       setContracts(ct); setFinance(fi); setInteractions(it); setDuplicates(dup);
       setTimeline(tl.entries); setTimelineTotal(tl.total); setMembers(dir);
     } catch (e) {
+      if (mia !== richiesta.current) return;
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setLoading(false);
+      if (mia === richiesta.current) setLoading(false);
     }
   }, [company, id]);
 

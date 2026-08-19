@@ -22,7 +22,7 @@
 //    «Preavviso: 3 mesi» verrebbe letto come «nessuna scadenza»: al suo posto
 //    c'è la ragione per cui il calcolo non è possibile (§39/§141).
 // ============================================================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -82,20 +82,28 @@ export function ContractDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // ⚠️ Quale risposta sta guardando la pagina: cambiando contratto la richiesta
+  // di prima resta in volo, e se risolve dopo mostra il contratto PRECEDENTE.
+  // Stesso schema di `useAsync` e della Inbox.
+  const richiesta = useRef(0);
+
   const load = useCallback(async () => {
     if (!company || !id) return;
+    const mia = ++richiesta.current;
     setError(null);
     try {
       const [d, dir] = await Promise.all([
         contractService.get(id, company.id),
         memberService.listAssignable(company.id).catch(() => [] as AssignableMember[]),
       ]);
+      if (mia !== richiesta.current) return;
       setDetail(d);
       setMembers(dir);
     } catch (e) {
+      if (mia !== richiesta.current) return;
       setError(toUserMessage(e));
     } finally {
-      setLoading(false);
+      if (mia === richiesta.current) setLoading(false);
     }
   }, [company, id]);
 
