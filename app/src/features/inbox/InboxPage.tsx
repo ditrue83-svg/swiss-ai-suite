@@ -610,7 +610,17 @@ export function InboxPage() {
             <ul className="inbox-list" aria-label={t('inbox.listAria')}>
               {items.map((m) => (
                 <li key={m.id}>
-                  <InboxRow message={m} emphasis={inboxEmphasis(m)} onOpen={() => openMessage(m.id)} />
+                  {/* ⚠️ IL PESO SOLO DOVE SI DIVIDE. Gli altri quattro filtri sono
+                      una domanda esplicita — «fammi vedere le messe via» — e la
+                      scelta scritta in cima a questa pagina è che a una domanda
+                      esplicita si risponde per intero. Senza questa condizione il
+                      markup contraddiceva quel commento: su «Messe via» ogni riga
+                      è `handled`, quindi l'elenco INTERO usciva a peso ridotto. */}
+                  <InboxRow
+                    message={m}
+                    emphasis={splitByEmphasis ? inboxEmphasis(m) : 'action'}
+                    onOpen={() => openMessage(m.id)}
+                  />
                 </li>
               ))}
             </ul>

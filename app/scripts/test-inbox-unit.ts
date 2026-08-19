@@ -1197,6 +1197,44 @@ section('PESO DELLE RIGHE — la classificazione che cambia la forma della pagin
   }
 }
 
+// ---------------------------------------------------------------------------
+// ⚠️⚠️ IL PESO SI APPLICA SOLO DOVE SI DIVIDE (2026-08-19).
+//
+// «Si divide solo TUTTE» è una scelta scritta a chiare lettere in cima a
+// `InboxPage`: gli altri quattro filtri sono una domanda esplicita — «fammi
+// vedere le messe via» — e a una domanda esplicita si risponde per intero.
+// Ma la riga che monta l'elenco chiamava `inboxEmphasis(m)` senza guardare
+// `splitByEmphasis`: la REGOLA diceva una cosa e il MARKUP ne faceva un'altra,
+// che è la forma di difetto più difficile da vedere, perché il commento giusto
+// sta due schermate sopra il codice sbagliato.
+//
+// La conseguenza si calcola qui sotto invece di descriverla: su «Messe via»
+// ogni riga ha `attentionStatus: 'handled'`, quindi ogni riga usciva
+// `informational` — cioè l'elenco INTERO veniva reso a peso ridotto, in
+// risposta a una richiesta di vederlo.
+{
+  ok(inboxEmphasis({ attentionStatus: 'handled', relevanceConfidence: null }) === 'informational',
+    'una riga «messa via» pesa `informational`: ecco perché applicarlo su quel filtro riduceva TUTTO');
+  ok(inboxEmphasis({ attentionStatus: 'ignored', relevanceConfidence: 0.98 }) === 'collapsed',
+    'e una «non amministrativa» sicura pesa `collapsed`: nel filtro «Da verificare» sarebbe una riga schiacciata');
+
+  // ⚠️ Il sorgente si legge SENZA COMMENTI: il blocco qui sopra nomina
+  // `inboxEmphasis(m)` nella sua forma difettosa, e in `InboxPage` la scelta è
+  // spiegata a parole prima che in codice. Una guardia che legge i commenti
+  // troverebbe ovunque ciò che cerca.
+  const pagina = readFileSync(new URL('../src/features/inbox/InboxPage.tsx', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ');
+  // Le due forme con cui il peso arriva a una riga: calcolato (`={…}`) e
+  // costante (`="collapsed"`, l'elenco dei compressi, che è già una metà sola).
+  const usi = [...pagina.matchAll(/emphasis=(\{[^}]*\}|"[^"]*")/g)].map((m) => m[1]!.trim());
+  ok(usi.length >= 2, 'la guardia trova davvero le righe che assegnano un peso', usi.join(' | '));
+  const senzaGuardia = usi.filter((u) => /inboxEmphasis\(/.test(u) && !/splitByEmphasis/.test(u));
+  ok(senzaGuardia.length === 0,
+    'il peso calcolato si applica SOLO quando la pagina si divide in due metà',
+    senzaGuardia.join(' | '));
+}
+
 // ===========================================================================
 section('I CONTEGGI SUI FILTRI — un numero che descrive l\'elenco che si apre');
 // ===========================================================================
