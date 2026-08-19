@@ -47,6 +47,11 @@
 //                   COSTRUZIONE; il debito noto sta in TYPECHECK_SCOPERTI.
 //   9. FUNZIONI     ogni funzione ESPORTATA da quei moduli è importata per
 //                   nome da qualcuno. Il debito noto sta in FUNZIONI_SCOPERTE.
+//  10. DIPENDENZE   le versioni chiuse da un `npm audit fix` non tornano
+//                   indietro, e le vulnerabilità RIMANDATE restano dichiarate
+//                   finché lo sono davvero. `npm audit` legge la rete e cambia
+//                   giudizio da un giorno all'altro: qui si guarda il
+//                   lockfile, che è un fatto di questo albero.
 //
 // ⚠️ PERCHÉ IL 9 ESISTE, E PERCHÉ IL 8 NON BASTAVA. Il controllo 8 ragiona per
 // FILE, e un file ha più porte. `test:calendar-unit` importa `deliverEmails` da
@@ -269,6 +274,140 @@ export const FUNZIONI_SCOPERTE = {
   '_shared/subsidy/facts.ts#findFact': 'helper del motore di abbinamento: nessun test lo importa per nome',
   '_shared/subsidy/hash.ts#sha256Bytes': 'variante binaria dell\'impronta: quella testuale (`normalizeForHash`) è coperta',
 };
+
+// ---------------------------------------------------------------------------
+// 10. LE DIPENDENZE — il pavimento sotto cui non si torna.
+//
+// ⚠️ PERCHÉ NON SI CHIAMA `npm audit`. Quel comando interroga il registro: il
+// suo esito cambia quando cambia il mondo, non quando cambia questo albero. Un
+// controllo così è rosso il martedì per un avviso pubblicato lunedì notte, e
+// non dice niente su ciò che ABBIAMO fatto. Qui si legge `package-lock.json`,
+// che è un fatto di questo repository, e si risponde a una domanda sola: le
+// versioni che una correzione ha già portato dentro, ci sono ancora?
+//
+// Un `npm install` fatto per un'altra ragione, un `package-lock` rigenerato, un
+// merge risolto male: sono i tre modi in cui una correzione di sicurezza torna
+// indietro senza che nessuno la disfi apposta.
+// ---------------------------------------------------------------------------
+
+/**
+ * Chiuse da `npm audit fix` il 2026-08-18. La versione è il PAVIMENTO: sotto,
+ * la vulnerabilità è di nuovo aperta.
+ */
+const DIPENDENZE_MINIME = {
+  nanoid: {
+    minima: '3.3.18',
+    perche: 'GHSA-2v37-7h3g-55p8 (alta) — un generatore su misura può girare '
+      + 'all\'infinito quando la dimensione è zero',
+  },
+  postcss: {
+    minima: '8.5.22',
+    perche: 'GHSA-fxqj-rqcc-2cmp (media) — un `sourceMappingURL` scelto da chi '
+      + 'attacca fa leggere file `.map` arbitrari quando `from` non è indicato',
+  },
+};
+
+/**
+ * Le vulnerabilità che NON si chiudono, ciascuna con il perché e con la
+ * versione che le chiuderebbe.
+ *
+ * ⚠️ SI CONTROLLA CHE SIANO ANCORA VERE. Se l'albero arriva alla versione
+ * corretta — perché qualcuno ha aggiornato, o perché una dipendenza l'ha
+ * trascinata dentro — la riga qui sotto diventa una bugia, e questo controllo
+ * la dichiara. È la stessa disciplina di FUNZIONI_SCOPERTE: un elenco con voci
+ * morte smette di essere letto, ed è l'elenco che deve restare vivo.
+ */
+const VULNERABILITA_RIMANDATE = {
+  esbuild: {
+    corretta: '0.25.0',
+    perche: 'GHSA-67mh-4wv8-2f99 (media) riguarda il SERVER DI SVILUPPO, che in '
+      + 'produzione non esiste: `vite build` produce file statici. La chiude '
+      + 'vite@8, che è un cambio con rotture e non entra in un ramo di '
+      + 'correzioni',
+  },
+  'react-router': {
+    corretta: '7.18.0',
+    perche: 'GHSA-wrjc-x8rr-h8h6 e GHSA-337j-9hxr-rhxg (medie). ⚠️ Nessuna '
+      + 'versione 6.x le corregge: l\'unica correzione è react-router-dom@7, '
+      + 'un cambio con rotture. `npm audit fix` da solo NON la chiude — '
+      + 'misurato il 2026-08-18, contro l\'attesa del rapporto che diceva di sì',
+  },
+};
+
+/**
+ * Confronto di versioni, il minimo che serve qui: tre numeri separati da punti.
+ * Una `-beta` non si legge e non deve: nel lockfile di questo albero non ce ne
+ * sono, e fingere di sapere l'ordine delle prerelease sarebbe una regola in più
+ * da sbagliare. Ritorna <0, 0, >0.
+ */
+export function confrontaVersioni(a, b) {
+  const pezzi = (v) => String(v).split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const [x, y] = [pezzi(a), pezzi(b)];
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    const d = (x[i] ?? 0) - (y[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+/**
+ * 10. Le versioni chiuse non tornano indietro, e i rinvii restano veri.
+ *
+ * `installate` è `{ nome: ['3.3.18', ...] }` — al plurale perché lo stesso
+ * pacchetto può stare nell'albero più volte a versioni diverse (`tsx` porta il
+ * suo `esbuild`), e una copia vecchia è vulnerabile quanto una sola.
+ */
+export function checkDipendenze(report, { installate, minime, rimandate }) {
+  for (const [nome, { minima, perche }] of Object.entries(minime)) {
+    const versioni = installate[nome] ?? [];
+    if (!versioni.length) {
+      report.add('dipendenze',
+        `«${nome}» non è più nell'albero, ma ha ancora un pavimento dichiarato: la riga è stantia`,
+        'scripts/test-operations.mjs → DIPENDENZE_MINIME',
+        'togli la riga. Un pavimento sotto una stanza che non c'
+        + '\'è più non regge niente e non lo dice a nessuno');
+      continue;
+    }
+    const vecchie = versioni.filter((v) => confrontaVersioni(v, minima) < 0);
+    if (vecchie.length) {
+      report.add('dipendenze',
+        `«${nome}» è tornato a ${vecchie.join(', ')}, sotto il minimo ${minima}`,
+        'package-lock.json',
+        `${perche}. La correzione era già stata fatta: rifalla con \`npm audit fix\` `
+        + 'e guarda che cosa ha rigenerato il lockfile');
+    }
+  }
+
+  for (const [nome, { corretta, perche }] of Object.entries(rimandate)) {
+    const versioni = installate[nome] ?? [];
+    if (!versioni.length) {
+      report.add('dipendenze',
+        `«${nome}» non è più nell'albero: il rinvio dichiarato non ha più oggetto`,
+        'scripts/test-operations.mjs → VULNERABILITA_RIMANDATE',
+        'togli la riga, e se serve metti un pavimento in DIPENDENZE_MINIME');
+      continue;
+    }
+    if (versioni.every((v) => confrontaVersioni(v, corretta) >= 0)) {
+      report.add('dipendenze',
+        `«${nome}» è ormai a ${versioni.join(', ')}: la vulnerabilità è chiusa, il rinvio è una bugia`,
+        'scripts/test-operations.mjs → VULNERABILITA_RIMANDATE',
+        `spostalo in DIPENDENZE_MINIME con ${corretta} come pavimento: da rinvio `
+        + 'è diventato un acquisto da non perdere');
+    }
+  }
+}
+
+/** Le versioni di ogni pacchetto nel lockfile, comprese le copie annidate. */
+export function versioniDalLock(lock) {
+  const out = {};
+  for (const [percorso, info] of Object.entries(lock.packages ?? {})) {
+    const i = percorso.lastIndexOf('node_modules/');
+    if (i < 0 || !info?.version) continue;
+    const nome = percorso.slice(i + 'node_modules/'.length);
+    (out[nome] ??= []).push(info.version);
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 
@@ -831,6 +970,12 @@ function scan() {
   const { raggiunte, stella } = nomiRaggiunti();
   checkFunzioniProvate(report, { esportate, raggiunte, scoperte: FUNZIONI_SCOPERTE, stella });
 
+  checkDipendenze(report, {
+    installate: versioniDalLock(JSON.parse(readFileSync(join(APP, 'package-lock.json'), 'utf8'))),
+    minime: DIPENDENZE_MINIME,
+    rimandate: VULNERABILITA_RIMANDATE,
+  });
+
   return { report, funzioni, dichiarati, portabili, tuttiTs, esportate, raggiunte };
 }
 
@@ -1331,6 +1476,104 @@ const CASES = [
       if (!c || c.nome !== 'pippo' || c.cadenza !== '*/7 * * * *'
           || c.funzione !== 'finance-worker' || !c.chiamaHttp || !c.timeout) {
         r.add('autoverifica', 'l’estrattore non ha letto ciò che doveva', 'estraiCron');
+      }
+    },
+    expect: 0,
+  },
+  // --- 10. DIPENDENZE — il pavimento, e il rinvio che invecchia -------------
+  {
+    name: 'una versione tornata sotto il minimo → problema',
+    run: (r) => checkDipendenze(r, {
+      installate: { nanoid: ['3.3.7'] },
+      minime: { nanoid: { minima: '3.3.18', perche: 'x' } },
+      rimandate: {},
+    }),
+    expect: 1,
+    contiene: 'sotto il minimo 3.3.18',
+  },
+  {
+    name: 'la versione corretta → nessun problema',
+    run: (r) => checkDipendenze(r, {
+      installate: { nanoid: ['3.3.18'] },
+      minime: { nanoid: { minima: '3.3.18', perche: 'x' } },
+      rimandate: {},
+    }),
+    expect: 0,
+  },
+  // ⚠️ UNA COPIA SOLA BASTA. `tsx` porta il suo `esbuild`: un albero con la
+  // versione buona in cima e quella bucata annidata è vulnerabile lo stesso, e
+  // guardare solo la prima copia sarebbe un verde che ha misurato la cosa
+  // accanto — il difetto che questo file combatte in ogni sua riga.
+  {
+    name: 'una COPIA ANNIDATA sotto il minimo → problema, anche se quella in cima va bene',
+    run: (r) => checkDipendenze(r, {
+      installate: { postcss: ['8.5.26', '8.4.31'] },
+      minime: { postcss: { minima: '8.5.22', perche: 'x' } },
+      rimandate: {},
+    }),
+    expect: 1,
+    contiene: '8.4.31',
+  },
+  {
+    name: 'un pavimento su un pacchetto che non c’è più → problema (riga stantia)',
+    run: (r) => checkDipendenze(r, {
+      installate: {},
+      minime: { nanoid: { minima: '3.3.18', perche: 'x' } },
+      rimandate: {},
+    }),
+    expect: 1,
+    contiene: 'stantia',
+  },
+  {
+    name: 'un rinvio ancora vero → nessun problema',
+    run: (r) => checkDipendenze(r, {
+      installate: { esbuild: ['0.21.5', '0.28.1'] },
+      minime: {},
+      rimandate: { esbuild: { corretta: '0.25.0', perche: 'x' } },
+    }),
+    expect: 0,
+  },
+  // ⚠️ È IL CASO CHE FA VIVERE L'ELENCO. Un rinvio che nessuno rilegge diventa
+  // il racconto di un problema già risolto, e la volta dopo lo si crede ancora
+  // aperto. Qui diventa rosso il giorno in cui smette di essere vero.
+  {
+    name: 'un rinvio ormai chiuso dall’albero → problema (il rinvio è una bugia)',
+    run: (r) => checkDipendenze(r, {
+      installate: { esbuild: ['0.25.1'] },
+      minime: {},
+      rimandate: { esbuild: { corretta: '0.25.0', perche: 'x' } },
+    }),
+    expect: 1,
+    contiene: 'il rinvio è una bugia',
+  },
+  // ⚠️ NON È UN CONFRONTO DI STRINGHE. `'3.3.7' > '3.3.18'` è vero in
+  // JavaScript, e con quello il pavimento avrebbe lasciato passare proprio la
+  // versione bucata che esiste per fermare.
+  {
+    name: 'confronto di versioni: 3.3.7 < 3.3.18 (non è un confronto di stringhe)',
+    run: (r) => {
+      if (!(confrontaVersioni('3.3.7', '3.3.18') < 0)) {
+        r.add('autoverifica', '3.3.7 letta come maggiore di 3.3.18', 'confrontaVersioni');
+      }
+      if (confrontaVersioni('8.5.26', '8.5.22') < 0) {
+        r.add('autoverifica', '8.5.26 letta come minore di 8.5.22', 'confrontaVersioni');
+      }
+      if (confrontaVersioni('0.21.5', '0.25.0') >= 0) {
+        r.add('autoverifica', '0.21.5 letta come maggiore di 0.25.0', 'confrontaVersioni');
+      }
+    },
+    expect: 0,
+  },
+  {
+    name: 'il lockfile: si legge anche la copia annidata, non solo quella in cima',
+    run: (r) => {
+      const v = versioniDalLock({ packages: {
+        '': { version: '1.0.0' },
+        'node_modules/esbuild': { version: '0.21.5' },
+        'node_modules/tsx/node_modules/esbuild': { version: '0.28.1' },
+      } });
+      if (JSON.stringify(v) !== JSON.stringify({ esbuild: ['0.21.5', '0.28.1'] })) {
+        r.add('autoverifica', `lette ${JSON.stringify(v)}`, 'versioniDalLock');
       }
     },
     expect: 0,
