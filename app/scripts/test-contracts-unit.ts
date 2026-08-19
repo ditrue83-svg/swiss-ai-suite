@@ -523,5 +523,45 @@ section('9. La causa del guasto arriva a schermo');
 }
 
 // ---------------------------------------------------------------------------
+// ⚠️⚠️ OGNI LETTURA DICHIARA IL PROPRIO GUASTO (2026-08-19).
+//
+// `const { data } = await sb.from(...)` senza `error` è un fallback silenzioso
+// travestito da lettura: se la richiesta fallisce, `data` è `null`, il `?? []`
+// che segue lo trasforma in una lista vuota, e la schermata mostra un fatto —
+// «nessun allegato», «nessuna attività collegata», «contratto non trovato» —
+// che è FALSO. Un guasto è un errore esplicito, mai un risultato plausibile.
+//
+// Tre punti in questo file lo facevano, e la funzione che li ospita fa
+// `if (error) fail(error)` otto righe più su: la forma giusta era davanti agli
+// occhi. Uno dei tre — l'embed verso `document_analyses` — legge per giunta
+// proprio la relazione che il commento accanto dichiara di evitare perché
+// rischia un PGRST200: il caso di guasto non è teorico, è quello previsto.
+//
+// ⚠️ `fallback:scan` NON copre questo file: il suo perimetro è
+// `supabase/functions`, e `src/services` non ha mai avuto una scansione di
+// questa classe. Questa sezione ne è il primo pezzo, sul file che l'ha
+// motivata.
+//
+// ⚠️ Si legge il sorgente SENZA COMMENTI: una guardia a espressione regolare
+// legge anche ciò che è scritto dentro un commento, e questo blocco qui sopra
+// contiene la forma difettosa scritta per esteso. Senza lo spoglio, la guardia
+// nascerebbe rossa contro sé stessa.
+{
+  const senzaCommenti = readFileSync(
+    join(HERE, '../src/services/contractService.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  const letture = [...senzaCommenti.matchAll(/\{\s*data\b[^}]*\}/g)].map((m) => m[0]);
+  // Se un giorno il servizio smettesse di leggere, la guardia non avrebbe più
+  // niente da guardare e resterebbe verde per vuoto: il numero minimo lo dice.
+  check('la guardia trova davvero le letture del servizio (almeno 15)',
+    letture.length >= 15, `trovate: ${letture.length}`);
+
+  const mute = letture.filter((l) => !/\berror\b/.test(l)).map((l) => l.replace(/\s+/g, ' '));
+  check('ogni lettura di contractService lega e controlla il proprio `error`',
+    mute.length === 0, mute.join(' · '));
+}
+
+// ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);
 process.exit(fail ? 1 : 0);
