@@ -834,6 +834,41 @@ section('10. Il nome mostrato — la regola in LETTURA (§6)');
   ok(titoloMostrabile('a1b', null), 'nemmeno «a1b» rientra nelle quattro condizioni');
 }
 {
+  // ⚠️⚠️ IL RAMO CHE NON RIFIUTAVA NIENTE (2026-08-19). La quarta condizione —
+  // «il titolo è il nome del file travestito» — chiudeva con
+  // `base.length >= 3 && /\p{L}/u.test(base)`. Ma dentro quel ramo `base` È
+  // `t`, e `t` ha già superato le stesse due prove dieci righe sopra: la
+  // condizione era quindi SEMPRE VERA, e il ramo non rifiutava niente.
+  //
+  // Il difetto non si vedeva perché il caso che gli ha dato il nome cadeva
+  // altrove: «2.5» viene rifiutato dal controllo sulle lettere, non da qui. A
+  // passare erano i nomi che di lettere ne hanno — quelli di fotocamere,
+  // scanner e sistemi operativi, cioè i nomi di file più diffusi al mondo.
+  //
+  // La domanda giusta era già scritta, già provata e a dieci righe di distanza:
+  // `nomeFileInformativo`. ⚠️ I quattro casi qui sotto sono ROSSI sul codice
+  // del 18 agosto — tutti e quattro tornavano `true`.
+  ok(!titoloMostrabile('IMG_4821', 'IMG_4821.pdf'),
+    'il nome di una fotocamera non diventa un titolo perché è finito in `title`');
+  ok(!titoloMostrabile('Scan_2026-08-11', 'Scan_2026-08-11.pdf'),
+    'né quello di uno scanner, con la data attaccata che dice QUANDO e mai CHE COSA');
+  ok(!titoloMostrabile('documento (3)', 'documento (3).pdf'),
+    'né «documento (3)»: ha lettere vere e non dice niente lo stesso');
+  ok(!titoloMostrabile('Nuovo documento', 'Nuovo documento.pdf'),
+    'né il nome che mette il sistema a un file appena creato');
+
+  // ⚠️ LE CONTROPROVE PESANO QUANTO I ROSSI: una regola che rifiuta tutto è
+  // inservibile quanto una che non rifiuta niente, e la differenza fra le due
+  // non la mostra nessun caso negativo. Se un giorno il ramo diventasse un
+  // `return false` secco, sono queste tre righe a diventare rosse.
+  ok(titoloMostrabile('Disdetta locazione', 'Disdetta locazione.pdf'),
+    'CONTROPROVA: un nome di file che DICE qualcosa resta un titolo');
+  ok(titoloMostrabile('Fattura Swisscom', 'Fattura Swisscom.pdf'),
+    'CONTROPROVA: e lo resta anche quando titolo e file coincidono in tutto');
+  ok(titoloMostrabile('Fattura marzo', 'IMG_4821.pdf'),
+    'CONTROPROVA: il ramo guarda solo la COINCIDENZA — un file muto non contagia un titolo vero');
+}
+{
   // I TRE LIVELLI DI COMPOSIZIONE, nell'ordine del §6.
   const conTutto = etichettaDocumento({
     titolo: '2.5', nomeFile: '2.5.pdf',
