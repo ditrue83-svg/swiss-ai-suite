@@ -1227,6 +1227,71 @@ section('I CONTEGGI SUI FILTRI — un numero che descrive l\'elenco che si apre'
     return chiamate.join(' & ');
   };
 
+  // -------------------------------------------------------------------------
+  // ⚠️⚠️ IL TAGLIO A 100 CARATTERI CADEVA DOPO L'ESCAPE (2026-08-19).
+  //
+  // I jolly di LIKE digitati da una persona vanno neutralizzati: chi scrive `%`
+  // cerca un per cento, non «qualsiasi cosa». Ma l'ordine era
+  // `replace(...).slice(0, 100)`: si aggiungevano barre rovesciate e POI si
+  // tagliava. Se il taglio cadeva su una barra appena inserita, quella barra
+  // restava spaiata — e mangiava il `%` di CHIUSURA del pattern, che è il jolly
+  // che rende la ricerca una ricerca. Il risultato non era un errore: era zero
+  // risultati, su una ricerca che ne aveva.
+  //
+  // Il rovescio — `slice(0, 100).replace(...)` — taglia ciò che ha DIGITATO
+  // l'utente, che è quello che i 100 caratteri vogliono limitare, e non può
+  // spezzare una coppia che non esiste ancora.
+  //
+  // ⚠️ SI VERIFICA LEGGENDO IL PATTERN COME LO LEGGE POSTGRES, non contando
+  // barre a occhio: la domanda vera è «quanti jolly sono arrivati al motore?»,
+  // e su quella un conteggio di caratteri non risponde.
+  const argomentoIlike = (search: string): string => {
+    const { q, chiamate } = registratore();
+    applicaAmbito(q, { companyId: 'az', filter: 'all', search });
+    const riga = chiamate.find((c) => c.startsWith('ilike('));
+    return riga ? riga.slice('ilike(search_text|'.length, -1) : '';
+  };
+
+  /** Come PostgreSQL legge un pattern LIKE: `\x` è la lettera x, il resto è jolly. */
+  const comeLoLeggePostgres = (pattern: string): { testo: string; jolly: number } => {
+    let testo = ''; let jolly = 0;
+    for (let i = 0; i < pattern.length; i += 1) {
+      const c = pattern[i]!;
+      if (c === '\\') { testo += pattern[i + 1] ?? ''; i += 1; continue; }
+      if (c === '%') { jolly += 1; continue; }
+      testo += c;
+    }
+    return { testo, jolly };
+  };
+
+  // Il caso al millimetro: 99 lettere più un `%`, cioè un jolly digitato
+  // ESATTAMENTE sul centesimo carattere. L'escape lo porta a 101 e il taglio
+  // cadeva fra la barra e il suo `%`.
+  const alLimite = argomentoIlike(`${'a'.repeat(99)}%`);
+  const lettoDaPostgres = comeLoLeggePostgres(alLimite);
+  ok(lettoDaPostgres.jolly === 2,
+    'un jolly digitato sul centesimo carattere non si porta via il `%` di chiusura',
+    `pattern «${alLimite}» → ${lettoDaPostgres.jolly} jolly invece di 2`);
+  ok(lettoDaPostgres.testo === `${'a'.repeat(99)}%`,
+    'e il per cento digitato resta una lettera, che è il motivo per cui lo si neutralizza',
+    `testo letto: «${lettoDaPostgres.testo}»`);
+
+  // CONTROPROVE — una regola che smettesse di neutralizzare, o di tagliare,
+  // farebbe passare queste tre.
+  const inMezzo = comeLoLeggePostgres(argomentoIlike('sconto 50% netto'));
+  ok(inMezzo.jolly === 2 && inMezzo.testo === 'sconto 50% netto',
+    'CONTROPROVA: un `%` in mezzo resta una lettera e i due jolly restano due',
+    `«${inMezzo.testo}» · ${inMezzo.jolly}`);
+  const conBarra = comeLoLeggePostgres(argomentoIlike('c:\\temp_1'));
+  ok(conBarra.jolly === 2 && conBarra.testo === 'c:\\temp_1',
+    'CONTROPROVA: barra rovesciata e trattino basso passano interi',
+    `«${conBarra.testo}» · ${conBarra.jolly}`);
+  const lunga = comeLoLeggePostgres(argomentoIlike('b'.repeat(300)));
+  ok(lunga.testo.length === 100,
+    'CONTROPROVA: il taglio a 100 c\'è ancora, e conta i caratteri DIGITATI',
+    `lunghezza: ${lunga.testo.length}`);
+  // -------------------------------------------------------------------------
+
   // CONTROPROVA DEL REGISTRATORE: se non registrasse nulla, ogni impronta
   // sarebbe la stringa vuota e «tutte diverse» fallirebbe — ma «nessuna vuota»
   // è l'asserzione che lo dice per prima, e con un nome.
