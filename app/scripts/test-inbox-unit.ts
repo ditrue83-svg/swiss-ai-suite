@@ -58,7 +58,8 @@ import {
   comprimibile, inboxEmphasis, SOGLIA_COMPRESSIONE, QUERY_COMPRESSI, QUERY_IN_EVIDENZA,
   type InboxEmphasis,
 } from '../src/features/inbox/emphasis';
-import { applicaAmbito, INBOX_FILTERS } from '../src/features/inbox/scope';
+import { applicaAmbito, INBOX_FILTERS, URGENT_WITHIN_DAYS } from '../src/features/inbox/scope';
+import { addDays, todayISO } from '../src/features/calendar/calendarModel';
 import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
@@ -1268,6 +1269,56 @@ section('I CONTEGGI SUI FILTRI — un numero che descrive l\'elenco che si apre'
     const filtri = (dict.inbox as { filters: Record<string, string> }).filters;
     const mancanti = INBOX_FILTERS.filter((f) => !filtri[CHIAVI[f]!]);
     ok(mancanti.length === 0, `${lang}: ogni filtro della barra ha la sua parola`, mancanti.join(', '));
+  }
+
+  // ⚠️⚠️ «URGENTI» CONTAVA I GIORNI IN UTC. La finestra si componeva con
+  // `toISOString().slice(0,10)`, che dà il giorno di Greenwich, mentre tutto il
+  // resto del prodotto usa il giorno LOCALE (`todayISO`). A Zurigo fra
+  // mezzanotte e le 02:00 i due non coincidono, e la finestra si spostava di un
+  // giorno intero: un messaggio in scadenza usciva da «Urgenti» proprio nelle
+  // ore in cui qualcuno apre la posta per controllare che non sia rimasto
+  // niente. Uno sfasamento di un giorno non fa cadere nulla — mostra un elenco
+  // più corto, e nessuno sa che manca una riga.
+  {
+    const tzOriginale = process.env.TZ;
+    try {
+      // Un fuso che ADESSO è su un giorno diverso da quello UTC. Quale dei due
+      // lo sia dipende dall'ora a cui gira la suite, quindi si sceglie: sotto
+      // le 10 UTC è il fuso a ovest (UTC−11), sopra quello a est (UTC+14). Uno
+      // dei due lo è sempre, e così la prova non dipende dall'orologio.
+      process.env.TZ = new Date().getUTCHours() < 10 ? 'Pacific/Midway' : 'Pacific/Kiritimati';
+      const giornoLocale = todayISO();
+      const giornoUtc = new Date().toISOString().slice(0, 10);
+      ok(giornoLocale !== giornoUtc,
+        'il fuso scelto è davvero su un altro giorno rispetto a UTC (senza, la prova non prova niente)',
+        `locale=${giornoLocale} utc=${giornoUtc}`);
+
+      const urgenti = impronta({ companyId: 'az', filter: 'urgent' });
+      const attesa = addDays(giornoLocale, URGENT_WITHIN_DAYS);
+      const sbagliata = addDays(giornoUtc, URGENT_WITHIN_DAYS);
+      ok(urgenti.includes(`lte(analysis_deadline|${attesa})`),
+        'la finestra di «Urgenti» si conta sul giorno LOCALE', `attesa ${attesa} — ${urgenti}`);
+      ok(!urgenti.includes(sbagliata),
+        'CONTROPROVA: e NON sul giorno UTC — è lo sfasamento di un giorno che il difetto produceva',
+        `sbagliata ${sbagliata} — ${urgenti}`);
+    } finally {
+      if (tzOriginale === undefined) delete process.env.TZ; else process.env.TZ = tzOriginale;
+    }
+
+    // ⚠️ LA GUARDIA SCOLLEGATA: la prova qui sopra resta verde se qualcuno
+    // ricompone la data a mano da qualche altra parte in questo file.
+    //
+    // ⚠️⚠️ E SI LEGGE IL CODICE, NON I COMMENTI. Alla prima scrittura questa
+    // guardia è diventata rossa da sola: il commento che spiega il difetto
+    // NOMINA `toISOString().slice(0,10)`, e un lettore a regex non distingue
+    // una riga che fa una cosa da una riga che la racconta. Rosso onesto —
+    // ma la stessa cecità, girata dall'altra parte, è un verde falso.
+    const scope = readFileSync(new URL('../src/features/inbox/scope.ts', import.meta.url), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    ok(!/toISOString\(\)\.slice\(0, ?10\)/.test(scope),
+      'e l’ambito non compone più nessun giorno a mano con toISOString()');
+    ok(/addDays\(todayISO\(\), URGENT_WITHIN_DAYS\)/.test(scope),
+      'la finestra passa dalle due funzioni del calendario');
   }
 }
 

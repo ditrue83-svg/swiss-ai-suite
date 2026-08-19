@@ -15,6 +15,11 @@
 // regola senza guardiano.
 // ============================================================================
 import { QUERY_COMPRESSI, QUERY_IN_EVIDENZA } from './emphasis';
+// ⚠️ IL GIORNO LO DICE IL CALENDARIO, non questo file. `todayISO` legge il
+// giorno di chi guarda lo schermo e `addDays` somma i giorni in UTC, dove
+// durano tutti 86 400 secondi: comporre la data a mano qui significherebbe una
+// seconda aritmetica del calendario accanto a quella che il prodotto ha già.
+import { addDays, todayISO } from '@/features/calendar/calendarModel';
 import type { InboxFilter } from '@/types/models';
 
 /**
@@ -97,7 +102,14 @@ export function applicaAmbito<Q>(builder: Q, query: InboxQuery): Q {
     case 'urgent': {
       // «Urgente» qui significa una cosa sola e verificabile: l'analisi ha
       // trovato una scadenza, ed è passata o è vicina. Non è un punteggio.
-      const limit = new Date(Date.now() + URGENT_WITHIN_DAYS * 86_400_000).toISOString().slice(0, 10);
+      //
+      // ⚠️ IL GIORNO È QUELLO LOCALE, come in tutto il resto del prodotto.
+      // Prima la finestra si componeva con `toISOString().slice(0,10)`, che dà
+      // il giorno UTC: a Zurigo fra mezzanotte e le 02:00 il conto era ancora
+      // al giorno prima, e la finestra si spostava di un giorno intero — un
+      // messaggio in scadenza spariva da «Urgenti» proprio nelle ore in cui
+      // qualcuno apre la posta per controllare che non sia rimasto niente.
+      const limit = addDays(todayISO(), URGENT_WITHIN_DAYS);
       q = q.not('analysis_deadline', 'is', null).lte('analysis_deadline', limit).neq('attention_status', 'handled');
       break;
     }
