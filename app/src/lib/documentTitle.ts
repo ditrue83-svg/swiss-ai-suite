@@ -128,9 +128,22 @@ export function titoloMostrabile(
   // del file travestito. Vale però solo quando quel nome a sua volta non è
   // mostrabile — `Disdetta locazione.pdf` dà un titolo perfetto, e rifiutarlo
   // perché somiglia al file sarebbe zelo.
+  //
+  // ⚠️⚠️ E LA DOMANDA DA PORRE È `nomeFileInformativo`, non due controlli
+  // riscritti qui (2026-08-19). Fino a oggi il ramo chiudeva con
+  // `base.length >= 3 && /\p{L}/u.test(base)`: ma qui dentro `base` È `t`, e
+  // `t` ha già superato quelle due prove dieci righe più su. Il ramo era
+  // SEMPRE VERO — non rifiutava niente, e `IMG_4821`, `Scan_2026-08-11`,
+  // `documento (3)`, `Nuovo documento` passavano tutti per titoli. Non si
+  // vedeva perché il caso che dà il nome alla regola cade altrove: «2.5» lo
+  // ferma il controllo sulle lettere, non questo.
+  //
+  // La domanda «questo nome di file dice qualcosa?» era già scritta e già
+  // provata a dieci righe di distanza. Riscriverla a mano l'ha resa più debole
+  // dell'originale: la si chiama.
   const base = senzaEstensione((nomeFile ?? '').trim()).trim();
   if (base && t.toLocaleLowerCase() === base.toLocaleLowerCase()) {
-    return base.length >= 3 && /\p{L}/u.test(base);
+    return nomeFileInformativo(nomeFile);
   }
   return true;
 }

@@ -140,7 +140,18 @@ export function applicaAmbito<Q>(builder: Q, query: InboxQuery): Q {
     // `search_text` è la colonna generata dalla 0013, con indice trigram.
     // I caratteri jolly di LIKE vengono neutralizzati: `%` digitato da un
     // utente deve cercare un per cento, non «qualsiasi cosa».
-    const escaped = search.replace(/[\\%_]/g, (c) => `\\${c}`).slice(0, 100);
+    //
+    // ⚠️⚠️ PRIMA SI TAGLIA, POI SI NEUTRALIZZA — e l'ordine è la correzione del
+    // 2026-08-19. Al contrario, il taglio cadeva su una barra rovesciata appena
+    // inserita e la lasciava spaiata: quella barra si mangiava il `%` di
+    // CHIUSURA del pattern, cioè il jolly che rende la ricerca una ricerca.
+    // Non usciva un errore — uscivano zero risultati su una ricerca che ne
+    // aveva, che è il modo peggiore di sbagliare.
+    //
+    // ⚠️ E i 100 sono il limite di ciò che una persona ha DIGITATO, non della
+    // stringa dopo l'escape: tagliare dopo faceva dipendere quanto testo si
+    // cerca da quanti caratteri speciali contiene.
+    const escaped = search.slice(0, 100).replace(/[\\%_]/g, (c) => `\\${c}`);
     q = q.ilike('search_text', `%${escaped.toLowerCase()}%`);
   }
 

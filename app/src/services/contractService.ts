@@ -311,9 +311,13 @@ export const contractService = {
     // la vista predefinita non lo mostra. Si richiede allora fra gli archiviati.
     let item = rows.length ? toItem(rows[0]) : null;
     if (!item) {
-      const { data: archivedRows } = await sb.rpc('list_contracts', {
+      // ⚠️ Anche qui: senza `error`, una lettura fallita usciva come
+      // `return null`, e la pagina diceva «contratto non trovato» — che è una
+      // risposta, e non era la verità. La verità era «non ho potuto leggere».
+      const { data: archivedRows, error: arErr } = await sb.rpc('list_contracts', {
         ...toListArgs(companyId, { archived: true }), p_contract_id: contractId, p_limit: 1,
       });
+      if (arErr) fail(arErr);
       const ar = (archivedRows ?? []) as unknown as ListRow[];
       if (!ar.length) return null;
       item = toItem(ar[0]);
@@ -372,13 +376,19 @@ export const contractService = {
     // comparirebbe come «2.5» — è successo, e il §6 vale anche fuori dal
     // Document Hub. L'aggancio è lo stesso di `documentHubService.statsRows`:
     // ultima riga non fallita, una per documento.
-    const { data: docs } = await sb.from('documents')
+    // ⚠️ E L'ERRORE SI DICHIARA. Senza, un guasto qui rendeva `docs` nullo e
+    // OGNI allegato del contratto diventava «Documento senza titolo»: una
+    // schermata piena di fatti falsi, in silenzio. Il caso non è teorico —
+    // questa è proprio la relazione che il commento qui sopra dichiara di
+    // temere per il PGRST200.
+    const { data: docs, error: dErr } = await sb.from('documents')
       .select('id, title, original_filename, storage_path, mime_type, created_at, '
         + 'document_analyses(sender, document_type, confidence)')
       .neq('document_analyses.analysis_status', 'failed')
       .order('created_at', { referencedTable: 'document_analyses', ascending: false })
       .limit(1, { referencedTable: 'document_analyses' })
       .in('id', ids);
+    if (dErr) fail(dErr);
     const byId = new Map(((docs ?? []) as unknown as Record<string, unknown>[]).map((d) => [d.id as string, d]));
 
     return rows.map((r) => {
@@ -416,7 +426,10 @@ export const contractService = {
   /** Le date, con quante attività ne sono già nate (serve alla dedup, §93). */
   async milestones(contractId: string): Promise<ContractMilestone[]> {
     const sb = requireSupabase();
-    const [{ data, error }, { data: taskRows }] = await Promise.all([
+    // ⚠️ Due letture, due errori: il secondo si perdeva, e un guasto sul
+    // conteggio faceva mostrare «0 attività collegate» su ogni tappa — uno
+    // zero che sembra una misura e invece è un silenzio.
+    const [{ data, error }, { data: taskRows, error: taskErr }] = await Promise.all([
       sb.from('contract_milestones').select('*')
         .eq('contract_id', contractId)
         .order('due_date', { ascending: true }),
@@ -424,6 +437,7 @@ export const contractService = {
         .eq('contract_id', contractId).not('contract_milestone_id', 'is', null),
     ]);
     if (error) fail(error);
+    if (taskErr) fail(taskErr);
     const counts = new Map<string, number>();
     for (const t of ((taskRows ?? []) as { contract_milestone_id: string }[])) {
       counts.set(t.contract_milestone_id, (counts.get(t.contract_milestone_id) ?? 0) + 1);

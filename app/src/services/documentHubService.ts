@@ -22,6 +22,7 @@ import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { translate as tr } from '@/i18n';
 import { deadlineRequiresVerification } from '../../supabase/functions/_shared/deadlineNature.ts';
+import { aBlocchi, BLOCCO_IN } from '@/lib/blocchi';
 import { stateOf, toListArgs } from '@/features/documents/documentModel';
 import { etichettaDocumento } from '@/lib/documentTitle';
 import { analysisService } from './analysisService';
@@ -102,6 +103,11 @@ function toItem(row: ListRow): DocumentHubItem {
       deadline: row.deadline,
       deadlineKind: row.deadline_kind,
       storedFlag: row.deadline_requires_verification === true,
+      // ⚠️ LA STESSA RIGA che due campi più su accende la pastiglia
+      // «corretto»: senza, la scheda del documento dichiarava insieme
+      // «l'ha corretta una persona» e «da verificare», e il secondo non
+      // aveva un gesto che potesse toglierlo.
+      corrected: row.deadline_corrected === true,
     }),
     deadlineKind: row.deadline_kind ?? null,
     appointmentDate: row.appointment_date ?? null,
@@ -325,14 +331,26 @@ export const documentHubService = {
     const analysisIds = rows.map((r) => r.analysisId).filter((id): id is string => !!id);
     if (!analysisIds.length) return { done: 0, total, documents: rows.length, documentsTotal };
 
-    const { count, error } = await requireSupabase()
-      .from('action_progress')
-      .select('id', { count: 'exact', head: true })
-      .eq('company_id', companyId)
-      .eq('done', true)
-      .in('analysis_id', analysisIds);
-    if (error) throw new AppError(documentErrorMessage(error), error);
-    return { done: count ?? 0, total, documents: rows.length, documentsTotal };
+    // ⚠️ A BLOCCHI, e non è prudenza generica: qui gli identificativi possono
+    // essere `COMPLETION_MAX_DOCUMENTS`, cioè 200, e 200 UUID in un `in.(…)`
+    // sfiorano il limite di 8 kB dell'URL — il guasto sarebbe toccato proprio
+    // alle aziende con più documenti. I blocchi sono disgiunti e ogni riga
+    // porta un solo `analysis_id`: la somma dei conteggi È il conteggio.
+    const sb = requireSupabase();
+    const conteggi = await Promise.all(aBlocchi(analysisIds, BLOCCO_IN).map(async (blocco) => {
+      const { count, error } = await sb
+        .from('action_progress')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('done', true)
+        .in('analysis_id', blocco);
+      if (error) throw new AppError(documentErrorMessage(error), error);
+      return count ?? 0;
+    }));
+    return {
+      done: conteggi.reduce((a, b) => a + b, 0),
+      total, documents: rows.length, documentsTotal,
+    };
   },
 
   /** Quanti documenti attivi ha l'azienda. Interrogazione di sola testata. */

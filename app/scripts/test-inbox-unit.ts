@@ -1197,6 +1197,44 @@ section('PESO DELLE RIGHE — la classificazione che cambia la forma della pagin
   }
 }
 
+// ---------------------------------------------------------------------------
+// ⚠️⚠️ IL PESO SI APPLICA SOLO DOVE SI DIVIDE (2026-08-19).
+//
+// «Si divide solo TUTTE» è una scelta scritta a chiare lettere in cima a
+// `InboxPage`: gli altri quattro filtri sono una domanda esplicita — «fammi
+// vedere le messe via» — e a una domanda esplicita si risponde per intero.
+// Ma la riga che monta l'elenco chiamava `inboxEmphasis(m)` senza guardare
+// `splitByEmphasis`: la REGOLA diceva una cosa e il MARKUP ne faceva un'altra,
+// che è la forma di difetto più difficile da vedere, perché il commento giusto
+// sta due schermate sopra il codice sbagliato.
+//
+// La conseguenza si calcola qui sotto invece di descriverla: su «Messe via»
+// ogni riga ha `attentionStatus: 'handled'`, quindi ogni riga usciva
+// `informational` — cioè l'elenco INTERO veniva reso a peso ridotto, in
+// risposta a una richiesta di vederlo.
+{
+  ok(inboxEmphasis({ attentionStatus: 'handled', relevanceConfidence: null }) === 'informational',
+    'una riga «messa via» pesa `informational`: ecco perché applicarlo su quel filtro riduceva TUTTO');
+  ok(inboxEmphasis({ attentionStatus: 'ignored', relevanceConfidence: 0.98 }) === 'collapsed',
+    'e una «non amministrativa» sicura pesa `collapsed`: nel filtro «Da verificare» sarebbe una riga schiacciata');
+
+  // ⚠️ Il sorgente si legge SENZA COMMENTI: il blocco qui sopra nomina
+  // `inboxEmphasis(m)` nella sua forma difettosa, e in `InboxPage` la scelta è
+  // spiegata a parole prima che in codice. Una guardia che legge i commenti
+  // troverebbe ovunque ciò che cerca.
+  const pagina = readFileSync(new URL('../src/features/inbox/InboxPage.tsx', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ');
+  // Le due forme con cui il peso arriva a una riga: calcolato (`={…}`) e
+  // costante (`="collapsed"`, l'elenco dei compressi, che è già una metà sola).
+  const usi = [...pagina.matchAll(/emphasis=(\{[^}]*\}|"[^"]*")/g)].map((m) => m[1]!.trim());
+  ok(usi.length >= 2, 'la guardia trova davvero le righe che assegnano un peso', usi.join(' | '));
+  const senzaGuardia = usi.filter((u) => /inboxEmphasis\(/.test(u) && !/splitByEmphasis/.test(u));
+  ok(senzaGuardia.length === 0,
+    'il peso calcolato si applica SOLO quando la pagina si divide in due metà',
+    senzaGuardia.join(' | '));
+}
+
 // ===========================================================================
 section('I CONTEGGI SUI FILTRI — un numero che descrive l\'elenco che si apre');
 // ===========================================================================
@@ -1226,6 +1264,71 @@ section('I CONTEGGI SUI FILTRI — un numero che descrive l\'elenco che si apre'
     applicaAmbito(q, query);
     return chiamate.join(' & ');
   };
+
+  // -------------------------------------------------------------------------
+  // ⚠️⚠️ IL TAGLIO A 100 CARATTERI CADEVA DOPO L'ESCAPE (2026-08-19).
+  //
+  // I jolly di LIKE digitati da una persona vanno neutralizzati: chi scrive `%`
+  // cerca un per cento, non «qualsiasi cosa». Ma l'ordine era
+  // `replace(...).slice(0, 100)`: si aggiungevano barre rovesciate e POI si
+  // tagliava. Se il taglio cadeva su una barra appena inserita, quella barra
+  // restava spaiata — e mangiava il `%` di CHIUSURA del pattern, che è il jolly
+  // che rende la ricerca una ricerca. Il risultato non era un errore: era zero
+  // risultati, su una ricerca che ne aveva.
+  //
+  // Il rovescio — `slice(0, 100).replace(...)` — taglia ciò che ha DIGITATO
+  // l'utente, che è quello che i 100 caratteri vogliono limitare, e non può
+  // spezzare una coppia che non esiste ancora.
+  //
+  // ⚠️ SI VERIFICA LEGGENDO IL PATTERN COME LO LEGGE POSTGRES, non contando
+  // barre a occhio: la domanda vera è «quanti jolly sono arrivati al motore?»,
+  // e su quella un conteggio di caratteri non risponde.
+  const argomentoIlike = (search: string): string => {
+    const { q, chiamate } = registratore();
+    applicaAmbito(q, { companyId: 'az', filter: 'all', search });
+    const riga = chiamate.find((c) => c.startsWith('ilike('));
+    return riga ? riga.slice('ilike(search_text|'.length, -1) : '';
+  };
+
+  /** Come PostgreSQL legge un pattern LIKE: `\x` è la lettera x, il resto è jolly. */
+  const comeLoLeggePostgres = (pattern: string): { testo: string; jolly: number } => {
+    let testo = ''; let jolly = 0;
+    for (let i = 0; i < pattern.length; i += 1) {
+      const c = pattern[i]!;
+      if (c === '\\') { testo += pattern[i + 1] ?? ''; i += 1; continue; }
+      if (c === '%') { jolly += 1; continue; }
+      testo += c;
+    }
+    return { testo, jolly };
+  };
+
+  // Il caso al millimetro: 99 lettere più un `%`, cioè un jolly digitato
+  // ESATTAMENTE sul centesimo carattere. L'escape lo porta a 101 e il taglio
+  // cadeva fra la barra e il suo `%`.
+  const alLimite = argomentoIlike(`${'a'.repeat(99)}%`);
+  const lettoDaPostgres = comeLoLeggePostgres(alLimite);
+  ok(lettoDaPostgres.jolly === 2,
+    'un jolly digitato sul centesimo carattere non si porta via il `%` di chiusura',
+    `pattern «${alLimite}» → ${lettoDaPostgres.jolly} jolly invece di 2`);
+  ok(lettoDaPostgres.testo === `${'a'.repeat(99)}%`,
+    'e il per cento digitato resta una lettera, che è il motivo per cui lo si neutralizza',
+    `testo letto: «${lettoDaPostgres.testo}»`);
+
+  // CONTROPROVE — una regola che smettesse di neutralizzare, o di tagliare,
+  // farebbe passare queste tre.
+  const inMezzo = comeLoLeggePostgres(argomentoIlike('sconto 50% netto'));
+  ok(inMezzo.jolly === 2 && inMezzo.testo === 'sconto 50% netto',
+    'CONTROPROVA: un `%` in mezzo resta una lettera e i due jolly restano due',
+    `«${inMezzo.testo}» · ${inMezzo.jolly}`);
+  const conBarra = comeLoLeggePostgres(argomentoIlike('c:\\temp_1'));
+  ok(conBarra.jolly === 2 && conBarra.testo === 'c:\\temp_1',
+    'CONTROPROVA: barra rovesciata e trattino basso passano interi',
+    `«${conBarra.testo}» · ${conBarra.jolly}`);
+  const lunga = comeLoLeggePostgres(argomentoIlike('b'.repeat(300)));
+  ok(lunga.testo.length === 100,
+    'CONTROPROVA: il taglio a 100 c\'è ancora, e conta i caratteri DIGITATI',
+    `lunghezza: ${lunga.testo.length}`);
+  // -------------------------------------------------------------------------
 
   // CONTROPROVA DEL REGISTRATORE: se non registrasse nulla, ogni impronta
   // sarebbe la stringa vuota e «tutte diverse» fallirebbe — ma «nessuna vuota»

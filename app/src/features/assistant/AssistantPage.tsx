@@ -761,12 +761,28 @@ function SourcesPanel({
   const chiusura = useRef<HTMLButtonElement | null>(null);
   const provenienza = useRef<HTMLElement | null>(null);
 
+  // ⚠️ LA PROVENIENZA SI PRENDE UNA VOLTA SOLA, all'apertura, e si restituisce
+  // alla chiusura. Sta in un effetto SUO — e per primo — proprio perché non
+  // deve rieseguirsi al cambio di risposta: la sua pulizia rimanda il fuoco
+  // indietro, e girando a ogni risposta lo farebbe rimbalzare sulla pastiglia
+  // VECCHIA, registrando poi quella come provenienza. Con Esc si tornerebbe
+  // alla risposta precedente invece che a quella che si stava guardando.
   useEffect(() => {
     if (!open) return;
     provenienza.current = document.activeElement as HTMLElement | null;
-    chiusura.current?.focus();
     return () => { provenienza.current?.focus?.(); };
   }, [open]);
+
+  // ⚠️ IL FUOCO INVECE SI MUOVE A OGNI RISPOSTA. Con le sole `[open]`, aprire
+  // le fonti di un'ALTRA risposta a pannello già aperto non rieseguiva niente:
+  // il contenuto cambiava sotto un fuoco rimasto dov'era, e chi naviga da
+  // tastiera premeva «3 fonti» restando esattamente dove si trovava — cioè il
+  // difetto che questo pannello è nato per chiudere, sopravvissuto nel caso
+  // «già aperto».
+  useEffect(() => {
+    if (!open) return;
+    chiusura.current?.focus();
+  }, [open, message?.id]);
 
   useEffect(() => {
     if (!open) return;

@@ -32,6 +32,7 @@ import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
 import { nextStepFor } from '../src/features/documents/nextStep';
 import { readFileSync } from 'node:fs';
+import { aBlocchi, BLOCCO_IN } from '../src/lib/blocchi';
 import {
   etichettaComposta, etichettaDaRigaDocumento, etichettaDocumento,
   nomeFileInformativo, titoloDocumento, titoloMostrabile,
@@ -834,6 +835,41 @@ section('10. Il nome mostrato — la regola in LETTURA (§6)');
   ok(titoloMostrabile('a1b', null), 'nemmeno «a1b» rientra nelle quattro condizioni');
 }
 {
+  // ⚠️⚠️ IL RAMO CHE NON RIFIUTAVA NIENTE (2026-08-19). La quarta condizione —
+  // «il titolo è il nome del file travestito» — chiudeva con
+  // `base.length >= 3 && /\p{L}/u.test(base)`. Ma dentro quel ramo `base` È
+  // `t`, e `t` ha già superato le stesse due prove dieci righe sopra: la
+  // condizione era quindi SEMPRE VERA, e il ramo non rifiutava niente.
+  //
+  // Il difetto non si vedeva perché il caso che gli ha dato il nome cadeva
+  // altrove: «2.5» viene rifiutato dal controllo sulle lettere, non da qui. A
+  // passare erano i nomi che di lettere ne hanno — quelli di fotocamere,
+  // scanner e sistemi operativi, cioè i nomi di file più diffusi al mondo.
+  //
+  // La domanda giusta era già scritta, già provata e a dieci righe di distanza:
+  // `nomeFileInformativo`. ⚠️ I quattro casi qui sotto sono ROSSI sul codice
+  // del 18 agosto — tutti e quattro tornavano `true`.
+  ok(!titoloMostrabile('IMG_4821', 'IMG_4821.pdf'),
+    'il nome di una fotocamera non diventa un titolo perché è finito in `title`');
+  ok(!titoloMostrabile('Scan_2026-08-11', 'Scan_2026-08-11.pdf'),
+    'né quello di uno scanner, con la data attaccata che dice QUANDO e mai CHE COSA');
+  ok(!titoloMostrabile('documento (3)', 'documento (3).pdf'),
+    'né «documento (3)»: ha lettere vere e non dice niente lo stesso');
+  ok(!titoloMostrabile('Nuovo documento', 'Nuovo documento.pdf'),
+    'né il nome che mette il sistema a un file appena creato');
+
+  // ⚠️ LE CONTROPROVE PESANO QUANTO I ROSSI: una regola che rifiuta tutto è
+  // inservibile quanto una che non rifiuta niente, e la differenza fra le due
+  // non la mostra nessun caso negativo. Se un giorno il ramo diventasse un
+  // `return false` secco, sono queste tre righe a diventare rosse.
+  ok(titoloMostrabile('Disdetta locazione', 'Disdetta locazione.pdf'),
+    'CONTROPROVA: un nome di file che DICE qualcosa resta un titolo');
+  ok(titoloMostrabile('Fattura Swisscom', 'Fattura Swisscom.pdf'),
+    'CONTROPROVA: e lo resta anche quando titolo e file coincidono in tutto');
+  ok(titoloMostrabile('Fattura marzo', 'IMG_4821.pdf'),
+    'CONTROPROVA: il ramo guarda solo la COINCIDENZA — un file muto non contagia un titolo vero');
+}
+{
   // I TRE LIVELLI DI COMPOSIZIONE, nell'ordine del §6.
   const conTutto = etichettaDocumento({
     titolo: '2.5', nomeFile: '2.5.pdf',
@@ -1012,6 +1048,127 @@ section('11. Il guardiano: nessuna schermata legge il titolo grezzo');
     ok(/useDocumentLabel|documentLabelText|titoloMostrabile|etichettaDocumento/.test(testo),
       `${file} passa dalla regola del nome`);
   }
+}
+
+// ===========================================================================
+section('12. Il guardiano: la correzione umana arriva fino alla regola');
+// ===========================================================================
+// ⚠️ LA GUARDIA SCOLLEGATA, la stessa forma già usata per `safeWebsite` nel
+// CRM. `test:validate` prova che `deadlineRequiresVerification` sa spegnersi
+// quando una persona ha corretto la scadenza — ma resterebbe verde anche se
+// nessuno le passasse mai quell'ingresso, e una regola giusta che non chiama
+// nessuno non protegge niente. È esattamente il difetto del titolo «2.5»: la
+// regola c'era, il chiamante no.
+//
+// ⚠️⚠️ SI LEGGE IL CODICE SENZA COMMENTI. Una guardia a espressione regolare
+// sui sorgenti legge anche ciò che è scritto dentro un commento: il 18 agosto
+// una guardia di questo repository è nata rossa da sola per questo motivo, e
+// qui sotto `analysisService.ts` PARLA di `corrected` in un commento senza
+// passarlo. Senza questa riga, il controllo direbbe il contrario del vero.
+{
+  const senzaCommenti = (t: string) => t
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const chiamata = (file: string): string | null => {
+    const src = senzaCommenti(readFileSync(file, 'utf8'));
+    const i = src.indexOf('deadlineRequiresVerification({');
+    if (i < 0) return null;
+    const fine = src.indexOf('})', i);
+    return fine < 0 ? src.slice(i) : src.slice(i, fine + 2);
+  };
+
+  const hub = chiamata('src/services/documentHubService.ts');
+  ok(hub !== null, 'documentHubService chiama ancora la regola in lettura');
+  ok(!!hub && /corrected:\s*row\.deadline_corrected === true/.test(hub),
+    'e le passa la correzione umana, dalla stessa colonna che accende la pastiglia «corretto»',
+    hub ?? '(nessuna chiamata)');
+
+  // ⚠️ LA SCHERMATA CHE MOSTRAVA LA CONTRADDIZIONE. Le due righe stanno nello
+  // stesso `<Field>`: il segno che dice «da verificare» e la pastiglia che dice
+  // «l'ha corretta una persona». Se un giorno il segno tornasse a leggere una
+  // fonte diversa da quella che accende la pastiglia, le due si scollegherebbero
+  // di nuovo — e nessuna prova sulle funzioni pure se ne accorgerebbe.
+  const scheda = senzaCommenti(
+    readFileSync('src/features/documents/DocumentDetailPage.tsx', 'utf8'));
+  ok(/toVerify=\{item\.deadlineRequiresVerification\}/.test(scheda)
+    && /corrected=\{item\.deadlineCorrected\}/.test(scheda),
+    'la scheda legge il segno e la pastiglia dallo STESSO oggetto: non possono più divergere');
+
+  // ⚠️ E `analysisService` NON deve fingere di saperlo. `document_analyses` non
+  // ha una colonna di correzione — le correzioni stanno in
+  // `analysis_corrections`, perché l'analisi è un verbale immutabile (0010) —
+  // quindi da quella riga il vero valore è «non si può sapere». Scrivere
+  // `corrected: false` sarebbe affermare «nessuno l'ha corretta», che è un'altra
+  // cosa e non è provata: è il fallback silenzioso che questo progetto rifiuta.
+  const analisi = chiamata('src/services/analysisService.ts');
+  ok(analisi !== null, 'analysisService chiama ancora la regola in lettura');
+  ok(!!analisi && !/corrected:/.test(analisi),
+    'analysisService NON passa `corrected`: da document_analyses quel fatto non si legge',
+    analisi ?? '(nessuna chiamata)');
+}
+
+// ===========================================================================
+section('13. Duecento identificativi non entrano in un URL');
+// ===========================================================================
+// ⚠️⚠️ IL LIMITE È DEL TRASPORTO, NON DELLA QUERY. PostgREST riceve i filtri
+// nella query string, e un URL oltre gli 8 kB viene rifiutato dal server prima
+// di diventare un'interrogazione: non un risultato sbagliato, un guasto secco.
+// `avanzamento` legge fino a `COMPLETION_MAX_DOCUMENTS` analisi e le passava
+// tutte a una `.in(...)` sola — quindi il tetto non era teorico, era il caso
+// NORMALE di un'azienda con molti documenti, e sarebbe toccato per primo a chi
+// ne ha di più.
+//
+// ⚠️ IL COSTO SI MISURA, non si stima: le due righe qui sotto costruiscono il
+// filtro come lo scrive PostgREST e lo PESANO. È la parte che rende questa
+// sezione una prova e non un'opinione sul numero 80.
+{
+  const UUID = '00000000-0000-4000-8000-000000000000';
+  const pesoFiltro = (ids: readonly string[]): number =>
+    `in.(${ids.map((i) => `"${i}"`).join(',')})`.length;
+
+  // ⚠️ Il tetto si LEGGE dal servizio invece di riscriverlo qui: se un giorno
+  // salisse, questa sezione deve misurare il numero nuovo, non quello di oggi.
+  const servizio = readFileSync('src/services/documentHubService.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const tetto = Number(/COMPLETION_MAX_DOCUMENTS = (\d+)/.exec(servizio)?.[1] ?? 0);
+  ok(tetto >= 100, 'il tetto delle analisi lette si trova nel servizio', String(tetto));
+
+  const tutti = Array.from({ length: tetto }, () => UUID);
+  ok(pesoFiltro(tutti) > 7000,
+    `CONTROPROVA: ${tetto} identificativi sfiorano davvero gli 8 kB`,
+    `${pesoFiltro(tutti)} byte di solo filtro, senza il resto dell'indirizzo`);
+
+  const blocchi = aBlocchi(tutti, BLOCCO_IN);
+  const piuPesante = Math.max(...blocchi.map(pesoFiltro));
+  ok(piuPesante < 4000,
+    'a blocchi il filtro più pesante sta LARGAMENTE sotto il limite',
+    `${piuPesante} byte`);
+
+  // La somma dei conteggi è il conteggio solo se i blocchi sono disgiunti e
+  // non perdono niente: è l'unica proprietà che la correzione deve garantire.
+  ok(blocchi.flat().length === tutti.length,
+    'i blocchi rimettono insieme esattamente l\'elenco di partenza');
+  ok(blocchi.every((b) => b.length <= BLOCCO_IN) && blocchi.length === 3,
+    `${tetto} in blocchi da ${BLOCCO_IN} fanno 3 richieste, nessuna oltre il tetto`,
+    blocchi.map((b) => b.length).join('+'));
+
+  // I casi limite, che è il motivo per cui la funzione è pura e sta fuori dal
+  // servizio: nel servizio si scoprirebbero in produzione.
+  ok(aBlocchi([], BLOCCO_IN).length === 0,
+    'un elenco vuoto non produce una richiesta a vuoto');
+  ok(JSON.stringify(aBlocchi([1, 2, 3], 80)) === '[[1,2,3]]',
+    'un elenco più corto del blocco resta una richiesta sola');
+  ok(JSON.stringify(aBlocchi([1, 2, 3, 4], 2)) === '[[1,2],[3,4]]',
+    'una divisione esatta non lascia un blocco vuoto in coda');
+
+  // ⚠️ LA GUARDIA SCOLLEGATA. Le prove qui sopra restano verdi anche se il
+  // servizio continuasse a passare l'elenco intero: la funzione giusta che non
+  // chiama nessuno non protegge niente. Senza commenti, perché il blocco che
+  // stai leggendo nomina `.in(` e `analysisIds`.
+  ok(/\.in\('analysis_id', blocco\)/.test(servizio)
+    && /aBlocchi\(analysisIds, BLOCCO_IN\)/.test(servizio),
+    'e il servizio interroga UN BLOCCO per volta, non l\'elenco intero');
+  ok(!/\.in\('analysis_id', analysisIds\)/.test(servizio),
+    'l\'elenco intero non finisce più in una `.in(...)` sola');
 }
 
 // ===========================================================================

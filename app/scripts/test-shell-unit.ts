@@ -2246,6 +2246,34 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   check('e non passa da requestAnimationFrame',
     !/requestAnimationFrame/.test(pagina),
     'rAF è sospeso a documento non in primo piano: il fuoco non entrerebbe mai');
+
+  // ⚠️⚠️ E IL FUOCO SI SPOSTA ANCHE A PANNELLO GIÀ APERTO (2026-08-19). Con le
+  // sole `[open]`, aprire le fonti di UN'ALTRA risposta mentre il pannello è
+  // già aperto non rieseguiva niente: il contenuto cambiava sotto un fuoco
+  // rimasto dov'era. Chi naviga da tastiera premeva «3 fonti» e restava
+  // esattamente dov'era — cioè il difetto che questo pannello era nato per
+  // chiudere, sopravvissuto al caso «già aperto».
+  //
+  // ⚠️ SONO DUE EFFETTI, E LA SEPARAZIONE È LA CORREZIONE. Aggiungere
+  // `message?.id` all'effetto unico avrebbe fatto girare anche la PULIZIA a
+  // ogni cambio di risposta: la pulizia restituisce il fuoco alla provenienza,
+  // quindi il fuoco sarebbe rimbalzato sulla pastiglia VECCHIA prima di
+  // arrivare al pannello, e la provenienza registrata subito dopo sarebbe
+  // stata quella sbagliata — con Esc si sarebbe tornati alla risposta
+  // precedente invece che a quella che si stava guardando. La provenienza si
+  // prende UNA volta, all'apertura; il fuoco si muove a ogni risposta.
+  const effettiPannello = [...pagina.matchAll(/useEffect\(\(\) => \{([\s\S]*?)\}, \[([^\]]*)\]\);/g)];
+  const effFuoco = effettiPannello.find((m) => /chiusura\.current\?\.focus\(\)/.test(m[1]!));
+  check('il fuoco entra a ogni cambio di risposta, non solo all\'apertura',
+    !!effFuoco && /\bmessage\?\.id\b/.test(effFuoco[2]!),
+    effFuoco ? `dipendenze: [${effFuoco[2]}]` : "l'effetto che sposta il fuoco non si trova più");
+  const effProvenienza = effettiPannello.find((m) => /provenienza\.current = document\.activeElement/.test(m[1]!));
+  check('la provenienza si registra SOLO all\'apertura: Esc torna dove si era',
+    !!effProvenienza && !/\bmessage\?\.id\b/.test(effProvenienza[2]!),
+    effProvenienza ? `dipendenze: [${effProvenienza[2]}]` : "l'effetto che registra la provenienza non si trova più");
+  check('e i due effetti sono DUE: la pulizia non deve girare a ogni risposta',
+    !!effFuoco && !!effProvenienza && effFuoco[0] !== effProvenienza[0],
+    'un effetto solo rimbalzerebbe il fuoco sulla pastiglia vecchia prima di entrare nel pannello');
   check('su schermo largo il pannello non vela la risposta che sta citando',
     /\.as-overlay\s*\{\s*display:\s*none/.test(extra),
     'il velo vive nel blocco dei 900px: le fonti si leggono ACCANTO alla risposta');

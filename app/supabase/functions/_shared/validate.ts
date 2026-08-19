@@ -298,7 +298,20 @@ export function validateAndNormalize(ai: AiAnalysis, extraction: ExtractionResul
   // informazione che abbiamo, e buttarla cancellerebbe scadenze vere — ma non
   // può presentarsi come un fatto. È la stessa scelta fatta per una scadenza
   // esplicita senza citazione verificata: si tiene e si dichiara.
-  const kindUndeclared = dateKind === null && dType === 'explicit' && dDate != null;
+  // ⚠️⚠️ E `none` SU UNA DATA VALORIZZATA CONTA COME SILENZIO (2026-08-19). Il
+  // prompt definisce `none` come «se non c'è alcuna data» (prompt.ts §deadline):
+  // dichiararlo insieme a una data è una CONTRADDIZIONE, non una risposta. Fino
+  // a oggi la guardia scattava solo su `dateKind === null`, quindi un output
+  // `{type:'explicit', date:'2026-09-10', dateKind:'none'}` passava il filtro e
+  // usciva come «Scadenza 10.09.2026 · affidabilità alta» — cioè il sopralluogo
+  // di Lugano un'altra volta, imboccato da un'altra strada.
+  //
+  // ⚠️ Non si giudica se `none` sia sincero leggendo il testo: si constata che
+  // due campi dello stesso oggetto dicono cose incompatibili. Il `dDate != null`
+  // in coda vale per entrambi i rami — senza data `none` è la risposta GIUSTA, e
+  // farla scattare lì sarebbe il difetto di segno opposto.
+  const kindUndeclared = (dateKind === null || dateKind === 'none')
+    && dType === 'explicit' && dDate != null;
   const deadlineRequiresVerification =
     dType === 'relative' || dType === 'inferred' || (dType === 'explicit' && dDate == null)
     || deadlineUnverified || kindUndeclared;
