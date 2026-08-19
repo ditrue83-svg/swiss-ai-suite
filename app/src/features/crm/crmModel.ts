@@ -17,6 +17,11 @@ import type {
   CrmMatchReason, CrmSource, CrmRelationshipStatus,
 } from '@/types/database';
 import type { CrmOrganization, CrmOpportunity, CrmPipelineCell } from '@/types/models';
+// ⚠️ La MEDESIMA funzione che l'Inbox usa sui link di una email, non una seconda
+// scritta qui: lo schema di un URL si LEGGE con un parser, non si cerca con un
+// pattern — `java\tscript:` inganna un pattern, non `new URL()`. Due guardie
+// diverse sullo stesso pericolo divergono, e quella meno usata resta indietro.
+import { safeHttpUrl } from '../../../supabase/functions/_shared/email/html.ts';
 
 /**
  * Le sigle dei ventisei cantoni, più il Liechtenstein — che non è un cantone ma
@@ -34,6 +39,28 @@ export const SWISS_CANTONS: readonly string[] = [
   'NE', 'NW', 'OW', 'SG', 'SH', 'SO', 'SZ', 'TG', 'TI', 'UR', 'VD', 'VS',
   'ZG', 'ZH', 'LI',
 ];
+
+/**
+ * Il sito web di una controparte, ma solo se è davvero un sito.
+ *
+ * ⚠️⚠️ UN CAMPO DI TESTO CHE FINISCE IN UN `href` NON È TESTO: È CODICE. Il
+ * campo «Sito web» era libero e il servizio faceva solo `.trim()`; la scheda
+ * cliente scriveva `<a href={o.website}>`. Un `javascript:…` salvato lì dentro
+ * — da chi ha accesso al CRM, o da un'importazione — eseguiva codice nella
+ * sessione di CHIUNQUE cliccasse quel link, con il suo token e la sua azienda.
+ * Il campo era così dal 15.08.
+ *
+ * Ritorna il valore da mostrare o da scrivere, oppure `null` se non passa:
+ * `javascript:`, `data:`, `vbscript:`, `file:` e un `//evil.com` senza schema
+ * non passano. Chi chiama decide che cosa farne — la scheda mostra il testo
+ * senza collegamento, il servizio rifiuta il salvataggio — ma nessuno dei due
+ * decide DA SÉ che cosa è sicuro.
+ */
+export function safeWebsite(raw: string | null | undefined): string | null {
+  const value = (raw ?? '').trim();
+  if (!value) return null;
+  return safeHttpUrl(value) ? value : null;
+}
 
 export const CRM_PAGE_SIZE = 25;
 export const CRM_TIMELINE_PAGE_SIZE = 30;

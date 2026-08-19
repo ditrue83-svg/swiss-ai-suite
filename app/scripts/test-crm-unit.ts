@@ -19,6 +19,8 @@
 //   8. Giorni di calendario — alle 23:30 «ieri» non è «oggi».
 //   9. Filtri in URL — un valore assurdo non diventa un filtro invisibile.
 //  10. Etichette e ordinamenti stabili.
+//  11. Il candidato automatico (0030) — la chiave scritta due volte.
+//  12. Il sito web è un link, e un link può essere codice.
 // ============================================================================
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +36,7 @@ import {
   filtersFromParams, paramsFromFilters, effectiveRole, hasActiveFilters,
   organizationState, opportunityState, pipelineByCurrency, countByStage,
   daysSince, daysUntil, secondaryName, compareTimeline, isOpen,
+  safeWebsite,
   EMPTY_FILTERS, type CrmFilters,
 } from '../src/features/crm/crmModel.ts';
 import { isValidUid } from '../src/lib/uid.ts';
@@ -578,6 +581,66 @@ check('la scansione è revocata a public, anon e authenticated',
 check('il candidato non scrive MAI su crm_organizations, contracts o finance_items',
   !/insert into public\.crm_organizations|update public\.(contracts|finance_items|crm_organizations)/
     .test(CANDIDATE));
+
+// ---------------------------------------------------------------------------
+section('12. Il sito web è un link, e un link può essere codice');
+
+// ⚠️⚠️ IL CAMPO ERA LIBERO DAL 15.08. Il servizio faceva `.trim()`, la scheda
+// scriveva `<a href={o.website}>`: un `javascript:…` salvato lì dentro eseguiva
+// codice nella sessione di chiunque cliccasse il link — il suo token, la sua
+// azienda. Non serviva bucare niente: bastava avere accesso al campo.
+check('javascript: non è un sito web', safeWebsite('javascript:alert(1)') === null,
+  String(safeWebsite('javascript:alert(1)')));
+check('data:text/html non è un sito web', safeWebsite('data:text/html,<script>alert(1)</script>') === null,
+  String(safeWebsite('data:text/html,<script>alert(1)</script>')));
+check('vbscript: non è un sito web', safeWebsite('vbscript:msgbox') === null);
+check('file:// non è un sito web', safeWebsite('file:///etc/passwd') === null);
+// ⚠️ `//evil.com` è la forma che INGANNA CHI GUARDA: sembra un percorso, e il
+// browser lo risolve sull'origine corrente come URL assoluto verso evil.com.
+check('//evil.com senza schema non è un sito web', safeWebsite('//evil.com') === null,
+  String(safeWebsite('//evil.com')));
+// ⚠️ LO SCHEMA SI LEGGE, NON SI CERCA. Un pattern su «javascript:» non vede né
+// le maiuscole né il tab in mezzo; `new URL()` sì. È il motivo per cui questa è
+// la stessa funzione dell'Inbox e non una seconda scritta per il CRM.
+check('JavaScript: con maiuscole e spazi non passa', safeWebsite('  JavaScript:alert(1)') === null);
+check('java\\tscript: non passa', safeWebsite('java\tscript:alert(1)') === null);
+
+// LA CONTROPROVA — senza queste, «rifiuta tutto» sarebbe verde.
+check('https://esempio.ch è un sito web', safeWebsite('https://esempio.ch') === 'https://esempio.ch',
+  String(safeWebsite('https://esempio.ch')));
+check('http://www.admin.ch/ è un sito web', safeWebsite('http://www.admin.ch/') === 'http://www.admin.ch/');
+check('gli spazi intorno si tolgono', safeWebsite('  https://esempio.ch  ') === 'https://esempio.ch');
+check('campo vuoto: nessun sito, e nessun errore', safeWebsite('') === null && safeWebsite(null) === null);
+// ⚠️ `esempio.ch` senza schema NON passa, ed è una scelta: indovinare `https://`
+// sarebbe inventare un dato che l'utente non ha scritto. Il messaggio glielo dice.
+check('un dominio nudo non si completa da solo', safeWebsite('esempio.ch') === null,
+  String(safeWebsite('esempio.ch')));
+
+// ⚠️ LA GUARDIA SCOLLEGATA. Le prove qui sopra restano verdi anche se il
+// servizio e la scheda smettono di chiamare `safeWebsite`: è il difetto vero, e
+// una funzione giusta che non chiama nessuno non protegge niente. Qui si legge
+// il sorgente dei DUE punti che scrivono e mostrano quel campo.
+const SERVICE = readFileSync(join(HERE, '..', 'src', 'services', 'crmService.ts'), 'utf8');
+const DETAIL = readFileSync(
+  join(HERE, '..', 'src', 'features', 'crm', 'ClientDetailPage.tsx'), 'utf8');
+
+check('crmService non scrive più il campo grezzo (create e update)',
+  !/website\s*[:=]\s*(input|patch)\.website\?\.trim\(\)/.test(SERVICE));
+// Ogni lettura del campo in ARRIVO — `input.website` alla creazione,
+// `patch.website` alla modifica — deve stare dentro la guardia. L'unica che non
+// conta è il `patch.website !== undefined`, che chiede se il campo è nella
+// patch e non che valore abbia. Due punti: se qualcuno ne riporta indietro uno,
+// qui si vede.
+const websiteReads = [...SERVICE.matchAll(/(.{0,20}?)((?:input|patch)\.website)(?!\s*!==)/g)];
+check('entrambe le scritture passano dalla guardia',
+  websiteReads.length === 2 && websiteReads.every((m) => m[1]!.endsWith('websiteDaSalvare(')),
+  websiteReads.map((m) => `${m[1]}${m[2]}`).join(' | '));
+check('e la guardia rifiuta invece di ripulire in silenzio',
+  /crm\.errors\.websiteNotHttp/.test(SERVICE));
+check('la scheda cliente non mette più il valore grezzo in un href',
+  !/href=\{o\.website\}\s*target/.test(DETAIL.replace(/safeWebsite\(o\.website\)[\s\S]{0,80}?href=\{o\.website\}/, 'GUARDATO')));
+check('la scheda cliente chiama safeWebsite prima di collegare',
+  /safeWebsite\(o\.website\)/.test(DETAIL));
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);

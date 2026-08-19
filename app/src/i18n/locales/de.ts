@@ -2575,6 +2575,7 @@ export const de: Dictionary = {
       suggestionNotFound: 'Dieser Vorschlag ist nicht mehr offen: jemand hat ihn bereits erledigt.',
       suggestionNotLinked: 'Der Eintrag wurde erfasst, die Verknüpfung mit dem ursprünglichen Dokument aber nicht gespeichert. Sie können sie im Eintrag herstellen.',
       suggestionSourceUnsupported: 'Dieser Vorschlag kann hier nicht angenommen werden.',
+      websiteNotHttp: 'Die Website muss mit http:// oder https:// beginnen. Andere Adressen können nicht gespeichert werden.',
     },
   },
   // ==========================================================================

@@ -58,7 +58,8 @@ import {
   comprimibile, inboxEmphasis, SOGLIA_COMPRESSIONE, QUERY_COMPRESSI, QUERY_IN_EVIDENZA,
   type InboxEmphasis,
 } from '../src/features/inbox/emphasis';
-import { applicaAmbito, INBOX_FILTERS } from '../src/features/inbox/scope';
+import { applicaAmbito, INBOX_FILTERS, URGENT_WITHIN_DAYS } from '../src/features/inbox/scope';
+import { addDays, todayISO } from '../src/features/calendar/calendarModel';
 import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
@@ -1269,6 +1270,166 @@ section('I CONTEGGI SUI FILTRI — un numero che descrive l\'elenco che si apre'
     const mancanti = INBOX_FILTERS.filter((f) => !filtri[CHIAVI[f]!]);
     ok(mancanti.length === 0, `${lang}: ogni filtro della barra ha la sua parola`, mancanti.join(', '));
   }
+
+  // ⚠️⚠️ «URGENTI» CONTAVA I GIORNI IN UTC. La finestra si componeva con
+  // `toISOString().slice(0,10)`, che dà il giorno di Greenwich, mentre tutto il
+  // resto del prodotto usa il giorno LOCALE (`todayISO`). A Zurigo fra
+  // mezzanotte e le 02:00 i due non coincidono, e la finestra si spostava di un
+  // giorno intero: un messaggio in scadenza usciva da «Urgenti» proprio nelle
+  // ore in cui qualcuno apre la posta per controllare che non sia rimasto
+  // niente. Uno sfasamento di un giorno non fa cadere nulla — mostra un elenco
+  // più corto, e nessuno sa che manca una riga.
+  {
+    const tzOriginale = process.env.TZ;
+    try {
+      // Un fuso che ADESSO è su un giorno diverso da quello UTC. Quale dei due
+      // lo sia dipende dall'ora a cui gira la suite, quindi si sceglie: sotto
+      // le 10 UTC è il fuso a ovest (UTC−11), sopra quello a est (UTC+14). Uno
+      // dei due lo è sempre, e così la prova non dipende dall'orologio.
+      process.env.TZ = new Date().getUTCHours() < 10 ? 'Pacific/Midway' : 'Pacific/Kiritimati';
+      const giornoLocale = todayISO();
+      const giornoUtc = new Date().toISOString().slice(0, 10);
+      ok(giornoLocale !== giornoUtc,
+        'il fuso scelto è davvero su un altro giorno rispetto a UTC (senza, la prova non prova niente)',
+        `locale=${giornoLocale} utc=${giornoUtc}`);
+
+      const urgenti = impronta({ companyId: 'az', filter: 'urgent' });
+      const attesa = addDays(giornoLocale, URGENT_WITHIN_DAYS);
+      const sbagliata = addDays(giornoUtc, URGENT_WITHIN_DAYS);
+      ok(urgenti.includes(`lte(analysis_deadline|${attesa})`),
+        'la finestra di «Urgenti» si conta sul giorno LOCALE', `attesa ${attesa} — ${urgenti}`);
+      ok(!urgenti.includes(sbagliata),
+        'CONTROPROVA: e NON sul giorno UTC — è lo sfasamento di un giorno che il difetto produceva',
+        `sbagliata ${sbagliata} — ${urgenti}`);
+    } finally {
+      if (tzOriginale === undefined) delete process.env.TZ; else process.env.TZ = tzOriginale;
+    }
+
+    // ⚠️ LA GUARDIA SCOLLEGATA: la prova qui sopra resta verde se qualcuno
+    // ricompone la data a mano da qualche altra parte in questo file.
+    //
+    // ⚠️⚠️ E SI LEGGE IL CODICE, NON I COMMENTI. Alla prima scrittura questa
+    // guardia è diventata rossa da sola: il commento che spiega il difetto
+    // NOMINA `toISOString().slice(0,10)`, e un lettore a regex non distingue
+    // una riga che fa una cosa da una riga che la racconta. Rosso onesto —
+    // ma la stessa cecità, girata dall'altra parte, è un verde falso.
+    const scope = readFileSync(new URL('../src/features/inbox/scope.ts', import.meta.url), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    ok(!/toISOString\(\)\.slice\(0, ?10\)/.test(scope),
+      'e l’ambito non compone più nessun giorno a mano con toISOString()');
+    ok(/addDays\(todayISO\(\), URGENT_WITHIN_DAYS\)/.test(scope),
+      'la finestra passa dalle due funzioni del calendario');
+  }
+}
+
+// ===========================================================================
+section('LA RISPOSTA IN RITARDO — chi vince quando due richieste si sovrappongono');
+// ===========================================================================
+// ⚠️⚠️ IL DIFETTO. Al cambio azienda l'effetto della Inbox svuota l'elenco, ma
+// NON ferma la richiesta già partita: quella continua per conto suo e, se
+// risolve dopo, ridipinge la posta dell'azienda PRECEDENTE sotto l'intestazione
+// di quella nuova. È il §75 violato da una promessa in ritardo, e non c'è stato
+// React che lo dichiari — la pagina sembra a posto, i dati sono di un'altra
+// impresa. Lo stesso con la ricerca «debounced»: due richieste in volo, e vince
+// quella che risolve per ultima, che non è quella che l'utente sta aspettando.
+//
+// ⚠️ NON È UNA CORSA RARA. Basta che la prima risposta sia più lenta della
+// seconda — una pagina piena contro una vuota, una ricerca larga contro una
+// stretta — e l'ordine di arrivo si inverte senza che nessuno faccia niente di
+// strano.
+{
+  // Lo schema, riprodotto qui: un contatore, il numero preso PRIMA di partire,
+  // e la scrittura solo se quel numero è ancora il corrente. Le due metà di
+  // questa sezione sono complementari e nessuna delle due basta da sola: qui si
+  // prova che lo schema REGGE, più sotto che è davvero DOVE deve essere.
+  const richiesta = { current: 0 };
+  // Lo stato della pagina in un oggetto, come nel codice vero: due valori che
+  // solo la richiesta corrente ha il diritto di scrivere.
+  const pagina: { elenco: string | null; rotella: boolean } = { elenco: null, rotella: true };
+
+  const carica = async (etichetta: string, ritardo: number) => {
+    const mia = ++richiesta.current;
+    await new Promise((r) => setTimeout(r, ritardo));
+    if (mia !== richiesta.current) return;
+    pagina.elenco = etichetta;
+    pagina.rotella = false;
+  };
+
+  // La PRIMA parte e risolve per ULTIMA: è il caso vero (azienda A lenta,
+  // azienda B veloce), e senza guardia lo stato finirebbe su «A».
+  const prima = carica('azienda A', 40);
+  const seconda = carica('azienda B', 5);
+  await Promise.all([prima, seconda]);
+
+  ok(pagina.elenco === 'azienda B',
+    'la prima risolve per ultima e NON sovrascrive la seconda', String(pagina.elenco));
+  ok(pagina.rotella === false, 'e la rotella la spegne la richiesta vera, non quella sorpassata');
+
+  // CONTROPROVA — senza la guardia lo stesso ordine dà il risultato sbagliato.
+  // Senza questa, «lo stato resta il secondo» sarebbe verde anche per caso.
+  const senza: { elenco: string | null } = { elenco: null };
+  const senzaGuardia = async (etichetta: string, ritardo: number) => {
+    await new Promise((r) => setTimeout(r, ritardo));
+    senza.elenco = etichetta;
+  };
+  await Promise.all([senzaGuardia('azienda A', 40), senzaGuardia('azienda B', 5)]);
+  ok(senza.elenco === 'azienda A',
+    'CONTROPROVA: senza guardia vince la risposta VECCHIA — è il difetto, riprodotto',
+    String(senza.elenco));
+}
+
+// ⚠️ LA GUARDIA SCOLLEGATA, di nuovo. Le prove qui sopra restano verdi anche se
+// nessuna pagina applica lo schema: provano che funziona, non che sia adottato.
+// Qui si legge il sorgente dei cinque caricamenti e si cammina il corpo di
+// ciascuno — a ogni `await`, la prima scrittura di stato che segue deve venire
+// DOPO un confronto con il contatore. È il difetto che nessun tipo può cogliere
+// e che nessuna asserzione sul comportamento può vedere.
+{
+  const CARICAMENTI: Array<[string, string, string]> = [
+    ['Inbox · elenco', 'src/features/inbox/InboxPage.tsx', 'const loadPage = useCallback('],
+    ['Inbox · compressi', 'src/features/inbox/InboxPage.tsx', 'const loadCollapsed = useCallback('],
+    ['Scheda cliente', 'src/features/crm/ClientDetailPage.tsx', 'const load = useCallback('],
+    ['Dettaglio contratto', 'src/features/contracts/ContractDetailPage.tsx', 'const load = useCallback('],
+    ['Dettaglio opportunità', 'src/features/crm/OpportunityPages.tsx', 'const load = useCallback('],
+  ];
+
+  for (const [nome, file, inizio] of CARICAMENTI) {
+    const sorgente = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    const da = sorgente.indexOf(inizio);
+    // ⚠️ Se il punto d'aggancio non c'è più, il controllo NON diventa verde per
+    // assenza: dichiara di non aver trovato ciò che doveva guardare.
+    if (da < 0) { ok(false, `${nome}: il caricamento non si trova più`, inizio); continue; }
+    const a = sorgente.indexOf('\n  }, [', da);
+    const corpo = sorgente.slice(da, a < 0 ? sorgente.length : a);
+
+    ok(/const mia = \+\+\w+\.current;/.test(corpo),
+      `${nome}: prende il proprio numero prima di partire`);
+
+    // Il corpo si spezza sugli `await`: nel pezzo che segue ciascuno, la prima
+    // scrittura di stato deve stare DOPO il primo confronto col contatore.
+    const pezzi = corpo.split(/\bawait\b/);
+    const scoperte: string[] = [];
+    for (const pezzo of pezzi.slice(1)) {
+      const guardia = pezzo.search(/mia\s*[!=]==\s*\w+\.current/);
+      const scrittura = pezzo.search(/\bset[A-Z]\w*\(/);
+      if (scrittura >= 0 && (guardia < 0 || guardia > scrittura)) {
+        scoperte.push(pezzo.slice(scrittura, scrittura + 40).split('\n')[0]!.trim());
+      }
+    }
+    ok(scoperte.length === 0,
+      `${nome}: nessuna scrittura di stato dopo un'attesa senza guardia`,
+      scoperte.join(' | '));
+  }
+
+  // ⚠️ E l'effetto della pagina di MODIFICA di un'opportunità, che la guardia
+  // ce l'aveva già con l'altra forma (`let cancelled` + pulizia): non è stato
+  // toccato, e questo controllo dice che è ancora al suo posto. Le due forme
+  // sono la stessa idea — «questa risposta è ancora quella attesa?» — e la
+  // seconda esiste dove la chiamata nasce da un effetto invece che da un
+  // pulsante.
+  const opp = readFileSync(new URL('../src/features/crm/OpportunityPages.tsx', import.meta.url), 'utf8');
+  ok(/let cancelled = false;[\s\S]{0,600}?if \(cancelled\) return;[\s\S]{0,200}?return \(\) => \{ cancelled = true; \};/.test(opp),
+    'la pagina di modifica conserva la sua guardia a `cancelled` (non toccata)');
 }
 
 // ===========================================================================

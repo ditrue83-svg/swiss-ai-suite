@@ -10,7 +10,7 @@
 // di connessione lo dice, se una sincronizzazione è in corso lo dice, e se non
 // c'è nulla da fare lo dice — invece di mostrare uno zero.
 // ============================================================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Tag } from '@/components/ui/Tag';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
@@ -198,7 +198,22 @@ export function InboxPage() {
     }
   }, [companyId]);
 
+  // ⚠️⚠️ QUALE RISPOSTA STA GUARDANDO LA PAGINA. L'effetto qui sopra svuota
+  // l'elenco al cambio azienda, ma NON ferma la richiesta già partita: quella
+  // continua per conto suo e, se risolve dopo, ridipinge la posta dell'azienda
+  // PRECEDENTE sotto l'intestazione di quella nuova — §75 violato da una
+  // promessa in ritardo, e nessuno stato React che lo dichiari. Lo stesso con
+  // la ricerca: due richieste in volo, e vince quella che risolve per ultima,
+  // che non è quella che l'utente sta aspettando.
+  //
+  // Il contatore dice qual è la richiesta CORRENTE. Ogni chiamata prende il suo
+  // numero prima di partire e, al ritorno, scrive solo se è ancora lei: è lo
+  // schema di `useAsync` (`let active = true` + pulizia), portato qui dove la
+  // chiamata non nasce da un effetto ma da un pulsante «carica altri».
+  const richiestaElenco = useRef(0);
+
   const loadPage = useCallback(async (reset: boolean, from: string | null) => {
+    const mia = ++richiestaElenco.current;
     if (reset) setLoading(true); else setLoadingMore(true);
     try {
       const base = {
@@ -227,6 +242,10 @@ export function InboxPage() {
         // il prezzo è misurabile, la contraddizione no.
         reset ? inboxService.counts(base) : Promise.resolve(null),
       ]);
+      // ⚠️ PRIMA di ogni scrittura, non solo della prima: fra l'`await` e qui
+      // può essere partita una richiesta nuova. Un `return` dentro il `try`
+      // esegue comunque il `finally`, che ha la stessa guardia.
+      if (mia !== richiestaElenco.current) return;
       setItems((prev) => (reset ? page.items : [...prev, ...page.items]));
       setCursor(page.nextCursor);
       if (reset && conteggi) {
@@ -240,10 +259,18 @@ export function InboxPage() {
       }
       setListError(null);
     } catch (e) {
+      // ⚠️ Anche il GUASTO di una richiesta sorpassata va taciuto: mostrare
+      // l'errore dell'azienda precedente su quella nuova manderebbe a cercare
+      // il problema dalla parte sbagliata.
+      if (mia !== richiestaElenco.current) return;
       setListError(toUserMessage(e));
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      // ⚠️ E la rotella: se la spegnesse anche una richiesta sorpassata, la
+      // pagina si dichiarerebbe pronta mentre quella vera è ancora in volo.
+      if (mia === richiestaElenco.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [companyId, filter, search, connectionFilter, splitByEmphasis]);
 
@@ -252,7 +279,12 @@ export function InboxPage() {
    * settantadue righe non si scaricano in blocco solo perché stanno dietro un
    * clic.
    */
+  // Contatore SUO, non quello dell'elenco: i compressi sono una richiesta
+  // indipendente, e condividere il contatore farebbe annullare l'una dall'altra.
+  const richiestaCompressi = useRef(0);
+
   const loadCollapsed = useCallback(async (reset: boolean, from: string | null) => {
+    const mia = ++richiestaCompressi.current;
     setCollapsedLoading(true);
     try {
       const page = await inboxService.list({
@@ -263,13 +295,15 @@ export function InboxPage() {
         connectionId: connectionFilter,
         cursor: from,
       });
+      if (mia !== richiestaCompressi.current) return;
       setCollapsedItems((prev) => (reset ? page.items : [...prev, ...page.items]));
       setCollapsedCursor(page.nextCursor);
       setCollapsedError(null);
     } catch (e) {
+      if (mia !== richiestaCompressi.current) return;
       setCollapsedError(toUserMessage(e));
     } finally {
-      setCollapsedLoading(false);
+      if (mia === richiestaCompressi.current) setCollapsedLoading(false);
     }
   }, [companyId, search, connectionFilter]);
 

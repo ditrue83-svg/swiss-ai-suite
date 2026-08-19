@@ -1,5 +1,6 @@
 import { useT, type TKey } from '../../i18n';
 import { MarkGlyph, type MarkGlyphName } from './MarkGlyph';
+import { calendarDaysUntil } from '../../lib/calendarDays';
 
 /**
  * APPUNTAMENTO — il giorno in cui qualcosa ACCADE.
@@ -20,19 +21,15 @@ import { MarkGlyph, type MarkGlyphName } from './MarkGlyph';
  */
 export type AppointmentState = 'future' | 'soon' | 'today' | 'past';
 
-/** Giorni interi da oggi alla data, nel fuso locale (giorni civili, non istanti). */
-function giorniA(dateIso: string, oggi: Date): number {
-  const a = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate());
-  const d = new Date(dateIso);
-  const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
-}
-
 /**
  * Lo stato di un appuntamento, come funzione pura.
  *
  * ⚠️ `today` È UN PARAMETRO, per la stessa ragione di `deadlineState`: una
  * funzione che legge l'orologio da sé non si può provare su un istante scelto.
+ *
+ * ⚠️ E il conto dei giorni è QUELLO CONDIVISO, non una terza copia: la copia
+ * che stava qui era identica a quella di `DeadlineMark`, sbagliata nello stesso
+ * modo — la data letta con i getter locali su mezzanotte UTC.
  */
 export function appointmentState(
   date: string | null,
@@ -40,7 +37,9 @@ export function appointmentState(
   today: Date = new Date(),
 ): { state: AppointmentState; days: number | null } {
   if (!date) return { state: 'past', days: null };
-  const days = giorniA(date, today);
+  const days = calendarDaysUntil(date, today);
+  // Non si legge: non si inventa una distanza. Il segno non si mostra (sotto).
+  if (days == null) return { state: 'past', days: null };
   if (days < 0) return { state: 'past', days: -days };
   if (days === 0) return { state: 'today', days: 0 };
   return { state: days <= soonDays ? 'soon' : 'future', days };
@@ -68,6 +67,9 @@ export function AppointmentMark({ date, display, soonDays }: {
   const t = useT();
   if (!date) return null;
   const { state, days } = appointmentState(date, soonDays);
+  // ⚠️ Una data che non si legge non diventa «0 giorni fa»: il segno non compare.
+  // È la stessa scelta della riga sopra per una data assente.
+  if (days == null) return null;
   const distanza = state === 'today'
     ? t('marks.appointment.today')
     : state === 'past'

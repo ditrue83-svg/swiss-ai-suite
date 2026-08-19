@@ -2715,6 +2715,7 @@ export const it = {
       suggestionNotFound: 'Questo suggerimento non è più in attesa: qualcuno lo ha già risolto.',
       suggestionNotLinked: 'La scheda è stata creata, ma il collegamento con il documento d’origine non è stato salvato. Puoi collegarlo dalla scheda.',
       suggestionSourceUnsupported: 'Questo suggerimento non si può accettare da qui.',
+      websiteNotHttp: 'Il sito web deve iniziare con http:// o https://. Altri indirizzi non si possono salvare.',
     },
   },
   // ==========================================================================

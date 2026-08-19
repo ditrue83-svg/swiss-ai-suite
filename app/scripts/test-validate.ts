@@ -277,6 +277,37 @@ Cancelleria comunale di Lugano`;
   ok(rif.deadline.date === null && rif.appointment === null,
     'data di riferimento (periodo, emissione, decorrenza): non è né l\'una né l\'altro');
 
+  // ⚠️⚠️ LE DUE GUARDIE INSIEME, ed è il caso in cui la data spariva. Un
+  // sopralluogo ANNUNCIATO e non imposto risponde `dateKind:'event'` +
+  // `obligesCompany:false`: la prima guardia azzerava la data come «termine del
+  // mittente», la seconda la leggeva DOPO e trovava già `null`. Risultato:
+  // `appointment_date` NULL, e la data del sopralluogo fuori dal dettaglio, dal
+  // calendario, dal foglio di stampa e dall'attività derivata — cioè esattamente
+  // ciò che le migrazioni 0040-0042 esistono per evitare.
+  const annunciato = validateAndNormalize(
+    sopralluogo({ obligesCompany: false }) as never, estrazione);
+  ok(annunciato.appointment?.date === '2026-09-10',
+    'evento che NON obbliga l\'azienda: la data resta, come appuntamento',
+    String(annunciato.appointment?.date));
+  ok(annunciato.deadline.date === null && annunciato.deadline.type === 'none',
+    'e la scadenza resta vuota: un evento non è un termine, chiunque lo imponga',
+    `${annunciato.deadline.type} ${annunciato.deadline.date}`);
+  // Fino alla riga scritta: è la colonna, non il campo in memoria, che il
+  // dettaglio e il calendario rileggono.
+  const rigaAnnunciato = buildAnalysisRow(annunciato, ctx) as unknown as Record<string, unknown>;
+  ok(rigaAnnunciato.appointment_date === '2026-09-10',
+    'e la colonna appointment_date la porta davvero', String(rigaAnnunciato.appointment_date));
+  ok(rigaAnnunciato.deadline === null,
+    'senza rimettere una scadenza che non c\'è', String(rigaAnnunciato.deadline));
+  // ⚠️ LA COPPIA anche qui: `dateKind:'term'` + `obligesCompany:false` è la
+  // data del mittente, e quella deve continuare a sparire del tutto. Senza
+  // questa, «tieni sempre la data» passerebbe il test di sopra.
+  const mittente = validateAndNormalize(
+    sopralluogo({ dateKind: 'term', obligesCompany: false }) as never, estrazione);
+  ok(mittente.deadline.date === null && mittente.appointment === null,
+    'CONTROPROVA: un TERMINE che non obbliga l\'azienda non lascia nessuna data',
+    `${mittente.deadline.date} / ${String(mittente.appointment)}`);
+
   // ⚠️ FINO ALLA RIGA CHE SI SCRIVE. La colonna `deadline` è quella che
   // `documentTaskDraft` legge per la scadenza di un'attività, ed è da lì che
   // sono uscite le tre attività datate 10.09.2026: se il validatore distingue e

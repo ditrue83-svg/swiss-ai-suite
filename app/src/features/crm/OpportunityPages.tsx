@@ -15,7 +15,7 @@
 // ⚠️ §51 — se un'attività per quel passo esiste già, la si MOSTRA: non se ne
 // crea una seconda a ogni salvataggio.
 // ============================================================================
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Tag } from '@/components/ui/Tag';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
@@ -224,21 +224,31 @@ export function OpportunityDetailPage() {
   const [lostReason, setLostReason] = useState('');
   const [askLost, setAskLost] = useState(false);
 
+  // ⚠️ Quale risposta sta guardando la pagina: cambiando opportunità la
+  // richiesta di prima resta in volo, e se risolve dopo mostra la trattativa
+  // PRECEDENTE. L'effetto della pagina di modifica ha già la sua guardia
+  // (`cancelled`); questa è la stessa cosa, dove la chiamata è una `useCallback`
+  // richiamata anche da `run` dopo ogni azione.
+  const richiesta = useRef(0);
+
   const load = useCallback(async () => {
     if (!company || !opportunityId) return;
+    const mia = ++richiesta.current;
     setLoading(true); setNotFound(false);
     try {
       const found = await crmService.opportunity(company.id, opportunityId);
+      if (mia !== richiesta.current) return;
       if (!found) { setNotFound(true); return; }
       setDeal(found);
       const [tk, dir] = await Promise.all([
         crmService.linkedTasks(company.id, found.organizationId),
         memberService.listAssignable(company.id).catch(() => [] as AssignableMember[]),
       ]);
+      if (mia !== richiesta.current) return;
       setTasks(tk.filter((k) => k.opportunityId === opportunityId));
       setMembers(dir);
     } finally {
-      setLoading(false);
+      if (mia === richiesta.current) setLoading(false);
     }
   }, [company, opportunityId]);
 
