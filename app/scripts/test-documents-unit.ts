@@ -32,6 +32,7 @@ import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
 import { nextStepFor } from '../src/features/documents/nextStep';
 import { readFileSync } from 'node:fs';
+import { aBlocchi, BLOCCO_IN } from '../src/lib/blocchi';
 import {
   etichettaComposta, etichettaDaRigaDocumento, etichettaDocumento,
   nomeFileInformativo, titoloDocumento, titoloMostrabile,
@@ -1103,6 +1104,71 @@ section('12. Il guardiano: la correzione umana arriva fino alla regola');
   ok(!!analisi && !/corrected:/.test(analisi),
     'analysisService NON passa `corrected`: da document_analyses quel fatto non si legge',
     analisi ?? '(nessuna chiamata)');
+}
+
+// ===========================================================================
+section('13. Duecento identificativi non entrano in un URL');
+// ===========================================================================
+// ⚠️⚠️ IL LIMITE È DEL TRASPORTO, NON DELLA QUERY. PostgREST riceve i filtri
+// nella query string, e un URL oltre gli 8 kB viene rifiutato dal server prima
+// di diventare un'interrogazione: non un risultato sbagliato, un guasto secco.
+// `avanzamento` legge fino a `COMPLETION_MAX_DOCUMENTS` analisi e le passava
+// tutte a una `.in(...)` sola — quindi il tetto non era teorico, era il caso
+// NORMALE di un'azienda con molti documenti, e sarebbe toccato per primo a chi
+// ne ha di più.
+//
+// ⚠️ IL COSTO SI MISURA, non si stima: le due righe qui sotto costruiscono il
+// filtro come lo scrive PostgREST e lo PESANO. È la parte che rende questa
+// sezione una prova e non un'opinione sul numero 80.
+{
+  const UUID = '00000000-0000-4000-8000-000000000000';
+  const pesoFiltro = (ids: readonly string[]): number =>
+    `in.(${ids.map((i) => `"${i}"`).join(',')})`.length;
+
+  // ⚠️ Il tetto si LEGGE dal servizio invece di riscriverlo qui: se un giorno
+  // salisse, questa sezione deve misurare il numero nuovo, non quello di oggi.
+  const servizio = readFileSync('src/services/documentHubService.ts', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const tetto = Number(/COMPLETION_MAX_DOCUMENTS = (\d+)/.exec(servizio)?.[1] ?? 0);
+  ok(tetto >= 100, 'il tetto delle analisi lette si trova nel servizio', String(tetto));
+
+  const tutti = Array.from({ length: tetto }, () => UUID);
+  ok(pesoFiltro(tutti) > 7000,
+    `CONTROPROVA: ${tetto} identificativi sfiorano davvero gli 8 kB`,
+    `${pesoFiltro(tutti)} byte di solo filtro, senza il resto dell'indirizzo`);
+
+  const blocchi = aBlocchi(tutti, BLOCCO_IN);
+  const piuPesante = Math.max(...blocchi.map(pesoFiltro));
+  ok(piuPesante < 4000,
+    'a blocchi il filtro più pesante sta LARGAMENTE sotto il limite',
+    `${piuPesante} byte`);
+
+  // La somma dei conteggi è il conteggio solo se i blocchi sono disgiunti e
+  // non perdono niente: è l'unica proprietà che la correzione deve garantire.
+  ok(blocchi.flat().length === tutti.length,
+    'i blocchi rimettono insieme esattamente l\'elenco di partenza');
+  ok(blocchi.every((b) => b.length <= BLOCCO_IN) && blocchi.length === 3,
+    `${tetto} in blocchi da ${BLOCCO_IN} fanno 3 richieste, nessuna oltre il tetto`,
+    blocchi.map((b) => b.length).join('+'));
+
+  // I casi limite, che è il motivo per cui la funzione è pura e sta fuori dal
+  // servizio: nel servizio si scoprirebbero in produzione.
+  ok(aBlocchi([], BLOCCO_IN).length === 0,
+    'un elenco vuoto non produce una richiesta a vuoto');
+  ok(JSON.stringify(aBlocchi([1, 2, 3], 80)) === '[[1,2,3]]',
+    'un elenco più corto del blocco resta una richiesta sola');
+  ok(JSON.stringify(aBlocchi([1, 2, 3, 4], 2)) === '[[1,2],[3,4]]',
+    'una divisione esatta non lascia un blocco vuoto in coda');
+
+  // ⚠️ LA GUARDIA SCOLLEGATA. Le prove qui sopra restano verdi anche se il
+  // servizio continuasse a passare l'elenco intero: la funzione giusta che non
+  // chiama nessuno non protegge niente. Senza commenti, perché il blocco che
+  // stai leggendo nomina `.in(` e `analysisIds`.
+  ok(/\.in\('analysis_id', blocco\)/.test(servizio)
+    && /aBlocchi\(analysisIds, BLOCCO_IN\)/.test(servizio),
+    'e il servizio interroga UN BLOCCO per volta, non l\'elenco intero');
+  ok(!/\.in\('analysis_id', analysisIds\)/.test(servizio),
+    'l\'elenco intero non finisce più in una `.in(...)` sola');
 }
 
 // ===========================================================================
