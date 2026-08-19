@@ -1050,5 +1050,61 @@ section('11. Il guardiano: nessuna schermata legge il titolo grezzo');
 }
 
 // ===========================================================================
+section('12. Il guardiano: la correzione umana arriva fino alla regola');
+// ===========================================================================
+// ⚠️ LA GUARDIA SCOLLEGATA, la stessa forma già usata per `safeWebsite` nel
+// CRM. `test:validate` prova che `deadlineRequiresVerification` sa spegnersi
+// quando una persona ha corretto la scadenza — ma resterebbe verde anche se
+// nessuno le passasse mai quell'ingresso, e una regola giusta che non chiama
+// nessuno non protegge niente. È esattamente il difetto del titolo «2.5»: la
+// regola c'era, il chiamante no.
+//
+// ⚠️⚠️ SI LEGGE IL CODICE SENZA COMMENTI. Una guardia a espressione regolare
+// sui sorgenti legge anche ciò che è scritto dentro un commento: il 18 agosto
+// una guardia di questo repository è nata rossa da sola per questo motivo, e
+// qui sotto `analysisService.ts` PARLA di `corrected` in un commento senza
+// passarlo. Senza questa riga, il controllo direbbe il contrario del vero.
+{
+  const senzaCommenti = (t: string) => t
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const chiamata = (file: string): string | null => {
+    const src = senzaCommenti(readFileSync(file, 'utf8'));
+    const i = src.indexOf('deadlineRequiresVerification({');
+    if (i < 0) return null;
+    const fine = src.indexOf('})', i);
+    return fine < 0 ? src.slice(i) : src.slice(i, fine + 2);
+  };
+
+  const hub = chiamata('src/services/documentHubService.ts');
+  ok(hub !== null, 'documentHubService chiama ancora la regola in lettura');
+  ok(!!hub && /corrected:\s*row\.deadline_corrected === true/.test(hub),
+    'e le passa la correzione umana, dalla stessa colonna che accende la pastiglia «corretto»',
+    hub ?? '(nessuna chiamata)');
+
+  // ⚠️ LA SCHERMATA CHE MOSTRAVA LA CONTRADDIZIONE. Le due righe stanno nello
+  // stesso `<Field>`: il segno che dice «da verificare» e la pastiglia che dice
+  // «l'ha corretta una persona». Se un giorno il segno tornasse a leggere una
+  // fonte diversa da quella che accende la pastiglia, le due si scollegherebbero
+  // di nuovo — e nessuna prova sulle funzioni pure se ne accorgerebbe.
+  const scheda = senzaCommenti(
+    readFileSync('src/features/documents/DocumentDetailPage.tsx', 'utf8'));
+  ok(/toVerify=\{item\.deadlineRequiresVerification\}/.test(scheda)
+    && /corrected=\{item\.deadlineCorrected\}/.test(scheda),
+    'la scheda legge il segno e la pastiglia dallo STESSO oggetto: non possono più divergere');
+
+  // ⚠️ E `analysisService` NON deve fingere di saperlo. `document_analyses` non
+  // ha una colonna di correzione — le correzioni stanno in
+  // `analysis_corrections`, perché l'analisi è un verbale immutabile (0010) —
+  // quindi da quella riga il vero valore è «non si può sapere». Scrivere
+  // `corrected: false` sarebbe affermare «nessuno l'ha corretta», che è un'altra
+  // cosa e non è provata: è il fallback silenzioso che questo progetto rifiuta.
+  const analisi = chiamata('src/services/analysisService.ts');
+  ok(analisi !== null, 'analysisService chiama ancora la regola in lettura');
+  ok(!!analisi && !/corrected:/.test(analisi),
+    'analysisService NON passa `corrected`: da document_analyses quel fatto non si legge',
+    analisi ?? '(nessuna chiamata)');
+}
+
+// ===========================================================================
 console.log(`\n${B}Riepilogo${X}  ${G}${pass} superati${X}${fail ? `  ${R}${fail} falliti${X}` : ''}\n`);
 process.exit(fail ? 1 : 0);

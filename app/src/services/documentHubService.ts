@@ -102,6 +102,11 @@ function toItem(row: ListRow): DocumentHubItem {
       deadline: row.deadline,
       deadlineKind: row.deadline_kind,
       storedFlag: row.deadline_requires_verification === true,
+      // ⚠️ LA STESSA RIGA che due campi più su accende la pastiglia
+      // «corretto»: senza, la scheda del documento dichiarava insieme
+      // «l'ha corretta una persona» e «da verificare», e il secondo non
+      // aveva un gesto che potesse toglierlo.
+      corrected: row.deadline_corrected === true,
     }),
     deadlineKind: row.deadline_kind ?? null,
     appointmentDate: row.appointment_date ?? null,

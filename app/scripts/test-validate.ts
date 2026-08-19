@@ -371,6 +371,36 @@ Cancelleria comunale di Lugano`;
   ok(deadlineRequiresVerification({ deadline: null, deadlineKind: null, storedFlag: false }) === false,
     'senza data non c\'è niente da qualificare: la domanda non si pone');
 
+  // ⚠️⚠️ IL TERZO INGRESSO: LA CORREZIONE UMANA (2026-08-19). Fino a oggi la
+  // funzione aveva due ingressi soli — ciò che il validatore aveva deciso, e
+  // ciò che si constata rileggendo — e NESSUNO dei due si spegne mai. Le
+  // analisi anteriori al 15.08 hanno `deadline_kind` NULL per costruzione,
+  // quindi il flag era vero PER SEMPRE: la scheda del documento mostrava sulla
+  // stessa riga la pastiglia «corretto» e il segno «da verificare», e non
+  // esisteva alcun gesto capace di togliere il secondo. Un avviso che non si
+  // può chiudere smette di essere un avviso e diventa arredamento.
+  //
+  // Una persona che ha corretto quella data l'HA GUARDATA: è la stessa
+  // precedenza già in vigore per il mittente in `etichettaDocumento`
+  // (`mittenteCorretto` vince sulla confidenza del modello). Nessuno sa meglio
+  // di lei, e la constatazione automatica non ha più niente da aggiungere.
+  ok(deadlineRequiresVerification({
+    deadline: '2026-09-10', deadlineKind: null, storedFlag: true, corrected: true,
+  }) === false,
+    'la correzione di una persona spegne il «da verificare», anche con natura mai dichiarata E flag grezzo acceso');
+  ok(deadlineRequiresVerification({
+    deadline: '2026-09-10', deadlineKind: null, storedFlag: true, corrected: false,
+  }) === true,
+    'CONTROPROVA: la stessa riga senza correzione resta da verificare');
+  ok(deadlineRequiresVerification({
+    deadline: '2026-09-10', deadlineKind: null, storedFlag: true,
+  }) === true,
+    'CONTROPROVA: e l\'ingresso ASSENTE non vale «corretta» — non aver guardato non è aver visto');
+  ok(deadlineRequiresVerification({
+    deadline: null, deadlineKind: null, storedFlag: false, corrected: true,
+  }) === false,
+    'senza data resta `false` per la sua ragione: la correzione non inventa una domanda');
+
   // ⚠️ La constatazione da sola, ESEGUITA e non solo esportata: è la domanda
   // «questa riga ha risposto?», e il resto della regola ci si appoggia.
   ok(deadlineNatureDeclared({ deadline: '2026-09-10', deadlineKind: 'event' }) === true,

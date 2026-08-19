@@ -51,16 +51,40 @@ export function deadlineNatureDeclared(row: {
 /**
  * Il flag «da verificare» EFFETTIVO di una riga letta dal database.
  *
- * Somma due cose che non si sovrappongono: ciò che il validatore aveva già
- * deciso quando l'analisi è stata scritta, e ciò che si constata adesso
- * leggendola. Se la seconda manca, le analisi anteriori al 2026-08-15
- * continuerebbero a mostrare «scadenza · affidabilità alta» su date di cui
- * nessuno ha mai stabilito la natura.
+ * Somma TRE cose che non si sovrappongono: ciò che il validatore aveva già
+ * deciso quando l'analisi è stata scritta, ciò che si constata adesso
+ * leggendola, e ciò che una persona ha fatto nel frattempo. Senza la seconda,
+ * le analisi anteriori al 2026-08-15 continuerebbero a mostrare «scadenza ·
+ * affidabilità alta» su date di cui nessuno ha mai stabilito la natura.
+ *
+ * ⚠️⚠️ E SENZA LA TERZA L'AVVISO NON SI POTEVA CHIUDERE (2026-08-19). I primi
+ * due ingressi non si spengono mai: `deadline_kind` è NULL su tutte le analisi
+ * anteriori al 15.08 — per costruzione, non per distrazione — e nessuna
+ * schermata lo scrive. Il flag restava quindi vero PER SEMPRE, e la scheda del
+ * documento mostrava sulla stessa riga la pastiglia «corretto da una persona»
+ * e il segno «da verificare», senza alcun gesto capace di togliere il secondo.
+ * Un avviso che non si può chiudere smette di essere un avviso.
+ *
+ * ⚠️ LA CORREZIONE PREVALE, e non è una deroga: è la precedenza già in vigore
+ * per il mittente in `etichettaDocumento`, dove `mittenteCorretto` vince sulla
+ * confidenza del modello. Chi ha corretto quella data l'ha GUARDATA, e la
+ * constatazione automatica non ha più niente da aggiungere a chi ha visto il
+ * documento. ⚠️ L'ingresso ASSENTE non vale «corretta»: non aver guardato non
+ * è aver visto, ed è il motivo per cui il confronto è con `=== true` e non con
+ * la verità di un valore che può arrivare `undefined` da una riga che quella
+ * colonna non la porta affatto.
+ *
+ * ⚠️ NON RISCRIVE NIENTE. La correzione è un fatto NUOVO che si affianca al
+ * verbale (`analysis_corrections`), non una modifica del verbale: l'analisi
+ * resta immutabile (0010) e questa somma si rifà a ogni lettura.
  */
 export function deadlineRequiresVerification(row: {
   deadline: string | null | undefined;
   deadlineKind: string | null | undefined;
   storedFlag: boolean;
+  /** Una persona ha corretto questa scadenza (`analysis_corrections`, campo `deadline`). */
+  corrected?: boolean;
 }): boolean {
+  if (row.corrected === true) return false;
   return row.storedFlag || !deadlineNatureDeclared(row);
 }

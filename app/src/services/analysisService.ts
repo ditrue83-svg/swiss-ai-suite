@@ -180,6 +180,18 @@ function rowToDomain(row: AnalysisRow): DocumentAnalysis {
     // dichiarata, quella scadenza non è un fatto. Senza, le analisi anteriori al
     // 2026-08-15 continuerebbero a mostrare «●●● alta» su date che potrebbero
     // essere sopralluoghi. La regola sta in `deadlineNature.ts`, una volta sola.
+    // ⚠️ QUI MANCA IL TERZO INGRESSO, `corrected`, E NON PER DIMENTICANZA:
+    // `document_analyses` non ha una colonna di correzione. Le correzioni
+    // vivono in `analysis_corrections` — un fatto a parte, perché l'analisi è
+    // un verbale immutabile (0010) — e la riga `deadline_corrected` la compone
+    // la RPC `list_documents`, che è ciò che legge `documentHubService`.
+    // Passare `corrected: false` da qui sarebbe scrivere «nessuno l'ha
+    // corretta» dove il vero valore è «da questa riga non si può sapere».
+    //
+    // Non è una lacuna scoperta: le due schermate che leggono QUESTO oggetto
+    // sono `admin-ai/ResultView` e la stampa, e mostrano un'analisi appena
+    // prodotta — dove una correzione non può ancora esistere. La scheda del
+    // documento legge `item`, non questo, e là l'ingresso c'è.
     deadlineRequiresVerification: deadlineRequiresVerification({
       deadline: row.deadline,
       deadlineKind: row.deadline_kind,
