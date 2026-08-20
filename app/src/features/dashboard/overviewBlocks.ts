@@ -210,12 +210,26 @@ export interface Blocchi {
   daFare: boolean;
   sistema: boolean;
   opportunita: boolean;
+  /**
+   * L'appartenenza NON si è potuta leggere. Il blocco Decisioni resta
+   * nascosto — non si inventa un conteggio — ma l'assenza si dichiara, come
+   * fa già `home.assessUnknown` per la valutazione degli incentivi.
+   */
+  ownershipIgnota: boolean;
   /** Il riquadro «cosa è stato controllato»: quando il lavoro operativo è a
    *  zero, la pagina dice cosa ha guardato e quando — non «tutto a posto». */
   vuotoOperativo: boolean;
 }
 
 export function decidiBlocchi(i: BlocchiInput): Blocchi {
+  // ⚠️⚠️ DUE MESTIERI PER LO STESSO `null`, E NON SI COLLASSANO INSIEME.
+  // Per NASCONDERE il blocco Decisioni, «non lo so» vale come zero: un blocco
+  // che dicesse «0 documenti da confermare» inventerebbe un fatto.
+  // Per lo stato VUOTO no: lì lo stesso zero diventa «niente richiede un gesto
+  // adesso», e un'azienda senza attività, senza date e senza analisi
+  // problematiche la cui lettura dell'appartenenza fosse andata in timeout se
+  // lo sentiva dire mentre un controllo non era stato eseguito.
+  const ownershipIgnota = i.ownership === null;
   const decisioni = (i.ownership ?? 0) > 0;
   const daFare = i.aperte > 0 || i.dateRilevate > 0;
   const sistema = i.daVerificare > 0 || i.fallite > 0 || i.maiAnalizzati > 0;
@@ -229,6 +243,7 @@ export function decidiBlocchi(i: BlocchiInput): Blocchi {
     daFare,
     sistema,
     opportunita,
-    vuotoOperativo: !decisioni && !daFare && !sistema,
+    ownershipIgnota,
+    vuotoOperativo: !decisioni && !daFare && !sistema && !ownershipIgnota,
   };
 }

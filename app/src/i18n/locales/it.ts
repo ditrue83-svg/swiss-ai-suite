@@ -1077,6 +1077,7 @@ export const it = {
     ownershipGateMany: 'Finché non sono confermati non possono generare attività.',
     latestExample: 'il più recente: «{title}»',
     openList: 'Apri l’elenco',
+    ownershipUnknown: 'L’appartenenza dei documenti non è leggibile in questo momento: questo controllo non è stato eseguito.',
     blockToDo: 'Da fare',
     tasksApptsOne: '1 appuntamento', tasksApptsMany: '{n} appuntamenti',
     tasksTermsNone: 'nessun termine', tasksTermsOne: '1 termine', tasksTermsMany: '{n} termini',

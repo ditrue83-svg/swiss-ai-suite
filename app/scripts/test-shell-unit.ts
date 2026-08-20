@@ -2536,6 +2536,39 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
       return b.vuotoOperativo && b.opportunita; })());
   check('con una decisione aperta lo stato vuoto NON compare',
     !decidiBlocchi({ ...zero, ownership: 1 }).vuotoOperativo);
+
+  // ⚠️⚠️ (d) «NON LO SO» NON È «NIENTE DA FARE». Lo stesso `null` serviva due
+  // scopi opposti: nascondere il blocco Decisioni (giusto) e alimentare lo
+  // stato vuoto (falso). Un'azienda senza attività, senza date e senza analisi
+  // problematiche, con la lettura dell'appartenenza andata in timeout, leggeva
+  // «Niente richiede un gesto adesso» mentre un controllo non era stato
+  // eseguito.
+  {
+    const ignoto = decidiBlocchi({ ...zero, ownership: null });
+    check('appartenenza non letta + tutto il resto a zero: lo stato vuoto NON compare',
+      !ignoto.vuotoOperativo);
+    check('e la pagina lo dichiara invece di tacere',
+      ignoto.ownershipIgnota);
+    check('il blocco Decisioni resta comunque nascosto: non si inventa uno zero',
+      !ignoto.decisioni);
+    // La CONTROPROVA: con l'appartenenza LETTA e a zero, lo stato vuoto è
+    // ancora quello di prima — la correzione non l'ha spento in generale.
+    const letto = decidiBlocchi(zero);
+    check('CONTROPROVA: appartenenza letta e a zero, lo stato vuoto compare ancora',
+      letto.vuotoOperativo && !letto.ownershipIgnota);
+  }
+
+  // La frase esiste nelle tre lingue ed è resa: una chiave scritta e mai usata
+  // non dichiara niente.
+  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+    check(`${lang}: home.ownershipUnknown esiste`,
+      typeof d.ownershipUnknown === 'string' && d.ownershipUnknown.trim().length > 0);
+  }
+  check('la Panoramica rende home.ownershipUnknown quando l\'appartenenza è ignota',
+    (() => {
+      const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
+      return pagina.includes('home.ownershipUnknown') && pagina.includes('blocchi.ownershipIgnota');
+    })());
 }
 
 // ---------------------------------------------------------------------------

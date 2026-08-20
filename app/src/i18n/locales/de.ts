@@ -1011,6 +1011,7 @@ export const de: Dictionary = {
     ownershipGateMany: 'Bis sie bestätigt sind, können sie keine Aufgaben erzeugen.',
     latestExample: 'das neueste: «{title}»',
     openList: 'Liste öffnen',
+    ownershipUnknown: 'Die Zugehörigkeit der Dokumente ist im Moment nicht lesbar: diese Prüfung wurde nicht ausgeführt.',
     blockToDo: 'Zu erledigen',
     tasksApptsOne: '1 Termin', tasksApptsMany: '{n} Termine',
     tasksTermsNone: 'keine Frist', tasksTermsOne: '1 Frist', tasksTermsMany: '{n} Fristen',

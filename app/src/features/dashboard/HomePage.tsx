@@ -304,6 +304,20 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
   return (
     <>
       {blocchi.decisioni && <BloccoDecisioni data={data} />}
+
+      {/* ⚠️ IL BLOCCO RESTA NASCOSTO, MA L'ASSENZA SI DICHIARA. Un conteggio
+          che non si è potuto leggere non diventa uno zero — sarebbe un fatto
+          inventato — e nemmeno un silenzio: senza questa riga, un'azienda
+          senza altro lavoro in sospeso leggeva «Niente richiede un gesto
+          adesso» mentre un controllo non era stato eseguito. Stesso mestiere
+          di `home.assessUnknown` nel blocco Opportunità. */}
+      {blocchi.ownershipIgnota && (
+        <section className="card mt-16 ov-block" aria-labelledby="ov-ignoto">
+          <h2 className="card-title" id="ov-ignoto">{t('home.blockDecisions')}</h2>
+          <div className="muted-sm">{t('home.ownershipUnknown')}</div>
+        </section>
+      )}
+
       {blocchi.daFare && <BloccoDaFare data={data} />}
       {blocchi.sistema && <BloccoSistema data={data} />}
 

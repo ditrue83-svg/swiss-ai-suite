@@ -1001,6 +1001,7 @@ export const fr: Dictionary = {
     ownershipGateMany: 'Tant qu’ils ne sont pas confirmés, ils ne peuvent pas générer de tâches.',
     latestExample: 'le plus récent : «{title}»',
     openList: 'Ouvrir la liste',
+    ownershipUnknown: 'L’appartenance des documents n’est pas lisible pour le moment : ce contrôle n’a pas été exécuté.',
     blockToDo: 'À faire',
     tasksApptsOne: '1 rendez-vous', tasksApptsMany: '{n} rendez-vous',
     tasksTermsNone: 'aucune échéance', tasksTermsOne: '1 échéance', tasksTermsMany: '{n} échéances',
