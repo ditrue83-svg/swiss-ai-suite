@@ -21,8 +21,8 @@
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, MAX_QUERY_LENGTH, SORTS, SOURCES, STATES,
   buildDocumentStats, filtersFromParams, findExistingTag, hasActiveFilters, needsAttention,
-  normalizeTagName, paramsFromFilters, rowMarks, sameTagName, splitSnippet, stateOf,
-  toListArgs,
+  normalizeTagName, paramsFromFilters, passoSegnali, rowMarks, sameTagName, splitSnippet,
+  stateOf, toListArgs,
 } from '../src/features/documents/documentModel';
 // La logica pura del termine vive col componente che la rende: si prova qui
 // perché è il Document Hub il primo posto dove una data sbagliata costa.
@@ -1538,6 +1538,69 @@ section('17. Il guardiano: l\'appartenenza della Panoramica è la STESSA lettura
     ok(typeof d.ownershipPartial === 'string' && d.ownershipPartial.trim().length > 0,
       `${lang}: home.ownershipPartial esiste`);
   }
+}
+
+// ===========================================================================
+section('18 · «Mostra altri» non porta via i marcatori già a schermo');
+// ===========================================================================
+// ⚠️⚠️ «PIÙ RIGHE» NON È «ALTRE RIGHE». L'effetto dei segnali azzerava la mappa
+// a ogni cambio dell'insieme degli id, e «Mostra altri» ACCODA: le pastiglie
+// «appartenenza da confermare» delle righe già a schermo sparivano e tornavano
+// un istante dopo, senza che su quelle righe fosse cambiato niente.
+// ⚠️ Ma un verdetto è di un documento SOTTO UNA REGOLA — azienda, ragione
+// sociale, cognomi della rubrica entrano nel calcolo (`analysisTrust`): se la
+// regola cambia, ciò che è in mappa è di qualcun altro e va buttato.
+{
+  const R1 = 'azienda-1\u0000Rossi SA\u0000Rossi';
+  const R2 = 'azienda-2\u0000Bianchi SA\u0000Bianchi';
+
+  const primo = passoSegnali(null, R1, ['a', 'b'], new Set());
+  ok(primo.azzera && primo.daInterrogare.join(',') === 'a,b',
+    'la prima volta non c\'è niente in mano: si azzera e si chiede tutto');
+
+  // IL CASO DELL'AUDIT: la stessa interrogazione, una pagina in più.
+  const altri = passoSegnali(R1, R1, ['a', 'b', 'c', 'd'], new Set(['a', 'b']));
+  ok(!altri.azzera,
+    '«Mostra altri» NON azzera: le righe già a schermo tengono la loro pastiglia');
+  ok(altri.daInterrogare.join(',') === 'c,d',
+    'e si chiedono solo gli id nuovi, non di nuovo tutti', altri.daInterrogare.join(','));
+
+  const nulla = passoSegnali(R1, R1, ['a', 'b'], new Set(['a', 'b']));
+  ok(!nulla.azzera && nulla.daInterrogare.length === 0,
+    'stesso insieme, stessa regola: non si chiede niente e non si tocca niente');
+
+  // ⚠️ LE TRE INVALIDAZIONI CHE DEVONO RESTARE AZZERAMENTI TOTALI.
+  const altraRegola = passoSegnali(R1, R2, ['a', 'b'], new Set(['a', 'b']));
+  ok(altraRegola.azzera && altraRegola.daInterrogare.join(',') === 'a,b',
+    'cambiata la regola, la mappa si butta e si richiede TUTTO — anche gli id già visti');
+  for (const [cosa, regola] of [
+    ['l\'azienda', 'azienda-2\u0000Rossi SA\u0000Rossi'],
+    ['la ragione sociale', 'azienda-1\u0000Rossi SAGL\u0000Rossi'],
+    ['un cognome della rubrica', 'azienda-1\u0000Rossi SA\u0000Rossi\u0000Verdi'],
+  ] as const) {
+    ok(passoSegnali(R1, regola, ['a'], new Set(['a'])).azzera,
+      `cambiando ${cosa} il verdetto in mappa non sopravvive`);
+  }
+
+  // Il ramo che l'effetto usa davvero: la pagina passa gli id da interrogare,
+  // non l'insieme intero, e le dipendenze sono CONTENUTI e non identità —
+  // `surnames` è un array nuovo a ogni render finché la rubrica non risponde.
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const pagina = senzaCommenti(readFileSync('src/features/documents/DocumentsPage.tsx', 'utf8'));
+  const effetto = (() => {
+    const i = pagina.indexOf('function useTrustSignals(');
+    const j = pagina.indexOf('\n}', i);
+    return i < 0 ? '' : pagina.slice(i, j);
+  })();
+  ok(effetto !== '', 'useTrustSignals esiste ancora e si è potuto isolare',
+    'un lettore che non trova la funzione NON deve uscire verde');
+  ok(/passoSegnali\(/.test(effetto), 'l\'effetto passa dalla decisione pura');
+  ok(!/^\s*setSignals\(null\);\s*$/m.test(effetto),
+    'e non azzera più a ogni giro: l\'azzeramento è dentro il ramo della regola cambiata');
+  ok(/trustSignals\(companyId, passo\.daInterrogare,/.test(effetto),
+    'si chiedono gli id mancanti, non tutto l\'insieme ogni volta');
+  ok(/\}, \[regola, idsKey\]\)/.test(effetto),
+    'le dipendenze sono due CONTENUTI: `surnames` come array rilanciava l\'effetto a ogni render');
 }
 
 // ===========================================================================

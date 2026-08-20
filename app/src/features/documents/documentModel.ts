@@ -346,3 +346,37 @@ export function paramsFromFilters(f: DocumentHubFilters): URLSearchParams {
   if (f.sort && f.sort !== 'recent') p.set('ordine', f.sort);
   return p;
 }
+
+/**
+ * IL PASSO DEI SEGNALI DI APPARTENENZA quando l'insieme delle righe cambia.
+ *
+ * ⚠️⚠️ «PIÙ RIGHE» NON È «ALTRE RIGHE». L'effetto che carica i marcatori
+ * azzerava la mappa a ogni cambio dell'elenco, e «Mostra altri» ACCODA: le
+ * pastiglie «appartenenza da confermare» delle righe già a schermo sparivano e
+ * tornavano un istante dopo, senza che nulla su quelle righe fosse cambiato.
+ *
+ * ⚠️⚠️ MA UN VERDETTO NON È DI UN DOCUMENTO: è di un documento SOTTO UNA
+ * REGOLA. `analysisTrust` confronta il destinatario con la ragione sociale e
+ * con i cognomi della rubrica, quindi azienda, nome e rubrica fanno parte del
+ * calcolo. Se cambia uno solo di quei tre, ciò che è in mappa è stato calcolato
+ * con la regola di qualcun altro e va buttato — non fuso. Perciò la regola
+ * arriva qui come CONTENUTO e non come identità: `surnames` è un array nuovo a
+ * ogni render finché la rubrica non ha risposto, e un confronto per riferimento
+ * azzererebbe di continuo.
+ */
+export interface PassoSegnali {
+  /** true = la mappa in mano vale per un'altra regola: si butta prima di tutto. */
+  azzera: boolean;
+  /** Gli id da chiedere davvero: mai quelli il cui verdetto è già in mano. */
+  daInterrogare: string[];
+}
+
+export function passoSegnali(
+  regolaPrecedente: string | null,
+  regola: string,
+  ids: readonly string[],
+  giaChiesti: ReadonlySet<string>,
+): PassoSegnali {
+  if (regolaPrecedente !== regola) return { azzera: true, daInterrogare: [...ids] };
+  return { azzera: false, daInterrogare: ids.filter((id) => !giaChiesti.has(id)) };
+}
