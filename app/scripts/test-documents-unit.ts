@@ -1522,6 +1522,17 @@ section('17. Il guardiano: l\'appartenenza della Panoramica è la STESSA lettura
   ok(!/documentHubService\.get\(/.test(overview),
     'l\'esempio non costa più un get() intero — nove interrogazioni per un\'etichetta');
 
+  // ⚠️ E NESSUNA TERZA COPIA DELLA REGOLA. `ownershipToConfirm` — il metodo,
+  // non il campo della mappa né la prop della riga — non era chiamato da
+  // nessuna parte e dentro faceva una select su `analysis_corrections`, senza
+  // tetto, il cui risultato non veniva mai usato: `trustSignals` se le rilegge
+  // per conto proprio. `noUnusedLocals` è false, quindi il typecheck non lo
+  // vedeva. Il chiamante vero è `ownershipOverview`.
+  ok(!/async ownershipToConfirm\(/.test(hub),
+    'il metodo morto ownershipToConfirm non è tornato: una query eseguita e buttata');
+  ok(/ownershipToConfirm/.test(hub),
+    'CONTROPROVA: il CAMPO ownershipToConfirm della mappa dei segnali esiste ancora — è un\'altra cosa');
+
   // CONTROPROVA: la lettura vera sta in listOwnership, e quella sì che legge.
   const elenco = corpo('listOwnership');
   ok(/documentHubService\.list\(/.test(elenco) && /OWNERSHIP_LIST_MAX/.test(elenco),

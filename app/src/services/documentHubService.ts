@@ -359,37 +359,6 @@ export const documentHubService = {
   },
 
   /**
-   * Quanti DOCUMENTI dell'azienda hanno l'appartenenza da confermare —
-   * archiviati COMPRESI, e la didascalia della Panoramica lo dichiara: la
-   * conferma è un lavoro che un documento archiviato chiede lo stesso.
-   * Tetto a STATS_MAX_DOCUMENTS come le statistiche: oltre, meglio un numero
-   * dichiaratamente parziale che un'interrogazione senza fine.
-   */
-  async ownershipToConfirm(companyId: string, company: TrustCompany): Promise<number> {
-    const sb = requireSupabase();
-    const [{ data: analisi, error: e1 }, { data: conferme, error: e2 }] = await Promise.all([
-      sb.from('document_analyses')
-        .select('document_id, recipient, uncertainties, created_at')
-        .eq('company_id', companyId)
-        .neq('analysis_status', 'failed')
-        .order('created_at', { ascending: false })
-        .limit(STATS_MAX_DOCUMENTS),
-      sb.from('analysis_corrections')
-        .select('document_id, field, corrected_value, corrected_by, corrected_at')
-        .eq('company_id', companyId)
-        .eq('field', OWNERSHIP_FIELD),
-    ]);
-    if (e1) throw new AppError(documentErrorMessage(e1), e1);
-    if (e2) throw new AppError(documentErrorMessage(e2), e2);
-
-    const ids = [...new Set((analisi ?? []).map((r) => r.document_id))];
-    const segnali = await documentHubService.trustSignals(companyId, ids, company);
-    let n = 0;
-    for (const s of segnali.values()) if (s.ownershipToConfirm) n++;
-    return n;
-  },
-
-  /**
    * L'appartenenza per la Panoramica: il conteggio, il documento più recente
    * fra quelli da confermare, e la dichiarazione di parzialità.
    *
