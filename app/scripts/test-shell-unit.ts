@@ -2653,6 +2653,71 @@ section('20. Il catalogo vuoto non è un catalogo verificato');
 }
 
 // ---------------------------------------------------------------------------
+section('21. Un guasto di un riquadro non porta giù la Panoramica intera');
+// ⚠️⚠️ `catalogState` e `assessmentCount` tornano `null` sul guasto — è
+// dichiarato in `OverviewData` e il blocco lo dice a schermo — mentre `summary`
+// LANCIA (`fail(error)`), e non era avvolta da nessun `.catch`: una `Promise.all`
+// che rifiuta porta giù tutto, e la Panoramica finiva in ErrorState per un
+// guasto di `subsidy_home_summary`. Il ramo `home.summaryUnknown`, scritto e
+// tradotto apposta, era irraggiungibile.
+//
+// Il guardiano non guarda un solo nome: pretende che OGNI lettura degli
+// incentivi fatta dalla Panoramica o non possa rifiutare, o sia avvolta.
+
+{
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const overview = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/useOverview.ts'), 'utf8'));
+  const servizio = senzaCommenti(readFileSync(join(root, 'src/services/incentivesService.ts'), 'utf8'));
+
+  // Il corpo di un metodo del servizio, dalla firma alla chiusura del membro.
+  const corpoServizio = (nome: string) => {
+    const i = servizio.indexOf(`async ${nome}(`);
+    if (i < 0) return null;
+    const j = servizio.indexOf('\n  },', i);
+    return j < 0 ? servizio.slice(i) : servizio.slice(i, j);
+  };
+  // Può rifiutare? Non lo dice il TIPO — `summary` è dichiarata
+  // `Promise<IncentiveSummary | null>` e lancia lo stesso — lo dice il corpo.
+  const puoLanciare = (nome: string) => {
+    const c = corpoServizio(nome);
+    return c === null ? null : /\bfail\(|\bthrow\b/.test(c);
+  };
+
+  // Ogni lettura degli incentivi che la Panoramica fa, con o senza `.catch`.
+  const chiamate = [...overview.matchAll(/incentivesService\.(\w+)\([^\n]*/g)]
+    .map((m) => ({ nome: m[1], riga: m[0], avvolta: /\.catch\(/.test(m[0]) }));
+  check('le letture degli incentivi della Panoramica si trovano nel sorgente',
+    chiamate.length >= 3, `trovate: ${chiamate.map((c) => c.nome).join(', ') || 'nessuna'}`);
+
+  const scoperte = chiamate.filter((c) => puoLanciare(c.nome) === true && !c.avvolta);
+  check('nessuna lettura che può rifiutare è lasciata scoperta dentro la Promise.all',
+    scoperte.length === 0,
+    scoperte.map((c) => `${c.nome} lancia e non è avvolta`).join('; '));
+
+  const ignote = chiamate.filter((c) => puoLanciare(c.nome) === null);
+  check('e ogni metodo chiamato si è potuto ritrovare nel servizio',
+    ignote.length === 0, ignote.map((c) => c.nome).join(', '));
+
+  // CONTROPROVE: il lettore deve saper distinguere le due specie, o direbbe
+  // «tutto a posto» anche su un servizio che lancia dappertutto.
+  check('CONTROPROVA: il lettore vede che summary PUÒ lanciare',
+    puoLanciare('summary') === true);
+  check('CONTROPROVA: e che catalogState e assessmentCount NO',
+    puoLanciare('catalogState') === false && puoLanciare('assessmentCount') === false);
+  check('e summary è quella avvolta dal .catch nella Panoramica',
+    chiamate.some((c) => c.nome === 'summary' && c.avvolta));
+
+  // Il ramo che il lancio teneva irraggiungibile esiste, è tradotto, ed è reso.
+  const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
+  check('la Panoramica rende home.summaryUnknown quando i numeri non ci sono',
+    pagina.includes('home.summaryUnknown'));
+  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+    check(`${lang}: home.summaryUnknown esiste`,
+      typeof d.summaryUnknown === 'string' && d.summaryUnknown.trim().length > 0);
+  }
+}
+
+// ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);
 process.exit(fail === 0 ? 0 : 1);

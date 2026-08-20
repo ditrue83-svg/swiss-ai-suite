@@ -117,7 +117,14 @@ export function useOverview() {
       })().catch(() => null),
       incentivesService.catalogState(),
       incentivesService.assessmentCount(companyId),
-      incentivesService.summary(companyId, INCENTIVE_DAYS),
+      // ⚠️ LO STESSO CONTRATTO DELLE SUE DUE SORELLE. `catalogState` e
+      // `assessmentCount` tornano `null` sul guasto — è dichiarato nel tipo qui
+      // sopra e il blocco lo dice a schermo — mentre `summary` LANCIA. Senza
+      // questo `.catch`, un guasto di `subsidy_home_summary` faceva cadere in
+      // ErrorState l'INTERA Panoramica: attività, documenti, appartenenza,
+      // catalogo, tutto. E teneva irraggiungibile `home.summaryUnknown`, il
+      // ramo scritto e tradotto apposta per questo caso.
+      incentivesService.summary(companyId, INCENTIVE_DAYS).catch(() => null),
     ]);
 
     return {
