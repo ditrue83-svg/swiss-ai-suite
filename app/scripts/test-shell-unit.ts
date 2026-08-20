@@ -2473,6 +2473,53 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
 }
 
 // ---------------------------------------------------------------------------
+section('19. I tetti dichiarati — il numero non lo sceglie il frontend');
+// ⚠️ `useOverview` non si carica da Node (importa i servizi): la costante si
+// legge dal SORGENTE, e il tetto vero dalla migrazione più recente che
+// definisce `list_tasks`. Chiedere alla RPC più di quanto concede non è un
+// numero generoso: è una copertura che la Home dichiara di avere e non ha —
+// con 150 attività aperte, `limit: 200` ne otteneva 100 e la riga scriveva
+// «calcolata sulle prime 100 di 150».
+// ⚠️ I COMMENTI SI TOLGONO PRIMA DI LEGGERE: la nota qui accanto alla costante
+// cita il `least(...)` della migrazione, e un lettore a regex non distingue una
+// riga che fa una cosa da una che la racconta.
+
+{
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const overview = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/useOverview.ts'), 'utf8'));
+  const chiesto = Number(overview.match(/const TASKS_SPLIT_MAX = (\d+);/)?.[1]);
+  check('la costante TASKS_SPLIT_MAX si trova nel sorgente', Number.isFinite(chiesto),
+    'un lettore che non trova niente NON deve uscire verde: se il nome cambia, questo passo è rosso');
+
+  // Il tetto vero: vince l'ULTIMA migrazione che (ri)definisce `list_tasks`.
+  // Oggi è la 0041; una 0050 che lo alzasse sposterebbe questo controllo con sé.
+  const migrazioni = readdirSync(join(root, 'supabase/migrations'))
+    .filter((f) => f.endsWith('.sql')).sort();
+  let concesso = NaN, dove = '';
+  for (const f of migrazioni) {
+    const sql = readFileSync(join(root, 'supabase/migrations', f), 'utf8');
+    // ⚠️ `indexOf` sulla DEFINIZIONE e non `lastIndexOf` sul nome: l'ultima
+    // occorrenza di «function public.list_tasks(» è il `revoke`/`grant` in
+    // fondo al file, dopo il quale non c'è nessun `least(...)` da leggere — e
+    // il lettore usciva a mani vuote credendo di aver guardato.
+    const i = sql.indexOf('create or replace function public.list_tasks(');
+    if (i < 0) continue;
+    const m = sql.slice(i).match(/least\(coalesce\(p_limit,\s*\d+\),\s*(\d+)\)/);
+    if (m) { concesso = Number(m[1]); dove = f; }
+  }
+  check('il tetto di list_tasks si legge dalla migrazione più recente che la definisce',
+    Number.isFinite(concesso), dove || 'nessuna definizione trovata: il lettore sta leggendo a vuoto');
+
+  check(`la Panoramica non chiede più di quanto list_tasks conceda (${chiesto} ≤ ${concesso})`,
+    chiesto <= concesso, `${dove}: least(coalesce(p_limit, …), ${concesso})`);
+
+  // CONTROPROVA del lettore delle migrazioni: il tetto letto è un numero vero e
+  // non uno zero di ripiego che farebbe passare qualunque costante.
+  check('CONTROPROVA: il tetto letto è quello della 0041, cioè 100',
+    concesso === 100 && dove.startsWith('0041'), `${dove} → ${concesso}`);
+}
+
+// ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);
 process.exit(fail === 0 ? 0 : 1);

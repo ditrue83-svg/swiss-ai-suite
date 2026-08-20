@@ -16,8 +16,16 @@ import type { DocumentHubItem, IncentiveSummary } from '@/types/models';
  * pagina della Home: è il tetto oltre il quale il diviso si dichiara parziale
  * (`TaskSplit.parziale`) invece di sembrare intero. I totali restano esatti:
  * vengono dalla funzione finestra di `list_tasks`, non dalla lunghezza.
+ *
+ * ⚠️ IL NUMERO NON LO SCEGLIE QUESTO FILE: lo impone `list_tasks`, che chiude
+ * il proprio argomento con `least(coalesce(p_limit, 25), 100)` (0041), e
+ * `taskService.list` glielo passa grezzo. Chiedendone 200 se ne ottenevano
+ * 100: con 150 attività aperte la Home scriveva «calcolata sulle prime 100 di
+ * 150» mentre chi aveva scritto 200 credeva di coprirle tutte. È la stessa
+ * nota dei tetti di `list_documents` in `documentHubService.ts` — un numero
+ * più alto qui sarebbe una promessa che la RPC non mantiene.
  */
-const TASKS_SPLIT_MAX = 200;
+const TASKS_SPLIT_MAX = 100;
 
 /**
  * La finestra dei numeri degli incentivi, in giorni. Dichiarata qui e usata
