@@ -1026,6 +1026,7 @@ export const fr: Dictionary = {
     catalogAllVerifiedMany: '{n} programmes dans la base, vérifiés.',
     catalogSomeVerified: '{n} programmes dans la base, {v} vérifiés.',
     catalogUnreadable: 'Le catalogue n’est pas lisible pour le moment.',
+    catalogEmpty: 'Aucun programme dans la base : il n’y a encore rien à quoi comparer l’entreprise.',
     assessNever: 'La vérification d’éligibilité pour {company} n’a jamais été exécutée : elle part d’un projet décrit.',
     assessUnknown: 'L’état de la vérification d’éligibilité n’est pas lisible pour le moment.',
     describeProject: 'Décrire un projet',

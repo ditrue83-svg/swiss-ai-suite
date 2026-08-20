@@ -177,6 +177,29 @@ export const totaleConto = (c: ContoDocumenti): number => c.attivi + c.archiviat
  * esiste davvero nel prodotto è descrivere un progetto, e il blocco porta lì.
  * Un pulsante che chiama una funzione non chiamabile è una funzione finta.
  */
+/**
+ * Che cosa dice la PRIMA riga del blocco Opportunità, sul catalogo condiviso.
+ *
+ * ⚠️⚠️ IL CASO VUOTO VIENE PRIMA DELL'UGUAGLIANZA. `verified === programs` è
+ * vero anche con entrambi a zero, e il blocco si accende pure a catalogo vuoto
+ * — basta una pratica aperta o un progetto attivo. Ne usciva «0 programmi in
+ * banca dati, verificati»: un vanto su un insieme che non esiste, cioè la
+ * stessa confusione fra «niente da segnalare» e «non ho niente» che questa
+ * pagina combatte dappertutto.
+ *
+ * `nonLeggibile` (catalogo `null`) resta distinto da `vuoto`: «non ho potuto
+ * guardare» e «ho guardato e non c'era niente» sono due frasi diverse.
+ */
+export type FraseCatalogo = 'nonLeggibile' | 'vuoto' | 'tuttiVerificati' | 'inParte';
+
+export function fraseCatalogo(
+  catalogo: { programs: number; verified: number } | null,
+): FraseCatalogo {
+  if (catalogo === null) return 'nonLeggibile';
+  if (catalogo.programs === 0) return 'vuoto';
+  return catalogo.verified === catalogo.programs ? 'tuttiVerificati' : 'inParte';
+}
+
 export type StatoValutazione = 'mai-eseguita' | 'eseguita' | 'non-misurabile';
 
 export function statoValutazione(assessments: number | null): StatoValutazione {

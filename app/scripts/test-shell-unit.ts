@@ -46,7 +46,7 @@ import { de } from '../src/i18n/locales/de.ts';
 import { fr } from '../src/i18n/locales/fr.ts';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches, type NavItem } from '../src/components/layout/nav.ts';
 import {
-  contaNature, decidiBlocchi, rigaDate, splitOpenTasks, type ContoNature,
+  contaNature, decidiBlocchi, fraseCatalogo, rigaDate, splitOpenTasks, type ContoNature,
 } from '../src/features/dashboard/overviewBlocks.ts';
 import { GLYPH_NAMES, type MarkGlyphName } from '../src/components/ui/MarkGlyph.tsx';
 import { PROVENANCE_KINDS } from '../src/components/ui/ProvenanceMark.tsx';
@@ -2616,6 +2616,40 @@ section('19. I tetti dichiarati — il numero non lo sceglie il frontend');
   // non uno zero di ripiego che farebbe passare qualunque costante.
   check('CONTROPROVA: il tetto letto è quello della 0041, cioè 100',
     concesso === 100 && dove.startsWith('0041'), `${dove} → ${concesso}`);
+}
+
+// ---------------------------------------------------------------------------
+section('20. Il catalogo vuoto non è un catalogo verificato');
+// ⚠️⚠️ `verified === programs` è vero anche con entrambi a ZERO, e il blocco
+// Opportunità si accende pure a catalogo vuoto — basta una pratica aperta o un
+// progetto attivo. Ne usciva «0 programmi in banca dati, verificati».
+
+{
+  check('catalogo vuoto: la frase dice che è vuoto, non che è tutto verificato',
+    fraseCatalogo({ programs: 0, verified: 0 }) === 'vuoto',
+    fraseCatalogo({ programs: 0, verified: 0 }));
+  check('sette su sette resta «tutti verificati» — la correzione non ha spento il caso vero',
+    fraseCatalogo({ programs: 7, verified: 7 }) === 'tuttiVerificati');
+  check('sette su tre è «in parte»',
+    fraseCatalogo({ programs: 7, verified: 3 }) === 'inParte');
+  check('e «non ho potuto guardare» resta distinto da «ho guardato e non c\'era niente»',
+    fraseCatalogo(null) === 'nonLeggibile');
+  // Il caso limite che l'uguaglianza da sola non distingue: zero programmi ma
+  // un numero di verificati assurdo non deve comunque diventare un vanto.
+  check('zero programmi: la frase è «vuoto» qualunque cosa dica il verificato',
+    fraseCatalogo({ programs: 0, verified: 3 }) === 'vuoto');
+
+  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+    check(`${lang}: home.catalogEmpty esiste`,
+      typeof d.catalogEmpty === 'string' && d.catalogEmpty.trim().length > 0);
+  }
+  {
+    const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
+    check('la Panoramica rende home.catalogEmpty e passa da fraseCatalogo',
+      pagina.includes('home.catalogEmpty') && /fraseCatalogo\(/.test(pagina));
+    check('e non decide più in linea con l\'uguaglianza fra i due conteggi',
+      !/catalogo\.verified === catalogo\.programs/.test(pagina));
+  }
 }
 
 // ---------------------------------------------------------------------------

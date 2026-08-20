@@ -40,7 +40,7 @@ import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useOverview, type OverviewData } from './useOverview';
-import { decidiBlocchi, rigaDate, statoValutazione } from './overviewBlocks';
+import { decidiBlocchi, fraseCatalogo, rigaDate, statoValutazione } from './overviewBlocks';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { documentLabelText } from '@/i18n/documentLabel';
 import { useAuth } from '@/contexts/AuthContext';
@@ -247,15 +247,20 @@ function BloccoOpportunita({ data, companyName }: { data: OverviewData; companyN
   const t = useT();
   const { catalogo, assessments, summary } = data.incentivi;
   const stato = statoValutazione(assessments);
+  // ⚠️ Il caso VUOTO prima dell'uguaglianza: `verified === programs` è vero
+  // anche con entrambi a zero, e il blocco si accende pure a catalogo vuoto.
+  // La scelta sta in `fraseCatalogo`, che è puro e provato.
+  const frase = fraseCatalogo(catalogo);
   return (
     <section className="card mt-16 ov-block" aria-labelledby="ov-opportunita">
       <h2 className="card-title" id="ov-opportunita">{t('home.blockOpportunities')}</h2>
       <div className="ov-line">
-        {catalogo === null
-          ? t('home.catalogUnreadable')
-          : catalogo.verified === catalogo.programs
-            ? t(catalogo.programs === 1 ? 'home.catalogAllVerifiedOne' : 'home.catalogAllVerifiedMany', { n: catalogo.programs })
-            : t('home.catalogSomeVerified', { n: catalogo.programs, v: catalogo.verified })}
+        {frase === 'nonLeggibile' && t('home.catalogUnreadable')}
+        {frase === 'vuoto' && t('home.catalogEmpty')}
+        {frase === 'tuttiVerificati' && catalogo
+          && t(catalogo.programs === 1 ? 'home.catalogAllVerifiedOne' : 'home.catalogAllVerifiedMany', { n: catalogo.programs })}
+        {frase === 'inParte' && catalogo
+          && t('home.catalogSomeVerified', { n: catalogo.programs, v: catalogo.verified })}
       </div>
       {stato === 'mai-eseguita' && (
         <>

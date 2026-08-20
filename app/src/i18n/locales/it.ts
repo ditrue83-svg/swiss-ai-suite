@@ -1102,6 +1102,7 @@ export const it = {
     catalogAllVerifiedMany: '{n} programmi in banca dati, verificati.',
     catalogSomeVerified: '{n} programmi in banca dati, {v} verificati.',
     catalogUnreadable: 'Il catalogo non è leggibile in questo momento.',
+    catalogEmpty: 'Nessun programma in banca dati: non c’è ancora niente con cui confrontare l’azienda.',
     assessNever: 'La verifica di idoneità per {company} non è mai stata eseguita: parte da un progetto descritto.',
     assessUnknown: 'Lo stato della verifica di idoneità non è leggibile in questo momento.',
     describeProject: 'Descrivi un progetto',

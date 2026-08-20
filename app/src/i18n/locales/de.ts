@@ -1036,6 +1036,7 @@ export const de: Dictionary = {
     catalogAllVerifiedMany: '{n} Programme in der Datenbank, geprüft.',
     catalogSomeVerified: '{n} Programme in der Datenbank, {v} geprüft.',
     catalogUnreadable: 'Der Katalog ist im Moment nicht lesbar.',
+    catalogEmpty: 'Kein Programm in der Datenbank: es gibt noch nichts, womit sich das Unternehmen vergleichen liesse.',
     assessNever: 'Die Eignungsprüfung für {company} wurde noch nie ausgeführt: sie beginnt mit einem beschriebenen Projekt.',
     assessUnknown: 'Der Stand der Eignungsprüfung ist im Moment nicht lesbar.',
     describeProject: 'Projekt beschreiben',
