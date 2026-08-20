@@ -1073,6 +1073,7 @@ export const it = {
     blockDecisions: 'Richiede una tua decisione',
     ownershipOne: '1 documento con appartenenza da confermare',
     ownershipMany: '{n} documenti con appartenenza da confermare',
+    ownershipPartial: 'lettura al tetto: il conteggio può essere incompleto',
     ownershipGateOne: 'Finché non è confermato non può generare attività.',
     ownershipGateMany: 'Finché non sono confermati non possono generare attività.',
     latestExample: 'il più recente: «{title}»',

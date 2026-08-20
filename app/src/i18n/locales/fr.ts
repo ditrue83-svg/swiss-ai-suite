@@ -997,6 +997,7 @@ export const fr: Dictionary = {
     blockDecisions: 'Requiert votre décision',
     ownershipOne: '1 document dont l’appartenance est à confirmer',
     ownershipMany: '{n} documents dont l’appartenance est à confirmer',
+    ownershipPartial: 'plafond de lecture atteint : le décompte peut être incomplet',
     ownershipGateOne: 'Tant qu’il n’est pas confirmé, il ne peut pas générer de tâches.',
     ownershipGateMany: 'Tant qu’ils ne sont pas confirmés, ils ne peuvent pas générer de tâches.',
     latestExample: 'le plus récent : «{title}»',

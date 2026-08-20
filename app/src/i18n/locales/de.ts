@@ -1007,6 +1007,7 @@ export const de: Dictionary = {
     blockDecisions: 'Erfordert Ihre Entscheidung',
     ownershipOne: '1 Dokument mit zu bestätigender Zugehörigkeit',
     ownershipMany: '{n} Dokumente mit zu bestätigender Zugehörigkeit',
+    ownershipPartial: 'Leselimit erreicht: die Zahl kann unvollständig sein',
     ownershipGateOne: 'Bis es bestätigt ist, kann es keine Aufgaben erzeugen.',
     ownershipGateMany: 'Bis sie bestätigt sind, können sie keine Aufgaben erzeugen.',
     latestExample: 'das neueste: «{title}»',

@@ -390,35 +390,39 @@ export const documentHubService = {
   },
 
   /**
-   * L'appartenenza per la Panoramica: il conteggio E il documento più recente
-   * fra quelli da confermare, già passato dalla regola del titolo mostrabile.
+   * L'appartenenza per la Panoramica: il conteggio, il documento più recente
+   * fra quelli da confermare, e la dichiarazione di parzialità.
    *
-   * ⚠️ L'esempio NON si legge da `documents` grezza: la prima riga della Home
-   * è già stata «2.5» una volta. Si riusa `get`, che passa da `list_documents`
-   * e quindi da `etichettaDocumento` — la stessa strada di ogni altra riga.
+   * ⚠️⚠️ LA STESSA LETTURA DELLA PAGINA D'ARRIVO, E NON UNA SECONDA.
+   * Fino al 2026-08-20 questo metodo si leggeva `document_analyses` per conto
+   * proprio con `.limit(STATS_MAX_DOCUMENTS)`, e ne nascevano tre bugie:
    *
-   * ⚠️ «Più recente» = il primo nell'ordine delle analisi (created_at
-   * discendente), lo stesso ordine di `ownershipToConfirm`: due metodi che
-   * scegliessero il «più recente» con due regole diverse finirebbero per
-   * indicare due documenti diversi.
+   *   · il tetto era sulle RIGHE di analisi, non sui documenti. Un documento
+   *     rianalizzato ha più righe — la 0002 non mette nessun unique su
+   *     `document_id` e `persist.ts` accumula — quindi mille righe potevano
+   *     coprire assai meno di mille documenti;
+   *   · il troncamento non viaggiava col numero: il tipo di ritorno non aveva
+   *     nessun `parziale`, e la Home presentava il conteggio come un fatto
+   *     mentre `stats`, `deadlineKinds` e `listOwnership` dichiarano tutti il
+   *     proprio tetto;
+   *   · la popolazione DIVERGEVA dalla destinazione. `listOwnership` guarda i
+   *     100 attivi più recenti più i 100 archiviati; si cliccava «12» e se ne
+   *     trovavano 9. E «il più recente» era scelto con due regole diverse —
+   *     qui l'ordine delle analisi, là quello dei documenti — quindi la testa
+   *     dell'elenco e l'esempio della Home potevano essere due documenti.
+   *
+   * Ora il numero della Panoramica È quello della pagina, perché è la stessa
+   * chiamata: una sola strada, un solo insieme, un solo «più recente». Anche
+   * l'esempio continua a passare da `list_documents` e quindi da
+   * `etichettaDocumento` — la prima riga della Home è già stata «2.5» una
+   * volta — senza più il `get()` completo, che erano nove interrogazioni per
+   * ricavarne un'etichetta.
    */
   async ownershipOverview(companyId: string, company: TrustCompany): Promise<{
-    count: number; latest: DocumentHubItem | null;
+    count: number; latest: DocumentHubItem | null; parziale: boolean;
   }> {
-    const sb = requireSupabase();
-    const { data: analisi, error } = await sb.from('document_analyses')
-      .select('document_id, created_at')
-      .eq('company_id', companyId)
-      .neq('analysis_status', 'failed')
-      .order('created_at', { ascending: false })
-      .limit(STATS_MAX_DOCUMENTS);
-    if (error) throw new AppError(documentErrorMessage(error), error);
-    const ids = [...new Set((analisi ?? []).map((r) => r.document_id))];
-    const segnali = await documentHubService.trustSignals(companyId, ids, company);
-    const daConfermare = ids.filter((id) => segnali.get(id)?.ownershipToConfirm);
-    if (!daConfermare.length) return { count: 0, latest: null };
-    const dettaglio = await documentHubService.get(daConfermare[0], companyId);
-    return { count: daConfermare.length, latest: dettaglio?.item ?? null };
+    const { items, total, parziale } = await documentHubService.listOwnership(companyId, company);
+    return { count: total, latest: items[0] ?? null, parziale };
   },
 
   /**

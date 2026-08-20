@@ -100,7 +100,7 @@ function RigaConteggio({ count, one, many, dove, to }: {
 
 function BloccoDecisioni({ data }: { data: OverviewData }) {
   const t = useT();
-  const ownership = data.ownership as { count: number; latest: DocumentHubItem | null };
+  const ownership = data.ownership as NonNullable<OverviewData['ownership']>;
   return (
     <section className="card mt-16 ov-block" aria-labelledby="ov-decisioni">
       <h2 className="card-title" id="ov-decisioni">{t('home.blockDecisions')}</h2>
@@ -109,6 +109,10 @@ function BloccoDecisioni({ data }: { data: OverviewData }) {
           ? t('home.ownershipOne')
           : t('home.ownershipMany', { n: ownership.count })}
       </div>
+      {/* Il tetto di lettura si dichiara COL NUMERO, come già si fa per le
+          attività e come fa la pagina d'arrivo: un conteggio finestrato
+          presentato come un fatto è la bugia che questa pagina combatte. */}
+      {ownership.parziale && <div className="muted-sm">{t('home.ownershipPartial')}</div>}
       <Esempio item={ownership.latest} />
       {/* Il perché queste vengono PRIME: il gate delle attività dipende da loro. */}
       <div className="muted-sm">

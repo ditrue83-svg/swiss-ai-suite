@@ -1487,5 +1487,59 @@ section('16. Il guardiano: nessuna schermata mostra il livello grezzo');
 }
 
 // ===========================================================================
+section('17. Il guardiano: l\'appartenenza della Panoramica è la STESSA lettura della pagina');
+// ===========================================================================
+// ⚠️⚠️ DUE LETTURE PER LO STESSO NUMERO ERANO DUE NUMERI. `ownershipOverview`
+// si leggeva `document_analyses` per conto proprio, con un tetto sulle RIGHE di
+// analisi — e un documento rianalizzato ha più righe, perché nessun unique lo
+// vieta e `persist.ts` accumula. Il tetto poi non viaggiava col risultato:
+// nessun `parziale` nel tipo di ritorno, mentre `stats`, `deadlineKinds` e
+// `listOwnership` lo dichiarano tutti. E la popolazione era un'altra rispetto
+// alla destinazione: si cliccava «12» e se ne trovavano 9.
+//
+// Il servizio importa il client Supabase e non si carica da Node: si leggono i
+// SORGENTI, con la controprova che il lettore legge davvero.
+{
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const hub = senzaCommenti(readFileSync('src/services/documentHubService.ts', 'utf8'));
+  // Il corpo del solo metodo: dalla firma alla chiusura del membro.
+  const corpo = (nome: string) => {
+    const i = hub.indexOf(`async ${nome}(`);
+    if (i < 0) return '';
+    const j = hub.indexOf('\n  },', i);
+    return j < 0 ? hub.slice(i) : hub.slice(i, j);
+  };
+
+  const overview = corpo('ownershipOverview');
+  ok(overview !== '', 'il metodo ownershipOverview esiste ancora e si è potuto isolare',
+    'un lettore che non trova il metodo NON deve uscire verde');
+  ok(/listOwnership\(/.test(overview),
+    'la Panoramica conta l\'appartenenza dalla STESSA listOwnership della pagina d\'arrivo');
+  ok(!/document_analyses/.test(overview),
+    'e non si rilegge document_analyses per conto suo: il tetto era sulle righe di analisi, non sui documenti');
+  ok(/parziale/.test(overview),
+    'il troncamento viaggia col numero: il tipo di ritorno porta `parziale`');
+  ok(!/documentHubService\.get\(/.test(overview),
+    'l\'esempio non costa più un get() intero — nove interrogazioni per un\'etichetta');
+
+  // CONTROPROVA: la lettura vera sta in listOwnership, e quella sì che legge.
+  const elenco = corpo('listOwnership');
+  ok(/documentHubService\.list\(/.test(elenco) && /OWNERSHIP_LIST_MAX/.test(elenco),
+    'CONTROPROVA: listOwnership legge davvero le due popolazioni da list_documents');
+  ok(/parziale: att\.items\.length < att\.total \|\| arch\.items\.length < arch\.total/.test(elenco),
+    'e dichiara il proprio tetto guardando ENTRAMBE le popolazioni');
+
+  // La Panoramica non può presentare come un fatto ciò che la pagina d'arrivo
+  // dichiara incompleto: la riga esiste, ed esiste nelle tre lingue.
+  const home = senzaCommenti(readFileSync('src/features/dashboard/HomePage.tsx', 'utf8'));
+  ok(/ownership\.parziale/.test(home) && /home\.ownershipPartial/.test(home),
+    'la Panoramica dichiara il tetto accanto al conteggio dell\'appartenenza');
+  for (const [lang, d] of [['it', it.home], ['de', de.home], ['fr', fr.home]] as const) {
+    ok(typeof d.ownershipPartial === 'string' && d.ownershipPartial.trim().length > 0,
+      `${lang}: home.ownershipPartial esiste`);
+  }
+}
+
+// ===========================================================================
 console.log(`\n${B}Riepilogo${X}  ${G}${pass} superati${X}${fail ? `  ${R}${fail} falliti${X}` : ''}\n`);
 process.exit(fail ? 1 : 0);

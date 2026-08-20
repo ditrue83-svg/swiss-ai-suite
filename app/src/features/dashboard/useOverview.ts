@@ -60,8 +60,14 @@ export interface OverviewData {
    * disponibile: non si mostra niente, mai uno zero finto. (Eccezione
    * DICHIARATA alla regola sul fallback silenzioso: il silenzio qui non
    * inventa nulla.)
+   *
+   * `parziale` viaggia COL NUMERO perché la lettura ha un tetto: cento
+   * documenti per popolazione, il massimo che `list_documents` concede. È lo
+   * stesso conteggio e lo stesso tetto della pagina d'arrivo — che lo dichiara
+   * già — e la Home non può presentare come un fatto ciò che là è dichiarato
+   * incompleto.
    */
-  ownership: { count: number; latest: DocumentHubItem | null } | null;
+  ownership: { count: number; latest: DocumentHubItem | null; parziale: boolean } | null;
   /**
    * Il blocco Opportunità: catalogo condiviso + lo stato della valutazione.
    * `assessments` distingue «valutato: niente per te» da «mai valutato» —
