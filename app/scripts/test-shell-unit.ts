@@ -58,7 +58,8 @@ import { APPOINTMENT_STATES, appointmentState } from '../src/components/ui/Appoi
 // ⚠️ DUE PORTE PER LA STESSA FUNZIONE, di proposito: quella del modulo
 // condiviso e quella da cui la prendono le Attività e la Panoramica. Se un
 // giorno la seconda smettesse di essere la prima, la sezione 17 lo dice.
-import { calendarDaysUntil } from '../src/lib/calendarDays.ts';
+import { calendarDaysUntil, giornoLocale } from '../src/lib/calendarDays.ts';
+import { formatDate, formatDateTime } from '../src/lib/format.ts';
 import { calendarDaysUntil as calendarDaysUntilTasks } from '../src/features/tasks/taskFormat.ts';
 import { TASK_STATES } from '../src/components/ui/StatusMark.tsx';
 import { PRIORITY_LEVELS } from '../src/components/ui/PriorityMark.tsx';
@@ -2715,6 +2716,70 @@ section('21. Un guasto di un riquadro non porta giù la Panoramica intera');
     check(`${lang}: home.summaryUnknown esiste`,
       typeof d.summaryUnknown === 'string' && d.summaryUnknown.trim().length > 0);
   }
+}
+
+// ---------------------------------------------------------------------------
+section('22. Una data pura si formatta al suo giorno, in qualunque fuso');
+// ⚠️⚠️ L'ULTIMO RESIDUO DELLA FAMIGLIA CHIUSA IL 2026-08-19. `new Date(
+// '2026-08-20')` è mezzanotte UTC, e `toLocaleDateString` la rilegge nel fuso
+// di chi guarda: a ovest di Greenwich la data mostrata scalava di un giorno.
+// In Svizzera non si vede — è il motivo per cui è rimasto — ed è esercitato dal
+// codice nuovo della Panoramica, che formatta `dueDate` e `appointmentDate`,
+// due colonne `date`.
+// ⚠️ Lo schema del fuso è quello della sezione 17: salva, imposta, e `finally`
+// ripristina — le sezioni che seguono non ereditano un ambiente piegato.
+
+{
+  const tzOriginale = process.env.TZ;
+  const rendi = (tz: string, valore: string) => { process.env.TZ = tz; return formatDate(valore); };
+  try {
+    // La CONTROPROVA prima di tutto: se il fuso non morde in questo processo,
+    // le prove qui sotto sarebbero verdi senza provare niente.
+    process.env.TZ = 'America/Los_Angeles';
+    check('CONTROPROVA: il fuso simulato morde davvero, e la costruzione ingenua sbaglia',
+      new Date().getTimezoneOffset() > 0 && new Date('2026-08-20').getDate() === 19,
+      `offset=${new Date().getTimezoneOffset()} giorno=${new Date('2026-08-20').getDate()}`);
+
+    const ovest = rendi('America/Los_Angeles', '2026-08-20');
+    const est = rendi('Europe/Zurich', '2026-08-20');
+    const estremo = rendi('Pacific/Kiritimati', '2026-08-20');
+    check('la stessa data pura dà lo stesso giorno a UTC-7, a UTC+2 e a UTC+14',
+      ovest === est && est === estremo, `${ovest} · ${est} · ${estremo}`);
+    check('ed è il giorno scritto nel dato, non quello accanto',
+      est === '20.08.2026', est);
+
+    // Un ISTANTE non si tocca: convertirlo al giorno di chi guarda è giusto, e
+    // una correzione che lo appiattisse sarebbe il difetto opposto.
+    process.env.TZ = 'America/Los_Angeles';
+    check('un istante completo resta un istante: a UTC-7 le 01:00 UTC sono il giorno prima',
+      formatDate('2026-08-20T01:00:00Z') === '19.08.2026',
+      formatDate('2026-08-20T01:00:00Z'));
+
+    // Una data che non esiste non diventa una data plausibile: `new Date(2026,
+    // 1, 31)` traboccherebbe al 3 marzo.
+    process.env.TZ = 'Europe/Zurich';
+    check('il 31 febbraio non diventa il 3 marzo: resta illeggibile',
+      formatDate('2026-02-31') === '—', formatDate('2026-02-31'));
+    check('e un valore assente o illeggibile resta «—»',
+      formatDate(null) === '—' && formatDate('non-una-data') === '—');
+
+    // Una data pura NON ha un'ora, e `formatDateTime` non ne inventa una.
+    check('formatDateTime su una data pura mostra il giorno, senza un orario inventato',
+      formatDateTime('2026-08-20') === '20.08.2026', formatDateTime('2026-08-20'));
+    check('mentre su un istante continua a dare data E ora',
+      /^\d{2}\.\d{2}\.\d{4},? \d{2}:\d{2}$/.test(formatDateTime('2026-08-20T12:34:00Z')),
+      formatDateTime('2026-08-20T12:34:00Z'));
+  } finally {
+    if (tzOriginale === undefined) delete process.env.TZ; else process.env.TZ = tzOriginale;
+  }
+
+  // ⚠️ NESSUNA QUINTA COPIA DELLA REGEX. Il riconoscitore sta in
+  // `calendarDays`, il modulo nato per questo difetto: `format.ts` lo importa
+  // invece di riscriverselo, come già fanno i tre punti della sezione 17.
+  const fmt = readFileSync(join(root, 'src/lib/format.ts'), 'utf8');
+  check('format.ts non si è riscritto il riconoscitore in casa',
+    /from '\.\/calendarDays'/.test(fmt) && !/\\d\{4\}/.test(fmt.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'la data pura ha già quattro regex in linea nel frontend: questa sarebbe la quinta');
 }
 
 // ---------------------------------------------------------------------------
