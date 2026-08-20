@@ -1012,6 +1012,8 @@ export const fr: Dictionary = {
     datesNoTermOne: '1 date relevée dans les documents, non reconnue comme échéance',
     datesNoTermMany: '{n} dates relevées dans les documents, aucune reconnue comme échéance',
     datesMixed: '{n} dates dans les documents : {t} échéances, {e} sans obligation pour l’entreprise, {r} de nature non enregistrée',
+    datesNoTermPartial: 'aucune des {n} premières dates lues, sur {tot} relevées, n’est reconnue comme échéance',
+    datesPartial: 'natures comptées sur les {n} premières dates sur {tot}',
     blockSystem: 'Le système n’a pas pu conclure',
     sysToVerifyOne: '1 analyse à vérifier {dove}', sysToVerifyMany: '{n} analyses à vérifier {dove}',
     sysFailedOne: '1 analyse échouée {dove}', sysFailedMany: '{n} analyses échouées {dove}',

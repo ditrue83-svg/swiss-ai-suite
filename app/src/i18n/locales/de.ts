@@ -1022,6 +1022,8 @@ export const de: Dictionary = {
     datesNoTermOne: '1 Datum in den Dokumenten erkannt, nicht als Frist eingestuft',
     datesNoTermMany: '{n} Daten in den Dokumenten erkannt, keines als Frist eingestuft',
     datesMixed: '{n} Daten in den Dokumenten: {t} Fristen, {e} ohne Verpflichtung für das Unternehmen, {r} mit nicht erfasster Art',
+    datesNoTermPartial: 'Von den ersten {n} gelesenen Daten, von {tot} erkannten, ist keines als Frist eingestuft',
+    datesPartial: 'Arten erfasst auf den ersten {n} von {tot} Daten',
     blockSystem: 'Das System konnte nicht abschließen',
     sysToVerifyOne: '1 Analyse zu prüfen {dove}', sysToVerifyMany: '{n} Analysen zu prüfen {dove}',
     sysFailedOne: '1 Analyse fehlgeschlagen {dove}', sysFailedMany: '{n} Analysen fehlgeschlagen {dove}',

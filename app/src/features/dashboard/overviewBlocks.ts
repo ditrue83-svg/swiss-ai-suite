@@ -88,7 +88,15 @@ export function splitOpenTasks(rows: TaskDateFields[], total: number, oggi: stri
  * che è un'altra affermazione. (Stessa tavola di `deadlineNature.ts`.)
  */
 export interface ContoNature {
+  /** Quante date esistono in tutto: numero ESATTO, dalla funzione finestra. */
   totale: number;
+  /**
+   * Su quante date è calcolata la ripartizione qui sotto. Le tre voci
+   * sommano SEMPRE a questo numero, mai a `totale`: le nature si contano
+   * sulle righe lette (`DATE_MAX_DOCUMENTS` per popolazione), il totale no.
+   * Stesso mestiere di `TaskSplit.lette`.
+   */
+  lette: number;
   termini: number;
   nonObbliganti: number;
   nonRegistrate: number;
@@ -101,7 +109,48 @@ export function contaNature(kinds: readonly (string | null)[]): ContoNature {
     else if (k === 'event' || k === 'reference') nonObbliganti++;
     else nonRegistrate++;
   }
-  return { totale: kinds.length, termini, nonObbliganti, nonRegistrate };
+  return { totale: kinds.length, lette: kinds.length, termini, nonObbliganti, nonRegistrate };
+}
+
+/**
+ * QUALE FRASE DICE LA RIGA DELLE DATE, e con quali numeri.
+ *
+ * ⚠️⚠️ LE NATURE E IL TOTALE NON CONTANO LO STESSO INSIEME. Il totale è esatto
+ * (funzione finestra di `list_documents`); le nature stanno sulle sole righe
+ * lette. Metterli sulla stessa riga faceva scrivere, con 250 documenti datati,
+ * «250 date: 40 termini, 90 che non obbligano, 70 di natura non registrata» —
+ * che fa 200. Il numero che accompagna una ripartizione è quello su cui la
+ * ripartizione è stata fatta: `lette`, mai `totale`.
+ *
+ * ⚠️⚠️ E «nessuna riconosciuta come termine» detto sul TOTALE, quando il tetto
+ * ha morso, è un'affermazione che può essere FALSA: un termine può stare fra
+ * le 50 date non lette. Non è un numero impreciso, è una negazione su un
+ * insieme che non si è guardato. Quando il conteggio è parziale la frase
+ * cambia: dichiara l'insieme guardato invece di negare su quello intero.
+ */
+export type FraseDate = 'nessunTermine' | 'nessunTermineFraLette' | 'miste';
+
+export interface RigaDate {
+  frase: FraseDate;
+  /** Il numero che la frase porta: sempre l'insieme su cui è vera. */
+  n: number;
+  /** Quante ne esistono in tutto — serve solo alle frasi che lo dichiarano. */
+  tot: number;
+  /**
+   * true quando sotto la riga va la dichiarazione dello scarto, come già si fa
+   * per le attività. Nel ramo `nessunTermineFraLette` è false: quella frase lo
+   * scarto se lo dichiara da sé, e ripeterlo sarebbe la stessa cosa due volte.
+   */
+  scarto: boolean;
+}
+
+export function rigaDate(n: ContoNature & { parziale: boolean }): RigaDate {
+  if (n.termini > 0) {
+    return { frase: 'miste', n: n.lette, tot: n.totale, scarto: n.parziale };
+  }
+  return n.parziale
+    ? { frase: 'nessunTermineFraLette', n: n.lette, tot: n.totale, scarto: false }
+    : { frase: 'nessunTermine', n: n.totale, tot: n.totale, scarto: false };
 }
 
 /** I due totali di uno stato documento, uno per popolazione. La somma è il

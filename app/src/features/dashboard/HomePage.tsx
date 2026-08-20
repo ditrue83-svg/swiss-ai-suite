@@ -40,7 +40,7 @@ import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useOverview, type OverviewData } from './useOverview';
-import { decidiBlocchi, statoValutazione } from './overviewBlocks';
+import { decidiBlocchi, rigaDate, statoValutazione } from './overviewBlocks';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { documentLabelText } from '@/i18n/documentLabel';
 import { useAuth } from '@/contexts/AuthContext';
@@ -121,6 +121,38 @@ function BloccoDecisioni({ data }: { data: OverviewData }) {
   );
 }
 
+/**
+ * La riga delle date dei documenti, chiamate col loro nome: finché non esiste
+ * un `term`, un blocco scadenze sarebbe due date incerte vestite da termini.
+ * Zero term in tutta la produzione, misurato il 2026-08-19.
+ *
+ * ⚠️ IL NUMERO DELLA FRASE È QUELLO DELL'INSIEME SU CUI LA FRASE È VERA, e lo
+ * decide `rigaDate`, che è puro e provato. Il totale è esatto, le nature sono
+ * contate sulle sole righe lette: metterli insieme faceva scrivere «250 date:
+ * 40 termini, 90 che non obbligano, 70 non registrate», che fa 200. E con il
+ * tetto che morde, «nessuna riconosciuta come termine» detto sul totale poteva
+ * essere FALSO — un termine può stare fra le 50 date non lette.
+ */
+function RigaDelleDate({ nature }: { nature: OverviewData['nature'] }) {
+  const t = useT();
+  if (nature.totale === 0) return null;
+  const r = rigaDate(nature);
+  return (
+    <>
+      <div className="ov-line">
+        {r.frase === 'miste' && t('home.datesMixed', {
+          n: r.n, t: nature.termini, e: nature.nonObbliganti, r: nature.nonRegistrate,
+        })}
+        {r.frase === 'nessunTermineFraLette' && t('home.datesNoTermPartial', { n: r.n, tot: r.tot })}
+        {r.frase === 'nessunTermine'
+          && t(r.n === 1 ? 'home.datesNoTermOne' : 'home.datesNoTermMany', { n: r.n })}
+      </div>
+      {/* Lo scarto si dichiara sotto, come già si fa per le attività. */}
+      {r.scarto && <div className="muted-sm">{t('home.datesPartial', { n: r.n, tot: r.tot })}</div>}
+    </>
+  );
+}
+
 function BloccoDaFare({ data }: { data: OverviewData }) {
   const t = useT();
   const s = data.tasks;
@@ -158,19 +190,7 @@ function BloccoDaFare({ data }: { data: OverviewData }) {
             : t('home.firstItemNoDate', { title: s.primo.title })}
         </div>
       )}
-      {/* Le date dei documenti, chiamate col loro nome: finché non esiste un
-          `term`, un blocco scadenze sarebbe due date incerte vestite da
-          termini. Zero term in tutta la produzione, misurato il 2026-08-19. */}
-      {data.nature.totale > 0 && (
-        <div className="ov-line">
-          {data.nature.termini === 0
-            ? t(data.nature.totale === 1 ? 'home.datesNoTermOne' : 'home.datesNoTermMany', { n: data.nature.totale })
-            : t('home.datesMixed', {
-              n: data.nature.totale, t: data.nature.termini,
-              e: data.nature.nonObbliganti, r: data.nature.nonRegistrate,
-            })}
-        </div>
-      )}
+      <RigaDelleDate nature={data.nature} />
       {s.aperte > 0 && (
         <Link className="btn btn-sm mt-10" to="/attivita">
           {t('home.ctaTasks')} <Icon name="arrowRight" className="ic-sm" />

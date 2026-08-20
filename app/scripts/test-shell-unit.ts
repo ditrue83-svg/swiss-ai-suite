@@ -45,7 +45,9 @@ import { it } from '../src/i18n/locales/it.ts';
 import { de } from '../src/i18n/locales/de.ts';
 import { fr } from '../src/i18n/locales/fr.ts';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches, type NavItem } from '../src/components/layout/nav.ts';
-import { contaNature, decidiBlocchi, splitOpenTasks } from '../src/features/dashboard/overviewBlocks.ts';
+import {
+  contaNature, decidiBlocchi, rigaDate, splitOpenTasks, type ContoNature,
+} from '../src/features/dashboard/overviewBlocks.ts';
 import { GLYPH_NAMES, type MarkGlyphName } from '../src/components/ui/MarkGlyph.tsx';
 import { PROVENANCE_KINDS } from '../src/components/ui/ProvenanceMark.tsx';
 import { CONFIDENCE_LEVELS } from '../src/components/ui/ConfidenceBadge.tsx';
@@ -2451,6 +2453,70 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
   check('term è termine; event e reference non obbligano; \'none\' e l\'ignoto non sono registrati',
     (() => { const c = contaNature(['term', 'event', 'reference', 'none', 'boh', null]);
       return c.termini === 1 && c.nonObbliganti === 2 && c.nonRegistrate === 3; })());
+
+  // (b-bis) LA RIGA DELLE DATE: il numero che accompagna una ripartizione è
+  // quello su cui la ripartizione è stata fatta, e una negazione vale solo
+  // sull'insieme che si è guardato.
+  check('contaNature dichiara SU QUANTE righe ha contato, e le tre voci sommano lì',
+    (() => { const c = contaNature(['term', 'event', null]);
+      return c.lette === 3 && c.termini + c.nonObbliganti + c.nonRegistrate === c.lette; })());
+
+  // Il caso della produzione: 2 date, entrambe lette, nessun termine. La frase
+  // nega sul TOTALE perché il totale è tutto ciò che c'è — e lì è vero.
+  const intero = rigaDate({ ...contaNature([null, null]), totale: 2, parziale: false });
+  check('insieme intero: la frase nega sul totale, e non c\'è niente da dichiarare',
+    intero.frase === 'nessunTermine' && intero.n === 2 && !intero.scarto);
+
+  // ⚠️ IL CASO DELL'AUDIT: 250 date rilevate, 200 lette, la ripartizione fa 200.
+  const miste = rigaDate({
+    totale: 250, lette: 200, termini: 40, nonObbliganti: 90, nonRegistrate: 70, parziale: true,
+  });
+  check('250 date con 200 lette: la riga porta le 200 su cui la somma torna, non le 250',
+    miste.frase === 'miste' && miste.n === 200 && miste.n === 40 + 90 + 70,
+    `n=${miste.n} contro una somma di ${40 + 90 + 70}`);
+  check('e lo scarto si dichiara sotto, coi due numeri',
+    miste.scarto && miste.tot === 250);
+
+  // ⚠️⚠️ L'AFFERMAZIONE CHE POTEVA ESSERE FALSA: zero termini FRA LE LETTE non
+  // è «nessun termine»: un termine può stare fra le 50 date non guardate.
+  const negazione = rigaDate({
+    totale: 250, lette: 200, termini: 0, nonObbliganti: 120, nonRegistrate: 80, parziale: true,
+  });
+  check('zero termini su un conteggio parziale NON diventa «nessuno su 250»',
+    negazione.frase === 'nessunTermineFraLette' && negazione.n === 200 && negazione.tot === 250,
+    negazione.frase);
+  check('quella frase lo scarto se lo dichiara da sé: non si ripete sotto',
+    !negazione.scarto);
+
+  // La regola in una riga sola: quando il tetto morde, il numero della frase è
+  // SEMPRE quello letto — la somma delle nature non è mai presentata come il
+  // totale, in nessuno dei due rami.
+  const parziali: (ContoNature & { parziale: boolean })[] = [
+    { totale: 9, lette: 4, termini: 1, nonObbliganti: 1, nonRegistrate: 2, parziale: true },
+    { totale: 9, lette: 4, termini: 0, nonObbliganti: 1, nonRegistrate: 3, parziale: true },
+  ];
+  check('con conteggio parziale nessun ramo presenta la somma delle nature come il totale',
+    parziali.every((i) => { const r = rigaDate(i); return r.n === i.lette && r.n !== i.totale; }));
+
+  // Le frasi nuove esistono in tutte e tre le lingue, coi due segnaposto, e la
+  // pagina le usa: una chiave scritta e mai resa non dichiara niente.
+  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+    for (const k of ['datesPartial', 'datesNoTermPartial'] as const) {
+      const testo = d[k];
+      check(`${lang}: home.${k} esiste e porta i due numeri`,
+        typeof testo === 'string' && testo.includes('{n}') && testo.includes('{tot}'), testo);
+    }
+  }
+
+  {
+    const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    const pagina = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8'));
+    check('la Panoramica rende le due frasi nuove',
+      pagina.includes('home.datesPartial') && pagina.includes('home.datesNoTermPartial'));
+    check('e la riga delle date passa da rigaDate, non dai campi grezzi',
+      /rigaDate\(/.test(pagina) && !/n: data\.nature\.totale/.test(pagina),
+      'il totale esatto e le nature lette sono due insiemi: chi sceglie il numero è la funzione pura');
+  }
 
   // (c) La visibilità dei blocchi: compaiono solo con contenuto.
   const zero = {

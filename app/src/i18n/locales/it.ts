@@ -1088,6 +1088,8 @@ export const it = {
     datesNoTermOne: '1 data rilevata nei documenti, non riconosciuta come termine',
     datesNoTermMany: '{n} date rilevate nei documenti, nessuna riconosciuta come termine',
     datesMixed: '{n} date nei documenti: {t} termini, {e} che non obbligano l’azienda, {r} di natura non registrata',
+    datesNoTermPartial: 'nessuna delle prime {n} date lette, sulle {tot} rilevate, è riconosciuta come termine',
+    datesPartial: 'nature contate sulle prime {n} date di {tot}',
     blockSystem: 'Il sistema non ha potuto concludere',
     sysToVerifyOne: '1 analisi da verificare {dove}', sysToVerifyMany: '{n} analisi da verificare {dove}',
     sysFailedOne: '1 analisi non riuscita {dove}', sysFailedMany: '{n} analisi non riuscite {dove}',
