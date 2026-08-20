@@ -44,3 +44,48 @@ export function calendarDaysUntil(
   const b = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   return Math.round((a - b) / 86_400_000);
 }
+
+/**
+ * IL RICONOSCITORE DELLA DATA PURA: `YYYY-MM-DD`, la forma con cui una colonna
+ * `date` esce dal database — `due_date`, `appointment_date`, `document_date`,
+ * `deadline`, e le decine di altre.
+ *
+ * ⚠️ ANCORATA ANCHE IN CODA. `2026-08-20T14:30:00Z` è un ISTANTE e va letto
+ * come istante: convertirlo al giorno locale è esattamente ciò che si vuole.
+ * Un'ancora solo in testa confonderebbe le due cose, che è il difetto opposto.
+ */
+const DATA_PURA = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * La data pura come giorno LOCALE. `null` se il valore non è una data pura:
+ * chi chiama prosegue con `new Date(value)`, che per un istante è giusto.
+ *
+ * ⚠️ È LA STESSA REGOLA DI `calendarDaysUntil`, LETTA DALL'ALTRO LATO. Lì
+ * serve il giorno di calendario scritto nel dato, e si legge in UTC perché
+ * mezzanotte UTC è come è stata scritta. Qui serve un istante che il
+ * formattatore renda con QUEL giorno, e allora la si costruisce in locale:
+ * `new Date('2026-08-20')` è mezzanotte UTC, e a ovest di Greenwich
+ * `toLocaleDateString` la stampa come il 19.
+ *
+ * ⚠️⚠️ IL RITORNO SI VERIFICA. `new Date(2026, 1, 31)` non è un errore: JS
+ * trabocca al 3 marzo. Senza il controllo, un `2026-02-31` — oggi reso «—»,
+ * cioè «non si legge» — diventerebbe una data plausibile e sbagliata, che è
+ * peggio di nessuna data.
+ */
+/**
+ * La FORMA di una data pura, valida o no. Serve a chi deve distinguere «non è
+ * una data pura» da «è una data pura che non esiste»: `giornoLocale` risponde
+ * `null` a entrambe, ma le due meritano risposte diverse a schermo.
+ */
+export function sembraDataPura(value: string): boolean {
+  return DATA_PURA.test(value);
+}
+
+export function giornoLocale(value: string): Date | null {
+  const m = DATA_PURA.exec(value);
+  if (!m) return null;
+  const [anno, mese, giorno] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(anno, mese - 1, giorno);
+  const tornaUguale = d.getFullYear() === anno && d.getMonth() === mese - 1 && d.getDate() === giorno;
+  return tornaUguale ? d : null;
+}

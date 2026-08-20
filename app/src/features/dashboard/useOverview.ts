@@ -16,8 +16,16 @@ import type { DocumentHubItem, IncentiveSummary } from '@/types/models';
  * pagina della Home: è il tetto oltre il quale il diviso si dichiara parziale
  * (`TaskSplit.parziale`) invece di sembrare intero. I totali restano esatti:
  * vengono dalla funzione finestra di `list_tasks`, non dalla lunghezza.
+ *
+ * ⚠️ IL NUMERO NON LO SCEGLIE QUESTO FILE: lo impone `list_tasks`, che chiude
+ * il proprio argomento con `least(coalesce(p_limit, 25), 100)` (0041), e
+ * `taskService.list` glielo passa grezzo. Chiedendone 200 se ne ottenevano
+ * 100: con 150 attività aperte la Home scriveva «calcolata sulle prime 100 di
+ * 150» mentre chi aveva scritto 200 credeva di coprirle tutte. È la stessa
+ * nota dei tetti di `list_documents` in `documentHubService.ts` — un numero
+ * più alto qui sarebbe una promessa che la RPC non mantiene.
  */
-const TASKS_SPLIT_MAX = 200;
+const TASKS_SPLIT_MAX = 100;
 
 /**
  * La finestra dei numeri degli incentivi, in giorni. Dichiarata qui e usata
@@ -52,8 +60,14 @@ export interface OverviewData {
    * disponibile: non si mostra niente, mai uno zero finto. (Eccezione
    * DICHIARATA alla regola sul fallback silenzioso: il silenzio qui non
    * inventa nulla.)
+   *
+   * `parziale` viaggia COL NUMERO perché la lettura ha un tetto: cento
+   * documenti per popolazione, il massimo che `list_documents` concede. È lo
+   * stesso conteggio e lo stesso tetto della pagina d'arrivo — che lo dichiara
+   * già — e la Home non può presentare come un fatto ciò che là è dichiarato
+   * incompleto.
    */
-  ownership: { count: number; latest: DocumentHubItem | null } | null;
+  ownership: { count: number; latest: DocumentHubItem | null; parziale: boolean } | null;
   /**
    * Il blocco Opportunità: catalogo condiviso + lo stato della valutazione.
    * `assessments` distingue «valutato: niente per te» da «mai valutato» —
@@ -103,7 +117,14 @@ export function useOverview() {
       })().catch(() => null),
       incentivesService.catalogState(),
       incentivesService.assessmentCount(companyId),
-      incentivesService.summary(companyId, INCENTIVE_DAYS),
+      // ⚠️ LO STESSO CONTRATTO DELLE SUE DUE SORELLE. `catalogState` e
+      // `assessmentCount` tornano `null` sul guasto — è dichiarato nel tipo qui
+      // sopra e il blocco lo dice a schermo — mentre `summary` LANCIA. Senza
+      // questo `.catch`, un guasto di `subsidy_home_summary` faceva cadere in
+      // ErrorState l'INTERA Panoramica: attività, documenti, appartenenza,
+      // catalogo, tutto. E teneva irraggiungibile `home.summaryUnknown`, il
+      // ramo scritto e tradotto apposta per questo caso.
+      incentivesService.summary(companyId, INCENTIVE_DAYS).catch(() => null),
     ]);
 
     return {
