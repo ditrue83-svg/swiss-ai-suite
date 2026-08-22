@@ -130,15 +130,36 @@ Deno.serve(async (req: Request) => {
     return json({ status: 'processing', documentId }, 202);
   }
 
+  // ⚠️ DUE INTERROGAZIONI, NON UNA `or(...)`. La seconda confronta una data, e
+  // il progetto ha già deciso — e pagato — che infilare un timestamp dentro la
+  // sintassi dei filtri combinati di PostgREST significa doverlo sfuggire a
+  // mano: `_shared/finance/store.ts:97-100` lo scrive per esteso, «una riga in
+  // più qui vale più di un filtro che si rompe il giorno del cambio d'ora».
+  // Ognuna delle due è atomica per conto suo, ed è quello che serve: la prima
+  // prende ciò che non è in lavorazione, la seconda ciò che lo è da troppo.
   const sogliaInterrotta = new Date(Date.now() - STUCK_ANALYSIS_MINUTES * 60_000).toISOString();
   const statoPrimaDellaPresa = (doc.status as string | null) ?? 'uploaded';
-  const { data: preso, error: presaErr } = await sbAdmin.from('documents')
+
+  const libero = await sbAdmin.from('documents')
     .update({ status: 'extracting' })
     .eq('id', documentId)
-    .or(`status.not.in.(${[...STATI_IN_LAVORAZIONE].join(',')}),updated_at.lt.${sogliaInterrotta}`)
+    .not('status', 'in', `(${[...STATI_IN_LAVORAZIONE].join(',')})`)
     .select('id');
-  if (presaErr) return fail('UNKNOWN_ERROR', 500);
-  if (!preso || preso.length === 0) return json({ status: 'processing', documentId }, 202);
+  if (libero.error) return fail('UNKNOWN_ERROR', 500);
+
+  let presaVinta = (libero.data?.length ?? 0) > 0;
+  if (!presaVinta) {
+    // Risultava in lavorazione: si può prendere SOLO se è un lavoro abbandonato
+    // oltre la soglia. Un solo confronto, su una sola colonna.
+    const stantio = await sbAdmin.from('documents')
+      .update({ status: 'extracting' })
+      .eq('id', documentId)
+      .lt('updated_at', sogliaInterrotta)
+      .select('id');
+    if (stantio.error) return fail('UNKNOWN_ERROR', 500);
+    presaVinta = (stantio.data?.length ?? 0) > 0;
+  }
+  if (!presaVinta) return json({ status: 'processing', documentId }, 202);
 
   /**
    * Restituisce il documento allo stato di prima.
@@ -154,6 +175,16 @@ Deno.serve(async (req: Request) => {
   async function rilasciaPresa() {
     if (!presaDaRilasciare) return;
     presaDaRilasciare = false;
+    // ⚠️⚠️ NON SI RIARMA UN LUCCHETTO STANTIO. Se la presa è stata vinta sul
+    // secondo ramo, lo stato di prima era ESSO STESSO uno stato di lavorazione:
+    // riscriverlo direbbe una cosa falsa sulla fase (era `analyzing`, noi
+    // abbiamo scritto `extracting`) e costerebbe comunque gli stessi venti
+    // minuti, perché il trigger `updated_at` riparte da adesso in entrambi i
+    // casi. Si lascia il documento com'è: nessuno lo sta lavorando davvero, e
+    // `recoverStuckAnalyses` lo chiude alla scadenza. ⚠️ Il costo — il recupero
+    // riparte da capo — è reale e vale la pena saperlo: un tentativo RESPINTO su
+    // un documento già appeso ne rimanda la chiusura di venti minuti.
+    if ((STATI_IN_LAVORAZIONE as readonly string[]).includes(statoPrimaDellaPresa)) return;
     const { error: rilascioErr } = await sbAdmin.from('documents')
       .update({ status: statoPrimaDellaPresa }).eq('id', documentId);
     // ⚠️ NON si solleva: la richiesta è già stata respinta per un'altra ragione,
@@ -420,13 +451,25 @@ Deno.serve(async (req: Request) => {
 
   // ---- Modalità SINCRONA (comportamento storico, invariato) ----------------
   try {
-    presaDaRilasciare = false;   // come sopra: il lavoro è partito
     const result = await performWork();
+    // La pipeline ha già scritto lo stato finale (`completed`/`needs_review`):
+    // restituirlo a com'era lo cancellerebbe.
+    presaDaRilasciare = false;
     return json({ status: result.status, analysis: result.analysis });
   } catch (e) {
     const code = ((e as { code?: ErrorCode }).code) ?? 'UNKNOWN_ERROR';
     const phase = (e as { phase?: string }).phase;
-    if (phase === 'analysis') await markFailed(code);
+    // ⚠️⚠️ QUI LA PRESA SI RESTITUISCE, E PRIMA DI ESSA NON C'ERA NIENTE DA
+    // RESTITUIRE. `markFailed` chiude il documento su `failed`, che è uno stato
+    // finale: la presa si scioglie da sé. Ma viene chiamato SOLO per un guasto
+    // di ANALISI — un guasto di ESTRAZIONE (`phased(code, 'extraction')`, righe
+    // 328 e 334) non produce alcun verbale e non tocca lo stato. Prima della
+    // presa in carico era innocuo, perché nessuno aveva marcato il documento;
+    // adesso lascerebbe un `extracting` appeso per venti minuti su un guasto
+    // già riferito al chiamante. Il ramo asincrono non ha questo problema: il
+    // suo `catch` chiama `markFailed` sempre.
+    if (phase === 'analysis') { presaDaRilasciare = false; await markFailed(code); }
+    else await rilasciaPresa();
     return fail(code, httpStatusFor(code));
   }
 });

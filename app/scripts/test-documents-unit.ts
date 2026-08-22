@@ -1692,7 +1692,7 @@ section('18 · «Mostra altri» non porta via i marcatori già a schermo');
 }
 
 // ===========================================================================
-section('18. Il guardiano: nessuna schermata si dichiara «senza dubbio» da sé');
+section('19. Il guardiano: nessuna schermata si dichiara «senza dubbio» da sé');
 // ===========================================================================
 // ⚠️⚠️ IL LIMITE DEL TIPO, MISURATO. Rendere `appartenenza` obbligatoria
 // costringe ogni punto di creazione a DICHIARARE, ma non a dire il vero: una
@@ -1802,7 +1802,7 @@ section('18. Il guardiano: nessuna schermata si dichiara «senza dubbio» da sé
 }
 
 // ===========================================================================
-section('18 · Una lettura per volta: il credito non si paga due volte');
+section('20 · Una lettura per volta: il credito non si paga due volte');
 // ===========================================================================
 // ⚠️⚠️ IL CASO REALE del 2026-08-21. Lo stesso PDF di 15 pagine è stato
 // analizzato DUE volte a 74 secondi di distanza: due chiamate a opus, due righe
@@ -1851,7 +1851,7 @@ section('18 · Una lettura per volta: il credito non si paga due volte');
 }
 
 // ===========================================================================
-section('19 · Chiudere la riga di quota: la funzione giusta, e la prova che è chiusa');
+section('21 · Chiudere la riga di quota: la funzione giusta, e la prova che è chiusa');
 // ===========================================================================
 // ⚠️⚠️ IL DIFETTO del 2026-08-21, misurato in produzione: `analysis` fermo a
 // `pending` 4 volte su 6, `inbox_analysis` 18 su 18. Il percorso di SUCCESSO
