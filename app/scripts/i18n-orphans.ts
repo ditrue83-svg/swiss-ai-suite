@@ -68,6 +68,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { it } from '../src/i18n/locales/it.ts';
+// ⚠️ I SUFFISSI DELLE FORME PLURALI ARRIVANO DAL MECCANISMO VERO, non da una
+// copia: `pluralKey` compone `…One`/`…Many` con questa stessa costante.
+import { FORME_PLURALI } from '../src/i18n/index.tsx';
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -419,7 +422,18 @@ export function orfane(tutteLeFoglie: string[], token: Iterable<string>): string
   const prefissi: string[] = [];
   for (const t of token) {
     if (t.endsWith('.')) prefissi.push(t);
-    else { nomi.add(t); prefissi.push(`${t}.`); }
+    else {
+      nomi.add(t);
+      prefissi.push(`${t}.`);
+      // ⚠️⚠️ LE DUE FORME DI UN CONTEGGIO NON LE SCRIVE NESSUNO.
+      // `tn('home.tasksAppts', 3)` nomina la BASE; quale delle due foglie
+      // esca — `…One` o `…Many` — lo decidono le regole plurali della lingua
+      // dentro `pluralKey`. Senza questa riga le due uscivano orfane MENTRE
+      // la pagina le mostrava, ed erano 24 al primo giro. Un nodo non le
+      // copre (sono suffissi, non un segmento dopo un punto) e dichiararle in
+      // ECCEZIONI sarebbe una porta aperta su una famiglia intera.
+      for (const forma of FORME_PLURALI) nomi.add(`${t}${forma}`);
+    }
   }
   return tutteLeFoglie.filter((f) => {
     if (nomi.has(f)) return false;
@@ -462,7 +476,18 @@ const DIZIONARIO_FINTO = {
   etichette: { idoneita: { nota: 'n', probabile: 'p' } },
 };
 
-const CASI: { nome: string; src: string; attese: string[] }[] = [
+/**
+ * Un dizionario A PARTE per la coppia plurale.
+ *
+ * ⚠️ NON si aggiungono foglie a `DIZIONARIO_FINTO`: quello è l'insieme atteso
+ * di TUTTI gli altri casi, e due voci in più li renderebbero rossi in blocco —
+ * il rilevatore direbbe di essere rotto mentre funziona.
+ */
+const DIZIONARIO_COPPIA = {
+  conta: { voceOne: '1 voce', voceMany: '{n} voci', altro: 'z' },
+};
+
+const CASI: { nome: string; src: string; attese: string[]; dizionario?: unknown }[] = [
   {
     nome: 'una chiave che nessuno chiama è orfana',
     src: "const a = t('tasks.titolo');",
@@ -473,6 +498,21 @@ const CASI: { nome: string; src: string; attese: string[] }[] = [
     src: "t('tasks.titolo'); t('tasks.sottotitolo'); t('stati.aperto'); t('stati.chiuso');\n"
       + "t('etichette.idoneita.nota'); t('etichette.idoneita.probabile');",
     attese: [],
+  },
+  {
+    // ⚠️ IL CASO DELLE DUE FORME. `tn('conta.voce', n)` nomina la BASE; quale
+    // delle due foglie esca lo decide `pluralKey`, e nessuno le scrive.
+    nome: 'un letterale che nomina la base di una coppia copre le due forme',
+    dizionario: DIZIONARIO_COPPIA,
+    src: "t('conta.altro'); tn('conta.voce', n);",
+    attese: [],
+  },
+  {
+    // E LA CONTROPROVA: la base copre SOLO le sue due forme, non la sorella.
+    nome: 'la base di una coppia non copre le altre foglie del suo nodo',
+    dizionario: DIZIONARIO_COPPIA,
+    src: "tn('conta.voce', n);",
+    attese: ['conta.altro'],
   },
   {
     nome: 'un template con interpolazione copre il suo nodo',
@@ -598,10 +638,11 @@ const CASI_CECITA: { nome: string; src: string; attese: string[] }[] = [
 ];
 
 /** Un caso, valutato: le orfane per CASI, le sezioni cieche per CASI_CECITA. */
-function valuta(caso: { src: string }, cecita: boolean): string[] {
+function valuta(caso: { src: string; dizionario?: unknown }, cecita: boolean): string[] {
+  const dict = caso.dizionario ?? DIZIONARIO_FINTO;
   return cecita
-    ? sezioniCieche(Object.keys(DIZIONARIO_FINTO), tokenChiave(caso.src)).sort()
-    : orfane(foglie(DIZIONARIO_FINTO), tokenChiave(caso.src)).sort();
+    ? sezioniCieche(Object.keys(dict as object), tokenChiave(caso.src)).sort()
+    : orfane(foglie(dict), tokenChiave(caso.src)).sort();
 }
 
 function casiRotti(): { nome: string; attese: string[]; trovate: string[] }[] {

@@ -77,6 +77,18 @@ export type PluralBase = {
     : never;
 }[TKey];
 
+/**
+ * I SUFFISSI DELLE DUE FORME, dichiarati una volta sola.
+ *
+ * ⚠️ Non è una costante di comodo: `i18n:orphans` LI IMPORTA per sapere che un
+ * letterale che nomina una base (`'home.tasksAppts'`) tiene vive le due foglie
+ * che `pluralKey` compone (`…One` e `…Many`) e che nessun sorgente scrive mai
+ * per intero. Il rilevatore fa la domanda al MECCANISMO VERO: se un giorno le
+ * forme diventassero tre, o si chiamassero altrimenti, la risposta lo segue da
+ * sola invece di restare una copia invecchiata dentro un altro file.
+ */
+export const FORME_PLURALI = ['One', 'Many'] as const;
+
 const PLURAL_RULES: Partial<Record<Locale, Intl.PluralRules>> = {};
 function rules(locale: Locale): Intl.PluralRules {
   return (PLURAL_RULES[locale] ??= new Intl.PluralRules(LOCALE_TAG[locale]));
@@ -85,7 +97,8 @@ function rules(locale: Locale): Intl.PluralRules {
 /** La chiave giusta per `n` nella lingua data: `…One` solo dove la lingua vuole
  *  il singolare. Esportata perché il banco di prova la interroga direttamente. */
 export function pluralKey(base: PluralBase, n: number, locale: Locale): TKey {
-  return `${base}${rules(locale).select(n) === 'one' ? 'One' : 'Many'}` as TKey;
+  const [una, molte] = FORME_PLURALI;
+  return `${base}${rules(locale).select(n) === 'one' ? una : molte}` as TKey;
 }
 
 function lookup(dict: Dictionary, key: string): string | undefined {

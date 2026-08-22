@@ -2783,6 +2783,13 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
         corpo.includes(tetto.chiave) && corpo.includes(tetto.condizione),
         corpo.includes(tetto.chiave) ? `manca la condizione ${tetto.condizione}` : 'la frase non è resa');
     }
+    // ⚠️ Anche il tetto dell'ELENCO dei termini si dichiara a schermo, non solo
+    // nella funzione pura: `altri` calcolato e mai reso è un tetto che morde in
+    // silenzio. (Come sopra, il letterale è lecito perché il check assicura
+    // l'uso: se la pagina smette di renderlo, questa riga è rossa prima che
+    // `i18n:orphans` debba accorgersi delle due forme rimaste sole.)
+    check('e il numero dei termini NON elencati si dichiara a schermo',
+      corpoDi('VociTermini').includes('home.termsMore'));
     check('e la divergenza col numero della destinazione si dichiara',
       pagina.includes('home.datesScope') && /destinazionePiuAmpia/.test(pagina));
     // ⚠️⚠️ LE DATE CHE NON OBBLIGANO NON SPARISCONO, e la ragione è
@@ -2831,15 +2838,32 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
     check('⚠️ ed è il francese a distinguersi: lo ZERO vuole il SINGOLARE',
       pluralKey('home.tasksTerms', 0, 'fr').endsWith('One')
       && pluralKey('home.tasksTerms', 0, 'it').endsWith('Many'));
-    check('la coppia esiste per ogni base che la pagina usa, nelle tre lingue',
-      (['home.tasksAppts', 'home.tasksTerms', 'home.tasksNoDate', 'home.tasksOverdue',
-        'home.ownership', 'home.termsMore', 'home.datesUnrecorded',
-        'home.sysToVerify', 'home.sysFailed', 'home.sysNever'] as PluralBase[])
-        .every((b) => LOCALES.every((l) => [0, 1, 2, 8].every((n) => {
-          const k = pluralKey(b, n, l).split('.')[1];
-          const d = { it: it.home, de: de.home, fr: fr.home }[l] as Record<string, string>;
-          return typeof d[k] === 'string' && d[k].trim().length > 0;
-        }))));
+    // ⚠️⚠️ LE BASI SI LEGGONO DAL SORGENTE, NON SI ELENCANO QUI. Un elenco
+    // scritto a mano nominerebbe dieci chiavi `home.*` come LETTERALI, e per
+    // `i18n:orphans` un letterale è un uso: le venti forme resterebbero «vive»
+    // anche dopo che la pagina avesse smesso di chiamarle — questo banco
+    // diventerebbe la macchina che le tiene in vita. Provato: togliendo
+    // l'unica chiamante di `home.termsMore` dalla Panoramica, con l'elenco a
+    // mano il rilevatore restava VERDE. Le catture qui sotto sono valori a
+    // runtime, e le espressioni regolari il tokenizzatore le salta.
+    const senzaCommenti2 = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const sorgenti = [
+      senzaCommenti2(readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8')),
+      senzaCommenti2(readFileSync(join(root, 'src/features/dashboard/overviewBlocks.ts'), 'utf8')),
+    ].join('\n');
+    const basi = [...new Set([
+      ...sorgenti.matchAll(/tn\(\s*'(home\.[A-Za-z]+)'/g),
+      ...sorgenti.matchAll(/base="(home\.[A-Za-z]+)"/g),
+      ...sorgenti.matchAll(/base: '(home\.[A-Za-z]+)'/g),
+    ].map((m) => m[1]))] as PluralBase[];
+    check('le basi plurali si trovano nel sorgente della Panoramica (almeno nove)',
+      basi.length >= 9, basi.join(' '));
+    check('e per ognuna la coppia esiste nelle tre lingue, a 0 · 1 · 2 · 8',
+      basi.every((b) => LOCALES.every((l) => [0, 1, 2, 8].every((n) => {
+        const k = pluralKey(b, n, l).split('.')[1];
+        const d = { it: it.home, de: de.home, fr: fr.home }[l] as Record<string, string>;
+        return typeof d[k] === 'string' && d[k].trim().length > 0;
+      }))), basi.join(' '));
   }
 }
 
