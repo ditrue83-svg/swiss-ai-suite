@@ -33,7 +33,7 @@ import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { documentHubService } from '@/services/documentHubService';
 import { documentService } from '@/services/documentService';
 import { analyzeStoredDocument } from '@/features/admin-ai/analyzeStored';
-import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
+import { createTaskFromDocument, appartenenzaDa } from '@/features/tasks/taskFromDocument';
 import { documentTaskDraft } from '@/features/tasks/documentToTask';
 import { TaskCreateForm } from '@/features/tasks/TaskCreateForm';
 import {
@@ -202,6 +202,7 @@ export function DocumentDetailPage() {
     // che li userà per scrivere. Due derivazioni della stessa cosa prima o poi
     // mostrano una priorità e ne salvano un'altra.
     const draft = documentTaskDraft({
+      appartenenza,
       companyId,
       userId: user.id,
       documentId: detail.document.id,
@@ -245,6 +246,7 @@ export function DocumentDetailPage() {
         userId: user.id,
         documentId: detail.document.id,
         title: values.title,
+        appartenenza,
         analysis: detail.analysis,
         authority: detail.item.sender,
         // ⚠️ `appointmentDate` NON si passa: non è un campo del modulo, e la
@@ -441,10 +443,18 @@ export function DocumentDetailPage() {
   // la cosa sbagliata e non lo dice nessuno.
   // ⚠️ APPARTENENZA IN DUBBIO = NIENTE ATTIVITÀ: finché nessuno conferma che
   // il documento riguardi l'azienda, da qui non nascono scadenze né attività.
-  // Il gate sta su `canCreateTask`, che è l'unico interruttore che tutti i
-  // punti di creazione consultano.
+  // ⚠️⚠️ QUI C'ERA SCRITTO che `canCreateTask` era «l'unico interruttore che
+  // tutti i punti di creazione consultano». Non era vero — lo consultava solo
+  // questa pagina — e il 2026-08-21 da una fattura intestata a una persona
+  // fisica è nata un'attività dalla schermata di Admin AI. `canCreateTask`
+  // spegne il pulsante DI QUESTA PAGINA; la regola che vale per tutti sta in
+  // `documentToTask.ts`, dove è un campo obbligatorio e un rifiuto.
   const stepRaw = nextStepFor(detail, nome);
   const step = ownershipDoubt ? { ...stepRaw, canCreateTask: false } : stepRaw;
+  // La stessa cosa detta al modulo che scrive: il cancello dell'interfaccia è
+  // la cortesia, questa dichiarazione è ciò che regge se un giorno il pulsante
+  // cambia. ⚠️ `trust === null` non è «nessun dubbio»: è «non lo so ancora».
+  const appartenenza = appartenenzaDa(trust, 'verdetto di attendibilità non ancora disponibile');
   // §40 — le azioni dell'analisi e le attività sono cose diverse, e dopo la
   // conversione non esiste un collegamento fra le due liste. Perciò questo
   // avviso compare SOLO quando non è nata nessuna attività da questo documento:

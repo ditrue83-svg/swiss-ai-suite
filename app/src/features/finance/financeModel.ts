@@ -112,6 +112,33 @@ export function financeState(
   return item.reviewStatus === 'ready' ? 'ready' : 'to_verify';
 }
 
+/**
+ * Che cosa DICE la pastiglia di stato — la CHIAVE, non la frase: come per
+ * `readyBlockers`, la frase la scrive l'interfaccia nella lingua di chi legge.
+ * `failed` e `processing` parlano della macchina (`finance.row.*`); le altre
+ * due sono la verifica e passano da `labels.financeReview`.
+ *
+ * ⚠️ IN ARCHIVIO PARLA LA VERIFICA, CON IL SUO VALORE VERO. «Archiviata» dice
+ * DOVE sta la riga — e nella vista archiviata lo dice già il filtro — non che
+ * qualcuno l'abbia guardata: la 0021 ha rifiutato di fare dell'archivio uno
+ * stato di verifica proprio per non perdere questa distinzione. Le due
+ * schermate però la perdevano lo stesso, traducendo `archived` in «Verificata»
+ * incondizionatamente: un'archiviata MAI verificata si leggeva «Verificata».
+ * Questa funzione esiste perché la scelta si faccia in UN posto, provabile
+ * offline — due schermate che componessero da sé sono già finite per dire due
+ * cose diverse sulla stessa fattura.
+ */
+export type FinanceBadgeKey = 'failed' | 'processing' | FinanceReviewStatus;
+
+export function stateBadgeKey(
+  item: Pick<FinanceItem, 'archivedAt' | 'processingStatus' | 'reviewStatus'>,
+): FinanceBadgeKey {
+  const state = financeState(item);
+  if (state === 'failed' || state === 'processing') return state;
+  // `ready`, `to_verify` e `archived`: la chiave è la verifica reale.
+  return item.reviewStatus === 'ready' ? 'ready' : 'needs_review';
+}
+
 // ---------------------------------------------------------------------------
 // Le scadenze — GIORNI DI CALENDARIO
 // ---------------------------------------------------------------------------

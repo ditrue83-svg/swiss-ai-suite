@@ -8,7 +8,7 @@ import { analysisService } from '@/services/analysisService';
 import { actionProgressService } from '@/services/actionProgressService';
 import { replyService } from '@/services/replyService';
 import { correctionService } from '@/services/correctionService';
-import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
+import { createTaskFromDocument, appartenenzaDa } from '@/features/tasks/taskFromDocument';
 import { looksLikeScan } from '../../../supabase/functions/_shared/extractionQuality.ts';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -233,6 +233,15 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
   // Finché il verdetto non c'è (letture in corso o fallite) non si mostra
   // niente — mai il grezzo al suo posto.
   const trust = useAnalysisTrust(analysis);
+  // ⚠️⚠️ IL CANCELLO DELL'APPARTENENZA, che qui MANCAVA.
+  // Il dettaglio del documento lo aveva dal 2026-08-19 e il commento accanto
+  // dichiarava che valeva per «tutti i punti di creazione»: questa schermata
+  // non lo ereditava, e il 2026-08-21 da una fattura intestata a una persona
+  // fisica è nata un'attività vera. Ora la regola sta nel modulo puro e questa
+  // pagina la dichiara; il pulsante disabilitato è la cortesia, il rifiuto di
+  // `runCreateFromDocument` è la garanzia.
+  const appartenenzaDubbia = trust?.unavailable === 'ownership';
+  const appartenenza = appartenenzaDa(trust, 'verdetto di attendibilità non ancora disponibile');
 
   const isAI = analysis.engine.startsWith('claude');
   const [actions, setActions] = useState<ChecklistAction[]>(analysis.actions);
@@ -368,6 +377,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
       const outcome = await createTaskFromDocument({
         companyId: r.companyId, userId: user!.id, documentId: document.id, title,
         analysis: { ...r, actions },
+        appartenenza,
       });
       if (outcome.stepsFailed) {
         // L'attività c'è, i passaggi no: lo si DICE, invece di lasciar credere
@@ -590,7 +600,18 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               ? <>{t('adminAi.result.noDeadlineFound')} · <AppointmentMark date={r.appointmentDate} display={formatDate(r.appointmentDate)} /></>
               : t('adminAi.result.noDeadlineFound')}</div>
         </div>
-        <button className="btn btn-primary" onClick={() => createTask(r.primaryAction || nome)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}</button>
+        {/* ⚠️ Disabilitato NON basta: un pulsante spento e muto manda a cercare
+            il guasto altrove. La frase è la stessa del dettaglio del documento
+            — una regola sola, una spiegazione sola. */}
+        <div className="co-act">
+          <button className="btn btn-primary" disabled={appartenenzaDubbia}
+            onClick={() => createTask(r.primaryAction || nome)}>
+            <Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}
+          </button>
+          {appartenenzaDubbia && (
+            <div className="muted-sm">{t('documents.ownership.warnGate')}</div>
+          )}
+        </div>
       </div>
 
       <div className="ax-grid">
@@ -682,7 +703,8 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                     <div className="ai-text"><label htmlFor={`act-${r.id}-${c.id}`}>{c.text}</label> <ActionOriginMark source={c.sourceType} /></div>
                     <div className="ai-meta">
                       {c.sourceType === 'extracted' && c.evidence && <EvidenceButton evidence={c.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />}
-                      <button type="button" className="mini-btn" onClick={() => createTask(c.text)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.addToTasks')}</button>
+                      <button type="button" className="mini-btn" disabled={appartenenzaDubbia}
+                        onClick={() => createTask(c.text)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.addToTasks')}</button>
                     </div>
                   </div>
                 </div>

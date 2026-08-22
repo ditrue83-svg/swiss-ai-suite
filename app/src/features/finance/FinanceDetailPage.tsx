@@ -46,7 +46,7 @@ import { useDocumentLabel } from '@/i18n/documentLabel';
 import { AskAbout } from '@/features/assistant/AskAbout';
 import {
   FINANCE_HIGH_RISK_FIELDS, financeState, formatDecimal, isCorrectableField, readyBlockers,
-  type FinanceCorrectableField, type FinanceReadyBlocker,
+  stateBadgeKey, type FinanceBadgeKey, type FinanceCorrectableField, type FinanceReadyBlocker,
 } from './financeModel';
 import type {
   FinanceCorrection, FinanceDetail, FinanceExtraction, FinanceItem, FinanceQualityFlag,
@@ -241,6 +241,7 @@ export function FinanceDetailPage() {
   const detail = data;
   const item = detail.item;
   const state = financeState(item);
+  const badgeKey = stateBadgeKey(item);
   const blockers = readyBlockers(item);
   const archived = !!item.archivedAt;
   const who = item.supplierName || item.merchant || docLabel(item.documentLabel);
@@ -288,6 +289,16 @@ export function FinanceDetailPage() {
         companyId,
         userId: user.id,
         documentId: item.documentId,
+        // ⚠️⚠️ BUCO APERTO, DICHIARATO. Questa pagina non carica l'analisi del
+        // documento, quindi non può chiedere a `analysisTrust` se il documento
+        // riguardi davvero l'azienda: da qui un'attività nasce anche su una
+        // fattura intestata a un'altra persona — ed è esattamente il caso della
+        // fattura Sunrise del 2026-08-21. Non si chiude con una riga: servono
+        // l'analisi e il verdetto in questa pagina. Finché non ci sono, il
+        // campo obbligatorio costringe almeno a dirlo qui invece di lasciarlo
+        // invisibile, e un `grep 'non-valutata'` trova tutti i buchi di questo
+        // tipo in una volta sola.
+        appartenenza: { stato: 'non-valutata', perche: 'Finanze non carica l’analisi del documento' },
         title: docLabel(item.documentLabel),
         authority: item.supplierName ?? item.merchant,
         dueDate: item.dueDate,
@@ -323,9 +334,12 @@ export function FinanceDetailPage() {
           {item.dueDate && <> · <DeadlineMark date={item.dueDate} display={formatDate(item.dueDate)} /></>}
         </div>
         <div className="badge-row">
-          {state === 'to_verify'
+          {/* «Da verificare» è il segno epistemico di famiglia — anche in
+              archivio: la chiave dice la verifica REALE, e un'archiviata mai
+              verificata non si veste da «Verificata». */}
+          {badgeKey === 'needs_review'
             ? <ProvenanceMark kind="toVerify" />
-            : <span className={stateBadgeClass(state)}>{stateBadgeText(state, t, L)}</span>}
+            : <span className={stateBadgeClass(state)}>{stateBadgeText(badgeKey, t, L)}</span>}
           {archived && <Tag>{t('finance.filters.archived')}</Tag>}
           {/* La CAUSA accanto alla pastiglia, come nell'elenco: il codice del
               worker tradotto se noto, grezzo se no (mai una categoria
@@ -536,12 +550,13 @@ function stateBadgeClass(state: ReturnType<typeof financeState>): string {
 }
 
 function stateBadgeText(
-  state: ReturnType<typeof financeState>, t: TFunction, L: ReturnType<typeof useLabels>,
+  key: FinanceBadgeKey, t: TFunction, L: ReturnType<typeof useLabels>,
 ): string {
-  if (state === 'failed') return t('finance.row.failed');
-  if (state === 'processing') return t('finance.row.processing');
-  if (state === 'ready' || state === 'archived') return L.financeReview('ready');
-  return L.financeReview('needs_review');
+  if (key === 'failed') return t('finance.row.failed');
+  if (key === 'processing') return t('finance.row.processing');
+  // La chiave di verifica — REALE anche in archivio, da `stateBadgeKey` — ha
+  // la sua frase in `labels.financeReview`.
+  return L.financeReview(key);
 }
 
 // ---------------------------------------------------------------------------

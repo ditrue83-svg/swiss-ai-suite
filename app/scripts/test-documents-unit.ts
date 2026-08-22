@@ -42,7 +42,9 @@ import {
   etichettaComposta, etichettaDaRigaDocumento, etichettaDocumento,
   nomeFileInformativo, titoloDocumento, titoloMostrabile,
 } from '../src/lib/documentTitle';
-import { documentTaskDraft, runCreateFromDocument } from '../src/features/tasks/documentToTask';
+import {
+  documentTaskDraft, runCreateFromDocument, appartenenzaDa, AppartenenzaInDubbio,
+} from '../src/features/tasks/documentToTask';
 import type {
   AnalysisUncertainty, ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
   DocumentLinkedTask, DocumentStatsRow, Task,
@@ -452,6 +454,10 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
   const base = {
     companyId: 'co-1', userId: 'u-1', documentId: 'doc-1',
     title: 'Trasmettere il rendiconto IVA',
+    // Le prove di questo blocco parlano di ALTRO: qui l'appartenenza è
+    // verificata, così l'unico cancello che possono incontrare è quello che
+    // stanno misurando. Il cancello ha il suo blocco, più sotto.
+    appartenenza: { stato: 'senza-dubbio' } as const,
   };
 
   // -- i valori EFFETTIVI battono quelli dell'analisi ------------------------
@@ -581,6 +587,72 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
       });
     } catch { sollevato = true; }
     ok(sollevato, 'se l’attività non si crea, l’errore arriva a chi ha premuto');
+  }
+
+  // -- IL CANCELLO DELL'APPARTENENZA ----------------------------------------
+  // ⚠️⚠️ IL CASO REALE del 2026-08-21. Una fattura Sunrise di 15 pagine,
+  // intestata a «Massimo Cavalieri, Rovello 32D, 6942 Savosa» e caricata da
+  // Rossi SA: `valutaAppartenenza` risponde `{doubt: true, via: 'nome'}`. Il
+  // dettaglio del documento disabilitava il pulsante e il commento accanto
+  // dichiarava che quel cancello valeva per «tutti i punti di creazione» — ma
+  // la schermata di Admin AI non lo aveva, e da lì è nata l'attività «Pagare
+  // la fattura» (`source: 'admin_ai'`, 19:37:37). Una regola scritta in una
+  // schermata non la eredita la schermata dopo: adesso sta qui.
+  {
+    let creata = false;
+    let errore: unknown = null;
+    try {
+      await runCreateFromDocument(
+        { ...base, appartenenza: { stato: 'in-dubbio' }, analysis: analisi() },
+        { createTask: async () => { creata = true; return taskFinta('t-12'); },
+          addSteps: async () => undefined },
+      );
+    } catch (e) { errore = e; }
+    ok(errore instanceof AppartenenzaInDubbio,
+      '⚠️ APPARTENENZA IN DUBBIO: la creazione viene RIFIUTATA, e con un errore riconoscibile');
+    ok(!creata,
+      '⚠️⚠️ e il servizio non viene nemmeno chiamato: un’attività creata e poi «annullata» avrebbe già fatto scattare i trigger e lasciato una riga nello storico');
+  }
+
+  {
+    // CONTROPROVA: il cancello non deve chiudersi su tutto, o la funzione
+    // «non crea mai niente» passerebbe la prova qui sopra a pieni voti.
+    let creata = false;
+    const esito = await runCreateFromDocument(
+      { ...base, appartenenza: { stato: 'senza-dubbio' }, analysis: analisi() },
+      { createTask: async () => { creata = true; return taskFinta('t-13'); },
+        addSteps: async () => undefined },
+    );
+    ok(creata && esito.task.id === 't-13',
+      'CONTROPROVA: con l’appartenenza verificata l’attività nasce come prima');
+  }
+
+  {
+    // `non-valutata` NON blocca, ed è una decisione dichiarata: il dettaglio
+    // del documento si comporta già così quando il verdetto non è arrivato.
+    // Se un giorno si volesse bloccare anche qui, è QUESTA riga che deve
+    // diventare rossa — non un comportamento che cambia di nascosto.
+    let creata = false;
+    await runCreateFromDocument(
+      { ...base, appartenenza: { stato: 'non-valutata', perche: 'prova' }, analysis: analisi() },
+      { createTask: async () => { creata = true; return taskFinta('t-14'); },
+        addSteps: async () => undefined },
+    );
+    ok(creata,
+      '«non valutata» non è «in dubbio»: non blocca — e il `perche` obbligatorio lascia il buco scritto invece che invisibile');
+  }
+
+  {
+    // La traduzione dal verdetto: è il punto in cui una schermata può mentire.
+    ok(appartenenzaDa({ unavailable: 'ownership' }, 'x').stato === 'in-dubbio',
+      'il verdetto che sospende per appartenenza diventa «in dubbio»');
+    ok(appartenenzaDa({ unavailable: null }, 'x').stato === 'senza-dubbio',
+      'un verdetto che non sospende diventa «senza dubbio»');
+    const senzaVerdetto = appartenenzaDa(null, 'lettura non riuscita');
+    ok(senzaVerdetto.stato === 'non-valutata',
+      '⚠️ VERDETTO ASSENTE NON È «NESSUN DUBBIO»: è «non lo so ancora», e chiamarlo diversamente sarebbe la dichiarazione falsa che questo cancello esiste per evitare');
+    ok(senzaVerdetto.stato === 'non-valutata' && senzaVerdetto.perche === 'lettura non riuscita',
+      '…e il motivo viaggia con esso: un buco senza ragione scritta non si ritrova più');
   }
 }
 
@@ -1612,6 +1684,55 @@ section('18 · «Mostra altri» non porta via i marcatori già a schermo');
     'si chiedono gli id mancanti, non tutto l\'insieme ogni volta');
   ok(/\}, \[regola, idsKey\]\)/.test(effetto),
     'le dipendenze sono due CONTENUTI: `surnames` come array rilanciava l\'effetto a ogni render');
+}
+
+// ===========================================================================
+section('18. Il guardiano: nessuna schermata si dichiara «senza dubbio» da sé');
+// ===========================================================================
+// ⚠️⚠️ IL LIMITE DEL TIPO, MISURATO. Rendere `appartenenza` obbligatoria
+// costringe ogni punto di creazione a DICHIARARE, ma non a dire il vero: una
+// schermata che scrive `{ stato: 'senza-dubbio' }` a mano compila senza un
+// avviso — provato il 2026-08-22 rimettendo quella riga in ResultView, e il
+// compilatore è rimasto muto. È esattamente la forma del difetto originale: una
+// schermata che decide da sé di non chiedere.
+//
+// Perciò `senza-dubbio` può nascere in UN posto solo, `appartenenzaDa`, che il
+// verdetto lo guarda davvero. Altrove è un letterale vietato.
+//
+// ⚠️ I COMMENTI VANNO TOLTI PRIMA. Una guardia a regex sui sorgenti legge anche
+// ciò che è scritto in un commento: è già successo in questo progetto — una
+// guardia nata rossa per colpa della frase che la spiegava. Qui il commento che
+// spiega il divieto nomina il valore vietato, quindi lo scarto è obbligatorio,
+// non prudenza.
+{
+  const SORGENTI = [
+    'src/features/admin-ai/ResultView.tsx',
+    'src/features/documents/DocumentDetailPage.tsx',
+    'src/features/finance/FinanceDetailPage.tsx',
+  ];
+  /** Via i commenti di blocco e di riga: restano solo le istruzioni. */
+  const senzaCommenti = (t: string): string =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  for (const file of SORGENTI) {
+    const codice = senzaCommenti(readFileSync(file, 'utf8'));
+    ok(!codice.includes("'senza-dubbio'"),
+      `${file} non si dichiara «senza dubbio» da sé: quel valore lo produce solo appartenenzaDa`);
+  }
+
+  // …e la guardia deve poter fallire: se `senzaCommenti` smettesse di
+  // funzionare, o la ricerca guardasse la stringa sbagliata, tutto resterebbe
+  // verde per sempre. Questa è la prova che sa dire di no.
+  const finto = "const a = { stato: 'senza-dubbio' };";
+  ok(senzaCommenti(finto).includes("'senza-dubbio'"),
+    'CONTROPROVA: la guardia riconosce il letterale quando c’è davvero');
+  ok(!senzaCommenti("// qui si parla di 'senza-dubbio' a parole").includes("'senza-dubbio'"),
+    'CONTROPROVA: e NON lo riconosce dentro un commento — il difetto delle guardie a regex di questo progetto');
+
+  // Chi crea attività senza poter valutare deve dirlo con un motivo scritto.
+  const finanze = senzaCommenti(readFileSync('src/features/finance/FinanceDetailPage.tsx', 'utf8'));
+  ok(/stato:\s*'non-valutata'[\s\S]{0,120}perche:/.test(finanze),
+    '⚠️ BUCO APERTO E DICHIARATO: Finanze crea attività senza valutare l’appartenenza, e il motivo è scritto nel codice');
 }
 
 // ===========================================================================
