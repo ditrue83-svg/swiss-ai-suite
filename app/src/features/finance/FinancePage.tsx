@@ -37,7 +37,8 @@ import {
   DEFAULT_DUE_DAYS, DOCUMENT_SOURCES, EXPENSE_CATEGORIES, FINANCE_COMMON_CURRENCIES,
   FINANCE_PAGE_SIZE, PROCESSINGS, REVIEWS, SORTS, TABS,
   filtersFromParams, financeState, formatDecimal, hasActiveFilters, oldestPendingMinutes,
-  paramsFromFilters, queueLooksStalled, withoutCurrency, type FinanceState, type FinanceTab,
+  paramsFromFilters, queueLooksStalled, stateBadgeKey, withoutCurrency,
+  type FinanceBadgeKey, type FinanceTab,
 } from './financeModel';
 import type {
   DocumentHubItem, DocumentSourceType, FinanceExpenseCategory, FinanceFilters, FinanceItem,
@@ -622,17 +623,19 @@ function KpiTotals({
 // ---------------------------------------------------------------------------
 
 /**
- * Lo stato in UNA parola, componendo macchina e persona con `financeState`.
+ * Lo stato in UNA parola. CHE COSA dire lo decide `stateBadgeKey` nel modello,
+ * in un posto solo e provato offline; qui si sceglie soltanto la veste.
  * ⚠️ Il colore non basta mai: la pastiglia porta sempre il testo (§129).
  */
-function stateBadge(state: FinanceState, t: TFunction, L: ReturnType<typeof useLabels>) {
-  switch (state) {
+function stateBadge(key: FinanceBadgeKey, archived: boolean, t: TFunction, L: ReturnType<typeof useLabels>) {
+  switch (key) {
     case 'failed': return { text: t('finance.row.failed'), cls: 'badge badge-alta' };
     case 'processing': return { text: t('finance.row.processing'), cls: 'badge badge-neutral' };
-    case 'ready': return { text: L.financeReview('ready'), cls: 'badge badge-bassa' };
     // Una riga archiviata compare solo nella vista archiviata, dove «archiviata»
-    // è già detto dal filtro: qui conta che cosa dice la verifica.
-    case 'archived': return { text: L.financeReview('ready'), cls: 'badge badge-neutral' };
+    // è già detto dal filtro: qui parla la verifica — con il suo valore VERO
+    // (la chiave), in una pastiglia spenta perché in archivio non c'è niente
+    // da fare.
+    case 'ready': return { text: L.financeReview('ready'), cls: archived ? 'badge badge-neutral' : 'badge badge-bassa' };
     default: return { text: L.financeReview('needs_review'), cls: 'badge badge-media' };
   }
 }
@@ -645,7 +648,8 @@ function FinanceRow({
 }) {
   const docLabel = useDocumentLabel();
   const state = financeState(item);
-  const badge = stateBadge(state, t, L);
+  const badgeKey = stateBadgeKey(item);
+  const badge = stateBadge(badgeKey, state === 'archived', t, L);
   // Su una ricevuta il fornitore spesso non c'è e l'esercente sì: si mostra
   // quello che il documento dice davvero, senza inventare l'altro. Quando non
   // c'è né l'uno né l'altro resta il titolo del documento, che è un fatto.
@@ -695,9 +699,11 @@ function FinanceRow({
         {item.qualityFlags.length > 0 && state !== 'failed' && (
           <Tag tone="attention">{t('finance.row.flagged')}</Tag>
         )}
-        {/* «Da verificare» è il segno epistemico di famiglia; guasti e stati
-            di lavorazione restano pastiglie (il rosso resta al guasto). */}
-        {state === 'to_verify'
+        {/* «Da verificare» è il segno epistemico di famiglia — anche in
+            archivio: un'archiviata mai verificata non si veste da «Verificata».
+            Guasti e stati di lavorazione restano pastiglie (il rosso resta al
+            guasto). */}
+        {badgeKey === 'needs_review'
           ? <ProvenanceMark kind="toVerify" />
           : <span className={badge.cls}>{badge.text}</span>}
         {/* La CAUSA sotto la pastiglia: su `failed` spiega il fallimento, su
