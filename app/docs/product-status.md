@@ -2426,6 +2426,12 @@ che usciva verso `to: [null]` — raggiunto per un'altra strada.
 > **Ogni riga qui sotto è MISURATA, non dedotta**: il sabotaggio è stato
 > applicato davvero e la suite eseguita davvero. Dove dice «resta verde», è
 > perché è restata verde.
+>
+> **E si RIMISURA a ogni giro, non si eredita.** Il 2026-08-20 due voci portate
+> dietro per sentito dire erano già false: una regola scoperta era diventata
+> coperta, e ciò che restava aperto era un'altra cosa. Un registro che si
+> tramanda per copia diventa, dopo qualche giro, un racconto. La regola sta in
+> [`CLAUDE.md`](../CLAUDE.md), §Verità.
 
 Le regole della Panoramica dai numeri sono sei; queste sono le quattro che
 vivevano «nelle mani» di chi scrive, cioè senza un controllo che le facesse
@@ -2435,7 +2441,7 @@ fallire.
 |---|---|---|---|
 | **R1** — i conteggi coprono DUE popolazioni | ✅ **chiusa** | la seconda popolazione non si legge più | **5 rossi** (`test:panoramica`) |
 | **R4** — il NOME a schermo dice ciò che il numero è | ✅ **chiusa** | gli appuntamenti resi con la chiave dei termini · «Frist» tedesco cambiato in «Termin» | **5 rossi · 2 rossi** (`test:shell-unit` §18) |
-| **R3** — ciò che è deciso viene davvero RESO | 🟡 **in parte** | vedi sotto | 5 sabotaggi rossi, **2 verdi** |
+| **R3** — ciò che è deciso viene davvero RESO | 🟡 **in parte** | vedi sotto | 13 sabotaggi rossi, **1 verde** |
 | **R6** — categorie con un conteggio, non elenchi | ⛔ **scoperta** | dieci righe di documento in un blocco | **resta VERDE** |
 
 ### R1 — chiusa, e con un limite dichiarato
@@ -2464,15 +2470,41 @@ verde); togliere il `<Link>` attorno alla riga delle date (l'indirizzo restava
 scritto su un'altra riga); montare la riga delle date per una popolazione sola;
 togliere una qualunque riga di conteggio collegata; togliere il piè di pagina.
 
+✅ **I TETTI DI LETTURA sono chiusi tutti e quattro** (2026-08-20). Un tetto che
+smette di dichiararsi *quando morde* è la classe di difetto che questa pagina è
+nata per togliere: una marcatura che sparisce proprio nel momento in cui serve.
+Misurato: togliere la riga di `home.tasksSplitPartial` **o** quella di
+`home.ownershipPartial` lasciava TUTTA la suite verde — la seconda non era
+nemmeno nell'elenco dei buchi noti, l'ha trovata la stessa misura. Ora ogni
+dichiarazione è cercata nel CORPO della funzione che la possiede **e insieme
+alla condizione che la accende**: una senza l'altra è metà guardia, e una
+dichiarazione che si mostra sempre non dichiara più niente.
+
+| dichiarazione | funzione | condizione |
+|---|---|---|
+| `home.ownershipPartial` | `BloccoDecisioni` | `ownership.parziale` |
+| `home.tasksSplitPartial` | `BloccoDaFare` | `s.parziale` |
+| `home.termsPartial` | `VociTermini` | `parziale` |
+| `home.datesSplitPartial` | `RigaDateIgnote` | `r.parziale` |
+
 ⛔ **Resta scoperto, misurato:**
 
 | sabotaggio | esito | danno atteso |
 |---|---|---|
 | sparisce `<Esempio>` dal blocco dei limiti | resta **verde** | il blocco dice «16 analisi da verificare» e non mostra più *quale*: il numero torna a essere una cifra senza una cosa dietro, che è il difetto per cui l'esempio è nato |
-| sparisce `home.tasksSplitPartial` | resta **verde** | il **tetto di lettura smette di dichiararsi**: con 150 attività aperte la ripartizione è calcolata su 100 e la pagina la presenta come intera. È la classe «un conteggio finestrato presentato come un fatto», già pagata due volte |
 
-La seconda è la più grave delle due e si chiude con una riga di guardia; è
-lasciata aperta **per scelta esplicita del 2026-08-20**, non per dimenticanza.
+### ⚰️ Un ramo SUPERATO, e da chi
+
+`fix/riga-date-panoramica` (`8c0795f`, mai unito) correggeva la stessa riga
+delle date: singolari veri, giorno del termine, riga per popolazione col
+collegamento. È **superato da `dc73193`** (`fix/il-termine-e-una-voce`), che
+risolve lo stesso problema più a fondo: un termine non diventa un conteggio con
+il singolare giusto, diventa una VOCE con giorno, titolo e destinazione, e il
+plurale non passa più da coppie scelte a mano ma dalle regole della lingua.
+
+**Non va unito**: farebbe conflitto sugli stessi file senza aggiungere niente.
+Sta scritto qui perché un ramo abbandonato senza spiegazione, fra tre mesi, è
+qualcuno che ricomincia lo stesso tentativo credendo di avere un'idea nuova.
 
 ### R6 — scoperta, e adesso più esposta di prima
 
