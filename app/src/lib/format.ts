@@ -3,11 +3,34 @@
 // gg.mm.aaaa, ma separatori e nomi dei mesi cambiano, e gli importi seguono la
 // convenzione della lingua. Prima era fissato a it-CH per tutti.
 import { getCurrentLocaleTag } from '@/i18n';
+// ⚠️ IL RICONOSCITORE STA IN `calendarDays`, NON QUI: è il modulo nato per
+// questo difetto, e scriverne una seconda copia sarebbe la quinta regex della
+// data pura nel frontend. Il conto dei giorni e la formattazione sono due
+// mestieri diversi sopra LA STESSA regola.
+import { giornoLocale, sembraDataPura } from './calendarDays';
 
+/**
+ * La data, nella lingua scelta.
+ *
+ * ⚠️⚠️ UNA DATA PURA SI COSTRUISCE IN LOCALE. `new Date('2026-08-20')` è
+ * mezzanotte UTC — è la norma per una data senza ora — e `toLocaleDateString`
+ * la rilegge nel fuso di chi guarda: a ovest di Greenwich stampava il 19. In
+ * Svizzera non si vede, ed è per questo che è rimasto qui mentre la stessa
+ * famiglia veniva chiusa altrove il 2026-08-19. Le colonne `date` arrivano
+ * proprio così, e la Panoramica ne formatta due (`dueDate`, `appointmentDate`).
+ *
+ * Un ISTANTE completo continua a passare da `new Date`: convertirlo al giorno
+ * locale è ciò che si vuole, e `giornoLocale` non lo tocca.
+ */
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
+  // ⚠️⚠️ E UNA DATA PURA CHE NON ESISTE NON DIVENTA UNA DATA PLAUSIBILE. Su
+  // `'2026-02-31'` il parser di V8 rinuncia all'ISO, ripiega su quello
+  // permissivo e restituisce il 3 MARZO: fin qui la funzione stampava
+  // «03.03.2026», una data inventata dove il suo stesso commento promette «mai
+  // una data di ripiego». Riconosciuta la forma, il verdetto è del calendario.
+  const d = sembraDataPura(value) ? giornoLocale(value) : new Date(value);
+  if (d === null || Number.isNaN(d.getTime())) return '—';
   return d.toLocaleDateString(getCurrentLocaleTag(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
@@ -22,6 +45,13 @@ export function formatDate(value: string | null | undefined): string {
  */
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—';
+  // ⚠️ UNA DATA PURA NON HA UN'ORA, e qui non se ne inventa una. Oggi nessuno
+  // gliene passa una — i quattro chiamanti hanno tutti un `timestamptz` — ma la
+  // firma accetta `string` e il prossimo non ha modo di saperlo: `'2026-08-20'`
+  // usciva «20.08.2026, 02:00» a Zurigo e «19.08.2026, 20:00» a New York, cioè
+  // un orario inventato e per giunta il giorno sbagliato. Si mostra il giorno,
+  // che è tutto ciò che il dato dice.
+  if (sembraDataPura(value)) return formatDate(value);
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleString(getCurrentLocaleTag(), {

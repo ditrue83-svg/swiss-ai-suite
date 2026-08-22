@@ -12,7 +12,7 @@
 // i filtri e si mostra il risultato. Con duemila documenti la pagina chiede
 // sempre e solo venticinque righe.
 // ============================================================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Tag } from '@/components/ui/Tag';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
@@ -32,7 +32,7 @@ import { useLabels } from '@/i18n/labels';
 import { useDocumentLabel } from '@/i18n/documentLabel';
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, SORTS, SOURCES, STATES,
-  filtersFromParams, hasActiveFilters, paramsFromFilters, rowMarks, splitSnippet,
+  filtersFromParams, hasActiveFilters, paramsFromFilters, passoSegnali, rowMarks, splitSnippet,
 } from './documentModel';
 import { cognomiDaRubrica } from './analysisTrust';
 import { useMembers } from '@/features/tasks/useMembers';
@@ -157,17 +157,48 @@ function useTrustSignals(companyId: string, items: DocumentHubItem[]) {
   const surnames = useMemo(() => cognomiDaRubrica(members.map((m) => m.name)), [members]);
   const ids = useMemo(() => items.filter((i) => i.analysisId).map((i) => i.id), [items]);
   const idsKey = ids.join(',');
+  // LA REGOLA con cui un verdetto è stato calcolato, per CONTENUTO: azienda,
+  // ragione sociale, cognomi della rubrica. Se cambia, quello che è in mappa
+  // vale per qualcun altro. Il carattere nullo separa i pezzi perché nessun
+  // nome lo contiene: due campi concatenati senza separatore sono un campo solo.
+  const regola = [companyId, legalName, ...surnames].join('\u0000');
+  // Che cosa è già stato CHIESTO E OTTENUTO, e sotto quale regola. Sta in un
+  // ref e non nello stato: serve a decidere la richiesta, non a disegnare.
+  const chiesti = useRef<{ regola: string | null; ids: Set<string> }>({ regola: null, ids: new Set() });
 
   useEffect(() => {
     let active = true;
-    setSignals(null);
-    if (!ids.length || !legalName) { setSignals(new Map()); return; }
-    documentHubService.trustSignals(companyId, ids, { legalName, memberSurnames: surnames })
-      .then((m) => { if (active) setSignals(m); })
-      .catch(() => { if (active) setSignals(null); });
+    const passo = passoSegnali(chiesti.current.regola, regola, ids, chiesti.current.ids);
+    // ⚠️ L'AZZERAMENTO RESTA, ma solo dove serviva davvero: cambiata la regola,
+    // un verdetto vecchio è peggio di nessun verdetto. Quando invece l'elenco
+    // si è soltanto allungato, le righe già a schermo tengono la loro pastiglia.
+    if (passo.azzera) { setSignals(null); chiesti.current = { regola, ids: new Set() }; }
+    else chiesti.current = { regola, ids: chiesti.current.ids };
+
+    if (!passo.daInterrogare.length) {
+      // Nessun id da chiedere: con la regola nuova la mappa è vuota (e non
+      // `null`, che significa «non lo so»); altrimenti non si tocca niente —
+      // un `setSignals` inutile è una mappa nuova e un altro giro di render.
+      if (passo.azzera) setSignals(new Map());
+      return;
+    }
+    if (!legalName) { setSignals(new Map()); return; }
+
+    documentHubService.trustSignals(companyId, passo.daInterrogare, { legalName, memberSurnames: surnames })
+      .then((m) => {
+        if (!active) return;
+        // Gli id si segnano come chiesti SOLO qui: se la richiesta viene
+        // abbandonata a metà, l'esecuzione successiva deve poterli richiedere.
+        for (const id of passo.daInterrogare) chiesti.current.ids.add(id);
+        setSignals((prec) => (prec ? new Map([...prec, ...m]) : m));
+      })
+      // Un guasto sull'ALLUNGAMENTO non porta via le righe già giudicate: si
+      // resta senza indicatore sulle nuove, che è l'assenza già dichiarata qui
+      // sopra, non un segno.
+      .catch(() => { if (active && passo.azzera) setSignals(null); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId, idsKey, legalName, surnames]);
+  }, [regola, idsKey]);
 
   return signals;
 }

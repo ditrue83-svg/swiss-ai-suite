@@ -21,8 +21,8 @@
 import {
   CATEGORIES, DOCUMENTS_PAGE_SIZE, MAX_QUERY_LENGTH, SORTS, SOURCES, STATES,
   buildDocumentStats, filtersFromParams, findExistingTag, hasActiveFilters, needsAttention,
-  normalizeTagName, paramsFromFilters, rowMarks, sameTagName, splitSnippet, stateOf,
-  toListArgs,
+  normalizeTagName, paramsFromFilters, passoSegnali, rowMarks, sameTagName, splitSnippet,
+  stateOf, toListArgs,
 } from '../src/features/documents/documentModel';
 // La logica pura del termine vive col componente che la rende: si prova qui
 // perché è il Document Hub il primo posto dove una data sbagliata costa.
@@ -1484,6 +1484,134 @@ section('16. Il guardiano: nessuna schermata mostra il livello grezzo');
   const indicatore = leggi('src/features/documents/TrustIndicator.tsx');
   ok(/ConfidenceBadge\s+level=\{verdict\.level/.test(indicatore),
     'CONTROPROVA: TrustIndicator mostra il livello del VERDETTO — il lettore legge davvero');
+}
+
+// ===========================================================================
+section('17. Il guardiano: l\'appartenenza della Panoramica è la STESSA lettura della pagina');
+// ===========================================================================
+// ⚠️⚠️ DUE LETTURE PER LO STESSO NUMERO ERANO DUE NUMERI. `ownershipOverview`
+// si leggeva `document_analyses` per conto proprio, con un tetto sulle RIGHE di
+// analisi — e un documento rianalizzato ha più righe, perché nessun unique lo
+// vieta e `persist.ts` accumula. Il tetto poi non viaggiava col risultato:
+// nessun `parziale` nel tipo di ritorno, mentre `stats`, `deadlineKinds` e
+// `listOwnership` lo dichiarano tutti. E la popolazione era un'altra rispetto
+// alla destinazione: si cliccava «12» e se ne trovavano 9.
+//
+// Il servizio importa il client Supabase e non si carica da Node: si leggono i
+// SORGENTI, con la controprova che il lettore legge davvero.
+{
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const hub = senzaCommenti(readFileSync('src/services/documentHubService.ts', 'utf8'));
+  // Il corpo del solo metodo: dalla firma alla chiusura del membro.
+  const corpo = (nome: string) => {
+    const i = hub.indexOf(`async ${nome}(`);
+    if (i < 0) return '';
+    const j = hub.indexOf('\n  },', i);
+    return j < 0 ? hub.slice(i) : hub.slice(i, j);
+  };
+
+  const overview = corpo('ownershipOverview');
+  ok(overview !== '', 'il metodo ownershipOverview esiste ancora e si è potuto isolare',
+    'un lettore che non trova il metodo NON deve uscire verde');
+  ok(/listOwnership\(/.test(overview),
+    'la Panoramica conta l\'appartenenza dalla STESSA listOwnership della pagina d\'arrivo');
+  ok(!/document_analyses/.test(overview),
+    'e non si rilegge document_analyses per conto suo: il tetto era sulle righe di analisi, non sui documenti');
+  ok(/parziale/.test(overview),
+    'il troncamento viaggia col numero: il tipo di ritorno porta `parziale`');
+  ok(!/documentHubService\.get\(/.test(overview),
+    'l\'esempio non costa più un get() intero — nove interrogazioni per un\'etichetta');
+
+  // ⚠️ E NESSUNA TERZA COPIA DELLA REGOLA. `ownershipToConfirm` — il metodo,
+  // non il campo della mappa né la prop della riga — non era chiamato da
+  // nessuna parte e dentro faceva una select su `analysis_corrections`, senza
+  // tetto, il cui risultato non veniva mai usato: `trustSignals` se le rilegge
+  // per conto proprio. `noUnusedLocals` è false, quindi il typecheck non lo
+  // vedeva. Il chiamante vero è `ownershipOverview`.
+  ok(!/async ownershipToConfirm\(/.test(hub),
+    'il metodo morto ownershipToConfirm non è tornato: una query eseguita e buttata');
+  ok(/ownershipToConfirm/.test(hub),
+    'CONTROPROVA: il CAMPO ownershipToConfirm della mappa dei segnali esiste ancora — è un\'altra cosa');
+
+  // CONTROPROVA: la lettura vera sta in listOwnership, e quella sì che legge.
+  const elenco = corpo('listOwnership');
+  ok(/documentHubService\.list\(/.test(elenco) && /OWNERSHIP_LIST_MAX/.test(elenco),
+    'CONTROPROVA: listOwnership legge davvero le due popolazioni da list_documents');
+  ok(/parziale: att\.items\.length < att\.total \|\| arch\.items\.length < arch\.total/.test(elenco),
+    'e dichiara il proprio tetto guardando ENTRAMBE le popolazioni');
+
+  // La Panoramica non può presentare come un fatto ciò che la pagina d'arrivo
+  // dichiara incompleto: la riga esiste, ed esiste nelle tre lingue.
+  const home = senzaCommenti(readFileSync('src/features/dashboard/HomePage.tsx', 'utf8'));
+  ok(/ownership\.parziale/.test(home) && /home\.ownershipPartial/.test(home),
+    'la Panoramica dichiara il tetto accanto al conteggio dell\'appartenenza');
+  for (const [lang, d] of [['it', it.home], ['de', de.home], ['fr', fr.home]] as const) {
+    ok(typeof d.ownershipPartial === 'string' && d.ownershipPartial.trim().length > 0,
+      `${lang}: home.ownershipPartial esiste`);
+  }
+}
+
+// ===========================================================================
+section('18 · «Mostra altri» non porta via i marcatori già a schermo');
+// ===========================================================================
+// ⚠️⚠️ «PIÙ RIGHE» NON È «ALTRE RIGHE». L'effetto dei segnali azzerava la mappa
+// a ogni cambio dell'insieme degli id, e «Mostra altri» ACCODA: le pastiglie
+// «appartenenza da confermare» delle righe già a schermo sparivano e tornavano
+// un istante dopo, senza che su quelle righe fosse cambiato niente.
+// ⚠️ Ma un verdetto è di un documento SOTTO UNA REGOLA — azienda, ragione
+// sociale, cognomi della rubrica entrano nel calcolo (`analysisTrust`): se la
+// regola cambia, ciò che è in mappa è di qualcun altro e va buttato.
+{
+  const R1 = 'azienda-1\u0000Rossi SA\u0000Rossi';
+  const R2 = 'azienda-2\u0000Bianchi SA\u0000Bianchi';
+
+  const primo = passoSegnali(null, R1, ['a', 'b'], new Set());
+  ok(primo.azzera && primo.daInterrogare.join(',') === 'a,b',
+    'la prima volta non c\'è niente in mano: si azzera e si chiede tutto');
+
+  // IL CASO DELL'AUDIT: la stessa interrogazione, una pagina in più.
+  const altri = passoSegnali(R1, R1, ['a', 'b', 'c', 'd'], new Set(['a', 'b']));
+  ok(!altri.azzera,
+    '«Mostra altri» NON azzera: le righe già a schermo tengono la loro pastiglia');
+  ok(altri.daInterrogare.join(',') === 'c,d',
+    'e si chiedono solo gli id nuovi, non di nuovo tutti', altri.daInterrogare.join(','));
+
+  const nulla = passoSegnali(R1, R1, ['a', 'b'], new Set(['a', 'b']));
+  ok(!nulla.azzera && nulla.daInterrogare.length === 0,
+    'stesso insieme, stessa regola: non si chiede niente e non si tocca niente');
+
+  // ⚠️ LE TRE INVALIDAZIONI CHE DEVONO RESTARE AZZERAMENTI TOTALI.
+  const altraRegola = passoSegnali(R1, R2, ['a', 'b'], new Set(['a', 'b']));
+  ok(altraRegola.azzera && altraRegola.daInterrogare.join(',') === 'a,b',
+    'cambiata la regola, la mappa si butta e si richiede TUTTO — anche gli id già visti');
+  for (const [cosa, regola] of [
+    ['l\'azienda', 'azienda-2\u0000Rossi SA\u0000Rossi'],
+    ['la ragione sociale', 'azienda-1\u0000Rossi SAGL\u0000Rossi'],
+    ['un cognome della rubrica', 'azienda-1\u0000Rossi SA\u0000Rossi\u0000Verdi'],
+  ] as const) {
+    ok(passoSegnali(R1, regola, ['a'], new Set(['a'])).azzera,
+      `cambiando ${cosa} il verdetto in mappa non sopravvive`);
+  }
+
+  // Il ramo che l'effetto usa davvero: la pagina passa gli id da interrogare,
+  // non l'insieme intero, e le dipendenze sono CONTENUTI e non identità —
+  // `surnames` è un array nuovo a ogni render finché la rubrica non risponde.
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const pagina = senzaCommenti(readFileSync('src/features/documents/DocumentsPage.tsx', 'utf8'));
+  const effetto = (() => {
+    const i = pagina.indexOf('function useTrustSignals(');
+    const j = pagina.indexOf('\n}', i);
+    return i < 0 ? '' : pagina.slice(i, j);
+  })();
+  ok(effetto !== '', 'useTrustSignals esiste ancora e si è potuto isolare',
+    'un lettore che non trova la funzione NON deve uscire verde');
+  ok(/passoSegnali\(/.test(effetto), 'l\'effetto passa dalla decisione pura');
+  ok(!/^\s*setSignals\(null\);\s*$/m.test(effetto),
+    'e non azzera più a ogni giro: l\'azzeramento è dentro il ramo della regola cambiata');
+  ok(/trustSignals\(companyId, passo\.daInterrogare,/.test(effetto),
+    'si chiedono gli id mancanti, non tutto l\'insieme ogni volta');
+  ok(/\}, \[regola, idsKey\]\)/.test(effetto),
+    'le dipendenze sono due CONTENUTI: `surnames` come array rilanciava l\'effetto a ogni render');
 }
 
 // ===========================================================================

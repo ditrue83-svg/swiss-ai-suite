@@ -45,7 +45,9 @@ import { it } from '../src/i18n/locales/it.ts';
 import { de } from '../src/i18n/locales/de.ts';
 import { fr } from '../src/i18n/locales/fr.ts';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches, type NavItem } from '../src/components/layout/nav.ts';
-import { contaNature, decidiBlocchi, splitOpenTasks } from '../src/features/dashboard/overviewBlocks.ts';
+import {
+  contaNature, decidiBlocchi, fraseCatalogo, rigaDate, splitOpenTasks, type ContoNature,
+} from '../src/features/dashboard/overviewBlocks.ts';
 import { GLYPH_NAMES, type MarkGlyphName } from '../src/components/ui/MarkGlyph.tsx';
 import { PROVENANCE_KINDS } from '../src/components/ui/ProvenanceMark.tsx';
 import { CONFIDENCE_LEVELS } from '../src/components/ui/ConfidenceBadge.tsx';
@@ -56,7 +58,8 @@ import { APPOINTMENT_STATES, appointmentState } from '../src/components/ui/Appoi
 // ⚠️ DUE PORTE PER LA STESSA FUNZIONE, di proposito: quella del modulo
 // condiviso e quella da cui la prendono le Attività e la Panoramica. Se un
 // giorno la seconda smettesse di essere la prima, la sezione 17 lo dice.
-import { calendarDaysUntil } from '../src/lib/calendarDays.ts';
+import { calendarDaysUntil, giornoLocale } from '../src/lib/calendarDays.ts';
+import { formatDate, formatDateTime } from '../src/lib/format.ts';
 import { calendarDaysUntil as calendarDaysUntilTasks } from '../src/features/tasks/taskFormat.ts';
 import { TASK_STATES } from '../src/components/ui/StatusMark.tsx';
 import { PRIORITY_LEVELS } from '../src/components/ui/PriorityMark.tsx';
@@ -2452,6 +2455,70 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
     (() => { const c = contaNature(['term', 'event', 'reference', 'none', 'boh', null]);
       return c.termini === 1 && c.nonObbliganti === 2 && c.nonRegistrate === 3; })());
 
+  // (b-bis) LA RIGA DELLE DATE: il numero che accompagna una ripartizione è
+  // quello su cui la ripartizione è stata fatta, e una negazione vale solo
+  // sull'insieme che si è guardato.
+  check('contaNature dichiara SU QUANTE righe ha contato, e le tre voci sommano lì',
+    (() => { const c = contaNature(['term', 'event', null]);
+      return c.lette === 3 && c.termini + c.nonObbliganti + c.nonRegistrate === c.lette; })());
+
+  // Il caso della produzione: 2 date, entrambe lette, nessun termine. La frase
+  // nega sul TOTALE perché il totale è tutto ciò che c'è — e lì è vero.
+  const intero = rigaDate({ ...contaNature([null, null]), totale: 2, parziale: false });
+  check('insieme intero: la frase nega sul totale, e non c\'è niente da dichiarare',
+    intero.frase === 'nessunTermine' && intero.n === 2 && !intero.scarto);
+
+  // ⚠️ IL CASO DELL'AUDIT: 250 date rilevate, 200 lette, la ripartizione fa 200.
+  const miste = rigaDate({
+    totale: 250, lette: 200, termini: 40, nonObbliganti: 90, nonRegistrate: 70, parziale: true,
+  });
+  check('250 date con 200 lette: la riga porta le 200 su cui la somma torna, non le 250',
+    miste.frase === 'miste' && miste.n === 200 && miste.n === 40 + 90 + 70,
+    `n=${miste.n} contro una somma di ${40 + 90 + 70}`);
+  check('e lo scarto si dichiara sotto, coi due numeri',
+    miste.scarto && miste.tot === 250);
+
+  // ⚠️⚠️ L'AFFERMAZIONE CHE POTEVA ESSERE FALSA: zero termini FRA LE LETTE non
+  // è «nessun termine»: un termine può stare fra le 50 date non guardate.
+  const negazione = rigaDate({
+    totale: 250, lette: 200, termini: 0, nonObbliganti: 120, nonRegistrate: 80, parziale: true,
+  });
+  check('zero termini su un conteggio parziale NON diventa «nessuno su 250»',
+    negazione.frase === 'nessunTermineFraLette' && negazione.n === 200 && negazione.tot === 250,
+    negazione.frase);
+  check('quella frase lo scarto se lo dichiara da sé: non si ripete sotto',
+    !negazione.scarto);
+
+  // La regola in una riga sola: quando il tetto morde, il numero della frase è
+  // SEMPRE quello letto — la somma delle nature non è mai presentata come il
+  // totale, in nessuno dei due rami.
+  const parziali: (ContoNature & { parziale: boolean })[] = [
+    { totale: 9, lette: 4, termini: 1, nonObbliganti: 1, nonRegistrate: 2, parziale: true },
+    { totale: 9, lette: 4, termini: 0, nonObbliganti: 1, nonRegistrate: 3, parziale: true },
+  ];
+  check('con conteggio parziale nessun ramo presenta la somma delle nature come il totale',
+    parziali.every((i) => { const r = rigaDate(i); return r.n === i.lette && r.n !== i.totale; }));
+
+  // Le frasi nuove esistono in tutte e tre le lingue, coi due segnaposto, e la
+  // pagina le usa: una chiave scritta e mai resa non dichiara niente.
+  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+    for (const k of ['datesPartial', 'datesNoTermPartial'] as const) {
+      const testo = d[k];
+      check(`${lang}: home.${k} esiste e porta i due numeri`,
+        typeof testo === 'string' && testo.includes('{n}') && testo.includes('{tot}'), testo);
+    }
+  }
+
+  {
+    const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    const pagina = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8'));
+    check('la Panoramica rende le due frasi nuove',
+      pagina.includes('home.datesPartial') && pagina.includes('home.datesNoTermPartial'));
+    check('e la riga delle date passa da rigaDate, non dai campi grezzi',
+      /rigaDate\(/.test(pagina) && !/n: data\.nature\.totale/.test(pagina),
+      'il totale esatto e le nature lette sono due insiemi: chi sceglie il numero è la funzione pura');
+  }
+
   // (c) La visibilità dei blocchi: compaiono solo con contenuto.
   const zero = {
     ownership: 0, aperte: 0, dateRilevate: 0, daVerificare: 0, fallite: 0,
@@ -2470,6 +2537,249 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
       return b.vuotoOperativo && b.opportunita; })());
   check('con una decisione aperta lo stato vuoto NON compare',
     !decidiBlocchi({ ...zero, ownership: 1 }).vuotoOperativo);
+
+  // ⚠️⚠️ (d) «NON LO SO» NON È «NIENTE DA FARE». Lo stesso `null` serviva due
+  // scopi opposti: nascondere il blocco Decisioni (giusto) e alimentare lo
+  // stato vuoto (falso). Un'azienda senza attività, senza date e senza analisi
+  // problematiche, con la lettura dell'appartenenza andata in timeout, leggeva
+  // «Niente richiede un gesto adesso» mentre un controllo non era stato
+  // eseguito.
+  {
+    const ignoto = decidiBlocchi({ ...zero, ownership: null });
+    check('appartenenza non letta + tutto il resto a zero: lo stato vuoto NON compare',
+      !ignoto.vuotoOperativo);
+    check('e la pagina lo dichiara invece di tacere',
+      ignoto.ownershipIgnota);
+    check('il blocco Decisioni resta comunque nascosto: non si inventa uno zero',
+      !ignoto.decisioni);
+    // La CONTROPROVA: con l'appartenenza LETTA e a zero, lo stato vuoto è
+    // ancora quello di prima — la correzione non l'ha spento in generale.
+    const letto = decidiBlocchi(zero);
+    check('CONTROPROVA: appartenenza letta e a zero, lo stato vuoto compare ancora',
+      letto.vuotoOperativo && !letto.ownershipIgnota);
+  }
+
+  // La frase esiste nelle tre lingue ed è resa: una chiave scritta e mai usata
+  // non dichiara niente.
+  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+    check(`${lang}: home.ownershipUnknown esiste`,
+      typeof d.ownershipUnknown === 'string' && d.ownershipUnknown.trim().length > 0);
+  }
+  check('la Panoramica rende home.ownershipUnknown quando l\'appartenenza è ignota',
+    (() => {
+      const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
+      return pagina.includes('home.ownershipUnknown') && pagina.includes('blocchi.ownershipIgnota');
+    })());
+}
+
+// ---------------------------------------------------------------------------
+section('19. I tetti dichiarati — il numero non lo sceglie il frontend');
+// ⚠️ `useOverview` non si carica da Node (importa i servizi): la costante si
+// legge dal SORGENTE, e il tetto vero dalla migrazione più recente che
+// definisce `list_tasks`. Chiedere alla RPC più di quanto concede non è un
+// numero generoso: è una copertura che la Home dichiara di avere e non ha —
+// con 150 attività aperte, `limit: 200` ne otteneva 100 e la riga scriveva
+// «calcolata sulle prime 100 di 150».
+// ⚠️ I COMMENTI SI TOLGONO PRIMA DI LEGGERE: la nota qui accanto alla costante
+// cita il `least(...)` della migrazione, e un lettore a regex non distingue una
+// riga che fa una cosa da una che la racconta.
+
+{
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const overview = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/useOverview.ts'), 'utf8'));
+  const chiesto = Number(overview.match(/const TASKS_SPLIT_MAX = (\d+);/)?.[1]);
+  check('la costante TASKS_SPLIT_MAX si trova nel sorgente', Number.isFinite(chiesto),
+    'un lettore che non trova niente NON deve uscire verde: se il nome cambia, questo passo è rosso');
+
+  // Il tetto vero: vince l'ULTIMA migrazione che (ri)definisce `list_tasks`.
+  // Oggi è la 0041; una 0050 che lo alzasse sposterebbe questo controllo con sé.
+  const migrazioni = readdirSync(join(root, 'supabase/migrations'))
+    .filter((f) => f.endsWith('.sql')).sort();
+  let concesso = NaN, dove = '';
+  for (const f of migrazioni) {
+    const sql = readFileSync(join(root, 'supabase/migrations', f), 'utf8');
+    // ⚠️ `indexOf` sulla DEFINIZIONE e non `lastIndexOf` sul nome: l'ultima
+    // occorrenza di «function public.list_tasks(» è il `revoke`/`grant` in
+    // fondo al file, dopo il quale non c'è nessun `least(...)` da leggere — e
+    // il lettore usciva a mani vuote credendo di aver guardato.
+    const i = sql.indexOf('create or replace function public.list_tasks(');
+    if (i < 0) continue;
+    const m = sql.slice(i).match(/least\(coalesce\(p_limit,\s*\d+\),\s*(\d+)\)/);
+    if (m) { concesso = Number(m[1]); dove = f; }
+  }
+  check('il tetto di list_tasks si legge dalla migrazione più recente che la definisce',
+    Number.isFinite(concesso), dove || 'nessuna definizione trovata: il lettore sta leggendo a vuoto');
+
+  check(`la Panoramica non chiede più di quanto list_tasks conceda (${chiesto} ≤ ${concesso})`,
+    chiesto <= concesso, `${dove}: least(coalesce(p_limit, …), ${concesso})`);
+
+  // CONTROPROVA del lettore delle migrazioni: il tetto letto è un numero vero e
+  // non uno zero di ripiego che farebbe passare qualunque costante.
+  check('CONTROPROVA: il tetto letto è quello della 0041, cioè 100',
+    concesso === 100 && dove.startsWith('0041'), `${dove} → ${concesso}`);
+}
+
+// ---------------------------------------------------------------------------
+section('20. Il catalogo vuoto non è un catalogo verificato');
+// ⚠️⚠️ `verified === programs` è vero anche con entrambi a ZERO, e il blocco
+// Opportunità si accende pure a catalogo vuoto — basta una pratica aperta o un
+// progetto attivo. Ne usciva «0 programmi in banca dati, verificati».
+
+{
+  check('catalogo vuoto: la frase dice che è vuoto, non che è tutto verificato',
+    fraseCatalogo({ programs: 0, verified: 0 }) === 'vuoto',
+    fraseCatalogo({ programs: 0, verified: 0 }));
+  check('sette su sette resta «tutti verificati» — la correzione non ha spento il caso vero',
+    fraseCatalogo({ programs: 7, verified: 7 }) === 'tuttiVerificati');
+  check('sette su tre è «in parte»',
+    fraseCatalogo({ programs: 7, verified: 3 }) === 'inParte');
+  check('e «non ho potuto guardare» resta distinto da «ho guardato e non c\'era niente»',
+    fraseCatalogo(null) === 'nonLeggibile');
+  // Il caso limite che l'uguaglianza da sola non distingue: zero programmi ma
+  // un numero di verificati assurdo non deve comunque diventare un vanto.
+  check('zero programmi: la frase è «vuoto» qualunque cosa dica il verificato',
+    fraseCatalogo({ programs: 0, verified: 3 }) === 'vuoto');
+
+  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+    check(`${lang}: home.catalogEmpty esiste`,
+      typeof d.catalogEmpty === 'string' && d.catalogEmpty.trim().length > 0);
+  }
+  {
+    const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
+    check('la Panoramica rende home.catalogEmpty e passa da fraseCatalogo',
+      pagina.includes('home.catalogEmpty') && /fraseCatalogo\(/.test(pagina));
+    check('e non decide più in linea con l\'uguaglianza fra i due conteggi',
+      !/catalogo\.verified === catalogo\.programs/.test(pagina));
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('21. Un guasto di un riquadro non porta giù la Panoramica intera');
+// ⚠️⚠️ `catalogState` e `assessmentCount` tornano `null` sul guasto — è
+// dichiarato in `OverviewData` e il blocco lo dice a schermo — mentre `summary`
+// LANCIA (`fail(error)`), e non era avvolta da nessun `.catch`: una `Promise.all`
+// che rifiuta porta giù tutto, e la Panoramica finiva in ErrorState per un
+// guasto di `subsidy_home_summary`. Il ramo `home.summaryUnknown`, scritto e
+// tradotto apposta, era irraggiungibile.
+//
+// Il guardiano non guarda un solo nome: pretende che OGNI lettura degli
+// incentivi fatta dalla Panoramica o non possa rifiutare, o sia avvolta.
+
+{
+  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const overview = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/useOverview.ts'), 'utf8'));
+  const servizio = senzaCommenti(readFileSync(join(root, 'src/services/incentivesService.ts'), 'utf8'));
+
+  // Il corpo di un metodo del servizio, dalla firma alla chiusura del membro.
+  const corpoServizio = (nome: string) => {
+    const i = servizio.indexOf(`async ${nome}(`);
+    if (i < 0) return null;
+    const j = servizio.indexOf('\n  },', i);
+    return j < 0 ? servizio.slice(i) : servizio.slice(i, j);
+  };
+  // Può rifiutare? Non lo dice il TIPO — `summary` è dichiarata
+  // `Promise<IncentiveSummary | null>` e lancia lo stesso — lo dice il corpo.
+  const puoLanciare = (nome: string) => {
+    const c = corpoServizio(nome);
+    return c === null ? null : /\bfail\(|\bthrow\b/.test(c);
+  };
+
+  // Ogni lettura degli incentivi che la Panoramica fa, con o senza `.catch`.
+  const chiamate = [...overview.matchAll(/incentivesService\.(\w+)\([^\n]*/g)]
+    .map((m) => ({ nome: m[1], riga: m[0], avvolta: /\.catch\(/.test(m[0]) }));
+  check('le letture degli incentivi della Panoramica si trovano nel sorgente',
+    chiamate.length >= 3, `trovate: ${chiamate.map((c) => c.nome).join(', ') || 'nessuna'}`);
+
+  const scoperte = chiamate.filter((c) => puoLanciare(c.nome) === true && !c.avvolta);
+  check('nessuna lettura che può rifiutare è lasciata scoperta dentro la Promise.all',
+    scoperte.length === 0,
+    scoperte.map((c) => `${c.nome} lancia e non è avvolta`).join('; '));
+
+  const ignote = chiamate.filter((c) => puoLanciare(c.nome) === null);
+  check('e ogni metodo chiamato si è potuto ritrovare nel servizio',
+    ignote.length === 0, ignote.map((c) => c.nome).join(', '));
+
+  // CONTROPROVE: il lettore deve saper distinguere le due specie, o direbbe
+  // «tutto a posto» anche su un servizio che lancia dappertutto.
+  check('CONTROPROVA: il lettore vede che summary PUÒ lanciare',
+    puoLanciare('summary') === true);
+  check('CONTROPROVA: e che catalogState e assessmentCount NO',
+    puoLanciare('catalogState') === false && puoLanciare('assessmentCount') === false);
+  check('e summary è quella avvolta dal .catch nella Panoramica',
+    chiamate.some((c) => c.nome === 'summary' && c.avvolta));
+
+  // Il ramo che il lancio teneva irraggiungibile esiste, è tradotto, ed è reso.
+  const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
+  check('la Panoramica rende home.summaryUnknown quando i numeri non ci sono',
+    pagina.includes('home.summaryUnknown'));
+  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+    check(`${lang}: home.summaryUnknown esiste`,
+      typeof d.summaryUnknown === 'string' && d.summaryUnknown.trim().length > 0);
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('22. Una data pura si formatta al suo giorno, in qualunque fuso');
+// ⚠️⚠️ L'ULTIMO RESIDUO DELLA FAMIGLIA CHIUSA IL 2026-08-19. `new Date(
+// '2026-08-20')` è mezzanotte UTC, e `toLocaleDateString` la rilegge nel fuso
+// di chi guarda: a ovest di Greenwich la data mostrata scalava di un giorno.
+// In Svizzera non si vede — è il motivo per cui è rimasto — ed è esercitato dal
+// codice nuovo della Panoramica, che formatta `dueDate` e `appointmentDate`,
+// due colonne `date`.
+// ⚠️ Lo schema del fuso è quello della sezione 17: salva, imposta, e `finally`
+// ripristina — le sezioni che seguono non ereditano un ambiente piegato.
+
+{
+  const tzOriginale = process.env.TZ;
+  const rendi = (tz: string, valore: string) => { process.env.TZ = tz; return formatDate(valore); };
+  try {
+    // La CONTROPROVA prima di tutto: se il fuso non morde in questo processo,
+    // le prove qui sotto sarebbero verdi senza provare niente.
+    process.env.TZ = 'America/Los_Angeles';
+    check('CONTROPROVA: il fuso simulato morde davvero, e la costruzione ingenua sbaglia',
+      new Date().getTimezoneOffset() > 0 && new Date('2026-08-20').getDate() === 19,
+      `offset=${new Date().getTimezoneOffset()} giorno=${new Date('2026-08-20').getDate()}`);
+
+    const ovest = rendi('America/Los_Angeles', '2026-08-20');
+    const est = rendi('Europe/Zurich', '2026-08-20');
+    const estremo = rendi('Pacific/Kiritimati', '2026-08-20');
+    check('la stessa data pura dà lo stesso giorno a UTC-7, a UTC+2 e a UTC+14',
+      ovest === est && est === estremo, `${ovest} · ${est} · ${estremo}`);
+    check('ed è il giorno scritto nel dato, non quello accanto',
+      est === '20.08.2026', est);
+
+    // Un ISTANTE non si tocca: convertirlo al giorno di chi guarda è giusto, e
+    // una correzione che lo appiattisse sarebbe il difetto opposto.
+    process.env.TZ = 'America/Los_Angeles';
+    check('un istante completo resta un istante: a UTC-7 le 01:00 UTC sono il giorno prima',
+      formatDate('2026-08-20T01:00:00Z') === '19.08.2026',
+      formatDate('2026-08-20T01:00:00Z'));
+
+    // Una data che non esiste non diventa una data plausibile: `new Date(2026,
+    // 1, 31)` traboccherebbe al 3 marzo.
+    process.env.TZ = 'Europe/Zurich';
+    check('il 31 febbraio non diventa il 3 marzo: resta illeggibile',
+      formatDate('2026-02-31') === '—', formatDate('2026-02-31'));
+    check('e un valore assente o illeggibile resta «—»',
+      formatDate(null) === '—' && formatDate('non-una-data') === '—');
+
+    // Una data pura NON ha un'ora, e `formatDateTime` non ne inventa una.
+    check('formatDateTime su una data pura mostra il giorno, senza un orario inventato',
+      formatDateTime('2026-08-20') === '20.08.2026', formatDateTime('2026-08-20'));
+    check('mentre su un istante continua a dare data E ora',
+      /^\d{2}\.\d{2}\.\d{4},? \d{2}:\d{2}$/.test(formatDateTime('2026-08-20T12:34:00Z')),
+      formatDateTime('2026-08-20T12:34:00Z'));
+  } finally {
+    if (tzOriginale === undefined) delete process.env.TZ; else process.env.TZ = tzOriginale;
+  }
+
+  // ⚠️ NESSUNA QUINTA COPIA DELLA REGEX. Il riconoscitore sta in
+  // `calendarDays`, il modulo nato per questo difetto: `format.ts` lo importa
+  // invece di riscriverselo, come già fanno i tre punti della sezione 17.
+  const fmt = readFileSync(join(root, 'src/lib/format.ts'), 'utf8');
+  check('format.ts non si è riscritto il riconoscitore in casa',
+    /from '\.\/calendarDays'/.test(fmt) && !/\\d\{4\}/.test(fmt.replace(/\/\*[\s\S]*?\*\//g, '')),
+    'la data pura ha già quattro regex in linea nel frontend: questa sarebbe la quinta');
 }
 
 // ---------------------------------------------------------------------------

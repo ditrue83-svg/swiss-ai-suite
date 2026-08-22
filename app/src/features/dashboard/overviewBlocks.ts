@@ -88,7 +88,15 @@ export function splitOpenTasks(rows: TaskDateFields[], total: number, oggi: stri
  * che è un'altra affermazione. (Stessa tavola di `deadlineNature.ts`.)
  */
 export interface ContoNature {
+  /** Quante date esistono in tutto: numero ESATTO, dalla funzione finestra. */
   totale: number;
+  /**
+   * Su quante date è calcolata la ripartizione qui sotto. Le tre voci
+   * sommano SEMPRE a questo numero, mai a `totale`: le nature si contano
+   * sulle righe lette (`DATE_MAX_DOCUMENTS` per popolazione), il totale no.
+   * Stesso mestiere di `TaskSplit.lette`.
+   */
+  lette: number;
   termini: number;
   nonObbliganti: number;
   nonRegistrate: number;
@@ -101,7 +109,48 @@ export function contaNature(kinds: readonly (string | null)[]): ContoNature {
     else if (k === 'event' || k === 'reference') nonObbliganti++;
     else nonRegistrate++;
   }
-  return { totale: kinds.length, termini, nonObbliganti, nonRegistrate };
+  return { totale: kinds.length, lette: kinds.length, termini, nonObbliganti, nonRegistrate };
+}
+
+/**
+ * QUALE FRASE DICE LA RIGA DELLE DATE, e con quali numeri.
+ *
+ * ⚠️⚠️ LE NATURE E IL TOTALE NON CONTANO LO STESSO INSIEME. Il totale è esatto
+ * (funzione finestra di `list_documents`); le nature stanno sulle sole righe
+ * lette. Metterli sulla stessa riga faceva scrivere, con 250 documenti datati,
+ * «250 date: 40 termini, 90 che non obbligano, 70 di natura non registrata» —
+ * che fa 200. Il numero che accompagna una ripartizione è quello su cui la
+ * ripartizione è stata fatta: `lette`, mai `totale`.
+ *
+ * ⚠️⚠️ E «nessuna riconosciuta come termine» detto sul TOTALE, quando il tetto
+ * ha morso, è un'affermazione che può essere FALSA: un termine può stare fra
+ * le 50 date non lette. Non è un numero impreciso, è una negazione su un
+ * insieme che non si è guardato. Quando il conteggio è parziale la frase
+ * cambia: dichiara l'insieme guardato invece di negare su quello intero.
+ */
+export type FraseDate = 'nessunTermine' | 'nessunTermineFraLette' | 'miste';
+
+export interface RigaDate {
+  frase: FraseDate;
+  /** Il numero che la frase porta: sempre l'insieme su cui è vera. */
+  n: number;
+  /** Quante ne esistono in tutto — serve solo alle frasi che lo dichiarano. */
+  tot: number;
+  /**
+   * true quando sotto la riga va la dichiarazione dello scarto, come già si fa
+   * per le attività. Nel ramo `nessunTermineFraLette` è false: quella frase lo
+   * scarto se lo dichiara da sé, e ripeterlo sarebbe la stessa cosa due volte.
+   */
+  scarto: boolean;
+}
+
+export function rigaDate(n: ContoNature & { parziale: boolean }): RigaDate {
+  if (n.termini > 0) {
+    return { frase: 'miste', n: n.lette, tot: n.totale, scarto: n.parziale };
+  }
+  return n.parziale
+    ? { frase: 'nessunTermineFraLette', n: n.lette, tot: n.totale, scarto: false }
+    : { frase: 'nessunTermine', n: n.totale, tot: n.totale, scarto: false };
 }
 
 /** I due totali di uno stato documento, uno per popolazione. La somma è il
@@ -128,6 +177,29 @@ export const totaleConto = (c: ContoDocumenti): number => c.attivi + c.archiviat
  * esiste davvero nel prodotto è descrivere un progetto, e il blocco porta lì.
  * Un pulsante che chiama una funzione non chiamabile è una funzione finta.
  */
+/**
+ * Che cosa dice la PRIMA riga del blocco Opportunità, sul catalogo condiviso.
+ *
+ * ⚠️⚠️ IL CASO VUOTO VIENE PRIMA DELL'UGUAGLIANZA. `verified === programs` è
+ * vero anche con entrambi a zero, e il blocco si accende pure a catalogo vuoto
+ * — basta una pratica aperta o un progetto attivo. Ne usciva «0 programmi in
+ * banca dati, verificati»: un vanto su un insieme che non esiste, cioè la
+ * stessa confusione fra «niente da segnalare» e «non ho niente» che questa
+ * pagina combatte dappertutto.
+ *
+ * `nonLeggibile` (catalogo `null`) resta distinto da `vuoto`: «non ho potuto
+ * guardare» e «ho guardato e non c'era niente» sono due frasi diverse.
+ */
+export type FraseCatalogo = 'nonLeggibile' | 'vuoto' | 'tuttiVerificati' | 'inParte';
+
+export function fraseCatalogo(
+  catalogo: { programs: number; verified: number } | null,
+): FraseCatalogo {
+  if (catalogo === null) return 'nonLeggibile';
+  if (catalogo.programs === 0) return 'vuoto';
+  return catalogo.verified === catalogo.programs ? 'tuttiVerificati' : 'inParte';
+}
+
 export type StatoValutazione = 'mai-eseguita' | 'eseguita' | 'non-misurabile';
 
 export function statoValutazione(assessments: number | null): StatoValutazione {
@@ -161,12 +233,26 @@ export interface Blocchi {
   daFare: boolean;
   sistema: boolean;
   opportunita: boolean;
+  /**
+   * L'appartenenza NON si è potuta leggere. Il blocco Decisioni resta
+   * nascosto — non si inventa un conteggio — ma l'assenza si dichiara, come
+   * fa già `home.assessUnknown` per la valutazione degli incentivi.
+   */
+  ownershipIgnota: boolean;
   /** Il riquadro «cosa è stato controllato»: quando il lavoro operativo è a
    *  zero, la pagina dice cosa ha guardato e quando — non «tutto a posto». */
   vuotoOperativo: boolean;
 }
 
 export function decidiBlocchi(i: BlocchiInput): Blocchi {
+  // ⚠️⚠️ DUE MESTIERI PER LO STESSO `null`, E NON SI COLLASSANO INSIEME.
+  // Per NASCONDERE il blocco Decisioni, «non lo so» vale come zero: un blocco
+  // che dicesse «0 documenti da confermare» inventerebbe un fatto.
+  // Per lo stato VUOTO no: lì lo stesso zero diventa «niente richiede un gesto
+  // adesso», e un'azienda senza attività, senza date e senza analisi
+  // problematiche la cui lettura dell'appartenenza fosse andata in timeout se
+  // lo sentiva dire mentre un controllo non era stato eseguito.
+  const ownershipIgnota = i.ownership === null;
   const decisioni = (i.ownership ?? 0) > 0;
   const daFare = i.aperte > 0 || i.dateRilevate > 0;
   const sistema = i.daVerificare > 0 || i.fallite > 0 || i.maiAnalizzati > 0;
@@ -180,6 +266,7 @@ export function decidiBlocchi(i: BlocchiInput): Blocchi {
     daFare,
     sistema,
     opportunita,
-    vuotoOperativo: !decisioni && !daFare && !sistema,
+    ownershipIgnota,
+    vuotoOperativo: !decisioni && !daFare && !sistema && !ownershipIgnota,
   };
 }
