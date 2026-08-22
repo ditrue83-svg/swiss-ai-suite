@@ -1052,6 +1052,9 @@ export const de: Dictionary = {
     emptyTitle: 'Nichts offen',
     emptyChecked: 'Geprüfte Dokumente: {docs} (einschließlich archivierter) · offene Aufgaben: {tasks}. Nichts erfordert im Moment eine Handlung.',
     footPopulation: 'Diese Seite zählt alle Dokumente des Unternehmens, archivierte eingeschlossen.',
+    footNonBindingOne: '1 erkanntes Datum verpflichtet das Unternehmen nicht',
+    footNonBindingMany: '{n} erkannte Daten verpflichten das Unternehmen nicht',
+    footNonBindingArchived: '(davon {n} bei den archivierten, die die Zielliste nicht zeigt)',
     footUpdated: 'Zuletzt aktualisiert: {time}.',
   },
   // ---- Druck / PDF-Export --------------------------------------------------

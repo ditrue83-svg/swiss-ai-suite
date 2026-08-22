@@ -1042,6 +1042,9 @@ export const fr: Dictionary = {
     emptyTitle: 'Rien en suspens',
     emptyChecked: 'Documents contrôlés : {docs} (archives comprises) · tâches ouvertes : {tasks}. Rien ne demande un geste pour le moment.',
     footPopulation: 'Cette page compte tous les documents de l’entreprise, archivés compris.',
+    footNonBindingOne: '1 date relevée sans obligation pour l’entreprise',
+    footNonBindingMany: '{n} dates relevées sans obligation pour l’entreprise',
+    footNonBindingArchived: '(dont {n} parmi les archivés, que la liste d’arrivée n’affiche pas)',
     footUpdated: 'Dernière mise à jour : {time}.',
   },
   // ---- Impression / export PDF ---------------------------------------------

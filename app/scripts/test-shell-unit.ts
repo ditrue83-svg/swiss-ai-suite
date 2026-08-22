@@ -2682,6 +2682,8 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
     datesSplitPartial: ['{n}', '{tot}'],
     termsMoreOne: ['{n}'],
     termsMoreMany: ['{n}'],
+    footNonBindingMany: ['{n}'],
+    footNonBindingArchived: ['{n}'],
   };
   for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
     for (const [k, attesi] of Object.entries(SEGNAPOSTO)) {
@@ -2712,6 +2714,13 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
       return pagina.slice(da, a < 0 ? undefined : a);
     };
     const rigaCon = (ago: string) => pagina.split('\n').filter((r) => r.includes(ago));
+    // Un `<Link>` può stare su tre righe: la domanda «questo numero è
+    // cliccabile?» si fa sul PEZZO fra l'apertura e la chiusura, non sulla riga.
+    const dentroUnLink = (corpo: string, ago: string) =>
+      corpo.split('<Link').slice(1).some((pezzo) => {
+        const fine = pezzo.indexOf('</Link>');
+        return fine >= 0 && pezzo.slice(0, fine).includes(ago);
+      });
 
     check('la Panoramica rende i termini come VOCI, con giorno e titolo',
       pagina.includes('home.termItem') && /termini\(/.test(pagina));
@@ -2736,10 +2745,52 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
       (corpoDi('BloccoSistema').match(/<RigaDateIgnote\b/g) ?? []).length === 2
       && corpoDi('BloccoSistema').includes('home.popActive')
       && corpoDi('BloccoSistema').includes('home.popArchived'));
-    check('le due dichiarazioni dei tetti sono rese: quella dei termini e quella delle nature',
-      pagina.includes('home.termsPartial') && pagina.includes('home.datesSplitPartial'));
+    // ⚠️⚠️ UN TETTO CHE SMETTE DI DICHIARARSI QUANDO MORDE è la classe di
+    // difetto che questa pagina è nata per togliere: una marcatura che sparisce
+    // proprio nel momento in cui serve. Il conteggio resta a schermo, sembra
+    // intero, e non lo è — «calcolata sulle prime 100 di 150» diventa «150».
+    // Misurato il 2026-08-20: togliere la riga di `tasksSplitPartial` o quella
+    // di `ownershipPartial` lasciava TUTTA la suite verde. Ogni dichiarazione
+    // va cercata nel CORPO della funzione che la possiede, e insieme alla
+    // condizione che la accende: una senza l'altra è metà guardia.
+    //
+    // ⚠️ E il letterale qui è lecito perché questo check ASSERISCE che il
+    // prodotto lo usa: se la pagina smette di renderlo, questa riga è rossa
+    // prima che il rilevatore di chiavi orfane possa tacere. Un letterale in un
+    // banco che NON assicura l'uso sarebbe la macchina che tiene in vita ciò
+    // che dovrebbe segnalare.
+    const TETTI: { chiave: string; funzione: string; condizione: string }[] = [
+      { chiave: 'home.ownershipPartial', funzione: 'BloccoDecisioni', condizione: 'ownership.parziale' },
+      { chiave: 'home.tasksSplitPartial', funzione: 'BloccoDaFare', condizione: 's.parziale' },
+      { chiave: 'home.termsPartial', funzione: 'VociTermini', condizione: 'parziale' },
+      { chiave: 'home.datesSplitPartial', funzione: 'RigaDateIgnote', condizione: 'r.parziale' },
+    ];
+    for (const tetto of TETTI) {
+      const corpo = corpoDi(tetto.funzione);
+      check(`il tetto di ${tetto.chiave} si dichiara dentro ${tetto.funzione}`,
+        corpo.includes(tetto.chiave) && corpo.includes(tetto.condizione),
+        corpo.includes(tetto.chiave) ? `manca la condizione ${tetto.condizione}` : 'la frase non è resa');
+    }
     check('e la divergenza col numero della destinazione si dichiara',
       pagina.includes('home.datesScope') && /destinazionePiuAmpia/.test(pagina));
+    // ⚠️⚠️ LE DATE CHE NON OBBLIGANO NON SPARISCONO, e la ragione è
+    // l'ASIMMETRIA DELL'ERRORE: un evento scambiato per termine mostra un
+    // obbligo falso, visibile e autocorreggente; un TERMINE scambiato per
+    // evento sparisce in silenzio e si scopre tardi. Un conteggio solo, nel
+    // piede, col suo collegamento: non una voce, non un blocco, niente che
+    // chieda un gesto — ma niente silenzio su quella popolazione.
+    {
+      const corpo = corpoDi('OverviewBody');
+      check('il piede dichiara le date che non obbligano, e il numero porta all\'elenco',
+        dentroUnLink(corpo, 'home.footNonBinding'),
+        'un conteggio senza destinazione è un conteggio che l\'utente non può verificare');
+      check('e il conteggio copre le DUE popolazioni, non una',
+        /attivi\.nonObbliganti \+ data\.date\.archiviati\.nonObbliganti/.test(corpo));
+      check('e non tace sulla parte ARCHIVIATA, che la destinazione non mostra',
+        corpo.includes('home.footNonBindingArchived')
+        && corpo.includes('data.date.archiviati.nonObbliganti > 0'));
+    }
+
     check('il blocco Decisioni dichiara il guasto DENTRO DI SÉ, senza una sezione a parte',
       pagina.includes('home.ownershipUnknown')
       && !/blocchi\.ownershipIgnota &&/.test(pagina),

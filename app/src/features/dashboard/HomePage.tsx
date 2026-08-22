@@ -377,7 +377,18 @@ function BloccoOpportunita({ data, companyName }: { data: OverviewData; companyN
 
 function OverviewBody({ data, companyName }: { data: OverviewData; companyName: string }) {
   const t = useT();
+  const tn = useTn();
   const conteggioTermini = termini(data.date.attivi, data.date.archiviati);
+  // ⚠️⚠️ LE DATE CHE NON OBBLIGANO NON SPARISCONO DALLA PAGINA, e la ragione
+  // non è il valore di quelle date: è L'ASIMMETRIA DELL'ERRORE DI
+  // CLASSIFICAZIONE. Un evento scambiato per termine mostra un obbligo falso —
+  // fastidioso, ma visibile e autocorreggente: si apre il documento e si vede.
+  // Un TERMINE scambiato per evento sparisce dalla Home in silenzio, e si
+  // scopre quando è tardi. Il secondo errore costa molto più del primo, quindi
+  // la direzione che lo nasconde non può restare cieca.
+  // Un conteggio solo, verificabile, nel piede: non una voce, non un blocco,
+  // niente che chieda un gesto.
+  const nonObbliganti = data.date.attivi.nonObbliganti + data.date.archiviati.nonObbliganti;
   const blocchi = decidiBlocchi({
     ownership: data.ownership?.count ?? null,
     aperte: data.tasks.aperte,
@@ -426,7 +437,22 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
           quando «da verificare: 0» e «appartenenza: 7» convivevano contando
           due universi diversi. */}
       <div className="footnote" role="contentinfo">
-        {t('home.footPopulation')}{' '}
+        {t('home.footPopulation')}
+        {nonObbliganti > 0 && (
+          <>
+            {' · '}
+            <Link to="/documenti?scadenza=1&ordine=deadline">
+              {tn('home.footNonBinding', nonObbliganti)}
+            </Link>
+            {/* ⚠️ MAI IL SILENZIO SU UNA POPOLAZIONE: il conteggio copre le due,
+                la destinazione ne mostra una. Quando la parte archiviata esiste,
+                la si nomina invece di lasciarla scoprire all'arrivo. */}
+            {data.date.archiviati.nonObbliganti > 0 && (
+              <> {t('home.footNonBindingArchived', { n: data.date.archiviati.nonObbliganti })}</>
+            )}
+          </>
+        )}
+        {' · '}
         {t('home.footUpdated', { time: formatDateTime(data.loadedAt) })}
       </div>
     </>

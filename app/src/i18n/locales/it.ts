@@ -1121,6 +1121,13 @@ export const it = {
     emptyTitle: 'Niente in sospeso',
     emptyChecked: 'Documenti controllati: {docs} (archiviati compresi) · attività aperte: {tasks}. Niente richiede un gesto adesso.',
     footPopulation: 'Questa pagina conta tutti i documenti dell’azienda, archiviati compresi.',
+    // ⚠️ Le date che NON obbligano: un conteggio solo, nel piede, col suo
+    // collegamento. Non sono lavoro e non sono un limite — ma un termine
+    // scambiato per evento sparirebbe in silenzio, e questo lo rende
+    // scopribile. Vedi il commento in HomePage.
+    footNonBindingOne: '1 data rilevata non obbliga l’azienda',
+    footNonBindingMany: '{n} date rilevate non obbligano l’azienda',
+    footNonBindingArchived: '(di cui {n} fra gli archiviati, che l’elenco d’arrivo non mostra)',
     footUpdated: 'Ultimo aggiornamento: {time}.',
   },
   // ---- Stampa / esportazione PDF ------------------------------------------
