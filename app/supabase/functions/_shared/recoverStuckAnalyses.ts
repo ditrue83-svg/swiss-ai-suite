@@ -48,6 +48,48 @@ type ServerClient = { from: (table: string) => any };
  */
 export const STUCK_ANALYSIS_MINUTES = 20;
 
+/**
+ * Gli stati in cui una lettura è DICHIARATAMENTE in corso.
+ *
+ * Una lista sola per le due facce della stessa moneta: qui sotto decide chi va
+ * dichiarato interrotto, in `analisiGiaInCorso` decide chi non va fatto
+ * ripartire. Due elenchi tenuti allineati a mano divergono al primo stato
+ * aggiunto da una parte sola, e la divergenza si vedrebbe come un'analisi
+ * pagata due volte.
+ */
+export const STATI_IN_LAVORAZIONE = ['analyzing', 'extracting', 'processing'] as const;
+
+/**
+ * C'è già una lettura in corso su questo documento?
+ *
+ * ⚠️⚠️ PERCHÉ ESISTE (2026-08-21). Lo stesso PDF di 15 pagine è stato analizzato
+ * DUE volte a 74 secondi di distanza — due chiamate a opus, due righe in
+ * `document_analyses`, credito speso due volte. `analyze-document` leggeva del
+ * documento solo `id, company_id, storage_path, mime_type, file_size`: lo stato
+ * non lo guardava nessuno, e niente rifiutava la seconda partenza.
+ *
+ * ⚠️ LA SOGLIA NON È PRUDENZA, È LA CONTROPARTE DEL RECUPERO. Oltre
+ * `STUCK_ANALYSIS_MINUTES` un documento «in elaborazione» è considerato
+ * interrotto e `recoverStuckAnalyses` lo chiude: da quel momento ripartire è
+ * legittimo e necessario. Sotto quella soglia, ripartire è pagare due volte.
+ * Se le due soglie divergessero nascerebbe una terra di nessuno — o documenti
+ * bloccati per sempre, o doppioni — ed è per questo che la costante è una sola.
+ *
+ * ⚠️ SENZA `updatedAt` SI CONSIDERA IN CORSO. Non è pessimismo: rifiutare costa
+ * un'attesa e un messaggio, ripartire costa una chiamata al modello. Fra i due
+ * errori possibili si sceglie quello che non si paga.
+ */
+export function analisiGiaInCorso(
+  doc: { status: string | null; updatedAt: string | null },
+  now: Date = new Date(),
+): boolean {
+  if (!doc.status) return false;
+  if (!(STATI_IN_LAVORAZIONE as readonly string[]).includes(doc.status)) return false;
+  const iniziata = doc.updatedAt ? Date.parse(doc.updatedAt) : Number.NaN;
+  if (!Number.isFinite(iniziata)) return true;
+  return now.getTime() - iniziata < STUCK_ANALYSIS_MINUTES * 60_000;
+}
+
 /** Quanti documenti al massimo per esecuzione: il tempo è la risorsa scarsa. */
 const BATCH = 25;
 
@@ -71,7 +113,7 @@ export async function recoverStuckAnalyses(sb: ServerClient): Promise<StuckRepor
 
   const { data, error } = await sb.from('documents')
     .select('id, company_id')
-    .in('status', ['analyzing', 'extracting', 'processing'])
+    .in('status', [...STATI_IN_LAVORAZIONE])
     .lt('updated_at', cutoff)
     .order('updated_at', { ascending: true })
     .limit(BATCH);

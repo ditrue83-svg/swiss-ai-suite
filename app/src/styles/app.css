@@ -1165,6 +1165,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ax-callout .co-action { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.2px; margin-top: var(--sp-05); }
 .ax-callout .co-when { font-size: var(--fs-body); color: var(--ink-soft); margin-top: var(--sp-1); }
 .ax-callout .co-when b { color: var(--ink); }
+/* Il cancello dell'appartenenza: il pulsante e il PERCHÉ stanno nella stessa
+   colonna, perché un pulsante spento e muto manda a cercare il guasto altrove.
+   Colonna e non riga: la frase è lunga quanto una riga di testo, e accanto al
+   pulsante spingerebbe il riquadro a capo su ogni schermo stretto. */
+.ax-callout .co-act { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
 
 /* Campo correggibile dell'analisi: una riga per fatto, separata dalla
    precedente da una linea più tenue del bordo scheda (--line-subtle). */

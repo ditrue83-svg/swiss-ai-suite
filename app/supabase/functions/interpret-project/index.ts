@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
     // testo, perché se il budget finisce nel thinking un blocco `text` non
     // esiste. 500 e non 502: a monte hanno risposto benissimo.
     if (msg.stop_reason === 'max_tokens') {
-      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'AI_OUTPUT_TRUNCATED' });
+      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'AI_OUTPUT_TRUNCATED' }, 'utente');
       return json({ error: 'La risposta del modello è stata troncata dal limite di lunghezza.', code: 'AI_OUTPUT_TRUNCATED' }, 500);
     }
 
@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
     // guasti diversi e §12 chiede di poterli distinguere.
     const text = msg.content.find((b) => b.type === 'text' && b.text)?.text ?? '';
     if (!text.trim()) {
-      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'AI_INVALID_OUTPUT' });
+      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'AI_INVALID_OUTPUT' }, 'utente');
       console.error('[interpret] nessun blocco di testo nella risposta');
       return json({ error: 'Il modello non ha restituito alcuna risposta.', code: 'AI_INVALID_OUTPUT' }, 502);
     }
@@ -118,21 +118,21 @@ Deno.serve(async (req: Request) => {
       const sintattico = isModelJsonError(e);
       const code = sintattico ? 'AI_INVALID_OUTPUT' : 'EVIDENCE_VALIDATION_FAILED';
       console.error(`[interpret] output non utilizzabile: ${sintattico ? describeModelJsonFailure(e) : (e as Error).name}`);
-      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code });
+      await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code }, 'utente');
       return json({ error: 'La risposta del modello non è in un formato valido.', code }, 502);
     }
 
     const done = await finalizeAiRequest(sb, slot.logId, {
       status: 'ok', durationMs: Date.now() - started,
       inputTokens: msg.usage?.input_tokens ?? null, outputTokens: msg.usage?.output_tokens ?? null,
-    });
+    }, 'utente');
     if (!done) await logAiRequest(sb, {
       companyId, userId, documentId: null, kind: 'interpret', provider: 'anthropic', model: INTERPRET_MODEL,
       status: 'ok', durationMs: Date.now() - started, inputTokens: msg.usage?.input_tokens ?? null, outputTokens: msg.usage?.output_tokens ?? null,
     });
     return json({ interpretation });
   } catch (e) {
-    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'PROVIDER_ERROR' });
+    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'PROVIDER_ERROR' }, 'utente');
     if (!done) await logAiRequest(sb, { companyId, userId, documentId: null, kind: 'interpret', provider: 'anthropic', model: INTERPRET_MODEL, status: 'error', errorCode: 'PROVIDER_ERROR' });
     console.error('interpret error:', (e as Error)?.name);
     return json({ error: 'Interpretazione non riuscita. Riprova.', code: 'PROVIDER_ERROR' }, 502);

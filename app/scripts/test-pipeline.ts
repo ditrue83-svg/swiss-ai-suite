@@ -80,6 +80,9 @@ async function main() {
   const result = await runAnalysisPipeline(admin as any, createMessage, {
     documentId: doc.id, companyId: companyId as string, userId: A.id,
     extraction, extractionDurationMs: 5, companyContext: CTX, todayIso: '2026-07-24', provider: 'anthropic',
+    // Questa prova gira col service role e senza slot prenotato: si dichiara
+    // 'sistema', che è ciò che quel client può davvero fare.
+    logSb: admin as never, logComeChi: 'sistema',
   });
   check('lingua = fr', result.analysis.language === 'fr', result.analysis.language);
   check('importo 8450 rilevato', result.analysis.amounts.some((m) => Math.round(m.amount) === 8450));

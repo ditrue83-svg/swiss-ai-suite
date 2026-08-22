@@ -17,6 +17,10 @@ import { runCreateFromDocument, type DocumentToTaskDeps } from './documentToTask
 import type { CreateFromDocumentInput, CreateFromDocumentOutcome } from './documentToTask';
 
 export type { CreateFromDocumentInput, CreateFromDocumentOutcome };
+// L'appartenenza si dichiara passando da qui: chi crea un'attività importa un
+// modulo solo, e trova accanto alla funzione anche il tipo che deve compilare.
+export { AppartenenzaInDubbio, appartenenzaDa } from './documentToTask';
+export type { Appartenenza } from './documentToTask';
 
 const REAL_DEPS: DocumentToTaskDeps = {
   createTask: (input) => taskService.create(input),

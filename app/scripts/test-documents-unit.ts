@@ -36,13 +36,20 @@ import {
   analysisTrust, cognomiDaRubrica, ownershipConfirmation, segnoCampo, trustInputFromAnalysis,
   type TrustInput, type TrustVerdict,
 } from '../src/features/documents/analysisTrust';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { aBlocchi, BLOCCO_IN } from '../src/lib/blocchi';
 import {
   etichettaComposta, etichettaDaRigaDocumento, etichettaDocumento,
   nomeFileInformativo, titoloDocumento, titoloMostrabile,
 } from '../src/lib/documentTitle';
-import { documentTaskDraft, runCreateFromDocument } from '../src/features/tasks/documentToTask';
+import {
+  documentTaskDraft, runCreateFromDocument, appartenenzaDa, AppartenenzaInDubbio,
+} from '../src/features/tasks/documentToTask';
+import { motivoAppartenenza } from '../src/features/documents/ownershipReason';
+import {
+  analisiGiaInCorso, STUCK_ANALYSIS_MINUTES, STATI_IN_LAVORAZIONE,
+} from '../supabase/functions/_shared/recoverStuckAnalyses.ts';
+import { finalizeAiRequest } from '../supabase/functions/_shared/persist.ts';
 import type {
   AnalysisUncertainty, ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
   DocumentLinkedTask, DocumentStatsRow, Task,
@@ -452,6 +459,10 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
   const base = {
     companyId: 'co-1', userId: 'u-1', documentId: 'doc-1',
     title: 'Trasmettere il rendiconto IVA',
+    // Le prove di questo blocco parlano di ALTRO: qui l'appartenenza è
+    // verificata, così l'unico cancello che possono incontrare è quello che
+    // stanno misurando. Il cancello ha il suo blocco, più sotto.
+    appartenenza: { stato: 'senza-dubbio' } as const,
   };
 
   // -- i valori EFFETTIVI battono quelli dell'analisi ------------------------
@@ -581,6 +592,72 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
       });
     } catch { sollevato = true; }
     ok(sollevato, 'se l’attività non si crea, l’errore arriva a chi ha premuto');
+  }
+
+  // -- IL CANCELLO DELL'APPARTENENZA ----------------------------------------
+  // ⚠️⚠️ IL CASO REALE del 2026-08-21. Una fattura Sunrise di 15 pagine,
+  // intestata a «Massimo Cavalieri, Rovello 32D, 6942 Savosa» e caricata da
+  // Rossi SA: `valutaAppartenenza` risponde `{doubt: true, via: 'nome'}`. Il
+  // dettaglio del documento disabilitava il pulsante e il commento accanto
+  // dichiarava che quel cancello valeva per «tutti i punti di creazione» — ma
+  // la schermata di Admin AI non lo aveva, e da lì è nata l'attività «Pagare
+  // la fattura» (`source: 'admin_ai'`, 19:37:37). Una regola scritta in una
+  // schermata non la eredita la schermata dopo: adesso sta qui.
+  {
+    let creata = false;
+    let errore: unknown = null;
+    try {
+      await runCreateFromDocument(
+        { ...base, appartenenza: { stato: 'in-dubbio' }, analysis: analisi() },
+        { createTask: async () => { creata = true; return taskFinta('t-12'); },
+          addSteps: async () => undefined },
+      );
+    } catch (e) { errore = e; }
+    ok(errore instanceof AppartenenzaInDubbio,
+      '⚠️ APPARTENENZA IN DUBBIO: la creazione viene RIFIUTATA, e con un errore riconoscibile');
+    ok(!creata,
+      '⚠️⚠️ e il servizio non viene nemmeno chiamato: un’attività creata e poi «annullata» avrebbe già fatto scattare i trigger e lasciato una riga nello storico');
+  }
+
+  {
+    // CONTROPROVA: il cancello non deve chiudersi su tutto, o la funzione
+    // «non crea mai niente» passerebbe la prova qui sopra a pieni voti.
+    let creata = false;
+    const esito = await runCreateFromDocument(
+      { ...base, appartenenza: { stato: 'senza-dubbio' }, analysis: analisi() },
+      { createTask: async () => { creata = true; return taskFinta('t-13'); },
+        addSteps: async () => undefined },
+    );
+    ok(creata && esito.task.id === 't-13',
+      'CONTROPROVA: con l’appartenenza verificata l’attività nasce come prima');
+  }
+
+  {
+    // `non-valutata` NON blocca, ed è una decisione dichiarata: il dettaglio
+    // del documento si comporta già così quando il verdetto non è arrivato.
+    // Se un giorno si volesse bloccare anche qui, è QUESTA riga che deve
+    // diventare rossa — non un comportamento che cambia di nascosto.
+    let creata = false;
+    await runCreateFromDocument(
+      { ...base, appartenenza: { stato: 'non-valutata', perche: 'prova' }, analysis: analisi() },
+      { createTask: async () => { creata = true; return taskFinta('t-14'); },
+        addSteps: async () => undefined },
+    );
+    ok(creata,
+      '«non valutata» non è «in dubbio»: non blocca — e il `perche` obbligatorio lascia il buco scritto invece che invisibile');
+  }
+
+  {
+    // La traduzione dal verdetto: è il punto in cui una schermata può mentire.
+    ok(appartenenzaDa({ unavailable: 'ownership' }, 'x').stato === 'in-dubbio',
+      'il verdetto che sospende per appartenenza diventa «in dubbio»');
+    ok(appartenenzaDa({ unavailable: null }, 'x').stato === 'senza-dubbio',
+      'un verdetto che non sospende diventa «senza dubbio»');
+    const senzaVerdetto = appartenenzaDa(null, 'lettura non riuscita');
+    ok(senzaVerdetto.stato === 'non-valutata',
+      '⚠️ VERDETTO ASSENTE NON È «NESSUN DUBBIO»: è «non lo so ancora», e chiamarlo diversamente sarebbe la dichiarazione falsa che questo cancello esiste per evitare');
+    ok(senzaVerdetto.stato === 'non-valutata' && senzaVerdetto.perche === 'lettura non riuscita',
+      '…e il motivo viaggia con esso: un buco senza ragione scritta non si ritrova più');
   }
 }
 
@@ -1612,6 +1689,240 @@ section('18 · «Mostra altri» non porta via i marcatori già a schermo');
     'si chiedono gli id mancanti, non tutto l\'insieme ogni volta');
   ok(/\}, \[regola, idsKey\]\)/.test(effetto),
     'le dipendenze sono due CONTENUTI: `surnames` come array rilanciava l\'effetto a ogni render');
+}
+
+// ===========================================================================
+section('19. Il guardiano: nessuna schermata si dichiara «senza dubbio» da sé');
+// ===========================================================================
+// ⚠️⚠️ IL LIMITE DEL TIPO, MISURATO. Rendere `appartenenza` obbligatoria
+// costringe ogni punto di creazione a DICHIARARE, ma non a dire il vero: una
+// schermata che scrive `{ stato: 'senza-dubbio' }` a mano compila senza un
+// avviso — provato il 2026-08-22 rimettendo quella riga in ResultView, e il
+// compilatore è rimasto muto. È esattamente la forma del difetto originale: una
+// schermata che decide da sé di non chiedere.
+//
+// Perciò `senza-dubbio` può nascere in UN posto solo, `appartenenzaDa`, che il
+// verdetto lo guarda davvero. Altrove è un letterale vietato.
+//
+// ⚠️ I COMMENTI VANNO TOLTI PRIMA. Una guardia a regex sui sorgenti legge anche
+// ciò che è scritto in un commento: è già successo in questo progetto — una
+// guardia nata rossa per colpa della frase che la spiegava. Qui il commento che
+// spiega il divieto nomina il valore vietato, quindi lo scarto è obbligatorio,
+// non prudenza.
+{
+  const SORGENTI = [
+    'src/features/admin-ai/ResultView.tsx',
+    'src/features/documents/DocumentDetailPage.tsx',
+    'src/features/finance/FinanceDetailPage.tsx',
+  ];
+  /** Via i commenti di blocco e di riga: restano solo le istruzioni. */
+  const senzaCommenti = (t: string): string =>
+    t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+  for (const file of SORGENTI) {
+    const codice = senzaCommenti(readFileSync(file, 'utf8'));
+    ok(!codice.includes("'senza-dubbio'"),
+      `${file} non si dichiara «senza dubbio» da sé: quel valore lo produce solo appartenenzaDa`);
+  }
+
+  // …e la guardia deve poter fallire: se `senzaCommenti` smettesse di
+  // funzionare, o la ricerca guardasse la stringa sbagliata, tutto resterebbe
+  // verde per sempre. Questa è la prova che sa dire di no.
+  const finto = "const a = { stato: 'senza-dubbio' };";
+  ok(senzaCommenti(finto).includes("'senza-dubbio'"),
+    'CONTROPROVA: la guardia riconosce il letterale quando c’è davvero');
+  ok(!senzaCommenti("// qui si parla di 'senza-dubbio' a parole").includes("'senza-dubbio'"),
+    'CONTROPROVA: e NON lo riconosce dentro un commento — il difetto delle guardie a regex di questo progetto');
+
+  // La scala delle ragioni: ogni silenzio porta il suo motivo, e sono motivi
+  // DIVERSI. ⚠️ L'ordine è la parte che si sbaglia: senza documento non si sta
+  // «leggendo», e un guasto di rete non è «il documento non ha un'analisi».
+  {
+    const base = { documentId: 'doc-1', loading: false, error: null, analisi: {} };
+    ok(motivoAppartenenza({ ...base, documentId: null, loading: true }).includes('nessun documento'),
+      '⚠️ senza documento si dice QUELLO, anche mentre una lettura risulta in corso: non si legge ciò che non c’è');
+    ok(motivoAppartenenza({ ...base, loading: true }).includes('in lettura'),
+      'con la lettura in corso lo si dice');
+    // ⚠️⚠️ `analisi: null` INSIEME all'errore, e non è un dettaglio: è la forma
+    // VERA dello stato: `useAsync` sul guasto scrive `data: null`. Con
+    // un'analisi finta accanto all'errore questa riga resta verde anche se le
+    // due condizioni si invertono — provato il 2026-08-22, ed era un verde
+    // falso nato in dieci minuti. Un caso di prova che non riproduce lo stato
+    // reale misura la funzione su un mondo che non esiste.
+    ok(motivoAppartenenza({ ...base, error: 'rete', analisi: null }).includes('non leggibile'),
+      '⚠️ un guasto è un guasto: NON si traveste da «non c’è un’analisi», nemmeno quando la lettura fallita ha lasciato l’analisi vuota');
+    ok(motivoAppartenenza({ ...base, analisi: null }).includes('non ha un’analisi'),
+      'un documento mai analizzato è un fatto suo');
+    ok(motivoAppartenenza(base).includes('verdetto'),
+      'e con l’analisi in mano manca solo il verdetto');
+    const tutti = new Set([
+      motivoAppartenenza({ ...base, documentId: null }),
+      motivoAppartenenza({ ...base, loading: true }),
+      motivoAppartenenza({ ...base, error: 'rete', analisi: null }),
+      motivoAppartenenza({ ...base, analisi: null }),
+      motivoAppartenenza(base),
+    ]);
+    ok(tutti.size === 5,
+      'CONTROPROVA: cinque situazioni, cinque frasi diverse — una scala che dicesse sempre la stessa cosa passerebbe tutte le righe qui sopra');
+  }
+
+  // ⚠️⚠️ L'INVARIANTE FORTE, ed è quella che avrebbe fermato il difetto:
+  // chi crea un'attività da un documento deve PROCURARSI il verdetto, non
+  // limitarsi a passare un valore. Le due strade legittime sono `appartenenzaDa`
+  // (per chi il verdetto ce l'ha già) e `useDocumentOwnership` (per chi ha solo
+  // l'identificativo del documento e deve andarselo a prendere, come Finanze).
+  // Una schermata quarta che importi la creazione e nessuna delle due non ha
+  // modo di sapere quello che dichiara.
+  const CREANO = [
+    'src/features/admin-ai/ResultView.tsx',
+    'src/features/documents/DocumentDetailPage.tsx',
+    'src/features/finance/FinanceDetailPage.tsx',
+  ];
+  for (const file of CREANO) {
+    const codice = senzaCommenti(readFileSync(file, 'utf8'));
+    if (!codice.includes('createTaskFromDocument')) continue;
+    ok(/appartenenzaDa|useDocumentOwnership/.test(codice),
+      `${file} il verdetto se lo procura, non lo inventa`);
+  }
+  // …e l'elenco non deve invecchiare: se nasce un quarto punto di creazione,
+  // questa riga diventa rossa invece di lasciarlo passare in silenzio.
+  // ⚠️ Un CHIAMANTE è chi la IMPORTA: cercare `createTaskFromDocument(` da solo
+  // pesca anche il file che la dichiara, e la guardia nasce rossa su se stessa.
+  // (È nata rossa così, il 2026-08-22, prima di questa riga.)
+  const TUTTI = readdirSync('src/features', { recursive: true, encoding: 'utf8' })
+    .filter((f) => typeof f === 'string' && /\.tsx?$/.test(f))
+    .map((f) => `src/features/${f}`)
+    .filter((f) => {
+      const c = senzaCommenti(readFileSync(f, 'utf8'));
+      return c.includes('createTaskFromDocument') && /from '@\/features\/tasks\/taskFromDocument'/.test(c);
+    });
+  ok(TUTTI.length === CREANO.length,
+    'i punti di creazione sono ancora quelli censiti: uno nuovo va aggiunto a questo elenco e messo sotto la stessa regola',
+    `attesi ${CREANO.length}, trovati ${TUTTI.length}: ${TUTTI.join(', ')}`);
+}
+
+// ===========================================================================
+section('20 · Una lettura per volta: il credito non si paga due volte');
+// ===========================================================================
+// ⚠️⚠️ IL CASO REALE del 2026-08-21. Lo stesso PDF di 15 pagine è stato
+// analizzato DUE volte a 74 secondi di distanza: due chiamate a opus, due righe
+// in `document_analyses`, credito speso due volte. `analyze-document` leggeva
+// del documento `id, company_id, storage_path, mime_type, file_size` e non lo
+// stato: niente rifiutava la seconda partenza.
+{
+  const ORA = new Date('2026-08-21T19:37:00.000Z');
+  const minutiFa = (m: number) => new Date(ORA.getTime() - m * 60_000).toISOString();
+
+  ok(analisiGiaInCorso({ status: 'analyzing', updatedAt: minutiFa(1) }, ORA),
+    '⚠️ una lettura cominciata un minuto fa È in corso: ripartire significa pagare due volte');
+  ok(analisiGiaInCorso({ status: 'extracting', updatedAt: minutiFa(1) }, ORA),
+    'anche l’estrazione è lavorazione: il documento è già in mano a qualcuno');
+
+  ok(!analisiGiaInCorso({ status: 'completed', updatedAt: minutiFa(1) }, ORA),
+    'CONTROPROVA: un documento già analizzato non è «in corso» — la rianalisi resta possibile');
+  ok(!analisiGiaInCorso({ status: 'failed', updatedAt: minutiFa(1) }, ORA),
+    'CONTROPROVA: dopo un guasto si deve poter riprovare SUBITO, o il guasto diventa definitivo');
+  ok(!analisiGiaInCorso({ status: 'uploaded', updatedAt: minutiFa(1) }, ORA),
+    'CONTROPROVA: un documento appena caricato non è in lavorazione');
+
+  // ⚠️ LA SOGLIA È LA CONTROPARTE DEL RECUPERO, non una prudenza: oltre di essa
+  // `recoverStuckAnalyses` dichiara il documento interrotto, e da lì ripartire
+  // è necessario. Se le due divergessero, o si bloccherebbe per sempre o si
+  // pagherebbe due volte.
+  ok(!analisiGiaInCorso({ status: 'analyzing', updatedAt: minutiFa(STUCK_ANALYSIS_MINUTES + 5) }, ORA),
+    '⚠️ oltre la soglia dei venti minuti il documento è INTERROTTO, non in corso: ripartire è legittimo');
+  ok(analisiGiaInCorso({ status: 'analyzing', updatedAt: minutiFa(STUCK_ANALYSIS_MINUTES - 1) }, ORA),
+    '…e un minuto prima della soglia è ancora in corso: le due regole si toccano senza sovrapporsi');
+  ok(!analisiGiaInCorso({ status: 'analyzing', updatedAt: minutiFa(STUCK_ANALYSIS_MINUTES) }, ORA),
+    'sul confine esatto vince il recupero: nessuna terra di nessuno fra le due regole');
+
+  ok(analisiGiaInCorso({ status: 'analyzing', updatedAt: null }, ORA),
+    '⚠️ senza un istante si considera IN CORSO: rifiutare costa un’attesa, ripartire costa una chiamata al modello');
+  ok(!analisiGiaInCorso({ status: null, updatedAt: minutiFa(1) }, ORA),
+    'senza stato non si dichiara niente');
+  ok(analisiGiaInCorso({ status: 'analyzing', updatedAt: 'non-una-data' }, ORA),
+    'e una data illeggibile è come l’assenza di data, non come «vecchia»');
+
+  // ⚠️ La lista degli stati è UNA, condivisa col recupero: se qualcuno ne
+  // aggiungesse uno da una parte sola, le due regole smetterebbero di toccarsi.
+  ok(STATI_IN_LAVORAZIONE.length === 3
+    && STATI_IN_LAVORAZIONE.every((x) => analisiGiaInCorso({ status: x, updatedAt: minutiFa(1) }, ORA)),
+    'ogni stato dichiarato «in lavorazione» fa scattare la guardia: la lista non è decorativa');
+}
+
+// ===========================================================================
+section('21 · Chiudere la riga di quota: la funzione giusta, e la prova che è chiusa');
+// ===========================================================================
+// ⚠️⚠️ IL DIFETTO del 2026-08-21, misurato in produzione: `analysis` fermo a
+// `pending` 4 volte su 6, `inbox_analysis` 18 su 18. Il percorso di SUCCESSO
+// chiudeva la riga col service role e la funzione dell'UTENTE — che pretende
+// `user_id = auth.uid()` — quindi zero righe toccate, nessun errore, e
+// `finalizeAiRequest` (che ritornava `!error`) dichiarava di aver chiuso.
+// Il percorso di ERRORE usava il client dell'utente e funzionava: i guasti si
+// registravano, i successi no, e per questo il difetto è vissuto a lungo.
+{
+  /** Client finto: registra la funzione chiamata e finge la riletta. */
+  function clientDiProva(statoRiletto: string | null, opts: { rpcErrore?: boolean; leggeErrore?: boolean } = {}) {
+    const chiamate: string[] = [];
+    return {
+      chiamate,
+      sb: {
+        rpc: (nome: string) => {
+          chiamate.push(nome);
+          return Promise.resolve({ error: opts.rpcErrore ? { message: 'x' } : null });
+        },
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve(
+                opts.leggeErrore
+                  ? { data: null, error: { message: 'x' } }
+                  : { data: statoRiletto === null ? null : { status: statoRiletto }, error: null },
+              ),
+            }),
+          }),
+        }),
+      } as never,
+    };
+  }
+  const ESITO = { status: 'ok' as const, durationMs: 1 };
+
+  {
+    const c = clientDiProva('ok');
+    const done = await finalizeAiRequest(c.sb, 'log-1', ESITO, 'utente');
+    ok(c.chiamate[0] === 'finalize_ai_request',
+      'chi ha prenotato come UTENTE chiude con la funzione dell’utente');
+    ok(done, '…e la riletta conferma che la riga è chiusa');
+  }
+  {
+    const c = clientDiProva('ok');
+    await finalizeAiRequest(c.sb, 'log-1', ESITO, 'sistema');
+    ok(c.chiamate[0] === 'finalize_ai_request_system',
+      '⚠️ chi ha prenotato come SISTEMA chiude con la gemella `_system`: le due hanno condizioni diverse e nessuna copre l’altra');
+  }
+  {
+    // IL CUORE: l'UPDATE non ha trovato la riga. Prima si diceva «fatto».
+    const c = clientDiProva('pending');
+    const done = await finalizeAiRequest(c.sb, 'log-1', ESITO, 'utente');
+    ok(!done,
+      '⚠️⚠️ se la riga è ancora «pending» la chiusura NON è avvenuta, e lo si dice: è la bugia che ha lasciato 22 righe aperte in produzione');
+  }
+  {
+    const c = clientDiProva(null, { leggeErrore: true });
+    ok(!(await finalizeAiRequest(c.sb, 'log-1', ESITO, 'utente')),
+      'una riletta fallita non è un successo: «non lo so» e «è andata bene» sono due cose diverse');
+  }
+  {
+    const c = clientDiProva('ok', { rpcErrore: true });
+    ok(!(await finalizeAiRequest(c.sb, 'log-1', ESITO, 'utente')),
+      'e un errore della funzione SQL resta un fallimento, senza riletta consolatoria');
+  }
+  {
+    const c = clientDiProva('ok');
+    ok(!(await finalizeAiRequest(c.sb, null, ESITO, 'utente')),
+      'senza uno slot prenotato non c’è niente da chiudere');
+    ok(c.chiamate.length === 0, '…e non si chiama nessuna funzione a vuoto');
+  }
 }
 
 // ===========================================================================

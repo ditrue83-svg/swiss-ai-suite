@@ -35,6 +35,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { financeService } from '@/services/financeService';
 import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
+import { useDocumentOwnership } from '@/features/documents/useDocumentOwnership';
 import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
 import { useMembers } from '@/features/tasks/useMembers';
 import { formatDate } from '@/lib/format';
@@ -46,7 +47,7 @@ import { useDocumentLabel } from '@/i18n/documentLabel';
 import { AskAbout } from '@/features/assistant/AskAbout';
 import {
   FINANCE_HIGH_RISK_FIELDS, financeState, formatDecimal, isCorrectableField, readyBlockers,
-  type FinanceCorrectableField, type FinanceReadyBlocker,
+  stateBadgeKey, type FinanceBadgeKey, type FinanceCorrectableField, type FinanceReadyBlocker,
 } from './financeModel';
 import type {
   FinanceCorrection, FinanceDetail, FinanceExtraction, FinanceItem, FinanceQualityFlag,
@@ -211,6 +212,14 @@ export function FinanceDetailPage() {
     () => financeService.get(id, companyId), [id, companyId],
   );
 
+  // ⚠️ IL CANCELLO DELL'APPARTENENZA, che qui mancava del tutto. Sta PRIMA dei
+  // ritorni anticipati perché è un gancio: l'ordine non può dipendere da come è
+  // andata la lettura. Il documento può non esserci (voce creata a mano) e il
+  // gancio lo regge — «non valutata» col suo motivo, non un blocco.
+  const { dubbia: appartenenzaDubbia, appartenenza } = useDocumentOwnership(
+    data?.item.documentId ?? null,
+  );
+
   const { byId: membersById } = useMembers();
   const [panel, setPanel] = useState<Panel>('data');
   const [comparing, setComparing] = useState(false);
@@ -241,6 +250,7 @@ export function FinanceDetailPage() {
   const detail = data;
   const item = detail.item;
   const state = financeState(item);
+  const badgeKey = stateBadgeKey(item);
   const blockers = readyBlockers(item);
   const archived = !!item.archivedAt;
   const who = item.supplierName || item.merchant || docLabel(item.documentLabel);
@@ -288,6 +298,10 @@ export function FinanceDetailPage() {
         companyId,
         userId: user.id,
         documentId: item.documentId,
+        // Il verdetto vero, da `useDocumentOwnership`: questa pagina non aveva
+        // l'analisi in mano e per un giorno ha potuto dire soltanto «non
+        // valutata». Ora la va a prendere.
+        appartenenza,
         title: docLabel(item.documentLabel),
         authority: item.supplierName ?? item.merchant,
         dueDate: item.dueDate,
@@ -323,9 +337,12 @@ export function FinanceDetailPage() {
           {item.dueDate && <> · <DeadlineMark date={item.dueDate} display={formatDate(item.dueDate)} /></>}
         </div>
         <div className="badge-row">
-          {state === 'to_verify'
+          {/* «Da verificare» è il segno epistemico di famiglia — anche in
+              archivio: la chiave dice la verifica REALE, e un'archiviata mai
+              verificata non si veste da «Verificata». */}
+          {badgeKey === 'needs_review'
             ? <ProvenanceMark kind="toVerify" />
-            : <span className={stateBadgeClass(state)}>{stateBadgeText(state, t, L)}</span>}
+            : <span className={stateBadgeClass(state)}>{stateBadgeText(badgeKey, t, L)}</span>}
           {archived && <Tag>{t('finance.filters.archived')}</Tag>}
           {/* La CAUSA accanto alla pastiglia, come nell'elenco: il codice del
               worker tradotto se noto, grezzo se no (mai una categoria
@@ -363,7 +380,8 @@ export function FinanceDetailPage() {
         <button className="btn" onClick={() => void retry()} disabled={busy || !canRetry}>
           <Icon name="refresh" className="ic-sm" /> {t('finance.detail.retry')}
         </button>
-        <button className="btn" onClick={() => void createTask()} disabled={busy}>
+        <button className="btn" onClick={() => void createTask()}
+          disabled={busy || appartenenzaDubbia}>
           <Icon name="calendar" className="ic-sm" /> {t('finance.detail.createTask')}
         </button>
       </div>
@@ -387,6 +405,11 @@ export function FinanceDetailPage() {
       )}
       {item.reviewStatus !== 'ready' && blockers.length === 0 && (
         <div className="muted-sm mt-8">{t('finance.detail.markReviewedHint')}</div>
+      )}
+      {/* La stessa frase del Document Hub e di Admin AI: la regola è una, e
+          chi la incontra in tre punti diversi deve leggere le stesse parole. */}
+      {appartenenzaDubbia && (
+        <div className="info-box mt-12">{t('documents.ownership.warnGate')}</div>
       )}
       {!canRetry && <div className="muted-sm mt-8">{t('finance.errors.cannotRetry')}</div>}
 
@@ -476,7 +499,7 @@ export function FinanceDetailPage() {
         {panel === 'origin' && <OriginPanel detail={detail} t={t} />}
         {panel === 'tasks' && (
           <TasksPanel detail={detail} t={t} busy={busy} assigneeName={assigneeName}
-            onCreate={() => void createTask()} />
+            ownershipDoubt={appartenenzaDubbia} onCreate={() => void createTask()} />
         )}
         {panel === 'audit' && <AuditPanel detail={detail} t={t} L={L} />}
       </div>
@@ -536,12 +559,13 @@ function stateBadgeClass(state: ReturnType<typeof financeState>): string {
 }
 
 function stateBadgeText(
-  state: ReturnType<typeof financeState>, t: TFunction, L: ReturnType<typeof useLabels>,
+  key: FinanceBadgeKey, t: TFunction, L: ReturnType<typeof useLabels>,
 ): string {
-  if (state === 'failed') return t('finance.row.failed');
-  if (state === 'processing') return t('finance.row.processing');
-  if (state === 'ready' || state === 'archived') return L.financeReview('ready');
-  return L.financeReview('needs_review');
+  if (key === 'failed') return t('finance.row.failed');
+  if (key === 'processing') return t('finance.row.processing');
+  // La chiave di verifica — REALE anche in archivio, da `stateBadgeKey` — ha
+  // la sua frase in `labels.financeReview`.
+  return L.financeReview(key);
 }
 
 // ---------------------------------------------------------------------------
@@ -873,10 +897,13 @@ function OriginPanel({ detail, t }: { detail: FinanceDetail; t: TFunction }) {
 // Scheda «Attività»
 // ---------------------------------------------------------------------------
 function TasksPanel({
-  detail, t, busy, assigneeName, onCreate,
+  detail, t, busy, assigneeName, ownershipDoubt, onCreate,
 }: {
   detail: FinanceDetail; t: TFunction; busy: boolean;
-  assigneeName: (userId: string | null) => string; onCreate: () => void;
+  assigneeName: (userId: string | null) => string;
+  /** L'appartenenza è in dubbio: qui non nascono attività. */
+  ownershipDoubt: boolean;
+  onCreate: () => void;
 }) {
   return (
     <>
@@ -896,9 +923,14 @@ function TasksPanel({
           </Link>
         );
       })}
-      <button className="btn btn-sm mt-10" onClick={onCreate} disabled={busy}>
+      <button className="btn btn-sm mt-10" onClick={onCreate} disabled={busy || ownershipDoubt}>
         <Icon name="calendar" className="ic-sm" /> {t('finance.detail.createTask')}
       </button>
+      {/* Anche qui il perché: è il secondo punto di creazione della pagina, e
+          un pulsante spento in una scheda è ancora più muto degli altri. */}
+      {ownershipDoubt && (
+        <div className="muted-sm mt-8">{t('documents.ownership.warnGate')}</div>
+      )}
     </>
   );
 }

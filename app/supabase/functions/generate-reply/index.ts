@@ -91,14 +91,14 @@ Deno.serve(async (req: Request) => {
     const done = await finalizeAiRequest(sb, slot.logId, {
       status: 'ok', durationMs: Date.now() - started,
       inputTokens: msg.usage?.input_tokens ?? null, outputTokens: msg.usage?.output_tokens ?? null,
-    });
+    }, 'utente');
     if (!done) await logAiRequest(sb, {
       companyId, userId, documentId, kind: 'reply', provider: 'anthropic', model: 'claude-opus-4-8',
       status: 'ok', durationMs: Date.now() - started, inputTokens: msg.usage?.input_tokens ?? null, outputTokens: msg.usage?.output_tokens ?? null,
     });
     return json({ reply });
   } catch (e) {
-    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'PROVIDER_ERROR' });
+    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: 'PROVIDER_ERROR' }, 'utente');
     if (!done) await logAiRequest(sb, { companyId, userId, documentId, kind: 'reply', provider: 'anthropic', model: 'claude-opus-4-8', status: 'error', errorCode: 'PROVIDER_ERROR' });
     console.error('reply error:', (e as Error)?.name);
     return json({ error: 'Generazione della bozza non riuscita. Riprova.', code: 'PROVIDER_ERROR' }, 502);

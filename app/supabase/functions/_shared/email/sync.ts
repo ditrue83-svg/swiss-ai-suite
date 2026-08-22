@@ -798,44 +798,72 @@ async function analyzeDocument(
 
   await setMessageProcessing(deps.sb, input.messageId, 'analyzing');
 
-  const extractStart = Date.now();
-  let extraction: ExtractionResult;
-  if (input.mimeType === 'text/plain') {
-    extraction = textExtraction(new TextDecoder().decode(input.bytes));
-  } else {
-    extraction = await ocrExtract({
-      bytes: input.bytes,
-      mimeType: input.mimeType,
-      createMessage: (request) => deps.createMessage!(request as never) as Promise<ModelMessage>,
+  // ⚠️⚠️ IL `try` NON È PRUDENZA: È IL PERCORSO DI ERRORE DELLA QUOTA.
+  // Fino al 2026-08-22 questa funzione non aveva né `try` né `finally`: una
+  // qualunque eccezione — OCR fallito, risposta troncata, modello che rifiuta,
+  // testo non estraibile — saliva ai chiamanti, che nemmeno loro chiudevano la
+  // riga. La riga prenotata a poche righe da qui restava `pending` PER SEMPRE.
+  // La correzione della chiusura tocca il percorso di SUCCESSO (dentro la
+  // pipeline); questo è l'altro, ed è la metà che restava aperta. La
+  // classificazione qui sopra lo faceva già da sempre: è quella la forma.
+  const inizioAnalisi = Date.now();
+  try {
+    const extractStart = Date.now();
+    let extraction: ExtractionResult;
+    if (input.mimeType === 'text/plain') {
+      extraction = textExtraction(new TextDecoder().decode(input.bytes));
+    } else {
+      extraction = await ocrExtract({
+        bytes: input.bytes,
+        mimeType: input.mimeType,
+        createMessage: (request) => deps.createMessage!(request as never) as Promise<ModelMessage>,
+      });
+    }
+
+    const companyContext = await loadCompanyContext(deps.sb, input.companyId);
+    const result = await runAnalysisPipeline(deps.sb as never, deps.createMessage, {
+      documentId: input.documentId,
+      companyId: input.companyId,
+      // §80 — nessuna persona ha chiesto questa analisi: `userId` resta null.
+      userId: null,
+      extraction,
+      extractionDurationMs: Date.now() - extractStart,
+      logId: slot,
+      // §80 — la riga di quota l'ha prenotata `try_consume_ai_quota_system` con
+      // `user_id` NULL: la chiude solo la gemella `_system`, e solo il service
+      // role può eseguirla. Fino al 2026-08-22 qui si passava dalla funzione
+      // dell'utente, che pretende `user_id = auth.uid()`: con `user_id` NULL e
+      // `auth.uid()` NULL il confronto è `NULL = NULL`, cioè NULL — mai vero.
+      // Diciotto righe su diciotto sono rimaste `pending`.
+      logSb: deps.sb as never,
+      logComeChi: 'sistema',
+      outputLanguage: deps.outputLanguage,
+      companyContext,
+      todayIso: new Date().toISOString().slice(0, 10),
+      provider: 'anthropic',
     });
+
+    // Copia della scadenza sulla riga del messaggio, per poter filtrare la lista
+    // senza join (§9/§104). Solo la data: citazione, fiducia e tipo restano
+    // nell'analisi, che il dettaglio legge per intero. Se l'analisi non ha
+    // trovato una scadenza il campo resta null — nessuna data di ripiego.
+    const deadline = result.analysis.deadline?.date ?? null;
+    if (deadline) {
+      await deps.sb.from('email_messages').update({ analysis_deadline: deadline }).eq('id', input.messageId);
+    }
+
+    input.counters.analysesStarted++;
+    return true;
+  } catch (error) {
+    await finalizeSystemAiSlot(deps.sb, slot, {
+      status: 'error',
+      durationMs: Date.now() - inizioAnalisi,
+      errorCode: error instanceof EmailProviderError ? error.code : inboxCodeForAiError(error),
+    });
+    // ⚠️ L'errore RISALE: chiudere la riga non è averlo gestito, e i chiamanti
+    // devono continuare a vederlo come prima.
+    throw error;
   }
-
-  const companyContext = await loadCompanyContext(deps.sb, input.companyId);
-  const result = await runAnalysisPipeline(deps.sb as never, deps.createMessage, {
-    documentId: input.documentId,
-    companyId: input.companyId,
-    // §80 — nessuna persona ha chiesto questa analisi: `userId` resta null.
-    userId: null,
-    extraction,
-    extractionDurationMs: Date.now() - extractStart,
-    logId: slot,
-    outputLanguage: deps.outputLanguage,
-    companyContext,
-    todayIso: new Date().toISOString().slice(0, 10),
-    provider: 'anthropic',
-  });
-
-  // Copia della scadenza sulla riga del messaggio, per poter filtrare la lista
-  // senza join (§9/§104). Solo la data: citazione, fiducia e tipo restano
-  // nell'analisi, che il dettaglio legge per intero. Se l'analisi non ha
-  // trovato una scadenza il campo resta null — nessuna data di ripiego.
-  const deadline = result.analysis.deadline?.date ?? null;
-  if (deadline) {
-    await deps.sb.from('email_messages').update({ analysis_deadline: deadline }).eq('id', input.messageId);
-  }
-
-  input.counters.analysesStarted++;
-  return true;
 }
 
 /**

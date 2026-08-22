@@ -311,14 +311,47 @@ export async function reserveAiSlot(
   return { allowed: (count ?? 0) < entry.limitPerMinute, logId: null, atomic: false };
 }
 
-/** Completa la riga prenotata da reserveAiSlot con l'esito reale. */
+/**
+ * Chi sta chiudendo la riga, e quindi QUALE funzione SQL può farlo.
+ *
+ * ⚠️⚠️ NON È UN DETTAGLIO DI IMPLEMENTAZIONE: le due funzioni hanno condizioni
+ * DIVERSE e nessuna delle due copre l'altra.
+ *   · `finalize_ai_request`        → `where id = p_id and user_id = auth.uid()`
+ *   · `finalize_ai_request_system` → `where id = p_id and user_id is null`
+ * Una riga prenotata da un utente (`try_consume_ai_quota` scrive `auth.uid()`)
+ * si chiude SOLO con la prima, e solo da un client che porta quel JWT. Con il
+ * service role `auth.uid()` è NULL, e `user_id = auth.uid()` diventa
+ * `NULL = NULL`, cioè NULL — che non è vero: zero righe toccate.
+ */
+export type ChiChiude = 'utente' | 'sistema';
+
+/**
+ * Completa la riga prenotata da reserveAiSlot con l'esito reale.
+ *
+ * ⚠️⚠️ IL DIFETTO DEL 2026-08-21, e perché `come` è obbligatorio. Il percorso di
+ * SUCCESSO dell'analisi chiudeva la riga con `sbAdmin` (service role) e la
+ * funzione dell'UTENTE: l'UPDATE non toccava niente, PostgREST non dava errore,
+ * e questa funzione — che ritornava `!error` — dichiarava di aver chiuso. Il
+ * ripiego che avrebbe inserito la riga compensativa non scattava mai, perché
+ * credeva di non servire. Misurato in produzione: `analysis` fermo a `pending`
+ * 4 volte su 6, `inbox_analysis` 18 su 18. Il percorso di ERRORE invece usava il
+ * client dell'utente e funzionava — ed è la ragione per cui il difetto ha
+ * potuto vivere: i guasti si registravano, i successi no.
+ *
+ * ⚠️ E NON BASTA SCEGLIERE LA FUNZIONE GIUSTA: si VERIFICA. `returns void` non
+ * dice quante righe ha toccato, quindi si rilegge la riga. Costa una select
+ * accanto a una chiamata al modello da venti secondi, e trasforma una bugia
+ * silenziosa in un fatto. Se la chiusura non è avvenuta il chiamante lo sa e
+ * può registrare l'esito altrove, che è esattamente ciò che il ripiego fa.
+ */
 export async function finalizeAiRequest(
   sb: SupabaseWithRpc,
   logId: string | null,
   outcome: { status: 'ok' | 'error'; durationMs?: number | null; inputTokens?: number | null; outputTokens?: number | null; errorCode?: string | null; model?: string | null },
+  come: ChiChiude,
 ): Promise<boolean> {
   if (!logId || typeof sb.rpc !== 'function') return false;
-  const { error } = await sb.rpc('finalize_ai_request', {
+  const { error } = await sb.rpc(come === 'sistema' ? 'finalize_ai_request_system' : 'finalize_ai_request', {
     p_id: logId,
     p_status: outcome.status,
     p_duration_ms: outcome.durationMs ?? null,
@@ -327,7 +360,16 @@ export async function finalizeAiRequest(
     p_error_code: outcome.errorCode ?? null,
     p_model: outcome.model ?? null,
   });
-  return !error;
+  if (error) return false;
+
+  // La riletta: se è ancora `pending`, l'UPDATE non ha trovato la riga.
+  // ⚠️ Se anche questa lettura fallisce non si dichiara il successo: «non lo so»
+  // e «è andata bene» sono due cose diverse, e confonderle è il difetto che
+  // questa funzione ha appena finito di pagare.
+  const { data, error: readErr } = await sb.from('ai_request_log')
+    .select('status').eq('id', logId).maybeSingle();
+  if (readErr) return false;
+  return (data as { status?: string } | null)?.status === outcome.status;
 }
 
 export async function logAiRequest(
