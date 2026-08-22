@@ -164,7 +164,9 @@ section('5 · Ogni valore ha la sua etichetta');
 // («in_progress») in pagina. Qui si controlla che la mappatura sia completa.
 {
   const statuses: TaskStatus[] = ['open', 'in_progress', 'waiting', 'completed'];
-  ok(statuses.every((s) => statusLabelKey(s).startsWith('tasks.')),
+  // «tasks» e «.» separati: il letterale unito finisce in punto, e per
+  // `i18n:orphans` un token così copre l'INTERA sezione tasks.* — cieca.
+  ok(statuses.every((s) => statusLabelKey(s).startsWith('tasks' + '.')),
     'ogni stato ha un’etichetta tradotta, compresi i due nuovi');
   ok(new Set(statuses.map(statusLabelKey)).size === statuses.length,
     'due stati diversi non condividono la stessa etichetta');

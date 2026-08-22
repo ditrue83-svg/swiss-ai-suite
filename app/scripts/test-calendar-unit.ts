@@ -778,7 +778,9 @@ section('10 · Notifiche: etichette, collegamenti, badge');
     `l'enum del database dichiara ${dichiarati.size} tipi di notifica`, [...dichiarati].join(', '));
   for (const type of dichiarati) {
     const key = notificationTitleKey({ type: type as never, payload: {} });
-    ok(typeof key === 'string' && key.startsWith('notifications.'),
+    // «notifications» e «.» separati: il letterale unito finisce in punto, e
+    // per `i18n:orphans` copre l'INTERA sezione notifications.* — cieca.
+    ok(typeof key === 'string' && key.startsWith('notifications' + '.'),
       `«${type}» ha la sua etichetta: senza, la campanella chiama t(undefined) e va in crash`);
   }
   ok(notificationTitleKey({ type: 'task_due_soon', payload: { kind: 'd1' } }) === 'notifications.typeDueTomorrow',
