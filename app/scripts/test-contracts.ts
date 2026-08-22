@@ -73,7 +73,7 @@ async function withRetry<T>(fn: () => Promise<T>, tries = 4): Promise<T> {
 }
 
 async function makeTenant(label: string) {
-  const email = `contracts.${label}.${stamp}@swissai-suite.ch`;
+  const email = `contracts-${label}-${stamp}@swissai-suite.ch`;
   const { data: u, error: ue } = await withRetry(() =>
     admin.auth.admin.createUser({ email, password: PW, email_confirm: true }));
   if (ue || !u?.user) throw new Error(`utente ${label}: ${msg(ue)}`);

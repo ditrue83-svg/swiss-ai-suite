@@ -473,10 +473,13 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   check('de: «Fristen & Aufgaben», compatto, non la traduzione letterale',
     de.nav.tasks.length <= 20, `«${de.nav.tasks}» = ${de.nav.tasks.length} caratteri`);
   const items = NAV.filter((e): e is NavItem => !isSection(e));
+  // «nav» e «.» separati: il letterale unito finisce in punto, e per
+  // `i18n:orphans` un token così copre l'INTERA sezione nav.* — cieca.
+  const NAV_PUNTO = 'nav' + '.';
   for (const [lang, dict] of [['it', it], ['de', de], ['fr', fr]] as const) {
     const labels = [
-      ...items.map((i) => (dict.nav as unknown as Record<string, string>)[i.labelKey.replace('nav.', '')]),
-      ...NAV_SETTINGS.map((s) => (dict.nav as unknown as Record<string, string>)[s.labelKey.replace('nav.', '')]),
+      ...items.map((i) => (dict.nav as unknown as Record<string, string>)[i.labelKey.replace(NAV_PUNTO, '')]),
+      ...NAV_SETTINGS.map((s) => (dict.nav as unknown as Record<string, string>)[s.labelKey.replace(NAV_PUNTO, '')]),
       (dict.nav as unknown as Record<string, string>).settings,
     ];
     const missing = labels.some((l) => l === undefined);
@@ -1258,17 +1261,26 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
       check(`${lang}: la frase di ${chiave} esiste`, typeof testo === 'string' && testo.trim().length > 0);
     }
   }
-  // ⚠️ LE DUE FRASI DEGLI ZERI NON STANNO PIÙ NEL JSX, e non è una perdita: le
-  // nomina `chiaviTaskSplit`, la funzione PURA che decide quale parola va su
-  // quale numero (§18, R4). La pagina le rende attraverso di lei, quindi la
-  // domanda «la Panoramica le usa?» si fa sui DUE file — altrimenti questo
-  // controllo diventerebbe rosso proprio per una correzione che lo rafforza.
+  // ⚠️ LE CHIAVI COMPLETE, MAI COMPOSTE con un template `home.${…}`: il suo
+  // prefisso statico «home.» renderebbe CIECA l'intera sezione home.* per
+  // `i18n:orphans` — trovato per mutazione il 2026-08-20 (tolta l'unica
+  // chiamante di home.datesMixed, il verde restava verde). La sentinella di
+  // `sezioniCieche` ora lo impedisce; qui una chiave esatta è anche un uso
+  // esatto, tenuto vero dal check stesso: se la Panoramica smette di usarla,
+  // questa riga diventa rossa prima che l'orfana possa nascondersi.
+  //
+  // ⚠️ E LA DOMANDA SI FA SUI DUE FILE. Le due frasi degli zeri non stanno più
+  // nel JSX: le nomina `chiaviTaskSplit`, la funzione PURA che decide quale
+  // parola va su quale numero (§18, R4). Cercarle nella sola pagina renderebbe
+  // rossa questa riga proprio per la correzione che la rafforza — e siccome
+  // entrambi i file sono LETTI, la chiave resta un uso esatto per il
+  // rilevatore in tutti e due i casi.
   const decisioni = readFileSync(join(root, 'src/features/dashboard/overviewBlocks.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
-  for (const chiave of ['tasksTermsNone', 'tasksOverdueNone', 'assessNever', 'emptyChecked']) {
-    check(`la Panoramica usa home.${chiave}`,
-      home.includes(`home.${chiave}`) || decisioni.includes(`home.${chiave}`));
+  for (const chiave of ['home.tasksTermsNone', 'home.tasksOverdueNone', 'home.assessNever', 'home.emptyChecked']) {
+    check(`la Panoramica usa ${chiave}`,
+      home.includes(chiave) || decisioni.includes(chiave));
   }
   // ⚠️ Il conteggio «da verificare» resta il totale della STESSA interrogazione
   // a cui porta il collegamento (stateTotals → list_documents), mai un
@@ -2771,6 +2783,13 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
         corpo.includes(tetto.chiave) && corpo.includes(tetto.condizione),
         corpo.includes(tetto.chiave) ? `manca la condizione ${tetto.condizione}` : 'la frase non è resa');
     }
+    // ⚠️ Anche il tetto dell'ELENCO dei termini si dichiara a schermo, non solo
+    // nella funzione pura: `altri` calcolato e mai reso è un tetto che morde in
+    // silenzio. (Come sopra, il letterale è lecito perché il check assicura
+    // l'uso: se la pagina smette di renderlo, questa riga è rossa prima che
+    // `i18n:orphans` debba accorgersi delle due forme rimaste sole.)
+    check('e il numero dei termini NON elencati si dichiara a schermo',
+      corpoDi('VociTermini').includes('home.termsMore'));
     check('e la divergenza col numero della destinazione si dichiara',
       pagina.includes('home.datesScope') && /destinazionePiuAmpia/.test(pagina));
     // ⚠️⚠️ LE DATE CHE NON OBBLIGANO NON SPARISCONO, e la ragione è
@@ -2819,15 +2838,32 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
     check('⚠️ ed è il francese a distinguersi: lo ZERO vuole il SINGOLARE',
       pluralKey('home.tasksTerms', 0, 'fr').endsWith('One')
       && pluralKey('home.tasksTerms', 0, 'it').endsWith('Many'));
-    check('la coppia esiste per ogni base che la pagina usa, nelle tre lingue',
-      (['home.tasksAppts', 'home.tasksTerms', 'home.tasksNoDate', 'home.tasksOverdue',
-        'home.ownership', 'home.termsMore', 'home.datesUnrecorded',
-        'home.sysToVerify', 'home.sysFailed', 'home.sysNever'] as PluralBase[])
-        .every((b) => LOCALES.every((l) => [0, 1, 2, 8].every((n) => {
-          const k = pluralKey(b, n, l).split('.')[1];
-          const d = { it: it.home, de: de.home, fr: fr.home }[l] as Record<string, string>;
-          return typeof d[k] === 'string' && d[k].trim().length > 0;
-        }))));
+    // ⚠️⚠️ LE BASI SI LEGGONO DAL SORGENTE, NON SI ELENCANO QUI. Un elenco
+    // scritto a mano nominerebbe dieci chiavi `home.*` come LETTERALI, e per
+    // `i18n:orphans` un letterale è un uso: le venti forme resterebbero «vive»
+    // anche dopo che la pagina avesse smesso di chiamarle — questo banco
+    // diventerebbe la macchina che le tiene in vita. Provato: togliendo
+    // l'unica chiamante di `home.termsMore` dalla Panoramica, con l'elenco a
+    // mano il rilevatore restava VERDE. Le catture qui sotto sono valori a
+    // runtime, e le espressioni regolari il tokenizzatore le salta.
+    const senzaCommenti2 = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const sorgenti = [
+      senzaCommenti2(readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8')),
+      senzaCommenti2(readFileSync(join(root, 'src/features/dashboard/overviewBlocks.ts'), 'utf8')),
+    ].join('\n');
+    const basi = [...new Set([
+      ...sorgenti.matchAll(/tn\(\s*'(home\.[A-Za-z]+)'/g),
+      ...sorgenti.matchAll(/base="(home\.[A-Za-z]+)"/g),
+      ...sorgenti.matchAll(/base: '(home\.[A-Za-z]+)'/g),
+    ].map((m) => m[1]))] as PluralBase[];
+    check('le basi plurali si trovano nel sorgente della Panoramica (almeno nove)',
+      basi.length >= 9, basi.join(' '));
+    check('e per ognuna la coppia esiste nelle tre lingue, a 0 · 1 · 2 · 8',
+      basi.every((b) => LOCALES.every((l) => [0, 1, 2, 8].every((n) => {
+        const k = pluralKey(b, n, l).split('.')[1];
+        const d = { it: it.home, de: de.home, fr: fr.home }[l] as Record<string, string>;
+        return typeof d[k] === 'string' && d[k].trim().length > 0;
+      }))), basi.join(' '));
   }
 }
 

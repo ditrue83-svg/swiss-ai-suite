@@ -48,11 +48,29 @@
 // una chiave che solo un test nomina è comunque una chiave che l'interfaccia
 // non mostra a nessuno. Se un giorno servisse il contrario, si dichiara
 // un'eccezione con la sua riga.
+//
+// ⚠️⚠️ E IL ROVESCIO DEL PREFISSO: UNA SEZIONE COPERTA PER INTERO È UNA SEZIONE
+// CIECA. Il prefisso statico di un template è la regola giusta per
+// `t(`stati.${k}`)`, ma il 2026-08-20 la controprova ha mostrato DIECI sezioni
+// intere in cui nessuna chiave, presente o futura, poteva più risultare orfana
+// (cancellata l'unica chiamante di `home.datesMixed`, il verde restava verde).
+// I colpevoli erano di tre specie, tutti dentro `scripts/`: un check che
+// COMPONE la chiave da cercare (`home.${chiave}` in `test-shell-unit.ts`),
+// quattro `startsWith('tasks.')` e simili nei test unitari (nav, tasks,
+// notifications, finance), e le email usa-e-getta `subsidy.${label}.…@` di
+// cinque test d'integrazione (subsidy, assistant, contracts, crm, audit).
+// Sotto quella coperta si erano accumulate 103 orfane vere. Da allora la
+// scansione pretende che in ogni sezione di primo livello una foglia
+// inesistente POSSA uscire orfana: se non può, il colpevole è un token da
+// correggere alla fonte, o una cecità da dichiarare in CECITA_DICHIARATE.
 // ============================================================================
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { it } from '../src/i18n/locales/it.ts';
+// ⚠️ I SUFFISSI DELLE FORME PLURALI ARRIVANO DAL MECCANISMO VERO, non da una
+// copia: `pluralKey` compone `…One`/`…Many` con questa stessa costante.
+import { FORME_PLURALI } from '../src/i18n/index.tsx';
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -83,7 +101,128 @@ const NON_LEGGERE = new Set([join(APP, 'scripts/i18n-orphans.ts')]);
 //
 // Si dichiara una CHIAVE ESATTA o un NODO (che copre le sue foglie).
 // ---------------------------------------------------------------------------
-export const ECCEZIONI: { chiave: string; motivo: string }[] = [];
+// ⚠️⚠️ IL DEBITO RIVELATO IL 2026-08-20, quando le dieci sezioni cieche sono
+// tornate visibili: 103 chiavi che nessun codice chiama, accumulate mentre il
+// rilevatore non poteva vederle. NON sono benedette: ogni riga aspetta lo
+// smaltimento — cancellare dai TRE dizionari, dopo il controllo che la chiave
+// non sia composta a runtime in un modo che il rilevatore non vede — in un
+// intervento suo. Il controllo delle «eccezioni morte» qui sotto pretende che
+// ogni riga sparisca il giorno che la sua chiave viene usata o cancellata:
+// nessuna può sopravvivere in silenzio a ciò che la giustifica.
+const MOTIVO_RIVELATE = "orfana rivelata il 2026-08-20 dal ritorno alla vista delle sezioni cieche; da smaltire in un intervento dedicato";
+
+export const ECCEZIONI: { chiave: string; motivo: string }[] = [
+  // —   tasks  (37)
+  { chiave: 'tasks.title', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.subtitle', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.empty', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.emptySub', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.markDone', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.reopen', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.completed', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.noDueDate', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.dueOn', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.added', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.deleted', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.addManual', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.dueDate', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.noneInView', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.authorityField', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.authorityPlaceholder', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.listTitle', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.filterOpen', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.filterDone', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.filterAll', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.daysLeft', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.overdueShort', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.statusDone', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.statusAria', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.deleteAria', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.filterSource', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.assignTo', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.sourceLabel', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.descriptionEmpty', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.linkedEmail', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.openEmail', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.edit', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.save', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.errors.titleRequired', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.priority.high', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.priority.medium', motivo: MOTIVO_RIVELATE },
+  { chiave: 'tasks.priority.low', motivo: MOTIVO_RIVELATE },
+  // —   crm  (27)
+  { chiave: 'crm.kpi.suggestions', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.detail.edit', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.detail.merge', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.detail.linkItem', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.detail.contactMethods', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.timeline.title', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.people.firstName', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.people.lastName', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.people.department', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.people.language', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.people.languageUnknown', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.people.archive', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.opp.stageHistory', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.suggestions.empty', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.suggestions.reason', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.duplicates.merge', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.duplicates.mergeWarning', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.duplicates.mergeConfirm', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.duplicates.empty', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.registry.modified', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.form.country', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.form.status', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.form.owner', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.form.merged', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.form.unlinkedOk', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.errors.duplicateEmail', motivo: MOTIVO_RIVELATE },
+  { chiave: 'crm.errors.duplicateUid', motivo: MOTIVO_RIVELATE },
+  // —   contracts  (23)
+  { chiave: 'contracts.detail.explanation', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.detail.sections.documents', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.detail.sections.tasks', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.detail.fields.vatIncluded', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.detail.fields.governingLaw', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.detail.fields.jurisdiction', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.detail.fields.note', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.terms.verifying', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.terms.editHint', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.terms.correct', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.terms.corrected', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.terms.readValue', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.terms.history', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.terms.supersededOn', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.amendment.noChanges', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.milestones.title', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.milestones.calculatedFrom', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.milestones.addManual', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.milestones.addManualHint', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.documents.suggestions', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.documents.suggestionHint', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.tasks.open', motivo: MOTIVO_RIVELATE },
+  { chiave: 'contracts.archiveHint', motivo: MOTIVO_RIVELATE },
+  // —   finance  (6)
+  { chiave: 'finance.list.loadError', motivo: MOTIVO_RIVELATE },
+  { chiave: 'finance.detail.retryHint', motivo: MOTIVO_RIVELATE },
+  { chiave: 'finance.errors.generic', motivo: MOTIVO_RIVELATE },
+  { chiave: 'finance.errors.correctionFailed', motivo: MOTIVO_RIVELATE },
+  { chiave: 'finance.errors.fieldNotEditable', motivo: MOTIVO_RIVELATE },
+  { chiave: 'finance.add.alreadyPresent', motivo: MOTIVO_RIVELATE },
+  // —   assistant  (6)
+  { chiave: 'assistant.threads.open', motivo: MOTIVO_RIVELATE },
+  { chiave: 'assistant.threads.rename', motivo: MOTIVO_RIVELATE },
+  { chiave: 'assistant.threads.renamePrompt', motivo: MOTIVO_RIVELATE },
+  { chiave: 'assistant.sources.show', motivo: MOTIVO_RIVELATE },
+  { chiave: 'assistant.degraded', motivo: MOTIVO_RIVELATE },
+  { chiave: 'assistant.disambiguation', motivo: MOTIVO_RIVELATE },
+  // —   notifications  (3)
+  { chiave: 'notifications.unreadOne', motivo: MOTIVO_RIVELATE },
+  { chiave: 'notifications.unreadMany', motivo: MOTIVO_RIVELATE },
+  { chiave: 'notifications.noDeadline', motivo: MOTIVO_RIVELATE },
+  // —   subsidy  (1)
+  { chiave: 'subsidy.results.eligibilityToVerify', motivo: MOTIVO_RIVELATE },
+];
 
 // ---------------------------------------------------------------------------
 // Il tokenizzatore
@@ -283,13 +422,50 @@ export function orfane(tutteLeFoglie: string[], token: Iterable<string>): string
   const prefissi: string[] = [];
   for (const t of token) {
     if (t.endsWith('.')) prefissi.push(t);
-    else { nomi.add(t); prefissi.push(`${t}.`); }
+    else {
+      nomi.add(t);
+      prefissi.push(`${t}.`);
+      // ⚠️⚠️ LE DUE FORME DI UN CONTEGGIO NON LE SCRIVE NESSUNO.
+      // `tn('home.tasksAppts', 3)` nomina la BASE; quale delle due foglie
+      // esca — `…One` o `…Many` — lo decidono le regole plurali della lingua
+      // dentro `pluralKey`. Senza questa riga le due uscivano orfane MENTRE
+      // la pagina le mostrava, ed erano 24 al primo giro. Un nodo non le
+      // copre (sono suffissi, non un segmento dopo un punto) e dichiararle in
+      // ECCEZIONI sarebbe una porta aperta su una famiglia intera.
+      for (const forma of FORME_PLURALI) nomi.add(`${t}${forma}`);
+    }
   }
   return tutteLeFoglie.filter((f) => {
     if (nomi.has(f)) return false;
     return !prefissi.some((p) => f.startsWith(p));
   });
 }
+
+/**
+ * Le sezioni di primo livello in cui il rilevatore è CIECO.
+ *
+ * Una sezione è cieca quando una sua foglia INESISTENTE non uscirebbe orfana:
+ * vuol dire che un token copre l'intera sezione, e ogni chiave lì dentro —
+ * presente e futura — è «viva» per definizione, non per uso. La domanda si fa
+ * al meccanismo vero (`orfane`), con una sentinella che nessun dizionario può
+ * contenere: se il modo di coprire un prefisso cambia là, questa risposta lo
+ * segue da sola.
+ *
+ * Un prefisso a DUE o più segmenti non è cecità: coprire un sotto-nodo è la
+ * funzione disegnata per `pick('subsidy.labels.eligibility', v)`.
+ */
+export function sezioniCieche(sezioni: string[], token: Iterable<string>): string[] {
+  const t = [...token];
+  return sezioni.filter((s) => orfane([`${s}.__sentinella_orfana__`], t).length === 0);
+}
+
+/**
+ * Le cecità DICHIARATE, una riga ciascuna con il motivo: l'unico modo lecito
+ * di comporre le chiavi di un'intera sezione a runtime (`t(`home.${k}`)` nel
+ * PRODOTTO, non in un controllo). Come per ECCEZIONI: una dichiarazione senza
+ * più niente dietro — la sezione torna visibile — fa fallire il controllo.
+ */
+export const CECITA_DICHIARATE: { sezione: string; motivo: string }[] = [];
 
 // ---------------------------------------------------------------------------
 // L'autoverifica: casi che DEVONO far fallire il rilevatore se si rompe
@@ -300,7 +476,18 @@ const DIZIONARIO_FINTO = {
   etichette: { idoneita: { nota: 'n', probabile: 'p' } },
 };
 
-const CASI: { nome: string; src: string; attese: string[] }[] = [
+/**
+ * Un dizionario A PARTE per la coppia plurale.
+ *
+ * ⚠️ NON si aggiungono foglie a `DIZIONARIO_FINTO`: quello è l'insieme atteso
+ * di TUTTI gli altri casi, e due voci in più li renderebbero rossi in blocco —
+ * il rilevatore direbbe di essere rotto mentre funziona.
+ */
+const DIZIONARIO_COPPIA = {
+  conta: { voceOne: '1 voce', voceMany: '{n} voci', altro: 'z' },
+};
+
+const CASI: { nome: string; src: string; attese: string[]; dizionario?: unknown }[] = [
   {
     nome: 'una chiave che nessuno chiama è orfana',
     src: "const a = t('tasks.titolo');",
@@ -311,6 +498,21 @@ const CASI: { nome: string; src: string; attese: string[] }[] = [
     src: "t('tasks.titolo'); t('tasks.sottotitolo'); t('stati.aperto'); t('stati.chiuso');\n"
       + "t('etichette.idoneita.nota'); t('etichette.idoneita.probabile');",
     attese: [],
+  },
+  {
+    // ⚠️ IL CASO DELLE DUE FORME. `tn('conta.voce', n)` nomina la BASE; quale
+    // delle due foglie esca lo decide `pluralKey`, e nessuno le scrive.
+    nome: 'un letterale che nomina la base di una coppia copre le due forme',
+    dizionario: DIZIONARIO_COPPIA,
+    src: "t('conta.altro'); tn('conta.voce', n);",
+    attese: [],
+  },
+  {
+    // E LA CONTROPROVA: la base copre SOLO le sue due forme, non la sorella.
+    nome: 'la base di una coppia non copre le altre foglie del suo nodo',
+    dizionario: DIZIONARIO_COPPIA,
+    src: "tn('conta.voce', n);",
+    attese: ['conta.altro'],
   },
   {
     nome: 'un template con interpolazione copre il suo nodo',
@@ -401,20 +603,70 @@ const CASI: { nome: string; src: string; attese: string[] }[] = [
   },
 ];
 
-function autoverifica(): void {
-  const tutte = foglie(DIZIONARIO_FINTO);
-  let falliti = 0;
-  console.log('\nAutoverifica del rilevatore\n');
-  for (const caso of CASI) {
-    const trovate = orfane(tutte, tokenChiave(caso.src)).sort();
-    const attese = [...caso.attese].sort();
-    const ok = trovate.join('|') === attese.join('|');
-    if (!ok) falliti++;
-    console.log(`  ${ok ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${caso.nome}`);
-    if (!ok) console.log(`      attese: ${attese.join(', ') || '—'}\n      trovate: ${trovate.join(', ') || '—'}`);
+/**
+ * I casi della CECITÀ: sezioni intere che un token copre per sbaglio.
+ * I primi due sono i casi VERI del 2026-08-20, riprodotti alla lettera.
+ */
+const CASI_CECITA: { nome: string; src: string; attese: string[] }[] = [
+  {
+    // ⚠️⚠️ IL CASO CHE HA SMASCHERATO LA CECITÀ, da `test-shell-unit.ts:1258`:
+    // un check che COMPONE la chiave da cercare regala il prefisso `home.`,
+    // e l'intera Panoramica smette di poter avere orfane. Trovato per
+    // mutazione: tolta l'unica chiamante di `home.datesMixed`, verde immutato.
+    nome: 'un check che compone la chiave col template rende cieca la sezione',
+    src: 'check(`la pagina usa stati.${chiave}`, testo.includes(`stati.${chiave}`));',
+    attese: ['stati'],
+  },
+  {
+    // ⚠️ Il secondo caso vero: l'email di un utente usa-e-getta che porta il
+    // nome del modulo. Cinque test d'integrazione coprivano così cinque
+    // sezioni — un indirizzo di posta non nomina nessuna chiave.
+    nome: 'un\'email usa-e-getta col nome di una sezione la rende cieca',
+    src: 'const email = `stati.${label}.${stamp}@esempio.ch`;',
+    attese: ['stati'],
+  },
+  {
+    nome: 'un prefisso a due segmenti copre il sotto-nodo, non acceca la sezione',
+    src: 't(`etichette.idoneita.${k}`);',
+    attese: [],
+  },
+  {
+    nome: 'una chiave esatta non acceca la sua sezione',
+    src: "t('tasks.titolo'); t('stati.aperto');",
+    attese: [],
+  },
+];
+
+/** Un caso, valutato: le orfane per CASI, le sezioni cieche per CASI_CECITA. */
+function valuta(caso: { src: string; dizionario?: unknown }, cecita: boolean): string[] {
+  const dict = caso.dizionario ?? DIZIONARIO_FINTO;
+  return cecita
+    ? sezioniCieche(Object.keys(dict as object), tokenChiave(caso.src)).sort()
+    : orfane(foglie(dict), tokenChiave(caso.src)).sort();
+}
+
+function casiRotti(): { nome: string; attese: string[]; trovate: string[] }[] {
+  const rotti: { nome: string; attese: string[]; trovate: string[] }[] = [];
+  for (const [gruppo, cecita] of [[CASI, false], [CASI_CECITA, true]] as const) {
+    for (const caso of gruppo) {
+      const trovate = valuta(caso, cecita);
+      const attese = [...caso.attese].sort();
+      if (trovate.join('|') !== attese.join('|')) rotti.push({ nome: caso.nome, attese, trovate });
+    }
   }
-  if (falliti) {
-    console.error(`\n  ${falliti} casi non superati: il rilevatore NON è affidabile.\n`);
+  return rotti;
+}
+
+function autoverifica(): void {
+  const rotti = new Map(casiRotti().map((r) => [r.nome, r]));
+  console.log('\nAutoverifica del rilevatore\n');
+  for (const caso of [...CASI, ...CASI_CECITA]) {
+    const rotto = rotti.get(caso.nome);
+    console.log(`  ${rotto ? '\x1b[31m✗\x1b[0m' : '\x1b[32m✓\x1b[0m'} ${caso.nome}`);
+    if (rotto) console.log(`      attese: ${rotto.attese.join(', ') || '—'}\n      trovate: ${rotto.trovate.join(', ') || '—'}`);
+  }
+  if (rotti.size) {
+    console.error(`\n  ${rotti.size} casi non superati: il rilevatore NON è affidabile.\n`);
     process.exit(1);
   }
   console.log('\n  Tutti i casi superati.\n');
@@ -439,8 +691,7 @@ if (argomenti.includes('--self-test')) {
 // L'autoverifica gira SEMPRE prima della scansione: se il rilevatore è rotto,
 // il verde della scansione non significa niente e non va nemmeno stampato.
 {
-  const tutte = foglie(DIZIONARIO_FINTO);
-  const rotti = CASI.filter((c) => orfane(tutte, tokenChiave(c.src)).sort().join('|') !== [...c.attese].sort().join('|'));
+  const rotti = casiRotti();
   if (rotti.length) {
     console.error('\n✗ Il rilevatore non supera la propria autoverifica:');
     for (const c of rotti) console.error(`    ${c.nome}`);
@@ -464,7 +715,50 @@ for (const radice of CERCA_IN) {
 }
 
 const token = new Set<string>();
-for (const f of sorgenti) for (const t of tokenChiave(readFileSync(f, 'utf8'))) token.add(t);
+// Da quale sorgente arriva ogni token: serve solo a NOMINARE il colpevole
+// quando una sezione risulta cieca — un errore senza il file è una caccia.
+const origine = new Map<string, string[]>();
+for (const f of sorgenti) {
+  for (const t of tokenChiave(readFileSync(f, 'utf8'))) {
+    token.add(t);
+    const dove = origine.get(t) ?? [];
+    if (!dove.length) origine.set(t, dove);
+    const rel = relative(APP, f);
+    if (!dove.includes(rel)) dove.push(rel);
+  }
+}
+
+// ⚠️⚠️ PRIMA DELLE ORFANE, LE SEZIONI DOVE LE ORFANE NON POSSONO ESISTERE.
+// Senza questo controllo il verde qui sotto vale solo per le sezioni visibili:
+// il 2026-08-20 erano cieche in sei, e nessuno lo sapeva.
+{
+  const cieche = sezioniCieche(Object.keys(it), token);
+  const dichiarate = new Set(CECITA_DICHIARATE.map((c) => c.sezione));
+  const mute = cieche.filter((s) => !dichiarate.has(s));
+  const guarite = CECITA_DICHIARATE.filter((c) => !cieche.includes(c.sezione));
+
+  if (mute.length) {
+    console.error('\n\x1b[31m✗ Sezioni del dizionario in cui il rilevatore è CIECO:\x1b[0m');
+    for (const s of mute) {
+      const file = origine.get(`${s}.`) ?? [];
+      console.error(`    ${s}.* — il token «${s}.» viene da: ${file.sort().join(', ') || '(nessun file: token composto?)'}`);
+    }
+    console.error('\n  Un token che copre un\'intera sezione rende «viva» ogni sua foglia, presente');
+    console.error('  e futura: nessuna chiave lì dentro potrà mai risultare orfana. Si corregge il');
+    console.error('  sorgente che produce il token (un template `sezione.${…}`, un letterale');
+    console.error('  «sezione.») — o, se comporre quelle chiavi a runtime è il disegno del');
+    console.error('  prodotto, si dichiara la sezione in CECITA_DICHIARATE con il suo motivo.\n');
+    process.exit(1);
+  }
+  if (guarite.length) {
+    console.error('\n\x1b[31m✗ Cecità dichiarate senza più niente dietro:\x1b[0m');
+    for (const c of guarite) console.error(`    ${c.sezione} — ${c.motivo}`);
+    console.error('\n  La sezione è tornata visibile: la riga va tolta da CECITA_DICHIARATE,');
+    console.error('  non dimenticata — un\'esenzione sopravvissuta a ciò che esentava è una');
+    console.error('  porta lasciata aperta.\n');
+    process.exit(1);
+  }
+}
 
 const tutteLeFoglie = foglie(it);
 const trovate = orfane(tutteLeFoglie, token);
@@ -480,7 +774,7 @@ const residue = trovate.filter((k) => {
 const morte = ECCEZIONI.filter((e) => !usate.has(e.chiave));
 
 console.log('\nChiavi di traduzione orfane — voci che nessun codice chiama più');
-console.log(`\x1b[2m(rilevatore verificato su ${CASI.length} casi noti · `
+console.log(`\x1b[2m(rilevatore verificato su ${CASI.length + CASI_CECITA.length} casi noti · `
   + `${tutteLeFoglie.length} chiavi, ${sorgenti.length} sorgenti, ${token.size} riferimenti)\x1b[0m\n`);
 
 if (morte.length) {
@@ -492,7 +786,12 @@ if (morte.length) {
 }
 
 if (!residue.length) {
-  console.log('  \x1b[32mNessuna: ogni chiave dei dizionari ha almeno un chiamante.\x1b[0m\n');
+  // Il verde dice la verità: «ogni chiave ha un chiamante» solo se nessuna
+  // eccezione ha assorbito niente — altrimenti le orfane ci sono, e si contano.
+  const assorbite = trovate.length - residue.length;
+  console.log(assorbite
+    ? `  \x1b[32mNessuna nuova\x1b[0m: le ${assorbite} note restano dichiarate in ECCEZIONI, in attesa di smaltimento.\n`
+    : '  \x1b[32mNessuna: ogni chiave dei dizionari ha almeno un chiamante.\x1b[0m\n');
   process.exit(0);
 }
 

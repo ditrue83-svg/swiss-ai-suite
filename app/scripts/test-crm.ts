@@ -85,7 +85,7 @@ async function withRetry<T>(fn: () => Promise<T>, tries = 4): Promise<T> {
  * grassetto, e ribattezzarla romperebbe la stampa in silenzio.
  */
 async function makeTenant(label: string) {
-  const email = `crm.${label}.${stamp}@swissai-suite.ch`;
+  const email = `crm-${label}-${stamp}@swissai-suite.ch`;
   const { data: u, error: ue } = await withRetry(() =>
     admin.auth.admin.createUser({ email, password: PW, email_confirm: true }));
   if (ue || !u?.user) throw new Error(`utente ${label}: ${msg(ue)}`);
@@ -106,7 +106,7 @@ async function makeTenant(label: string) {
 
 /** Un membro NON proprietario, per provare i permessi da amministratore. */
 async function addPlainMember(companyId: string, label: string) {
-  const email = `crm.member.${label}.${stamp}@swissai-suite.ch`;
+  const email = `crm-member-${label}-${stamp}@swissai-suite.ch`;
   const { data: u, error: ue } = await withRetry(() =>
     admin.auth.admin.createUser({ email, password: PW, email_confirm: true }));
   if (ue || !u?.user) throw new Error(`membro ${label}: ${msg(ue)}`);

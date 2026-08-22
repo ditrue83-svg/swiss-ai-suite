@@ -1010,7 +1010,10 @@ section('8 · Il registro delle automazioni: i due inneschi Finance');
     && inneschi.some((t) => t.key === 'finance_item_ready'),
     'sono «richiede attenzione» e «pronta»: i due momenti in cui una persona vuole essere avvisata');
 
-  const campi = inneschi.flatMap((t) => t.fields).filter((f) => f.path.startsWith('finance.'));
+  // «finance» e «.» separati: i percorsi dei campi sono un ALTRO spazio di
+  // nomi, ma il letterale unito finisce in punto e per `i18n:orphans` copre
+  // l'INTERA sezione finance.* del dizionario — cieca.
+  const campi = inneschi.flatMap((t) => t.fields).filter((f) => f.path.startsWith('finance' + '.'));
   ok(campi.length > 0, 'gli inneschi Finance portano campi propri', String(campi.length));
 
   // ⚠️ SENZA `hasCurrency` IL MOTORE CONFRONTEREBBE IN SILENZIO CHF CON EUR, e
