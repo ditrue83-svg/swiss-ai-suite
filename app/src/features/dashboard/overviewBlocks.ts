@@ -16,8 +16,13 @@
 //   · OGNI ZERO DICE COSA HA ESCLUSO: i blocchi compaiono solo con contenuto,
 //     e lo stato davvero vuoto elenca cosa è stato controllato, non «tutto a
 //     posto».
-//   · NIENTE BLOCCO SCADENZE: zero `term` dichiarati in produzione. Le date di
-//     natura non registrata sono UNA RIGA che le chiama col loro nome.
+//   · UN TERMINE È UNA VOCE, UNA DATA IGNOTA È UN LIMITE: finché esistono zero
+//     `term` (produzione, 2026-08-19) non c'è nessun elenco di scadenze; dal
+//     primo termine vero, ogni termine è una riga con giorno, titolo e
+//     collegamento dentro «Da fare». Le date di natura non registrata non sono
+//     lavoro — sono ciò che il sistema non ha capito — e stanno fra i limiti.
+//   · «DA FARE» SOLO SE C'È DA FARE: un titolo sopra una riga che non chiede
+//     niente insegna a saltare quel titolo.
 //   · APPUNTAMENTI ≠ TERMINI: le tre attività di Rossi hanno `appointment_date`
 //     e nessun `due_date` — la distinzione di `deadlineNature` vale anche qui.
 //   · NESSUN PUNTEGGIO COMPOSITO: con la gravità satura su 16 documenti su 19,
@@ -28,6 +33,11 @@
 // uno script di prova può romperla. (Stessa ragione di `lib/blocchi.ts` e
 // `taskFormat.ts`.)
 // ============================================================================
+
+// ⚠️ SOLI TIPI, e per questo il modulo resta puro: `import type` sparisce alla
+// trasformazione. Servono perché le CHIAVI della ripartizione si decidono qui,
+// non nella schermata — vedi `chiaviTaskSplit`.
+import type { PluralBase, TKey } from '@/i18n';
 
 /** Ciò che serve del task per dividerlo: mai l'oggetto intero. */
 export interface TaskDateFields {
@@ -80,77 +90,190 @@ export function splitOpenTasks(rows: TaskDateFields[], total: number, oggi: stri
 }
 
 /**
- * Le date dei documenti, contate per natura DICHIARATA.
+ * QUALE PAROLA VA SU QUALE NUMERO — e la decisione sta QUI, non nella pagina.
+ *
+ * ⚠️⚠️ È LA CLASSE D'ERRORE CHE QUESTO PRODOTTO TEME DI PIÙ: una data
+ * presentata come un obbligo quando non lo è. La classificazione
+ * (`splitOpenTasks`) era guardata; il NOME a schermo no, ed è il nome che
+ * l'utente legge. Rendere gli appuntamenti con la chiave dei termini —
+ * «3 termini» sopra tre sopralluoghi — sarebbe rimasto verde in tutta la
+ * suite. Finché la coppia sta in una funzione pura, un banco può romperla.
+ *
+ * `base` è la coppia plurale (la forma la sceglie la lingua); `chiave` è la
+ * frase INTERA dei due zeri dichiarati — «nessun termine», «nessuno scaduto» —
+ * che sono affermazioni e non assenze, e non portano numero.
+ */
+export type ParteConteggio =
+  | { base: PluralBase; chiave: null; n: number }
+  | { base: null; chiave: TKey; n: number };
+
+export function chiaviTaskSplit(s: TaskSplit): ParteConteggio[] {
+  const parti: ParteConteggio[] = [];
+  if (s.appuntamenti > 0) {
+    parti.push({ base: 'home.tasksAppts', chiave: null, n: s.appuntamenti });
+  }
+  parti.push(s.termini === 0
+    ? { base: null, chiave: 'home.tasksTermsNone', n: 0 }
+    : { base: 'home.tasksTerms', chiave: null, n: s.termini });
+  if (s.senzaData > 0) {
+    parti.push({ base: 'home.tasksNoDate', chiave: null, n: s.senzaData });
+  }
+  parti.push(s.scadute === 0
+    ? { base: null, chiave: 'home.tasksOverdueNone', n: 0 }
+    : { base: 'home.tasksOverdue', chiave: null, n: s.scadute });
+  return parti;
+}
+
+/**
+ * LE DATE DEI DOCUMENTI — e un termine NON è un numero, è una voce.
  *
  * `term` è un termine; `event` e `reference` sono date che non obbligano
  * l'azienda; tutto il resto — NULL, lo storico 'none', valori mai visti — è
  * natura NON REGISTRATA, non «nessuna scadenza»: l'analisi non l'ha detto,
  * che è un'altra affermazione. (Stessa tavola di `deadlineNature.ts`.)
+ *
+ * ⚠️⚠️ PERCHÉ I TERMINI ESCONO INTERI E IL RESTO NO. «3 date nei documenti:
+ * 1 termini, 1 che non obbligano l'azienda, 1 di natura non registrata» è il
+ * censimento delle nature di un archivio: chi ha un termine vero non vuole
+ * sapere quante nature esistono, vuole vedere QUELLA data, che cosa riguarda,
+ * e arrivarci. Perciò i termini restano righe INTERE — giorno, titolo,
+ * collegamento al documento — e le altre due nature restano numeri.
+ *
+ * ⚠️ IL TOTALE E LA RIPARTIZIONE NON CONTANO LO STESSO INSIEME. Il totale è
+ * esatto (funzione finestra di `list_documents`); le nature stanno sulle sole
+ * righe lette (`DATE_MAX_DOCUMENTS` per popolazione). Chi mostra un numero
+ * dichiara su quale dei due sta parlando: `lette`, mai `totale`, quando
+ * accompagna una ripartizione.
  */
-export interface ContoNature {
-  /** Quante date esistono in tutto: numero ESATTO, dalla funzione finestra. */
+export interface DataDocumento {
+  /** La natura dichiarata dall'analisi: 'term' | 'event' | 'reference' | … */
+  kind: string | null;
+  /** Il giorno, `YYYY-MM-DD`. Le righe arrivano da una lettura `hasDeadline`,
+   *  quindi in pratica non è mai nullo — ma il tipo del servizio lo ammette e
+   *  l'ordinamento non deve inventarsi un posto per il nulla. */
+  deadline: string | null;
+}
+
+export interface ContoDate<T extends DataDocumento> {
+  /** Quante date esistono in questa popolazione: numero ESATTO. */
   totale: number;
-  /**
-   * Su quante date è calcolata la ripartizione qui sotto. Le tre voci
-   * sommano SEMPRE a questo numero, mai a `totale`: le nature si contano
-   * sulle righe lette (`DATE_MAX_DOCUMENTS` per popolazione), il totale no.
-   * Stesso mestiere di `TaskSplit.lette`.
-   */
+  /** Su quante righe è fatta la ripartizione qui sotto. */
   lette: number;
-  termini: number;
+  /** true se le righe lette sono meno del totale: un termine può nascondersi
+   *  fra quelle non guardate, e chi mostra i termini deve dirlo. */
+  parziale: boolean;
+  /** I TERMINI, dal più vicino in avanti: voci, non un conteggio. */
+  termini: T[];
   nonObbliganti: number;
   nonRegistrate: number;
 }
 
-export function contaNature(kinds: readonly (string | null)[]): ContoNature {
-  let termini = 0, nonObbliganti = 0, nonRegistrate = 0;
-  for (const k of kinds) {
-    if (k === 'term') termini++;
-    else if (k === 'event' || k === 'reference') nonObbliganti++;
+/**
+ * ⚠️ L'ORDINE È QUELLO DEL GIORNO, crescente: il più scaduto per primo, poi il
+ * più vicino. Non è un punteggio e non è una priorità — è la sola cosa che una
+ * data dice da sé. Una riga senza giorno finisce in coda: non si inventa una
+ * posizione per un dato che non c'è.
+ */
+export function contoDate<T extends DataDocumento>(righe: readonly T[], totale: number): ContoDate<T> {
+  const termini: T[] = [];
+  let nonObbliganti = 0, nonRegistrate = 0;
+  for (const r of righe) {
+    if (r.kind === 'term') termini.push(r);
+    else if (r.kind === 'event' || r.kind === 'reference') nonObbliganti++;
     else nonRegistrate++;
   }
-  return { totale: kinds.length, lette: kinds.length, termini, nonObbliganti, nonRegistrate };
+  termini.sort((a, b) => {
+    if (a.deadline === b.deadline) return 0;
+    if (a.deadline === null) return 1;
+    if (b.deadline === null) return -1;
+    return a.deadline < b.deadline ? -1 : 1;
+  });
+  return { totale, lette: righe.length, parziale: righe.length < totale, termini, nonObbliganti, nonRegistrate };
 }
 
 /**
- * QUALE FRASE DICE LA RIGA DELLE DATE, e con quali numeri.
+ * Quanti termini si ELENCANO nella Panoramica prima di dichiarare il resto.
  *
- * ⚠️⚠️ LE NATURE E IL TOTALE NON CONTANO LO STESSO INSIEME. Il totale è esatto
- * (funzione finestra di `list_documents`); le nature stanno sulle sole righe
- * lette. Metterli sulla stessa riga faceva scrivere, con 250 documenti datati,
- * «250 date: 40 termini, 90 che non obbligano, 70 di natura non registrata» —
- * che fa 200. Il numero che accompagna una ripartizione è quello su cui la
- * ripartizione è stata fatta: `lette`, mai `totale`.
- *
- * ⚠️⚠️ E «nessuna riconosciuta come termine» detto sul TOTALE, quando il tetto
- * ha morso, è un'affermazione che può essere FALSA: un termine può stare fra
- * le 50 date non lette. Non è un numero impreciso, è una negazione su un
- * insieme che non si è guardato. Quando il conteggio è parziale la frase
- * cambia: dichiara l'insieme guardato invece di negare su quello intero.
+ * ⚠️ NON È UN FILTRO, È UN TETTO CHE SI DICHIARA. La regola resta «ogni termine
+ * è una voce»; questo numero esiste perché la Home non è l'elenco delle
+ * scadenze e cento righe di seguito non sono più una panoramica. Quando morde,
+ * la pagina dice quanti ne restano e porta all'elenco completo — che è la
+ * stessa forma dei tetti di lettura già dichiarati altrove.
  */
-export type FraseDate = 'nessunTermine' | 'nessunTermineFraLette' | 'miste';
+export const TERMINI_IN_PANORAMICA = 5;
 
-export interface RigaDate {
-  frase: FraseDate;
-  /** Il numero che la frase porta: sempre l'insieme su cui è vera. */
-  n: number;
-  /** Quante ne esistono in tutto — serve solo alle frasi che lo dichiarano. */
-  tot: number;
+export interface Termini<T> {
+  /** Le voci da rendere, già ordinate per giorno. */
+  voci: T[];
+  /** Quanti termini restano fuori dall'elenco: 0 quando il tetto non morde. */
+  altri: number;
+  /** Quanti termini si sono trovati in tutto fra le righe LETTE. */
+  trovati: number;
   /**
-   * true quando sotto la riga va la dichiarazione dello scarto, come già si fa
-   * per le attività. Nel ramo `nessunTermineFraLette` è false: quella frase lo
-   * scarto se lo dichiara da sé, e ripeterlo sarebbe la stessa cosa due volte.
+   * ⚠️⚠️ LE RIGHE LETTE SONO MENO DI QUELLE ESISTENTI: un termine può stare
+   * fra quelle non guardate, quindi l'elenco NON è «tutti i tuoi termini» e la
+   * pagina non può presentarlo come tale. È la stessa affermazione-che-poteva-
+   * essere-falsa già corretta per la negazione «nessun termine».
    */
-  scarto: boolean;
+  parziale: boolean;
+  /** I due numeri della dichiarazione: quante date lette, su quante esistenti. */
+  lette: number;
+  totaleDate: number;
 }
 
-export function rigaDate(n: ContoNature & { parziale: boolean }): RigaDate {
-  if (n.termini > 0) {
-    return { frase: 'miste', n: n.lette, tot: n.totale, scarto: n.parziale };
-  }
-  return n.parziale
-    ? { frase: 'nessunTermineFraLette', n: n.lette, tot: n.totale, scarto: false }
-    : { frase: 'nessunTermine', n: n.totale, tot: n.totale, scarto: false };
+/** I termini delle DUE popolazioni, uniti e ordinati per giorno: un termine
+ *  archiviato resta un obbligo, e il collegamento porta al documento — non a
+ *  un elenco — quindi la popolazione non cambia la destinazione. */
+export function termini<T extends DataDocumento>(
+  attivi: ContoDate<T>, archiviati: ContoDate<T>, tetto = TERMINI_IN_PANORAMICA,
+): Termini<T> {
+  const tutti = contoDate(
+    [...attivi.termini, ...archiviati.termini],
+    attivi.termini.length + archiviati.termini.length,
+  ).termini;
+  return {
+    voci: tutti.slice(0, tetto),
+    altri: Math.max(0, tutti.length - tetto),
+    trovati: tutti.length,
+    parziale: attivi.parziale || archiviati.parziale,
+    lette: attivi.lette + archiviati.lette,
+    totaleDate: attivi.totale + archiviati.totale,
+  };
+}
+
+/**
+ * LA RIGA DELLE DATE DI NATURA NON REGISTRATA, per una popolazione.
+ *
+ * ⚠️ PERCHÉ STA FRA I LIMITI E NON FRA IL LAVORO. Una data di cui l'analisi non
+ * ha dichiarato la natura non chiede niente a nessuno: dice che il sistema non
+ * ha capito che cosa fosse. Un titolo «Da fare» sopra una riga che non chiede
+ * niente insegna a saltare quel titolo.
+ *
+ * ⚠️ E IL NUMERO DELLA RIGA NON È SEMPRE QUELLO DELLA DESTINAZIONE. Il
+ * collegamento porta a `?scadenza=1`, che rende TUTTE le date della
+ * popolazione: quando le non registrate sono meno, la riga lo dichiara invece
+ * di lasciar credere che la pagina d'arrivo mostrerà lo stesso numero.
+ * `null` = non c'è niente da dire.
+ */
+export interface RigaNature {
+  n: number;
+  totale: number;
+  /** true quando la pagina d'arrivo mostra più righe del numero dichiarato. */
+  destinazionePiuAmpia: boolean;
+  /** true quando le nature sono contate su meno righe del totale. */
+  parziale: boolean;
+  lette: number;
+}
+
+export function rigaNature(c: ContoDate<DataDocumento>): RigaNature | null {
+  if (c.nonRegistrate === 0) return null;
+  return {
+    n: c.nonRegistrate,
+    totale: c.totale,
+    destinazionePiuAmpia: c.nonRegistrate < c.totale,
+    parziale: c.parziale,
+    lette: c.lette,
+  };
 }
 
 /** I due totali di uno stato documento, uno per popolazione. La somma è il
@@ -212,7 +335,15 @@ export interface BlocchiInput {
   /** Documenti con appartenenza da confermare (null = lettura fallita). */
   ownership: number | null;
   aperte: number;
-  dateRilevate: number;
+  /**
+   * I TERMINI trovati nei documenti: sono lavoro, e accendono «Da fare».
+   * ⚠️ Non «le date rilevate»: una data di natura non registrata non chiede
+   * niente, e teneva acceso un blocco «Da fare» che non aveva da fare niente.
+   */
+  terminiNeiDocumenti: number;
+  /** Le date di cui l'analisi non ha dichiarato la natura: un limite, e
+   *  accendono il blocco dei limiti. */
+  dateNonRegistrate: number;
   daVerificare: number;
   fallite: number;
   maiAnalizzati: number;
@@ -234,9 +365,10 @@ export interface Blocchi {
   sistema: boolean;
   opportunita: boolean;
   /**
-   * L'appartenenza NON si è potuta leggere. Il blocco Decisioni resta
-   * nascosto — non si inventa un conteggio — ma l'assenza si dichiara, come
-   * fa già `home.assessUnknown` per la valutazione degli incentivi.
+   * L'appartenenza NON si è potuta leggere. Il blocco Decisioni COMPARE lo
+   * stesso e lo dichiara: dentro non c'è nessun conteggio inventato, c'è la
+   * frase che dice che il controllo non è stato eseguito. Stesso mestiere di
+   * `home.catalogUnreadable` e `home.assessUnknown` nel blocco Opportunità.
    */
   ownershipIgnota: boolean;
   /** Il riquadro «cosa è stato controllato»: quando il lavoro operativo è a
@@ -245,17 +377,18 @@ export interface Blocchi {
 }
 
 export function decidiBlocchi(i: BlocchiInput): Blocchi {
-  // ⚠️⚠️ DUE MESTIERI PER LO STESSO `null`, E NON SI COLLASSANO INSIEME.
-  // Per NASCONDERE il blocco Decisioni, «non lo so» vale come zero: un blocco
-  // che dicesse «0 documenti da confermare» inventerebbe un fatto.
-  // Per lo stato VUOTO no: lì lo stesso zero diventa «niente richiede un gesto
-  // adesso», e un'azienda senza attività, senza date e senza analisi
-  // problematiche la cui lettura dell'appartenenza fosse andata in timeout se
-  // lo sentiva dire mentre un controllo non era stato eseguito.
   const ownershipIgnota = i.ownership === null;
-  const decisioni = (i.ownership ?? 0) > 0;
-  const daFare = i.aperte > 0 || i.dateRilevate > 0;
-  const sistema = i.daVerificare > 0 || i.fallite > 0 || i.maiAnalizzati > 0;
+  // ⚠️⚠️ UN BLOCCO CHE NON HA POTUTO LEGGERE I SUOI DATI RESTA A SCHERMO. Il
+  // catalogo non leggibile accendeva il blocco Opportunità e lo diceva; la
+  // stessa lettura fallita sull'appartenenza faceva SPARIRE il blocco
+  // Decisioni. Due risposte opposte allo stesso guasto sulla stessa pagina, e
+  // quella che sparisce è indistinguibile da un blocco vuoto perché non c'è
+  // niente da fare. Ora il blocco compare e dichiara il guasto: il conteggio
+  // resta non inventato — dentro, la riga dice «non leggibile», non «0».
+  const decisioni = ownershipIgnota || (i.ownership ?? 0) > 0;
+  const daFare = i.aperte > 0 || i.terminiNeiDocumenti > 0;
+  const sistema = i.daVerificare > 0 || i.fallite > 0 || i.maiAnalizzati > 0
+    || i.dateNonRegistrate > 0;
   // Il catalogo è condiviso: finché contiene programmi, lo stato della
   // valutazione aziendale è un'informazione che esiste per OGNI azienda.
   // E un catalogo NON LEGGIBILE (null) è un'informazione anche lui.

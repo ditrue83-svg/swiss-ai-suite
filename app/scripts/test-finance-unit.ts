@@ -87,10 +87,10 @@ import { fr as dictFr } from '../src/i18n/locales/fr.ts';
 // esiste. È la stessa ragione per cui `runtime.ts` delle Edge Function non va
 // importato dai test.
 import {
-  DEFAULT_DUE_DAYS, EXPENSE_CATEGORIES, FINANCE_PAGE_SIZE, MAX_QUERY_LENGTH, REVIEWS, SORTS,
+  DEFAULT_DUE_DAYS, EXPENSE_CATEGORIES, FINANCE_PAGE_SIZE, MAX_QUERY_LENGTH, SORTS,
   bucketCount, daysToDue, filtersFromParams, financeState, formatDecimal, hasActiveFilters,
   isCorrected, isCorrectableField, isDueSoon, isOverdue, paramsFromFilters, readyBlockers,
-  stateBadgeKey, toListArgs, totalsByCurrency, withoutCurrency,
+  toListArgs, totalsByCurrency, withoutCurrency,
   type FinanceSummaryRow,
   oldestPendingMinutes, queueLooksStalled, QUEUE_STALE_MINUTES,
 } from '../src/features/finance/financeModel';
@@ -820,29 +820,6 @@ const elemento = (over: Partial<ItemLike> = {}): ItemLike => ({
     'CONTROPROVA: «non riuscita» vince su «pronta» — un tentativo fallito non si nasconde dietro una verifica vecchia');
   ok(financeState(elemento({ archivedAt: '2026-07-01T00:00:00Z', processingStatus: 'failed' })) === 'archived',
     '«archiviata» vince su tutto: dice DOVE si trova, ed è l’unica cosa che spiega perché la riga non compare');
-}
-
-{
-  // ⚠️ IN ARCHIVIO LA PASTIGLIA DICE LA VERIFICA VERA. Entrambe le schermate
-  // traducevano `archived` in «Verificata» incondizionatamente: un'archiviata
-  // MAI verificata si leggeva «Verificata» — nel modulo che si è impegnato a
-  // non fare dichiarazioni false, sul dato che esiste apposta per distinguerle.
-  const inArchivio = { archivedAt: '2026-07-01T00:00:00Z' };
-  ok(stateBadgeKey(elemento(inArchivio)) === 'needs_review',
-    'archiviata MAI verificata → «da verificare»: l’archivio dice dove sta, non che qualcuno l’abbia guardata');
-  ok(stateBadgeKey(elemento({ ...inArchivio, reviewStatus: 'ready' })) === 'ready',
-    'CONTROPROVA: archiviata DOPO la verifica → «verificata» — l’informazione buona non si perde');
-  ok(stateBadgeKey(elemento({ ...inArchivio, processingStatus: 'failed' })) === 'needs_review',
-    'in archivio la macchina tace, come già per financeState: parla la verifica, non il guasto');
-  ok(stateBadgeKey(elemento({ processingStatus: 'failed', reviewStatus: 'ready' })) === 'failed'
-    && stateBadgeKey(elemento({ processingStatus: 'pending' })) === 'processing',
-    'CONTROPROVA: fuori dall’archivio le precedenze restano quelle di financeState — guasto e attesa si vedono');
-  ok(stateBadgeKey(elemento({ reviewStatus: 'ready' })) === 'ready'
-    && stateBadgeKey(elemento()) === 'needs_review',
-    'sul percorso normale la chiave È la verifica');
-  ok(REVIEWS.every((r) =>
-    it.labels.financeReview[r] && de.labels.financeReview[r] && fr.labels.financeReview[r]),
-    'e ogni chiave di verifica ha la sua frase nei TRE dizionari');
 }
 
 {

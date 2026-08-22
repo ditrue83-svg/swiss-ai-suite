@@ -40,12 +40,15 @@ import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useOverview, type OverviewData } from './useOverview';
-import { decidiBlocchi, fraseCatalogo, rigaDate, statoValutazione } from './overviewBlocks';
+import {
+  chiaviTaskSplit, decidiBlocchi, fraseCatalogo, rigaNature, statoValutazione, termini,
+} from './overviewBlocks';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { documentLabelText } from '@/i18n/documentLabel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
-import { useT, type TKey } from '@/i18n';
+import { useT, useTn, type PluralBase, type TKey } from '@/i18n';
+import type { DataDocumentoRiga } from '@/services/documentHubService';
 import type { DocumentHubItem } from '@/types/models';
 
 /**
@@ -85,104 +88,139 @@ function Esempio({ item }: { item: DocumentHubItem | null }) {
 
 /**
  * Una riga di conteggio che è anche il collegamento alla pagina che rende LO
- * STESSO numero. `count` è già stato verificato > 0 da chi chiama.
+ * STESSO numero.
+ *
+ * ⚠️ LA FORMA SINGOLARE/PLURALE LA SCEGLIE LA LINGUA, non un `=== 1` scritto
+ * qui: in francese lo ZERO vuole il singolare, in italiano e in tedesco il
+ * plurale. `tn` passa da `Intl.PluralRules` e mette dentro `{n}` da sé.
  */
-function RigaConteggio({ count, one, many, dove, to }: {
-  count: number; one: TKey; many: TKey; dove: TKey; to: string;
+function RigaConteggio({ count, base, dove, to }: {
+  count: number; base: PluralBase; dove: TKey; to: string;
 }) {
   const t = useT();
+  const tn = useTn();
   return (
     <div className="ov-line">
-      <Link to={to}>{t(count === 1 ? one : many, { n: count, dove: t(dove) })}</Link>
+      <Link to={to}>{tn(base, count, { dove: t(dove) })}</Link>
     </div>
   );
 }
 
+/**
+ * ⚠️⚠️ IL BLOCCO RESTA A SCHERMO ANCHE QUANDO NON HA POTUTO LEGGERE I SUOI
+ * DATI, e lo dice. Prima l'appartenenza non leggibile faceva sparire questo
+ * blocco mentre il catalogo non leggibile ne accendeva un altro che lo
+ * dichiarava: due risposte opposte allo stesso guasto sulla stessa pagina. Un
+ * blocco che sparisce quando è rotto è indistinguibile da un blocco vuoto
+ * perché non c'è niente da fare — che è la stessa confusione fra «non ho
+ * guardato» e «non c'è niente» che questa pagina combatte dappertutto.
+ *
+ * Il conteggio, però, resta NON INVENTATO: nel ramo del guasto non c'è nessun
+ * numero, c'è la frase che dice che il controllo non è stato eseguito.
+ */
 function BloccoDecisioni({ data }: { data: OverviewData }) {
   const t = useT();
-  const ownership = data.ownership as NonNullable<OverviewData['ownership']>;
+  const tn = useTn();
+  const ownership = data.ownership;
   return (
     <section className="card mt-16 ov-block" aria-labelledby="ov-decisioni">
       <h2 className="card-title" id="ov-decisioni">{t('home.blockDecisions')}</h2>
-      <div className="ov-line">
-        {ownership.count === 1
-          ? t('home.ownershipOne')
-          : t('home.ownershipMany', { n: ownership.count })}
-      </div>
-      {/* Il tetto di lettura si dichiara COL NUMERO, come già si fa per le
-          attività e come fa la pagina d'arrivo: un conteggio finestrato
-          presentato come un fatto è la bugia che questa pagina combatte. */}
-      {ownership.parziale && <div className="muted-sm">{t('home.ownershipPartial')}</div>}
-      <Esempio item={ownership.latest} />
-      {/* Il perché queste vengono PRIME: il gate delle attività dipende da loro. */}
-      <div className="muted-sm">
-        {t(ownership.count === 1 ? 'home.ownershipGateOne' : 'home.ownershipGateMany')}
-      </div>
-      <Link className="btn btn-sm mt-10" to="/documenti?appartenenza=1">
-        {t('home.openList')} <Icon name="arrowRight" className="ic-sm" />
-      </Link>
+      {ownership === null ? (
+        <div className="muted-sm">{t('home.ownershipUnknown')}</div>
+      ) : (
+        <>
+          <div className="ov-line">{tn('home.ownership', ownership.count)}</div>
+          {/* Il tetto di lettura si dichiara COL NUMERO, come già si fa per le
+              attività e come fa la pagina d'arrivo: un conteggio finestrato
+              presentato come un fatto è la bugia che questa pagina combatte. */}
+          {ownership.parziale && <div className="muted-sm">{t('home.ownershipPartial')}</div>}
+          <Esempio item={ownership.latest} />
+          {/* Il perché queste vengono PRIME: il gate delle attività dipende da loro. */}
+          <div className="muted-sm">{tn('home.ownershipGate', ownership.count)}</div>
+          <Link className="btn btn-sm mt-10" to="/documenti?appartenenza=1">
+            {t('home.openList')} <Icon name="arrowRight" className="ic-sm" />
+          </Link>
+        </>
+      )}
     </section>
   );
 }
 
 /**
- * La riga delle date dei documenti, chiamate col loro nome: finché non esiste
- * un `term`, un blocco scadenze sarebbe due date incerte vestite da termini.
- * Zero term in tutta la produzione, misurato il 2026-08-19.
+ * UN TERMINE È UNA VOCE: giorno, che cosa riguarda, e come arrivarci.
  *
- * ⚠️ IL NUMERO DELLA FRASE È QUELLO DELL'INSIEME SU CUI LA FRASE È VERA, e lo
- * decide `rigaDate`, che è puro e provato. Il totale è esatto, le nature sono
- * contate sulle sole righe lette: metterli insieme faceva scrivere «250 date:
- * 40 termini, 90 che non obbligano, 70 non registrate», che fa 200. E con il
- * tetto che morde, «nessuna riconosciuta come termine» detto sul totale poteva
- * essere FALSO — un termine può stare fra le 50 date non lette.
+ * ⚠️⚠️ PERCHÉ NON UN CONTEGGIO. «3 date nei documenti: 1 termini, 1 che non
+ * obbligano l'azienda, 1 di natura non registrata» era il censimento delle
+ * nature di un archivio. Chi ha un termine vero non vuole sapere quante
+ * nature esistono: vuole vedere QUELLA data, che cosa riguarda, e arrivarci.
+ * Il collegamento porta al DOCUMENTO — non a un elenco filtrato — perciò non
+ * c'è nessun numero da far coincidere con una destinazione.
+ *
+ * ⚠️ IL NOME PASSA DALLA REGOLA DEL TITOLO (`label`), come ovunque: la prima
+ * riga di questa pagina è già stata «2.5» una volta.
+ *
+ * ⚠️ E L'ELENCO NON SI DICHIARA COMPLETO SE NON LO È: con la lettura al tetto
+ * un termine può stare fra le date non guardate, e la riga sotto lo dice — la
+ * stessa affermazione-che-poteva-essere-falsa già corretta per la negazione.
  */
-function RigaDelleDate({ nature }: { nature: OverviewData['nature'] }) {
+function VociTermini({ conto, titolo }: {
+  conto: ReturnType<typeof termini<DataDocumentoRiga>>; titolo: boolean;
+}) {
   const t = useT();
-  if (nature.totale === 0) return null;
-  const r = rigaDate(nature);
+  const tn = useTn();
+  const { voci, altri, parziale, lette, totaleDate } = conto;
+  if (voci.length === 0) return null;
   return (
     <>
-      <div className="ov-line">
-        {r.frase === 'miste' && t('home.datesMixed', {
-          n: r.n, t: nature.termini, e: nature.nonObbliganti, r: nature.nonRegistrate,
-        })}
-        {r.frase === 'nessunTermineFraLette' && t('home.datesNoTermPartial', { n: r.n, tot: r.tot })}
-        {r.frase === 'nessunTermine'
-          && t(r.n === 1 ? 'home.datesNoTermOne' : 'home.datesNoTermMany', { n: r.n })}
-      </div>
-      {/* Lo scarto si dichiara sotto, come già si fa per le attività. */}
-      {r.scarto && <div className="muted-sm">{t('home.datesPartial', { n: r.n, tot: r.tot })}</div>}
+      {titolo && <div className="muted-sm ov-terms-head">{t('home.termsFromDocs')}</div>}
+      {voci.map((v) => (
+        <div className="ov-line ov-term" key={v.id}>
+          <Link to={`/documenti/${v.id}`}>
+            {t('home.termItem', {
+              date: v.deadline ? formatDate(v.deadline) : t('home.termNoDate'),
+              title: documentLabelText(v.label),
+            })}
+          </Link>
+        </div>
+      ))}
+      {altri > 0 && <div className="muted-sm">{tn('home.termsMore', altri)}</div>}
+      {parziale && (
+        <div className="muted-sm">{t('home.termsPartial', { n: lette, tot: totaleDate })}</div>
+      )}
+      <Link className="btn btn-sm mt-10" to="/documenti?scadenza=1&ordine=deadline">
+        {t('home.ctaDates')} <Icon name="arrowRight" className="ic-sm" />
+      </Link>
     </>
   );
 }
 
 function BloccoDaFare({ data }: { data: OverviewData }) {
   const t = useT();
+  const tn = useTn();
   const s = data.tasks;
-  // Le parti della riga, nell'ordine della bozza: ciò che esiste prima, poi le
-  // due dichiarazioni che pesano anche da zero — «nessun termine» e «nessuno
-  // scaduto» sono affermazioni, non assenze (regola 2 del brief).
-  const parti: string[] = [];
-  if (s.appuntamenti > 0) {
-    parti.push(t(s.appuntamenti === 1 ? 'home.tasksApptsOne' : 'home.tasksApptsMany', { n: s.appuntamenti }));
-  }
-  parti.push(
-    s.termini === 0 ? t('home.tasksTermsNone')
-      : t(s.termini === 1 ? 'home.tasksTermsOne' : 'home.tasksTermsMany', { n: s.termini }),
-  );
-  if (s.senzaData > 0) {
-    parti.push(t(s.senzaData === 1 ? 'home.tasksNoDateOne' : 'home.tasksNoDateMany', { n: s.senzaData }));
-  }
-  parti.push(
-    s.scadute === 0 ? t('home.tasksOverdueNone')
-      : t(s.scadute === 1 ? 'home.tasksOverdueOne' : 'home.tasksOverdueMany', { n: s.scadute }),
-  );
+  const conto = termini(data.date.attivi, data.date.archiviati);
+  // ⚠️⚠️ DUE PARTI, DUE FONTI, E DUE INTESTAZIONI QUANDO CI SONO ENTRAMBE. La
+  // riga delle attività dichiara «nessun termine» — dei TASK — e sotto può
+  // esserci un termine dei DOCUMENTI: due frasi vere sullo stesso schermo che
+  // si leggono come una contraddizione se nessuno dice di che cosa parlano.
+  // Con una parte sola l'intestazione non separa niente e non compare.
+  const dueParti = s.aperte > 0 && conto.voci.length > 0;
+  // ⚠️ LE COPPIE DI CHIAVI LE DECIDE `chiaviTaskSplit`, che è pura e provata:
+  // scegliere qui quale chiave va con quale numero significava poter rendere
+  // gli appuntamenti con la parola dei termini — una data presentata come un
+  // obbligo quando non lo è — e nessun controllo lo avrebbe visto.
+  const parti = chiaviTaskSplit(s).map((parte) => (
+    parte.base === null ? t(parte.chiave) : tn(parte.base, parte.n)
+  ));
 
   const primoData = s.primo ? (s.primo.dueDate ?? s.primo.appointmentDate) : null;
   return (
     <section className="card mt-16 ov-block" aria-labelledby="ov-dafare">
       <h2 className="card-title" id="ov-dafare">{t('home.blockToDo')}</h2>
+      {/* I TERMINI PER PRIMI: un obbligo con un giorno — magari già passato —
+          vale più di un riepilogo di conteggi. */}
+      <VociTermini conto={conto} titolo={dueParti} />
+      {dueParti && <div className="muted-sm ov-terms-head mt-10">{t('home.tasksHeading')}</div>}
       {s.aperte > 0 && <div className="ov-line">{parti.join(' · ')}</div>}
       {/* Il diviso può essere parziale (tetto dichiarato): la frase lo dice,
           con i due numeri — quante lette e quante sono. */}
@@ -194,13 +232,49 @@ function BloccoDaFare({ data }: { data: OverviewData }) {
             : t('home.firstItemNoDate', { title: s.primo.title })}
         </div>
       )}
-      <RigaDelleDate nature={data.nature} />
       {s.aperte > 0 && (
         <Link className="btn btn-sm mt-10" to="/attivita">
           {t('home.ctaTasks')} <Icon name="arrowRight" className="ic-sm" />
         </Link>
       )}
     </section>
+  );
+}
+
+/**
+ * LE DATE DI NATURA NON REGISTRATA — un limite, non un lavoro.
+ *
+ * ⚠️ PERCHÉ QUI E NON IN «DA FARE». Una data di cui l'analisi non ha
+ * dichiarato la natura non chiede niente a nessuno: dice che il sistema non ha
+ * potuto concludere che cosa fosse. Un titolo «Da fare» sopra una riga che non
+ * chiede niente insegna a saltare quel titolo.
+ *
+ * ⚠️ E IL NUMERO DELLA RIGA NON È SEMPRE QUELLO DELLA DESTINAZIONE: il filtro
+ * `?scadenza=1` non sa distinguere le nature (la RPC non le filtra), quindi la
+ * pagina d'arrivo mostra TUTTE le date della popolazione. Quando i due numeri
+ * divergono la riga lo dichiara, invece di lasciar credere che coincidano.
+ */
+function RigaDateIgnote({ conto, dove, to }: {
+  conto: OverviewData['date']['attivi']; dove: TKey; to: string;
+}) {
+  const t = useT();
+  const tn = useTn();
+  const r = rigaNature(conto);
+  if (r === null) return null;
+  return (
+    <>
+      <div className="ov-line">
+        <Link to={to}>{tn('home.datesUnrecorded', r.n, { dove: t(dove) })}</Link>
+      </div>
+      {r.destinazionePiuAmpia && (
+        <div className="muted-sm">
+          {t('home.datesScope', { tot: r.totale, dove: t(dove) })}
+        </div>
+      )}
+      {r.parziale && (
+        <div className="muted-sm">{t('home.datesSplitPartial', { n: r.lette, tot: r.totale })}</div>
+      )}
+    </>
   );
 }
 
@@ -215,29 +289,35 @@ function BloccoSistema({ data }: { data: OverviewData }) {
     <section className="card mt-16 ov-block" aria-labelledby="ov-sistema">
       <h2 className="card-title" id="ov-sistema">{t('home.blockSystem')}</h2>
       {fallite.attivi > 0 && (
-        <RigaConteggio count={fallite.attivi} one="home.sysFailedOne" many="home.sysFailedMany"
+        <RigaConteggio count={fallite.attivi} base="home.sysFailed"
           dove="home.popActive" to="/documenti?stato=failed" />
       )}
       {fallite.archiviati > 0 && (
-        <RigaConteggio count={fallite.archiviati} one="home.sysFailedOne" many="home.sysFailedMany"
+        <RigaConteggio count={fallite.archiviati} base="home.sysFailed"
           dove="home.popArchived" to="/documenti?stato=failed&archiviati=1" />
       )}
       {daVerificare.attivi > 0 && (
-        <RigaConteggio count={daVerificare.attivi} one="home.sysToVerifyOne" many="home.sysToVerifyMany"
+        <RigaConteggio count={daVerificare.attivi} base="home.sysToVerify"
           dove="home.popActive" to="/documenti?stato=to_verify" />
       )}
       {daVerificare.archiviati > 0 && (
-        <RigaConteggio count={daVerificare.archiviati} one="home.sysToVerifyOne" many="home.sysToVerifyMany"
+        <RigaConteggio count={daVerificare.archiviati} base="home.sysToVerify"
           dove="home.popArchived" to="/documenti?stato=to_verify&archiviati=1" />
       )}
       {maiAnalizzati.attivi > 0 && (
-        <RigaConteggio count={maiAnalizzati.attivi} one="home.sysNeverOne" many="home.sysNeverMany"
+        <RigaConteggio count={maiAnalizzati.attivi} base="home.sysNever"
           dove="home.popActive" to="/documenti?stato=none" />
       )}
       {maiAnalizzati.archiviati > 0 && (
-        <RigaConteggio count={maiAnalizzati.archiviati} one="home.sysNeverOne" many="home.sysNeverMany"
+        <RigaConteggio count={maiAnalizzati.archiviati} base="home.sysNever"
           dove="home.popArchived" to="/documenti?stato=none&archiviati=1" />
       )}
+      {/* Le date che il sistema non ha saputo qualificare: una riga per
+          popolazione, ciascuna col suo numero e la sua destinazione. */}
+      <RigaDateIgnote conto={data.date.attivi} dove="home.popActive"
+        to="/documenti?scadenza=1" />
+      <RigaDateIgnote conto={data.date.archiviati} dove="home.popArchived"
+        to="/documenti?scadenza=1&archiviati=1" />
       <Esempio item={esempio} />
     </section>
   );
@@ -245,6 +325,7 @@ function BloccoSistema({ data }: { data: OverviewData }) {
 
 function BloccoOpportunita({ data, companyName }: { data: OverviewData; companyName: string }) {
   const t = useT();
+  const tn = useTn();
   const { catalogo, assessments, summary } = data.incentivi;
   const stato = statoValutazione(assessments);
   // ⚠️ Il caso VUOTO prima dell'uguaglianza: `verified === programs` è vero
@@ -258,7 +339,7 @@ function BloccoOpportunita({ data, companyName }: { data: OverviewData; companyN
         {frase === 'nonLeggibile' && t('home.catalogUnreadable')}
         {frase === 'vuoto' && t('home.catalogEmpty')}
         {frase === 'tuttiVerificati' && catalogo
-          && t(catalogo.programs === 1 ? 'home.catalogAllVerifiedOne' : 'home.catalogAllVerifiedMany', { n: catalogo.programs })}
+          && tn('home.catalogAllVerified', catalogo.programs)}
         {frase === 'inParte' && catalogo
           && t('home.catalogSomeVerified', { n: catalogo.programs, v: catalogo.verified })}
       </div>
@@ -296,10 +377,16 @@ function BloccoOpportunita({ data, companyName }: { data: OverviewData; companyN
 
 function OverviewBody({ data, companyName }: { data: OverviewData; companyName: string }) {
   const t = useT();
+  const conteggioTermini = termini(data.date.attivi, data.date.archiviati);
   const blocchi = decidiBlocchi({
     ownership: data.ownership?.count ?? null,
     aperte: data.tasks.aperte,
-    dateRilevate: data.nature.totale,
+    // I TERMINI sono lavoro e accendono «Da fare»; le date di natura non
+    // registrata sono un limite e accendono il blocco dei limiti. Prima
+    // bastavano «le date rilevate» — quali che fossero — e un titolo «Da fare»
+    // stava sopra una riga che non chiedeva niente.
+    terminiNeiDocumenti: conteggioTermini.trovati,
+    dateNonRegistrate: data.date.attivi.nonRegistrate + data.date.archiviati.nonRegistrate,
     daVerificare: data.daVerificare.attivi + data.daVerificare.archiviati,
     fallite: data.fallite.attivi + data.fallite.archiviati,
     maiAnalizzati: data.maiAnalizzati.attivi + data.maiAnalizzati.archiviati,
@@ -313,19 +400,6 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
   return (
     <>
       {blocchi.decisioni && <BloccoDecisioni data={data} />}
-
-      {/* ⚠️ IL BLOCCO RESTA NASCOSTO, MA L'ASSENZA SI DICHIARA. Un conteggio
-          che non si è potuto leggere non diventa uno zero — sarebbe un fatto
-          inventato — e nemmeno un silenzio: senza questa riga, un'azienda
-          senza altro lavoro in sospeso leggeva «Niente richiede un gesto
-          adesso» mentre un controllo non era stato eseguito. Stesso mestiere
-          di `home.assessUnknown` nel blocco Opportunità. */}
-      {blocchi.ownershipIgnota && (
-        <section className="card mt-16 ov-block" aria-labelledby="ov-ignoto">
-          <h2 className="card-title" id="ov-ignoto">{t('home.blockDecisions')}</h2>
-          <div className="muted-sm">{t('home.ownershipUnknown')}</div>
-        </section>
-      )}
 
       {blocchi.daFare && <BloccoDaFare data={data} />}
       {blocchi.sistema && <BloccoSistema data={data} />}

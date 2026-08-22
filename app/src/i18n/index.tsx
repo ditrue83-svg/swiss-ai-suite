@@ -51,6 +51,43 @@ type Path<T> = T extends Record<string, unknown>
   : never;
 export type TKey = Path<Dictionary>;
 
+// ---------------------------------------------------------------------------
+// LE FORME PLURALI — le sceglie la LINGUA, non un `=== 1` scritto a mano.
+//
+// ⚠️⚠️ PERCHÉ NON BASTA `n === 1 ? una : molte`. In italiano e in tedesco lo
+// zero vuole il plurale («0 termini», «0 Fristen»); in FRANCESE vuole il
+// singolare («0 échéance»). Un ternario sul numero è quindi giusto in due
+// lingue su tre, e la terza si rompe esattamente nel caso che questa pagina
+// mostra più spesso: lo zero. La regola sta nelle tabelle CLDR, che il
+// browser e Node hanno già dentro `Intl.PluralRules`, e questo progetto non
+// aggiunge una libreria per una cosa che la piattaforma sa fare.
+//
+// ⚠️ E NON SI INTERPOLA UN NUMERO DENTRO UNA PAROLA GIÀ AL PLURALE: «{t}
+// termini» dava «1 termini» a schermo. Ogni conteggio passa da una COPPIA di
+// chiavi — `…One` e `…Many` — e il tipo qui sotto ammette solo le basi che
+// hanno davvero entrambe: scriverne una sola non compila.
+//
+// Le categorie CLDR sono più di due (l'italiano e il francese hanno anche
+// `many`, dal milione in su); il dizionario ne offre due, quindi tutto ciò che
+// non è `one` prende la forma `Many`. È una scelta dichiarata, non una svista.
+// ---------------------------------------------------------------------------
+export type PluralBase = {
+  [K in TKey]: K extends `${infer B}One`
+    ? (`${B}Many` extends TKey ? B : never)
+    : never;
+}[TKey];
+
+const PLURAL_RULES: Partial<Record<Locale, Intl.PluralRules>> = {};
+function rules(locale: Locale): Intl.PluralRules {
+  return (PLURAL_RULES[locale] ??= new Intl.PluralRules(LOCALE_TAG[locale]));
+}
+
+/** La chiave giusta per `n` nella lingua data: `…One` solo dove la lingua vuole
+ *  il singolare. Esportata perché il banco di prova la interroga direttamente. */
+export function pluralKey(base: PluralBase, n: number, locale: Locale): TKey {
+  return `${base}${rules(locale).select(n) === 'one' ? 'One' : 'Many'}` as TKey;
+}
+
 function lookup(dict: Dictionary, key: string): string | undefined {
   let node: unknown = dict;
   for (const part of key.split('.')) {
@@ -63,10 +100,19 @@ function lookup(dict: Dictionary, key: string): string | undefined {
 
 export type TFunction = (key: TKey, vars?: Record<string, string | number>) => string;
 
+/**
+ * Un conteggio tradotto: la forma la sceglie la lingua, e `{n}` è già dentro.
+ * `tn('home.tasksAppts', 3)` → «3 appuntamenti» · «3 Termine» · «3 rendez-vous».
+ */
+export type TPluralFunction = (
+  base: PluralBase, n: number, vars?: Record<string, string | number>,
+) => string;
+
 interface I18nValue {
   locale: Locale;
   setLocale: (l: Locale) => void;
   t: TFunction;
+  tn: TPluralFunction;
   /** Tag BCP-47 corrente, per date e valute. */
   localeTag: string;
 }
@@ -99,9 +145,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     return raw.replace(/\{(\w+)\}/g, (m, name) => (name in vars ? String(vars[name]) : m));
   }, [locale]);
 
+  const tn = useCallback<TPluralFunction>(
+    (base, n, vars) => t(pluralKey(base, n, locale), { n, ...vars }),
+    [t, locale],
+  );
+
   const value = useMemo<I18nValue>(
-    () => ({ locale, setLocale, t, localeTag: LOCALE_TAG[locale] }),
-    [locale, setLocale, t],
+    () => ({ locale, setLocale, t, tn, localeTag: LOCALE_TAG[locale] }),
+    [locale, setLocale, t, tn],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
@@ -116,6 +167,12 @@ export function useI18n(): I18nValue {
 /** Scorciatoia per il caso più frequente: `const t = useT()`. */
 export function useT(): TFunction {
   return useI18n().t;
+}
+
+/** La scorciatoia dei conteggi: `const tn = useTn()`. Non esiste una versione
+ *  fuori da React perché nessun conteggio si formatta fuori da un componente. */
+export function useTn(): TPluralFunction {
+  return useI18n().tn;
 }
 
 /**
