@@ -36,7 +36,7 @@ import {
   analysisTrust, cognomiDaRubrica, ownershipConfirmation, segnoCampo, trustInputFromAnalysis,
   type TrustInput, type TrustVerdict,
 } from '../src/features/documents/analysisTrust';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { aBlocchi, BLOCCO_IN } from '../src/lib/blocchi';
 import {
   etichettaComposta, etichettaDaRigaDocumento, etichettaDocumento,
@@ -45,6 +45,7 @@ import {
 import {
   documentTaskDraft, runCreateFromDocument, appartenenzaDa, AppartenenzaInDubbio,
 } from '../src/features/tasks/documentToTask';
+import { motivoAppartenenza } from '../src/features/documents/ownershipReason';
 import type {
   AnalysisUncertainty, ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
   DocumentLinkedTask, DocumentStatsRow, Task,
@@ -1729,10 +1730,71 @@ section('18. Il guardiano: nessuna schermata si dichiara «senza dubbio» da sé
   ok(!senzaCommenti("// qui si parla di 'senza-dubbio' a parole").includes("'senza-dubbio'"),
     'CONTROPROVA: e NON lo riconosce dentro un commento — il difetto delle guardie a regex di questo progetto');
 
-  // Chi crea attività senza poter valutare deve dirlo con un motivo scritto.
-  const finanze = senzaCommenti(readFileSync('src/features/finance/FinanceDetailPage.tsx', 'utf8'));
-  ok(/stato:\s*'non-valutata'[\s\S]{0,120}perche:/.test(finanze),
-    '⚠️ BUCO APERTO E DICHIARATO: Finanze crea attività senza valutare l’appartenenza, e il motivo è scritto nel codice');
+  // La scala delle ragioni: ogni silenzio porta il suo motivo, e sono motivi
+  // DIVERSI. ⚠️ L'ordine è la parte che si sbaglia: senza documento non si sta
+  // «leggendo», e un guasto di rete non è «il documento non ha un'analisi».
+  {
+    const base = { documentId: 'doc-1', loading: false, error: null, analisi: {} };
+    ok(motivoAppartenenza({ ...base, documentId: null, loading: true }).includes('nessun documento'),
+      '⚠️ senza documento si dice QUELLO, anche mentre una lettura risulta in corso: non si legge ciò che non c’è');
+    ok(motivoAppartenenza({ ...base, loading: true }).includes('in lettura'),
+      'con la lettura in corso lo si dice');
+    // ⚠️⚠️ `analisi: null` INSIEME all'errore, e non è un dettaglio: è la forma
+    // VERA dello stato: `useAsync` sul guasto scrive `data: null`. Con
+    // un'analisi finta accanto all'errore questa riga resta verde anche se le
+    // due condizioni si invertono — provato il 2026-08-22, ed era un verde
+    // falso nato in dieci minuti. Un caso di prova che non riproduce lo stato
+    // reale misura la funzione su un mondo che non esiste.
+    ok(motivoAppartenenza({ ...base, error: 'rete', analisi: null }).includes('non leggibile'),
+      '⚠️ un guasto è un guasto: NON si traveste da «non c’è un’analisi», nemmeno quando la lettura fallita ha lasciato l’analisi vuota');
+    ok(motivoAppartenenza({ ...base, analisi: null }).includes('non ha un’analisi'),
+      'un documento mai analizzato è un fatto suo');
+    ok(motivoAppartenenza(base).includes('verdetto'),
+      'e con l’analisi in mano manca solo il verdetto');
+    const tutti = new Set([
+      motivoAppartenenza({ ...base, documentId: null }),
+      motivoAppartenenza({ ...base, loading: true }),
+      motivoAppartenenza({ ...base, error: 'rete', analisi: null }),
+      motivoAppartenenza({ ...base, analisi: null }),
+      motivoAppartenenza(base),
+    ]);
+    ok(tutti.size === 5,
+      'CONTROPROVA: cinque situazioni, cinque frasi diverse — una scala che dicesse sempre la stessa cosa passerebbe tutte le righe qui sopra');
+  }
+
+  // ⚠️⚠️ L'INVARIANTE FORTE, ed è quella che avrebbe fermato il difetto:
+  // chi crea un'attività da un documento deve PROCURARSI il verdetto, non
+  // limitarsi a passare un valore. Le due strade legittime sono `appartenenzaDa`
+  // (per chi il verdetto ce l'ha già) e `useDocumentOwnership` (per chi ha solo
+  // l'identificativo del documento e deve andarselo a prendere, come Finanze).
+  // Una schermata quarta che importi la creazione e nessuna delle due non ha
+  // modo di sapere quello che dichiara.
+  const CREANO = [
+    'src/features/admin-ai/ResultView.tsx',
+    'src/features/documents/DocumentDetailPage.tsx',
+    'src/features/finance/FinanceDetailPage.tsx',
+  ];
+  for (const file of CREANO) {
+    const codice = senzaCommenti(readFileSync(file, 'utf8'));
+    if (!codice.includes('createTaskFromDocument')) continue;
+    ok(/appartenenzaDa|useDocumentOwnership/.test(codice),
+      `${file} il verdetto se lo procura, non lo inventa`);
+  }
+  // …e l'elenco non deve invecchiare: se nasce un quarto punto di creazione,
+  // questa riga diventa rossa invece di lasciarlo passare in silenzio.
+  // ⚠️ Un CHIAMANTE è chi la IMPORTA: cercare `createTaskFromDocument(` da solo
+  // pesca anche il file che la dichiara, e la guardia nasce rossa su se stessa.
+  // (È nata rossa così, il 2026-08-22, prima di questa riga.)
+  const TUTTI = readdirSync('src/features', { recursive: true, encoding: 'utf8' })
+    .filter((f) => typeof f === 'string' && /\.tsx?$/.test(f))
+    .map((f) => `src/features/${f}`)
+    .filter((f) => {
+      const c = senzaCommenti(readFileSync(f, 'utf8'));
+      return c.includes('createTaskFromDocument') && /from '@\/features\/tasks\/taskFromDocument'/.test(c);
+    });
+  ok(TUTTI.length === CREANO.length,
+    'i punti di creazione sono ancora quelli censiti: uno nuovo va aggiunto a questo elenco e messo sotto la stessa regola',
+    `attesi ${CREANO.length}, trovati ${TUTTI.length}: ${TUTTI.join(', ')}`);
 }
 
 // ===========================================================================

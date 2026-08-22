@@ -35,6 +35,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { financeService } from '@/services/financeService';
 import { createTaskFromDocument } from '@/features/tasks/taskFromDocument';
+import { useDocumentOwnership } from '@/features/documents/useDocumentOwnership';
 import { dueLabel, statusLabelKey } from '@/features/tasks/taskFormat';
 import { useMembers } from '@/features/tasks/useMembers';
 import { formatDate } from '@/lib/format';
@@ -211,6 +212,14 @@ export function FinanceDetailPage() {
     () => financeService.get(id, companyId), [id, companyId],
   );
 
+  // ⚠️ IL CANCELLO DELL'APPARTENENZA, che qui mancava del tutto. Sta PRIMA dei
+  // ritorni anticipati perché è un gancio: l'ordine non può dipendere da come è
+  // andata la lettura. Il documento può non esserci (voce creata a mano) e il
+  // gancio lo regge — «non valutata» col suo motivo, non un blocco.
+  const { dubbia: appartenenzaDubbia, appartenenza } = useDocumentOwnership(
+    data?.item.documentId ?? null,
+  );
+
   const { byId: membersById } = useMembers();
   const [panel, setPanel] = useState<Panel>('data');
   const [comparing, setComparing] = useState(false);
@@ -289,16 +298,10 @@ export function FinanceDetailPage() {
         companyId,
         userId: user.id,
         documentId: item.documentId,
-        // ⚠️⚠️ BUCO APERTO, DICHIARATO. Questa pagina non carica l'analisi del
-        // documento, quindi non può chiedere a `analysisTrust` se il documento
-        // riguardi davvero l'azienda: da qui un'attività nasce anche su una
-        // fattura intestata a un'altra persona — ed è esattamente il caso della
-        // fattura Sunrise del 2026-08-21. Non si chiude con una riga: servono
-        // l'analisi e il verdetto in questa pagina. Finché non ci sono, il
-        // campo obbligatorio costringe almeno a dirlo qui invece di lasciarlo
-        // invisibile, e un `grep 'non-valutata'` trova tutti i buchi di questo
-        // tipo in una volta sola.
-        appartenenza: { stato: 'non-valutata', perche: 'Finanze non carica l’analisi del documento' },
+        // Il verdetto vero, da `useDocumentOwnership`: questa pagina non aveva
+        // l'analisi in mano e per un giorno ha potuto dire soltanto «non
+        // valutata». Ora la va a prendere.
+        appartenenza,
         title: docLabel(item.documentLabel),
         authority: item.supplierName ?? item.merchant,
         dueDate: item.dueDate,
@@ -377,7 +380,8 @@ export function FinanceDetailPage() {
         <button className="btn" onClick={() => void retry()} disabled={busy || !canRetry}>
           <Icon name="refresh" className="ic-sm" /> {t('finance.detail.retry')}
         </button>
-        <button className="btn" onClick={() => void createTask()} disabled={busy}>
+        <button className="btn" onClick={() => void createTask()}
+          disabled={busy || appartenenzaDubbia}>
           <Icon name="calendar" className="ic-sm" /> {t('finance.detail.createTask')}
         </button>
       </div>
@@ -401,6 +405,11 @@ export function FinanceDetailPage() {
       )}
       {item.reviewStatus !== 'ready' && blockers.length === 0 && (
         <div className="muted-sm mt-8">{t('finance.detail.markReviewedHint')}</div>
+      )}
+      {/* La stessa frase del Document Hub e di Admin AI: la regola è una, e
+          chi la incontra in tre punti diversi deve leggere le stesse parole. */}
+      {appartenenzaDubbia && (
+        <div className="info-box mt-12">{t('documents.ownership.warnGate')}</div>
       )}
       {!canRetry && <div className="muted-sm mt-8">{t('finance.errors.cannotRetry')}</div>}
 
@@ -490,7 +499,7 @@ export function FinanceDetailPage() {
         {panel === 'origin' && <OriginPanel detail={detail} t={t} />}
         {panel === 'tasks' && (
           <TasksPanel detail={detail} t={t} busy={busy} assigneeName={assigneeName}
-            onCreate={() => void createTask()} />
+            ownershipDoubt={appartenenzaDubbia} onCreate={() => void createTask()} />
         )}
         {panel === 'audit' && <AuditPanel detail={detail} t={t} L={L} />}
       </div>
@@ -888,10 +897,13 @@ function OriginPanel({ detail, t }: { detail: FinanceDetail; t: TFunction }) {
 // Scheda «Attività»
 // ---------------------------------------------------------------------------
 function TasksPanel({
-  detail, t, busy, assigneeName, onCreate,
+  detail, t, busy, assigneeName, ownershipDoubt, onCreate,
 }: {
   detail: FinanceDetail; t: TFunction; busy: boolean;
-  assigneeName: (userId: string | null) => string; onCreate: () => void;
+  assigneeName: (userId: string | null) => string;
+  /** L'appartenenza è in dubbio: qui non nascono attività. */
+  ownershipDoubt: boolean;
+  onCreate: () => void;
 }) {
   return (
     <>
@@ -911,9 +923,14 @@ function TasksPanel({
           </Link>
         );
       })}
-      <button className="btn btn-sm mt-10" onClick={onCreate} disabled={busy}>
+      <button className="btn btn-sm mt-10" onClick={onCreate} disabled={busy || ownershipDoubt}>
         <Icon name="calendar" className="ic-sm" /> {t('finance.detail.createTask')}
       </button>
+      {/* Anche qui il perché: è il secondo punto di creazione della pagina, e
+          un pulsante spento in una scheda è ancora più muto degli altri. */}
+      {ownershipDoubt && (
+        <div className="muted-sm mt-8">{t('documents.ownership.warnGate')}</div>
+      )}
     </>
   );
 }
