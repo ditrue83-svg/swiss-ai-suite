@@ -819,6 +819,14 @@ async function analyzeDocument(
     extraction,
     extractionDurationMs: Date.now() - extractStart,
     logId: slot,
+    // §80 — la riga di quota l'ha prenotata `try_consume_ai_quota_system` con
+    // `user_id` NULL: la chiude solo la gemella `_system`, e solo il service
+    // role può eseguirla. Fino al 2026-08-22 qui si passava dalla funzione
+    // dell'utente, che pretende `user_id = auth.uid()`: con `user_id` NULL e
+    // `auth.uid()` NULL il confronto è `NULL = NULL`, cioè NULL — mai vero.
+    // Diciotto righe su diciotto sono rimaste `pending`.
+    logSb: deps.sb as never,
+    logComeChi: 'sistema',
     outputLanguage: deps.outputLanguage,
     companyContext,
     todayIso: new Date().toISOString().slice(0, 10),

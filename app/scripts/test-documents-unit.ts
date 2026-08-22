@@ -46,6 +46,10 @@ import {
   documentTaskDraft, runCreateFromDocument, appartenenzaDa, AppartenenzaInDubbio,
 } from '../src/features/tasks/documentToTask';
 import { motivoAppartenenza } from '../src/features/documents/ownershipReason';
+import {
+  analisiGiaInCorso, STUCK_ANALYSIS_MINUTES, STATI_IN_LAVORAZIONE,
+} from '../supabase/functions/_shared/recoverStuckAnalyses.ts';
+import { finalizeAiRequest } from '../supabase/functions/_shared/persist.ts';
 import type {
   AnalysisUncertainty, ChecklistAction, DocumentAnalysis, DocumentDetail, DocumentHubFilters, DocumentHubItem,
   DocumentLinkedTask, DocumentStatsRow, Task,
@@ -1795,6 +1799,130 @@ section('18. Il guardiano: nessuna schermata si dichiara «senza dubbio» da sé
   ok(TUTTI.length === CREANO.length,
     'i punti di creazione sono ancora quelli censiti: uno nuovo va aggiunto a questo elenco e messo sotto la stessa regola',
     `attesi ${CREANO.length}, trovati ${TUTTI.length}: ${TUTTI.join(', ')}`);
+}
+
+// ===========================================================================
+section('18 · Una lettura per volta: il credito non si paga due volte');
+// ===========================================================================
+// ⚠️⚠️ IL CASO REALE del 2026-08-21. Lo stesso PDF di 15 pagine è stato
+// analizzato DUE volte a 74 secondi di distanza: due chiamate a opus, due righe
+// in `document_analyses`, credito speso due volte. `analyze-document` leggeva
+// del documento `id, company_id, storage_path, mime_type, file_size` e non lo
+// stato: niente rifiutava la seconda partenza.
+{
+  const ORA = new Date('2026-08-21T19:37:00.000Z');
+  const minutiFa = (m: number) => new Date(ORA.getTime() - m * 60_000).toISOString();
+
+  ok(analisiGiaInCorso({ status: 'analyzing', updatedAt: minutiFa(1) }, ORA),
+    '⚠️ una lettura cominciata un minuto fa È in corso: ripartire significa pagare due volte');
+  ok(analisiGiaInCorso({ status: 'extracting', updatedAt: minutiFa(1) }, ORA),
+    'anche l’estrazione è lavorazione: il documento è già in mano a qualcuno');
+
+  ok(!analisiGiaInCorso({ status: 'completed', updatedAt: minutiFa(1) }, ORA),
+    'CONTROPROVA: un documento già analizzato non è «in corso» — la rianalisi resta possibile');
+  ok(!analisiGiaInCorso({ status: 'failed', updatedAt: minutiFa(1) }, ORA),
+    'CONTROPROVA: dopo un guasto si deve poter riprovare SUBITO, o il guasto diventa definitivo');
+  ok(!analisiGiaInCorso({ status: 'uploaded', updatedAt: minutiFa(1) }, ORA),
+    'CONTROPROVA: un documento appena caricato non è in lavorazione');
+
+  // ⚠️ LA SOGLIA È LA CONTROPARTE DEL RECUPERO, non una prudenza: oltre di essa
+  // `recoverStuckAnalyses` dichiara il documento interrotto, e da lì ripartire
+  // è necessario. Se le due divergessero, o si bloccherebbe per sempre o si
+  // pagherebbe due volte.
+  ok(!analisiGiaInCorso({ status: 'analyzing', updatedAt: minutiFa(STUCK_ANALYSIS_MINUTES + 5) }, ORA),
+    '⚠️ oltre la soglia dei venti minuti il documento è INTERROTTO, non in corso: ripartire è legittimo');
+  ok(analisiGiaInCorso({ status: 'analyzing', updatedAt: minutiFa(STUCK_ANALYSIS_MINUTES - 1) }, ORA),
+    '…e un minuto prima della soglia è ancora in corso: le due regole si toccano senza sovrapporsi');
+  ok(!analisiGiaInCorso({ status: 'analyzing', updatedAt: minutiFa(STUCK_ANALYSIS_MINUTES) }, ORA),
+    'sul confine esatto vince il recupero: nessuna terra di nessuno fra le due regole');
+
+  ok(analisiGiaInCorso({ status: 'analyzing', updatedAt: null }, ORA),
+    '⚠️ senza un istante si considera IN CORSO: rifiutare costa un’attesa, ripartire costa una chiamata al modello');
+  ok(!analisiGiaInCorso({ status: null, updatedAt: minutiFa(1) }, ORA),
+    'senza stato non si dichiara niente');
+  ok(analisiGiaInCorso({ status: 'analyzing', updatedAt: 'non-una-data' }, ORA),
+    'e una data illeggibile è come l’assenza di data, non come «vecchia»');
+
+  // ⚠️ La lista degli stati è UNA, condivisa col recupero: se qualcuno ne
+  // aggiungesse uno da una parte sola, le due regole smetterebbero di toccarsi.
+  ok(STATI_IN_LAVORAZIONE.length === 3
+    && STATI_IN_LAVORAZIONE.every((x) => analisiGiaInCorso({ status: x, updatedAt: minutiFa(1) }, ORA)),
+    'ogni stato dichiarato «in lavorazione» fa scattare la guardia: la lista non è decorativa');
+}
+
+// ===========================================================================
+section('19 · Chiudere la riga di quota: la funzione giusta, e la prova che è chiusa');
+// ===========================================================================
+// ⚠️⚠️ IL DIFETTO del 2026-08-21, misurato in produzione: `analysis` fermo a
+// `pending` 4 volte su 6, `inbox_analysis` 18 su 18. Il percorso di SUCCESSO
+// chiudeva la riga col service role e la funzione dell'UTENTE — che pretende
+// `user_id = auth.uid()` — quindi zero righe toccate, nessun errore, e
+// `finalizeAiRequest` (che ritornava `!error`) dichiarava di aver chiuso.
+// Il percorso di ERRORE usava il client dell'utente e funzionava: i guasti si
+// registravano, i successi no, e per questo il difetto è vissuto a lungo.
+{
+  /** Client finto: registra la funzione chiamata e finge la riletta. */
+  function clientDiProva(statoRiletto: string | null, opts: { rpcErrore?: boolean; leggeErrore?: boolean } = {}) {
+    const chiamate: string[] = [];
+    return {
+      chiamate,
+      sb: {
+        rpc: (nome: string) => {
+          chiamate.push(nome);
+          return Promise.resolve({ error: opts.rpcErrore ? { message: 'x' } : null });
+        },
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve(
+                opts.leggeErrore
+                  ? { data: null, error: { message: 'x' } }
+                  : { data: statoRiletto === null ? null : { status: statoRiletto }, error: null },
+              ),
+            }),
+          }),
+        }),
+      } as never,
+    };
+  }
+  const ESITO = { status: 'ok' as const, durationMs: 1 };
+
+  {
+    const c = clientDiProva('ok');
+    const done = await finalizeAiRequest(c.sb, 'log-1', ESITO, 'utente');
+    ok(c.chiamate[0] === 'finalize_ai_request',
+      'chi ha prenotato come UTENTE chiude con la funzione dell’utente');
+    ok(done, '…e la riletta conferma che la riga è chiusa');
+  }
+  {
+    const c = clientDiProva('ok');
+    await finalizeAiRequest(c.sb, 'log-1', ESITO, 'sistema');
+    ok(c.chiamate[0] === 'finalize_ai_request_system',
+      '⚠️ chi ha prenotato come SISTEMA chiude con la gemella `_system`: le due hanno condizioni diverse e nessuna copre l’altra');
+  }
+  {
+    // IL CUORE: l'UPDATE non ha trovato la riga. Prima si diceva «fatto».
+    const c = clientDiProva('pending');
+    const done = await finalizeAiRequest(c.sb, 'log-1', ESITO, 'utente');
+    ok(!done,
+      '⚠️⚠️ se la riga è ancora «pending» la chiusura NON è avvenuta, e lo si dice: è la bugia che ha lasciato 22 righe aperte in produzione');
+  }
+  {
+    const c = clientDiProva(null, { leggeErrore: true });
+    ok(!(await finalizeAiRequest(c.sb, 'log-1', ESITO, 'utente')),
+      'una riletta fallita non è un successo: «non lo so» e «è andata bene» sono due cose diverse');
+  }
+  {
+    const c = clientDiProva('ok', { rpcErrore: true });
+    ok(!(await finalizeAiRequest(c.sb, 'log-1', ESITO, 'utente')),
+      'e un errore della funzione SQL resta un fallimento, senza riletta consolatoria');
+  }
+  {
+    const c = clientDiProva('ok');
+    ok(!(await finalizeAiRequest(c.sb, null, ESITO, 'utente')),
+      'senza uno slot prenotato non c’è niente da chiudere');
+    ok(c.chiamate.length === 0, '…e non si chiama nessuna funzione a vuoto');
+  }
 }
 
 // ===========================================================================

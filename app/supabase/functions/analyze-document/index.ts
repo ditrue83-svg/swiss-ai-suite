@@ -21,6 +21,9 @@ import { logAiRequest, reserveAiSlot, finalizeAiRequest } from '../_shared/persi
 // serve anche alla sincronizzazione dell'Inbox. Stesso codice, un solo posto.
 import { ocrExtract as sharedOcrExtract, MAX_FILE_BYTES as SHARED_MAX_FILE_BYTES } from '../_shared/extract.ts';
 import { looksLikeScan, MIN_CHARS_ABSOLUTE } from '../_shared/extractionQuality.ts';
+import {
+  analisiGiaInCorso, STATI_IN_LAVORAZIONE, STUCK_ANALYSIS_MINUTES,
+} from '../_shared/recoverStuckAnalyses.ts';
 import type { CompanyContext } from '../_shared/prompt.ts';
 
 const CORS = {
@@ -84,10 +87,89 @@ Deno.serve(async (req: Request) => {
 
   // §49 — autorizzazione via RLS: se non membro, la select non torna nulla → 403.
   const { data: doc, error: docErr } = await sb.from('documents')
-    .select('id, company_id, storage_path, mime_type, file_size').eq('id', documentId).maybeSingle();
+    .select('id, company_id, storage_path, mime_type, file_size, status, updated_at').eq('id', documentId).maybeSingle();
   if (docErr) return fail('UNKNOWN_ERROR', 500);
   if (!doc) return json({ error: 'Documento non trovato o accesso negato.', code: 'PROVIDER_ERROR' }, 403);
   const companyId = doc.company_id as string;
+
+  // ---- UNA LETTURA PER VOLTA ----------------------------------------------
+  //
+  // ⚠️⚠️ IL CASO REALE del 2026-08-21. Lo stesso PDF di 15 pagine è stato
+  // analizzato DUE volte a 74 secondi di distanza: due chiamate a opus, due
+  // righe in `document_analyses`, credito speso due volte. Fin qui questa
+  // funzione del documento leggeva `id, company_id, storage_path, mime_type,
+  // file_size` — lo stato non lo guardava nessuno, e niente rifiutava la
+  // seconda partenza.
+  //
+  // ⚠️ È UNA PRESA ATOMICA, non una lettura seguita da una decisione: due
+  // richieste simultanee leggerebbero entrambe «non in corso» e partirebbero
+  // entrambe. La condizione sta DENTRO l'UPDATE, ed è il database a dire quale
+  // delle due ha vinto — la stessa forma che i worker di Finanze e Contratti
+  // usano già per prendere in carico un documento.
+  //
+  // ⚠️ CHI PERDE NON RICEVE UN ERRORE. Riceve `202 processing`, che è la verità:
+  // un'analisi su questo documento è in corso. Il client la sta già aspettando
+  // — `analyzeAndPersist` chiede sempre la modalità asincrona e su «processing»
+  // si mette in ascolto del database — quindi vedrà l'esito della PRIMA analisi
+  // invece di pagarne una seconda. Nessun codice d'errore nuovo, nessuna frase
+  // nuova da tradurre.
+  //
+  // ⚠️ LA REGOLA È SCRITTA DUE VOLTE, E DEVE ESSERLO. `analisiGiaInCorso` la
+  // dice in forma leggibile e PROVABILE — è lì che vive la soglia, controparte
+  // di `recoverStuckAnalyses`: oltre venti minuti il documento è dichiarato
+  // interrotto e ripartire torna legittimo. La stessa condizione è poi ripetuta
+  // DENTRO l'UPDATE, perché una decisione presa in TypeScript su una riga letta
+  // un istante prima non regge a due richieste simultanee. Le due forme non
+  // divergono perché non hanno numeri propri: leggono entrambe
+  // `STATI_IN_LAVORAZIONE` e `STUCK_ANALYSIS_MINUTES`.
+  //
+  // Il controllo leggibile viene per primo e chiude il caso normale — due clic,
+  // un rientro — senza toccare il database. La presa atomica sotto è per la
+  // corsa vera.
+  if (analisiGiaInCorso({ status: doc.status as string | null, updatedAt: doc.updated_at as string | null })) {
+    return json({ status: 'processing', documentId }, 202);
+  }
+
+  const sogliaInterrotta = new Date(Date.now() - STUCK_ANALYSIS_MINUTES * 60_000).toISOString();
+  const statoPrimaDellaPresa = (doc.status as string | null) ?? 'uploaded';
+  const { data: preso, error: presaErr } = await sbAdmin.from('documents')
+    .update({ status: 'extracting' })
+    .eq('id', documentId)
+    .or(`status.not.in.(${[...STATI_IN_LAVORAZIONE].join(',')}),updated_at.lt.${sogliaInterrotta}`)
+    .select('id');
+  if (presaErr) return fail('UNKNOWN_ERROR', 500);
+  if (!preso || preso.length === 0) return json({ status: 'processing', documentId }, 202);
+
+  /**
+   * Restituisce il documento allo stato di prima.
+   *
+   * ⚠️ Serve perché la presa avviene PRIMA delle validazioni sincrone: se una
+   * di quelle respinge, il documento resterebbe «in estrazione» e nessuno
+   * potrebbe rianalizzarlo per venti minuti. Un rifiuto immediato non deve
+   * costare un blocco. Da quando il lavoro parte davvero, la proprietà dello
+   * stato passa alla pipeline e a `markFailed`: `rilasciaPresa` non tocca più
+   * niente.
+   */
+  let presaDaRilasciare = true;
+  async function rilasciaPresa() {
+    if (!presaDaRilasciare) return;
+    presaDaRilasciare = false;
+    const { error: rilascioErr } = await sbAdmin.from('documents')
+      .update({ status: statoPrimaDellaPresa }).eq('id', documentId);
+    // ⚠️ NON si solleva: la richiesta è già stata respinta per un'altra ragione,
+    // e trasformare un 422 onesto in un 500 direbbe a chi guarda una cosa falsa
+    // sul perché. Ma non si TACE nemmeno: se il rilascio non riesce, il
+    // documento resta «in estrazione» e nessuno potrà rianalizzarlo finché
+    // `recoverStuckAnalyses` non lo dichiara interrotto — venti minuti in cui
+    // sembra rotto senza che niente lo spieghi. Il log del server è l'unico
+    // posto in cui qualcuno può accorgersene, e ci finisce il CODICE, non il
+    // messaggio: un errore del database può portare dentro un valore.
+    if (rilascioErr) console.error('presa non rilasciata:', rilascioErr.code ?? 'senza codice');
+  }
+  const rifiuta = async (code: ErrorCode, status: number) => {
+    await rilasciaPresa();
+    return fail(code, status);
+  };
 
   // §50 — quota per azienda, verificata e consumata ATOMICAMENTE (0009): due
   // richieste concorrenti non possono più leggere lo stesso conteggio e passare
@@ -96,7 +178,7 @@ Deno.serve(async (req: Request) => {
     companyId, kind: 'analysis', limitPerMinute: RATE_LIMIT_PER_MINUTE,
     documentId, provider: 'anthropic', model: 'claude-opus-4-8',
   });
-  if (!slot.allowed) return fail('RATE_LIMITED', 429);
+  if (!slot.allowed) return await rifiuta('RATE_LIMITED', 429);
 
   // §22 — contesto aziendale minimo.
   const { data: company } = await sb.from('companies')
@@ -152,7 +234,7 @@ Deno.serve(async (req: Request) => {
       id: string; full_text: string | null; pages: unknown;
       extraction_method: string | null; truncated: boolean | null;
     } | null;
-    if (!row?.full_text?.trim()) return fail('EXTRACTION_FAILED', 422);
+    if (!row?.full_text?.trim()) return await rifiuta('EXTRACTION_FAILED', 422);
 
     const original = row.full_text;
     // ⚠️ Il troncamento si EREDITA e si somma: già tagliato prima, oppure
@@ -173,7 +255,7 @@ Deno.serve(async (req: Request) => {
         : [{ pageNumber: 1, text: original.slice(0, MAX_CHARS) }],
     };
     if (clientExtraction.fullText.trim().length < MIN_CHARS_ABSOLUTE) {
-      return fail('EMPTY_DOCUMENT', 422);
+      return await rifiuta('EMPTY_DOCUMENT', 422);
     }
   } else if (hasClientExtraction) {
     const original: string = inExtraction.fullText;
@@ -222,15 +304,15 @@ Deno.serve(async (req: Request) => {
       clientExtraction = null;
       truncated = false;   // il testo del client si butta: anche il suo troncamento
     } else if (fullText.trim().length < MIN_CHARS_ABSOLUTE) {
-      return fail('EMPTY_DOCUMENT', 422);
+      return await rifiuta('EMPTY_DOCUMENT', 422);
     }
   }
 
   // ⚠️ Fuori dal ramo `else`: ora ci si arriva anche dal ripiego qui sopra, e
   // saltare queste due guardie manderebbe `ocrExtract` su un percorso nullo.
   if (!clientExtraction) {
-    if (!doc.storage_path) return fail('EXTRACTION_FAILED', 422);
-    if ((doc.file_size ?? 0) > MAX_FILE_BYTES) return fail('FILE_TOO_LARGE', 413);
+    if (!doc.storage_path) return await rifiuta('EXTRACTION_FAILED', 422);
+    if ((doc.file_size ?? 0) > MAX_FILE_BYTES) return await rifiuta('FILE_TOO_LARGE', 413);
   }
 
   /** Errore con fase e codice, per distinguere estrazione da analisi. */
@@ -246,7 +328,7 @@ Deno.serve(async (req: Request) => {
       if (!extraction || extraction.fullText.trim().length < 20) throw phased('OCR_FAILED', 'extraction');
     } catch (e) {
       const code = ((e as { code?: ErrorCode }).code) ?? 'EXTRACTION_FAILED';
-      const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code });
+      const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code }, 'utente');
       if (!done) await logAiRequest(sb, { companyId, userId, documentId, kind: 'extraction', provider: 'anthropic', model: null, status: 'error', errorCode: code });
       console.error('extraction error:', (e as Error)?.name);
       throw phased(code, 'extraction');
@@ -257,6 +339,13 @@ Deno.serve(async (req: Request) => {
       return await runAnalysisPipeline(sbAdmin, createMessage, {
         documentId, companyId, userId,
         extraction, extractionDurationMs: Date.now() - extractStart, truncated, logId: slot.logId, outputLanguage,
+        // ⚠️ `sb`, NON `sbAdmin`. La pipeline riceve il client amministrativo
+        // perché deve scrivere lo snapshot (0010), ma la riga di quota l'ha
+        // prenotata l'UTENTE (`try_consume_ai_quota` scrive `auth.uid()`) e solo
+        // il suo JWT può chiuderla. Passare `sbAdmin` non dava errore: toccava
+        // zero righe in silenzio, ed è così che quattro analisi riuscite su sei
+        // sono rimaste `pending` mentre l'unica fallita si registrava.
+        logSb: sb, logComeChi: 'utente',
         companyContext, todayIso: new Date().toISOString().slice(0, 10), provider: 'anthropic',
         // ⚠️ Solo sul percorso di rilettura: l'estrazione è già quella salvata e
         // riscriverla la peggiorerebbe (`ocr_confidence` azzerato). Se invece si
@@ -292,7 +381,7 @@ Deno.serve(async (req: Request) => {
       provider: 'anthropic', error_code: code, error_message_safe: ERROR_MESSAGES[code],
       processing_completed_at: new Date().toISOString(), engine: 'claude-opus-4-8',
     }).select('id').maybeSingle();
-    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code });
+    const done = await finalizeAiRequest(sb, slot.logId, { status: 'error', errorCode: code }, 'utente');
     if (!done) await logAiRequest(sb, { companyId, userId, documentId, kind: 'analysis', provider: 'anthropic', model: 'claude-opus-4-8', status: 'error', errorCode: code });
   }
 
@@ -317,6 +406,11 @@ Deno.serve(async (req: Request) => {
 
   if (body?.async === true && typeof waitUntil === 'function') {
     await sb.from('documents').update({ status: clientExtraction ? 'analyzing' : 'extracting' }).eq('id', documentId);
+    // Da qui la proprietà dello stato passa al lavoro: `performWork` lo porta
+    // avanti e `markFailed` lo chiude su guasto. Rilasciarlo adesso
+    // significherebbe rimettere il documento «libero» mentre è in mano a
+    // qualcuno — cioè riaprire il difetto dall'altra parte.
+    presaDaRilasciare = false;
     waitUntil((async () => {
       try { await performWork(); }
       catch (e) { await markFailed(((e as { code?: ErrorCode }).code) ?? 'UNKNOWN_ERROR'); }
@@ -326,6 +420,7 @@ Deno.serve(async (req: Request) => {
 
   // ---- Modalità SINCRONA (comportamento storico, invariato) ----------------
   try {
+    presaDaRilasciare = false;   // come sopra: il lavoro è partito
     const result = await performWork();
     return json({ status: result.status, analysis: result.analysis });
   } catch (e) {

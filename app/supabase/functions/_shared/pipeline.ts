@@ -10,7 +10,10 @@ import { ANALYSIS_MODEL, buildAnalysisRequest, type CompanyContext, type OutputL
 import { PROMPT_VERSION } from './schema.ts';
 import { parseModelJson } from './parse.ts';
 import { validateAndNormalize, type ExtractionResult, type NormalizedAnalysis } from './validate.ts';
-import { logAiRequest, finalizeAiRequest, saveAnalysis, saveExtraction, type SupabaseLike } from './persist.ts';
+import {
+  logAiRequest, finalizeAiRequest, saveAnalysis, saveExtraction,
+  type SupabaseLike, type ChiChiude,
+} from './persist.ts';
 
 // Forma minima della risposta del modello (comune a SDK Deno e Node).
 export interface ModelMessage {
@@ -30,6 +33,19 @@ export interface PipelineInput {
   truncated?: boolean;
   /** §50 — riga di log già PRENOTATA dalla quota: si completa invece di inserirne una nuova. */
   logId?: string | null;
+  /**
+   * CON QUALE CLIENT si chiude quella riga, e con quale autorità.
+   *
+   * ⚠️⚠️ OBBLIGATORI, e non per pedanteria. Questa pipeline riceve il client
+   * AMMINISTRATIVO — le serve per scrivere lo snapshot, che dalla 0010 il client
+   * dell'utente non può più scrivere — e fino al 2026-08-22 chiudeva il log con
+   * quello. Ma `finalize_ai_request` vuole `user_id = auth.uid()`, e con il
+   * service role `auth.uid()` è NULL: zero righe toccate, nessun errore, e la
+   * riga restava `pending` per sempre. Chi prenota lo slot sa con quale autorità
+   * l'ha prenotato, ed è l'unico che può dirlo: perciò lo passa.
+   */
+  logSb: SupabaseLike;
+  logComeChi: ChiChiude;
   /**
    * §28 — l'estrazione ESISTE GIÀ ed è esattamente questa: non si riscrive.
    *
@@ -151,9 +167,9 @@ export async function runAnalysisPipeline(
   // 5. Log tecnico (senza contenuto). Se la quota aveva già prenotato una riga
   // la si COMPLETA: inserirne un'altra falserebbe il conteggio del rate limit.
   const durationMs = Date.now() - new Date(startedAt).getTime();
-  const finalized = await finalizeAiRequest(sb, input.logId ?? null, {
+  const finalized = await finalizeAiRequest(input.logSb, input.logId ?? null, {
     status: 'ok', durationMs, inputTokens, outputTokens, model: ANALYSIS_MODEL,
-  });
+  }, input.logComeChi);
   if (!finalized) await logAiRequest(sb, {
     companyId: input.companyId, userId: input.userId, documentId: input.documentId,
     kind: 'analysis', provider: input.provider, model: ANALYSIS_MODEL, status: 'ok',

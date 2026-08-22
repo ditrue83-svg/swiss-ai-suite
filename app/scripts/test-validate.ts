@@ -767,6 +767,9 @@ console.log('\n8) Perché il modello ha smesso di scrivere (§28)');
       await runAnalysisPipeline(sbFinto, () => Promise.resolve(msg), {
         documentId: 'doc-1', companyId: 'comp-1', userId: null,
         extraction: EXTRACTION, extractionDurationMs: 1,
+        // Nessuno slot prenotato in questa prova: la chiusura non ha nulla da
+        // chiudere. L'autorità va comunque dichiarata — è il punto del campo.
+        logSb: sbFinto, logComeChi: 'utente',
         companyContext: {
           legalName: 'Prova SA', canton: 'Ticino', municipality: 'Lugano',
           legalForm: 'SA', sector: 'costruzioni',
@@ -1033,6 +1036,7 @@ console.log('\n10) Provenienza: pagina, citazione, testo riletto, lavoro appeso'
       }), {
         documentId: 'doc-1', companyId: 'comp-1', userId: null,
         extraction: EXTRACTION, extractionDurationMs: 1,
+        logSb: sb as never, logComeChi: 'utente',
         companyContext: {
           legalName: 'Prova SA', canton: 'Ticino', municipality: 'Lugano',
           legalForm: 'SA', sector: 'costruzioni',
@@ -1055,6 +1059,7 @@ console.log('\n10) Provenienza: pagina, citazione, testo riletto, lavoro appeso'
       }), {
         documentId: 'doc-2', companyId: 'comp-1', userId: null,
         extraction: EXTRACTION, extractionDurationMs: 1,
+        logSb: sb as never, logComeChi: 'utente',
         companyContext: {
           legalName: 'Prova SA', canton: 'Ticino', municipality: 'Lugano',
           legalForm: 'SA', sector: 'costruzioni',
