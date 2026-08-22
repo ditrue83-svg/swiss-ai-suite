@@ -7,8 +7,9 @@ import { cognomiDaRubrica } from '@/features/documents/analysisTrust';
 import { incentivesService } from '@/services/incentivesService';
 import { todayISO } from '@/features/incentives/incentivesModel';
 import {
-  contaNature, splitOpenTasks, type ContoDocumenti, type ContoNature, type TaskSplit,
+  contoDate, splitOpenTasks, type ContoDate, type ContoDocumenti, type TaskSplit,
 } from './overviewBlocks';
+import type { DataDocumentoRiga } from '@/services/documentHubService';
 import type { DocumentHubItem, IncentiveSummary } from '@/types/models';
 
 /**
@@ -52,8 +53,16 @@ export interface OverviewData {
   /** Tutti i documenti dell'azienda, per popolazione (stessa fonte della
    *  barra laterale di /documenti: `document_category_counts`). */
   documenti: ContoDocumenti;
-  /** Le date rilevate nei documenti, contate per natura dichiarata. */
-  nature: ContoNature & { parziale: boolean };
+  /**
+   * Le date rilevate nei documenti — UNA POPOLAZIONE ALLA VOLTA, e con le
+   * righe dei termini per intero.
+   *
+   * Le due popolazioni restano separate per la stessa ragione di
+   * `daVerificare`: la riga di conteggio è un collegamento, e la pagina
+   * d'arrivo ne mostra una sola. I TERMINI si uniscono a schermo, perché il
+   * loro collegamento porta al documento e non a un elenco.
+   */
+  date: { attivi: ContoDate<DataDocumentoRiga>; archiviati: ContoDate<DataDocumentoRiga> };
   /**
    * Appartenenza da confermare, archiviati COMPRESI, con l'esempio più
    * recente già passato dalla regola del titolo. `null` = il numero non è
@@ -96,7 +105,7 @@ export function useOverview() {
     const today = todayISO();
     const [
       aperte, contiAttivi, contiArchiviati, daVerificare, fallite, maiAnalizzati,
-      kinds, ownership, catalogo, assessments, summary,
+      date, ownership, catalogo, assessments, summary,
     ] = await Promise.all([
       taskService.list(companyId, { view: 'todo', limit: TASKS_SPLIT_MAX }),
       documentHubService.counts(companyId, false),
@@ -104,7 +113,7 @@ export function useOverview() {
       documentHubService.stateTotals(companyId, 'to_verify'),
       documentHubService.stateTotals(companyId, 'failed'),
       documentHubService.stateTotals(companyId, 'none'),
-      documentHubService.deadlineKinds(companyId),
+      documentHubService.dateDeiDocumenti(companyId),
       // ⚠️ `null` E NON UN LANCIO: questo numero è informazione in più, non la
       // Panoramica. I cognomi arrivano dalla rubrica; se anche quella fallisce
       // si va avanti senza — un cognome non confrontabile non fa scattare
@@ -142,10 +151,13 @@ export function useOverview() {
         attivi: [...contiAttivi.values()].reduce((a, b) => a + b, 0),
         archiviati: [...contiArchiviati.values()].reduce((a, b) => a + b, 0),
       },
-      // Il TOTALE è quello esatto della funzione finestra; le nature sono
-      // contate sulle righe lette, e `parziale` dichiara quando le due cose
-      // non coprono lo stesso insieme.
-      nature: { ...contaNature(kinds.kinds), totale: kinds.totale, parziale: kinds.parziale },
+      // Il TOTALE è quello esatto della funzione finestra; la ripartizione sta
+      // sulle righe lette, e `parziale` dichiara quando le due cose non
+      // coprono lo stesso insieme.
+      date: {
+        attivi: contoDate(date.attivi.righe, date.attivi.totale),
+        archiviati: contoDate(date.archiviati.righe, date.archiviati.totale),
+      },
       ownership,
       incentivi: { catalogo, assessments, summary },
       today,

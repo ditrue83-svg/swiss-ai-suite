@@ -918,6 +918,11 @@ npm run test:tasks      # Attività su DB: isolamento, assegnazione, autore, com
 npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run test:documents-unit  # Documenti offline: stati, ricerca, estratti, indirizzo (60 test)
 npm run test:documents       # Documenti su DB: isolamento della RICERCA, categorie, etichette, archivio
+npm run test:panoramica      # I CONTEGGI DELLA PANORAMICA sul DB reale, con azienda usa-e-getta e
+                             # fixture ASIMMETRICA (attivi ≠ archiviati in ogni stato): le RPC vere, la
+                             # replica diretta e i valori attesi devono coincidere numero per numero.
+                             # È la guardia R1 — tre metodi leggono due popolazioni e la Home ne fa la
+                             # somma: se una smettesse di essere letta, nessun'altra suite lo vedrebbe
 npm run test:calendar-unit   # Calendario e notifiche offline: stato desiderato, promemoria con ora
                              # legale, idempotenza degli adapter, griglia del mese, e il MOTORE dei
                              # promemoria eseguito contro un PostgREST finto che sa fallire (232 test)

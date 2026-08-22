@@ -52,6 +52,18 @@ export const STATS_MAX_DOCUMENTS = 1000;
 export const DATE_MAX_DOCUMENTS = 100;
 export const OWNERSHIP_LIST_MAX = 100;
 
+/**
+ * Una data di documento come la consuma la Panoramica: la natura, il giorno, e
+ * l'identità per arrivarci. `label` è l'etichetta DECISA (non `title` grezzo):
+ * la traduce la schermata, come ovunque.
+ */
+export interface DataDocumentoRiga {
+  id: string;
+  label: DocumentHubItem['label'];
+  kind: string | null;
+  deadline: string | null;
+}
+
 type ListRow = Database['public']['Functions']['list_documents']['Returns'][number];
 type DocRow = Database['public']['Tables']['documents']['Row'];
 
@@ -417,26 +429,42 @@ export const documentHubService = {
   },
 
   /**
-   * Le nature delle date presenti nei documenti, su ENTRAMBE le popolazioni.
-   * Serve alla riga «N date rilevate, nessuna riconosciuta come termine»:
-   * finché in produzione non esiste un `term`, un blocco scadenze sarebbe una
-   * scatola vuota o due date incerte vestite da termini.
+   * LE DATE DEI DOCUMENTI, una popolazione alla volta, con ciò che serve a
+   * mostrarle: la natura dichiarata, il giorno, e l'identità del documento.
    *
-   * ⚠️ Il tetto è dichiarato: `parziale` dice che il conteggio delle NATURE è
-   * fatto su meno righe del totale. Il totale resta esatto (funzione finestra).
+   * ⚠️ PERCHÉ NON PIÙ SOLO LE NATURE. Finché la Panoramica contava
+   * («N date: T termini, E che non obbligano, R non registrate») bastavano i
+   * `deadline_kind`. Un termine però non è un numero: è una riga con il suo
+   * giorno, il suo nome e la sua destinazione, e per comporla servono anche
+   * `id` e `label` — che passa dalla stessa `etichettaDocumento` di tutte le
+   * altre schermate, perché la prima riga della Home è già stata «2.5».
+   *
+   * ⚠️ LE DUE POPOLAZIONI RESTANO SEPARATE perché le righe di CONTEGGIO della
+   * Home sono collegamenti, e `list_documents` mostra una popolazione alla
+   * volta: il numero della riga e quello della destinazione devono uscire
+   * dalla stessa interrogazione. (I TERMINI invece si uniscono a schermo: il
+   * loro collegamento porta al documento, non a un elenco, quindi la
+   * popolazione non cambia dove si arriva — e un termine archiviato resta un
+   * obbligo.)
+   *
+   * ⚠️ Il tetto NON si nasconde: chi consuma confronta le righe lette col
+   * totale esatto (funzione finestra) e dichiara quando la ripartizione — e la
+   * ricerca dei termini — è fatta su meno righe di quante ne esistano.
    */
-  async deadlineKinds(companyId: string): Promise<{
-    kinds: (string | null)[]; totale: number; parziale: boolean;
+  async dateDeiDocumenti(companyId: string): Promise<{
+    attivi: { righe: DataDocumentoRiga[]; totale: number };
+    archiviati: { righe: DataDocumentoRiga[]; totale: number };
   }> {
     const [att, arch] = await Promise.all([
       documentHubService.list(companyId, { hasDeadline: true, limit: DATE_MAX_DOCUMENTS }),
       documentHubService.list(companyId, { hasDeadline: true, archived: true, limit: DATE_MAX_DOCUMENTS }),
     ]);
-    const righe = [...att.items, ...arch.items];
+    const righe = (items: DocumentHubItem[]): DataDocumentoRiga[] => items.map((r) => ({
+      id: r.id, label: r.label, kind: r.deadlineKind, deadline: r.deadline,
+    }));
     return {
-      kinds: righe.map((r) => r.deadlineKind),
-      totale: att.total + arch.total,
-      parziale: righe.length < att.total + arch.total,
+      attivi: { righe: righe(att.items), totale: att.total },
+      archiviati: { righe: righe(arch.items), totale: arch.total },
     };
   },
 

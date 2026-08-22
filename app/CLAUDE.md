@@ -31,6 +31,14 @@ terminale è una regola che nessuno legge.
 - **Non nascondere un test rosso** e non aggirarlo. Se resta rosso, si dice
   perché — un rosso spiegato è informazione, un rosso nascosto è un difetto in
   più.
+- **Un rilevatore di roba non usata non conta come «uso» ciò che compare in un
+  test o in un banco.** Altrimenti il banco diventa la macchina che tiene in
+  vita quello che dovrebbe segnalare: il 2026-08-20 un elenco di dieci chiavi
+  scritto dentro `test-shell-unit` teneva vive **venti** voci di dizionario che
+  la pagina non chiamava più. Dove un rilevatore esiste, **si deriva dal
+  sorgente, mai da elenchi letterali**. Se una chiave va nominata per forza in
+  un controllo, quel controllo deve ANCHE asserire che il prodotto la usa —
+  così diventa rosso lui per primo, invece di far tacere il rilevatore.
 
 ## Verità
 
@@ -44,6 +52,13 @@ terminale è una regola che nessuno legge.
 - **Non aggiornare la documentazione con numeri non verificati.** Un conteggio di
   test scritto in un messaggio di commit descrive l'albero di quel momento. Il
   numero vero lo dà l'esecuzione.
+- **Il registro si rimisura, non si eredita.** Ciò che è scritto in un registro
+  di buchi, limiti o coperture mancanti va **riprovato prima di riportarlo**: il
+  2026-08-20 due voci portate dietro per sentito dire erano false — una regola
+  data per scoperta era già coperta, e quel che restava aperto era un'altra
+  cosa. Un registro che si tramanda per copia diventa, dopo qualche giro, un
+  racconto. Il registro della Panoramica sta in
+  [`docs/product-status.md`](docs/product-status.md).
 - **Ciò che non è provato contro la cosa reale non è vero, è solo scritto.**
   Aprire l'app, interrogare il database, leggere il bundle servito.
 - **Nessun fallback silenzioso**: un guasto è un errore esplicito, mai un

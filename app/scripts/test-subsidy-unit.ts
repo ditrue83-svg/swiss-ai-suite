@@ -1084,8 +1084,9 @@ check('lettura fallita = NON MISURABILE: non si sceglie uno dei due stati',
 // Il blocco esiste finché il catalogo ha programmi: lo stato della
 // valutazione è un'informazione per OGNI azienda, anche per una vuota.
 const base = {
-  ownership: 0, aperte: 0, dateRilevate: 0, daVerificare: 0, fallite: 0,
-  maiAnalizzati: 0, programmiInCatalogo: 0, openCases: 0, activeProjects: 0,
+  ownership: 0, aperte: 0, terminiNeiDocumenti: 0, dateNonRegistrate: 0,
+  daVerificare: 0, fallite: 0, maiAnalizzati: 0,
+  programmiInCatalogo: 0, openCases: 0, activeProjects: 0,
 };
 check('con il catalogo pieno il blocco compare anche a numeri zero',
   decidiBlocchi({ ...base, programmiInCatalogo: 7 }).opportunita);

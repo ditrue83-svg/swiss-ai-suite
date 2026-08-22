@@ -53,6 +53,7 @@
     "test:tasks": "node --env-file=.env.test scripts/test-tasks.mjs",
     "test:documents-unit": "node --import tsx scripts/test-documents-unit.ts",
     "test:documents": "node --env-file=.env.test scripts/test-documents.mjs",
+    "test:panoramica": "node --env-file=.env.test --import tsx scripts/test-panoramica.ts",
     "test:calendar-unit": "node --import tsx scripts/test-calendar-unit.ts",
     "test:calendar-sync-unit": "node --import tsx scripts/test-calendar-sync-unit.ts",
     "test:calendar": "node --env-file=.env.test scripts/test-calendar.mjs",

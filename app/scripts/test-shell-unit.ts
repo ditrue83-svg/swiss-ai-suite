@@ -40,13 +40,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ICONS } from '../src/components/ui/Icon.tsx';
 import { dividiMarchio } from '../src/components/ui/BrandMark.tsx';
-import { LOCALES } from '../src/i18n/index.tsx';
+import { LOCALES, pluralKey, type PluralBase } from '../src/i18n/index.tsx';
 import { it } from '../src/i18n/locales/it.ts';
 import { de } from '../src/i18n/locales/de.ts';
 import { fr } from '../src/i18n/locales/fr.ts';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches, type NavItem } from '../src/components/layout/nav.ts';
 import {
-  contaNature, decidiBlocchi, fraseCatalogo, rigaDate, splitOpenTasks, type ContoNature,
+  chiaviTaskSplit, contoDate, decidiBlocchi, fraseCatalogo, rigaNature, splitOpenTasks,
+  termini, TERMINI_IN_PANORAMICA, type DataDocumento,
 } from '../src/features/dashboard/overviewBlocks.ts';
 import { GLYPH_NAMES, type MarkGlyphName } from '../src/components/ui/MarkGlyph.tsx';
 import { PROVENANCE_KINDS } from '../src/components/ui/ProvenanceMark.tsx';
@@ -1251,14 +1252,23 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
   for (const { lang, d } of dizionari) {
     for (const [chiave, testo] of Object.entries({
       tasksTermsNone: d.tasksTermsNone, tasksOverdueNone: d.tasksOverdueNone,
-      datesNoTermMany: d.datesNoTermMany, assessNever: d.assessNever,
+      datesUnrecordedMany: d.datesUnrecordedMany, assessNever: d.assessNever,
       emptyChecked: d.emptyChecked, footPopulation: d.footPopulation,
     })) {
       check(`${lang}: la frase di ${chiave} esiste`, typeof testo === 'string' && testo.trim().length > 0);
     }
   }
+  // ⚠️ LE DUE FRASI DEGLI ZERI NON STANNO PIÙ NEL JSX, e non è una perdita: le
+  // nomina `chiaviTaskSplit`, la funzione PURA che decide quale parola va su
+  // quale numero (§18, R4). La pagina le rende attraverso di lei, quindi la
+  // domanda «la Panoramica le usa?» si fa sui DUE file — altrimenti questo
+  // controllo diventerebbe rosso proprio per una correzione che lo rafforza.
+  const decisioni = readFileSync(join(root, 'src/features/dashboard/overviewBlocks.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
   for (const chiave of ['tasksTermsNone', 'tasksOverdueNone', 'assessNever', 'emptyChecked']) {
-    check(`la Panoramica usa home.${chiave}`, home.includes(`home.${chiave}`));
+    check(`la Panoramica usa home.${chiave}`,
+      home.includes(`home.${chiave}`) || decisioni.includes(`home.${chiave}`));
   }
   // ⚠️ Il conteggio «da verificare» resta il totale della STESSA interrogazione
   // a cui porta il collegamento (stateTotals → list_documents), mai un
@@ -2415,8 +2425,8 @@ section('17. Il conto dei giorni e il FUSO — una scadenza di oggi non è «sca
 // ---------------------------------------------------------------------------
 section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
 // ⚠️ PERCHÉ QUI. `useOverview` importa i servizi e non si carica da Node: ogni
-// decisione della Home — chi compare, come si dividono le attività, che cosa
-// significa uno zero — sta in `overviewBlocks`, dove QUESTO banco può romperla.
+// decisione della Home — chi compare, come si dividono le attività, CHE PAROLA
+// va su quale numero — sta in `overviewBlocks`, dove QUESTO banco può romperla.
 // I numeri che seguono sono quelli del censimento 2026-08-19.
 
 {
@@ -2445,91 +2455,169 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
   check('il primo è la testa dell\'elenco già ordinato, non una scelta locale',
     splitOpenTasks([T({ title: 'primo' }), T({ title: 'secondo' })], 2, OGGI).primo?.title === 'primo');
 
-  // (b) Le nature delle date: NULL e lo storico 'none' NON sono «nessuna
-  // scadenza» — sono natura non registrata. In produzione: 2 date, entrambe
-  // NULL, zero termini.
-  const produzione = contaNature([null, null]);
-  check('le due date di produzione: natura non registrata, zero termini',
-    produzione.nonRegistrate === 2 && produzione.termini === 0 && produzione.totale === 2);
-  check('term è termine; event e reference non obbligano; \'none\' e l\'ignoto non sono registrati',
-    (() => { const c = contaNature(['term', 'event', 'reference', 'none', 'boh', null]);
-      return c.termini === 1 && c.nonObbliganti === 2 && c.nonRegistrate === 3; })());
+  // ⚠️⚠️ (a-bis) R4 — IL NOME A SCHERMO, non solo la classificazione.
+  // La divisione qui sopra era guardata; la PAROLA che accompagna ciascun
+  // numero no, ed è la parola che l'utente legge. Rendere gli appuntamenti con
+  // la chiave dei termini — «3 termini» sopra tre sopralluoghi — è una data
+  // presentata come un obbligo quando non lo è: la classe d'errore che questo
+  // prodotto teme di più, e restava verde in tutta la suite.
+  {
+    const parti = chiaviTaskSplit(rossi);
+    const perNumero = (n: number) => parti.find((x) => x.n === n) ?? null;
+    check('R4: i 3 appuntamenti prendono la parola DEGLI APPUNTAMENTI',
+      perNumero(3)?.base === 'home.tasksAppts',
+      `la parte da 3 porta ${JSON.stringify(perNumero(3))}`);
+    check('R4: e nessuna parte porta la parola dei TERMINI, che qui sono zero',
+      parti.every((x) => x.base !== 'home.tasksTerms'),
+      'zero termini: la coppia dei termini non deve comparire affatto');
+    check('lo zero dei termini è una FRASE INTERA dichiarata, non un conteggio',
+      parti.some((x) => x.base === null && x.chiave === 'home.tasksTermsNone'));
 
-  // (b-bis) LA RIGA DELLE DATE: il numero che accompagna una ripartizione è
-  // quello su cui la ripartizione è stata fatta, e una negazione vale solo
-  // sull'insieme che si è guardato.
-  check('contaNature dichiara SU QUANTE righe ha contato, e le tre voci sommano lì',
-    (() => { const c = contaNature(['term', 'event', null]);
-      return c.lette === 3 && c.termini + c.nonObbliganti + c.nonRegistrate === c.lette; })());
+    const misto = splitOpenTasks(
+      [T({ dueDate: '2026-08-01' }), T({ dueDate: '2026-09-01' }), T({ appointmentDate: '2026-09-02' }), T()],
+      4, OGGI,
+    );
+    const p2 = chiaviTaskSplit(misto);
+    check('R4: con 2 termini e 1 appuntamento ogni numero porta la SUA parola',
+      p2.find((x) => x.n === 2)?.base === 'home.tasksTerms'
+      && p2.find((x) => x.n === 1 && x.base === 'home.tasksAppts') !== undefined,
+      JSON.stringify(p2));
+    check('R4: lo scaduto non prende la parola dei termini né viceversa',
+      p2.filter((x) => x.base === 'home.tasksOverdue').length === 1
+      && p2.filter((x) => x.base === 'home.tasksTerms').length === 1);
+    check('l\'ordine delle parti non cambia: appuntamenti · termini · senza data · scaduti',
+      p2.map((x) => x.base ?? x.chiave).join('|')
+        === 'home.tasksAppts|home.tasksTerms|home.tasksNoDate|home.tasksOverdue',
+      p2.map((x) => x.base ?? x.chiave).join('|'));
+  }
 
-  // Il caso della produzione: 2 date, entrambe lette, nessun termine. La frase
-  // nega sul TOTALE perché il totale è tutto ciò che c'è — e lì è vero.
-  const intero = rigaDate({ ...contaNature([null, null]), totale: 2, parziale: false });
-  check('insieme intero: la frase nega sul totale, e non c\'è niente da dichiarare',
-    intero.frase === 'nessunTermine' && intero.n === 2 && !intero.scarto);
-
-  // ⚠️ IL CASO DELL'AUDIT: 250 date rilevate, 200 lette, la ripartizione fa 200.
-  const miste = rigaDate({
-    totale: 250, lette: 200, termini: 40, nonObbliganti: 90, nonRegistrate: 70, parziale: true,
-  });
-  check('250 date con 200 lette: la riga porta le 200 su cui la somma torna, non le 250',
-    miste.frase === 'miste' && miste.n === 200 && miste.n === 40 + 90 + 70,
-    `n=${miste.n} contro una somma di ${40 + 90 + 70}`);
-  check('e lo scarto si dichiara sotto, coi due numeri',
-    miste.scarto && miste.tot === 250);
-
-  // ⚠️⚠️ L'AFFERMAZIONE CHE POTEVA ESSERE FALSA: zero termini FRA LE LETTE non
-  // è «nessun termine»: un termine può stare fra le 50 date non guardate.
-  const negazione = rigaDate({
-    totale: 250, lette: 200, termini: 0, nonObbliganti: 120, nonRegistrate: 80, parziale: true,
-  });
-  check('zero termini su un conteggio parziale NON diventa «nessuno su 250»',
-    negazione.frase === 'nessunTermineFraLette' && negazione.n === 200 && negazione.tot === 250,
-    negazione.frase);
-  check('quella frase lo scarto se lo dichiara da sé: non si ripete sotto',
-    !negazione.scarto);
-
-  // La regola in una riga sola: quando il tetto morde, il numero della frase è
-  // SEMPRE quello letto — la somma delle nature non è mai presentata come il
-  // totale, in nessuno dei due rami.
-  const parziali: (ContoNature & { parziale: boolean })[] = [
-    { totale: 9, lette: 4, termini: 1, nonObbliganti: 1, nonRegistrate: 2, parziale: true },
-    { totale: 9, lette: 4, termini: 0, nonObbliganti: 1, nonRegistrate: 3, parziale: true },
-  ];
-  check('con conteggio parziale nessun ramo presenta la somma delle nature come il totale',
-    parziali.every((i) => { const r = rigaDate(i); return r.n === i.lette && r.n !== i.totale; }));
-
-  // Le frasi nuove esistono in tutte e tre le lingue, coi due segnaposto, e la
-  // pagina le usa: una chiave scritta e mai resa non dichiara niente.
-  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
-    for (const k of ['datesPartial', 'datesNoTermPartial'] as const) {
-      const testo = d[k];
-      check(`${lang}: home.${k} esiste e porta i due numeri`,
-        typeof testo === 'string' && testo.includes('{n}') && testo.includes('{tot}'), testo);
+  // ⚠️ R4 NELLE TRE LINGUE: la parola dei termini e quella degli appuntamenti
+  // sono DIVERSE in ciascuna, e non si scambiano. In tedesco «Termin» è
+  // l'appuntamento e «Frist» il termine: un controllo scritto in italiano su
+  // «termin» le confonderebbe, quindi ogni lingua porta le sue due parole.
+  {
+    const PAROLE = {
+      it: { termine: 'termin', appuntamento: 'appuntament' },
+      de: { termine: 'frist', appuntamento: 'termin' },
+      fr: { termine: 'échéance', appuntamento: 'rendez-vous' },
+    } as const;
+    for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }] as const) {
+      const w = PAROLE[lang];
+      const term = `${d.tasksTermsOne} ${d.tasksTermsMany} ${d.tasksTermsNone}`.toLowerCase();
+      const appt = `${d.tasksApptsOne} ${d.tasksApptsMany}`.toLowerCase();
+      check(`${lang}: la frase dei TERMINI dice la parola del termine`,
+        term.includes(w.termine), term);
+      check(`${lang}: e non dice quella dell'appuntamento`,
+        !term.includes(w.appuntamento), term);
+      check(`${lang}: la frase degli APPUNTAMENTI dice la parola dell'appuntamento`,
+        appt.includes(w.appuntamento), appt);
+      check(`${lang}: e non dice quella del termine`,
+        !appt.includes(w.termine), appt);
     }
   }
 
+  // ⚠️ E LA PAGINA NON SCEGLIE LE CHIAVI DA SÉ: se le scegliesse, la coppia
+  // numero-parola tornerebbe fuori dalla portata di questo banco.
   {
     const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
     const pagina = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8'));
-    check('la Panoramica rende le due frasi nuove',
-      pagina.includes('home.datesPartial') && pagina.includes('home.datesNoTermPartial'));
-    check('e la riga delle date passa da rigaDate, non dai campi grezzi',
-      /rigaDate\(/.test(pagina) && !/n: data\.nature\.totale/.test(pagina),
-      'il totale esatto e le nature lette sono due insiemi: chi sceglie il numero è la funzione pura');
+    check('la Panoramica compone la ripartizione con chiaviTaskSplit',
+      /chiaviTaskSplit\(/.test(pagina));
+    check('e non nomina a mano nessuna chiave della ripartizione',
+      !/home\.tasks(Appts|Terms|NoDate|Overdue)(One|Many)/.test(pagina),
+      'le coppie stanno nella funzione pura, non sparse nel JSX');
+  }
+
+  // (b) LE DATE DEI DOCUMENTI. NULL e lo storico 'none' NON sono «nessuna
+  // scadenza» — sono natura non registrata. In produzione: 2 date, entrambe
+  // NULL, zero termini.
+  const D = (kind: string | null, deadline: string | null = '2026-09-01', id = 'x'): DataDocumento & { id: string } =>
+    ({ kind, deadline, id });
+
+  const produzione = contoDate([D(null), D(null)], 2);
+  check('le due date di produzione: natura non registrata, zero termini',
+    produzione.nonRegistrate === 2 && produzione.termini.length === 0 && produzione.totale === 2);
+  check('term è termine; event e reference non obbligano; \'none\' e l\'ignoto non sono registrati',
+    (() => { const c = contoDate([D('term'), D('event'), D('reference'), D('none'), D('boh'), D(null)], 6);
+      return c.termini.length === 1 && c.nonObbliganti === 2 && c.nonRegistrate === 3; })());
+  check('la ripartizione dichiara SU QUANTE righe ha contato, e le voci sommano lì',
+    (() => { const c = contoDate([D('term'), D('event'), D(null)], 3);
+      return c.lette === 3 && c.termini.length + c.nonObbliganti + c.nonRegistrate === c.lette; })());
+  check('lette < totale: la ripartizione si dichiara parziale',
+    contoDate([D(null)], 9).parziale && !contoDate([D(null)], 1).parziale);
+
+  // ⚠️⚠️ (b-bis) UN TERMINE È UNA VOCE, NON UN NUMERO — e l'ordine è quello
+  // del giorno: il più scaduto per primo. «3 date nei documenti: 1 termini, 1
+  // che non obbligano l'azienda, 1 di natura non registrata» era il censimento
+  // delle nature di un archivio al posto della data che obbliga davvero.
+  {
+    const c = contoDate([D('term', '2026-12-01', 'tardi'), D('term', '2026-01-15', 'presto'), D(null)], 3);
+    check('i termini escono INTERI, in ordine di giorno crescente',
+      c.termini.map((x) => x.id).join(',') === 'presto,tardi',
+      c.termini.map((x) => `${x.id}:${x.deadline}`).join(' '));
+    check('una data senza giorno finisce in coda, non in testa',
+      contoDate([D('term', null, 'muta'), D('term', '2026-05-05', 'datata')], 2)
+        .termini.map((x) => x.id).join(',') === 'datata,muta');
+  }
+
+  // I termini delle DUE popolazioni si uniscono: un termine archiviato resta un
+  // obbligo, e il collegamento porta al documento — non a un elenco.
+  {
+    const att = contoDate([D('term', '2026-06-01', 'att')], 1);
+    const arch = contoDate([D('term', '2026-03-01', 'arch')], 1);
+    const u = termini(att, arch);
+    check('il termine ARCHIVIATO compare, e prima di quello attivo se è più vicino',
+      u.voci.map((x) => x.id).join(',') === 'arch,att' && u.trovati === 2, u.voci.map((x) => x.id).join(','));
+    check('nessun termine: nessuna voce, e il blocco non ha niente da mostrare',
+      termini(contoDate([D(null)], 1), contoDate([], 0)).voci.length === 0);
+
+    // Il tetto dichiarato: la regola resta «ogni termine è una voce», ma la
+    // Home non è l'elenco delle scadenze — e quando morde lo DICE.
+    const molti = contoDate(
+      Array.from({ length: TERMINI_IN_PANORAMICA + 2 }, (_, i) => D('term', `2026-0${(i % 9) + 1}-01`, `t${i}`)),
+      TERMINI_IN_PANORAMICA + 2,
+    );
+    const conTetto = termini(molti, contoDate([], 0));
+    check('il tetto dei termini elencati morde e si dichiara col numero che resta',
+      conTetto.voci.length === TERMINI_IN_PANORAMICA && conTetto.altri === 2
+      && conTetto.trovati === TERMINI_IN_PANORAMICA + 2,
+      `voci ${conTetto.voci.length}, altri ${conTetto.altri}`);
+    check('sotto il tetto non c\'è niente da dichiarare',
+      termini(att, arch).altri === 0);
+
+    // ⚠️⚠️ L'ELENCO NON SI DICHIARA COMPLETO SE NON LO È: con la lettura al
+    // tetto un termine può stare fra le date NON guardate.
+    const parziale = termini(contoDate([D('term')], 40), contoDate([], 0));
+    check('lettura al tetto: l\'elenco dei termini si dichiara parziale, coi due numeri',
+      parziale.parziale && parziale.lette === 1 && parziale.totaleDate === 40);
+    check('lettura intera: niente da dichiarare',
+      !termini(att, arch).parziale);
+  }
+
+  // (b-ter) LA RIGA DELLE DATE DI NATURA NON REGISTRATA — un limite, e il suo
+  // numero non è sempre quello della destinazione.
+  {
+    check('niente da dire quando ogni natura è registrata',
+      rigaNature(contoDate([D('term'), D('event')], 2)) === null);
+    const prod = rigaNature(contoDate([D(null), D(null)], 2))!;
+    check('produzione: 2 su 2, e la destinazione mostra esattamente quelle',
+      prod.n === 2 && prod.totale === 2 && !prod.destinazionePiuAmpia);
+    const mista = rigaNature(contoDate([D(null), D('term'), D('event')], 3))!;
+    check('1 non registrata su 3 date: la riga dichiara che la destinazione è più ampia',
+      mista.n === 1 && mista.totale === 3 && mista.destinazionePiuAmpia);
+    const tetto = rigaNature(contoDate([D(null), D(null)], 30))!;
+    check('e il tetto di lettura resta dichiarato per conto suo',
+      tetto.parziale && tetto.lette === 2 && tetto.totale === 30);
   }
 
   // (c) La visibilità dei blocchi: compaiono solo con contenuto.
   const zero = {
-    ownership: 0, aperte: 0, dateRilevate: 0, daVerificare: 0, fallite: 0,
-    maiAnalizzati: 0, programmiInCatalogo: 0, openCases: 0, activeProjects: 0,
+    ownership: 0, aperte: 0, terminiNeiDocumenti: 0, dateNonRegistrate: 0,
+    daVerificare: 0, fallite: 0, maiAnalizzati: 0,
+    programmiInCatalogo: 0, openCases: 0, activeProjects: 0,
   };
   check('il blocco decisioni esiste solo con appartenenze da confermare',
     decidiBlocchi({ ...zero, ownership: 7 }).decisioni && !decidiBlocchi(zero).decisioni);
-  check('ownership NULL (lettura fallita) non è un contenuto: il blocco tace',
-    !decidiBlocchi({ ...zero, ownership: null }).decisioni);
-  check('le sole date rilevate bastano a «Da fare»: sono informazione, non silenzio',
-    decidiBlocchi({ ...zero, dateRilevate: 2 }).daFare);
   check('16 non conclusive accendono il blocco del sistema anche a Home «vuota»',
     decidiBlocchi({ ...zero, daVerificare: 16 }).sistema);
   check('lo stato vuoto operativo dichiara il controllato, anche col catalogo pieno',
@@ -2538,38 +2626,209 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
   check('con una decisione aperta lo stato vuoto NON compare',
     !decidiBlocchi({ ...zero, ownership: 1 }).vuotoOperativo);
 
-  // ⚠️⚠️ (d) «NON LO SO» NON È «NIENTE DA FARE». Lo stesso `null` serviva due
-  // scopi opposti: nascondere il blocco Decisioni (giusto) e alimentare lo
-  // stato vuoto (falso). Un'azienda senza attività, senza date e senza analisi
-  // problematiche, con la lettura dell'appartenenza andata in timeout, leggeva
-  // «Niente richiede un gesto adesso» mentre un controllo non era stato
-  // eseguito.
+  // ⚠️⚠️ (c-bis) «DA FARE» SOLO SE C'È DA FARE. Un titolo «Da fare» sopra una
+  // riga che non chiede niente insegna a saltare quel titolo: le date di
+  // natura non dichiarata non sono lavoro, sono un limite di ciò che il
+  // sistema ha capito, e vanno fra i limiti.
   {
-    const ignoto = decidiBlocchi({ ...zero, ownership: null });
-    check('appartenenza non letta + tutto il resto a zero: lo stato vuoto NON compare',
-      !ignoto.vuotoOperativo);
-    check('e la pagina lo dichiara invece di tacere',
+    const soloIgnote = decidiBlocchi({ ...zero, dateNonRegistrate: 2 });
+    check('due date di natura ignota NON accendono «Da fare»',
+      !soloIgnote.daFare,
+      'era il caso della produzione: un blocco «Da fare» senza niente da fare');
+    check('le accende invece il blocco dei limiti, che è il posto delle cose così',
+      soloIgnote.sistema);
+    check('e la pagina non dice «Niente in sospeso»: qualcosa da dire c\'è',
+      !soloIgnote.vuotoOperativo);
+    const conTermine = decidiBlocchi({ ...zero, terminiNeiDocumenti: 1 });
+    check('CONTROPROVA: un TERMINE accende «Da fare» — quello sì è lavoro',
+      conTermine.daFare && !conTermine.sistema);
+  }
+
+  // ⚠️⚠️ (d) NESSUN BLOCCO SPARISCE IN SILENZIO. Ogni ingresso che può valere
+  // `null` — cioè «non ho potuto leggere» — deve LASCIARE IL SUO BLOCCO A
+  // SCHERMO. Un blocco che sparisce quando è rotto è indistinguibile da un
+  // blocco vuoto perché non c'è niente da fare, ed erano due risposte opposte
+  // allo stesso guasto sulla stessa pagina: il catalogo lo dichiarava, la
+  // lettura dell'appartenenza faceva sparire il blocco Decisioni.
+  {
+    const guasti: { nome: string; input: typeof zero; blocco: keyof ReturnType<typeof decidiBlocchi> }[] = [
+      { nome: 'appartenenza non leggibile', input: { ...zero, ownership: null as never }, blocco: 'decisioni' },
+      { nome: 'catalogo non leggibile', input: { ...zero, programmiInCatalogo: null as never }, blocco: 'opportunita' },
+    ];
+    for (const g of guasti) {
+      check(`${g.nome}: il blocco RESTA a schermo per dichiararlo`,
+        decidiBlocchi(g.input)[g.blocco] === true);
+    }
+    const ignoto = decidiBlocchi({ ...zero, ownership: null as never });
+    check('e la pagina sa che dentro va la frase del guasto, non un conteggio',
       ignoto.ownershipIgnota);
-    check('il blocco Decisioni resta comunque nascosto: non si inventa uno zero',
-      !ignoto.decisioni);
+    check('appartenenza non letta + tutto il resto a zero: «Niente in sospeso» NON compare',
+      !ignoto.vuotoOperativo);
     // La CONTROPROVA: con l'appartenenza LETTA e a zero, lo stato vuoto è
     // ancora quello di prima — la correzione non l'ha spento in generale.
     const letto = decidiBlocchi(zero);
     check('CONTROPROVA: appartenenza letta e a zero, lo stato vuoto compare ancora',
-      letto.vuotoOperativo && !letto.ownershipIgnota);
+      letto.vuotoOperativo && !letto.ownershipIgnota && !letto.decisioni);
   }
 
-  // La frase esiste nelle tre lingue ed è resa: una chiave scritta e mai usata
-  // non dichiara niente.
+  // (e) Le frasi esistono nelle tre lingue, coi loro segnaposto, e la pagina le
+  // rende: una chiave scritta e mai resa non dichiara niente.
+  const SEGNAPOSTO: Record<string, string[]> = {
+    termItem: ['{date}', '{title}'],
+    termsPartial: ['{n}', '{tot}'],
+    datesUnrecordedOne: ['{dove}'],
+    datesUnrecordedMany: ['{n}', '{dove}'],
+    datesScope: ['{tot}', '{dove}'],
+    datesSplitPartial: ['{n}', '{tot}'],
+    termsMoreOne: ['{n}'],
+    termsMoreMany: ['{n}'],
+    footNonBindingMany: ['{n}'],
+    footNonBindingArchived: ['{n}'],
+  };
   for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
-    check(`${lang}: home.ownershipUnknown esiste`,
-      typeof d.ownershipUnknown === 'string' && d.ownershipUnknown.trim().length > 0);
+    for (const [k, attesi] of Object.entries(SEGNAPOSTO)) {
+      const testo = (d as Record<string, string>)[k];
+      check(`${lang}: home.${k} esiste e porta ${attesi.join(' ')}`,
+        typeof testo === 'string' && attesi.every((x) => testo.includes(x)), testo);
+    }
+    for (const k of ['termsFromDocs', 'termNoDate', 'ctaDates', 'tasksHeading'] as const) {
+      const testo = (d as Record<string, string>)[k];
+      check(`${lang}: home.${k} esiste`, typeof testo === 'string' && testo.trim().length > 0);
+    }
   }
-  check('la Panoramica rende home.ownershipUnknown quando l\'appartenenza è ignota',
-    (() => {
-      const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
-      return pagina.includes('home.ownershipUnknown') && pagina.includes('blocchi.ownershipIgnota');
-    })());
+
+  {
+    const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    const pagina = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8'));
+    // ⚠️⚠️ NON BASTA CHE LA CHIAVE COMPAIA NEL FILE. Due sabotaggi restavano
+    // verdi con il solo `includes`: togliere `<VociTermini/>` dal blocco «Da
+    // fare» (il componente restava definito più sotto, chiave compresa) e
+    // togliere il `<Link>` attorno alla riga delle date (il `to=` restava, ma
+    // su un'altra riga). È la cecità R3 in miniatura: una chiave scritta non è
+    // una chiave RESA, e un indirizzo scritto non è un collegamento. Perciò si
+    // guarda il CORPO della funzione che deve renderla, e la riga intera.
+    const corpoDi = (nome: string) => {
+      const da = pagina.indexOf(`function ${nome}(`);
+      if (da < 0) return '';
+      const a = pagina.indexOf('\n}\n', da);
+      return pagina.slice(da, a < 0 ? undefined : a);
+    };
+    const rigaCon = (ago: string) => pagina.split('\n').filter((r) => r.includes(ago));
+    // Un `<Link>` può stare su tre righe: la domanda «questo numero è
+    // cliccabile?» si fa sul PEZZO fra l'apertura e la chiusura, non sulla riga.
+    const dentroUnLink = (corpo: string, ago: string) =>
+      corpo.split('<Link').slice(1).some((pezzo) => {
+        const fine = pezzo.indexOf('</Link>');
+        return fine >= 0 && pezzo.slice(0, fine).includes(ago);
+      });
+
+    check('la Panoramica rende i termini come VOCI, con giorno e titolo',
+      pagina.includes('home.termItem') && /termini\(/.test(pagina));
+    check('e il blocco «Da fare» le rende DAVVERO, non le tiene definite altrove',
+      /<VociTermini\b/.test(corpoDi('BloccoDaFare')),
+      'il componente esisteva e nessuno lo montava: il sabotaggio restava verde');
+    // ⚠️ «nessun termine» (delle ATTIVITÀ) sopra un termine dei DOCUMENTI sono
+    // due frasi vere che si leggono come una contraddizione: quando ci sono
+    // tutt'e due le parti, ciascuna dice di che cosa parla.
+    check('con termini E attività insieme, le due parti hanno ciascuna il suo nome',
+      corpoDi('BloccoDaFare').includes('home.tasksHeading')
+      && /titolo=\{dueParti\}/.test(corpoDi('BloccoDaFare'))
+      && /const dueParti = /.test(corpoDi('BloccoDaFare')));
+    check('e ogni voce porta al DOCUMENTO, non a un elenco',
+      rigaCon('home.termItem').length > 0
+      && corpoDi('VociTermini').includes('/documenti/${v.id}'),
+      'un termine si apre, non si filtra');
+    check('la riga delle date ignote esiste, ed è un collegamento VERO',
+      rigaCon("home.datesUnrecorded").some((r) => r.includes('<Link') && r.includes('</Link>')),
+      'un numero senza destinazione è un numero che l\'utente non può verificare');
+    check('e il blocco dei limiti la monta per entrambe le popolazioni',
+      (corpoDi('BloccoSistema').match(/<RigaDateIgnote\b/g) ?? []).length === 2
+      && corpoDi('BloccoSistema').includes('home.popActive')
+      && corpoDi('BloccoSistema').includes('home.popArchived'));
+    // ⚠️⚠️ UN TETTO CHE SMETTE DI DICHIARARSI QUANDO MORDE è la classe di
+    // difetto che questa pagina è nata per togliere: una marcatura che sparisce
+    // proprio nel momento in cui serve. Il conteggio resta a schermo, sembra
+    // intero, e non lo è — «calcolata sulle prime 100 di 150» diventa «150».
+    // Misurato il 2026-08-20: togliere la riga di `tasksSplitPartial` o quella
+    // di `ownershipPartial` lasciava TUTTA la suite verde. Ogni dichiarazione
+    // va cercata nel CORPO della funzione che la possiede, e insieme alla
+    // condizione che la accende: una senza l'altra è metà guardia.
+    //
+    // ⚠️ E il letterale qui è lecito perché questo check ASSERISCE che il
+    // prodotto lo usa: se la pagina smette di renderlo, questa riga è rossa
+    // prima che il rilevatore di chiavi orfane possa tacere. Un letterale in un
+    // banco che NON assicura l'uso sarebbe la macchina che tiene in vita ciò
+    // che dovrebbe segnalare.
+    const TETTI: { chiave: string; funzione: string; condizione: string }[] = [
+      { chiave: 'home.ownershipPartial', funzione: 'BloccoDecisioni', condizione: 'ownership.parziale' },
+      { chiave: 'home.tasksSplitPartial', funzione: 'BloccoDaFare', condizione: 's.parziale' },
+      { chiave: 'home.termsPartial', funzione: 'VociTermini', condizione: 'parziale' },
+      { chiave: 'home.datesSplitPartial', funzione: 'RigaDateIgnote', condizione: 'r.parziale' },
+    ];
+    for (const tetto of TETTI) {
+      const corpo = corpoDi(tetto.funzione);
+      check(`il tetto di ${tetto.chiave} si dichiara dentro ${tetto.funzione}`,
+        corpo.includes(tetto.chiave) && corpo.includes(tetto.condizione),
+        corpo.includes(tetto.chiave) ? `manca la condizione ${tetto.condizione}` : 'la frase non è resa');
+    }
+    check('e la divergenza col numero della destinazione si dichiara',
+      pagina.includes('home.datesScope') && /destinazionePiuAmpia/.test(pagina));
+    // ⚠️⚠️ LE DATE CHE NON OBBLIGANO NON SPARISCONO, e la ragione è
+    // l'ASIMMETRIA DELL'ERRORE: un evento scambiato per termine mostra un
+    // obbligo falso, visibile e autocorreggente; un TERMINE scambiato per
+    // evento sparisce in silenzio e si scopre tardi. Un conteggio solo, nel
+    // piede, col suo collegamento: non una voce, non un blocco, niente che
+    // chieda un gesto — ma niente silenzio su quella popolazione.
+    {
+      const corpo = corpoDi('OverviewBody');
+      check('il piede dichiara le date che non obbligano, e il numero porta all\'elenco',
+        dentroUnLink(corpo, 'home.footNonBinding'),
+        'un conteggio senza destinazione è un conteggio che l\'utente non può verificare');
+      check('e il conteggio copre le DUE popolazioni, non una',
+        /attivi\.nonObbliganti \+ data\.date\.archiviati\.nonObbliganti/.test(corpo));
+      check('e non tace sulla parte ARCHIVIATA, che la destinazione non mostra',
+        corpo.includes('home.footNonBindingArchived')
+        && corpo.includes('data.date.archiviati.nonObbliganti > 0'));
+    }
+
+    check('il blocco Decisioni dichiara il guasto DENTRO DI SÉ, senza una sezione a parte',
+      pagina.includes('home.ownershipUnknown')
+      && !/blocchi\.ownershipIgnota &&/.test(pagina),
+      'un blocco che non riesce a leggere i suoi dati resta a schermo e lo dice');
+    check('nessuna riga di conteggio della Panoramica sceglie a mano fra singolare e plurale',
+      !/\?\s*'home\.[A-Za-z]+One'\s*:\s*'home\.[A-Za-z]+Many'/.test(pagina),
+      'la forma la sceglie la lingua: `tn`, non un `=== 1`');
+  }
+
+  // ⚠️⚠️ (f) LE FORME PLURALI LE SCEGLIE LA LINGUA. In italiano e in tedesco lo
+  // ZERO vuole il plurale; in FRANCESE vuole il singolare. Un `n === 1` scritto
+  // a mano è giusto in due lingue su tre, e sbaglia proprio sullo zero — il
+  // numero che questa pagina mostra più spesso.
+  {
+    const atteso: Record<string, ('One' | 'Many')[]> = {
+      it: ['Many', 'One', 'Many'],
+      de: ['Many', 'One', 'Many'],
+      fr: ['One', 'One', 'Many'],
+    };
+    const base: PluralBase = 'home.tasksTerms';
+    for (const lang of LOCALES) {
+      const forme = [0, 1, 2].map((n) => (pluralKey(base, n, lang).endsWith('One') ? 'One' : 'Many'));
+      check(`${lang}: 0 · 1 · 2 → ${atteso[lang].join(' · ')}`,
+        forme.join('|') === atteso[lang].join('|'), forme.join('|'));
+    }
+    check('⚠️ ed è il francese a distinguersi: lo ZERO vuole il SINGOLARE',
+      pluralKey('home.tasksTerms', 0, 'fr').endsWith('One')
+      && pluralKey('home.tasksTerms', 0, 'it').endsWith('Many'));
+    check('la coppia esiste per ogni base che la pagina usa, nelle tre lingue',
+      (['home.tasksAppts', 'home.tasksTerms', 'home.tasksNoDate', 'home.tasksOverdue',
+        'home.ownership', 'home.termsMore', 'home.datesUnrecorded',
+        'home.sysToVerify', 'home.sysFailed', 'home.sysNever'] as PluralBase[])
+        .every((b) => LOCALES.every((l) => [0, 1, 2, 8].every((n) => {
+          const k = pluralKey(b, n, l).split('.')[1];
+          const d = { it: it.home, de: de.home, fr: fr.home }[l] as Record<string, string>;
+          return typeof d[k] === 'string' && d[k].trim().length > 0;
+        }))));
+  }
 }
 
 // ---------------------------------------------------------------------------

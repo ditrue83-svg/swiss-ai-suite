@@ -2414,6 +2414,118 @@ restituisce `null`, e la consegna viene chiusa **definitivamente** come
 `NO_RECIPIENT`. È lo stesso esito del difetto del 2026-08-03 — il promemoria
 che usciva verso `to: [null]` — raggiunto per un'altra strada.
 
+## ⚠️ IL REGISTRO DELLE COPERTURE MANCANTI — la Panoramica, misurato il 2026-08-20
+
+> **Perché sta qui e non in un commento nel codice.** Un buco scritto accanto
+> alla riga che lo contiene lo legge solo chi apre quella riga — cioè quasi
+> nessuno, e comunque non chi deve decidere se una schermata è provata. Le sei
+> parole di questa pagina distinguono «testato» da «implementato»: un elenco di
+> ciò che i controlli NON guardano appartiene alla stessa tavola, altrimenti
+> «testato: sì» significa «esiste una suite verde», che non è la stessa cosa.
+>
+> **Ogni riga qui sotto è MISURATA, non dedotta**: il sabotaggio è stato
+> applicato davvero e la suite eseguita davvero. Dove dice «resta verde», è
+> perché è restata verde.
+>
+> **E si RIMISURA a ogni giro, non si eredita.** Il 2026-08-20 due voci portate
+> dietro per sentito dire erano già false: una regola scoperta era diventata
+> coperta, e ciò che restava aperto era un'altra cosa. Un registro che si
+> tramanda per copia diventa, dopo qualche giro, un racconto. La regola sta in
+> [`CLAUDE.md`](../CLAUDE.md), §Verità.
+
+Le regole della Panoramica dai numeri sono sei; queste sono le quattro che
+vivevano «nelle mani» di chi scrive, cioè senza un controllo che le facesse
+fallire.
+
+| regola | stato al 2026-08-20 | sabotaggio applicato | esito |
+|---|---|---|---|
+| **R1** — i conteggi coprono DUE popolazioni | ✅ **chiusa** | la seconda popolazione non si legge più | **5 rossi** (`test:panoramica`) |
+| **R4** — il NOME a schermo dice ciò che il numero è | ✅ **chiusa** | gli appuntamenti resi con la chiave dei termini · «Frist» tedesco cambiato in «Termin» | **5 rossi · 2 rossi** (`test:shell-unit` §18) |
+| **R3** — ciò che è deciso viene davvero RESO | 🟡 **in parte** | vedi sotto | 13 sabotaggi rossi, **1 verde** |
+| **R6** — categorie con un conteggio, non elenchi | ⛔ **scoperta** | dieci righe di documento in un blocco | **resta VERDE** |
+
+### R1 — chiusa, e con un limite dichiarato
+
+`npm run test:panoramica` (gruppo `db`, nessun credito AI) confronta le RPC
+vere, la replica diretta sulle tabelle e i valori attesi, su un'azienda
+usa-e-getta con **fixture asimmetrica**: `to_verify` 2/1, `failed` 0/2, `none`
+3/1, documenti 8/6, date 3/2.
+
+⚠️⚠️ **L'asimmetria è la guardia, non un dettaglio della fixture.** Con 1 e 1
+lo stesso sabotaggio passa i tre confronti **verde**: il numero esce giusto per
+caso. È stato provato — e per questo, accanto ai confronti, c'è un'asserzione
+esplicita sull'asimmetria, che nella controprova è l'unica diventata rossa.
+
+⚠️ **Che cosa NON prova**: non chiama `documentHubService`. Il servizio importa
+il client Supabase, che nasce da `import.meta.env`, e da Node **non si carica**
+(provato). Il test chiama le RPC con gli stessi argomenti dei servizi; che il
+servizio le chiami entrambe è guardato dal SORGENTE in `test:shell-unit` §18.
+I due controlli si coprono a vicenda: nessuno dei due, da solo, basta.
+
+### R3 — chiusa dove le decisioni nuove la toccano, aperta altrove
+
+**Adesso diventa rosso**: togliere `<VociTermini/>` dal blocco «Da fare»
+(il componente restava definito, e il solo `includes` sulla chiave restava
+verde); togliere il `<Link>` attorno alla riga delle date (l'indirizzo restava
+scritto su un'altra riga); montare la riga delle date per una popolazione sola;
+togliere una qualunque riga di conteggio collegata; togliere il piè di pagina.
+
+✅ **I TETTI DI LETTURA sono chiusi tutti e quattro** (2026-08-20). Un tetto che
+smette di dichiararsi *quando morde* è la classe di difetto che questa pagina è
+nata per togliere: una marcatura che sparisce proprio nel momento in cui serve.
+Misurato: togliere la riga di `home.tasksSplitPartial` **o** quella di
+`home.ownershipPartial` lasciava TUTTA la suite verde — la seconda non era
+nemmeno nell'elenco dei buchi noti, l'ha trovata la stessa misura. Ora ogni
+dichiarazione è cercata nel CORPO della funzione che la possiede **e insieme
+alla condizione che la accende**: una senza l'altra è metà guardia, e una
+dichiarazione che si mostra sempre non dichiara più niente.
+
+| dichiarazione | funzione | condizione |
+|---|---|---|
+| `home.ownershipPartial` | `BloccoDecisioni` | `ownership.parziale` |
+| `home.tasksSplitPartial` | `BloccoDaFare` | `s.parziale` |
+| `home.termsPartial` | `VociTermini` | `parziale` |
+| `home.datesSplitPartial` | `RigaDateIgnote` | `r.parziale` |
+
+⛔ **Resta scoperto, misurato:**
+
+| sabotaggio | esito | danno atteso |
+|---|---|---|
+| sparisce `<Esempio>` dal blocco dei limiti | resta **verde** | il blocco dice «16 analisi da verificare» e non mostra più *quale*: il numero torna a essere una cifra senza una cosa dietro, che è il difetto per cui l'esempio è nato |
+
+### ⚰️ Un ramo SUPERATO, e da chi
+
+`fix/riga-date-panoramica` (`8c0795f`, mai unito) correggeva la stessa riga
+delle date: singolari veri, giorno del termine, riga per popolazione col
+collegamento. È **superato da `dc73193`** (`fix/il-termine-e-una-voce`), che
+risolve lo stesso problema più a fondo: un termine non diventa un conteggio con
+il singolare giusto, diventa una VOCE con giorno, titolo e destinazione, e il
+plurale non passa più da coppie scelte a mano ma dalle regole della lingua.
+
+**Non va unito**: farebbe conflitto sugli stessi file senza aggiungere niente.
+Sta scritto qui perché un ramo abbandonato senza spiegazione, fra tre mesi, è
+qualcuno che ricomincia lo stesso tentativo credendo di avere un'idea nuova.
+
+### R6 — scoperta, e adesso più esposta di prima
+
+Nessun controllo legge il JSX della Panoramica cercando una forma di ELENCO.
+Inserendo dieci righe di documento dentro un blocco, tutte le suite restano
+verdi (provato). Il danno atteso è misurato, non ipotetico: il censimento del
+2026-08-19 ha trovato che **6 delle prime 10 voci per data erano la stessa
+email di Stripe** — un elenco piatto sulla Home è quella schermata lì.
+
+⚠️ **Perché è più esposta di prima**: dal 2026-08-20 la pagina rende
+legittimamente un elenco — le voci dei termini — quindi una guardia scritta
+come «nessun `.map` nella Panoramica» nascerebbe rossa su codice giusto. La
+regola da guardare è «nessun `.map` **senza un tetto dichiarato**», e
+`TERMINI_IN_PANORAMICA` è il tetto che l'elenco dei termini ha.
+
+### R5 — invariata, e già dichiarata
+
+Il controllo che vieta un pulsante non invocabile è **letterale**: cerca
+`subsidy-worker` e `functions.invoke` nel sorgente. Un pulsante finto con
+un'altra etichetta e nessun gestore non accenderebbe niente.
+
 ## Come si rimisura questa tabella
 
 ```bash

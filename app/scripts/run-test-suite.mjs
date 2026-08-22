@@ -422,6 +422,11 @@ const GROUPS = {
       { script: 'test:contracts' },
       { script: 'test:assistant' },
       { script: 'test:documents' },
+      // ⚠️ R1 — I CONTEGGI DELLA PANORAMICA contro il database vero. Tre metodi
+      // leggono DUE popolazioni ciascuno e la Home ne fa la somma: se una
+      // smettesse di essere letta, i numeri sarebbero sbagliati e nessun'altra
+      // suite se ne accorgerebbe. La fixture è asimmetrica di proposito.
+      { script: 'test:panoramica' },
       { script: 'test:crm' },
       { script: 'test:finance' },
       { script: 'test:workflows' },
