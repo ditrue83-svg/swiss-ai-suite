@@ -396,6 +396,10 @@ const GROUPS = {
       // La testata: le forme delle icone (una forma, un nome — il marchio è
       // nato con lo stesso path di `plus`) e la campanella senza scatola.
       { script: 'test:shell-unit' },
+      // Le regole pure del censimento degli stati: lettura degli enum dalle
+      // migrazioni, tabelle con `archived_at`, valori morti, due colonne che
+      // dicono la stessa cosa. Nessun database, nessuna rete.
+      { script: 'stati:censimento:self-test' },
     ],
   },
   // ⚠️ QUESTO GRUPPO NON HA BISOGNO DEL PROGETTO DI PRODUZIONE, e la
@@ -531,6 +535,11 @@ const FUORI_SUITE = {
   // arriva posta, non quando cambia una regola. La regola che usa
   // (`ammetti`) la prova `test:inbox-unit`, in unit, con dodici mutazioni.
   'inbox:domains': 'rapporto sui domini di una casella reale: misura i dati, non il codice; la regola che applica la prova test:inbox-unit, in unit',
+  // Rimisura il CENSIMENTO degli stati sui dati veri: i suoi numeri cambiano
+  // quando arriva un documento, non quando cambia una regola — e un censimento
+  // in una suite sarebbe un'asserzione su quante righe ha oggi la produzione.
+  // Le sue regole pure le prova `stati:censimento:self-test`, in unit.
+  'stati:censimento': 'censimento degli stati sul database vero: misura i dati, non il codice; le sue regole le prova stati:censimento:self-test, in unit',
   'test:notification-email': "l'invio VERO spende un'email a ogni esecuzione; il piano lo prova test:notification-email:self-test, in unit",
   status: 'misura la produzione e scrive il foglio di stato: un rapporto, non un controllo; le sue frasi le prova status:self-test, in unit',
   // ⚠️ Misura l'AMBIENTE, non il codice: può essere rosso su un albero perfetto

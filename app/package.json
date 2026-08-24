@@ -50,6 +50,8 @@
     "test:inbox": "node --env-file=.env.test scripts/test-inbox.mjs",
     "inbox:diagnose": "node --env-file=.env.test --import tsx scripts/inbox-diagnose.mjs",
     "inbox:domains": "node --env-file=.env.test --import tsx scripts/inbox-domain-report.mjs",
+    "stati:censimento": "node --env-file=.env.test scripts/stati-censimento.mjs",
+    "stati:censimento:self-test": "node scripts/stati-censimento.mjs --self-test",
     "test:tasks-unit": "node --import tsx scripts/test-tasks-unit.ts",
     "test:tasks": "node --env-file=.env.test scripts/test-tasks.mjs",
     "test:documents-unit": "node --import tsx scripts/test-documents-unit.ts",

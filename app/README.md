@@ -131,7 +131,8 @@ scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · t
 docs/             design-system.md · revisione-traduzioni.md · ai-inbox.md · document-hub.md
                   calendar-notifications.md · workflow-automation.md · finance-operations.md
                   contract-manager.md · crm-light.md · company-assistant.md
-                  company-assistant-search-eval.md
+                  company-assistant-search-eval.md · stati-documento.md
+                  appartenenza-del-documento.md
 ```
 
 ### Dove sta la documentazione
@@ -155,6 +156,8 @@ collegamento, e `docs:check` lo segnalava da tempo. Questo è l'indice vero.
 | [`company-assistant.md`](docs/company-assistant.md) | Chiedi ad AI-Swisse: ciclo, fonti, limiti |
 | [`company-assistant-search-eval.md`](docs/company-assistant-search-eval.md) | La prova di ricerca dell'assistente |
 | [`ai-output-parsing.md`](docs/ai-output-parsing.md) | Il contratto di lettura dell'output dei modelli: che cosa il parser condiviso tollera, che cosa non ripara, dove finisce la sintassi e comincia il dominio |
+| [`stati-documento.md`](docs/stati-documento.md) | **Il censimento degli stati di un documento, con i numeri e la data accanto a ognuno**: i quattro assi, i campi di stato e chi li scrive, gli stati morti nei due sensi, le etichette e che cosa leggono, i campi che dicono la stessa cosa, se separare gli assi richieda una migrazione — e l'archiviazione attraverso tutti i moduli. Si rimisura con `npm run stati:censimento` |
+| [`appartenenza-del-documento.md`](docs/appartenenza-del-documento.md) | Il cancello dell'appartenenza (dove viveva, chi non lo ereditava, dov'è adesso) e i due difetti che la fattura di prova del 21 agosto ha portato a galla: la doppia lettura dello stesso PDF e la riga di quota che non si chiudeva |
 
 ## Setup
 
@@ -1061,6 +1064,18 @@ npm run inbox:domains   # il filtro dei domini (0043) sui dati veri: quanti mess
                         # niente, non chiama il provider, non spende credito. Usa la funzione
                         # vera (`ammetti`), non una sua copia. Se la 0043 non è ancora
                         # applicata lo DICE e ricava il catalogo dal file della migrazione
+npm run stati:censimento   # il censimento degli stati di un documento, RIMISURATO adesso: valori
+                        #   per colonna, stati morti, campi che dicono la stessa cosa, archiviazione
+                        #   in tutte le tabelle che hanno archived_at. SOLA LETTURA — nessuna riga
+                        #   toccata, nessun credito AI speso. È il comando che rifà i numeri di
+                        #   docs/stati-documento.md invece di ereditarli. Esce 3 se una misura non
+                        #   si è potuta prendere: un rapporto con «0 documenti» perché è caduta la
+                        #   connessione sarebbe peggio di nessun rapporto
+npm run stati:censimento -- --json   # gli stessi numeri, da dare in pasto a qualcos'altro
+npm run stati:censimento:self-test   # verifica le REGOLE del censimento senza database: lettura
+                        #   degli enum dalle migrazioni, tabelle con archived_at (le colonne che
+                        #   una funzione RESTITUISCE non sono colonne che esistono), valori morti,
+                        #   due colonne che dicono la stessa cosa
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
 npm run i18n:typography # spazi insecabili (U+202F) prima dei segni doppi francesi
