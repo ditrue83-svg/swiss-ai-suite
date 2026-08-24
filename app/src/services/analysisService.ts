@@ -7,10 +7,13 @@
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
 import { formatCurrency } from '@/lib/format';
+// ⚠️ `document_analyses.deadline` è una colonna `date` (0002): il conto dei
+// giorni è di CALENDARIO, non una differenza di istanti.
+import { calendarDaysUntil } from '@/lib/calendarDays';
 import { ANALYSIS_PROVIDER } from '@/lib/env';
 import { translate as tr, type TKey } from '@/i18n';
 import {
-  analyzeText, buildReply, deadlineLevel, daysUntil, urgencyFromType,
+  analyzeText, buildReply, deadlineLevel, urgencyFromType,
   LANG_LABEL, DOC_TYPE_LABEL, type EngineAnalysis,
 } from '@/features/admin-ai/engine';
 import { deadlineRequiresVerification } from '../../supabase/functions/_shared/deadlineNature.ts';
@@ -61,7 +64,7 @@ function engineToInsert(
  *  esportati e deve mapparli col mapper VERO, non con una copia che diverge.
  *  Il prodotto continua a usarla solo da qui dentro. */
 export function rowToDomain(row: AnalysisRow): DocumentAnalysis {
-  const days = daysUntil(row.deadline);
+  const days = calendarDaysUntil(row.deadline);
   const docType = row.document_type ?? 'informativa';
   const actions = (Array.isArray(row.actions) ? row.actions : []) as unknown as ChecklistAction[];
   const requested = (Array.isArray(row.requested_documents) ? row.requested_documents : []) as unknown as RequestedDocument[];

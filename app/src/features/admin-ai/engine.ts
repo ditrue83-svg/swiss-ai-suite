@@ -3,6 +3,7 @@
 // Funzione pura: nessun accesso a rete/DB. È il "provider" di analisi che il
 // service layer può sostituire in futuro con un LLM mantenendo la stessa forma.
 // ============================================================================
+import { calendarDaysUntil } from '@/lib/calendarDays';
 import type {
   ChecklistAction, Confidence, DeadlineLevel, DocLanguage, Evidence,
   RequestedDocument, Risk, Urgency,
@@ -309,10 +310,12 @@ export function deadlineLevel(days: number | null): DeadlineLevel {
   return 'nessuna';
 }
 
-export function daysUntil(iso: string | null): number | null {
-  if (!iso) return null;
-  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
-}
+// ⚠️⚠️ QUI C'ERA `daysUntil`, TOLTA IL 2026-08-24 — stessa aritmetica sbagliata
+// di quella di `lib/format`, e per gli stessi chiamanti sbagliati: il conteggio
+// dell'archivio (`buildDocumentStats`) e l'urgenza di una lettura. Si ri-esporta
+// `calendarDaysUntil`, che è la risposta unica, perché è di QUI che i due
+// consumatori la prendevano e cambiare loro l'indirizzo non aggiungeva niente.
+// Il conto lo fa `calendarDaysUntil`, importata in testa a questo file.
 
 function detectRisk(text: string, docType: DocTypeDef): Risk {
   const ev = findKeywordEvidence(text, RISK_EXPLICIT_KEYWORDS);
@@ -371,7 +374,7 @@ export function analyzeText(text: string, opts: { companyName?: string | null } 
   const amountObj = detectAmount(text);
   const requestedDocs = detectRequestedDocs(text, docType);
   const deadlineISO = deadlineHit ? toDateOnly(deadlineHit.date) : null;
-  const days = daysUntil(deadlineISO);
+  const days = calendarDaysUntil(deadlineISO);
   const urgency = urgencyFromType(docType.tipo, days);
   const rischio = detectRisk(text, docType);
   const tone = 'formale';

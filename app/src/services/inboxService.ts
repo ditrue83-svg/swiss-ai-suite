@@ -13,7 +13,11 @@
 import { requireSupabase } from '@/lib/supabase';
 import { etichettaDaRigaDocumento } from '@/lib/documentTitle';
 import { AppError, toUserMessage } from '@/lib/errors';
-import { daysUntil } from '@/lib/format';
+// ⚠️ `calendarDaysUntil` e non la vecchia `daysUntil` di `lib/format`: quella
+// confrontava due istanti, e `analysis_deadline` è una colonna `date`. A ovest
+// di Greenwich, di sera, ogni scadenza risultava un giorno in anticipo — cioè
+// il segno di urgenza e il filtro «Con scadenza vicina» dicevano il falso.
+import { calendarDaysUntil } from '@/lib/calendarDays';
 import { deadlineLevel } from '@/features/admin-ai/engine';
 // L'ambito dei filtri sta in un modulo PURO, importabile da un test: il perché
 // è scritto lì. Si ri-esporta ciò che i chiamanti prendevano da questo file.
@@ -41,7 +45,7 @@ const SUMMARY_COLUMNS =
 
 function toSummary(row: Partial<MessageRow> & { id: string }): EmailMessageSummary {
   const deadline = (row.analysis_deadline as string | null) ?? null;
-  const days = daysUntil(deadline);
+  const days = calendarDaysUntil(deadline);
   return {
     id: row.id,
     companyId: row.company_id as string,
@@ -258,7 +262,7 @@ export const inboxService = {
       documentId: documentByAttachment.get(a.id as string) ?? null,
     }));
 
-    const days = daysUntil(row.analysis_deadline);
+    const days = calendarDaysUntil(row.analysis_deadline);
 
     return {
       ...toSummary(row),

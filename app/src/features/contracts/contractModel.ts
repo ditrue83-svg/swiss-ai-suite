@@ -10,6 +10,7 @@
 // deriva il database (`contract_notice_deadline`, 0024) e arrivano già fatte:
 // qui si decide solo come MOSTRARLE e se dichiarare che non esistono.
 // ============================================================================
+import { calendarDaysUntil } from '@/lib/calendarDays';
 import type {
   ContractDetail, ContractListItem, ContractMilestone, ContractTermVersion,
 } from '@/types/models';
@@ -50,27 +51,21 @@ export function contractState(
   if (c.archivedAt) return 'archived';
   if (c.processingFailedCount > 0) return 'failed';
   if (c.processingPendingCount > 0) return 'processing';
-  const noticeDays = daysUntil(c.nextNoticeDate, today);
+  const noticeDays = calendarDaysUntil(c.nextNoticeDate, today);
   if (noticeDays !== null && noticeDays <= 30) return 'notice_soon';
-  const renewalDays = daysUntil(c.nextRenewalDate, today);
+  const renewalDays = calendarDaysUntil(c.nextRenewalDate, today);
   if (renewalDays !== null && renewalDays <= 30) return 'renewal_soon';
   if (c.reviewStatus === 'review_required_again') return 'amendment';
   if (c.reviewStatus === 'needs_review') return 'to_verify';
   return 'verified';
 }
 
-/**
- * Giorni di CALENDARIO fino a una data, non millisecondi diviso 86400.
- * ⚠️ È la lezione delle Attività: alle 23:30 «domani» non deve diventare «oggi».
- */
-export function daysUntil(iso: string | null | undefined, today: Date = new Date()): number | null {
-  if (!iso) return null;
-  const target = new Date(`${iso.slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(target.getTime())) return null;
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const end = new Date(target.getFullYear(), target.getMonth(), target.getDate());
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
-}
+// ⚠️ QUI C'ERA una `daysUntil` scritta BENE — e toglierla lo stesso è il punto.
+// Era una copia letterale di quella di `crmModel`, e nessuna delle due sapeva
+// dell'altra né della terza in `lib/calendarDays`. Due aritmetiche giuste oggi
+// sono due aritmetiche che domani divergono: chi corregge una non sa che l'altra
+// esiste. Una sola risposta, in `_shared/calendarDays.ts`.
+// Il conto lo fa `calendarDaysUntil`, importata in testa a questo file.
 
 /**
  * Perché una scadenza di disdetta non si può ricavare — oppure `null` se si può.

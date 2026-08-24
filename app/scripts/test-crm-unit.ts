@@ -35,10 +35,13 @@ import {
   CRM_VIEWS, CRM_SORTS, PIPELINE_STAGES, ALL_STAGES, DEFAULT_STALE_DAYS,
   filtersFromParams, paramsFromFilters, effectiveRole, hasActiveFilters,
   organizationState, opportunityState, pipelineByCurrency, countByStage,
-  daysSince, daysUntil, secondaryName, compareTimeline, isOpen,
+  daysSince,  secondaryName, compareTimeline, isOpen,
   safeWebsite,
   EMPTY_FILTERS, type CrmFilters,
 } from '../src/features/crm/crmModel.ts';
+// ⚠️ `daysUntil` di `crmModel` non esiste più: era una copia letterale di quella
+// dei Contratti, e nessuna delle due sapeva dell'altra. Una risposta sola.
+import { calendarDaysUntil } from '../src/lib/calendarDays.ts';
 import { isValidUid } from '../src/lib/uid.ts';
 import {
   CRM_ORGANIZATION_ROLES, CRM_OPPORTUNITY_STAGES, CRM_SOURCES, CRM_RELATIONSHIP_STATUSES,
@@ -432,11 +435,11 @@ section('8. Giorni di calendario — alle 23:30 «ieri» non è «oggi»');
 // ⚠️ La trappola già pagata nel Work Hub: millisecondi diviso 86'400'000 su un
 // orario fa dire «oggi» a una scadenza di domani alle 23:30.
 const TARDI = new Date('2026-07-30T23:30:00');
-check('domani resta domani anche alle 23:30', daysUntil('2026-07-31', TARDI) === 1);
-check('oggi è zero anche alle 23:30', daysUntil('2026-07-30', TARDI) === 0);
-check('ieri è negativo', daysUntil('2026-07-29', TARDI) === -1);
-check('senza data non c’è un numero di giorni', daysUntil(null) === null);
-check('una data non valida non produce un numero', daysUntil('non-una-data') === null);
+check('domani resta domani anche alle 23:30', calendarDaysUntil('2026-07-31', TARDI) === 1);
+check('oggi è zero anche alle 23:30', calendarDaysUntil('2026-07-30', TARDI) === 0);
+check('ieri è negativo', calendarDaysUntil('2026-07-29', TARDI) === -1);
+check('senza data non c’è un numero di giorni', calendarDaysUntil(null) === null);
+check('una data non valida non produce un numero', calendarDaysUntil('non-una-data') === null);
 check('giorni trascorsi da ieri, alle 23:30, sono uno',
   daysSince('2026-07-29T00:10:00Z', TARDI) === 1);
 // «Mai contattata» deve pesare come un'eternità nei confronti, non come zero.

@@ -117,9 +117,22 @@ export function formatBytes(n: number | null | undefined): string {
   return (n / 1024 / 1024).toFixed(1) + ' MB';
 }
 
-export function daysUntil(iso: string | null | undefined): number | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return Math.ceil((d.getTime() - Date.now()) / 86400000);
-}
+// ⚠️⚠️ QUI C'ERA `daysUntil`, ED È STATA TOLTA IL 2026-08-24.
+//
+// Diceva `Math.ceil((d.getTime() - Date.now()) / 86400000)`, cioè confrontava
+// due ISTANTI per rispondere a una domanda di CALENDARIO. Su una colonna
+// `date` — e tutte quelle che la alimentavano lo erano — la sera a ovest di
+// Greenwich ogni scadenza risultava un giorno in anticipo: `2026-08-25`
+// rispondeva «0», «scade oggi», mentre mancava un giorno intero.
+//
+// La usavano `inboxService` (due volte) e `analysisService`, cioè il segno di
+// urgenza della Posta e il filtro «Con scadenza vicina».
+//
+// Non è stata corretta: è stata TOLTA. Correggerla avrebbe lasciato il vero
+// difetto in piedi — sei funzioni per la stessa domanda, tre sbagliate, e
+// nessuna che sapesse delle altre. La risposta è una sola e sta in
+// `_shared/calendarDays.ts` (`calendarDaysUntil`), dove ha il suo `today` come
+// parametro e quindi si può provare su un fuso scelto.
+//
+// ⚠️ La guardia della sezione «UNA SOLA ARITMETICA DEI GIORNI» in
+// `test:shell-unit` impedisce che ne rinasca una settima.

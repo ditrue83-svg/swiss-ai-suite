@@ -11,6 +11,7 @@
 // arrivano già fatti: qui si decide solo come MOSTRARLI e quando dichiarare che
 // un dato non c'è.
 // ============================================================================
+import { calendarDaysUntil } from '@/lib/calendarDays';
 import type { TKey } from '@/i18n';
 import type {
   CrmOrganizationRole, CrmOpportunityStage, CrmInteractionType,
@@ -255,14 +256,10 @@ export function daysSince(iso: string | null | undefined, today: Date = new Date
   return Math.round((end.getTime() - start.getTime()) / 86_400_000);
 }
 
-export function daysUntil(iso: string | null | undefined, today: Date = new Date()): number | null {
-  if (!iso) return null;
-  const target = new Date(`${iso.slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(target.getTime())) return null;
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const end = new Date(target.getFullYear(), target.getMonth(), target.getDate());
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
-}
+// ⚠️ Copia letterale di quella dei Contratti, tolta il 2026-08-24 insieme a lei.
+// `crm_opportunities.next_step_due_date` è una colonna `date`: il conto è di
+// calendario, e la risposta è una sola.
+// Il conto lo fa `calendarDaysUntil`, importata in testa a questo file.
 
 // ---------------------------------------------------------------------------
 // Le opportunità
@@ -296,7 +293,7 @@ export function opportunityState(
   if (o.archivedAt) return 'archived';
   if (o.stage === 'won') return 'won';
   if (o.stage === 'lost') return 'lost';
-  const days = daysUntil(o.nextStepDueDate, today);
+  const days = calendarDaysUntil(o.nextStepDueDate, today);
   if (days !== null && days < 0) return 'overdue_step';
   if (!o.nextStep || o.nextStep.trim() === '') return 'no_step';
   return 'open';

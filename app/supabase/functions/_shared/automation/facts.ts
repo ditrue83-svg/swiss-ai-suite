@@ -16,6 +16,8 @@
 // Chi legge dal database è `store.ts`, che chiama queste funzioni per costruire
 // i fatti a partire dalle righe.
 // ============================================================================
+// ⚠️ Una sola aritmetica dei giorni, condivisa coi due lati (2026-08-24).
+import { calendarDaysUntil } from '../calendarDays.ts';
 import { MIN_ANALYSIS_CONFIDENCE } from './contract.ts';
 
 export type FactValue = string | number | boolean | null;
@@ -135,9 +137,17 @@ export function aiFact(input: {
  * cambia definizione, il test lo dice prima che la schermata e la regola
  * comincino a raccontare due cose diverse sullo stesso documento.
  *
- * ⚠️ Il calcolo dei giorni è a MILLISECONDI e non a giorni di calendario,
- * perché così è nel motore locale: allinearsi a una versione «migliore» qui
- * significherebbe divergere. È un limite noto ed è scritto anche là.
+ * ⚠️⚠️ IL CALCOLO DEI GIORNI ERA A MILLISECONDI, ed era scritto qui che fosse
+ * deliberato: «così è nel motore locale, allinearsi a una versione migliore
+ * significherebbe divergere». È esattamente il meccanismo con cui un difetto si
+ * propaga — la coerenza con un riferimento sbagliato preferita alla
+ * correttezza — e ha retto finché nessuno ha misurato il riferimento.
+ *
+ * Il 2026-08-24 il motore locale è stato corretto: la stessa domanda aveva SEI
+ * risposte, tre delle quali confrontavano istanti per rispondere a una domanda
+ * di calendario. Ora la risposta è una sola, `calendarDaysUntil` in
+ * `_shared/calendarDays.ts`, e l'argomento dell'allineamento — che era buono —
+ * porta qui invece che nella direzione opposta.
  */
 const URGENT_TYPES = new Set(['sollecito', 'reminder']);
 const MEDIUM_TYPES = new Set([
@@ -146,12 +156,7 @@ const MEDIUM_TYPES = new Set([
   'declaration_request', 'request_for_documents',
 ]);
 
-export function daysUntilMs(iso: string | null | undefined, now: Date = new Date()): number | null {
-  if (!iso) return null;
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return null;
-  return Math.ceil((t - now.getTime()) / 86_400_000);
-}
+
 
 export function urgencyFrom(
   documentType: string | null | undefined,
@@ -159,7 +164,7 @@ export function urgencyFrom(
   now: Date = new Date(),
 ): 'alta' | 'media' | 'bassa' {
   const tipo = documentType ?? '';
-  const days = daysUntilMs(deadline, now);
+  const days = calendarDaysUntil(deadline, now);
   if (URGENT_TYPES.has(tipo)) return 'alta';
   if (days !== null && days <= 10) return 'alta';
   if (days !== null && days <= 30) return 'media';

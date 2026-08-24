@@ -17,33 +17,24 @@
 // tornava, ed è il motivo per cui nessuno l'ha visto: il difetto non si vede da
 // qui.
 //
-// La regola è una sola, e sta tutta nell'asimmetria delle due righe qui sotto:
-// la DATA si legge in UTC (perché mezzanotte UTC è come è stata scritta), OGGI
-// si legge in LOCALE (perché «oggi» è il giorno di chi guarda lo schermo).
+// La regola è una sola: la DATA si legge in UTC (perché mezzanotte UTC è come
+// è stata scritta), OGGI si legge in LOCALE (perché «oggi» è il giorno di chi
+// guarda lo schermo).
+//
+// ⚠️⚠️ AGGIORNAMENTO DEL 2026-08-24 — le copie erano SEI, non tre. Il
+// censimento completo, con la dimostrazione del difetto, sta in testa a
+// `_shared/calendarDays.ts`, dove l'implementazione ora vive.
 // ============================================================================
 
-/**
- * Giorni interi fra il giorno locale di `today` e il giorno della data.
- * Positivo nel futuro, `0` oggi, negativo nel passato.
- *
- * ⚠️ `today` È UN PARAMETRO e non `new Date()` letto dentro: una funzione che
- * legge l'orologio da sé non si può provare su un istante scelto.
- *
- * `null` quando la data non c'è o non si legge: NON zero. «Nessuna scadenza» e
- * «scade oggi» sono due cose diverse, e confonderle è il fallback silenzioso
- * che questo progetto non ammette.
- */
-export function calendarDaysUntil(
-  dateIso: string | null | undefined,
-  today: Date = new Date(),
-): number | null {
-  if (!dateIso) return null;
-  const due = new Date(dateIso);
-  if (Number.isNaN(due.getTime())) return null;
-  const a = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
-  const b = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.round((a - b) / 86_400_000);
-}
+// ⚠️⚠️ L'IMPLEMENTAZIONE SI È SPOSTATA IN `_shared/calendarDays.ts` il
+// 2026-08-24, e da qui si RI-ESPORTA. Il motivo non è estetico: la stessa
+// domanda se la fa anche il motore delle Automazioni, che gira su Deno e da
+// `src/lib/` non può importare. Finché è stato così, quel motore aveva la sua
+// copia (`daysUntilMs`) — sbagliata — e nessuno dei due sapeva dell'altra.
+//
+// Qui restano `sembraDataPura` e `giornoLocale`, che sono un problema di
+// FORMATTAZIONE del browser e sul server non servono a nessuno.
+export { calendarDaysUntil } from '../../supabase/functions/_shared/calendarDays.ts';
 
 /**
  * IL RICONOSCITORE DELLA DATA PURA: `YYYY-MM-DD`, la forma con cui una colonna
