@@ -329,12 +329,25 @@ async function main() {
   {
     // Ripristino: lo stato lo RICALCOLA il database dalla classificazione, e il
     // valore inviato dal client viene ignorato.
+    //
+    // ⚠️⚠️ IL VALORE INVIATO DEVE ESSERE QUELLO SBAGLIATO, o l'asserzione non
+    // prova niente. Fino al 2026-08-24 questo caso mandava `to_verify` e
+    // pretendeva `needs_attention`: i due differivano, quindi «il valore
+    // inviato è stato ignorato» era dimostrabile. Con la 0043 (A2)
+    // `likely_actionable` porta a `to_verify`, cioè PROPRIO al valore che il
+    // client manda — e il caso sarebbe rimasto verde anche se il trigger
+    // avesse smesso di ricalcolare, accettando l'invio del client.
+    //
+    // Perciò ora si manda `informational`, che il ricalcolo NON può produrre da
+    // `likely_actionable`. Se un giorno il trigger accettasse il valore del
+    // client, qui si leggerebbe `informational` e questo caso diventerebbe
+    // rosso — che è il suo mestiere.
     const { error } = await alice.client.from('email_messages')
-      .update({ attention_status: 'to_verify' }).eq('id', seedA.messageId);
+      .update({ attention_status: 'informational' }).eq('id', seedA.messageId);
     const { data } = await alice.client.from('email_messages')
       .select('attention_status, handled_at').eq('id', seedA.messageId).maybeSingle();
     check('Il ripristino ricalcola lo stato dalla classificazione, ignorando il valore inviato',
-      !error && data?.attention_status === 'needs_attention' && data?.handled_at === null,
+      !error && data?.attention_status === 'to_verify' && data?.handled_at === null,
       `${error?.message ?? ''} stato=${data?.attention_status}`);
   }
   {

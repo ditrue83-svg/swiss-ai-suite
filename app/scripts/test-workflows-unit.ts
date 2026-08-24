@@ -44,7 +44,7 @@ import {
   daysUntilDate, evaluateCondition, evaluateConditions,
 } from '../supabase/functions/_shared/automation/conditions.ts';
 import {
-  aiFact, daysUntilMs, emailDomain, known, missing, optional, uncertain, urgencyFrom,
+  aiFact, emailDomain, known, missing, optional, uncertain, urgencyFrom,
   type Facts,
 } from '../supabase/functions/_shared/automation/facts.ts';
 import {
@@ -62,7 +62,11 @@ import {
 // ⚠️ L'ORIGINALE dell'urgenza: la copia portabile del motore deve coincidere
 // con questa, e la sezione 9 lo verifica su una matrice. Vedi il commento in
 // cima a `urgencyFrom`.
-import { urgencyFromType, daysUntil } from '../src/features/admin-ai/engine';
+import { urgencyFromType } from '../src/features/admin-ai/engine';
+// ⚠️ `daysUntilMs` del server e `daysUntil` del motore locale non esistono più:
+// erano due copie della stessa aritmetica SBAGLIATA, tenute allineate a
+// vicenda. Ora entrambi i lati chiamano questa (2026-08-24).
+import { calendarDaysUntil } from '../src/lib/calendarDays.ts';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -542,18 +546,53 @@ section('9 · L’urgenza: la copia deve coincidere con l’originale');
   //     confine dell'arrotondamento: un millisecondo di scarto fra le due
   //     letture dell'orologio non deve poter cambiare il risultato.
   const realNow = new Date();
+
+  // ⚠️⚠️ QUESTO BLOCCO È CAMBIATO IL 2026-08-24, E IL PERCHÉ VALE PIÙ DEL COME.
+  //
+  // Prima confrontava `daysUntilMs` (server) con `daysUntil` (motore locale) e
+  // chiedeva che coincidessero. Coincidevano: erano la STESSA aritmetica
+  // sbagliata, copiata di proposito — il commento in `facts.ts` lo dichiarava
+  // («allinearsi a una versione migliore significherebbe divergere»). Un
+  // controllo di coerenza fra due copie non vede mai il difetto che entrambe
+  // hanno: misura la copia, non la risposta.
+  //
+  // E le date erano costruite a MEZZOGIORNO, «per stare lontane dal confine
+  // dell'arrotondamento» — cioè lontane dall'unico posto in cui il difetto si
+  // manifesta. Ora si prova proprio lì.
+  //
+  // Oggi i due lati chiamano la stessa funzione, quindi «coincidono» sarebbe
+  // vero per costruzione. Al suo posto: la CONTROPROVA, cioè l'aritmetica
+  // vecchia riprodotta qui accanto, che DEVE dare una risposta diversa. Se un
+  // giorno qualcuno la rimettesse, questo caso lo dice.
+  const vecchiaAritmetica = (iso: string, now: Date): number | null =>
+    iso ? Math.ceil((new Date(iso).getTime() - now.getTime()) / 86_400_000) : null;
+
+  // Sera a ovest di Greenwich: in locale è ancora il 24, in UTC è già il 25.
+  const seraAOvest = new Date('2026-08-25T01:00:00Z');
+  const giornoLocaleDiAllora = new Date(2026, 7, 24);       // 24 agosto, locale
+  const calendario = calendarDaysUntil('2026-08-25', giornoLocaleDiAllora);
+  const millisecondi = vecchiaAritmetica('2026-08-25', seraAOvest);
+  ok(calendario === 1,
+    'una scadenza di domani è a UN giorno, anche di sera', `calendario=${calendario}`);
+  ok(millisecondi === 0,
+    'CONTROPROVA: l’aritmetica a millisecondi diceva ZERO — «scade oggi»', `ms=${millisecondi}`);
+  ok(calendario !== millisecondi,
+    'le due risposte DIVERGONO: è il difetto, riprodotto');
+
+  // E le soglie dell'urgenza continuano a poggiare sullo stesso conto sui due
+  // lati — che ora è quello giusto.
   let dayMismatches = 0;
   const dayDetail: string[] = [];
   for (const offset of offsets) {
-    const iso = new Date(realNow.getTime() + offset * 86_400_000 + 12 * 3_600_000).toISOString();
-    const mine = daysUntilMs(iso, realNow);
-    const theirs = daysUntil(iso);
-    if (mine !== theirs) { dayMismatches++; dayDetail.push(`${offset}: ${mine} ≠ ${theirs}`); }
+    const iso = new Date(realNow.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+    const atteso = offset;
+    const avuto = calendarDaysUntil(iso, realNow);
+    if (avuto !== atteso) { dayMismatches++; dayDetail.push(`${offset}: ${avuto} ≠ ${atteso}`); }
   }
   ok(dayMismatches === 0,
-    'il calcolo dei giorni coincide con quello del motore locale', dayDetail.join('; '));
-  ok(daysUntilMs(null, realNow) === null && daysUntil(null) === null,
-    'senza scadenza entrambe rispondono «non c’è»');
+    'una data pura a N giorni risponde N, per ogni scarto provato', dayDetail.join('; '));
+  ok(calendarDaysUntil(null, realNow) === null,
+    'senza scadenza non c’è un numero di giorni — e non è zero');
 
   // (b) La mappatura giorni → urgenza, su tutta la matrice.
   let mismatches = 0;
@@ -562,7 +601,7 @@ section('9 · L’urgenza: la copia deve coincidere con l’originale');
     for (const offset of offsets) {
       const deadline = new Date(NOW.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
       const mine = urgencyFrom(type, deadline, NOW);
-      const theirs = urgencyFromType(type, daysUntilMs(deadline, NOW));
+      const theirs = urgencyFromType(type, calendarDaysUntil(deadline, NOW));
       if (mine !== theirs) { mismatches++; detail.push(`${type}/${offset}: ${mine} ≠ ${theirs}`); }
     }
     if (urgencyFrom(type, null, NOW) !== urgencyFromType(type, null)) {

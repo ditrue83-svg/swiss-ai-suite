@@ -12,7 +12,10 @@
 // finto non direbbe niente, perché la cosa da dimostrare è proprio che le
 // regole del database siano in vigore.
 // ============================================================================
-import { daysUntil, urgencyFromType } from '@/features/admin-ai/engine';
+import { urgencyFromType } from '@/features/admin-ai/engine';
+// ⚠️ Il conto dei giorni NON viene più dal motore di lettura: quella copia era
+// sbagliata (ms/86400) ed è stata tolta il 2026-08-24. Una risposta sola.
+import { calendarDaysUntil } from '@/lib/calendarDays';
 import type {
   DocumentCategory, DocumentHubFilters, DocumentHubItem, DocumentSort, DocumentSourceType,
   DocumentState, DocumentStatsRow, DocumentStatus, DocumentTag,
@@ -159,7 +162,7 @@ export interface DocumentStatsBuckets {
  */
 export function buildDocumentStats(
   rows: DocumentStatsRow[],
-  days: (iso: string | null) => number | null = daysUntil,
+  days: (iso: string | null) => number | null = calendarDaysUntil,
 ): DocumentStatsBuckets {
   const urgency: UrgencyBuckets = { alta: 0, media: 0, bassa: 0, none: 0 };
   const types = new Map<string | null, number>();

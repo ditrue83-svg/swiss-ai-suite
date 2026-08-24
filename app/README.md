@@ -50,6 +50,25 @@ supabase/
                                          (attività, genere di data): `on_date` e
                                          `date_kind`. Gli appuntamenti entrano
                                          nella griglia ma non fra le scadute.
+                0043_inbox_admin_domains — D-13: entra in Inbox solo chi ha un
+                                         dominio DICHIARATO amministrativo
+                                         (`email_admin_domains`, elenco chiuso;
+                                         `company_id` NULL = catalogo globale).
+                                         Ciò che resta fuori lascia traccia in
+                                         `email_excluded_senders` — dominio e
+                                         contatore, mai contenuto. E il
+                                         classificatore non assegna più
+                                         «Da gestire»: lo decide una persona.
+                0044_inbox_dismissed_value — il solo valore `dismissed`
+                                         dell'enum. Da solo, perché un valore
+                                         aggiunto a un enum non è usabile nella
+                                         stessa transazione che lo aggiunge.
+                0045_inbox_promozione  — il gesto: `email_promote_message`
+                                         scrive il legame messaggio→documento
+                                         (che il client non può scrivere) ed è
+                                         idempotente per vincolo, non per `if`.
+                                         «Ignora» diventa una decisione umana
+                                         con chi e quando (`dismissed_by`).
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -1037,6 +1056,11 @@ npm run check:auth -- --local      # la macchina di sviluppo, dichiarata invece 
 npm run check:auth:self-test       # verifica che il CONTROLLO si rifiuti quando non sa rispondere
 npm run inbox:diagnose  # «perché questa casella non si aggiorna»: stati, sync run, conteggi.
                         # Solo metadati tecnici: mai oggetti, mittenti o contenuti
+npm run inbox:domains   # il filtro dei domini (0043) sui dati veri: quanti messaggi entrano,
+                        # quanti restano fuori e da quale dominio. SOLA LETTURA — non esclude
+                        # niente, non chiama il provider, non spende credito. Usa la funzione
+                        # vera (`ammetti`), non una sua copia. Se la 0043 non è ancora
+                        # applicata lo DICE e ricava il catalogo dal file della migrazione
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
 npm run i18n:typography # spazi insecabili (U+202F) prima dei segni doppi francesi

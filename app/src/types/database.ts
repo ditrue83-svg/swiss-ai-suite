@@ -171,7 +171,10 @@ export type EmailSyncType = 'initial' | 'incremental' | 'manual' | 'reconciliati
 export type EmailSyncStatus = 'running' | 'ok' | 'partial' | 'failed';
 export type EmailProcessingStatus =
   | 'pending' | 'classifying' | 'importing' | 'awaiting_analysis' | 'analyzing' | 'done' | 'failed';
-export type EmailAttentionStatus = 'needs_attention' | 'to_verify' | 'informational' | 'ignored' | 'handled';
+// ⚠️ `ignored` = giudizio della MACCHINA; `dismissed` = decisione di una
+// PERSONA (0044). Sono due affermazioni diverse e vanno tenute distinte.
+export type EmailAttentionStatus =
+  'needs_attention' | 'to_verify' | 'informational' | 'ignored' | 'dismissed' | 'handled';
 export type EmailRelevance = 'likely_actionable' | 'possibly_actionable' | 'informational' | 'clearly_irrelevant';
 export type EmailDocumentRelation = 'body' | 'attachment';
 export type EmailAttachmentImportStatus =

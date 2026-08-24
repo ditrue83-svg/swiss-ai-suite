@@ -1888,6 +1888,7 @@ export const de: Dictionary = {
       urgent: 'Mit naher Frist',
       toVerify: 'Zu prüfen',
       handled: 'Abgelegt',
+      dismissed: 'Ignoriert',
     },
     filtersAria: 'Mitteilungen filtern',
     search: {
@@ -1906,6 +1907,7 @@ export const de: Dictionary = {
       informational: 'Informativ',
       ignored: 'Nicht administrativ',
       handled: 'Abgelegt',
+      dismissed: 'Ignoriert',
     },
     processing: {
       pending: 'Wartend',
@@ -1931,6 +1933,12 @@ export const de: Dictionary = {
     },
     emptyFilter: 'Keine Mitteilung mit diesem Filter.',
     detail: {
+      addToDocuments: 'Zu den Dokumenten hinzufügen',
+      addedToDocuments: 'Zu den Dokumenten hinzugefügt.',
+      alreadyInDocuments: 'War bereits in den Dokumenten: Sie werden dorthin geführt.',
+      ignore: 'Ignorieren',
+      ignored: 'Ignoriert. Bleibt hier, unter «Ignoriert».',
+      restoreIgnored: 'Nicht mehr ignorieren',
       back: 'Zurück zur Inbox',
       from: 'Absender',
       to: 'An',
@@ -2016,6 +2024,7 @@ export const de: Dictionary = {
       revokeManual: 'Die Berechtigung bleibt in Ihrem Microsoft-Konto eingetragen: Sie können sie in den Anwendungseinstellungen Ihres Kontos entfernen.',
     },
     errors: {
+      emptyBody: 'Diese Nachricht hat keinen Text, der zu den Dokumenten hinzugefügt werden könnte.',
       reauthRequired: 'Die Verbindung zum Postfach muss erneuert werden.',
       scopeNotGranted: 'Die Berechtigung zum Lesen der Post wurde nicht erteilt. Versuchen Sie es erneut und aktivieren Sie im Fenster des Anbieters das Kontrollkästchen, das den Zugriff auf die E-Mails erlaubt.',
       providerUnavailable: 'Der E-Mail-Anbieter ist derzeit nicht erreichbar.',

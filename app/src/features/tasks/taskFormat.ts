@@ -86,13 +86,23 @@ export function isOverdue(task: Pick<Task, 'dueDate' | 'status'>, today: Date = 
  * `now` è un parametro e non `Date.now()` letto dentro: una funzione che legge
  * l'orologio da sé non si può provare su un istante scelto — è il difetto già
  * pagato dalla sezione 9 di `test:workflows-unit`.
+ *
+ * ⚠️⚠️ E CONTAVA I GIORNI A MILLISECONDI, dentro il file che ri-esporta
+ * `calendarDaysUntil`. Trovata il 2026-08-24 censendo le copie: `tasks.due_date`
+ * è una colonna `date`, quindi la sera a ovest di Greenwich una scadenza a
+ * undici giorni diventava «dieci» e l'attività nasceva `high` invece che
+ * `medium`. Non un'etichetta storta: una priorità sbagliata, scritta nel dato.
+ *
+ * Che fosse proprio QUI dice quanto poco valga avere la funzione giusta a
+ * portata di mano: finché nessuno la chiama, essere vicini non serve a niente.
  */
 export function priorityFromDueDate(
   dueDate: string | null | undefined,
   now: Date = new Date(),
 ): Task['priority'] {
   if (!dueDate) return 'low';
-  const days = Math.ceil((new Date(dueDate).getTime() - now.getTime()) / 86400000);
+  const days = calendarDaysUntil(dueDate, now);
+  if (days === null) return 'low';
   if (days <= 10) return 'high';
   if (days <= 30) return 'medium';
   return 'low';

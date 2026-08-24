@@ -3078,6 +3078,100 @@ section('22. Una data pura si formatta al suo giorno, in qualunque fuso');
 }
 
 // ---------------------------------------------------------------------------
+section('23. Una sola aritmetica dei giorni — nessuna copia che divida istanti');
+
+// ⚠️⚠️ PERCHÉ ESISTE, e non è la sezione 17 con altre parole. La 17 prova che
+// TRE punti d'ingresso noti diano lo stesso numero. Non poteva vedere una
+// QUARTA copia scritta altrove — e il 2026-08-24 il censimento ne ha trovate
+// altre quattro, tre delle quali sbagliate nello stesso identico modo:
+//
+//   ❌ daysUntil     src/lib/format.ts            → Inbox: urgenza e filtro
+//   ❌ daysUntil     features/admin-ai/engine.ts  → conteggi dell'archivio
+//   ❌ daysUntilMs   _shared/automation/facts.ts  → inneschi delle Automazioni
+//   ❌ priorityFromDueDate  features/tasks/taskFormat.ts  → priorità SCRITTA nel dato
+//
+// L'ultima stava nel file che RI-ESPORTA la funzione giusta: avere la risposta
+// corretta a portata di mano non serve a niente finché nessuno la chiama.
+//
+// ⚠️ E il server si era allineato ALLA COPIA SBAGLIATA di proposito — c'era
+// scritto: «così è nel motore locale, allinearsi a una versione migliore
+// significherebbe divergere». La coerenza con un riferimento non misurato è il
+// modo in cui un difetto si moltiplica invece di restare uno.
+//
+// LA REGOLA CHE QUESTA SEZIONE APPLICA, e si deriva dal SORGENTE:
+// ogni divisione per 86'400'000 deve stare in una funzione che prima NORMALIZZA
+// a mezzanotte (`Date.UTC(` oppure `T00:00:00`). Dividere due istanti grezzi
+// per rispondere a una domanda di calendario è il difetto, sempre.
+//
+// ⚠️ LE ECCEZIONI SI CONTROLLANO NEI DUE VERSI, come in `design:lint`: una voce
+// rimasta senza il suo sito fa fallire quanto un sito senza voce. Un'esenzione
+// sopravvissuta a ciò che esentava è una porta lasciata aperta.
+{
+  /** Dove la domanda NON è di calendario, e dividere istanti è giusto. */
+  const ECCEZIONI: Record<string, string> = {
+    'src/features/incentives/reviewModel.ts': 
+      'waitingDays misura il tempo TRASCORSO da un `created_at` (timestamptz, un istante): «da quanto aspetta» è una durata, non un giorno di calendario',
+  };
+
+  /** Commenti sostituiti da spazi: le righe restano, il testo no. Una guardia
+   *  che leggesse i commenti nascerebbe rossa per le spiegazioni qui sopra. */
+  const senzaCommenti = (src: string): string =>
+    src.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, (m, pre) =>
+      (pre ?? '') + m.slice((pre ?? '').length).replace(/[^\n]/g, ' '));
+
+  const sorgenti: string[] = [];
+  const cammina = (dir: string) => {
+    for (const voce of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${voce.name}`;
+      if (voce.isDirectory()) { cammina(rel); continue; }
+      if (/\.(ts|tsx)$/.test(voce.name)) sorgenti.push(rel);
+    }
+  };
+  cammina('src');
+  cammina('supabase/functions');
+
+  check('il censimento guarda un perimetro vero, non una cartella vuota',
+    sorgenti.length > 100, `${sorgenti.length} file`);
+
+  const scoperte: string[] = [];
+  const usate = new Set<string>();
+
+  for (const rel of sorgenti) {
+    const testo = senzaCommenti(readFileSync(join(root, rel), 'utf8'));
+    const righe = testo.split('\n');
+    for (let i = 0; i < righe.length; i++) {
+      if (!/\/\s*86[_ ]?400[_ ]?000/.test(righe[i]!)) continue;
+      // Il corpo della funzione che contiene la divisione: dal precedente
+      // inizio di dichiarazione a colonna zero, al successivo.
+      const confine = /^(export\s+)?(async\s+)?(function|const|class)\s/;
+      let da = i; while (da > 0 && !confine.test(righe[da]!)) da--;
+      let a = i + 1; while (a < righe.length && !confine.test(righe[a]!)) a++;
+      const corpo = righe.slice(da, a).join('\n');
+      const normalizza = /Date\.UTC\(/.test(corpo) || /T00:00:00/.test(corpo);
+      if (normalizza) continue;
+      if (ECCEZIONI[rel]) { usate.add(rel); continue; }
+      scoperte.push(`${rel}:${i + 1}  ${righe[i]!.trim()}`);
+    }
+  }
+
+  check('nessuna funzione divide due istanti grezzi per contare giorni',
+    scoperte.length === 0, scoperte.join('\n     '));
+
+  const orfane = Object.keys(ECCEZIONI).filter((k) => !usate.has(k));
+  check('nessuna eccezione dichiarata è rimasta senza il suo sito',
+    orfane.length === 0, orfane.join(', '));
+
+  // ⚠️ E la funzione canonica è UNA SOLA. Non si conta un elenco scritto qui:
+  // si chiede al sorgente quanti file la DEFINISCONO (non la importano).
+  const definizioni = sorgenti.filter((rel) =>
+    /export function calendarDaysUntil\s*\(/.test(senzaCommenti(readFileSync(join(root, rel), 'utf8'))));
+  check('`calendarDaysUntil` è definita in un posto solo',
+    definizioni.length === 1, definizioni.join(', '));
+  check('e quel posto è `_shared`, raggiungibile dai due runtime',
+    definizioni[0] === 'supabase/functions/_shared/calendarDays.ts', String(definizioni[0]));
+}
+
+// ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);
 process.exit(fail === 0 ? 0 : 1);

@@ -118,6 +118,47 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
     }
   }
 
+  /**
+   * «Aggiungi ai documenti» (D-13, B5).
+   *
+   * ⚠️ LA REGOLA NON È QUI. Questo componente chiama `emailConnectionService
+   * .promote` e porta al documento: che cosa venga creato, con quale origine e
+   * con quale hash lo decide il livello servizio. Un componente che sapesse
+   * comporre un documento sarebbe il secondo posto in cui la posta diventa un
+   * dato aziendale, e il giorno che uno dei due cambia l'altro mente.
+   *
+   * ⚠️ LA SECONDA PRESSIONE NON È UN ERRORE. `created: false` significa «c'era
+   * già»: si dice, e si porta allo stesso documento. Nessun secondo documento,
+   * nessun secondo costo.
+   */
+  async function promote() {
+    setBusy(true);
+    try {
+      const esito = await emailConnectionService.promote(messageId);
+      showToast(esito.created ? t('inbox.detail.addedToDocuments') : t('inbox.detail.alreadyInDocuments'));
+      refresh();
+      navigate(`/documents/${esito.documentId}`);
+    } catch (e) {
+      showToast(toUserMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** «Ignora» — marca, non cancella. Né qui né sulla casella remota (§2.2). */
+  async function toggleDismissed(dismissed: boolean) {
+    setBusy(true);
+    try {
+      await inboxService.setDismissed(messageId, dismissed);
+      if (dismissed) showToast(t('inbox.detail.ignored'));
+      refresh();
+    } catch (e) {
+      showToast(toUserMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function toggleHandled(handled: boolean) {
     setBusy(true);
     try {
@@ -165,6 +206,10 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
     ? '—'
     : `${formatDate(message.receivedAt)} · ${received.toLocaleTimeString(localeTag, { hour: '2-digit', minute: '2-digit' })}`;
   const handled = message.attentionStatus === 'handled';
+  const dismissed = message.attentionStatus === 'dismissed';
+  // ⚠️ Il documento del CORPO, che è quello che la promozione produce. Se c'è,
+  // il pulsante non offre di aggiungerlo una seconda volta: porta lì.
+  const promosso = message.documents.find((d) => d.relation === 'body') ?? null;
   const canAnalyze = !analysis && message.processingStatus !== 'analyzing' && message.processingStatus !== 'importing';
 
   // ⚠️ `relevance_reason` porta DUE cose diverse nella stessa colonna: una frase
@@ -217,14 +262,33 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
           )}
         </dl>
 
+        {/* ⚠️ TRE ESITI, E IL TERZO NON È UN PULSANTE (D-13, B5): aggiungere,
+            ignorare, oppure non fare niente — che è il caso normale e non
+            richiede un gesto. Nessun segno di fiducia nuovo: questi bottoni
+            dicono che cosa fanno, non quanto ci si può fidare del messaggio.
+            L'ordine mette per primo il gesto che PRODUCE qualcosa. */}
         <div className="inbox-actions">
+          {promosso ? (
+            <Button icon="document" loading={busy} onClick={() => navigate(`/documents/${promosso.documentId}`)}>
+              {t('inbox.detail.openDocument')}
+            </Button>
+          ) : (
+            <Button variant="primary" icon="plus" loading={busy} onClick={promote}>
+              {t('inbox.detail.addToDocuments')}
+            </Button>
+          )}
+          {dismissed ? (
+            <Button icon="refresh" loading={busy} onClick={() => toggleDismissed(false)}>{t('inbox.detail.restoreIgnored')}</Button>
+          ) : (
+            <Button icon="close" loading={busy} onClick={() => toggleDismissed(true)}>{t('inbox.detail.ignore')}</Button>
+          )}
           {handled ? (
             <Button icon="refresh" loading={busy} onClick={() => toggleHandled(false)}>{t('inbox.detail.restore')}</Button>
           ) : (
             <Button icon="archive" loading={busy} onClick={() => toggleHandled(true)}>{t('inbox.detail.markHandled')}</Button>
           )}
           {canAnalyze && (
-            <Button variant="primary" icon="fileSearch" loading={busy} onClick={analyze}>{t('inbox.detail.analyze')}</Button>
+            <Button icon="fileSearch" loading={busy} onClick={analyze}>{t('inbox.detail.analyze')}</Button>
           )}
         </div>
 

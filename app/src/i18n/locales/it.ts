@@ -1968,6 +1968,7 @@ export const it = {
       urgent: 'Con scadenza vicina',
       toVerify: 'Da verificare',
       handled: 'Messe via',
+      dismissed: 'Ignorate',
     },
     filtersAria: 'Filtra le comunicazioni',
     search: {
@@ -1986,6 +1987,7 @@ export const it = {
       informational: 'Informativa',
       ignored: 'Non amministrativa',
       handled: 'Messa via',
+      dismissed: 'Ignorata',
     },
     processing: {
       pending: 'In attesa',
@@ -2011,6 +2013,12 @@ export const it = {
     },
     emptyFilter: 'Nessuna comunicazione con questo filtro.',
     detail: {
+      addToDocuments: 'Aggiungi ai documenti',
+      addedToDocuments: 'Aggiunto ai documenti.',
+      alreadyInDocuments: 'Era già nei documenti: ti porto lì.',
+      ignore: 'Ignora',
+      ignored: 'Ignorata. Resta qui, in «Ignorate».',
+      restoreIgnored: 'Non ignorare più',
       back: 'Torna alla Inbox',
       from: 'Mittente',
       to: 'A',
@@ -2096,6 +2104,7 @@ export const it = {
       revokeManual: 'Il permesso resta registrato nel tuo account Microsoft: puoi rimuoverlo dalle impostazioni delle applicazioni del tuo account.',
     },
     errors: {
+      emptyBody: 'Questo messaggio non ha un testo da aggiungere ai documenti.',
       reauthRequired: 'La connessione alla casella deve essere rinnovata.',
       scopeNotGranted: 'Il permesso di lettura della posta non è stato concesso. Riprova e, nella schermata del fornitore, spunta la casella che autorizza la lettura delle email.',
       providerUnavailable: 'Il fornitore di posta non è raggiungibile in questo momento.',

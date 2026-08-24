@@ -41,11 +41,16 @@ import { EmailProviderError } from './types.ts';
 import type { EmailProviderAdapter, NormalizedEmailMessage, OAuthTokens } from './types.ts';
 import {
   acquireLease, createOrReuseDocument, downloadDocument, finalizeSystemAiSlot, finishSyncRun,
-  getConnection, isKnownAdministrativeSender, linkDocument, listLinkedDocuments, markAttachment,
-  newCounters, readSecrets, recordAttachmentPlan, releaseLease, reserveSystemAiSlot,
-  setMessageClassification, setMessageProcessing, startSyncRun, upsertMessage, writeSecrets,
+  getConnection, isKnownAdministrativeSender, linkDocument, listLinkedDocuments, loadAdminDomains,
+  markAttachment, newCounters, readSecrets, recordAttachmentPlan, recordExcludedSender,
+  releaseLease, reserveSystemAiSlot, setMessageClassification, setMessageProcessing, startSyncRun,
+  upsertMessage, writeSecrets,
   type ConnectionRow, type LinkedDocument, type ServerClient, type SyncCounters,
 } from './store.ts';
+// ⚠️ La regola di ammissione sta in un modulo SENZA import: `sync.ts` tira
+// dentro il client, i due adapter e la pipeline, e un banco offline non lo
+// monta. Ciò che decide chi entra deve poter diventare rosso senza rete.
+import { ammetti, elencoConfigurato } from './adminDomains.ts';
 
 /** Limiti di spesa AI per azienda al minuto, distinti per tipo di lavoro (§58). */
 const CLASSIFY_LIMIT_PER_MINUTE = 30;
@@ -192,6 +197,19 @@ export async function runSync(
     const adapter = deps.adapterFor(connection);
     const accessToken = await getValidAccessToken(deps, connection, adapter);
 
+    // ---- A1 — l'elenco chiuso, letto UNA volta per sincronizzazione --------
+    //
+    // ⚠️⚠️ ELENCO NON CONFIGURATO ⇒ SI FERMA, non «niente entra». Sono due
+    // cose opposte che portano allo stesso silenzio: il filtro che lavora, e
+    // la migrazione 0043 mai applicata (o il catalogo archiviato per sbaglio).
+    // Trattarle allo stesso modo farebbe sparire una casella intera senza che
+    // nessuno abbia un errore da leggere — il fallback silenzioso, esattamente.
+    // `CONFIG_MISSING` è già in `INBOX_ERROR_CODES` e l'interfaccia lo sa dire.
+    const adminDomains = await loadAdminDomains(deps.sb, connection.company_id);
+    if (!elencoConfigurato(adminDomains)) {
+      throw new EmailProviderError('CONFIG_MISSING', 'nessun dominio amministrativo dichiarato');
+    }
+
     const listing = await listForSync(adapter, accessToken, connection, input.syncType);
     cursorAfter = listing.cursor ?? connection.sync_cursor;
     counters.messagesSeen = listing.messageIds.length;
@@ -223,6 +241,7 @@ export async function runSync(
         await processMessage(deps, {
           connection, adapter, accessToken, providerMessageId: messageId, counters,
           deferAnalysis: input.syncType === 'initial',
+          adminDomains,
         });
       } catch (error) {
         // Il fallimento di UN messaggio non interrompe la sincronizzazione: gli
@@ -311,11 +330,43 @@ async function processMessage(
     providerMessageId: string; counters: SyncCounters;
     /** true durante l'import iniziale: si classifica e si mette in coda. */
     deferAnalysis: boolean;
+    /** L'elenco chiuso dei domini ammessi, già letto da `runSync` (A1). */
+    adminDomains: readonly string[];
   },
 ): Promise<void> {
   const { connection, adapter, accessToken, counters } = input;
 
   const message = await adapter.getMessage({ accessToken, messageId: input.providerMessageId });
+
+  // ---- A1 — IL FILTRO ALLA RADICE ------------------------------------------
+  //
+  // ⚠️⚠️ QUI, PRIMA DI `upsertMessage`, E NON UN RIGO PIÙ IN LÀ. «Solo i
+  // messaggi da un dominio amministrativo ENTRANO in `email_messages`» è
+  // un'affermazione sul database, non sulla vista: filtrare dopo l'inserimento
+  // avrebbe conservato oggetto, mittente, corpo e allegati della posta privata
+  // del cliente, nascondendoli soltanto. La posta è del cliente (§2.2), e ciò
+  // che non entra non va conservato in nessuna forma.
+  //
+  // ⚠️ NIENTE `recordAttachmentPlan` e nessuno Storage prima di qui: un
+  // messaggio escluso non lascia file da nessuna parte.
+  //
+  // ⚠️ Il messaggio resta INTATTO nella casella remota. Non si cancella, non si
+  // archivia, non si etichetta: AI-Swisse decide solo che cosa acquisisce.
+  const esito = ammetti(message.from?.email ?? null, input.adminDomains);
+  if (!esito.ammesso) {
+    counters.messagesExcluded++;
+    // Il registro è ciò che rende l'esclusione verificabile invece che muta.
+    // ⚠️ Se il registro fallisce, il messaggio resta comunque escluso — ma il
+    // guasto NON si ingoia: sale, e la sincronizzazione lo dichiara `partial`.
+    // Un'esclusione non registrata è un'esclusione che nessuno potrà scoprire.
+    await recordExcludedSender(deps.sb, {
+      companyId: connection.company_id,
+      connectionId: connection.id,
+      domain: esito.dominio,
+    });
+    return;
+  }
+
   const upserted = await upsertMessage(deps.sb, {
     companyId: connection.company_id, connectionId: connection.id, message,
   });
@@ -393,24 +444,31 @@ async function processMessage(
     return;
   }
 
-  // ---- Livello 3: analisi documentale, solo su ciò che la merita ----
-  if (relevance !== 'likely_actionable') {
-    await setMessageProcessing(deps.sb, upserted.id, 'done');
-    return;
-  }
-
-  // L'import iniziale promuove decine di messaggi in pochi secondi: analizzarli
-  // tutti sul momento esaurisce la quota e riempie «Da gestire» di analisi
-  // fallite — misurato al primo collegamento reale. Si METTE IN CODA, che è uno
-  // stato dichiarato e non un fallimento, e la manutenzione periodica smaltisce
-  // a lotti. Nelle sincronizzazioni successive, che portano pochi messaggi per
-  // volta, l'analisi resta immediata.
-  if (input.deferAnalysis) {
-    await setMessageProcessing(deps.sb, upserted.id, 'awaiting_analysis');
-    return;
-  }
-
-  await analyzeOne(deps, { connection, adapter, accessToken, messageId: upserted.id, message, counters });
+  // ---- E QUI LA PIPELINE FINISCE (D-13, decisione 2) ----------------------
+  //
+  // ⚠️⚠️ QUI C'ERA LA PROMOZIONE AUTOMATICA, E TOGLIERLA È IL PUNTO.
+  // Un messaggio `likely_actionable` veniva importato e analizzato da solo:
+  // `importAndAnalyze` creava la riga in `documents` (`source_type: 'email'`,
+  // `uploaded_by: null`) e la collegava. Nessuna persona aveva chiesto niente.
+  //
+  // Sui dati veri del 2026-08-23: 18 documenti su 20 sono nati così, e 14 di
+  // quei 18 erano fatture Stripe del titolare. La posta è del cliente (§2.2):
+  // un messaggio diventa un documento dell'AZIENDA solo quando qualcuno lo
+  // decide, e quel gesto è `handlePromote` in `email-sync`.
+  //
+  // ⚠️ E NON È SOLO UNA QUESTIONE DI PERIMETRO: era anche la spesa. Ogni
+  // messaggio promosso portava con sé un'analisi, cioè una chiamata al modello,
+  // senza che nessuno l'avesse chiesta né potuta rifiutare.
+  //
+  // Che cosa RESTA automatico: acquisire e CLASSIFICARE. La classificazione
+  // decide solo dove mostrare la riga, non che cosa entra in azienda — e dal
+  // 2026-08-23 non può nemmeno più dire «Da gestire» (A2, 0043).
+  //
+  // ⚠️ `deferAnalysis` non serve più a questa strada e resta nella firma perché
+  // lo legge ancora `drainPendingAnalyses`, che smaltisce ciò che il pulsante
+  // «Analizza» ha lasciato in coda per quota esaurita. Un parametro che non
+  // fa più niente andrebbe tolto: è una voce aperta, non una dimenticanza.
+  await setMessageProcessing(deps.sb, upserted.id, 'done');
 }
 
 /**

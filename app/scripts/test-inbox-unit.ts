@@ -47,7 +47,12 @@ import {
   INITIAL_SYNC_DAYS, INITIAL_SYNC_MAX_MESSAGES, attentionForRelevance, MAX_ATTACHMENT_BYTES,
   PROCESSING_VALUES, ANALYSIS_DRAIN_BATCH, INBOX_ERROR_CODES, MIN_BODY_CHARS_FOR_ANALYSIS,
   STALE_PROCESSING_MINUTES, SYNC_LEASE_SECONDS, EDGE_TIME_BUDGET_MS, ANALYSIS_SLOT_MS,
+  RELEVANCE_VALUES,
 } from '../supabase/functions/_shared/email/contract.ts';
+// A1 (0043) — la regola di ammissione, pura e senza un solo import.
+import {
+  ammetti, dominioDi, dominioUtilizzabile, elencoConfigurato, normalizzaDominio,
+} from '../supabase/functions/_shared/email/adminDomains.ts';
 import { INITIAL_SYNC_DAYS as UI_DAYS, INITIAL_SYNC_MAX_MESSAGES as UI_MAX } from '../src/features/inbox/constants';
 import type { NormalizedEmailMessage } from '../supabase/functions/_shared/email/types.ts';
 import { isUuid } from '../src/lib/ids';
@@ -63,13 +68,15 @@ import { addDays, todayISO } from '../src/features/calendar/calendarModel';
 import { it } from '../src/i18n/locales/it';
 import { de } from '../src/i18n/locales/de';
 import { fr } from '../src/i18n/locales/fr';
-import type { EmailAttachment, EmailAttentionStatus, EmailLinkedDocument } from '../src/types/models';
+import type { EmailAttachment, EmailAttentionStatus, EmailLinkedDocument, InboxFilter } from '../src/types/models';
 import type { AnalysisStatus, DocumentStatus } from '../src/types/database';
 // Importati anche per farli passare dal typecheck: `sync.ts` e `store.ts` non
 // sono raggiungibili da `src/`, quindi senza questo import `npm run typecheck`
 // non li guarderebbe mai — e un errore di tipo nell'orchestrazione della
 // sincronizzazione si scoprirebbe solo in produzione.
-import { newCounters, type LinkedDocument } from '../supabase/functions/_shared/email/store.ts';
+import {
+  newCounters, promoteMessageBody, type LinkedDocument,
+} from '../supabase/functions/_shared/email/store.ts';
 import {
   runSync, importAndAnalyze, getValidAccessToken, drainPendingAnalyses, planAnalysisTarget,
   drainPendingClassifications,
@@ -478,7 +485,13 @@ ok(validateClassifierOutput({}).relevance === 'possibly_actionable', 'output vuo
 ok(validateClassifierOutput({ relevance: 'informational', confidence: 42 }).confidence === 1,
   'fiducia fuori scala riportata nell’intervallo');
 
-ok(attentionForRelevance('likely_actionable') === 'needs_attention', 'instradamento: azionabile → da gestire');
+// ⚠️ ERA `=== 'needs_attention'`, ed è diventato rosso da solo il 2026-08-23
+// quando la 0043 ha tolto quel ramo (A2/D-13). Si aggiorna l'attesa e si
+// dichiara perché, invece di cancellare la riga: un classificatore può dire
+// «questa sembra azionabile», non «la tua azienda deve occuparsene».
+// L'asserzione ESAUSTIVA — nessuna rilevanza produce più «Da gestire» — sta
+// nella sezione «IL DOMINIO AMMINISTRATIVO», derivata da `RELEVANCE_VALUES`.
+ok(attentionForRelevance('likely_actionable') === 'to_verify', 'instradamento: azionabile → da verificare');
 ok(attentionForRelevance('clearly_irrelevant') === 'ignored', 'instradamento: irrilevante → non amministrativa');
 ok(attentionForRelevance(null) === 'to_verify', 'non ancora classificata → da verificare (si mostra)');
 
@@ -1367,7 +1380,14 @@ section('I CONTEGGI SUI FILTRI — un numero che descrive l\'elenco che si apre'
   // il numero e senza la parola sarebbe un numero che non dichiara l'insieme.
   const CHIAVI: Record<string, string> = {
     all: 'all', to_handle: 'toHandle', urgent: 'urgent', to_verify: 'toVerify', handled: 'handled',
+    dismissed: 'dismissed',
   };
+  // ⚠️ La mappa si controlla contro `INBOX_FILTERS`, non contro sé stessa: un
+  // filtro nuovo senza la sua chiave qui farebbe fallire il ciclo sotto con un
+  // `undefined`, che è un rosso muto. Meglio dirlo qui, per nome.
+  const senzaChiave = INBOX_FILTERS.filter((f) => !CHIAVI[f]);
+  ok(senzaChiave.length === 0,
+    'ogni filtro della barra è nominato in questa mappa', senzaChiave.join(', '));
   for (const [lang, dict] of Object.entries({ it, de, fr })) {
     const filtri = (dict.inbox as { filters: Record<string, string> }).filters;
     const mancanti = INBOX_FILTERS.filter((f) => !filtri[CHIAVI[f]!]);
@@ -1533,6 +1553,386 @@ section('LA RISPOSTA IN RITARDO — chi vince quando due richieste si sovrappong
   const opp = readFileSync(new URL('../src/features/crm/OpportunityPages.tsx', import.meta.url), 'utf8');
   ok(/let cancelled = false;[\s\S]{0,600}?if \(cancelled\) return;[\s\S]{0,200}?return \(\) => \{ cancelled = true; \};/.test(opp),
     'la pagina di modifica conserva la sua guardia a `cancelled` (non toccata)');
+}
+
+
+// ===========================================================================
+section('IL DOMINIO AMMINISTRATIVO — chi entra in Inbox, e chi non c’entra');
+// ===========================================================================
+// ⚠️ PERCHÉ ESISTE QUESTA SEZIONE. Dal 2026-08-23 (0043, D-13) un messaggio
+// entra in `email_messages` solo se il mittente sta in un elenco CHIUSO di
+// domini. È il filtro che decide che cosa il prodotto vede: se sbaglia in
+// eccesso perde una raccomandata, se sbaglia in difetto la Inbox torna a essere
+// la casella privata del titolare. Le due trappole della corrispondenza —
+// `endsWith` e `includes` — hanno un caso ciascuna qui sotto, ed è per quelle
+// che questa sezione esiste, non per la corrispondenza esatta.
+{
+  const CATALOGO = ['admin.ch', 'suva.ch', 'ahv-iv.ch', 'post.ch'];
+
+  // ---- il dominio si legge -------------------------------------------------
+  ok(dominioDi('ufficio@bj.admin.ch') === 'bj.admin.ch', 'dominioDi: indirizzo normale');
+  ok(dominioDi('Mario.Rossi@ADMIN.CH') === 'admin.ch', 'dominioDi: minuscolo, sempre');
+  // ⚠️ FQDN col punto finale: `admin.ch.` e `admin.ch` sono lo stesso dominio,
+  // e un confronto letterale li vedrebbe diversi.
+  ok(dominioDi('x@admin.ch.') === 'admin.ch', 'dominioDi: il punto finale della forma qualificata cade');
+  // ⚠️ ULTIMA `@`, non la prima: `"a@b"@esempio.ch` è un indirizzo legale.
+  ok(dominioDi('"a@b"@esempio.ch') === 'esempio.ch', 'dominioDi: si spezza sull’ULTIMA chiocciola');
+  ok(dominioDi(null) === null && dominioDi('') === null, 'dominioDi: assente → null');
+  ok(dominioDi('senza-chiocciola') === null, 'dominioDi: senza @ → null, non la stringa intera');
+  ok(dominioDi('vuoto@') === null, 'dominioDi: parte dopo la @ vuota → null');
+
+  // ---- una riga dell'elenco è utilizzabile? --------------------------------
+  // ⚠️⚠️ IL CASO CHE CONTA PIÙ DI TUTTI: una riga `ch` ammetterebbe l'intera
+  // Svizzera, cioè trasformerebbe l'elenco chiuso in nessun filtro — in
+  // silenzio. Un elenco che può contenere la propria negazione non è chiuso.
+  ok(dominioUtilizzabile('ch') === false, 'una sola etichetta («ch») NON è una riga valida');
+  ok(dominioUtilizzabile('admin.ch') === true, 'due etichette: riga valida');
+  ok(dominioUtilizzabile('info.interdiscount.ch') === true, 'tre etichette: riga valida');
+  ok(dominioUtilizzabile('') === false && dominioUtilizzabile(null) === false, 'riga vuota: non valida');
+  ok(dominioUtilizzabile('a b.ch') === false, 'con uno spazio: non valida');
+  ok(dominioUtilizzabile('mario@admin.ch') === false, 'un indirizzo non è un dominio');
+  ok(dominioUtilizzabile('-male.ch') === false, 'etichetta che comincia con un trattino: non valida');
+
+  // ---- l'ammissione, e le sue due trappole --------------------------------
+  ok(ammetti('ufficio@admin.ch', CATALOGO).ammesso === true, 'corrispondenza esatta: entra');
+  const sotto = ammetti('ufficio@bj.admin.ch', CATALOGO);
+  ok(sotto.ammesso === true && sotto.regola === 'admin.ch',
+    'sottodominio: entra, e dichiara PER QUALE riga', JSON.stringify(sotto));
+  // ⚠️ TRAPPOLA 1 — `endsWith` da solo: `notadmin.ch` finisce per `admin.ch`.
+  ok(ammetti('x@notadmin.ch', CATALOGO).ammesso === false,
+    'notadmin.ch NON entra per admin.ch (il punto separatore è la regola)');
+  // ⚠️ TRAPPOLA 2 — `includes`: `admin.ch.esempio.com` è di un altro proprietario.
+  ok(ammetti('x@admin.ch.esempio.com', CATALOGO).ammesso === false,
+    'admin.ch.esempio.com NON entra (contenere non è essere)');
+  ok(ammetti('X@BJ.Admin.CH', CATALOGO).ammesso === true, 'maiuscole: entra lo stesso');
+  ok(ammetti('billing@stripe.com', CATALOGO).ammesso === false,
+    'stripe.com resta fuori — sono i 15 messaggi che riempivano «Da gestire»');
+  const senzaMittente = ammetti(null, CATALOGO);
+  ok(senzaMittente.ammesso === false && senzaMittente.dominio === null,
+    'mittente illeggibile: non entra, e il dominio è null (non una stringa inventata)');
+  ok(ammetti('ufficio@admin.ch', []).ammesso === false, 'elenco vuoto: non entra nessuno');
+  // ⚠️ LA SECONDA SERRATURA: se `ch` finisse in tabella aggirando il vincolo
+  // SQL, deve restare INERTE invece di aprire tutto.
+  ok(ammetti('qualsiasi@esempio.ch', ['ch']).ammesso === false,
+    'una riga inutilizzabile in tabella non ammette niente');
+
+  // ---- configurato ≠ nessuna corrispondenza -------------------------------
+  ok(elencoConfigurato([]) === false, 'elenco vuoto: NON configurato');
+  ok(elencoConfigurato(['ch']) === false,
+    'un elenco di sole righe inutilizzabili NON è configurato (o il guasto sembrerebbe il filtro)');
+  ok(elencoConfigurato(CATALOGO) === true, 'catalogo vero: configurato');
+
+  // ---- A2: «Da gestire» non lo assegna più una macchina -------------------
+  // ⚠️ DERIVATO DAL SORGENTE, non da un elenco scritto qui: si chiede alla
+  // funzione ogni valore che l'enum ammette, e si asserisce che NESSUNO produca
+  // `needs_attention`. Se un giorno qualcuno riaggiungesse quel ramo, questo
+  // controllo diventa rosso senza che nessuno debba ricordarsene.
+  const prodotti = RELEVANCE_VALUES.map((r) => attentionForRelevance(r));
+  ok(!prodotti.includes('needs_attention' as never),
+    'il classificatore non produce MAI «Da gestire» per nessuna rilevanza', prodotti.join(', '));
+  ok(attentionForRelevance('likely_actionable') === 'to_verify',
+    '«probabilmente azionabile» → «da verificare», non «da gestire»');
+  ok(attentionForRelevance(null) === 'to_verify', 'non classificata: si mostra comunque');
+
+  // ---- le DUE strade devono dire la stessa cosa ---------------------------
+  // ⚠️ La stessa tabella vive in SQL (`email_attention_for_relevance`, usata dal
+  // ripristino di un messaggio «messo via») e qui. La 0013 dichiara che non
+  // devono poter divergere; questo controllo lo VERIFICA leggendo la 0043,
+  // invece di fidarsi della dichiarazione.
+  const sql0043 = readFileSync(new URL('../supabase/migrations/0043_inbox_admin_domains.sql', import.meta.url), 'utf8');
+  const corpoFn = sql0043.slice(sql0043.indexOf('create or replace function public.email_attention_for_relevance'));
+  const fineFn = corpoFn.indexOf('$$;');
+  const tabellaSql = corpoFn.slice(0, fineFn < 0 ? corpoFn.length : fineFn);
+  if (fineFn < 0) {
+    ok(false, 'la funzione SQL email_attention_for_relevance non si trova più nella 0043');
+  } else {
+    const divergenze: string[] = [];
+    for (const r of RELEVANCE_VALUES) {
+      const m = new RegExp(`when '${r}'\\s+then '([a-z_]+)'`).exec(tabellaSql);
+      if (!m) { divergenze.push(`${r}: assente in SQL`); continue; }
+      if (m[1] !== attentionForRelevance(r)) divergenze.push(`${r}: SQL=${m[1]} TS=${attentionForRelevance(r)}`);
+    }
+    ok(divergenze.length === 0,
+      'SQL e server assegnano lo stesso stato per ogni rilevanza', divergenze.join(' | '));
+    ok(!/then 'needs_attention'/.test(tabellaSql),
+      'nemmeno la funzione SQL produce più «Da gestire»');
+  }
+
+  // ---- il catalogo seminato passa la regola che il codice applica ---------
+  // ⚠️ Un dominio seminato che `dominioUtilizzabile` rifiutasse sarebbe una
+  // riga morta in produzione: presente in tabella, inerte nel confronto, e
+  // nessuno se ne accorgerebbe finché una raccomandata non si perde.
+  const seminati = [...sql0043.matchAll(/\(null,\s*'([a-z0-9.-]+)',/g)].map((m) => m[1]!);
+  ok(seminati.length > 0, 'la 0043 semina almeno un dominio globale', String(seminati.length));
+  const inerti = seminati.filter((d) => !dominioUtilizzabile(d));
+  ok(inerti.length === 0, 'ogni dominio seminato è utilizzabile dal confronto', inerti.join(', '));
+
+  // ---- il filtro sta PRIMA dell'inserimento -------------------------------
+  // ⚠️ NON È PEDANTERIA E NON È PROVABILE OFFLINE ALTRIMENTI: `processMessage`
+  // vuole un client, due adapter e la pipeline, e un banco offline non lo
+  // monta. Ma «solo i messaggi amministrativi ENTRANO in email_messages» è
+  // un'affermazione sul database: filtrare DOPO `upsertMessage` conserverebbe
+  // oggetto, mittente e corpo della posta privata del cliente, nascondendoli
+  // soltanto. L'ordine delle due righe è la regola, quindi si legge l'ordine.
+  const syncSrc = readFileSync(new URL('../supabase/functions/_shared/email/sync.ts', import.meta.url), 'utf8');
+  const daProcess = syncSrc.indexOf('async function processMessage(');
+  if (daProcess < 0) {
+    ok(false, 'processMessage non si trova più: il controllo non sa che cosa guardare');
+  } else {
+    const corpoProcess = syncSrc.slice(daProcess, syncSrc.indexOf('\n}\n', daProcess));
+    const posAmmetti = corpoProcess.indexOf('ammetti(');
+    const posUpsert = corpoProcess.indexOf('upsertMessage(');
+    ok(posAmmetti >= 0, 'processMessage chiama la regola di ammissione');
+    ok(posUpsert >= 0, 'processMessage chiama ancora upsertMessage');
+    ok(posAmmetti >= 0 && posUpsert >= 0 && posAmmetti < posUpsert,
+      'il filtro dei domini viene PRIMA dell’inserimento in email_messages',
+      `ammetti@${posAmmetti} upsertMessage@${posUpsert}`);
+    ok(/counters\.messagesExcluded\+\+/.test(corpoProcess) && /recordExcludedSender\(/.test(corpoProcess),
+      'un’esclusione viene contata E registrata: non è mai muta');
+  }
+}
+
+
+// ===========================================================================
+section('IL GESTO DI PROMOZIONE — dove la posta diventa un dato aziendale');
+// ===========================================================================
+// ⚠️⚠️ PERCHÉ CON UN CLIENT FINTO E NON SUL DATABASE VERO. Tre dei quattro
+// esiti di `promoteMessageBody` non si sanno provocare in produzione senza
+// sporcare la casella reale — «già promosso», «corpo vuoto», «il messaggio non
+// c'è» — e il quarto costerebbe un documento vero a ogni esecuzione della
+// suite. Il client è finto; la funzione è QUELLA VERA, comprese le due
+// chiamate alla funzione SQL, di cui qui si registrano gli argomenti.
+//
+// ⚠️ Quello che questa sezione NON prova, e va detto: che la funzione SQL
+// `email_promote_message` faccia davvero ciò che promette. Quella è una prova
+// contro il database, e l'indice unico che regge B3 è suo. Qui si prova che
+// questa funzione la CHIAMI nel modo giusto e nell'ordine giusto.
+{
+  interface Traccia { tabella: string; op: string; riga?: Record<string, unknown> }
+
+  function clientFinto(opts: {
+    messaggio?: Record<string, unknown> | null;
+    /** che cosa risponde `email_promote_message` alla prima chiamata (lettura) */
+    giaPromosso?: string | null;
+    /** un documento con lo stesso hash è già in archivio */
+    documentoEsistente?: { id: string; storage_path: string } | null;
+  }) {
+    const tracce: Traccia[] = [];
+    const rpc: { fn: string; args: Record<string, unknown> }[] = [];
+    let inserito = 0;
+    const sb = {
+      from: (tabella: string) => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: () => {
+              if (tabella === 'email_messages') {
+                return Promise.resolve({ data: opts.messaggio ?? null, error: null });
+              }
+              return Promise.resolve({ data: null, error: null });
+            },
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: () => Promise.resolve({ data: opts.documentoEsistente ?? null, error: null }),
+                }),
+              }),
+            }),
+          }),
+        }),
+        insert: (riga: Record<string, unknown>) => {
+          tracce.push({ tabella, op: 'insert', riga });
+          inserito++;
+          return {
+            select: () => ({ maybeSingle: () => Promise.resolve({ data: { id: `doc-nuovo-${inserito}` }, error: null }) }),
+          };
+        },
+        update: (riga: Record<string, unknown>) => {
+          tracce.push({ tabella, op: 'update', riga });
+          return { eq: () => Promise.resolve({ data: null, error: null }) };
+        },
+        delete: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
+      }),
+      rpc: (fn: string, args: Record<string, unknown>) => {
+        rpc.push({ fn, args });
+        // 1ª chiamata = lettura (p_document_id null); 2ª = scrittura del legame.
+        const scrittura = args.p_document_id != null;
+        return Promise.resolve({
+          data: scrittura ? args.p_document_id : (opts.giaPromosso ?? null),
+          error: null,
+        });
+      },
+      storage: {
+        from: () => ({
+          upload: () => { tracce.push({ tabella: 'storage', op: 'upload' }); return Promise.resolve({ error: null }); },
+        }),
+      },
+    } as unknown as Parameters<typeof promoteMessageBody>[0];
+    return { sb, tracce, rpc };
+  }
+
+  const MESSAGGIO = {
+    id: 'msg-1', company_id: 'az-1', subject: 'Decisione di tassazione',
+    sender_email: 'ufficio@bj.admin.ch', received_at: '2026-08-20T09:00:00Z',
+    body_text: 'La invitiamo a trasmettere la documentazione entro il 30 settembre 2026.',
+  };
+
+  // ---- B3: già promosso ⇒ nessun documento nuovo, nessun costo -------------
+  {
+    const { sb, tracce, rpc } = clientFinto({ messaggio: MESSAGGIO, giaPromosso: 'doc-esistente' });
+    const esito = await promoteMessageBody(sb, { messageId: 'msg-1', actorUserId: 'u-1' });
+    ok(esito.kind === 'promoted' && esito.documentId === 'doc-esistente' && esito.created === false,
+      'B3 · già promosso: stesso documento, `created: false`', JSON.stringify(esito));
+    ok(tracce.filter((t) => t.tabella === 'documents' && t.op === 'insert').length === 0,
+      'B3 · e NESSUNA riga nuova in documents');
+    ok(tracce.filter((t) => t.tabella === 'storage').length === 0,
+      'B3 · e nessun byte caricato: la seconda pressione non costa niente');
+    ok(rpc.length === 1 && rpc[0]!.args.p_document_id === null,
+      'B3 · una sola chiamata SQL, in sola lettura', JSON.stringify(rpc));
+  }
+
+  // ---- B2: la riga che nasce, campo per campo ------------------------------
+  {
+    const { sb, tracce, rpc } = clientFinto({ messaggio: MESSAGGIO });
+    const esito = await promoteMessageBody(sb, { messageId: 'msg-1', actorUserId: 'utente-42' });
+    ok(esito.kind === 'promoted' && esito.created === true, 'B2 · il documento nasce', JSON.stringify(esito));
+
+    const ins = tracce.find((t) => t.tabella === 'documents' && t.op === 'insert')?.riga ?? {};
+    // ⚠️ `email` e non `inbox`: l'enum `document_source_type` ha tre valori
+    // (`upload`, `pasted_text`, `email`) e un quarto nome per la stessa cosa
+    // sarebbe una seconda fonte di verità (§9.1). Decisione di Andrea, 2026-08-23.
+    ok(ins.source_type === 'email', 'B2 · origine `email`, il valore che esiste davvero', String(ins.source_type));
+    ok(ins.status === 'uploaded', 'B2 · stato `uploaded`: è entrato, non è stato letto', String(ins.status));
+    ok(ins.company_id === 'az-1', 'B2 · l’azienda è quella del messaggio');
+    ok(typeof ins.file_hash === 'string' && (ins.file_hash as string).length === 64,
+      'B2 · l’hash del contenuto c’è ed è uno sha256', String(ins.file_hash).slice(0, 12));
+    // ⚠️ L'AUTORE. Il registro (0039) lo legge come `coalesce(auth.uid(),
+    // new.uploaded_by)`, e da una Edge Function `auth.uid()` è NULL: senza
+    // questo campo il documento risulterebbe nato da solo — che è esattamente
+    // ciò che D-13 esiste per non far più succedere.
+    ok(ins.uploaded_by === 'utente-42', 'B2 · l’autore è chi ha premuto', String(ins.uploaded_by));
+    ok(tracce.some((t) => t.tabella === 'storage'), 'B2 · e il file finisce in archivio');
+
+    const scrittura = rpc.find((r) => r.args.p_document_id != null);
+    ok(!!scrittura && scrittura.args.p_message_id === 'msg-1',
+      'B2 · il legame lo scrive la funzione SQL, non tre update sciolti');
+    ok(rpc.length === 2, 'B2 · due chiamate: prima si CHIEDE, poi si scrive', String(rpc.length));
+  }
+
+  // ---- niente da aggiungere non è un guasto --------------------------------
+  {
+    const { sb, tracce } = clientFinto({ messaggio: { ...MESSAGGIO, body_text: '   ' } });
+    const esito = await promoteMessageBody(sb, { messageId: 'msg-1', actorUserId: 'u-1' });
+    ok(esito.kind === 'empty', 'corpo vuoto → esito dichiarato, non un documento di zero byte', esito.kind);
+    ok(tracce.filter((t) => t.tabella === 'documents').length === 0,
+      'e nessuna riga creata per un messaggio senza testo');
+  }
+
+  // ---- il messaggio non c'è ------------------------------------------------
+  {
+    const { sb } = clientFinto({ messaggio: null });
+    const esito = await promoteMessageBody(sb, { messageId: 'ignoto', actorUserId: 'u-1' });
+    ok(esito.kind === 'not_found', '«non esiste» è un esito suo, distinto da «vuoto»', esito.kind);
+  }
+
+  // ---- dedup per hash: due messaggi, un documento --------------------------
+  //
+  // ⚠️ NON È UN CASO DI SCUOLA: in produzione, il 2026-08-23, un documento era
+  // già raggiunto da DUE messaggi. È il motivo per cui il legame è una tabella
+  // di relazione e non una colonna `promoted_to_document_id` sul messaggio.
+  {
+    const { sb, tracce } = clientFinto({
+      messaggio: MESSAGGIO,
+      documentoEsistente: { id: 'doc-gia-in-archivio', storage_path: 'az-1/email/x/messaggio.txt' },
+    });
+    const esito = await promoteMessageBody(sb, { messageId: 'msg-2', actorUserId: 'u-1' });
+    ok(esito.kind === 'promoted' && esito.documentId === 'doc-gia-in-archivio',
+      'stesso contenuto già in archivio: si riusa quel documento', JSON.stringify(esito));
+    ok(esito.kind === 'promoted' && esito.created === false,
+      'e `created` dice il vero: nessun documento nuovo è nato');
+    ok(tracce.filter((t) => t.tabella === 'documents' && t.op === 'insert').length === 0,
+      'nessuna riga duplicata in documents');
+  }
+
+  // ---- «IGNORA» SCRIVE IL SUO STATO, NON QUELLO DELLA MACCHINA -------------
+  //
+  // ⚠️ Perché letto dal sorgente: `setDismissed` sono quattro righe che parlano
+  // con Supabase, e un banco offline non le esegue. Ma il VALORE che scrivono è
+  // la decisione: `ignored` è il giudizio del classificatore — lo portano 72
+  // messaggi e nessuno ce l'ha messo una persona — e scriverci sopra
+  // renderebbe indistinguibile «una macchina ha concluso» da «una persona ha
+  // deciso». Un mutante che cambiasse quella stringa non lo vedrebbe nessuno:
+  // adesso sì.
+  {
+    const svc = readFileSync(new URL('../src/services/inboxService.ts', import.meta.url), 'utf8');
+    const da = svc.indexOf('async setDismissed(');
+    if (da < 0) {
+      ok(false, 'setDismissed non si trova più: il controllo non sa che cosa guardare');
+    } else {
+      const corpo = svc.slice(da, svc.indexOf('\n  },', da));
+      ok(/'dismissed'/.test(corpo), '«Ignora» scrive lo stato dedicato');
+      ok(!/'ignored'/.test(corpo),
+        'e NON quello del classificatore: le due affermazioni restano distinte');
+      ok(/'to_verify'/.test(corpo),
+        'e il ripensamento riporta a «da verificare», non alla categoria di prima');
+      ok(!/\bdelete\(/.test(corpo), 'e non cancella niente: marca (B4)');
+    }
+  }
+
+  // ---- LA PROMOZIONE AUTOMATICA NON DEVE TORNARE --------------------------
+  //
+  // ⚠️⚠️ È LA DECISIONE, NON UN DETTAGLIO. Fino al 2026-08-24 `processMessage`
+  // chiamava `analyzeOne` su ogni messaggio `likely_actionable`: il documento
+  // nasceva da solo, e con lui un'analisi, cioè una chiamata al modello che
+  // nessuno aveva chiesto. Diciotto documenti su venti in produzione sono nati
+  // così, quattordici erano fatture Stripe del titolare.
+  //
+  // Un banco offline `processMessage` non lo monta — vuole un client, due
+  // adapter e la pipeline — quindi si legge il SORGENTE. È la stessa forma
+  // della guardia sull'ordine del filtro dei domini, e per la stessa ragione:
+  // ciò che non si può eseguire si può comunque leggere.
+  {
+    const syncSrc = readFileSync(new URL('../supabase/functions/_shared/email/sync.ts', import.meta.url), 'utf8');
+    const da = syncSrc.indexOf('async function processMessage(');
+    if (da < 0) {
+      ok(false, 'processMessage non si trova più: il controllo non sa che cosa guardare');
+    } else {
+      const corpo = syncSrc.slice(da, syncSrc.indexOf('\n}\n', da));
+      ok(!/\banalyzeOne\(/.test(corpo),
+        'processMessage NON analizza più da solo (nessuna promozione automatica)');
+      ok(!/\bimportAndAnalyze\(/.test(corpo),
+        'e non importa allegati da solo: un documento nasce da un gesto');
+      ok(!/awaiting_analysis/.test(corpo),
+        'e non mette più niente in coda di analisi da sé');
+      ok(/setMessageProcessing\(deps\.sb, upserted\.id, 'done'\)/.test(corpo),
+        'la pipeline si chiude a «classificato», che è tutto ciò che fa');
+    }
+  }
+
+  // ---- il sesto filtro restringe davvero, e in modo SUO --------------------
+  //
+  // ⚠️ Lo switch di `applicaAmbito` ha un ramo `default`: un filtro nuovo che
+  // non avesse il suo `case` cadrebbe lì e prenderebbe l'ambito di «Tutte» —
+  // il bottone direbbe 148 e l'elenco ne mostrerebbe altri. Il compilatore
+  // resta verde: è questa asserzione a non restarlo.
+  {
+    const ambitoDi = (filter: InboxFilter): string => {
+      const passi: string[] = [];
+      const finto: Record<string, (...a: unknown[]) => unknown> = {};
+      for (const m of ['eq', 'neq', 'not', 'or', 'gte', 'lte', 'ilike', 'is']) {
+        finto[m] = (...a: unknown[]) => { passi.push(`${m}(${a.join(',')})`); return finto; };
+      }
+      applicaAmbito(finto as never, { companyId: 'az-1', filter });
+      return passi.join(' ');
+    };
+    const ambiti = INBOX_FILTERS.map(ambitoDi);
+    ok(INBOX_FILTERS.includes('dismissed'), '«Ignorate» è un filtro della barra');
+    ok(ambitoDi('dismissed').includes("eq(attention_status,dismissed)"),
+      'e restringe sul suo stato, non su quello del classificatore', ambitoDi('dismissed'));
+    ok(ambitoDi('all').includes('handled') && ambitoDi('all').includes('dismissed'),
+      '«Tutte» esclude sia le messe via sia le ignorate', ambitoDi('all'));
+    ok(new Set(ambiti).size === ambiti.length,
+      'i sei filtri restringono in sei modi diversi', ambiti.join(' | '));
+  }
 }
 
 // ===========================================================================

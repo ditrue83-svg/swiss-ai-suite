@@ -17,7 +17,9 @@ import {
   adapterForConnection, adminClient, aiCreateMessage, assertMember, authenticate,
   CORS, env, failure, getEncryptionKey, json, logEvent, outputLanguage,
 } from '../_shared/email/runtime.ts';
-import { getConnection, recordAudit, type ServerClient } from '../_shared/email/store.ts';
+import {
+  getConnection, promoteMessageBody, recordAudit, type ServerClient,
+} from '../_shared/email/store.ts';
 import { importAndAnalyze, runSync, getValidAccessToken, type SyncDeps } from '../_shared/email/sync.ts';
 import { EmailProviderError } from '../_shared/email/types.ts';
 
@@ -32,6 +34,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (body.action === 'analyze') return await handleAnalyze(req, body, internal);
+    if (body.action === 'promote') return await handlePromote(req, body, internal);
     return await handleSync(req, body, internal);
   } catch (error) {
     const code = error instanceof EmailProviderError ? error.code : 'UNKNOWN';
@@ -128,6 +131,69 @@ async function handleSync(req: Request, body: Record<string, unknown>, internal:
 }
 
 /**
+ * «Aggiungi ai documenti» (D-13, PARTE B) — il gesto di promozione.
+ *
+ * ⚠️⚠️ NON SPENDE NULLA. Nessuna chiamata al modello, nessuna chiamata al
+ * fornitore di posta: il corpo del messaggio è già in archivio dalla
+ * sincronizzazione, e qui diventa un documento con `status = 'uploaded'`.
+ * Analizzarlo è un'ALTRA decisione, con un altro costo, e la prende chi vuole.
+ *
+ * ⚠️ PERCHÉ PASSA DA UNA EDGE FUNCTION E NON DAL BROWSER. Non per prudenza: il
+ * client ha `grant select` e basta su `email_message_documents` (0014), quindi
+ * il legame — il verbale di che cosa è entrato in azienda — non può scriverlo.
+ * E l'autore va registrato: `authenticate` dà l'utente vero, che finisce in
+ * `documents.uploaded_by` e da lì nel registro (0039).
+ *
+ * ⚠️ L'AUTORIZZAZIONE È QUI, non nella funzione SQL: quella gira `security
+ * definer` per poter scrivere il legame, e `auth.uid()` col service role è
+ * NULL. Il controllo di appartenenza salta solo perché è già stato fatto in
+ * queste righe — è la stessa disciplina di `handleAnalyze`.
+ */
+async function handlePromote(req: Request, body: Record<string, unknown>, internal: boolean): Promise<Response> {
+  const messageId = typeof body.messageId === 'string' ? body.messageId : null;
+  if (!messageId) return failure('BAD_REQUEST', 400);
+
+  const sb = adminClient();
+  // ⚠️ L'errore si lega: un guasto di lettura non deve diventare un 404, che
+  // direbbe a chi ha premuto «questo messaggio non esiste» — falso, e manda a
+  // cercare il problema dalla parte sbagliata.
+  const { data: row, error: readErr } = await sb.from('email_messages')
+    .select('id, company_id').eq('id', messageId).maybeSingle();
+  if (readErr) return failure('UNKNOWN', 500);
+  if (!row) return failure('NOT_FOUND', 404);
+
+  let actorUserId: string | null = null;
+  if (!internal) {
+    const auth = await authenticate(req);
+    if (!auth) return failure('UNAUTHENTICATED', 401);
+    if (!(await assertMember(auth, row.company_id as string))) return failure('FORBIDDEN', 403);
+    actorUserId = auth.userId;
+  }
+
+  const esito = await promoteMessageBody(sb, { messageId, actorUserId });
+  switch (esito.kind) {
+    case 'not_found':
+      return failure('NOT_FOUND', 404);
+    // 422 e non 500: la richiesta era valida, il messaggio non ha un corpo.
+    // Un guasto e «non c'è niente da aggiungere» portano a due gesti diversi.
+    case 'empty':
+      return failure('EMPTY_BODY', 422);
+    case 'promoted':
+      // ⚠️ Il registro dei documenti lo scrive il trigger della 0039. Qui si
+      // annota il gesto nel registro dell'INBOX, che è un'altra domanda:
+      // «che cosa è stato fatto su questa casella».
+      await recordAudit(sb, {
+        companyId: row.company_id as string,
+        connectionId: null,
+        actorUserId,
+        action: 'message_promoted',
+        detail: { messageId, documentId: esito.documentId, created: esito.created },
+      });
+      return json({ status: 'ok', documentId: esito.documentId, created: esito.created });
+  }
+}
+
+/**
  * «Analizza» su un messaggio che la classificazione non aveva promosso.
  *
  * È l'unico punto in cui l'analisi documentale parte per decisione di una
@@ -162,7 +228,13 @@ async function handleAnalyze(req: Request, body: Record<string, unknown>, intern
 
   await sb.from('email_messages').update({ processing_status: 'importing', error_code: null }).eq('id', messageId);
 
-  const counters = { messagesSeen: 0, messagesNew: 0, messagesUpdated: 0, attachmentsImported: 0, documentsCreated: 0, analysesStarted: 0 };
+  // ⚠️ `messagesExcluded` resta a zero e non è una dimenticanza: qui si analizza
+  // un messaggio GIÀ acquisito, e il filtro dei domini (0043) agisce alla
+  // radice, in `processMessage`. Da questa strada non passa nessuna acquisizione.
+  const counters = {
+    messagesSeen: 0, messagesNew: 0, messagesUpdated: 0, messagesExcluded: 0,
+    attachmentsImported: 0, documentsCreated: 0, analysesStarted: 0,
+  };
   try {
     const started = await importAndAnalyze(deps, {
       connection, adapter, accessToken, messageId, message, counters,

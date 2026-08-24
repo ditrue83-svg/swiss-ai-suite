@@ -527,6 +527,10 @@ const FUORI_SUITE = {
   'subsidy:seed': 'semina il catalogo: scrive nel database, non prova un invariante',
   'subsidy:seed-catalog': 'semina il catalogo dai sorgenti: scrive nel database, non prova un invariante',
   'inbox:diagnose': 'diagnostica manuale della posta: si lancia su un guasto in corso, non prova un invariante',
+  // Misura i DATI di una casella, non il codice: il suo numero cambia quando
+  // arriva posta, non quando cambia una regola. La regola che usa
+  // (`ammetti`) la prova `test:inbox-unit`, in unit, con dodici mutazioni.
+  'inbox:domains': 'rapporto sui domini di una casella reale: misura i dati, non il codice; la regola che applica la prova test:inbox-unit, in unit',
   'test:notification-email': "l'invio VERO spende un'email a ogni esecuzione; il piano lo prova test:notification-email:self-test, in unit",
   status: 'misura la produzione e scrive il foglio di stato: un rapporto, non un controllo; le sue frasi le prova status:self-test, in unit',
   // ⚠️ Misura l'AMBIENTE, non il codice: può essere rosso su un albero perfetto
