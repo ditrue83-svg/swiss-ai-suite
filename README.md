@@ -59,6 +59,8 @@ che l'archivio custodisce già, non un secondo posto dove scrivere.
 | [`app/docs/product-status.md`](app/docs/product-status.md) | **Lo stato di ogni modulo, e l'unico posto dove è dichiarato.** Sei colonne distinte: implementato, deployato, configurato, testato, provato contro il servizio reale, disponibile a clienti esterni. |
 | [`app/CLAUDE.md`](app/CLAUDE.md) | Le regole di lavoro sul repository: branch, consolidamento, verità, sicurezza, interfaccia. Sta in `app/` perché è lì che si lavora. |
 | [`app/docs/incentivi.md`](app/docs/incentivi.md) | Incentivi (Subsidy AI 2.0): perché sei misure separate e non un punteggio, le quattro schede, la convivenza con Subsidy AI 1.0, lo scheduler, le due suite — e il limite che resta: il motore non è coperto da un test. |
+| [`app/docs/stati-documento.md`](app/docs/stati-documento.md) | **Il censimento degli stati di un documento, con la data accanto a ogni numero.** I quattro assi, i campi di stato e chi li scrive, gli stati morti nei due sensi, le etichette e che cosa leggono, i campi che dicono la stessa cosa, se separare gli assi richieda una migrazione — e l'archiviazione attraverso tutti i moduli. Si rimisura con `npm run stati:censimento`, che è sola lettura. |
+| [`app/docs/appartenenza-del-documento.md`](app/docs/appartenenza-del-documento.md) | Il cancello dell'appartenenza: dove viveva, quali schermate non lo ereditavano, dov'è adesso — e i due difetti che la fattura di prova del 21 agosto ha portato a galla (lo stesso PDF letto due volte, la riga di quota che non si chiudeva). |
 | [`app/docs/design-system.md`](app/docs/design-system.md) | Scala tipografica, colori, contrasti, tema scuro, aree cliccabili. |
 | [`site/README.md`](site/README.md) | Vetrina: contenuti, build, pubblicazione. |
 
