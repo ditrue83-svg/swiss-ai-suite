@@ -444,24 +444,31 @@ async function processMessage(
     return;
   }
 
-  // ---- Livello 3: analisi documentale, solo su ciò che la merita ----
-  if (relevance !== 'likely_actionable') {
-    await setMessageProcessing(deps.sb, upserted.id, 'done');
-    return;
-  }
-
-  // L'import iniziale promuove decine di messaggi in pochi secondi: analizzarli
-  // tutti sul momento esaurisce la quota e riempie «Da gestire» di analisi
-  // fallite — misurato al primo collegamento reale. Si METTE IN CODA, che è uno
-  // stato dichiarato e non un fallimento, e la manutenzione periodica smaltisce
-  // a lotti. Nelle sincronizzazioni successive, che portano pochi messaggi per
-  // volta, l'analisi resta immediata.
-  if (input.deferAnalysis) {
-    await setMessageProcessing(deps.sb, upserted.id, 'awaiting_analysis');
-    return;
-  }
-
-  await analyzeOne(deps, { connection, adapter, accessToken, messageId: upserted.id, message, counters });
+  // ---- E QUI LA PIPELINE FINISCE (D-13, decisione 2) ----------------------
+  //
+  // ⚠️⚠️ QUI C'ERA LA PROMOZIONE AUTOMATICA, E TOGLIERLA È IL PUNTO.
+  // Un messaggio `likely_actionable` veniva importato e analizzato da solo:
+  // `importAndAnalyze` creava la riga in `documents` (`source_type: 'email'`,
+  // `uploaded_by: null`) e la collegava. Nessuna persona aveva chiesto niente.
+  //
+  // Sui dati veri del 2026-08-23: 18 documenti su 20 sono nati così, e 14 di
+  // quei 18 erano fatture Stripe del titolare. La posta è del cliente (§2.2):
+  // un messaggio diventa un documento dell'AZIENDA solo quando qualcuno lo
+  // decide, e quel gesto è `handlePromote` in `email-sync`.
+  //
+  // ⚠️ E NON È SOLO UNA QUESTIONE DI PERIMETRO: era anche la spesa. Ogni
+  // messaggio promosso portava con sé un'analisi, cioè una chiamata al modello,
+  // senza che nessuno l'avesse chiesta né potuta rifiutare.
+  //
+  // Che cosa RESTA automatico: acquisire e CLASSIFICARE. La classificazione
+  // decide solo dove mostrare la riga, non che cosa entra in azienda — e dal
+  // 2026-08-23 non può nemmeno più dire «Da gestire» (A2, 0043).
+  //
+  // ⚠️ `deferAnalysis` non serve più a questa strada e resta nella firma perché
+  // lo legge ancora `drainPendingAnalyses`, che smaltisce ciò che il pulsante
+  // «Analizza» ha lasciato in coda per quota esaurita. Un parametro che non
+  // fa più niente andrebbe tolto: è una voce aperta, non una dimenticanza.
+  await setMessageProcessing(deps.sb, upserted.id, 'done');
 }
 
 /**

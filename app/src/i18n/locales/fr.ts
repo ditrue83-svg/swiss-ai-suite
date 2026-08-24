@@ -1877,6 +1877,7 @@ export const fr: Dictionary = {
       urgent: 'Échéance proche',
       toVerify: 'À vérifier',
       handled: 'Classées',
+      dismissed: 'Ignorées',
     },
     filtersAria: 'Filtrer les communications',
     search: {
@@ -1895,6 +1896,7 @@ export const fr: Dictionary = {
       informational: 'Informative',
       ignored: 'Non administrative',
       handled: 'Classée',
+      dismissed: 'Ignorée',
     },
     processing: {
       pending: 'En attente',
@@ -1920,6 +1922,12 @@ export const fr: Dictionary = {
     },
     emptyFilter: 'Aucune communication avec ce filtre.',
     detail: {
+      addToDocuments: 'Ajouter aux documents',
+      addedToDocuments: 'Ajouté aux documents.',
+      alreadyInDocuments: 'Était déjà dans les documents : vous y êtes conduit.',
+      ignore: 'Ignorer',
+      ignored: 'Ignorée. Elle reste ici, sous « Ignorées ».',
+      restoreIgnored: 'Ne plus ignorer',
       back: 'Retour à l’Inbox',
       from: 'Expéditeur',
       to: 'À',
@@ -2005,6 +2013,7 @@ export const fr: Dictionary = {
       revokeManual: 'L’autorisation reste enregistrée dans votre compte Microsoft : vous pouvez la retirer depuis les paramètres des applications de votre compte.',
     },
     errors: {
+      emptyBody: 'Ce message n’a pas de texte à ajouter aux documents.',
       reauthRequired: 'La connexion à la messagerie doit être renouvelée.',
       scopeNotGranted: 'L’autorisation de lecture du courrier n’a pas été accordée. Réessayez et, dans la fenêtre du fournisseur, cochez la case autorisant la lecture des courriels.',
       providerUnavailable: 'Le fournisseur de messagerie est momentanément injoignable.',

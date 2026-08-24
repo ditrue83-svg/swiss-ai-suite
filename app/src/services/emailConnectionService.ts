@@ -94,6 +94,10 @@ export function inboxErrorMessage(code: string | null | undefined): string | nul
       return tr('inbox.errors.providerNotConfigured');
     case 'CONFIG_MISSING':
       return tr('inbox.errors.notConfigured');
+    // Non è un guasto: è la risposta a «aggiungi questo ai documenti» quando
+    // non c'è niente da aggiungere. Dirlo evita di far cercare un problema.
+    case 'EMPTY_BODY':
+      return tr('inbox.errors.emptyBody');
     case 'AI_NOT_CONFIGURED':
       return tr('inbox.errors.aiNotConfigured');
     case 'ANALYSIS_FAILED':
@@ -190,6 +194,30 @@ export const emailConnectionService = {
    */
   async analyze(messageId: string, outputLanguage: string): Promise<{ status: string }> {
     return await callFunction('email-sync', { action: 'analyze', messageId, outputLanguage });
+  },
+
+  /**
+   * «Aggiungi ai documenti» — il gesto di promozione (D-13, PARTE B).
+   *
+   * ⚠️⚠️ È IL PUNTO IN CUI LA POSTA DIVENTA UN DATO AZIENDALE, ed è l'UNICA
+   * strada: nessun componente crea documenti da un messaggio, e nessuna
+   * pipeline lo fa più da sola. Prima di D-13 i documenti nascevano dalla
+   * sincronizzazione, senza che nessuno avesse chiesto niente — 18 su 20 dei
+   * documenti in produzione sono nati così, e 14 erano fatture del titolare.
+   *
+   * ⚠️ NON SPENDE CREDITO. Il documento nasce `uploaded`: è entrato, non è
+   * stato letto. Analizzarlo è un'altra decisione, con un altro pulsante.
+   *
+   * ⚠️ `created: false` NON è un errore: è la seconda pressione. Si torna lo
+   * STESSO identificativo, e chi chiama porta al documento che c'è già invece
+   * di crearne un altro (B3). L'idempotenza non è un `if` qui: è l'indice unico
+   * `uq_email_msg_doc_body` della 0013.
+   */
+  async promote(messageId: string): Promise<{ documentId: string; created: boolean }> {
+    const esito = await callFunction<{ documentId: string; created: boolean }>(
+      'email-sync', { action: 'promote', messageId },
+    );
+    return { documentId: esito.documentId, created: !!esito.created };
   },
 
   async disconnect(connectionId: string): Promise<{ status: string; watchStopped: boolean; revoked: boolean }> {

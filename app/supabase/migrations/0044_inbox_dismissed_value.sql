@@ -1,0 +1,28 @@
+-- ============================================================================
+-- AI-Swisse — 0044 «IGNORA» È UNO STATO SUO — solo il valore dell'enum
+--
+-- ⚠️⚠️ QUESTA MIGRAZIONE FA UNA COSA SOLA, E IL PERCHÉ È UNA TRAPPOLA GIÀ
+-- PAGATA (0027, dichiarata in testa alla 0039): in PostgreSQL un valore
+-- aggiunto a un enum NON è utilizzabile nella stessa transazione che lo
+-- aggiunge. Un `alter type … add value` seguito, nello stesso file, da un
+-- `update … set stato = 'nuovo_valore'` fallisce. Perciò il valore nasce qui e
+-- lo usa la 0045.
+--
+-- PERCHÉ SERVE UN VALORE NUOVO invece di riusare `ignored`.
+-- `ignored` esiste dalla 0013 e significa una cosa precisa, scritta nel suo
+-- commento: «il classificatore l'ha giudicata non amministrativa». Sui dati
+-- veri del 2026-08-23 lo portano 72 messaggi su 148, e NESSUNO di quei 72 è
+-- stato messo lì da una persona.
+--
+-- Se l'«Ignora» dell'utente scrivesse lo stesso valore, due affermazioni
+-- diverse diventerebbero indistinguibili:
+--   · «una macchina ha concluso che questa non è amministrativa»  — rivedibile;
+--   · «una persona ha deciso che questa non la riguarda»          — una scelta.
+-- E la seconda verrebbe cancellata dalla prima al primo riclassificatore che
+-- passa. Uno stato che non sa dire chi lo ha scritto non è uno stato: è
+-- un'etichetta.
+--
+-- Requisiti: 0013 (l'enum). Idempotente.
+-- ============================================================================
+
+alter type public.email_attention_status add value if not exists 'dismissed';

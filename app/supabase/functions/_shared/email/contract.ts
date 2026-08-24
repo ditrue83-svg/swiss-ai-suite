@@ -17,7 +17,10 @@ export const RELEVANCE_VALUES = [
 export type EmailRelevanceValue = (typeof RELEVANCE_VALUES)[number];
 
 export const ATTENTION_VALUES = [
-  'needs_attention', 'to_verify', 'informational', 'ignored', 'handled',
+  // ⚠️ `ignored` è il giudizio della MACCHINA («non amministrativa»);
+  // `dismissed` è la decisione di una PERSONA («non ci riguarda»), nata con la
+  // 0044. Sono due affermazioni diverse e non si sovrascrivono a vicenda.
+  'needs_attention', 'to_verify', 'informational', 'ignored', 'dismissed', 'handled',
 ] as const;
 export type EmailAttentionValue = (typeof ATTENTION_VALUES)[number];
 
@@ -181,5 +184,9 @@ export const INBOX_ERROR_CODES = [
   // rispondendo bene ed è stato tagliato dal tetto di token che abbiamo scelto
   // NOI. Chiamarlo in un altro modo manda a cercare il guasto dove non è.
   'AI_OUTPUT_TRUNCATED',
+  // ⚠️ Dal 2026-08-24 (D-13, PARTE B). Un messaggio senza corpo non produce un
+  // documento vuoto: «non c'è niente da aggiungere» è un fatto e si dice. Un
+  // documento di zero byte in archivio avrebbe l'aria di lavoro fatto.
+  'EMPTY_BODY',
 ] as const;
 export type InboxErrorCode = (typeof INBOX_ERROR_CODES)[number];

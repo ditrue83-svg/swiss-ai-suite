@@ -532,6 +532,18 @@ export async function createOrReuseDocument(
   input: {
     companyId: string; title: string; filename: string; mimeType: string;
     bytes: Uint8Array; folder: string;
+    /**
+     * Chi ha chiesto questo documento. `null` = l'ha creato il SISTEMA, ed è
+     * il valore che la sincronizzazione ha sempre usato.
+     *
+     * ⚠️ NON È UN DETTAGLIO DI CONTABILITÀ: il trigger `trg_audit_document_insert`
+     * (0039) scrive l'autore come `coalesce(auth.uid(), new.uploaded_by)`, e da
+     * una Edge Function `auth.uid()` è NULL perché si scrive col service role.
+     * Senza questo campo, un documento promosso da una persona finirebbe nel
+     * registro con autore ignoto — cioè indistinguibile da uno nato da solo, che
+     * è esattamente la domanda a cui D-13 esiste per rispondere.
+     */
+    uploadedBy?: string | null;
   },
 ): Promise<{ documentId: string; storagePath: string | null; reused: boolean; fileHash: string }> {
   const fileHash = await sha256Hex(input.bytes);
@@ -546,7 +558,7 @@ export async function createOrReuseDocument(
 
   const { data: inserted, error } = await sb.from('documents').insert({
     company_id: input.companyId,
-    uploaded_by: null,
+    uploaded_by: input.uploadedBy ?? null,
     title: input.title.slice(0, 300),
     original_filename: input.filename,
     mime_type: input.mimeType,
@@ -574,6 +586,105 @@ export async function createOrReuseDocument(
   }
   await sb.from('documents').update({ storage_path: storagePath }).eq('id', documentId);
   return { documentId, storagePath, reused: false, fileHash };
+}
+
+// ---- LA PROMOZIONE (D-13, PARTE B) ------------------------------------------
+
+/**
+ * ⚠️ TRE ESITI DICHIARATI, non un valore più un'eccezione. «Il messaggio non
+ * c'è» e «il messaggio non ha corpo» non sono guasti: sono risposte, e chi
+ * chiama deve deciderle una per una. Un `throw` le avrebbe rese entrambe
+ * «errore del server», che è falso e manda a cercare un problema che non c'è.
+ *
+ * ⚠️ E NON SI USA `EmailProviderError`: quella classe descrive i guasti del
+ * FORNITORE di posta, e qui il fornitore non viene nemmeno contattato — la
+ * promozione lavora su ciò che è già in archivio. È la stessa distinzione già
+ * scritta in `analyzeOne`.
+ */
+export type PromotionOutcome =
+  | { kind: 'promoted'; documentId: string; created: boolean }
+  | { kind: 'empty' }
+  | { kind: 'not_found' };
+
+/**
+ * Il corpo di un messaggio diventa un documento dell'azienda.
+ *
+ * ⚠️⚠️ È IL PUNTO IN CUI LA POSTA DIVENTA UN DATO AZIENDALE, e per questo non
+ * fa NIENT'ALTRO: nessuna analisi, nessuna chiamata al modello, nessun credito
+ * speso, nessuna chiamata al fornitore di posta. Il documento nasce
+ * `status = 'uploaded'` — che è la verità: è entrato, non è stato letto.
+ * Chi vorrà analizzarlo lo chiederà, ed è un'altra decisione con un altro costo.
+ *
+ * ⚠️ TRE PASSI, E L'ORDINE È LA GARANZIA:
+ *   1. si CHIEDE al database se il legame esiste già (`p_document_id` null).
+ *      Se sì si esce subito: nessun byte caricato su Storage, nessuna riga
+ *      creata. È B3, e costa una lettura;
+ *   2. si crea il documento CON il suo file (deduplicato per hash: se quello
+ *      stesso testo è già in archivio si riusa, ed è il caso reale di due
+ *      messaggi che portano allo stesso documento);
+ *   3. si scrive il legame dentro la funzione SQL, che è transazionale e
+ *      protetta dall'indice unico: due clic simultanei danno un documento solo.
+ *
+ * ⚠️ Fra il passo 2 e il 3 una richiesta può morire, e allora resta un documento
+ * senza legame. NON è un difetto silenzioso: al clic successivo il passo 2 lo
+ * ritrova per hash (`reused: true`) e il passo 3 lo collega. La promozione
+ * converge, invece di duplicare.
+ */
+export async function promoteMessageBody(
+  sb: ServerClient,
+  input: { messageId: string; actorUserId: string | null },
+): Promise<PromotionOutcome> {
+  // ⚠️ L'ERRORE SI LEGA E SI SOLLEVA. Senza, un guasto di rete tornerebbe
+  // `row` indefinito e questa funzione risponderebbe «il messaggio non esiste»:
+  // un guasto travestito da risposta, cioè il fallback silenzioso. Le due cose
+  // portano a gesti opposti — riprovare, oppure smettere di cercare.
+  const { data: row, error } = await sb.from('email_messages')
+    .select('id, company_id, subject, sender_email, received_at, body_text')
+    .eq('id', input.messageId).maybeSingle();
+  if (error) throw new Error('lettura del messaggio da promuovere fallita');
+  if (!row) return { kind: 'not_found' };
+
+  // Passo 1 — è già promosso? Una lettura, e nient'altro.
+  const gia = await sb.rpc('email_promote_message', {
+    p_message_id: input.messageId, p_document_id: null,
+  });
+  if (gia.error) throw new Error('lettura della promozione fallita');
+  if (typeof gia.data === 'string' && gia.data) {
+    return { kind: 'promoted', documentId: gia.data, created: false };
+  }
+
+  const bodyText = String(row.body_text ?? '').trim();
+  if (!bodyText) {
+    // ⚠️ Un corpo vuoto non produce un documento vuoto. «Non c'è niente da
+    // aggiungere» è un fatto, e va detto: un documento di zero byte in archivio
+    // sarebbe una promessa non mantenuta con l'aria di lavoro fatto.
+    return { kind: 'empty' };
+  }
+
+  // Passo 2 — il documento, con il suo file e il suo hash.
+  const bytes = new TextEncoder().encode(bodyText);
+  const doc = await createOrReuseDocument(sb, {
+    companyId: row.company_id as string,
+    title: (row.subject as string | null)
+      ?? `${(row.sender_email as string | null) ?? 'email'} — ${String(row.received_at).slice(0, 10)}`,
+    filename: 'messaggio.txt',
+    mimeType: 'text/plain',
+    bytes,
+    folder: 'email',
+    // B2: l'autore. Senza, il registro direbbe che il documento è nato da solo.
+    uploadedBy: input.actorUserId,
+  });
+
+  // Passo 3 — il legame, e «Da gestire». In una transazione, protetti dall'indice.
+  const esito = await sb.rpc('email_promote_message', {
+    p_message_id: input.messageId, p_document_id: doc.documentId,
+  });
+  if (esito.error) throw new Error('collegamento della promozione fallito');
+
+  const documentId = typeof esito.data === 'string' && esito.data ? esito.data : doc.documentId;
+  // ⚠️ `created` dice se è nato un DOCUMENTO, non se è nato il legame: se la
+  // corsa l'ha vinta l'altro clic, `documentId` è il suo e qui non è nato niente.
+  return { kind: 'promoted', documentId, created: !doc.reused && documentId === doc.documentId };
 }
 
 export async function linkDocument(

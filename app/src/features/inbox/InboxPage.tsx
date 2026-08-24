@@ -39,6 +39,7 @@ const FILTER_KEY = {
   urgent: 'inbox.filters.urgent',
   to_verify: 'inbox.filters.toVerify',
   handled: 'inbox.filters.handled',
+  dismissed: 'inbox.filters.dismissed',
 } as const;
 
 /**

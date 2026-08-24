@@ -24,6 +24,7 @@ const ATTENTION_KEY: Record<EmailAttentionStatus, `inbox.attention.${EmailAttent
   to_verify: 'inbox.attention.to_verify',
   informational: 'inbox.attention.informational',
   ignored: 'inbox.attention.ignored',
+  dismissed: 'inbox.attention.dismissed',
   handled: 'inbox.attention.handled',
 };
 

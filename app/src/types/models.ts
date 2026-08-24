@@ -1155,7 +1155,7 @@ export interface EmailMessageDetail extends EmailMessageSummary {
 }
 
 /** Un filtro della Inbox. Il valore è una chiave, mai un'etichetta tradotta. */
-export type InboxFilter = 'all' | 'to_handle' | 'urgent' | 'to_verify' | 'handled';
+export type InboxFilter = 'all' | 'to_handle' | 'urgent' | 'to_verify' | 'handled' | 'dismissed';
 
 /** Pagina di risultati con cursore keyset (§76): niente offset su dataset grandi. */
 export interface InboxPage {

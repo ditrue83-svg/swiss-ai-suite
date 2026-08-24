@@ -30,7 +30,8 @@ import type { InboxFilter } from '@/types/models';
  * un filtro senza conteggio — o un conteggio senza filtro — sarebbe il modo in
  * cui i due si disallineano.
  */
-export const INBOX_FILTERS: InboxFilter[] = ['all', 'to_handle', 'urgent', 'to_verify', 'handled'];
+export const INBOX_FILTERS: InboxFilter[] =
+  ['all', 'to_handle', 'urgent', 'to_verify', 'handled', 'dismissed'];
 
 /** «Urgenti»: scadenza già passata o entro questo numero di giorni. */
 export const URGENT_WITHIN_DAYS = 30;
@@ -116,13 +117,28 @@ export function applicaAmbito<Q>(builder: Q, query: InboxQuery): Q {
     case 'handled':
       q = q.eq('attention_status', 'handled');
       break;
+    // ⚠️ FILTRO SUO, E NON INSIEME A «Messe via» (D-13, B4). «L'ho gestita» e
+    // «non ci riguarda» sono due decisioni diverse, e un conteggio che le somma
+    // risponde a una domanda che nessuno ha fatto. Serve anche a misurare
+    // quanto il filtro dei domini (0043) sia tarato bene: molte ignorate a mano
+    // vogliono dire che entra ancora rumore.
+    case 'dismissed':
+      q = q.eq('attention_status', 'dismissed');
+      break;
     case 'all':
     default:
       // «Tutti» è la vista operativa: contiene tutto ciò che non è stato
       // messo via, comprese le comunicazioni giudicate non amministrative —
       // che restano visibili, perché un errore di classificazione non deve
       // essere irreversibile.
-      q = q.neq('attention_status', 'handled');
+      //
+      // ⚠️ Da D-13 esclude anche le IGNORATE, e la differenza con la riga
+      // precedente è chi lo ha deciso: `ignored` è il giudizio della macchina e
+      // resta in vista proprio perché può sbagliare; `dismissed` è la decisione
+      // di una persona, e rimetterle sotto gli occhi ogni giorno significa non
+      // averla presa sul serio. Restano in «Ignorate», e ne escono con un clic:
+      // marcate, mai cancellate.
+      q = q.not('attention_status', 'in', '(handled,dismissed)');
       if (query.emphasis === 'collapsed') {
         q = q.eq('attention_status', QUERY_COMPRESSI.eq.attention_status).or(QUERY_COMPRESSI.or);
       } else if (query.emphasis === 'in_evidence') {

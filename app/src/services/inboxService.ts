@@ -313,6 +313,35 @@ export const inboxService = {
    * database a ricalcolare lo stato dalla classificazione, quindi il valore
    * inviato qui è solo l'intenzione.
    */
+  /**
+   * «Ignora» / «Non ignorare più» (D-13, B4).
+   *
+   * ⚠️⚠️ MARCA, NON CANCELLA — né qui né sulla casella remota. Il messaggio
+   * resta nel database e resta leggibile sotto il filtro «Ignorate»: un
+   * ripensamento costa un clic. Cancellare la posta del cliente non è una
+   * funzione di questo prodotto (§2.2), e lo scope del token non lo
+   * permetterebbe nemmeno volendo.
+   *
+   * ⚠️ È UNO STATO SUO, non `ignored`. Quello è il giudizio del classificatore
+   * («non amministrativa»), lo portano 72 messaggi e nessuno ce l'ha messo una
+   * persona. Scrivere lo stesso valore renderebbe indistinguibile «una macchina
+   * ha concluso» da «una persona ha deciso» — e la seconda verrebbe cancellata
+   * dalla prima al primo riclassificatore che passa.
+   *
+   * Chi e quando li scrive il DATABASE (`dismissed_by`, `dismissed_at`, 0045),
+   * non questa richiesta: è la stessa disciplina di «Metti via».
+   */
+  async setDismissed(messageId: string, dismissed: boolean): Promise<void> {
+    const { error } = await requireSupabase()
+      .from('email_messages')
+      // ⚠️ Al ripristino il valore inviato è solo un'INTENZIONE: il trigger
+      // riporta a «da verificare» e azzera chi/quando. Vale la stessa regola
+      // di `setHandled`, e per la stessa ragione.
+      .update({ attention_status: dismissed ? 'dismissed' : 'to_verify' })
+      .eq('id', messageId);
+    if (error) throw new AppError(toUserMessage(error), error);
+  },
+
   async setHandled(messageId: string, handled: boolean): Promise<void> {
     const { error } = await requireSupabase()
       .from('email_messages')
