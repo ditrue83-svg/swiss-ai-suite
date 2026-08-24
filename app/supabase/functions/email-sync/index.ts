@@ -162,7 +162,13 @@ async function handleAnalyze(req: Request, body: Record<string, unknown>, intern
 
   await sb.from('email_messages').update({ processing_status: 'importing', error_code: null }).eq('id', messageId);
 
-  const counters = { messagesSeen: 0, messagesNew: 0, messagesUpdated: 0, attachmentsImported: 0, documentsCreated: 0, analysesStarted: 0 };
+  // ⚠️ `messagesExcluded` resta a zero e non è una dimenticanza: qui si analizza
+  // un messaggio GIÀ acquisito, e il filtro dei domini (0043) agisce alla
+  // radice, in `processMessage`. Da questa strada non passa nessuna acquisizione.
+  const counters = {
+    messagesSeen: 0, messagesNew: 0, messagesUpdated: 0, messagesExcluded: 0,
+    attachmentsImported: 0, documentsCreated: 0, analysesStarted: 0,
+  };
   try {
     const started = await importAndAnalyze(deps, {
       connection, adapter, accessToken, messageId, message, counters,

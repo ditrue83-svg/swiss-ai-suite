@@ -1037,6 +1037,11 @@ npm run check:auth -- --local      # la macchina di sviluppo, dichiarata invece 
 npm run check:auth:self-test       # verifica che il CONTROLLO si rifiuti quando non sa rispondere
 npm run inbox:diagnose  # «perché questa casella non si aggiorna»: stati, sync run, conteggi.
                         # Solo metadati tecnici: mai oggetti, mittenti o contenuti
+npm run inbox:domains   # il filtro dei domini (0043) sui dati veri: quanti messaggi entrano,
+                        # quanti restano fuori e da quale dominio. SOLA LETTURA — non esclude
+                        # niente, non chiama il provider, non spende credito. Usa la funzione
+                        # vera (`ammetti`), non una sua copia. Se la 0043 non è ancora
+                        # applicata lo DICE e ricava il catalogo dal file della migrazione
 npm run i18n:coverage   # testo d'interfaccia scritto a mano nel codice (esce 1 se ne trova)
 npm run i18n:coverage -- --self-test   # verifica che il RILEVATORE stesso funzioni
 npm run i18n:typography # spazi insecabili (U+202F) prima dei segni doppi francesi

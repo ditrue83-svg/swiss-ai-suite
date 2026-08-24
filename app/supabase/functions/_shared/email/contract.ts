@@ -31,10 +31,22 @@ export type EmailProcessingValue = (typeof PROCESSING_VALUES)[number];
  * della funzione SQL `email_attention_for_relevance`: il ripristino di un
  * messaggio «messo via» avviene nel database, l'assegnazione iniziale qui, e le
  * due strade devono portare allo stesso posto.
+ *
+ * ⚠️⚠️ DAL 2026-08-23 NON PRODUCE PIÙ `needs_attention` (D-13, migrazione 0043).
+ * `likely_actionable` portava a «Da gestire», e sulla casella vera quello stato
+ * conteneva 22 messaggi: 15 da `stripe.com` e 7 da `mail.anthropic.com`, cioè
+ * 22 su 22 fatture del titolare. Un classificatore può dire «questa sembra
+ * azionabile»; non può dire «la tua azienda deve occuparsene», perché non sa di
+ * chi sia il documento né se riguardi l'azienda — è la stessa distinzione che
+ * `analysisTrust.ts` fa fra confidenza di lettura e attendibilità.
+ *
+ * «Da gestire» resta nell'enum e resta raggiungibile: lo produce una PERSONA
+ * promuovendo un messaggio a documento. Lo stato di attenzione lo decide chi
+ * amministra, non la macchina.
  */
 export function attentionForRelevance(relevance: EmailRelevanceValue | null): EmailAttentionValue {
   switch (relevance) {
-    case 'likely_actionable': return 'needs_attention';
+    case 'likely_actionable': return 'to_verify';
     case 'possibly_actionable': return 'to_verify';
     case 'informational': return 'informational';
     case 'clearly_irrelevant': return 'ignored';

@@ -189,13 +189,26 @@ export interface SyncCounters {
   messagesSeen: number;
   messagesNew: number;
   messagesUpdated: number;
+  /**
+   * Visti dal provider e NON acquisiti: il mittente non è in
+   * `email_admin_domains` (0043).
+   *
+   * ⚠️ È un contatore SUO e non una sottrazione fra gli altri. «Visti 50,
+   * nuovi 2» lascia 48 non spiegati — vecchi? scartati? persi? — e la
+   * differenza fra quelle tre risposte è tutto ciò che serve sapere quando una
+   * casella smette di portare posta.
+   */
+  messagesExcluded: number;
   attachmentsImported: number;
   documentsCreated: number;
   analysesStarted: number;
 }
 
 export function newCounters(): SyncCounters {
-  return { messagesSeen: 0, messagesNew: 0, messagesUpdated: 0, attachmentsImported: 0, documentsCreated: 0, analysesStarted: 0 };
+  return {
+    messagesSeen: 0, messagesNew: 0, messagesUpdated: 0, messagesExcluded: 0,
+    attachmentsImported: 0, documentsCreated: 0, analysesStarted: 0,
+  };
 }
 
 export async function startSyncRun(
@@ -226,6 +239,7 @@ export async function finishSyncRun(
     messages_seen: input.counters.messagesSeen,
     messages_new: input.counters.messagesNew,
     messages_updated: input.counters.messagesUpdated,
+    messages_excluded: input.counters.messagesExcluded,
     attachments_imported: input.counters.attachmentsImported,
     documents_created: input.counters.documentsCreated,
     analyses_started: input.counters.analysesStarted,
@@ -361,6 +375,70 @@ export async function setMessageClassification(
     classified_at: new Date().toISOString(),
     attention_status: input.attention ?? attentionForRelevance(input.relevance),
   }).eq('id', messageId);
+}
+
+// ---- Il filtro alla radice: chi entra in `email_messages` -------------------
+
+/**
+ * L'elenco chiuso dei domini ammessi per questa azienda: il catalogo globale
+ * più le righe sue. Solo le righe VIVE — un dominio archiviato è un dominio
+ * che qualcuno ha deciso di non ammettere più.
+ *
+ * ⚠️ DUE INTERROGAZIONI E NON UNA `or(...)`. È la stessa scelta di
+ * `finance/store.ts`: la sintassi dei filtri combinati di PostgREST vuole che
+ * i valori siano sfuggiti a mano, e una riga in più qui vale più di un filtro
+ * che si rompe. Gira una volta per sincronizzazione, non una per messaggio.
+ *
+ * ⚠️ UN GUASTO DI LETTURA SOLLEVA, e non torna un elenco vuoto. Un elenco
+ * vuoto significa «niente entra»: restituirlo dopo un errore di rete
+ * fermerebbe l'acquisizione di una casella intera facendola sembrare normale.
+ * Nessun fallback silenzioso.
+ */
+export async function loadAdminDomains(
+  sb: ServerClient, companyId: string,
+): Promise<string[]> {
+  const globali = await sb.from('email_admin_domains')
+    .select('domain').is('company_id', null).is('archived_at', null);
+  if (globali.error) throw new Error('lettura del catalogo dei domini fallita');
+
+  const aziendali = await sb.from('email_admin_domains')
+    .select('domain').eq('company_id', companyId).is('archived_at', null);
+  if (aziendali.error) throw new Error('lettura dei domini dell\'azienda fallita');
+
+  const righe = [
+    ...((globali.data ?? []) as { domain: string }[]),
+    ...((aziendali.data ?? []) as { domain: string }[]),
+  ];
+  return righe.map((r) => r.domain).filter(Boolean);
+}
+
+/**
+ * Annota che da questo dominio è arrivato un messaggio che NON è entrato.
+ *
+ * ⚠️ Solo il dominio e un contatore: mai l'oggetto, mai l'indirizzo per
+ * esteso, mai il corpo. È la disciplina di `email_sync_runs` — si registra
+ * abbastanza per rispondere a «che cosa sto perdendo?», e non abbastanza per
+ * leggere la posta di qualcuno.
+ *
+ * ⚠️ L'incremento è nel database (`email_record_excluded_sender`, 0043) e non
+ * qui: leggi-somma-scrivi perderebbe conteggi appena un webhook arriva mentre
+ * la riconciliazione gira.
+ *
+ * ⚠️ UN GUASTO QUI NON FERMA LA SINCRONIZZAZIONE ma non viene ingoiato: il
+ * chiamante lo conta come errore del registro. Perdere il conteggio di un
+ * dominio escluso è meno grave che fermare l'acquisizione della posta buona —
+ * ma è comunque qualcosa che va detto, non qualcosa che non è successo.
+ */
+export async function recordExcludedSender(
+  sb: ServerClient,
+  input: { companyId: string; connectionId: string; domain: string | null },
+): Promise<void> {
+  const { error } = await sb.rpc('email_record_excluded_sender', {
+    p_company_id: input.companyId,
+    p_connection_id: input.connectionId,
+    p_domain: input.domain ?? '',
+  });
+  if (error) throw new Error('registrazione del mittente escluso fallita');
 }
 
 /** Il mittente ha già prodotto posta amministrativa per questa azienda (§30). */
