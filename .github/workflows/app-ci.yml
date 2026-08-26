@@ -108,6 +108,19 @@ jobs:
       - name: Installazione riproducibile
         run: npm ci
 
+      # Lint e formato girano PRIMA della suite: costano pochi secondi e, se
+      # devono fallire, lo fanno subito. ⚠️ Al 2026-08-26 entrambi sono in
+      # modalità di INTRODUZIONE: il lint ha le regole non ancora rispettate
+      # dal codice esistente a "warn" (elenco e TODO in app/eslint.config.js) e
+      # il format check copre solo i file fuori dagli alberi mai formattati
+      # (elenco e TODO in app/.prettierignore). Un rosso qui è reale — sono i
+      # WARN a essere temporanei, non il cancello.
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
       # `ci` = quality + unit. Il runner si ferma al primo rosso (è il
       # comportamento predefinito) e propaga l'exit code.
       - name: Suite senza credenziali

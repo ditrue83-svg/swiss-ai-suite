@@ -1,5 +1,7 @@
 # AI-Swisse
 
+[![Licenza: MIT](https://img.shields.io/badge/Licenza-MIT-yellow.svg)](LICENSE)
+
 SaaS per le PMI svizzere: legge la posta amministrativa che arriva in italiano, tedesco e
 francese, ne ricava scadenze, importi e cose da fare, e tiene insieme documenti e lavoro.
 
@@ -126,6 +128,23 @@ completa.
 
 Il dettaglio di ciascun punto, con le trappole già incontrate, sta in
 [`app/README.md`](app/README.md) → «Limitazioni attuali (dichiarate, non nascoste)».
+
+## Contribuire
+
+Il codice è rilasciato con [licenza MIT](LICENSE). Le regole di lavoro complete stanno in
+[`app/CLAUDE.md`](app/CLAUDE.md); le tre che valgono per ogni pull request:
+
+- **Un branch per intervento, mai su `main`.** Il nome del branch dice cosa fa (`fix/…`,
+  `improve/…`, `chore/…`).
+- **Le porte della CI devono essere verdi**: `npm run lint` e `npm run format:check` in `app/`
+  sono requisiti per unire una PR, come `npm run ci`. Un controllo rosso non si nasconde e non
+  si aggira: si corregge, o si spiega perché resta rosso.
+- **La documentazione si aggiorna con il codice.** Se un comportamento cambia, cambia anche il
+  documento che lo descrive (vedi «Dove sta la documentazione»).
+
+Per segnalare un difetto o proporre una funzione ci sono i
+[modelli di issue](.github/ISSUE_TEMPLATE/); le pull request seguono il
+[modello dedicato](.github/PULL_REQUEST_TEMPLATE.md).
 
 ## Disclaimer
 
