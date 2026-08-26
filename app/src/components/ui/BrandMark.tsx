@@ -14,13 +14,13 @@
 // un secondo marchio. Ora il segno è UNO: i contorni stanno in `brandArt.ts`,
 // copiati dall'artefatto della vetrina e sorvegliati da `npm run brand:check`.
 //
-// ⚠️ IL BLU DEL MARCHIO NON È IL BLU D'AZIONE, e la distinzione è deliberata.
-// `--brand` (#00AEEF) è il colore del titolare; `--accent` resta il blu più
-// fondo che serve ai pulsanti e ai link, dove il testo deve raggiungere il
-// contrasto AA. Un marchio non è testo corrente e non ha quella soglia da
-// rispettare — imporgliela significherebbe cambiare il colore dell'azienda per
-// una regola che non lo riguarda. Prima del 2026-08-14 i due blu divergevano e
-// la divergenza era dichiarata: adesso il marchio ha il suo, e l'azione il suo.
+// ⚠️ DAL 2026-08-26 IL BLU DEL MARCHIO È IL BLU D'AZIONE, e la scelta è di
+// Andrea: `--brand` e `--accent` sono lo stesso azzurro #37AEEF. Prima il
+// marchio portava #00AEEF, il blu dell'immagine originale del titolare, e la
+// distinzione era deliberata — ma due azzurri che si somigliano restano due
+// segni. I TOKEN restano separati perché i mestieri lo restano: il marchio è
+// un disegno e non ha la soglia di contrasto del testo da rispettare, mentre
+// chi scrive testo usa `--accent-text` e `--on-accent`, non `--brand-*`.
 //
 // ⚠️ IL NOME NON SI SCRIVE A MANO. Non compare più come testo — è un disegno —
 // ma resta il NOME ACCESSIBILE dell'immagine, e viene da `brand.name` dei
