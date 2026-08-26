@@ -156,14 +156,18 @@ section('3. Favicon — il marchio è uno');
   check('i token --brand e --brand-ink esistono in app.css', brand !== '' && brandInk !== '');
   check(`il campo della favicon è --brand`, svg.includes(`fill='${brand}'`), `atteso fill='${brand}'`);
   check(`la sigla è --brand-ink`, svg.includes(`fill='${brandInk}'`), `atteso fill='${brandInk}'`);
-  // ⚠️ E il blu del marchio NON deve essere quello dell'azione: se un giorno
-  // qualcuno «semplificasse» facendo puntare `--brand` a `--accent`, il difetto
-  // del 2026-08-14 tornerebbe senza che nulla protesti.
+  // ⚠️ DAL 2026-08-26 IL BLU DEL MARCHIO È IL BLU D'AZIONE, e la scelta è di
+  // Andrea: `--brand` e `--accent` portano lo stesso azzurro #37AEEF. I token
+  // restano due perché i mestieri restano due — il marchio è un disegno, il
+  // testo ha soglie di contrasto — ma il valore è uno: due azzurri che si
+  // somigliano sono due segni. Se un giorno qualcuno tornasse a separarli,
+  // il cambio va fatto nelle due sedi insieme (lo sorveglia `brand:check`),
+  // non cambiando un solo valore qui.
   const accent = appCss.match(/--accent:\s*([^;]+);/)?.[1].trim() ?? '';
   check(
-    'il blu del marchio è distinto dal blu d\'azione',
-    brand !== '' && brand !== accent && !brand.includes('--accent'),
-    'il marchio ha il colore del titolare, l\'azione quello che regge il contrasto: un token solo per due mestieri li fa divergere di nuovo',
+    'il blu del marchio è il blu d\'azione — un solo azzurro, deciso il 2026-08-26',
+    brand !== '' && brand === accent && brand.toLowerCase() === '#37aeef',
+    'marchio e azione portano lo stesso #37AEEF: chi li separa o ne cambia il valore lo fa nelle due sedi insieme',
   );
   check('nessun gradiente residuo', !svg.includes('linearGradient'));
 
@@ -238,7 +242,8 @@ section('3c. Il marchio ha DUE sedi, e finora non lo ricordava nessuno');
   // diceva che la differenza era «per scelta»: erano due marchi, e uno dei due
   // non era di nessuno. Adesso i contorni sono gli STESSI (copiati in
   // `brandArt.ts`, confrontati carattere per carattere da `npm run brand:check`)
-  // e il colore è lo stesso `#00AEEF`, che qui si chiama `--brand`.
+  // e il colore è lo stesso `#37AEEF`, che qui si chiama `--brand` — e dal
+  // 2026-08-26 è anche `--accent`: un solo azzurro, scelto da Andrea.
   //
   // COME. Un'impronta di ciò che DEFINISCE il segno — le dichiarazioni CSS
   // delle regole `.brand-*` e le classi che il componente monta — confrontata
@@ -297,10 +302,13 @@ section('3c. Il marchio ha DUE sedi, e finora non lo ricordava nessuno');
   ].find((p) => existsSync(p));
   if (vetrina) {
     const svg = readFileSync(vetrina, 'utf8');
+    // Il blu atteso si LEGGE dal token dell'app, non si riscrive qui: un valore
+    // letterale in questa riga è rimasto indietro una volta già (2026-08-26).
+    const bluMarchio = senzaCommenti.match(/--brand:\s*([^;]+);/)?.[1].trim() ?? '';
     check(
-      'la vetrina porta ancora il blu del marchio (#00AEEF) e il blocco della sigla',
-      /#00AEEF/i.test(svg) && /<rect/i.test(svg),
-      'il logo della vetrina è cambiato: allinea il marchio dell\'app o dichiara la divergenza',
+      'la vetrina porta il blu del marchio (--brand) e il blocco della sigla',
+      bluMarchio !== '' && svg.toLowerCase().includes(bluMarchio.toLowerCase()) && /<rect/i.test(svg),
+      `il logo della vetrina non porta ${bluMarchio || '(un --brand leggibile)'}: allinea il marchio dell'app o dichiara la divergenza`,
     );
   } else {
     console.log(`  ${DIM}! seconda sede non raggiungibile da questo albero:`

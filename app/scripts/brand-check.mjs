@@ -54,8 +54,8 @@ function check(nome, ok, dettaglio = '') {
 export function leggiMarchio(svg) {
   const tracciati = [...svg.matchAll(/\sd="([^"]+)"/g)].map((m) => m[1]);
   const rect = svg.match(/<rect([^>]*)>/)?.[1] ?? '';
-  const campo = rect.match(/fill="([^"]+)")/)?.[1] ?? '';
-  const viewBox = svg.match(/viewBox="([^"]+)")/)?.[1] ?? '';
+  const campo = rect.match(/fill="([^"]+)"/)?.[1] ?? '';
+  const viewBox = svg.match(/viewBox="([^"]+)"/)?.[1] ?? '';
   return { tracciati, campo, viewBox };
 }
 

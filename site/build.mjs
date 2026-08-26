@@ -40,10 +40,12 @@ const OUT = join(ROOT, 'dist');
 
 // ---------------------------------------------------------------------------
 // IL LOGO DEL TITOLARE — l'immagine fornita il 2026-07-29, ricostruita in
-// vettoriale: blocco #00AEEF con «AI» bianco, wordmark «Swisse» in Poppins
-// (glifi convertiti in tracciati: nessun font a runtime). I COLORI SONO DEL
-// MARCHIO, non dei token: è l'eccezione decisa dal titolare, documentata nel
-// README. Si inlinea nelle pagine (così vive anche nelle autonome, dove i
+// vettoriale: blocco #37AEEF (dal 2026-08-26 — prima #00AEEF) con «AI» bianco,
+// wordmark «Swisse» in Poppins
+// (glifi convertiti in tracciati: nessun font a runtime). IL COLORE È DEL
+// MARCHIO — e dal 2026-08-26 coincide con `--accent`, per scelta del titolare:
+// il disegno resta esente dalle soglie di contrasto del testo (WCAG 1.4.3 non
+// si applica ai loghi), ma il valore è uno solo, documentato nel README. Si inlinea nelle pagine (così vive anche nelle autonome, dove i
 // percorsi esterni non risolvono); i file restano pubblici in /logo-*.svg.
 // La variante scura ha il wordmark bianco: serve sui fondi blu (anteprima
 // social), dove l'azzurro del testo non leggerebbe.
