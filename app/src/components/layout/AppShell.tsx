@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
+import { LEGACY_MODULES_ENABLED } from '@/lib/env';
 import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
@@ -37,7 +38,9 @@ function NavList({ onNavigate, onSettings }: { onNavigate?: () => void; onSettin
 
   return (
     <nav className="nav" aria-label={t('nav.mainNav')}>
-      {NAV.filter((entry) => isSection(entry) || !entry.adminOnly || isAdmin).map((entry, i) =>
+      {NAV.filter((entry) =>
+        isSection(entry) || (!entry.adminOnly || isAdmin) && (!entry.legacyOnly || LEGACY_MODULES_ENABLED),
+      ).map((entry, i) =>
         isSection(entry) ? (
           <div className="nav-section" key={`s-${i}`}>{t(entry.sectionKey)}</div>
         ) : (

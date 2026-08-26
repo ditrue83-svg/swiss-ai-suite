@@ -20,6 +20,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonLine } from '@/components/ui/states';
 import { toUserMessage } from '@/lib/errors';
+import { LEGACY_MODULES_ENABLED } from '@/lib/env';
 import { useI18n, useT, type TKey } from '@/i18n';
 import { relativeTime } from '@/features/notifications/notificationFormat';
 import { useMembers } from '@/features/tasks/useMembers';
@@ -179,7 +180,10 @@ export function AutomationsPage() {
         <div className="card mt-16">
           <div className="card-title">{t('automations.templatesTitle')}</div>
           <p className="muted-sm">{t('automations.templatesIntro')}</p>
-          {AUTOMATION_TEMPLATES.map((tpl) => (
+          {/* I modelli `legacyOnly` (CRM, D-10) spariscono insieme ai loro
+              moduli: offrire «Usa modello» per un'area nascosta sarebbe una
+              porta che porta a una stanza chiusa. */}
+          {AUTOMATION_TEMPLATES.filter((tpl) => LEGACY_MODULES_ENABLED || !tpl.legacyOnly).map((tpl) => (
             <div className="list-row" key={tpl.id}>
               <div className="list-main">
                 <div className="list-title">{t(tpl.nameKey)}</div>

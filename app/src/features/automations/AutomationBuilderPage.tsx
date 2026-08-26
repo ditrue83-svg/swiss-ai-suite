@@ -27,6 +27,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonLine } from '@/components/ui/states';
 import { toUserMessage } from '@/lib/errors';
+import { LEGACY_MODULES_ENABLED } from '@/lib/env';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { useMembers } from '@/features/tasks/useMembers';
 import {
@@ -37,8 +38,8 @@ import {
   type WorkflowAction, type WorkflowCondition,
 } from './registry';
 import {
-  TRIGGERS, actionOutcomeKey, conditionReasonKey, describeCondition, operatorLabelKey,
-  pickLabel, summarySentence, type NameResolver,
+  actionOutcomeKey, conditionReasonKey, describeCondition, operatorLabelKey,
+  pickLabel, summarySentence, triggersOffered, type NameResolver,
 } from './automationModel';
 import type { AutomationSample, DocumentTag } from '@/types/models';
 
@@ -200,7 +201,11 @@ export function AutomationBuilderPage() {
           <label htmlFor="wf-trigger">{t('automations.triggerField')}</label>
           <select id="wf-trigger" value={triggerType}
             onChange={(e) => changeTrigger(e.target.value as AutomationEventType)}>
-            {TRIGGERS.map((tr) => (
+            {/* `triggersOffered(triggerType)`: gli inneschi dei moduli fuori
+                perimetro non si offrono (D-10), ma quello di una regola
+                esistente resta — una tendina che non contiene il valore che
+                mostra è una tendina che mente. */}
+            {triggersOffered(LEGACY_MODULES_ENABLED, triggerType).map((tr) => (
               <option key={tr.key} value={tr.key}>{t(tr.labelKey as TKey)}</option>
             ))}
           </select>

@@ -73,7 +73,8 @@ import { dirname, join } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 import {
-  AUTOMATION_TEMPLATES, describeCondition, summarySentence, type NameResolver,
+  AUTOMATION_TEMPLATES, describeCondition, isLegacyTrigger, summarySentence,
+  triggersOffered, type NameResolver,
 } from '../src/features/automations/automationModel';
 import { it } from '../src/i18n/locales/it';
 import type { TFunction, TKey } from '../src/i18n';
@@ -760,6 +761,24 @@ section('13 · Il CRM dentro le automazioni (0026 — §136–§139)');
   ok(!AUTOMATION_TEMPLATES.some((x) => x.triggerType === 'crm_organization_created'
     && x.id.includes('inactive')),
     'nessun modello finge di sorvegliare l’inattività di un cliente (§139 non è implementabile oggi)');
+
+  // (a-bis) Blocco C / D-10 (2026-08-26): i modelli sulle trattative e gli
+  //     inneschi dei moduli fuori perimetro restano nel codice ma si nascondono
+  //     in UI dietro `VITE_LEGACY_MODULES`. Il flag non entra in questo file:
+  //     le funzioni sono pure e lo ricevono come parametro.
+  ok(AUTOMATION_TEMPLATES.filter((x) => x.legacyOnly).map((x) => x.id).sort().join(',')
+      === 'crm_follow_up_overdue,crm_opportunity_unowned',
+    'solo i due modelli sulle trattative portano la marcatura legacy (D-10)');
+  ok(isLegacyTrigger('crm_follow_up_due') && isLegacyTrigger('finance_item_ready')
+    && isLegacyTrigger('contract_verified') && !isLegacyTrigger('document_analysis_completed')
+    && !isLegacyTrigger('subsidy_call_opened') && !isLegacyTrigger('task_created'),
+    'isLegacyTrigger riconosce gli inneschi dei tre moduli fuori perimetro');
+  ok(triggersOffered(false).length > 0 && triggersOffered(false).every((t) => !isLegacyTrigger(t.key)),
+    'con i moduli nascosti il costruttore non offre inneschi legacy');
+  ok(triggersOffered(true).length === TRIGGERS.length,
+    'con VITE_LEGACY_MODULES=on il costruttore offre tutto il registro');
+  ok(triggersOffered(false, 'crm_follow_up_due').some((t) => t.key === 'crm_follow_up_due'),
+    'l’innesco di una regola esistente resta nell’elenco: una tendina non mente');
 
   // (b) ⚠️ IL DIFETTO CHE QUESTO CASO SORVEGLIA: un'attività creata da una
   //     regola CRM deve NASCERE COLLEGATA alla controparte. Fino al 2026-07-30

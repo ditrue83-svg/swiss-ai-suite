@@ -28,6 +28,25 @@ import type {
 
 export { TRIGGERS, ACTIONS, findAction, findField, findTrigger };
 
+// Blocco C / D-10: gli inneschi dei moduli fuori perimetro (CRM, Finanze,
+// Contratti) non si OFFRONO nel costruttore quando i moduli sono nascosti.
+// Il registro condiviso con il motore resta intatto: le regole esistenti
+// continuano a funzionare e a essere descritte — sparisce solo la porta.
+const LEGACY_TRIGGER_PREFIXES = ['crm_', 'finance_', 'contract_'];
+export function isLegacyTrigger(key: string): boolean {
+  return LEGACY_TRIGGER_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
+
+/** Gli inneschi offerti nel costruttore. Il flag arriva come PARAMETRO: questo
+ *  file resta puro e leggibile dagli script di prova, che non hanno
+ *  `import.meta.env`. Quello già scelto — la modifica di una regola esistente —
+ *  resta nell'elenco anche se legacy: una tendina che non contiene il valore
+ *  che sta mostrando è una tendina che mente. */
+export function triggersOffered(legacyEnabled: boolean, current?: string): readonly TriggerDef[] {
+  if (legacyEnabled) return TRIGGERS;
+  return TRIGGERS.filter((tr) => !isLegacyTrigger(tr.key) || tr.key === current);
+}
+
 /**
  * Risolve `percorso.valore` nei dizionari. Se la chiave non esiste torna il
  * valore GREZZO, non un'etichetta inventata: meglio vedere `contract_related` e
@@ -341,6 +360,9 @@ export interface AutomationTemplate {
   conditions: WorkflowCondition[];
   /** L'azione, già pronta. `needsTag` = va scelta o creata un'etichetta. */
   actions: WorkflowAction[];
+  /** Il modello appartiene a un modulo fuori perimetro (D-10): nascosto a
+   *  meno che `VITE_LEGACY_MODULES=on`. */
+  legacyOnly?: boolean;
   needsTag?: boolean;
   /** Il modello lascia un importo da decidere: la cifra la mette l'azienda. */
   needsAmount?: boolean;
@@ -442,6 +464,7 @@ export const AUTOMATION_TEMPLATES: readonly AutomationTemplate[] = [
   // -------------------------------------------------------------------------
   {
     id: 'crm_follow_up_overdue',
+    legacyOnly: true,
     nameKey: 'automations.templates.crmFollowUpName',
     descriptionKey: 'automations.templates.crmFollowUpDesc',
     triggerType: 'crm_follow_up_due',
@@ -478,6 +501,7 @@ export const AUTOMATION_TEMPLATES: readonly AutomationTemplate[] = [
   },
   {
     id: 'crm_opportunity_unowned',
+    legacyOnly: true,
     nameKey: 'automations.templates.crmUnownedName',
     descriptionKey: 'automations.templates.crmUnownedDesc',
     triggerType: 'crm_opportunity_created',

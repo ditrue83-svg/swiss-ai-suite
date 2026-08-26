@@ -32,6 +32,10 @@ export interface NavItem {
   icon: IconName;
   path: string;
   adminOnly?: boolean;
+  /** Modulo fuori perimetro (D-10, Blocco C): nascosto a meno che
+   *  `VITE_LEGACY_MODULES=on` (vedi `lib/env.ts`). Nasconde la porta, non
+   *  protegge la rotta: il cancello vero resta la RLS. */
+  legacyOnly?: boolean;
   /** Altri prefissi di rotta su cui la voce risulta ATTIVA: «Scadenze e
    *  attività» resta evidenziata anche su `/calendario`, che è la stessa
    *  area guardata in un altro modo — senza questo, aprire il calendario
@@ -79,17 +83,17 @@ export const NAV: NavEntry[] = [
   // e «Dashboard».
   { id: 'subsidy', labelKey: 'nav.incentives', icon: 'banknote', path: '/incentivi' },
 
-  // ARCHIVIO — dove si RITROVA ciò che è stato capito. Prima la memoria
-  // intera (Documenti), poi le sue letture per genere: che cosa è stato
-  // pattuito (Contratti), con chi (Clienti), quanto (Finanze).
+  // ARCHIVIO — dove si RITROVA ciò che è stato capito. Oggi solo la memoria
+  // intera (Documenti): le letture per genere — Contratti, Clienti, Finanze —
+  // sono moduli fuori perimetro (D-10, Blocco C), nascosti da `legacyOnly`.
   { sectionKey: 'nav.sectionArchive' },
   { id: 'documents', labelKey: 'nav.documents', icon: 'archive', path: '/documenti' },
-  { id: 'contracts', labelKey: 'nav.contracts', icon: 'fileSignature', path: '/contratti' },
+  { id: 'contracts', labelKey: 'nav.contracts', icon: 'fileSignature', path: '/contratti', legacyOnly: true },
   // ⚠️ L'icona dei Clienti è `user` e non `building`: `building` è già
   // «Azienda» sotto Impostazioni, e due voci con la stessa icona si
   // confondono a colpo d'occhio — la regola scritta in Icon.tsx.
-  { id: 'clients', labelKey: 'nav.clients', icon: 'user', path: '/clienti' },
-  { id: 'finance', labelKey: 'nav.finance', icon: 'receipt', path: '/finanze' },
+  { id: 'clients', labelKey: 'nav.clients', icon: 'user', path: '/clienti', legacyOnly: true },
+  { id: 'finance', labelKey: 'nav.finance', icon: 'receipt', path: '/finanze', legacyOnly: true },
 ];
 
 // IMPOSTAZIONI — in fondo alla barra, e dal 2026-08-17 dietro una FINESTRA.

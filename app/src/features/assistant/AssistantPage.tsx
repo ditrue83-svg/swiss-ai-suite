@@ -32,6 +32,7 @@ import { Button, EmptyCta, ErrorState, Spinner } from '@/components/ui/states';
 import { Icon } from '@/components/ui/Icon';
 import { useToast } from '@/components/ui/Toast';
 import { toUserMessage } from '@/lib/errors';
+import { LEGACY_MODULES_ENABLED } from '@/lib/env';
 import { formatDate } from '@/lib/format';
 import { assistantService } from '@/services/assistantService';
 import type {
@@ -404,7 +405,16 @@ export function AssistantPage() {
                 subtitle={t('assistant.subtitle')}
                 action={
                   <div className="as-suggestions">
-                    {(['attention', 'finance', 'contracts', 'tasks', 'clients'] as const).map((k) => (
+                    {/* Le domande verso i moduli fuori perimetro (D-10) non si
+                        propongono quando i moduli sono nascosti: suggerire una
+                        domanda su un'area invisibile sarebbe una porta verso
+                        una stanza chiusa. Le risposte su quei dati restano
+                        possibili a chi le chiede — l'assistente legge, e i
+                        dati esistono ancora. */}
+                    {(LEGACY_MODULES_ENABLED
+                      ? ['attention', 'finance', 'contracts', 'tasks', 'clients'] as const
+                      : ['attention', 'tasks'] as const
+                    ).map((k) => (
                       <button key={k} type="button" className="as-suggestion" onClick={() => void ask(t(`assistant.suggestions.${k}` as never))}>
                         {t(`assistant.suggestions.${k}` as never)}
                       </button>

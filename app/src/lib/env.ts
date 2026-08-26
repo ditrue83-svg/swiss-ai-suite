@@ -22,6 +22,15 @@ const rawMode = (import.meta.env.VITE_ANALYSIS_PROVIDER ?? 'ai').trim();
 export const ANALYSIS_PROVIDER: AnalysisProviderMode = rawMode === 'deterministic' ? 'deterministic' : 'ai';
 
 // ---------------------------------------------------------------------------
+// Blocco C / decisione D-10: Contratti, Clienti e Finanze (e i due modelli di
+// automazione sulle trattative) sono FUORI dal perimetro dichiarato — restano
+// nel codice ma non ricevono più sviluppo. Il flag li tiene nascosti senza
+// cancellarli: le rotte restano registrate (una rotta nascosta non è un
+// permesso — il cancello vero è la RLS), spariscono solo le porte in UI.
+// Default: nascosti. `VITE_LEGACY_MODULES=on` li riaccende per lavorarci.
+export const LEGACY_MODULES_ENABLED = (import.meta.env.VITE_LEGACY_MODULES ?? '').trim() === 'on';
+
+// ---------------------------------------------------------------------------
 // URL pubblico CANONICO dell'applicazione, usato per costruire i link inviati
 // per email (conferma registrazione, reimposta password).
 //
