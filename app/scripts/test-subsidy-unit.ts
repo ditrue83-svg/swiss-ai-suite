@@ -75,7 +75,7 @@ import { normalizeForHash } from '../supabase/functions/_shared/subsidy/hash.ts'
 //    tutto il resto: le sue funzioni decidono che cosa una persona LEGGE, e un
 //    errore lì non rompe niente — dice una cosa falsa con l'aria di un dato.
 import {
-  OPPORTUNITY_VIEWS, INCENTIVE_TABS, TAB_PARAM, tabFromParam,
+  OPPORTUNITY_VIEWS, INCENTIVE_TABS, TAB_PARAM, tabFromParam, tabParamFromParams,
   filtersFromParams, paramsFromFilters, deadlineNotice, nextStep, caseDeadline,
   checklistProgress, canMarkReady, nextStatuses, validateProject, plural,
   subsidyErrorKey, summaryNotices, daysBetweenDates, todayISO, isUuid,
@@ -804,6 +804,17 @@ check('la scheda predefinita NON compare nell\'indirizzo',
 check('le altre schede sì', paramsFromFilters({
   tab: 'cases', view: 'all', projectId: null, archived: false, offset: 0,
 }).get('scheda') === 'pratiche');
+// ⚠️ Il modulo 1.0 scriveva `?tab=catalogo` — parametro inglese, valori
+//    inglesi. I collegamenti vecchi devono ancora aprire la scheda chiesta:
+//    un indirizzo condiviso che apre la scheda sbagliata senza dirlo è una
+//    promessa rotta (incongruenza n. 3, chiusa il 26.08.2026).
+check('il «tab» inglese del modulo 1.0 resta compreso come alias',
+  tabParamFromParams(new URLSearchParams('tab=catalog')) === 'catalog'
+  && tabParamFromParams(new URLSearchParams('tab=projects')) === 'projects');
+check('un valore legacy sconosciuto apre le Opportunità, non una scheda vuota',
+  tabParamFromParams(new URLSearchParams('tab=pippo')) === 'opportunities');
+check('fra i due nomi vince «scheda», il nome italiano di oggi',
+  tabParamFromParams(new URLSearchParams('scheda=pratiche&tab=catalog')) === 'cases');
 // ⚠️ `?vista=pippo` NON deve diventare un filtro qualsiasi: diventa «tutte».
 check('una vista sconosciuta nell\'indirizzo diventa «tutte»',
   filtersFromParams(new URLSearchParams('vista=pippo')).view === 'all');

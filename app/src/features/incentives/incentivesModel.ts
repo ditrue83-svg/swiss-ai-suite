@@ -100,6 +100,26 @@ export function tabFromParam(value: string | null): IncentiveTab {
   return 'opportunities';
 }
 
+// Il modulo 1.0 chiamava il parametro `tab` e ci scriveva i nomi INGLESI
+// delle schede: `?tab=catalogo`. I collegamenti vecchi (segnalibri, email,
+// documenti) non smettono di esistere quando un parametro cambia nome, e un
+// alias che apre la scheda chiesta costa una riga; un indirizzo che apre la
+// scheda sbagliata senza dirlo costa la fiducia in chi l'ha condiviso.
+const LEGACY_TAB_PARAM: Record<string, IncentiveTab> = {
+  opportunities: 'opportunities',
+  projects: 'projects',
+  cases: 'cases',
+  catalog: 'catalog',
+};
+
+/** Il nome italiano (`scheda`) vince; il `tab` inglese del modulo 1.0 resta
+ *  compreso come alias, mai scritto negli indirizzi nuovi. */
+export function tabParamFromParams(params: URLSearchParams): IncentiveTab {
+  const canonical = params.get('scheda');
+  if (canonical !== null) return tabFromParam(canonical);
+  return LEGACY_TAB_PARAM[params.get('tab') ?? ''] ?? 'opportunities';
+}
+
 // ---------------------------------------------------------------------------
 // Le viste delle opportunità
 //
@@ -145,7 +165,7 @@ export function filtersFromParams(params: URLSearchParams): IncentiveFilters {
   const view = params.get('vista');
   const offset = Number(params.get('da') ?? '0');
   return {
-    tab: tabFromParam(params.get('scheda')),
+    tab: tabParamFromParams(params),
     view: OPPORTUNITY_VIEWS.includes(view as OpportunityView) ? (view as OpportunityView) : 'all',
     // ⚠️ SOLO un identificativo BEN FORMATO diventa un filtro. Con `?progetto=abc`
     //    la funzione SQL riceveva `abc` come uuid e PostgREST rispondeva
