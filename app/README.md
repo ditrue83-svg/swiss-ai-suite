@@ -910,6 +910,15 @@ npm run typecheck:functions  # solo supabase/functions/ (tsconfig.functions.json
                              # ⚠️ Config separato perché le funzioni girano su Deno:
                              # `"types": []` toglie i globali di Node, che là non
                              # esistono. Vedi «Il typecheck delle Edge Function».
+npm run lint            # ESLint (flat config, TypeScript + React). ⚠️ Le regole che il
+                        # codice esistente non rispetta ancora sono a "warn": elenco e
+                        # piano di smaltimento in eslint.config.js. Cancello in CI.
+npm run lint:fix        # la correzione automatica di lint: riscrive i file
+npm run format:check    # Prettier in sola lettura. ⚠️ Copre solo i file fuori dagli
+                        # alberi mai formattati: elenco e piano in .prettierignore.
+                        # Cancello in CI.
+npm run format          # la riformattazione vera: riscrive i file. Da eseguire in una
+                        # PR dedicata, mai mescolata ad altre modifiche
 npm run test:phase1     # integrazione Fase 1 su DB reale (26 test)
 npm run test:phase2     # immutabilità snapshot + sicurezza + analisi reale (36 test)
 npm run test:async      # processing asincrono reale, non simulato (17 test)

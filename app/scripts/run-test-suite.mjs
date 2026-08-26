@@ -562,6 +562,15 @@ const FUORI_SUITE = {
   'test:eval': 'alias di `suite eval`: è questo runner',
   'test:all': 'alias di `suite all`: è questo runner',
   ci: 'alias di `suite quality unit`: è questo runner',
+  // Lint e formato sono cancelli della CI, non passi di questo runner:
+  // app-ci.yml li esegue come step dedicati («Lint», «Format check») PRIMA
+  // della suite, perché costano secondi e devono fallire subito, non dopo
+  // venti minuti di test. Ripeterli qui sarebbe eseguirli due volte.
+  lint: 'cancello di CI: app-ci.yml lo esegue come step dedicato «Lint» prima della suite',
+  'format:check': 'cancello di CI: app-ci.yml lo esegue come step dedicato «Format check» prima della suite',
+  // Gli strumenti di CORREZIONE: riscrivono i file, non provano un invariante.
+  'lint:fix': 'corregge i file (eslint --fix): scrive, non prova un invariante',
+  format: 'riformatta i file (prettier --write): scrive, non prova un invariante',
 };
 
 /**

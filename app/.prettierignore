@@ -1,0 +1,34 @@
+# ============================================================================
+# Prettier — esclusioni.
+#
+# ⚠️ TODO(cleanup): gli alberi marcati qui sotto sono esclusi PERCHÉ MAI
+# FORMATTATI (366 file non conformi al 2026-08-26, misurato con
+# `npm run format:check`). La formattazione di massa è volutamente ESCLUSA
+# dalla PR che introduce Prettier — sarebbe un diff illeggibile — e va fatta
+# in una PR a sé (`npm run format`), rimuovendo queste voci una alla volta.
+# Finché restano, `format:check` copre solo ciò che non è elencato qui: i file
+# di configurazione e qualunque file nuovo fuori dagli alberi esclusi.
+# ============================================================================
+
+# Mai formattati — da coprire con la PR di formattazione iniziale (TODO sopra)
+src/
+scripts/
+supabase/
+types/
+docs/
+index.html
+README.md
+tsconfig.functions.json
+
+# Generati e dipendenze
+dist/
+node_modules/
+package-lock.json
+
+# Bundle SQL generato dalle migrazioni (npm run db:bundle): la forma la decide
+# il bundler, non Prettier.
+supabase/full-setup.sql
+
+# Il prototipo statico vive alla radice del repository, fuori da app/; la voce
+# resta per le esecuzioni di Prettier dalla radice.
+html/
