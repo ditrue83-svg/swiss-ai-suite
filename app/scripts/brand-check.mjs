@@ -71,10 +71,10 @@ export function leggiArte(sorgente) {
 // ---------------------------------------------------------------------------
 if (process.argv.includes('--self-test')) {
   console.log('\n  brand:check — autoverifica del rilevatore\n');
-  const finto = '<svg viewBox="0 0 10 10"><rect fill="#00AEEF"/><path d="M1 2Z"/><path d="M3 4Z"/></svg>';
+  const finto = '<svg viewBox="0 0 10 10"><rect fill="#37AEEF"/><path d="M1 2Z"/><path d="M3 4Z"/></svg>';
   const m = leggiMarchio(finto);
   check('legge i due tracciati', m.tracciati.length === 2 && m.tracciati[0] === 'M1 2Z');
-  check('legge il campo del rettangolo', m.campo === '#00AEEF');
+  check('legge il campo del rettangolo', m.campo === '#37AEEF');
   check('legge il riquadro', m.viewBox === '0 0 10 10');
   check('un SVG senza rettangolo non inventa un colore', leggiMarchio('<svg><path d="M0Z"/></svg>').campo === '');
   const arte = leggiArte("export const TRACCIATO_SIGLA =\n  'M1 2Z';\nexport const TRACCIATO_PAROLA =\n  'M3 4Z';\n");

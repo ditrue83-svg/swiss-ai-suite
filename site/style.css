@@ -227,7 +227,8 @@ p, li { text-wrap: pretty; }
 }
 .brand { display: flex; align-items: center; gap: 12px; color: inherit; }
 .brand:hover { text-decoration: none; }
-/* Il logo del titolare, inline e con i SUOI colori (#00AEEF): è il marchio,
+/* Il logo del titolare, inline e con il SUO colore (#37AEEF — dal 2026-08-26
+   lo stesso azzurro dell'azione): è il marchio,
    non un componente — non segue i token né il tema, come non li seguirebbe
    un'immagine. I loghi sono esenti dai requisiti di contrasto (WCAG 1.4.3). */
 .brand-logo { height: 34px; width: auto; display: block; flex-shrink: 0; }

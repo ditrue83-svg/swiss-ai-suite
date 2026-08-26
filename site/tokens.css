@@ -55,27 +55,25 @@
   --accent-soft: hsl(201, 65%, 95%);   /* fondi tenui, chip informativi                             */
   --accent-line: hsl(201, 58%, 82%);   /* bordo di ciò che sta su --accent-soft                     */
 
-  /* --- Il colore del MARCHIO, che non è il colore dell'azione ---------------
-     ⚠️ #00AEEF è il blu del titolare: quello dei contorni che la vetrina serve
-     in `site/static/logo-ai-swisse.svg` e che la scheda del browser mostra
-     nella favicon. NON è `--accent`, e la differenza è deliberata: l'accento
-     deve reggere il contrasto AA perché ci si scrive sopra e ci si clicca; un
-     marchio è un disegno, non testo corrente, e non ha quella soglia da
-     rispettare. Fino al 2026-08-14 l'app ricomponeva il segno sull'accento e i
-     due blu divergevano: due marchi, uno dei quali non era di nessuno.
-     ⚠️ Questi tre token vestono SOLO il marchio (le regole `.bm-*`). Usarli per
-     un pulsante o per un testo è il modo di riaprire il difetto: #00AEEF su
-     bianco fa 2,3:1, sotto ogni soglia leggibile.
-     ⚠️⚠️ DAL 2026-08-17 I DUE BLU SI SOMIGLIANO, e la scelta è di Andrea:
-     l'accento è #37AEEF, il marchio resta #00AEEF — sei gradi di tono e due
-     punti di luminosità li separano. Non sono lo stesso colore e non vanno
-     confusi: il marchio è il segno del titolare, e vive anche in
-     `site/static/`, nella favicon di `index.html` e nel logo che `brand:check`
-     riconcilia carattere per carattere. Chi un giorno volesse UN solo azzurro
-     deve cambiarli tutti insieme, in tutt'e due i repository — non qui da solo. */
-  --brand: #00AEEF;                    /* il blocco della sigla                 */
+  /* --- Il colore del MARCHIO — dal 2026-08-26 è il colore dell'azione --------
+     ⚠️ UN SOLO AZZURRO, e la scelta è di Andrea: il marchio ha lasciato
+     #00AEEF — il blu dell'immagine originale del 2026-07-29 — per #37AEEF, lo
+     stesso azzurro di `--accent`. Fino a quel giorno i due blu erano separati
+     «per scelta» (17.08: sei gradi di tono e due punti di luminosità), ma due
+     azzurri che si somigliano restano due segni: blocco della sigla, parola,
+     favicon e artefatti della vetrina portano ora tutti lo stesso valore.
+     ⚠️ I tre token vestono SOLO il marchio (le regole `.bm-*`) e i mestieri
+     restano separati anche se il colore è uno: il marchio è un disegno e non
+     ha soglie di contrasto da rispettare, il testo sì — chi scrive o dipinge
+     testo usa `--accent-text` e `--on-accent`, non `--brand-*`. #37AEEF come
+     inchiostro su bianco fa 2,48:1: usarlo per un testo è il modo di riaprire
+     il difetto.
+     Il marchio vive anche in `site/static/`, nella favicon di `index.html` e
+     nel logo che `brand:check` riconcilia carattere per carattere: chi cambia
+     il colore lo cambia in tutt'e due le sedi, insieme. */
+  --brand: #37AEEF;                    /* il blocco della sigla                 */
   --brand-ink: #ffffff;                /* la sigla DENTRO il blocco, sempre     */
-  --brand-word: #00AEEF;               /* la parola accanto: segue il tema      */
+  --brand-word: #37AEEF;               /* la parola accanto: segue il tema      */
 
   /* --- Neutri --------------------------------------------------------------
      Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti. */
@@ -309,9 +307,9 @@
     --amber-fill: hsl(38, 80%, 58%);
     --green-fill: hsl(151, 48%, 50%);
 
-    /* Il BLOCCO resta il blu del titolare — è il segno, e un segno che cambia
-       colore col tema è due segni. Cambia la PAROLA, che su fondo scuro in
-       #00AEEF vibrerebbe: diventa bianca, esattamente come fa l'artefatto
+    /* Il BLOCCO resta l'azzurro del marchio — è il segno, e un segno che
+       cambia colore col tema è due segni. Cambia la PAROLA, che su fondo scuro
+       in #37AEEF vibrerebbe: diventa bianca, esattamente come fa l'artefatto
        `logo-ai-swisse-scuro.svg` che la vetrina serve al tema scuro. */
     --brand-word: #ffffff;
 
