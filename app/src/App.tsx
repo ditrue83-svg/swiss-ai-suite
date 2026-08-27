@@ -30,6 +30,7 @@ import { FinanceDetailPage } from '@/features/finance/FinanceDetailPage';
 import { ContractsPage } from '@/features/contracts/ContractsPage';
 import { ClientsPage } from '@/features/crm/ClientsPage';
 import { ClientCreatePage } from '@/features/crm/ClientCreatePage';
+import { ClientImportPage } from '@/features/crm/ClientImportPage';
 import { ClientDetailPage } from '@/features/crm/ClientDetailPage';
 import { OpportunityCreatePage, OpportunityDetailPage } from '@/features/crm/OpportunityPages';
 import { ContractDetailPage } from '@/features/contracts/ContractDetailPage';
@@ -170,6 +171,7 @@ export default function App() {
                 creazione non sarebbe raggiungibile — senza dare errore. */}
             <Route path="/clienti" element={<ClientsPage />} />
             <Route path="/clienti/nuovo" element={<ClientCreatePage />} />
+            <Route path="/clienti/importa" element={<ClientImportPage />} />
             <Route path="/clienti/:id/opportunita/nuova" element={<OpportunityCreatePage />} />
             <Route path="/clienti/:id/opportunita/:opportunityId" element={<OpportunityDetailPage />} />
             <Route path="/clienti/:id" element={<ClientDetailPage />} />

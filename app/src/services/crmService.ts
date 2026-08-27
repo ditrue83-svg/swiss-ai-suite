@@ -25,6 +25,7 @@ import type {
 } from '@/types/database';
 import { toUserMessage } from '@/lib/errors';
 import { etichettaDaRigaDocumento } from '@/lib/documentTitle';
+import { normNameKey } from '@/features/crm/csvImport';
 import type {
   CrmContact, CrmContactMethod, CrmContactOrganization, CrmContractLink,
   CrmDocumentLink, CrmDuplicateCandidate, CrmEmailLink, CrmEmailMatch, CrmEvent,
@@ -877,6 +878,46 @@ export const crmService = {
       reason: r.reason as CrmMatchReason,
       reasonDetail: (r.reason_detail as string | null) ?? null,
     }));
+  },
+
+  /**
+   * L'indice per la deduplicazione dell'import CSV, caricato UNA volta prima
+   * dell'anteprima: chiavi normalizzate e nomi, non righe intere.
+   *
+   * ⚠️ NESSUN FILTRO SULLE ARCHIVIATE, ed è voluto: i due vincoli unici
+   * (`uq_crm_org_uid`, `uq_crm_method_email`) non guardano `archived_at`,
+   * quindi un'anagrafica archiviata BLOCCA comunque un inserimento. Escluderla
+   * qui farebbe dire all'anteprima «importabile» di una riga che il database
+   * respingerebbe — la schermata saprebbe meno del vincolo.
+   */
+  async importDedupIndex(companyId: string): Promise<{
+    uids: string[]; emails: string[]; domains: string[]; names: string[];
+  }> {
+    const sb = requireSupabase();
+    const [{ data: orgs, error: oErr }, { data: methods, error: mErr }] = await Promise.all([
+      sb.from('crm_organizations')
+        .select('display_name, uid_norm, website_domain')
+        .eq('company_id', companyId),
+      sb.from('crm_contact_methods')
+        .select('normalized_value')
+        .eq('company_id', companyId)
+        .eq('type', 'email'),
+    ]);
+    if (oErr) fail(oErr);
+    if (mErr) fail(mErr);
+    const uids: string[] = [];
+    const domains: string[] = [];
+    const names: string[] = [];
+    for (const r of (orgs ?? []) as Array<Record<string, unknown>>) {
+      if (r.uid_norm) uids.push(r.uid_norm as string);
+      if (r.website_domain) domains.push(r.website_domain as string);
+      const key = normNameKey((r.display_name as string | null) ?? '');
+      if (key) names.push(key);
+    }
+    const emails = ((methods ?? []) as Array<Record<string, unknown>>)
+      .map((m) => m.normalized_value as string | null)
+      .filter((v): v is string => Boolean(v));
+    return { uids, emails, domains, names };
   },
 
   // -------------------------------------------------------------------------
