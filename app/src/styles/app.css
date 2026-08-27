@@ -440,6 +440,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    riquadro è 300×326, cioè il blocco e nient'altro. */
 .brand-block { display: block; width: 36px; height: auto; flex-shrink: 0; }
 .brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-1); }
+/* La riga di CONTESTO della shell («Spazio di lavoro», modello Lovable
+   2026-08-27) prende la forma delle etichette di gruppo — maiuscoletto
+   spaziato, stessi token di .nav-section: è orientamento, non una frase. */
+.brand-sub.caps { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); }
 /* flex:1 + overflow: la navigazione prende lo spazio fra il selettore azienda
    e il box account, e quando non basta scorre LEI — così «Impostazioni» in
    fondo e il box account restano raggiungibili anche su uno schermo basso,

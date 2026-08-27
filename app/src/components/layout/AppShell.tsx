@@ -112,6 +112,7 @@ function CompanySwitch() {
 function AccountBox() {
   const t = useT();
   const { profile, user, signOut } = useAuth();
+  const { activeCompany } = useCompany();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -121,6 +122,13 @@ function AccountBox() {
     : (user?.email ?? 'Utente');
   const email = profile?.email ?? user?.email ?? '';
   const initials = (profile?.firstName?.[0] ?? '') + (profile?.lastName?.[0] ?? '') || (email[0] ?? 'U').toUpperCase();
+  // Dal 2026-08-27 la seconda riga è l'AZIENDA, non l'email (modello Lovable):
+  // chi guarda la barra conosce il proprio indirizzo — è il contesto in cui
+  // sta lavorando che va tenuto davanti. Senza azienda attiva (shouldn't
+  // happen dentro la shell, ma la rete può fallire) si torna all'email.
+  const sotto = activeCompany
+    ? `${activeCompany.legalName}${activeCompany.canton ? ` · ${activeCompany.canton}` : ''}`
+    : email;
 
   async function handleSignOut() {
     setBusy(true);
@@ -139,7 +147,7 @@ function AccountBox() {
         <div className="account-avatar" aria-hidden="true">{initials.toUpperCase()}</div>
         <div className="account-info">
           <div className="account-name">{name}</div>
-          <div className="account-email">{email}</div>
+          <div className="account-sub" title={sotto}>{sotto}</div>
         </div>
       </div>
       {/* La lingua e l'aspetto si cambiano dove l'utente si aspetta le
@@ -221,7 +229,10 @@ export function AppShell() {
           all'aside sarebbe annunciare due volte la stessa cosa. */}
       <aside className="sidebar">
         <div className="brand">
-          <BrandMark />
+          {/* Nella shell la riga sotto il marchio è il CONTESTO («Spazio di
+              lavoro», modello Lovable 2026-08-27), non il motto delle pagine
+              di accesso: qui si è già entrati. */}
+          <BrandMark taglineKey="nav.workspace" caps />
           <NotificationBell count={count} setCount={setCount} />
         </div>
         <CompanySwitch />
@@ -234,7 +245,7 @@ export function AppShell() {
       <aside className={`drawer${drawerOpen ? ' open' : ''}`} aria-label={t('nav.menu')} aria-hidden={!drawerOpen}>
         <button className="drawer-close" aria-label={t('nav.closeMenu')} onClick={() => setDrawerOpen(false)}><Icon name="close" /></button>
         <div className="brand">
-          <BrandMark />
+          <BrandMark taglineKey="nav.workspace" caps />
         </div>
         <CompanySwitch />
         <NavList onNavigate={() => setDrawerOpen(false)} onSettings={() => setSettingsOpen(true)} />

@@ -121,6 +121,8 @@ export const de: Dictionary = {
     subscription: 'Abonnement',
     activeCompany: 'Aktives Unternehmen',
     switchCompany: 'Unternehmen wechseln',
+    // Kontextzeile unter dem Markenzeichen in der Shell (Lovable, 2026-08-27).
+    workspace: 'Arbeitsbereich',
     signOut: 'Abmelden',
     signOutAria: 'Vom Konto abmelden',
     menu: 'Menü',

@@ -26,7 +26,7 @@
 // ma resta il NOME ACCESSIBILE dell'immagine, e viene da `brand.name` dei
 // dizionari: chi usa un lettore di schermo sente «AI-Swisse», non «immagine».
 // ============================================================================
-import { useT } from '@/i18n';
+import { useT, type TKey } from '@/i18n';
 import { BLOCCO, BLOCCO_VIEWBOX, MARCHIO_VIEWBOX, TRACCIATO_PAROLA, TRACCIATO_SIGLA } from './brandArt';
 
 /**
@@ -51,8 +51,16 @@ export function dividiMarchio(nome: string): [string, string] | null {
  * `tagline` a false dove la riga sotto non serve: nella barra stretta del
  * telefono il marchio sta accanto all'hamburger e alla campanella, e una
  * seconda riga lo farebbe crescere in altezza dentro una barra di altezza fissa.
+ *
+ * `taglineKey` dice QUALE riga sta sotto: il motto («per le PMI svizzere»)
+ * nelle pagine di accesso, dove il marchio si presenta; il CONTESTO («Spazio
+ * di lavoro», modello Lovable 2026-08-27) nella shell, dove si è già entrati.
+ * `caps` le dà la forma delle etichette di gruppo — maiuscoletto spaziato —
+ * perché una riga di contesto è orientamento, non una frase da leggere.
  */
-export function BrandMark({ tagline = true }: { tagline?: boolean }) {
+export function BrandMark({ tagline = true, taglineKey = 'brand.tagline', caps = false }: {
+  tagline?: boolean; taglineKey?: TKey; caps?: boolean;
+}) {
   const t = useT();
   return (
     <div className="brand-lockup">
@@ -61,7 +69,7 @@ export function BrandMark({ tagline = true }: { tagline?: boolean }) {
         <path className="bm-sigla" d={TRACCIATO_SIGLA} />
         <path className="bm-word" d={TRACCIATO_PAROLA} />
       </svg>
-      {tagline && <div className="brand-sub">{t('brand.tagline')}</div>}
+      {tagline && <div className={`brand-sub${caps ? ' caps' : ''}`}>{t(taglineKey)}</div>}
     </div>
   );
 }

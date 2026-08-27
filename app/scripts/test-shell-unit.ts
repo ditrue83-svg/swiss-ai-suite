@@ -273,12 +273,15 @@ section('3c. Il marchio ha DUE sedi, e finora non lo ricordava nessuno');
     .digest('hex')
     .slice(0, 16);
 
-  // L'impronta del marchio al 2026-08-14, DOPO il passaggio ai contorni veri.
-  // Cambiarla è il gesto che accompagna un cambiamento del segno, e va fatto
-  // dopo aver visto verde `npm run brand:check` — che è ciò che confronta i
-  // tracciati con la vetrina. Questa impronta da sola non prova l'allineamento:
-  // prova che il segno non si è mosso senza che qualcuno lo decidesse.
-  const IMPRONTA_DICHIARATA = '388e47112d89b0fa';
+  // L'impronta del marchio al 2026-08-27, dopo che la riga sotto il segno è
+  // diventata configurabile (`taglineKey`/`caps` per la didascalia di contesto
+  // della shell): la FORMA e il COLORE non si sono mossi — `brand:check` verde
+  // prima di riscrivere questo numero, come da rito. Cambiarla è il gesto che
+  // accompagna un cambiamento del segno, e va fatto dopo aver visto verde
+  // `npm run brand:check` — che è ciò che confronta i tracciati con la
+  // vetrina. Questa impronta da sola non prova l'allineamento: prova che il
+  // segno non si è mosso senza che qualcuno lo decidesse.
+  const IMPRONTA_DICHIARATA = 'b7bf77795d1ab724';
 
   check(
     'il marchio dell\'app è quello dichiarato — se cambia, la vetrina va cambiata con lui',
@@ -519,6 +522,26 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
     activeBlock.trim().slice(0, 120));
   check('il filetto verticale se n\'è andato con il fondo pieno',
     !/border-left/.test(btnBlock) && !/border-left/.test(activeBlock));
+
+  // ⚠️ DAL 2026-08-27 LA SHELL DICHIARA IL CONTESTO (modello Lovable). Sotto
+  // il marchio non c'è più il motto delle pagine di accesso («per le PMI
+  // svizzere» — chi è dentro l'ha già scelto) ma il POSTO in cui si è: «Spazio
+  // di lavoro», nella forma delle etichette di gruppo. E la scheda utente in
+  // basso porta l'azienda attiva — il contesto del lavoro — non l'email, che
+  // chi guarda la barra conosce già.
+  const shellSrc = readFileSync(join(root, 'src/components/layout/AppShell.tsx'), 'utf8');
+  check('sotto il marchio della shell c\'è il contesto, in maiuscoletto',
+    /taglineKey="nav\.workspace" caps/.test(shellSrc));
+  check('la riga di contesto ha la forma delle etichette di gruppo, coi token',
+    /\.brand-sub\.caps\s*\{[^}]*--ls-label/.test(appCss));
+  check('la scheda utente in basso porta l\'azienda attiva, non l\'email',
+    /activeCompany/.test(shellSrc)
+      && /className="account-sub"/.test(shellSrc)
+      && !/account-email/.test(shellSrc));
+  for (const [lang, d] of Object.entries({ it: it.nav, de: de.nav, fr: fr.nav })) {
+    check(`${lang}: la riga di contesto esiste (nav.workspace)`,
+      typeof d.workspace === 'string' && d.workspace.trim().length > 0);
+  }
 
   // L'etichetta di gruppo è orientamento, non una voce: pesa meno.
   const sectionWeight = Number(appCss.match(/\.nav-section\s*\{[^}]*font-weight:\s*(\d+)/)?.[1] ?? NaN);

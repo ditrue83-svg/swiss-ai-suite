@@ -117,6 +117,8 @@ export const fr: Dictionary = {
     subscription: 'Abonnement',
     activeCompany: 'Entreprise active',
     switchCompany: 'Changer d’entreprise',
+    // Ligne de contexte sous la marque dans le shell (Lovable, 2026-08-27).
+    workspace: 'Espace de travail',
     signOut: 'Se déconnecter',
     signOutAria: 'Se déconnecter du compte',
     menu: 'Menu',

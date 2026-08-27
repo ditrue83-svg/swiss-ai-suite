@@ -127,6 +127,9 @@ export const it = {
     subscription: 'Abbonamento',
     activeCompany: 'Azienda attiva',
     switchCompany: 'Cambia azienda',
+    // La riga di contesto sotto il marchio nella shell (modello Lovable,
+    // 2026-08-27): non il motto delle pagine di accesso, il POSTO in cui si è.
+    workspace: 'Spazio di lavoro',
     signOut: 'Esci',
     signOutAria: 'Esci dall’account',
     menu: 'Menu',
