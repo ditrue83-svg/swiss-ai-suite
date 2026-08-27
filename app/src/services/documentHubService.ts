@@ -62,6 +62,11 @@ export interface DataDocumentoRiga {
   label: DocumentHubItem['label'];
   kind: string | null;
   deadline: string | null;
+  /** L'importo estratto, se c'è: lo chiede la striscia KPI della Panoramica
+   *  («Importi in scadenza», 2026-08-26). La riga di `list_documents` lo porta
+   *  già — qui sotto veniva scartato nella mappatura. */
+  amount: number | null;
+  amountCurrency: string | null;
 }
 
 type ListRow = Database['public']['Functions']['list_documents']['Returns'][number];
@@ -461,6 +466,7 @@ export const documentHubService = {
     ]);
     const righe = (items: DocumentHubItem[]): DataDocumentoRiga[] => items.map((r) => ({
       id: r.id, label: r.label, kind: r.deadlineKind, deadline: r.deadline,
+      amount: r.amount, amountCurrency: r.amountCurrency,
     }));
     return {
       attivi: { righe: righe(att.items), totale: att.total },

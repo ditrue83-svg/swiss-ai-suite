@@ -478,10 +478,8 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* L'etichetta di gruppo è ORIENTAMENTO, non una voce: pesa meno delle voci
    (400 contro 500 — prima era 600, e PIATTAFORMA gridava quanto le sue voci).
    La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso. */
-.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-3) var(--sp-3) var(--sp-1); border-left: 3px solid transparent; }
-/* Il bordo sinistro c'è SEMPRE, trasparente: comparisse solo con .active, il
-   testo di ogni voce si sposterebbe di 3px a ogni cambio pagina. */
-.nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; border-left: 3px solid transparent; background: none; border-radius: var(--radius-sm); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
+.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-3) var(--sp-3) var(--sp-1); }
+.nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
 /* ⚠️ NELLA COLONNA LA VOCE È PIÙ BASSA CHE NEL DRAWER, e la differenza è
    voluta: di là si tocca con un dito, di qua si punta con un mouse. 8px sopra
@@ -491,23 +489,16 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    quella da 44 vale per il dito, e il dito qui non arriva mai (sotto i 900px
    la colonna non esiste, c'è il drawer, dove `.nav-btn` è rimasto com'era). */
 .sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); }
-/* La voce attiva parla il vocabolario della fiducia: il filetto verticale
-   pieno — la barra di revisione di .mark-prov — non solo un fondo colorato.
-   Gli angoli sinistri a 0 come .verify-note: un filetto non si curva. */
-/* ⚠️ AZZURRO PIENO, NON PIÙ VELATURA — deciso da Andrea il 2026-08-17, e la
-   regola generale che ne esce vale per tutta l'app:
-     · fondo PIENO (`--accent` + `--on-accent`) = SELEZIONE — ciò che l'utente
-       ha scelto, o dove si trova adesso;
-     · VELATURA (`--accent-soft` + `--accent-text`) = INFORMAZIONE — un avviso,
-       un'icona di contorno, una pastiglia che etichetta.
-   Prima la voce attiva era una velatura chiarissima (#eaf5fb) con sopra il blu
-   fondo: in tema chiaro l'azzurro del prodotto non si vedeva proprio dove
-   l'occhio guarda per primo. Ora il fondo È l'azzurro, e ci si scrive sopra
-   scuro (7,14:1).
-   Il filetto verticale resta e resta dello stesso colore del fondo: non serve
-   più a colorare, serve a tenere il bordo sinistro squadrato — vedi il
-   commento di `.mark-prov`. */
-.nav-btn.active { background: var(--accent); color: var(--on-accent); font-weight: 600; border-left-color: var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+/* ⚠️ LA VOCE ATTIVA È UNA PASTIGLIA CHIARA dal 2026-08-26 (restyling sul
+   modello Lovable, scelta di Andrea), non più il riempimento pieno deciso il
+   2026-08-17. Il vocabolario «fondo pieno = selezione, velatura =
+   informazione» resta la regola generale dell'app (pulsanti, stati): la barra
+   laterale è l'eccezione registrata, perché nella navigazione l'azzurro pieno
+   a tutta larghezza pesava più del contenuto che annunciava. La pastiglia è
+   la coppia ammessa `--accent-soft`/`--accent-text`, angoli curvi su tutti i
+   lati: il filetto verticale e gli angoli squadrati se ne vanno con il fondo
+   pieno — una pastiglia non ha un lato di revisione. */
+.nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
 /* Il piede della barra: separato da un filetto orizzontale e spinto in fondo
    (margin-top: auto dentro il flex della .nav) — le impostazioni non sono
    lavoro quotidiano e non stanno in mezzo.
@@ -522,7 +513,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    senza, «Impostazioni» sembra una voce di navigazione come le altre e la
    finestra che compare è una sorpresa. */
 .nav-ellipsis { margin-left: auto; color: var(--muted); font-weight: 400; }
-.nav-btn.active .nav-ellipsis { color: var(--on-accent); }
+.nav-btn.active .nav-ellipsis { color: var(--accent-text); }
 /* ⚠️ QUI STAVANO `.nav-caret` E `.nav-subitem`, e sono state TOLTE il
    2026-08-17 — non per pulizia, ma perché erano diventate una BUGIA. Vestivano
    il gruppo «Impostazioni» che si apriva dentro la colonna: la freccia su/giù e
@@ -554,13 +545,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    proprietà è giusta di là e sbagliata di qua. */
 .nav-btn > span:last-child { hyphens: auto; }
 .nav-btn .ic { color: var(--muted); }
-/* ⚠️ LE DUE ICONE NON SONO PIÙ LO STESSO COLORE, e la ragione è il fondo su cui
-   stanno: l'hover lascia la voce su `--bg` (chiaro), la voce attiva la mette su
-   `--accent` (l'azzurro pieno). Il blu fondo sopra l'azzurro farebbe 2,99:1 —
-   un'icona che sbiadisce proprio nella voce in cui ci si trova. Erano una riga
-   sola finché i due stati avevano lo stesso fondo. */
+/* ⚠️ LE DUE ICONE NON SONO LO STESSO COLORE, e la ragione è il fondo su cui
+   stanno: l'hover lascia la voce su `--bg` (chiaro), la voce attiva la mette
+   sulla pastiglia `--accent-soft` (dal 2026-08-26 — prima era il pieno
+   `--accent`, e l'inchiostro era `--on-accent`). Su entrambi i fondi chiari
+   l'icona giusta è il blu fondo di `--accent-text`. */
 .nav-btn:hover .ic { color: var(--accent-text); }
-.nav-btn.active .ic { color: var(--on-accent); }
+.nav-btn.active .ic { color: var(--accent-text); }
 .sidebar-footer { margin-top: auto; padding: var(--sp-3) var(--sp-3) var(--sp-05); font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line); line-height: 1.5; }
 
 /* top bar mobile + drawer (nascosti su desktop) */

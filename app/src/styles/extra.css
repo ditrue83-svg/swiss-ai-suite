@@ -1352,3 +1352,111 @@
 .trust-why-title { font-weight: 600; color: var(--ink); }
 /* La riga della conferma di appartenenza sotto il campo «Destinatario». */
 .trust-confirmed { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
+
+/* ===========================================================================
+   Panoramica — restyling 2026-08-26 (modello Lovable)
+   La testata, la striscia KPI, le due colonne, la scheda in evidenza e la
+   colonna «Richiede attenzione». Le REGOLE dei numeri non stanno qui: qui c'è
+   solo la forma. La striscia riusa la famiglia `.kpi` esistente (app.css) —
+   la stessa di Finanze e Incentivi: una card KPI è una card KPI.
+   =========================================================================== */
+
+/* La testata: saluto e istante della lettura a sinistra, i gesti a destra.
+   Su schermo stretto i gesti vanno a capo e i pulsanti prendono tutta la
+   larghezza — il pollice non mira al bottone stretto. */
+.home-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+.home-head .page-head { margin-bottom: 0; }
+.home-head-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding-top: var(--sp-1); }
+@media (max-width: 700px) {
+  .home-head-actions { width: 100%; }
+  .home-head-actions .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+/* La pastiglia «N documenti richiedono attenzione»: velatura d'accento (è
+   INFORMAZIONE, non selezione — la regola del 2026-08-17), collegamento alla
+   stessa lista che dichiara. */
+.att-pill {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--radius);
+  background: var(--accent-soft); color: var(--accent-text);
+  border: 1px solid var(--accent-line);
+  font-size: var(--fs-body); font-weight: 500; text-decoration: none;
+}
+.att-pill:hover { text-decoration: none; border-color: var(--accent-text); }
+
+/* Le due colonne: il lavoro a sinistra (il doppio), la lista operativa a
+   destra. Sotto i 1100px si torna a colonna unica, lista SOTTO il lavoro —
+   il modello a fianco presuppone un monitor, non un portatile stretto. */
+.home-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; margin-top: var(--sp-4); }
+@media (max-width: 1100px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
+/* I figli della griglia portano i propri margini (`mt-16` sui blocchi): la
+   colonna è un contenitore neutro, altrimenti i blocchi si allineerebbero
+   alle card della colonna accanto invece che fra loro. */
+.home-main, .home-side { min-width: 0; }
+.home-main > .card:first-child, .home-side > .card:first-child { margin-top: 0; }
+
+/* La striscia KPI: la griglia è `.kpi-grid` (4 colonne, 2 sotto i 900px).
+   Qui solo ciò che la Panoramica aggiunge: la sparkline e il segno del trend. */
+.kpi .sparkline { margin-top: var(--sp-2); }
+.kpi-trend { color: var(--green); font-weight: 600; margin-left: var(--sp-1); }
+.kpi-trend.down { color: var(--red-dark); }
+/* La sparkline colora coi token, non coi numeri: il tema scuro la segue da sé. */
+.sparkline-line { fill: none; stroke: var(--accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.sparkline-area { fill: var(--accent-soft); }
+
+/* La colonna «Richiede attenzione»: un elenco di righe-collegamento, come
+   `.crm-row-link` ma con le cifre a destra — importo e data stanno insieme
+   perché rispondono alla stessa domanda («quanto, entro quando»). */
+.att-col .card-title { justify-content: space-between; }
+.att-count { font-weight: 400; }
+.att-list { display: flex; flex-direction: column; }
+.att-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle);
+  color: var(--ink); text-decoration: none;
+}
+.att-row:first-child { border-top: none; }
+.att-row:hover { text-decoration: none; }
+.att-row:hover .att-title { color: var(--accent-text); }
+.att-main { min-width: 0; display: flex; flex-direction: column; }
+.att-title { font-weight: 600; font-size: var(--fs-body); }
+.att-sender { font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.att-figures { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+.att-amount { font-weight: 600; font-size: var(--fs-body); font-variant-numeric: tabular-nums; }
+.att-date { font-size: var(--fs-meta); color: var(--muted); }
+/* Scaduta è rossa: i colori di stato dicono quanto manca, e «è già passata»
+   è lo stato che costa di più. */
+.att-date.overdue { color: var(--red-dark); font-weight: 600; }
+
+/* La scheda del documento in evidenza: testata con titolo e chip pagine, poi
+   due colonne — campi estratti e citazione di origine. */
+.spot-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.spot-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.2px; }
+.spot-chip {
+  display: inline-flex; align-items: center; gap: var(--sp-1); flex-shrink: 0;
+  padding: var(--sp-1) var(--sp-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); font-size: var(--fs-meta); color: var(--muted);
+}
+.spot-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); }
+@media (max-width: 700px) { .spot-body { grid-template-columns: minmax(0, 1fr); } }
+.spot-fields-title {
+  font-size: var(--fs-label); font-weight: 600; text-transform: uppercase;
+  letter-spacing: var(--ls-label); color: var(--muted); margin-bottom: var(--sp-2);
+}
+.spot-field { padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle); }
+.spot-field-name { font-size: var(--fs-meta); color: var(--muted); }
+.spot-field-value { font-weight: 600; font-size: var(--fs-body); margin-top: var(--sp-05); }
+.spot-field-note { font-size: var(--fs-meta); color: var(--amber); margin-top: var(--sp-05); }
+.spot-field-note.ok { color: var(--green); }
+.spot-actions { margin-top: var(--sp-3); }
+/* La citazione: velatura d'accento con il filetto — la forma che il prodotto
+   dà a ciò che viene dal documento (stessa famiglia di `.ax-callout`). */
+.spot-quote {
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  border-radius: var(--radius); padding: var(--sp-3) var(--sp-4);
+}
+.spot-quote-text {
+  margin: 0 0 var(--sp-2); padding-left: var(--sp-3);
+  border-left: 3px solid var(--accent);
+  font-size: var(--fs-body); line-height: 1.55; color: var(--ink);
+}

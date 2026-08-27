@@ -49,6 +49,9 @@ import {
   chiaviTaskSplit, contoDate, decidiBlocchi, fraseCatalogo, rigaNature, splitOpenTasks,
   termini, TERMINI_IN_PANORAMICA, type DataDocumento,
 } from '../src/features/dashboard/overviewBlocks.ts';
+import {
+  importiInScadenza, serieSettimanale, trendPercentuale, type RigaImporto,
+} from '../src/features/dashboard/overviewKpi.ts';
 import { GLYPH_NAMES, type MarkGlyphName } from '../src/components/ui/MarkGlyph.tsx';
 import { PROVENANCE_KINDS } from '../src/components/ui/ProvenanceMark.tsx';
 import { CONFIDENCE_LEVELS } from '../src/components/ui/ConfidenceBadge.tsx';
@@ -505,14 +508,17 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   const appCss = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
   const extraCss = readFileSync(join(root, 'src/styles/extra.css'), 'utf8');
 
-  // La voce attiva parla il vocabolario della fiducia: il filetto verticale
-  // (la barra di revisione di .mark-prov), non solo un fondo colorato.
+  // La voce attiva è una PASTIGLIA CHIARA dal 2026-08-26 (modello Lovable):
+  // velatura `--accent-soft` con inchiostro `--accent-text`, non più il fondo
+  // pieno con il filetto. Il controllo pesa la coppia nuova, non la vecchia.
   const btnBlock = appCss.match(/\.nav-btn\s*\{([^}]*)\}/)?.[1] ?? '';
   const activeBlock = appCss.match(/\.nav-btn\.active\s*\{([^}]*)\}/)?.[1] ?? '';
-  check('il filetto è SEMPRE presente, trasparente a riposo (niente salto di 3px)',
-    /border-left:\s*3px solid transparent/.test(btnBlock));
-  check('la voce attiva accende il filetto con --accent',
-    /border-left-color:\s*var\(--accent\)/.test(activeBlock));
+  check('la voce attiva è la pastiglia chiara (--accent-soft + --accent-text)',
+    /background:\s*var\(--accent-soft\)/.test(activeBlock)
+      && /color:\s*var\(--accent-text\)/.test(activeBlock),
+    activeBlock.trim().slice(0, 120));
+  check('il filetto verticale se n\'è andato con il fondo pieno',
+    !/border-left/.test(btnBlock) && !/border-left/.test(activeBlock));
 
   // L'etichetta di gruppo è orientamento, non una voce: pesa meno.
   const sectionWeight = Number(appCss.match(/\.nav-section\s*\{[^}]*font-weight:\s*(\d+)/)?.[1] ?? NaN);
@@ -561,11 +567,12 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
 
   // LA SCORCIATOIA della Panoramica porta ESATTAMENTE dove porta la voce
   // «Analizza documento» della barra — stessa destinazione, letta dai
-  // sorgenti di entrambe.
+  // sorgenti di entrambe. Dal 2026-08-26 il pulsante si chiama «Carica
+  // documento» (modello Lovable): è il GESTO, la voce resta il LUOGO.
   const home = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
   const adminItem = NAV.find((e) => !isSection(e) && e.id === 'admin') as NavItem;
-  const shortcut = new RegExp(`to="${adminItem.path.replace('/', '\\/')}"[^\\n]*home\\.analyzeDoc`);
-  check('«Analizza un documento» porta dove porta la voce della barra', shortcut.test(home));
+  const shortcut = new RegExp(`to="${adminItem.path.replace('/', '\\/')}"[^\\n]*home\\.uploadDoc`);
+  check('«Carica documento» porta dove porta la voce della barra', shortcut.test(home));
 }
 
 // ---------------------------------------------------------------------------
@@ -733,10 +740,15 @@ section('6. Gerarchia e densità dentro le pagine');
   ];
   for (const d of dizionari) {
     const lang = d.lang;
+    // Dal 2026-08-26 la scorciatoia è «Carica documento» (modello Lovable):
+    // un'AZIONE, mentre la voce della barra è il LUOGO («Analizza documento»).
+    // Non coincidono più alla lettera — per scelta. Quello che non si può
+    // perdere è che la chiave esista in tutte e tre le lingue.
     check(
-      `${lang}: «${d.home.analyzeDoc}» è la voce della barra, alla lettera`,
-      d.home.analyzeDoc === d.nav.analyzeDoc,
-      `barra «${d.nav.analyzeDoc}» · scorciatoia «${d.home.analyzeDoc}»`,
+      `${lang}: «${(d.home as Record<string, string>).uploadDoc}» esiste, ed è il gesto di /admin`,
+      typeof (d.home as Record<string, string>).uploadDoc === 'string'
+        && (d.home as Record<string, string>).uploadDoc!.length > 0,
+      'la chiave home.uploadDoc manca nel dizionario',
     );
     // Per gli incentivi la scorciatoia è un'AZIONE e la voce un LUOGO: i due
     // testi non possono coincidere alla lettera, ma il NOME DELLA COSA sì —
@@ -2872,6 +2884,116 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
         const d = { it: it.home, de: de.home, fr: fr.home }[l] as Record<string, string>;
         return typeof d[k] === 'string' && d[k].trim().length > 0;
       }))), basi.join(' '));
+  }
+
+  // ⚠️⚠️ (g) LA STRISCIA DEI KPI — nata col restyling 2026-08-26 (modello
+  // Lovable), è la fila di numeri più in vista della pagina e per questo vale
+  // doppio il principio 6: un numero inventato QUI è la foto del mockup che
+  // entra in produzione. Le tre regole della striscia stanno in funzioni PURE
+  // di `overviewKpi.ts`, dove questo banco può romperle una per una:
+  //   · la somma è dei SOLI termini, e la finestra INCLUDE le scadute;
+  //   · valute miste o taciute → niente somma, la didascalia dice perché;
+  //   · il trend «vs settimana scorsa» non esiste se la settimana scorsa è zero.
+  {
+    const R = (over: Partial<RigaImporto> = {}): RigaImporto => ({
+      kind: 'term', deadline: '2026-09-01', amount: null, amountCurrency: null, ...over,
+    });
+    const OGGI = '2026-08-19'; // la finestra di 30 giorni arriva al 2026-09-18
+
+    check('la somma è dei SOLI termini: un evento con importo non gonfia il totale',
+      (() => { const s = importiInScadenza(
+        [R({ amount: 100, amountCurrency: 'CHF' }),
+          R({ kind: 'event', amount: 9999, amountCurrency: 'CHF' })], OGGI);
+        return s.totale === 100 && s.nScadenze === 1; })());
+    check('la SCADUTA resta nella somma: un termine passato e non evaso resta dovuto',
+      importiInScadenza([R({ deadline: '2026-07-01', amount: 250, amountCurrency: 'CHF' })], OGGI).totale === 250);
+    check('oltre la finestra il termine non entra, né nel conto né nella somma',
+      (() => { const s = importiInScadenza([R({ deadline: '2026-12-31', amount: 500, amountCurrency: 'CHF' })], OGGI);
+        return s.nScadenze === 0 && s.totale === null; })());
+    check('un termine senza importo CONTA nelle scadenze ma non ha cifra da dare',
+      (() => { const s = importiInScadenza([R(), R({ amount: 10, amountCurrency: 'CHF' })], OGGI);
+        return s.nScadenze === 2 && s.nConImporto === 1 && s.totale === 10; })());
+
+    // L'onestà della somma: meglio nessun numero che un numero sbagliato.
+    check('CHF + EUR → NIENTE somma, e il guasto si dichiara (valuteMiste)',
+      (() => { const s = importiInScadenza(
+        [R({ amount: 100, amountCurrency: 'CHF' }), R({ amount: 100, amountCurrency: 'EUR' })], OGGI);
+        return s.totale === null && s.valuta === null && s.valuteMiste; })());
+    check('un importo SENZA valuta dichiarata ferma la somma come una valuta diversa',
+      (() => { const s = importiInScadenza(
+        [R({ amount: 100, amountCurrency: 'CHF' }), R({ amount: 100, amountCurrency: null })], OGGI);
+        return s.totale === null && s.valuteMiste; })());
+    check('nessun importo estratto: totale null ma NON «valute miste» — non c\'è nessun guasto',
+      (() => { const s = importiInScadenza([R(), R()], OGGI);
+        return s.totale === null && !s.valuteMiste && s.nConImporto === 0; })());
+    check('tutto nella stessa valuta: la somma esce, e porta la sua valuta',
+      (() => { const s = importiInScadenza(
+        [R({ amount: 100.5, amountCurrency: 'CHF' }), R({ deadline: '2026-08-01', amount: 200, amountCurrency: 'CHF' })], OGGI);
+        return s.totale === 300.5 && s.valuta === 'CHF'; })());
+
+    // La serie della sparkline: contenitori da sette giorni, dal più vecchio
+    // al più recente; il futuro e il troppo vecchio restano fuori.
+    {
+      const ref = new Date('2026-08-19T12:00:00');
+      const serie = serieSettimanale([
+        '2026-08-16T09:00:00',  // 3 giorni prima → settimana in corso
+        '2026-08-05T09:00:00',  // 14 giorni prima → due contenitori indietro
+        '2026-08-04T09:00:00',  // 15 giorni prima → stesso contenitore
+        '2026-08-25T09:00:00',  // FUTURO rispetto al riferimento: fuori
+        '2026-05-01T09:00:00',  // più vecchio della finestra: fuori
+      ], 8, ref);
+      check('la sparkline mette ogni analisi nel SUO contenitore, dal vecchio al recente',
+        serie.join(',') === '0,0,0,0,0,2,0,1', serie.join(','));
+      check('una data invalida non rompe la serie né finisce in un contenitore',
+        serieSettimanale(['non-una-data'], 8, ref).every((n) => n === 0));
+    }
+
+    // Il trend: solo quando la settimana scorsa ha un numero su cui dividere.
+    check('trend: da 4 a 6 è +50%',
+      trendPercentuale([0, 0, 4, 6]) === 50);
+    check('trend: da 10 a 7 è −30%, col segno',
+      trendPercentuale([0, 0, 10, 7]) === -30);
+    check('settimana scorsa a ZERO: niente «+∞%», il trend non esiste',
+      trendPercentuale([0, 0, 0, 5]) === null);
+    check('serie troppo corta: niente trend',
+      trendPercentuale([5]) === null);
+
+    // E la striscia è DAVVERO montata sulla pagina, sui numeri PURI: una
+    // funzione provata e mai chiamata è la guardia che non guarda niente. I
+    // conti stanno in `useOverview` (la striscia riceve il risultato): è lì
+    // che le funzioni pure devono essere chiamate.
+    const senzaCommenti3 = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    const kpi = senzaCommenti3(readFileSync(join(root, 'src/features/dashboard/KpiStrip.tsx'), 'utf8'));
+    const sorgenteOverview = senzaCommenti3(readFileSync(join(root, 'src/features/dashboard/useOverview.ts'), 'utf8'));
+    check('i conti della striscia si fanno con le funzioni pure, non in casa',
+      /importiInScadenza\(/.test(sorgenteOverview)
+        && /serieSettimanale\(/.test(sorgenteOverview)
+        && /trendPercentuale\(/.test(sorgenteOverview));
+    check('e l\'importo lo FORMATTA, non lo compone a mano',
+      /formatCurrency\(/.test(kpi), 'una cifra scritta a mano è il mockup che rientra dalla finestra');
+    const paginaHome = senzaCommenti3(readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8'));
+    check('la Panoramica monta striscia, colonna dell\'attenzione e scheda in evidenza',
+      /<KpiStrip\b/.test(paginaHome) && /<AttenzioneColumn\b/.test(paginaHome) && /<DocumentoInEvidenza\b/.test(paginaHome));
+
+    // Le frasi nuove esistono nelle tre lingue, coi loro segnaposto.
+    const POSTI: Record<string, string[]> = {
+      attentionPillMany: ['{n}'], attentionItemsMany: ['{n}'],
+      kpiAmountsCaptionMany: ['{n}'], kpiAttentionCaption: ['{v}', '{f}'],
+      kpiAnalyzedTrend: ['{n}'], kpiAnalyzedTrendDown: ['{n}'],
+      spotPagesMany: ['{n}'], spotAnalyzedAt: ['{time}'], spotQuoteSourcePage: ['{page}'],
+    };
+    for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
+      for (const [k, attesi] of Object.entries(POSTI)) {
+        const testo = (d as Record<string, string>)[k];
+        check(`${lang}: home.${k} esiste e porta ${attesi.join(' ')}`,
+          typeof testo === 'string' && attesi.every((x) => testo.includes(x)), testo);
+      }
+      for (const k of ['uploadDoc', 'kpiAmountsNone', 'kpiAmountsMixed', 'kpiAnalyzedUnknown',
+        'attentionUnknown', 'spotOpen', 'spotQuote'] as const) {
+        const testo = (d as Record<string, string>)[k];
+        check(`${lang}: home.${k} esiste`, typeof testo === 'string' && testo.trim().length > 0);
+      }
+    }
   }
 }
 

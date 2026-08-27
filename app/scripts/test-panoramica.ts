@@ -39,6 +39,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   contoDate, decidiBlocchi, rigaNature, splitOpenTasks, termini,
 } from '../src/features/dashboard/overviewBlocks';
+import { serieSettimanale } from '../src/features/dashboard/overviewKpi';
 
 (globalThis as Record<string, unknown>).WebSocket ??= class {};
 
@@ -353,6 +354,36 @@ async function main() {
   check('col termine vero il blocco «Da fare» è visibile', blocchi.daFare === true);
   check('e il blocco dei limiti anche, per la data senza natura', blocchi.sistema === true);
   check('«Niente in sospeso» non compare: qualcosa da dire c\'è', !blocchi.vuotoOperativo);
+
+  // ---- la serie delle analisi, per il KPI «Documenti analizzati» -----------
+  // Nato col restyling 2026-08-26: la sparkline della striscia KPI si costruisce
+  // dai `created_at` di `document_analyses` — la stessa interrogazione di
+  // `analysisService.timestampAnalisi`. Qui si prova che la strada regge: la
+  // colonna `company_id` esiste e filtra, la RLS lascia leggere il MEMBRO, e il
+  // numero è quello della fixture — 10 analisi (3 needs_review · 2 failed ·
+  // 5 completed; i «mai analizzati» non hanno riga).
+  console.log('\nLa serie delle analisi per la sparkline del KPI');
+  const sessantaGiorniFa = new Date(Date.now() - 60 * 86_400_000).toISOString();
+  const { data: tsMembro, error: tsErr } = await member.from('document_analyses')
+    .select('created_at')
+    .eq('company_id', co.id)
+    .gte('created_at', sessantaGiorniFa)
+    .order('created_at', { ascending: true })
+    .limit(1000);
+  check('il MEMBRO legge i timestamp delle analisi della sua azienda',
+    !tsErr && (tsMembro ?? []).length === 10,
+    tsErr ? tsErr.message : `lette ${(tsMembro ?? []).length}, attese 10`);
+  // Replica diretta (service_role): stesso numero, stessa finestra.
+  const { data: tsAdmin } = await admin.from('document_analyses')
+    .select('created_at').eq('company_id', co.id).gte('created_at', sessantaGiorniFa);
+  check('e il numero coincide con la replica diretta',
+    (tsAdmin ?? []).length === (tsMembro ?? []).length,
+    `membro ${(tsMembro ?? []).length} · diretta ${(tsAdmin ?? []).length}`);
+  // La serie che la sparkline disegna: tutto nella settimana in corso.
+  check('e la serie settimanale le mette tutte nel contenitore in corso',
+    (() => { const s = serieSettimanale((tsMembro ?? []).map((r) => r.created_at as string), 8, new Date());
+      return s[7] === 10 && s.slice(0, 7).every((n) => n === 0); })(),
+    serieSettimanale((tsMembro ?? []).map((r) => r.created_at as string), 8, new Date()).join(','));
 
   await member.auth.signOut();
 }

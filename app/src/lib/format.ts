@@ -110,6 +110,18 @@ export function formatCurrency(amount: number | null | undefined, currency: stri
   }
 }
 
+/**
+ * La sola ora, nella lingua scelta: serve alla testata della Panoramica
+ * («Aggiornata oggi alle 09:41», 2026-08-26). Una data pura non ha un'ora e
+ * non se ne inventa una — la stessa disciplina di `formatDateTime`.
+ */
+export function formatTime(value: string | null | undefined): string {
+  if (!value || sembraDataPura(value)) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString(getCurrentLocaleTag(), { hour: '2-digit', minute: '2-digit' });
+}
+
 export function formatBytes(n: number | null | undefined): string {
   if (n == null) return '';
   if (n < 1024) return n + ' B';

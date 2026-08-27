@@ -1,40 +1,34 @@
 // ============================================================================
-// HomePage — la Panoramica, disegnata DAI NUMERI (censimento 2026-08-19).
+// HomePage — la Panoramica. Dal 2026-08-26 la FORMA è quella del modello
+// Lovable voluto da Andrea: testata con l'istante della lettura e i gesti
+// primari, una striscia di quattro KPI, poi due colonne — il lavoro a
+// sinistra, la lista «Richiede attenzione» a destra.
 //
-// Non è il cruscotto di un'azienda operativa: è la schermata di un'azienda i
-// cui 19 documenti sono tutti archiviati, con 16 analisi non conclusive, zero
-// termini dichiarati e una valutazione incentivi mai eseguita. Il compito non
-// è «mostrarti il tuo lavoro»: è dire cosa il sistema sa, cosa non ha potuto
-// concludere e cosa non ha mai provato a fare.
+// Ciò che NON è cambiato è la disciplina dei numeri (censimento 2026-08-19):
+// questa resta la schermata che dice cosa il sistema sa, cosa non ha potuto
+// concludere e cosa non ha mai provato a fare. La striscia KPI non deroga:
+// ogni numero ha una fonte dichiarata (`KpiStrip.tsx`), una card senza dato
+// mostra «—» e non uno zero finto, e la sparkline esiste solo sulla serie che
+// esiste davvero (le analisi per settimana). «Un grafico su quattro numeri è
+// decorazione» resta vero: per questo le altre tre card NON hanno sparkline.
 //
-// LA FORMA: quattro blocchi in quest'ordine — decisioni, lavoro, limiti del
-// sistema, opportunità. Le decisioni per prime perché SBLOCCANO il resto:
-// il gate delle attività (`canCreateTask`) dipende letteralmente da loro.
-// I blocchi compaiono solo con contenuto: è un elenco di cose da fare, non
-// una griglia fissa da riempire. La visibilità la decide `overviewBlocks`,
-// che è puro e provato.
+// LA STRUTTURA:
+//   · testata (`home-head`): saluto + «aggiornata alle», pastiglia attenzione,
+//     «Carica documento» (→ /admin) e «Cerca incentivi» (→ /incentivi);
+//   · striscia KPI (`KpiStrip`);
+//   · colonna principale: documento in evidenza (`DocumentoInEvidenza`) poi i
+//     quattro blocchi storici — decisioni, lavoro, limiti del sistema,
+//     opportunità — la cui LOGICA è intatta e vive in `overviewBlocks.ts`;
+//   · colonna laterale: «Richiede attenzione» (`AttenzioneColumn`).
 //
-// COSA NON C'È, DI PROPOSITO:
-//   · nessun grafico — non esiste una serie storica, e un grafico su quattro
-//     numeri è decorazione;
-//   · nessuna percentuale di completamento su zero elementi;
-//   · nessun blocco scadenze — zero `term` in produzione: le date di natura
-//     non registrata sono una riga che le chiama col loro nome;
-//   · nessun elenco piatto per data — 6 delle prime 10 voci erano la stessa
-//     email di Stripe: ogni blocco mostra conteggio, esempio più recente e
-//     collegamento all'elenco già filtrato;
-//   · nessun punteggio composito — con la gravità satura su 16 documenti su
-//     19, qualunque punteggio sarebbe inventato e vestito da intelligenza;
-//   · nessun pulsante «Avvia la verifica» — `subsidy-worker` è invocabile solo
-//     dallo scheduler col suo segreto e il matching parte dai progetti:
-//     l'azione vera è descrivere un progetto, e il blocco porta lì.
-//
-// UN SOLO INSIEME: ogni conteggio copre TUTTI i documenti, archiviati
-// compresi, e il piè di pagina lo dichiara una volta per tutta la pagina.
-// I collegamenti portano a `list_documents`, che mostra una popolazione alla
-// volta: perciò i blocchi elencano una riga PER POPOLAZIONE, ognuna col suo
-// numero e la sua destinazione — il numero del blocco e quello della pagina
-// d'arrivo non possono divergere.
+// COSA NON C'È, DI PROPOSITO (rispetto al modello):
+//   · nessuna barra di ricerca globale — non esiste una ricerca globale vera;
+//   · nessun contatore nelle voci della barra laterale — la decisione scritta
+//     in `nav.ts` non è cambiata;
+//   · nessuna card «Campi da confermare» — non esiste una fonte che li conti:
+//     al suo posto l'appartenenza da confermare, che è la conferma vera;
+//   · nessun pulsante «Conferma estrazione» nella scheda in evidenza — la
+//     conferma vive nel dettaglio del documento, e la scheda porta là.
 // ============================================================================
 import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
@@ -43,7 +37,10 @@ import { useOverview, type OverviewData } from './useOverview';
 import {
   chiaviTaskSplit, decidiBlocchi, fraseCatalogo, rigaNature, statoValutazione, termini,
 } from './overviewBlocks';
-import { formatDate, formatDateTime } from '@/lib/format';
+import { KpiStrip } from './KpiStrip';
+import { AttenzioneColumn } from './AttenzioneColumn';
+import { DocumentoInEvidenza } from './DocumentoInEvidenza';
+import { formatDate, formatDateTime, formatTime } from '@/lib/format';
 import { documentLabelText } from '@/i18n/documentLabel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -408,29 +405,51 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
     activeProjects: data.incentivi.summary?.activeProjects ?? 0,
   });
 
+  // Il documento in evidenza è il PRIMO della colonna «Richiede attenzione»:
+  // stessa lista, stesso ordinamento (scadenza più vicina) — due scelte
+  // diverse sulla stessa pagina sarebbero due risposte alla stessa domanda.
+  const inEvidenza = data.attenzione?.items[0] ?? null;
+
   return (
     <>
-      {blocchi.decisioni && <BloccoDecisioni data={data} />}
+      {/* LA STRISCIA KPI viene prima di tutto (restyling 2026-08-26): quattro
+          numeri veri, ciascuno collegato alla pagina che lo rende. Le regole
+          di onestà stanno in `KpiStrip.tsx` e `overviewKpi.ts`. */}
+      <KpiStrip data={data} />
 
-      {blocchi.daFare && <BloccoDaFare data={data} />}
-      {blocchi.sistema && <BloccoSistema data={data} />}
+      {/* DUE COLONNE: il lavoro a sinistra, la lista operativa a destra. La
+          logica dei blocchi NON è cambiata — è cambiato solo dove stanno. */}
+      <div className="home-grid">
+        <div className="home-main">
+          {inEvidenza && <DocumentoInEvidenza item={inEvidenza} today={data.today} />}
 
-      {/* LO STATO DAVVERO VUOTO non dice «tutto a posto»: dice cosa è stato
-          controllato. Uno zero senza il suo insieme è indistinguibile da «non
-          ho guardato» — è la domanda 1 del censimento, risolta dichiarando. */}
-      {blocchi.vuotoOperativo && (
-        <section className="card mt-16 ov-block" aria-labelledby="ov-vuoto">
-          <h2 className="card-title" id="ov-vuoto">{t('home.emptyTitle')}</h2>
-          <div className="ov-line">
-            {t('home.emptyChecked', {
-              docs: data.documenti.attivi + data.documenti.archiviati,
-              tasks: data.tasks.aperte,
-            })}
-          </div>
-        </section>
-      )}
+          {blocchi.decisioni && <BloccoDecisioni data={data} />}
 
-      {blocchi.opportunita && <BloccoOpportunita data={data} companyName={companyName} />}
+          {blocchi.daFare && <BloccoDaFare data={data} />}
+          {blocchi.sistema && <BloccoSistema data={data} />}
+
+          {/* LO STATO DAVVERO VUOTO non dice «tutto a posto»: dice cosa è stato
+              controllato. Uno zero senza il suo insieme è indistinguibile da «non
+              ho guardato» — è la domanda 1 del censimento, risolta dichiarando. */}
+          {blocchi.vuotoOperativo && (
+            <section className="card mt-16 ov-block" aria-labelledby="ov-vuoto">
+              <h2 className="card-title" id="ov-vuoto">{t('home.emptyTitle')}</h2>
+              <div className="ov-line">
+                {t('home.emptyChecked', {
+                  docs: data.documenti.attivi + data.documenti.archiviati,
+                  tasks: data.tasks.aperte,
+                })}
+              </div>
+            </section>
+          )}
+
+          {blocchi.opportunita && <BloccoOpportunita data={data} companyName={companyName} />}
+        </div>
+
+        <div className="home-side">
+          <AttenzioneColumn data={data} />
+        </div>
+      </div>
 
       {/* UNA VOLTA, PER TUTTA LA PAGINA: l'insieme e il quando. Ogni numero qui
           sopra conta anche gli archiviati — è la dichiarazione che mancava
@@ -461,34 +480,47 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
 
 export function HomePage() {
   const t = useT();
+  const tn = useTn();
   const { profile } = useAuth();
   const { activeCompany } = useCompany();
   const { loading, error, data, reload } = useOverview();
 
   const slot = GREETING[greetingSlot()];
   const name = profile?.firstName?.trim();
+  // La pastiglia dichiara il numero della colonna «Richiede attenzione» e porta
+  // alla stessa destinazione: `attenzione.total` è il conteggio esatto della
+  // finestra di `list_documents` con `stato=to_verify`. Se la lettura è fallita
+  // la pastiglia non c'è — la colonna sotto dichiara il guasto.
+  const nAttenzione = data?.attenzione?.total ?? 0;
 
   return (
     <div id="home-body">
-      <div className="page-head">
-        <div className="greeting">{name ? t(slot.named, { name }) : t(slot.plain)}</div>
-        <div className="greeting-sub">{t('home.subtitle')}</div>
-      </div>
-
-      {/* ⚠️ DUE SCORCIATOIE, NON CINQUE. «Attività», «Documenti» e «Finanze»
-          erano tre pulsanti che portavano dove porta la barra laterale, sempre
-          visibile a due centimetri di distanza: una striscia che ripete la
-          navigazione insegna che le scorciatoie non servono a niente, e le due
-          che invece INIZIANO qualcosa — analizzare un documento, cercare
-          incentivi — sparivano in mezzo. */}
-      <div className="row-wrap">
-        <Link className="btn btn-primary btn-block-mobile" to="/admin"><Icon name="document" className="ic-sm" /> {t('home.analyzeDoc')}</Link>
-        <Link className="btn" to="/incentivi"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
+      {/* LA TESTATA (restyling 2026-08-26, modello Lovable): a sinistra il
+          saluto — che è l'identità della pagina — con sotto l'istante della
+          lettura; a destra la pastiglia di ciò che richiede attenzione e il
+          gesto primario, «Carica documento». */}
+      <div className="home-head">
+        <div className="page-head">
+          <div className="greeting">{name ? t(slot.named, { name }) : t(slot.plain)}</div>
+          {data && (
+            <div className="greeting-sub">{t('home.updatedAt', { time: formatTime(data.loadedAt) })}</div>
+          )}
+        </div>
+        <div className="home-head-actions">
+          {nAttenzione > 0 && (
+            <Link className="att-pill" to="/documenti?stato=to_verify">
+              <Icon name="alert" className="ic-sm" />
+              {tn('home.attentionPill', nAttenzione)}
+            </Link>
+          )}
+          <Link className="btn btn-primary" to="/admin"><Icon name="upload" className="ic-sm" /> {t('home.uploadDoc')}</Link>
+          <Link className="btn" to="/incentivi"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
+        </div>
       </div>
 
       <div className="mt-16">
-        {/* Lo scheletro somiglia a ciò che arriva: blocchi, non una griglia
-            di KPI che questa pagina non ha più. */}
+        {/* Lo scheletro somiglia a ciò che arriva: la striscia KPI e i blocchi,
+            non una griglia fissa da riempire. */}
         {loading && <><SkeletonCard /><div className="mt-16"><SkeletonCard /></div></>}
         {/* Il guasto viene PRIMA di qualunque interpretazione: senza questo ramo
             una panoramica che non ha potuto leggere niente sembrerebbe una

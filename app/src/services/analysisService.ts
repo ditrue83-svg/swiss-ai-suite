@@ -433,4 +433,31 @@ export const analysisService = {
   regenerateReply(analysis: DocumentAnalysis, language: string, tone: string, companyName: string | null): string {
     return buildReply(language, analysis.documentType ?? 'informativa', analysis.amountDisplay, companyName, tone);
   },
+
+  /**
+   * Gli istanti delle analisi degli ultimi `daGiorni` giorni, per la striscia
+   * KPI della Panoramica (2026-08-26): il conteggio «ultimi 30 giorni» e la
+   * serie settimanale della sparkline si calcolano dagli stessi timestamp, con
+   * una funzione pura (`overviewKpi.ts`) — il servizio legge e basta.
+   *
+   * Si leggono i timestamp e non un conteggio SQL perché la serie per la
+   * sparkline chiede comunque la distribuzione: una sola interrogazione, due
+   * numeri onesti. Il tetto è prudenziale: mille analisi in otto settimane
+   * sono molte più di quante ne fa l'azienda tipo — ma se mai le superasse, la
+   * serie si dichiarerebbe parziale invece di sembrare intera. Oggi il
+   * chiamante non ha ancora quel ramo: il tetto resta scritto QUI perché chi
+   * lo alzi sappia che il numero sotto non è più esatto.
+   */
+  async timestampAnalisi(companyId: string, daGiorni: number): Promise<string[]> {
+    const dal = new Date(Date.now() - daGiorni * 86_400_000).toISOString();
+    const { data, error } = await requireSupabase()
+      .from('document_analyses')
+      .select('created_at')
+      .eq('company_id', companyId)
+      .gte('created_at', dal)
+      .order('created_at', { ascending: true })
+      .limit(1000);
+    if (error) throw new AppError(toUserMessage(error), error);
+    return (data ?? []).map((r) => r.created_at);
+  },
 };

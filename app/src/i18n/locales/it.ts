@@ -1061,13 +1061,48 @@ export const it = {
     greetingMorningNamed: 'Buongiorno, {name}',
     greetingAfternoonNamed: 'Buon pomeriggio, {name}',
     greetingEveningNamed: 'Buonasera, {name}',
-    subtitle: 'Ecco cosa richiede attenzione nella tua azienda.',
-    // ⚠️ ESATTAMENTE come `nav.analyzeDoc`: la scorciatoia porta dove porta la
-    // voce della barra, e due nomi per la stessa destinazione fanno dubitare
-    // che siano la stessa cosa. In tedesco e francese coincidevano già; in
-    // italiano l'articolo faceva la differenza.
-    analyzeDoc: 'Analizza documento',
     findSubsidies: 'Trova incentivi',
+    // --- La testata e la striscia KPI (restyling 2026-08-26, modello Lovable) --
+    // «Carica documento» è un'AZIONE e non ripete la voce della barra
+    // («Analizza documento»): il modello la chiama così, e il gesto è caricare —
+    // l'analisi parte da sola. Le due frasi convivono perché fanno due mestieri.
+    uploadDoc: 'Carica documento',
+    updatedAt: 'Aggiornata oggi alle {time}',
+    attentionPillOne: '1 documento richiede attenzione',
+    attentionPillMany: '{n} documenti richiedono attenzione',
+    kpiGroup: 'Indicatori principali',
+    kpiAmounts: 'Importi in scadenza',
+    kpiAmountsCaptionOne: '1 scadenza · entro 30 giorni, scadute incluse',
+    kpiAmountsCaptionMany: '{n} scadenze · entro 30 giorni, scadute incluse',
+    kpiAmountsNone: 'Nessun importo estratto sulle scadenze in finestra.',
+    kpiAmountsMixed: 'Valute diverse fra loro: la somma non si mostra.',
+    kpiAmountsPartial: 'Lettura al tetto: la somma può essere incompleta.',
+    kpiAttention: 'Richiedono attenzione',
+    kpiAttentionCaption: '{v} da verificare · {f} non riuscite',
+    kpiAnalyzed: 'Documenti analizzati',
+    kpiAnalyzedCaption: 'negli ultimi 30 giorni',
+    kpiAnalyzedTrend: '+{n}% vs la settimana scorsa',
+    kpiAnalyzedTrendDown: '−{n}% vs la settimana scorsa',
+    kpiAnalyzedUnknown: 'Conteggio non leggibile in questo momento.',
+    kpiOwnership: 'Appartenenza da confermare',
+    kpiOwnershipCaption: 'finché non sono confermati non generano attività',
+    // --- La colonna «Richiede attenzione» e la scheda in evidenza ------------
+    attentionTitle: 'Richiede attenzione',
+    attentionItemsOne: '1 elemento', attentionItemsMany: '{n} elementi',
+    attentionUnknown: 'L’elenco non è leggibile in questo momento.',
+    attentionSeeAll: 'Vedi tutti',
+    spotAnalyzedAt: 'analizzato il {time}',
+    spotToVerify: 'da verificare',
+    spotPagesOne: 'PDF · 1 pagina', spotPagesMany: 'PDF · {n} pagine',
+    spotFields: 'Campi estratti',
+    spotSender: 'Ente', spotType: 'Tipo', spotAmount: 'Importo', spotDeadline: 'Scadenza',
+    spotDeadlineToVerify: 'Da verificare',
+    spotDeadlineOverdue: 'Scaduta',
+    spotCorrected: 'Corretto da una persona',
+    spotOpen: 'Apri e conferma',
+    spotQuote: 'Citazione di origine',
+    spotQuoteSource: 'Fonte: testo del documento',
+    spotQuoteSourcePage: 'Fonte: pagina {page}',
     ctaTasks: 'Apri le attività', ctaSubsidies: 'Vai agli incentivi',
     // --- I blocchi della Panoramica disegnata dai numeri (2026-08-19) -------
     blockDecisions: 'Richiede una tua decisione',
