@@ -21,6 +21,11 @@
 //  10. Etichette e ordinamenti stabili.
 //  11. Il candidato automatico (0030) — la chiave scritta due volte.
 //  12. Il sito web è un link, e un link può essere codice.
+//  13. Il parser CSV — virgolette, separatori, codifiche.
+//  14. L'auto-mappatura — quattro lingue, e nessun indovino.
+//  15. La validazione di una riga — errori in codice, mai in prosa.
+//  16. I duplicati — la scala di §25, dentro e fuori dal file.
+//  17. A chi vanno i recapiti — la persona, se c'è.
 // ============================================================================
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -31,6 +36,13 @@ import {
   deservesSuggestion, canAutoLink, reasonRank, pickAutoLink, domainSuggests, suggestionKey,
   type MatchCandidate,
 } from '../src/features/crm/crmMatch.ts';
+import {
+  IMPORT_FIELDS, IMPORT_MAX_ROWS, HEADER_ALIASES,
+  decodeCsvBytes, detectDelimiter, parseCsv, suggestMapping, mappingHasName,
+  parseRoles, buildDrafts, effectiveName, contactRoute, validateDraft,
+  normNameKey, flagDuplicates,
+  type ExistingIndex, type ImportDraft,
+} from '../src/features/crm/csvImport.ts';
 import {
   CRM_VIEWS, CRM_SORTS, PIPELINE_STAGES, ALL_STAGES, DEFAULT_STALE_DAYS,
   filtersFromParams, paramsFromFilters, effectiveRole, hasActiveFilters,
@@ -644,6 +656,260 @@ check('la scheda cliente non mette più il valore grezzo in un href',
   !/href=\{o\.website\}\s*target/.test(DETAIL.replace(/safeWebsite\(o\.website\)[\s\S]{0,80}?href=\{o\.website\}/, 'GUARDATO')));
 check('la scheda cliente chiama safeWebsite prima di collegare',
   /safeWebsite\(o\.website\)/.test(DETAIL));
+
+// ---------------------------------------------------------------------------
+section('13. Il parser CSV — virgolette, separatori, codifiche');
+
+// Ogni controllo di questa sezione è scritto per FALLIRE se il parser cambia:
+// un separatore riconosciuto male sposta una colonna e importa la città nel
+// CAP, e il risultato sembra giusto finché qualcuno non apre la scheda.
+check('il punto e virgola è il separatore degli export svizzeri',
+  detectDelimiter('Nome;Citta;Cantone') === ';');
+check('la virgola si riconosce quando domina',
+  detectDelimiter('name,city,canton') === ',');
+check('il tab si riconosce',
+  detectDelimiter('name\tcity\tcanton') === '\t');
+check('una virgola DENTRO le virgolette non fa vincere la virgola',
+  detectDelimiter('"Bianchi, Rossi";Citta') === ';');
+check('senza separatori resta il default svizzero',
+  detectDelimiter('Nome') === ';');
+
+check('i campi si dividono sul separatore',
+  JSON.stringify(parseCsv('a;b;c\n1;2;3').rows) === JSON.stringify([['1', '2', '3']]));
+check('le virgolette proteggono il separatore dentro un campo',
+  JSON.stringify(parseCsv('a;b\n"x;y";2').rows) === JSON.stringify([['x;y', '2']]));
+check('l’escape "" produce un doppio apice',
+  parseCsv('a\n"dett ""virgolette"""').rows[0]![0] === 'dett "virgolette"');
+check('un ritorno a capo DENTRO le virgolette non chiude la riga',
+  parseCsv('a;b\n"riga\nuno";2').rows.length === 1
+  && parseCsv('a;b\n"riga\nuno";2').rows[0]![0] === 'riga\nuno');
+check('il \\r\\n di Windows è un solo fine riga',
+  parseCsv('a;b\r\n1;2\r\n3;4').rows.length === 2);
+check('il \\r dei vecchi Mac è un fine riga',
+  parseCsv('a;b\r1;2').rows.length === 1 && parseCsv('a;b\r1;2').rows[0]![0] === '1');
+check('la riga finale senza ritorno a capo non si perde',
+  parseCsv('a;b\n1;2').rows.length === 1);
+check('le righe vuote si saltano, anche quelle di soli spazi',
+  parseCsv('a;b\n\n1;2\n   \n3;4\n').rows.length === 2);
+check('il BOM dentro la stringa non finisce nella prima intestazione',
+  parseCsv('﻿Nome;Citta\nRossi;Lugano').headers[0] === 'Nome');
+check('l’intestazione è la prima riga e non una riga dati',
+  parseCsv('Nome;Citta\nRossi;Lugano').rows.length === 1
+  && parseCsv('Nome;Citta\nRossi;Lugano').totalDataRows === 1);
+// Il numero della riga NEL FILE serve a dirla all'utente: header = 1, quindi
+// la prima riga dati è la 2.
+check('la bozza porta il numero della riga nel file, intestazione compresa',
+  buildDrafts(parseCsv('Azienda\nRossi\nBianchi'), suggestMapping(['Azienda']))
+    .map((d) => d.fileRow).join(',') === '2,3');
+
+check('UTF-8 si dichiara tale',
+  decodeCsvBytes(new TextEncoder().encode('Zürich')).encoding === 'utf-8'
+  && decodeCsvBytes(new TextEncoder().encode('Zürich')).text === 'Zürich');
+// 0xFC è la ü di windows-1252: in UTF-8 rigoroso non decodifica, e il ripiego
+// deve DICHIARARSI — «Zürich» rovinato in silenzio diventerebbe «Z�rich»
+// dentro un'anagrafica.
+check('un byte windows-1252 ripiega sulla sua codifica, dichiarandola',
+  decodeCsvBytes(new Uint8Array([0x5a, 0xfc, 0x72, 0x69, 0x63, 0x68])).encoding === 'windows-1252'
+  && decodeCsvBytes(new Uint8Array([0x5a, 0xfc, 0x72, 0x69, 0x63, 0x68])).text === 'Zürich');
+check('il BOM UTF-8 si toglie e la codifica resta utf-8',
+  decodeCsvBytes(new Uint8Array([0xef, 0xbb, 0xbf, 0x4e, 0x6f, 0x6d, 0x65])).text === 'Nome'
+  && decodeCsvBytes(new Uint8Array([0xef, 0xbb, 0xbf, 0x4e])).encoding === 'utf-8');
+
+const troppe = 'a\n' + Array.from({ length: IMPORT_MAX_ROWS + 5 }, (_, i) => `r${i}`).join('\n');
+const limite = parseCsv(troppe);
+check('oltre il tetto si importano solo le prime righe',
+  limite.rows.length === IMPORT_MAX_ROWS && limite.rowLimitHit);
+check('ma il numero VERO delle righe si dichiara',
+  limite.totalDataRows === IMPORT_MAX_ROWS + 5);
+check('il tetto dichiarato è mille righe', IMPORT_MAX_ROWS === 1000);
+
+// ---------------------------------------------------------------------------
+section('14. L’auto-mappatura — quattro lingue, e nessun indovino');
+
+check('italiano: Azienda, Cognome, E-Mail, UID',
+  JSON.stringify(suggestMapping(['Azienda', 'Cognome', 'E-Mail', 'UID']))
+    === JSON.stringify(['org.display_name', 'person.last_name', 'contact.email', 'org.uid_che']));
+check('tedesco: Unternehmen, Vorname, Telefon, Kanton',
+  JSON.stringify(suggestMapping(['Unternehmen', 'Vorname', 'Telefon', 'Kanton']))
+    === JSON.stringify(['org.display_name', 'person.first_name', 'contact.phone', 'org.canton']));
+check('francese: Société, Prénom, Code postal',
+  JSON.stringify(suggestMapping(['Société', 'Prénom', 'Code postal']))
+    === JSON.stringify(['org.display_name', 'person.first_name', 'org.postal_code']));
+check('inglese: Company, Last name, Job title',
+  JSON.stringify(suggestMapping(['Company', 'Last name', 'Job title']))
+    === JSON.stringify(['org.display_name', 'person.last_name', 'person.job_title']));
+check('«Firma» è la ragione sociale, «IDE» è l’IDI',
+  suggestMapping(['Firma'])[0] === 'org.display_name' && suggestMapping(['IDE'])[0] === 'org.uid_che');
+check('gli accenti non contano: «Société» e «societe» sono la stessa intestazione',
+  suggestMapping(['societe'])[0] === 'org.display_name');
+check('una colonna irriconosciuta resta NON importata, non indovinata',
+  suggestMapping(['pippo sconosciuto'])[0] === null);
+// ⚠️ Due colonne che chiedono lo stesso campo non si scelgono da sole: vince
+// la prima, la seconda resta da decidere a una persona.
+check('due colonne sullo stesso campo: la seconda resta da decidere',
+  JSON.stringify(suggestMapping(['Azienda', 'Ditta']))
+    === JSON.stringify(['org.display_name', null]));
+
+// ⚠️ LA COLLISIONE CHE IL COMPILATORE NON VEDE: un alias scritto sotto due
+// campi terrebbe il primo in silenzio, e l'altro campo smetterebbe di essere
+// riconosciuto. Il controllo itera gli elenchi VERI del modulo: nessuna copia
+// letterale qui, che invecchierebbe.
+const collisioni: string[] = [];
+for (const field of IMPORT_FIELDS) {
+  for (const alias of HEADER_ALIASES[field]) {
+    if (suggestMapping([alias])[0] !== field) collisioni.push(`${field}:${alias}`);
+  }
+}
+check('nessun alias è conteso fra due campi', collisioni.length === 0, collisioni.join(', '));
+
+check('una mappatura senza alcun nome non apre l’anteprima',
+  !mappingHasName([null, 'contact.email', null]));
+check('il nome dell’organizzazione basta',
+  mappingHasName(['org.display_name']));
+check('nome e cognome insieme bastano, uno solo no',
+  mappingHasName(['person.first_name', 'person.last_name'])
+  && !mappingHasName(['person.first_name']));
+
+check('il ruolo si legge nelle quattro lingue e nei valori dell’enum',
+  parseRoles('cliente').roles[0] === 'customer'
+  && parseRoles('Lieferant').roles[0] === 'supplier'
+  && parseRoles('ancien client').roles[0] === 'former_customer'
+  && parseRoles('customer').roles[0] === 'customer'
+  && parseRoles('Behörde').roles[0] === 'authority');
+check('più ruoli separati da virgola, senza doppioni',
+  JSON.stringify(parseRoles('cliente, fornitore, cliente').roles)
+    === JSON.stringify(['customer', 'supplier']));
+check('un ruolo sconosciuto NON diventa «altro»: si dichiara',
+  parseRoles('pippo').unknown.join('') === 'pippo' && parseRoles('pippo').roles.length === 0);
+check('il campo ruolo vuoto non è un errore',
+  parseRoles('').roles.length === 0 && parseRoles('').unknown.length === 0);
+
+// ---------------------------------------------------------------------------
+section('15. La validazione di una riga — errori in codice, mai in prosa');
+
+const BOZZA_VUOTA: ImportDraft = {
+  fileRow: 2, displayName: '', legalName: '', uidChe: '', vatNumber: '',
+  website: '', street: '', postalCode: '', city: '', canton: '', countryCode: '',
+  notes: '', roleRaw: '', firstName: '', lastName: '', jobTitle: '',
+  email: '', phone: '', mobile: '',
+};
+const bozza = (patch: Partial<ImportDraft>): ImportDraft => ({ ...BOZZA_VUOTA, ...patch });
+
+check('una riga senza né organizzazione né persona non è importabile',
+  validateDraft(bozza({})).includes('missingName'));
+check('il nome dell’organizzazione toglie l’errore',
+  !validateDraft(bozza({ displayName: 'Rossi SA' })).includes('missingName'));
+check('nome e cognome insieme tolgono l’errore, uno solo no',
+  !validateDraft(bozza({ firstName: 'Laura', lastName: 'Bianchi' })).includes('missingName')
+  && validateDraft(bozza({ firstName: 'Laura' })).includes('missingName'));
+check('un’email malformata è un errore della riga',
+  validateDraft(bozza({ displayName: 'X', email: 'non-un-indirizzo' })).includes('invalidEmail'));
+check('un’email sensata non lo è',
+  !validateDraft(bozza({ displayName: 'X', email: 'laura@rossi.ch' })).includes('invalidEmail'));
+check('il cantone vuole due lettere: «Ticino» non passa',
+  validateDraft(bozza({ displayName: 'X', canton: 'Ticino' })).includes('invalidCanton')
+  && !validateDraft(bozza({ displayName: 'X', canton: 'TI' })).includes('invalidCanton'));
+// ⚠️ La STESSA cifra di controllo della sezione 3: qui si prova che il modulo
+// dell'import NON ne ha una quarta copia che potrebbe divergere.
+check('un IDI con la cifra di controllo errata è un errore della riga',
+  validateDraft(bozza({ displayName: 'X', uidChe: 'CHE-107.721.786' })).includes('invalidUid')
+  && !validateDraft(bozza({ displayName: 'X', uidChe: 'CHE-107.721.785' })).includes('invalidUid'));
+check('un ruolo non riconosciuto è un errore della riga',
+  validateDraft(bozza({ displayName: 'X', roleRaw: 'pippo' })).includes('unknownRole')
+  && !validateDraft(bozza({ displayName: 'X', roleRaw: 'cliente' })).includes('unknownRole'));
+check('il paese vuole due lettere',
+  validateDraft(bozza({ displayName: 'X', countryCode: 'Svizzera' })).includes('invalidCountry')
+  && !validateDraft(bozza({ displayName: 'X', countryCode: 'CH' })).includes('invalidCountry'));
+// ⚠️ Il servizio RIFIUTA un sito che non è http(s): meglio dirlo in anteprima
+// che far fallire la riga a metà import. E `javascript:` non è un sito (§12).
+check('un sito senza schema o pericoloso è un errore della riga',
+  validateDraft(bozza({ displayName: 'X', website: 'www.rossi.ch' })).includes('invalidWebsite')
+  && validateDraft(bozza({ displayName: 'X', website: 'javascript:alert(1)' })).includes('invalidWebsite')
+  && !validateDraft(bozza({ displayName: 'X', website: 'https://www.rossi.ch' })).includes('invalidWebsite'));
+check('una riga completa e corretta non ha errori',
+  validateDraft(bozza({
+    displayName: 'Rossi SA', uidChe: 'CHE-107.721.785', canton: 'TI', countryCode: 'CH',
+    email: 'info@rossi.ch', roleRaw: 'cliente', website: 'https://www.rossi.ch',
+  })).length === 0);
+
+// ---------------------------------------------------------------------------
+section('16. I duplicati — la scala di §25, dentro e fuori dal file');
+
+const NESSUNO: ExistingIndex = {
+  uids: new Set(), emails: new Set(), domains: new Set(), names: new Set(),
+};
+const ESISTENTI: ExistingIndex = {
+  uids: new Set(['CHE107721785']),
+  emails: new Set(['laura@rossi.ch']),
+  domains: new Set(['rossi.ch']),
+  names: new Set([normNameKey('Bianchi Sagl')!]),
+};
+
+check('un IDI valido già presente è un duplicato DURO',
+  flagDuplicates([bozza({ uidChe: 'CHE-107.721.785' })], ESISTENTI)[0]?.kind === 'hardUid');
+check('un IDI valido nuovo non è un duplicato',
+  flagDuplicates([bozza({ uidChe: 'CHE-116.281.710' })], ESISTENTI)[0] === null);
+// ⚠️ §25: un IDI con la cifra errata NON identifica nessuno — quindi non può
+// né collidere col database né fra due righe del file.
+check('un IDI con la cifra errata non collide con niente, nemmeno con sé stesso',
+  flagDuplicates(
+    [bozza({ uidChe: 'CHE-107.721.786' }), bozza({ uidChe: 'CHE-107.721.786' })],
+    NESSUNO,
+  ).every((f) => f === null));
+check('lo stesso IDI valido su due righe del file: la seconda è marcata',
+  flagDuplicates(
+    [bozza({ uidChe: 'CHE-116.281.710' }), bozza({ uidChe: 'CHE-116.281.710' })],
+    NESSUNO,
+  ).map((f) => f?.kind ?? 'nessuno').join(',') === 'nessuno,internalUid');
+check('un’email già registrata è un duplicato MOSTRATO',
+  flagDuplicates([bozza({ displayName: 'X', email: 'LAURA@rossi.ch' })], ESISTENTI)[0]?.kind === 'email');
+check('la stessa email su due righe del file: la seconda è marcata',
+  flagDuplicates(
+    [bozza({ displayName: 'A', email: 'x@y.ch' }), bozza({ displayName: 'B', email: 'x@y.ch' })],
+    NESSUNO,
+  ).map((f) => f?.kind ?? 'nessuno').join(',') === 'nessuno,internalEmail');
+check('il dominio del sito coincide: duplicato mostrato',
+  flagDuplicates([bozza({ displayName: 'X', website: 'https://www.rossi.ch' })], ESISTENTI)[0]?.kind === 'domain');
+// ⚠️ §24 — un dominio PUBBLICO non prova nulla nemmeno nell'import.
+check('un dominio pubblico non prova niente',
+  flagDuplicates(
+    [bozza({ displayName: 'X', website: 'https://gmail.com' })],
+    { ...NESSUNO, domains: new Set(['gmail.com']) },
+  )[0] === null);
+check('la ragione sociale normalizzata identica è un duplicato mostrato',
+  flagDuplicates([bozza({ displayName: 'Bianchi   Sagl' })], ESISTENTI)[0]?.kind === 'name');
+// ⚠️ §24 — «Bianchi» e «Bianchi Sagl» restano soggetti DIVERSI: la
+// normalizzazione non toglie la forma giuridica, o fonderebbe estranei.
+check('«Bianchi» non è «Bianchi Sagl»: la forma giuridica non si toglie',
+  flagDuplicates([bozza({ displayName: 'Bianchi' })], ESISTENTI)[0] === null);
+check('il motivo più forte vince: IDI duro prima dell’email',
+  flagDuplicates(
+    [bozza({ uidChe: 'CHE-107.721.785', email: 'laura@rossi.ch' })],
+    ESISTENTI,
+  )[0]?.kind === 'hardUid');
+check('il nome della persona si normalizza come quello dell’organizzazione',
+  normNameKey('Rossi  SA') === normNameKey('rossi sa'));
+check('senza corrispondenze nessuna riga è marcata',
+  flagDuplicates([bozza({ displayName: 'Nuova Sagl' })], ESISTENTI)[0] === null);
+
+// ---------------------------------------------------------------------------
+section('17. A chi vanno i recapiti — la persona, se c’è');
+
+// §127 — la regola del modulo: un recapito sta dove sta davvero. Se la riga
+// porta una persona (nome E cognome), l'email e i telefoni sono suoi; senza
+// persona, sono dell'organizzazione.
+check('con nome e cognome i recapiti vanno alla persona',
+  contactRoute({ firstName: 'Laura', lastName: 'Bianchi' }) === 'person');
+check('senza persona vanno all’organizzazione',
+  contactRoute({ firstName: '', lastName: '' }) === 'organization');
+// ⚠️ Con UN SOLO nome non si sa chi sia: una persona a metà riempirebbe il CRM
+// di sconosciuti, e il recapito resta dell'organizzazione.
+check('un solo nome non fa una persona: il recapito resta dell’organizzazione',
+  contactRoute({ firstName: 'Laura', lastName: '' }) === 'organization');
+check('il nome effettivo deriva dalla persona quando l’organizzazione manca',
+  effectiveName({ displayName: '', firstName: 'Laura', lastName: 'Bianchi' }) === 'Laura Bianchi');
+check('e resta quello dell’organizzazione quando c’è',
+  effectiveName({ displayName: 'Rossi SA', firstName: 'Laura', lastName: 'Bianchi' }) === 'Rossi SA');
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);
