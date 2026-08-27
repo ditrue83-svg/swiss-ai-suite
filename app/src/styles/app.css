@@ -214,6 +214,24 @@
   --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
   --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.12);  /* pannelli sospesi (popover) */
 
+  /* --- Movimento -------------------------------------------------------------
+     Nominati il 2026-08-27: prima ogni transizione portava la sua durata a
+     mano — 120ms, 180ms, 200ms, 220ms, 400ms — aggiustamenti fatti a occhio
+     per schermata, lo stesso difetto delle 23 dimensioni di testo. La scala
+     reale era di tre gradini, e tre sono i token:
+       · `--dur-fast` il feedback al passaggio (colori, bordi, sfondi);
+       · `--dur` l'entrata o lo spostamento (pagine, cassetti, toast) — 180ms,
+         200ms e 220ms erano la stessa intenzione con tre valori, ora uno;
+       · `--dur-slow` i riempimenti (barre), lenti di proposito perché si
+         legga la crescita.
+     `--ease` sostituisce la parola chiave `ease`: stessa curva standard, ma
+     scritta una volta. Chi chiede movimento ridotto al sistema continua a
+     trovare la risposta nel blocco `prefers-reduced-motion` più sotto. */
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 400ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
   /* Il velo dietro un cassetto aperto. Era scritto due volte, con due valori
      diversi (0,0,0/.35 e 16,24,40/.4): stesso ruolo, una voce sola. */
   --scrim: rgba(16, 24, 40, 0.4);
@@ -483,7 +501,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    (400 contro 500 — prima era 600, e PIATTAFORMA gridava quanto le sue voci).
    La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso. */
 .nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-3) var(--sp-3) var(--sp-1); }
-.nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background .12s, color .12s; }
+.nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background var(--dur-fast), color var(--dur-fast); }
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
 /* ⚠️ NELLA COLONNA LA VOCE È PIÙ BASSA CHE NEL DRAWER, e la differenza è
    voluta: di là si tocca con un dito, di qua si punta con un mouse. 8px sopra
@@ -583,7 +601,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
     position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw;
     background: var(--card); border-right: 1px solid var(--line); z-index: 60;
     padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05);
-    transform: translateX(-100%); transition: transform .22s ease, visibility .22s; overflow-y: auto;
+    transform: translateX(-100%); transition: transform var(--dur) var(--ease), visibility var(--dur); overflow-y: auto;
     /* ⚠️⚠️ `visibility: hidden`, E SENZA QUESTA RIGA IL MENU CHIUSO ERA ANCORA
        NAVIGABILE. Il cassetto usciva dallo schermo con `translateX(-100%)`, ma
        una trasformazione sposta i pixel e basta: i suoi quindici collegamenti
@@ -601,7 +619,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
     visibility: hidden;
   }
   .drawer.open { transform: translateX(0); visibility: visible; box-shadow: var(--shadow-md); }
-  .drawer-overlay { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .22s; }
+  .drawer-overlay { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; opacity: 0; pointer-events: none; transition: opacity var(--dur); }
   .drawer-overlay.open { opacity: 1; pointer-events: auto; }
   .drawer-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink-soft); }
   /* ⚠️ QUI SI TOCCA CON UN DITO. La riga dei tre comandi personali sta alta 28
@@ -619,7 +637,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    era un 64px solo-desktop, deciso a schermo il 2026-08-10. */
 .main { flex: 1; padding: var(--sp-8) var(--sp-12) var(--sp-12); max-width: 1160px; width: 100%; }
 .page { display: none; }
-.page.active { display: block; animation: fade-in .18s ease; }
+.page.active { display: block; animation: fade-in var(--dur) var(--ease); }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .page-head { margin-bottom: var(--sp-6); }
 .page-title { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.4px; }
@@ -680,7 +698,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
 @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .main { padding: var(--sp-6) var(--sp-4) var(--sp-12); } }
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; font-size: var(--fs-body); transition: background .12s, border-color .12s, box-shadow .12s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; font-size: var(--fs-body); transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast); }
 .btn:hover { border-color: var(--line-strong); background: var(--bg); }
 .btn .ic { color: var(--muted); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-xs); }
@@ -963,8 +981,15 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    bordo, che dice quale campo è attivo anche dopo un clic del mouse. */
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
 .field textarea { resize: vertical; min-height: 120px; }
+/* Lo stato errore di un campo — 2026-08-27, con le primitive di
+   `components/ui/forms.tsx`. Il bordo rosso non basta da solo (il colore non
+   si vede da tutti): il messaggio è `.field-error` qui sotto, annunciato con
+   `role="alert"` e legato al campo da `aria-describedby`. `--red-dark` e non
+   `--red`: sul bordo serve il rosso che regge il contrasto, come per il testo. */
+.field input[aria-invalid="true"], .field select[aria-invalid="true"], .field textarea[aria-invalid="true"] { border-color: var(--red-dark); }
+.field-error { font-size: var(--fs-meta); color: var(--red-dark); margin-top: var(--sp-05); }
 .checks { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.check-pill { display: inline-flex; align-items: center; gap: var(--sp-2); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-body); font-weight: 500; color: var(--ink-soft); background: var(--card); cursor: pointer; user-select: none; transition: background .12s, border-color .12s, color .12s; }
+.check-pill { display: inline-flex; align-items: center; gap: var(--sp-2); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-body); font-weight: 500; color: var(--ink-soft); background: var(--card); cursor: pointer; user-select: none; transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast); }
 .check-pill:hover { border-color: var(--line-strong); background: var(--bg); }
 /* Premuta = selezione, quindi fondo pieno (vedi `.nav-btn.active`). Una
    pastiglia premuta e una non premuta si distinguevano per una velatura da
@@ -1110,11 +1135,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 
 .tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--line); margin-bottom: var(--sp-4); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
-.tab { border: none; background: none; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-body); font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0; transition: color .12s; }
+.tab { border: none; background: none; padding: var(--sp-2) var(--sp-4); font-size: var(--fs-body); font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0; transition: color var(--dur-fast); }
 .tab:hover { color: var(--ink); }
 .tab.active { color: var(--accent-text); border-bottom-color: var(--accent); }
 
-.upload-zone { display: block; width: 100%; border: 2px dashed var(--line); border-radius: var(--radius); padding: var(--sp-6); text-align: center; font-size: var(--fs-body); color: var(--muted); background: var(--card); cursor: pointer; transition: border-color .12s, color .12s, background .12s; }
+.upload-zone { display: block; width: 100%; border: 2px dashed var(--line); border-radius: var(--radius); padding: var(--sp-6); text-align: center; font-size: var(--fs-body); color: var(--muted); background: var(--card); cursor: pointer; transition: border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast); }
 .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
 .uz-icon { width: 40px; height: 40px; margin: 0 auto var(--sp-2); border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
 .uz-icon .ic { width: 22px; height: 22px; }
@@ -1378,7 +1403,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* Niente `min-width`: una barra larga tre pixel su un valore zero disegna una
    quantità che non esiste. A zero la barra non c'è, e il numero accanto lo
    dice. */
-.bar-fill { height: 100%; border-radius: 6px; background: var(--accent); transition: width .4s ease; }
+.bar-fill { height: 100%; border-radius: 6px; background: var(--accent); transition: width var(--dur-slow) var(--ease); }
 .bar-fill.s-alta { background: var(--red); }
 .bar-fill.s-media { background: var(--amber-fill); }
 .bar-fill.s-bassa { background: var(--green-fill); }
@@ -1398,7 +1423,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    grado. */
 .meter-num { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.5px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
 .meter-track { flex: 1; background: var(--track); border-radius: 99px; height: 10px; overflow: hidden; }
-.meter-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
+.meter-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width var(--dur-slow) var(--ease); }
 
 .chart-empty { color: var(--muted); font-size: var(--fs-meta); padding: var(--sp-4) 0; text-align: center; }
 .lang-card { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
@@ -1448,7 +1473,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .action-link:hover { text-decoration: underline; }
 /* La riga intera porta dove porta la freccia: il bersaglio è la riga, non
    l'icona di 16 pixel in fondo. La freccia resta, come indizio di dove si va. */
-.action-row.is-link { cursor: pointer; color: var(--ink); border-radius: var(--radius-sm); transition: background .12s; }
+.action-row.is-link { cursor: pointer; color: var(--ink); border-radius: var(--radius-sm); transition: background var(--dur-fast); }
 .action-row.is-link:hover { background: var(--bg); text-decoration: none; }
 .action-row.is-link:hover .action-link { text-decoration: underline; }
 .priority-empty { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-6); border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); font-size: var(--fs-body); background: var(--card); }
@@ -1565,7 +1590,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .state-list li.st-bad .st-note { color: var(--red-dark); }
 .state-list li.st-ok .st-note { color: var(--green); }
 
-.toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: var(--on-ink); padding: var(--sp-3) var(--sp-4); border-radius: var(--radius-sm); font-size: var(--fs-body); box-shadow: var(--shadow-md); z-index: 80; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; max-width: min(90vw, 360px); }
+.toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: var(--on-ink); padding: var(--sp-3) var(--sp-4); border-radius: var(--radius-sm); font-size: var(--fs-body); box-shadow: var(--shadow-md); z-index: 80; opacity: 0; transform: translateY(8px); transition: opacity var(--dur), transform var(--dur); pointer-events: none; max-width: min(90vw, 360px); }
 .toast.show { opacity: 1; transform: none; }
 
 /* ============================================================================
@@ -1582,7 +1607,7 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .meter-fill, .bar-fill { transition: none; }
   .drawer { transition: none; }
   .drawer-overlay { transition: none; }
-  .toast { transition: opacity .2s; transform: none; }
+  .toast { transition: opacity var(--dur); transform: none; }
   .toast.show { transform: none; }
   .skeleton { animation: none; }
   .btn:active:not(:disabled) { transform: none; }

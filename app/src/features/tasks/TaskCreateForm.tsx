@@ -19,6 +19,7 @@
 // ============================================================================
 import { useEffect, useRef } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { Input, Select } from '@/components/ui/forms';
 import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { formatDate } from '@/lib/format';
 import { useT } from '@/i18n';
@@ -83,50 +84,42 @@ export function TaskCreateForm({
 
   return (
     <div className="grid-2">
-      <div className="field">
-        <label htmlFor={`${idPrefix}-title`}>{t('tasks.titleField')}</label>
-        <input
-          id={`${idPrefix}-title`} ref={titleRef} value={values.title}
-          onChange={(e) => set({ title: e.target.value })}
-          placeholder={t('tasks.titlePlaceholder')}
-          disabled={saving}
-          required
-          aria-required="true"
-        />
-      </div>
-      <div className="field">
-        <label htmlFor={`${idPrefix}-due`}>{t('tasks.dueLabel')}</label>
-        <input
-          id={`${idPrefix}-due`} type="date" value={values.dueDate}
-          onChange={(e) => set({ dueDate: e.target.value })}
-          disabled={saving}
-        />
-      </div>
-      <div className="field">
-        <label htmlFor={`${idPrefix}-prio`}>{t('tasks.priorityLabel')}</label>
-        <select
-          id={`${idPrefix}-prio`} value={shownPriority}
-          onChange={(e) => set({ priority: e.target.value as TaskPriority })}
-          disabled={saving}
-        >
-          <option value="high">{L.urgency('alta')}</option>
-          <option value="medium">{L.urgency('media')}</option>
-          <option value="low">{L.urgency('bassa')}</option>
-        </select>
-      </div>
-      <div className="field">
-        <label htmlFor={`${idPrefix}-assignee`}>{t('tasks.assignee')}</label>
-        <select
-          id={`${idPrefix}-assignee`} value={values.assigneeUserId}
-          onChange={(e) => set({ assigneeUserId: e.target.value })}
-          disabled={saving}
-        >
-          <option value="">{t('tasks.unassigned')}</option>
-          {members.map((m) => (
-            <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
-          ))}
-        </select>
-      </div>
+      <Input
+        id={`${idPrefix}-title`} ref={titleRef} label={t('tasks.titleField')}
+        value={values.title}
+        onChange={(e) => set({ title: e.target.value })}
+        placeholder={t('tasks.titlePlaceholder')}
+        disabled={saving}
+        required
+        aria-required="true"
+      />
+      <Input
+        id={`${idPrefix}-due`} type="date" label={t('tasks.dueLabel')}
+        value={values.dueDate}
+        onChange={(e) => set({ dueDate: e.target.value })}
+        disabled={saving}
+      />
+      <Select
+        id={`${idPrefix}-prio`} label={t('tasks.priorityLabel')}
+        value={shownPriority}
+        onChange={(e) => set({ priority: e.target.value as TaskPriority })}
+        disabled={saving}
+      >
+        <option value="high">{L.urgency('alta')}</option>
+        <option value="medium">{L.urgency('media')}</option>
+        <option value="low">{L.urgency('bassa')}</option>
+      </Select>
+      <Select
+        id={`${idPrefix}-assignee`} label={t('tasks.assignee')}
+        value={values.assigneeUserId}
+        onChange={(e) => set({ assigneeUserId: e.target.value })}
+        disabled={saving}
+      >
+        <option value="">{t('tasks.unassigned')}</option>
+        {members.map((m) => (
+          <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
+        ))}
+      </Select>
 
       {/* Ciò che l'attività porterà con sé senza che nessuno lo digiti. */}
       {appointmentDate && (
