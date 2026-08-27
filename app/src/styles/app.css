@@ -1290,6 +1290,9 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* empty state con CTA */
 .empty-cta { text-align: center; padding: var(--sp-8) var(--sp-6); }
 .empty-cta .ec-ico { width: 48px; height: 48px; margin: 0 auto var(--sp-3); border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); display: grid; place-items: center; }
+/* La scena illustrata (2026-08-27, `emptyArt.tsx`): sostituisce la pastiglia
+   dove lo stato vuoto è il contenuto della pagina, non un'assenza temporanea. */
+.empty-cta .ec-art { display: block; margin: 0 auto var(--sp-3); }
 .empty-cta .ec-title { font-weight: 600; font-size: var(--fs-body); }
 /* `margin-inline: auto` e non solo il tetto: il blocco vuoto è centrato, e una
    misura senza centratura avrebbe spostato il testo a sinistra dentro di esso. */

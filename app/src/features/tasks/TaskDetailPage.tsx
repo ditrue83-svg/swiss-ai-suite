@@ -21,6 +21,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
+import { Input, Select } from '@/components/ui/forms';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
@@ -214,49 +215,37 @@ export function TaskDetailPage() {
         <div className="card">
           <div className="card-title">{t('tasks.hubTitle')}</div>
 
-          <div className="field">
-            <label htmlFor="d-status">{t('tasks.status')}</label>
-            <select id="d-status" value={task.status} disabled={busy}
-              onChange={(e) => void patch({ status: e.target.value as TaskStatus })}>
-              <option value="open">{t('tasks.statusOpen')}</option>
-              <option value="in_progress">{t('tasks.statusInProgress')}</option>
-              <option value="waiting">{t('tasks.statusWaiting')}</option>
-              <option value="completed">{t('tasks.statusCompleted')}</option>
-            </select>
-          </div>
+          <Select id="d-status" label={t('tasks.status')} value={task.status} disabled={busy}
+            onChange={(e) => void patch({ status: e.target.value as TaskStatus })}>
+            <option value="open">{t('tasks.statusOpen')}</option>
+            <option value="in_progress">{t('tasks.statusInProgress')}</option>
+            <option value="waiting">{t('tasks.statusWaiting')}</option>
+            <option value="completed">{t('tasks.statusCompleted')}</option>
+          </Select>
 
-          <div className="field">
-            <label htmlFor="d-assignee">{t('tasks.assignee')}</label>
-            <select id="d-assignee" value={task.assigneeUserId ?? ''} disabled={busy}
-              onChange={(e) => void patch({ assigneeUserId: e.target.value || null })}>
-              <option value="">{t('tasks.unassigned')}</option>
-              {members.map((m) => (
-                <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
-              ))}
-            </select>
-          </div>
+          <Select id="d-assignee" label={t('tasks.assignee')} value={task.assigneeUserId ?? ''} disabled={busy}
+            onChange={(e) => void patch({ assigneeUserId: e.target.value || null })}>
+            <option value="">{t('tasks.unassigned')}</option>
+            {members.map((m) => (
+              <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
+            ))}
+          </Select>
 
-          <div className="field">
-            <label htmlFor="d-prio">{t('tasks.priorityLabel')}</label>
-            <select id="d-prio" value={task.priority} disabled={busy}
-              onChange={(e) => void patch({ priority: e.target.value as TaskPriority })}>
-              <option value="high">{L.urgency('alta')}</option>
-              <option value="medium">{L.urgency('media')}</option>
-              <option value="low">{L.urgency('bassa')}</option>
-            </select>
-          </div>
+          <Select id="d-prio" label={t('tasks.priorityLabel')} value={task.priority} disabled={busy}
+            onChange={(e) => void patch({ priority: e.target.value as TaskPriority })}>
+            <option value="high">{L.urgency('alta')}</option>
+            <option value="medium">{L.urgency('media')}</option>
+            <option value="low">{L.urgency('bassa')}</option>
+          </Select>
 
-          <div className="field">
-            <label htmlFor="d-due">{t('tasks.dueLabel')}</label>
-            <input id="d-due" type="date" value={task.dueDate ?? ''} disabled={busy}
-              onChange={(e) => void patch({ dueDate: e.target.value || null })} />
-            {/* La lettura del termine, nella grammatica della sua famiglia; per
-                una conclusa resta testo muto (vedi isOverdue). */}
-            <div className="mt-10">
-              {task.status === 'completed'
-                ? <span className="muted-sm">{t(due.key, due.params)}</span>
-                : <DeadlineMark date={task.dueDate} />}
-            </div>
+          <Input id="d-due" label={t('tasks.dueLabel')} type="date" value={task.dueDate ?? ''} disabled={busy}
+            onChange={(e) => void patch({ dueDate: e.target.value || null })} />
+          {/* La lettura del termine, nella grammatica della sua famiglia; per
+              una conclusa resta testo muto (vedi isOverdue). */}
+          <div className="mt-10">
+            {task.status === 'completed'
+              ? <span className="muted-sm">{t(due.key, due.params)}</span>
+              : <DeadlineMark date={task.dueDate} />}
           </div>
 
           {/* ⚠️ IL CAMPO C'È SOLO SE LA DATA C'È, e non è modificabile qui.

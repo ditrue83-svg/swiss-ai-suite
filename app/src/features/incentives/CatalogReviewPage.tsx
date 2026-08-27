@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { EmptyCta, ErrorState, SkeletonCard } from '@/components/ui/states';
+import { Textarea } from '@/components/ui/forms';
 import { useToast } from '@/components/ui/Toast';
 import { useT } from '@/i18n';
 import { formatDate } from '@/lib/format';
@@ -175,17 +176,15 @@ export function CatalogReviewPage() {
                 )}
 
                 {/* ⚠️ Dentro `.field`, o in tema scuro è bianco su bianco. */}
-                <div className="field">
-                  <label htmlFor={`note-${r.id}`}>{t('catalogReview.note.label')}</label>
-                  <textarea
-                    id={`note-${r.id}`}
-                    rows={2}
-                    value={note}
-                    placeholder={t('catalogReview.note.placeholder')}
-                    onChange={(e) => setNotes((p) => ({ ...p, [r.id]: e.target.value }))}
-                  />
-                  <p className="muted-sm">{t('catalogReview.note.hint')}</p>
-                </div>
+                <Textarea
+                  id={`note-${r.id}`}
+                  label={t('catalogReview.note.label')}
+                  hint={t('catalogReview.note.hint')}
+                  rows={2}
+                  value={note}
+                  placeholder={t('catalogReview.note.placeholder')}
+                  onChange={(e) => setNotes((p) => ({ ...p, [r.id]: e.target.value }))}
+                />
 
                 <div className="row-wrap">
                   <button type="button" className="btn" disabled={working} onClick={() => void decide(r, 'accepted')}>

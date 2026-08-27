@@ -423,7 +423,7 @@ function EmptyState({
   if (!hasProjects) {
     return (
       <EmptyCta
-        icon="banknote"
+        art="opportunity"
         title={t('incentives.empty.noProjectTitle')}
         subtitle={t('incentives.empty.noProjectSub')}
         action={

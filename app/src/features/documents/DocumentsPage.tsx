@@ -23,6 +23,7 @@ import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
+import { Input, Select } from '@/components/ui/forms';
 import { documentHubService } from '@/services/documentHubService';
 import { DocumentStatsPanel } from './DocumentStatsPanel';
 import { formatDate } from '@/lib/format';
@@ -442,40 +443,25 @@ export function DocumentsPage() {
 
             {showFilters && (
               <div className="doc-filters">
-                <div className="field">
-                  <label htmlFor="f-source">{t('documents.sourceLabel')}</label>
-                  <select id="f-source" value={filters.source ?? ''}
-                    onChange={(e) => update({ source: (e.target.value || null) as DocumentSourceType | null })}>
-                    <option value="">{t('documents.filterAny')}</option>
-                    {SOURCES.map((s) => <option key={s} value={s}>{t(SOURCE_KEY[s])}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="f-state">{t('documents.stateLabel')}</label>
-                  <select id="f-state" value={filters.state ?? ''}
-                    onChange={(e) => update({ state: (e.target.value || null) as DocumentState | null })}>
-                    <option value="">{t('documents.filterAny')}</option>
-                    {STATES.map((s) => <option key={s} value={s}>{t(STATE_KEY[s])}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="f-tag">{t('documents.tagLabel')}</label>
-                  <select id="f-tag" value={(filters.tagIds ?? [])[0] ?? ''}
-                    onChange={(e) => update({ tagIds: e.target.value ? [e.target.value] : null })}>
-                    <option value="">{t('documents.filterAny')}</option>
-                    {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="f-from">{t('documents.dateFrom')}</label>
-                  <input id="f-from" type="date" value={filters.dateFrom ?? ''}
-                    onChange={(e) => update({ dateFrom: e.target.value || null })} />
-                </div>
-                <div className="field">
-                  <label htmlFor="f-to">{t('documents.dateTo')}</label>
-                  <input id="f-to" type="date" value={filters.dateTo ?? ''}
-                    onChange={(e) => update({ dateTo: e.target.value || null })} />
-                </div>
+                <Select id="f-source" label={t('documents.sourceLabel')} value={filters.source ?? ''}
+                  onChange={(e) => update({ source: (e.target.value || null) as DocumentSourceType | null })}>
+                  <option value="">{t('documents.filterAny')}</option>
+                  {SOURCES.map((s) => <option key={s} value={s}>{t(SOURCE_KEY[s])}</option>)}
+                </Select>
+                <Select id="f-state" label={t('documents.stateLabel')} value={filters.state ?? ''}
+                  onChange={(e) => update({ state: (e.target.value || null) as DocumentState | null })}>
+                  <option value="">{t('documents.filterAny')}</option>
+                  {STATES.map((s) => <option key={s} value={s}>{t(STATE_KEY[s])}</option>)}
+                </Select>
+                <Select id="f-tag" label={t('documents.tagLabel')} value={(filters.tagIds ?? [])[0] ?? ''}
+                  onChange={(e) => update({ tagIds: e.target.value ? [e.target.value] : null })}>
+                  <option value="">{t('documents.filterAny')}</option>
+                  {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+                </Select>
+                <Input id="f-from" label={t('documents.dateFrom')} type="date" value={filters.dateFrom ?? ''}
+                  onChange={(e) => update({ dateFrom: e.target.value || null })} />
+                <Input id="f-to" label={t('documents.dateTo')} type="date" value={filters.dateTo ?? ''}
+                  onChange={(e) => update({ dateTo: e.target.value || null })} />
                 <div className="field doc-filter-wide">
                   <label className="task-check" htmlFor="f-deadline">
                     <input id="f-deadline" type="checkbox" checked={filters.hasDeadline === true}
@@ -551,7 +537,7 @@ export function DocumentsPage() {
                 </div>
               ) : (
                 <EmptyCta
-                  icon="archive"
+                  art="document"
                   title={t('documents.empty')}
                   subtitle={t('documents.emptySub')}
                   action={

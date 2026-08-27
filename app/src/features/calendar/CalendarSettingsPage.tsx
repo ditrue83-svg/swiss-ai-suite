@@ -23,6 +23,7 @@ import { Tag, type TagTone } from '@/components/ui/Tag';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { Button, ErrorState, SkeletonLine } from '@/components/ui/states';
+import { Select } from '@/components/ui/forms';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -233,17 +234,14 @@ export function CalendarSettingsPage() {
           <p className="muted-sm">{t('calendar.channelInAppNote')}</p>
 
           <div className="card-title mt-16">{t('calendar.timezoneTitle')}</div>
-          <div className="field">
-            <label htmlFor="tz">{t('calendar.timezoneTitle')}</label>
-            <select id="tz" value={prefs.timezone || DEFAULT_TIMEZONE} disabled={saving}
-              onChange={(e) => void savePrefs({ ...prefs, timezone: e.target.value })}>
-              {/* Il fuso salvato può non essere nell'elenco: lo si mostra
-                  comunque, invece di farlo sparire silenziosamente. */}
-              {(TIMEZONE_CHOICES.includes(prefs.timezone) ? TIMEZONE_CHOICES : [prefs.timezone, ...TIMEZONE_CHOICES])
-                .map((tz) => <option key={tz} value={tz}>{tz}</option>)}
-            </select>
-            <div className="field-hint">{t('calendar.timezoneHint')}</div>
-          </div>
+          <Select id="tz" label={t('calendar.timezoneTitle')} hint={t('calendar.timezoneHint')}
+            value={prefs.timezone || DEFAULT_TIMEZONE} disabled={saving}
+            onChange={(e) => void savePrefs({ ...prefs, timezone: e.target.value })}>
+            {/* Il fuso salvato può non essere nell'elenco: lo si mostra
+                comunque, invece di farlo sparire silenziosamente. */}
+            {(TIMEZONE_CHOICES.includes(prefs.timezone) ? TIMEZONE_CHOICES : [prefs.timezone, ...TIMEZONE_CHOICES])
+              .map((tz) => <option key={tz} value={tz}>{tz}</option>)}
+          </Select>
         </div>
       )}
 

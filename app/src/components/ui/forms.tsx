@@ -33,16 +33,22 @@ interface BaseFieldProps {
   hint?: ReactNode;
   /** Il guasto dell'ultimo tentativo: annunciato (`role="alert"), non solo colorato. */
   error?: ReactNode;
+  /**
+   * Classi EXTRA sul wrapper `.field` (es. `m-0` dentro barre e griglie fitte).
+   * `className` resta del controllo: chi scrive `className` si aspetta che finisca
+   * sull'input, e chi deve toccare il wrapper di solito deve togliere il margine.
+   */
+  fieldClassName?: string;
 }
 
 /* Il blocco `.field` con label, controllo e messaggio. Le primitive qui sotto
    lo condividono tutte: lo stato errore si dichiara in un posto solo. */
-function FieldShell({ id, label, hint, error, children }: BaseFieldProps & {
+function FieldShell({ id, label, hint, error, fieldClassName, children }: BaseFieldProps & {
   children: (messageId: string | undefined) => ReactNode;
 }) {
   const messageId = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
   return (
-    <div className="field">
+    <div className={['field', fieldClassName ?? ''].filter(Boolean).join(' ')}>
       <label htmlFor={id}>{label}</label>
       {children(messageId)}
       {error
@@ -57,9 +63,9 @@ function FieldShell({ id, label, hint, error, children }: BaseFieldProps & {
 /* `forwardRef` perché il fuoco programmatico (il modulo che si apre a metà
    pagina e mette il cursore nel primo campo) passa per il ref dell'`input`. */
 export const Input = forwardRef<HTMLInputElement, BaseFieldProps & InputHTMLAttributes<HTMLInputElement>>(
-  function Input({ id, label, hint, error, ...rest }, ref) {
+  function Input({ id, label, hint, error, fieldClassName, ...rest }, ref) {
     return (
-      <FieldShell id={id} label={label} hint={hint} error={error}>
+      <FieldShell id={id} label={label} hint={hint} error={error} fieldClassName={fieldClassName}>
         {(messageId) => (
           <input
             id={id}
@@ -74,10 +80,10 @@ export const Input = forwardRef<HTMLInputElement, BaseFieldProps & InputHTMLAttr
   },
 );
 
-export function Select({ id, label, hint, error, children, ...rest }:
+export function Select({ id, label, hint, error, fieldClassName, children, ...rest }:
   BaseFieldProps & SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
+    <FieldShell id={id} label={label} hint={hint} error={error} fieldClassName={fieldClassName}>
       {(messageId) => (
         <select
           id={id}
@@ -92,10 +98,10 @@ export function Select({ id, label, hint, error, children, ...rest }:
   );
 }
 
-export function Textarea({ id, label, hint, error, ...rest }:
+export function Textarea({ id, label, hint, error, fieldClassName, ...rest }:
   BaseFieldProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
+    <FieldShell id={id} label={label} hint={hint} error={error} fieldClassName={fieldClassName}>
       {(messageId) => (
         <textarea
           id={id}
@@ -111,10 +117,10 @@ export function Textarea({ id, label, hint, error, ...rest }:
 /* La spunta NON sta in `.field`: l'etichetta va accanto alla casella, non
    sopra, e impilarla come gli altri campi la farebbe sembrare un campo di
    testo. Segue il pattern `.task-check` già usato dalle liste di controllo. */
-export function Checkbox({ id, label, hint, error, ...rest }:
+export function Checkbox({ id, label, hint, error, fieldClassName, ...rest }:
   BaseFieldProps & Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
   return (
-    <div className="field">
+    <div className={['field', fieldClassName ?? ''].filter(Boolean).join(' ')}>
       <div className="task-check">
         <input
           id={id}

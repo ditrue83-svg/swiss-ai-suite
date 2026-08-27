@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { Input } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 
@@ -45,10 +46,7 @@ export function ForgotPasswordPage() {
           </div>
         ) : (
           <form onSubmit={onSubmit} noValidate>
-            <div className="field">
-              <label htmlFor="fp-email">{t('auth.emailLabel')}</label>
-              <input id="fp-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
-            </div>
+            <Input id="fp-email" label={t('auth.emailLabel')} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
             <div className="auth-actions">
               <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
                 {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.forgot.submit')}

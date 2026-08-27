@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { Input } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -45,14 +46,8 @@ export function LoginPage() {
         {error && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{error}</span></div>}
 
         <form onSubmit={onSubmit} noValidate>
-          <div className="field">
-            <label htmlFor="login-email">{t('auth.emailLabel')}</label>
-            <input id="login-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
-          </div>
-          <div className="field">
-            <label htmlFor="login-password">{t('auth.passwordLabel')}</label>
-            <input id="login-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-          </div>
+          <Input id="login-email" label={t('auth.emailLabel')} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
+          <Input id="login-password" label={t('auth.passwordLabel')} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           <div className="auth-actions">
             <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
               {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.login.submit')}

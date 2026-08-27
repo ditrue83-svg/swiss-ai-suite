@@ -1,6 +1,7 @@
 // Stati riutilizzabili: loading / error / empty + skeleton + Button con loading.
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
+import { EmptyArt, type EmptyArtName } from './emptyArt';
 // Fuori da un componente serve translate(): questo default viene valutato al render.
 import { translate as tr } from '@/i18n';
 
@@ -35,11 +36,16 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 }
 
 export function EmptyCta({
-  icon = 'document', title, subtitle, action,
-}: { icon?: IconName; title: string; subtitle?: string; action?: ReactNode }) {
+  icon = 'document', title, subtitle, action, art,
+}: { icon?: IconName; title: string; subtitle?: string; action?: ReactNode; art?: EmptyArtName }) {
   return (
     <div className="empty-cta">
-      <div className="ec-ico"><Icon name={icon} /></div>
+      {/* La scena (`art`) dove il vuoto È il contenuto; la pastiglia con l'icona
+          altrove. Le due non stanno mai insieme: due segni per la stessa frase
+          sarebbero decorazione, non gerarchia. */}
+      {art
+        ? <EmptyArt name={art} />
+        : <div className="ec-ico"><Icon name={icon} /></div>}
       <div className="ec-title">{title}</div>
       {subtitle && <div className="ec-sub">{subtitle}</div>}
       {action}

@@ -6,6 +6,7 @@ import { RegistryLookup, type RegistryFields } from '@/features/companies/Regist
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
+import { Input, Select } from '@/components/ui/forms';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { toUserMessage } from '@/lib/errors';
 import { formatUid, isValidUid } from '@/lib/uid';
@@ -113,10 +114,7 @@ export function OnboardingPage() {
 
         <form onSubmit={onSubmit} noValidate>
           <div className="grid-2">
-            <div className="field">
-              <label htmlFor="ob-name">{t('onboarding.legalName')}</label>
-              <input id="ob-name" required value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder={t('onboarding.legalNamePlaceholder')} />
-            </div>
+            <Input id="ob-name" label={t('onboarding.legalName')} required value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder={t('onboarding.legalNamePlaceholder')} />
             <div className="field">
               <label htmlFor="ob-che">{t('onboarding.uid')}</label>
               <input id="ob-che" value={uidChe} onChange={(e) => setUidChe(e.target.value)}
@@ -130,39 +128,21 @@ export function OnboardingPage() {
                 </div>
               )}
             </div>
-            <div className="field">
-              <label htmlFor="ob-canton">{t('onboarding.canton')}</label>
-              <select id="ob-canton" value={canton} onChange={(e) => setCanton(e.target.value)}>
-                {CANTONI.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="ob-mun">{t('onboarding.municipality')}</label>
-              <input id="ob-mun" value={municipality} onChange={(e) => setMunicipality(e.target.value)} placeholder={t('onboarding.municipalityPlaceholder')} />
-            </div>
-            <div className="field">
-              <label htmlFor="ob-form">{t('onboarding.legalForm')}</label>
-              <select id="ob-form" value={legalForm} onChange={(e) => setLegalForm(e.target.value)}>
-                {FORME_GIURIDICHE.map((f) => <option key={f} value={f}>{f}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="ob-sector">{t('onboarding.sector')}</label>
-              <select id="ob-sector" value={sector} onChange={(e) => setSector(e.target.value)}>
-                <option value="">{t('onboarding.sectorPlaceholder')}</option>
-                {SETTORI.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="ob-emp">{t('onboarding.employees')}</label>
-              <input id="ob-emp" type="number" min={0} value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder={t('onboarding.employeesPlaceholder')} />
-            </div>
-            <div className="field">
-              <label htmlFor="ob-rev">{t('onboarding.revenue')}</label>
-              <select id="ob-rev" value={revenueBand} onChange={(e) => setRevenueBand(e.target.value)}>
-                {FASCE_FATTURATO.map((f) => <option key={f} value={f}>{f === NO_REVENUE ? t('onboarding.noPreference') : f}</option>)}
-              </select>
-            </div>
+            <Select id="ob-canton" label={t('onboarding.canton')} value={canton} onChange={(e) => setCanton(e.target.value)}>
+              {CANTONI.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+            <Input id="ob-mun" label={t('onboarding.municipality')} value={municipality} onChange={(e) => setMunicipality(e.target.value)} placeholder={t('onboarding.municipalityPlaceholder')} />
+            <Select id="ob-form" label={t('onboarding.legalForm')} value={legalForm} onChange={(e) => setLegalForm(e.target.value)}>
+              {FORME_GIURIDICHE.map((f) => <option key={f} value={f}>{f}</option>)}
+            </Select>
+            <Select id="ob-sector" label={t('onboarding.sector')} value={sector} onChange={(e) => setSector(e.target.value)}>
+              <option value="">{t('onboarding.sectorPlaceholder')}</option>
+              {SETTORI.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </Select>
+            <Input id="ob-emp" label={t('onboarding.employees')} type="number" min={0} value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder={t('onboarding.employeesPlaceholder')} />
+            <Select id="ob-rev" label={t('onboarding.revenue')} value={revenueBand} onChange={(e) => setRevenueBand(e.target.value)}>
+              {FASCE_FATTURATO.map((f) => <option key={f} value={f}>{f === NO_REVENUE ? t('onboarding.noPreference') : f}</option>)}
+            </Select>
           </div>
 
           <div className="row-wrap mt-8">

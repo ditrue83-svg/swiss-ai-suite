@@ -62,6 +62,7 @@ import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { ActionOriginMark, ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
+import { Input, Select } from '@/components/ui/forms';
 import type { AnalysisCorrection, DocumentCategory, DocumentDetail, DocumentTag, Evidence } from '@/types/models';
 import { AskAbout } from '@/features/assistant/AskAbout';
 
@@ -1071,25 +1072,19 @@ export function DocumentDetailPage() {
         <div className="muted-sm prose">{t('documents.organizationHint')}</div>
 
         <div className="grid-2 mt-12">
-          <div className="field">
-            <label htmlFor="doc-category">{t('documents.category')}</label>
-            <select id="doc-category" value={doc.category ?? ''} disabled={busy}
-              onChange={(e) => void setCategory((e.target.value || null) as DocumentCategory | null)}>
-              <option value="">{t('documents.uncategorized')}</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{L.category(c)}</option>)}
-            </select>
-            {doc.category && (
-              <div className="muted-sm">
+          <Select id="doc-category" label={t('documents.category')} value={doc.category ?? ''} disabled={busy}
+            onChange={(e) => void setCategory((e.target.value || null) as DocumentCategory | null)}
+            hint={doc.category ? (
+              <span className="muted-sm">
                 {doc.categorySource === 'manual' ? t('documents.categoryManual') : t('documents.categoryAuto')}
-              </div>
-            )}
-          </div>
-          <div className="field">
-            <label htmlFor="doc-title">{t('documents.titleField')}</label>
-            <input id="doc-title" value={title ?? doc.title} disabled={busy}
-              onChange={(e) => setTitle(e.target.value)} onBlur={() => void saveTitle()} />
-            <div className="muted-sm">{t('documents.titleHint')}</div>
-          </div>
+              </span>
+            ) : undefined}>
+            <option value="">{t('documents.uncategorized')}</option>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{L.category(c)}</option>)}
+          </Select>
+          <Input id="doc-title" label={t('documents.titleField')} value={title ?? doc.title} disabled={busy}
+            onChange={(e) => setTitle(e.target.value)} onBlur={() => void saveTitle()}
+            hint={<span className="muted-sm">{t('documents.titleHint')}</span>} />
         </div>
 
         <div className="field">

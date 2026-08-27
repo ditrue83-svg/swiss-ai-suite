@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
+import { Select, Textarea } from '@/components/ui/forms';
 import { companyService } from '@/services/companyService';
 import { interpretService } from '@/services/interpretService';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -119,71 +120,66 @@ export function ProfileForm({ onSaved }: { onSaved: (interpretation: ProjectInte
       </p>
 
       <div className="grid-2">
-        <div className="field">
-          <label htmlFor="sf-sector">{t('onboarding.sector')}</label>
-          <select id="sf-sector" value={sector} onChange={(e) => setSector(e.target.value)}>
-            <option value="">{t('onboarding.sectorPlaceholder')}</option>
-            {SETTORI.map((s) => <option key={s.id} value={s.id}>{L.sector(s.id)}</option>)}
-          </select>
-        </div>
+        <Select id="sf-sector" label={t('onboarding.sector')} value={sector} onChange={(e) => setSector(e.target.value)}>
+          <option value="">{t('onboarding.sectorPlaceholder')}</option>
+          {SETTORI.map((s) => <option key={s.id} value={s.id}>{L.sector(s.id)}</option>)}
+        </Select>
       </div>
 
-      <div className="field">
-        <label htmlFor="sf-desc">{t('subsidy.profile.description')}</label>
-        <textarea id="sf-desc" style={{ minHeight: 120 }} value={description} onChange={(e) => onDescriptionChange(e.target.value)}
-          placeholder={t('subsidy.profile.descriptionPlaceholder')} />
-        <div className="row-wrap mt-2">
-          <button type="button" className="btn btn-sm" onClick={interpret} disabled={!canInterpret} aria-busy={interpreting || undefined}>
-            {interpreting ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} {t('subsidy.profile.interpret')}
-          </button>
-          <span className="muted-sm">{t('subsidy.profile.interpretHint')}</span>
-        </div>
-
-        {interpretation && (
-          <div className="hint-accent mt-3" role="status">
-            {interpretation.summary && <div className="mb-2">{interpretation.summary}</div>}
-            {recognized.length > 0
-              ? <>{t('subsidy.profile.recognized')} <strong>{recognized.map(L.projectType).join(', ')}</strong></>
-              : <>{t('subsidy.profile.noneRecognized')}</>}
-            {interpretation.timing.alreadyStarted === true && (
-              <div className="mt-2"><Icon name="alert" className="ic-sm" /> {t('subsidy.profile.alreadyStarted')}</div>
-            )}
-
-            {/* Ambiti riconosciuti con poca sicurezza: decide l'utente, non l'AI. */}
-            {uncertainTypes.length > 0 && (
-              <div className="mt-2">
-                {t('subsidy.profile.uncertainScopes')}{' '}
-                {uncertainTypes.map((p, i) => (
-                  <span key={p.type}>
-                    {i > 0 ? ', ' : ''}
-                    <button type="button" className="btn-link" onClick={() => toggleProject(p.type)}>
-                      {L.projectType(p.type)}
-                    </button>
-                  </span>
-                ))}
-                 {t('subsidy.profile.uncertainScopesHint')}
-              </div>
-            )}
-
-            {/* §17 — ciò che l'AI non ha potuto stabilire va detto, non nascosto.
-                Stessa grammatica del blocco incertezze dei documenti: superficie
-                neutra e segno «da verificare» — dichiarare non è fallire. */}
-            {interpretation.uncertainties.length > 0 && (
-              <div className="verify-note mt-2" role="note">
-                <span className="vn-title"><MarkGlyph name="question" />{t('subsidy.profile.toVerify')}</span>
-                <ul>
-                  {interpretation.uncertainties.map((u, i) => <li key={i}>{u.description}</li>)}
-                </ul>
-              </div>
-            )}
-            {interpretation.meta.droppedEvidence > 0 && (
-              <div className="muted-sm mt-1">
-                {t('subsidy.profile.droppedEvidence', { n: interpretation.meta.droppedEvidence })}
-              </div>
-            )}
-          </div>
-        )}
+      <Textarea id="sf-desc" label={t('subsidy.profile.description')}
+        style={{ minHeight: 120 }} value={description} onChange={(e) => onDescriptionChange(e.target.value)}
+        placeholder={t('subsidy.profile.descriptionPlaceholder')} />
+      <div className="row-wrap mt-2">
+        <button type="button" className="btn btn-sm" onClick={interpret} disabled={!canInterpret} aria-busy={interpreting || undefined}>
+          {interpreting ? <span className="spinner" aria-hidden="true" /> : <Icon name="fileSearch" className="ic-sm" />} {t('subsidy.profile.interpret')}
+        </button>
+        <span className="muted-sm">{t('subsidy.profile.interpretHint')}</span>
       </div>
+
+      {interpretation && (
+        <div className="hint-accent mt-3" role="status">
+          {interpretation.summary && <div className="mb-2">{interpretation.summary}</div>}
+          {recognized.length > 0
+            ? <>{t('subsidy.profile.recognized')} <strong>{recognized.map(L.projectType).join(', ')}</strong></>
+            : <>{t('subsidy.profile.noneRecognized')}</>}
+          {interpretation.timing.alreadyStarted === true && (
+            <div className="mt-2"><Icon name="alert" className="ic-sm" /> {t('subsidy.profile.alreadyStarted')}</div>
+          )}
+
+          {/* Ambiti riconosciuti con poca sicurezza: decide l'utente, non l'AI. */}
+          {uncertainTypes.length > 0 && (
+            <div className="mt-2">
+              {t('subsidy.profile.uncertainScopes')}{' '}
+              {uncertainTypes.map((p, i) => (
+                <span key={p.type}>
+                  {i > 0 ? ', ' : ''}
+                  <button type="button" className="btn-link" onClick={() => toggleProject(p.type)}>
+                    {L.projectType(p.type)}
+                  </button>
+                </span>
+              ))}
+               {t('subsidy.profile.uncertainScopesHint')}
+            </div>
+          )}
+
+          {/* §17 — ciò che l'AI non ha potuto stabilire va detto, non nascosto.
+              Stessa grammatica del blocco incertezze dei documenti: superficie
+              neutra e segno «da verificare» — dichiarare non è fallire. */}
+          {interpretation.uncertainties.length > 0 && (
+            <div className="verify-note mt-2" role="note">
+              <span className="vn-title"><MarkGlyph name="question" />{t('subsidy.profile.toVerify')}</span>
+              <ul>
+                {interpretation.uncertainties.map((u, i) => <li key={i}>{u.description}</li>)}
+              </ul>
+            </div>
+          )}
+          {interpretation.meta.droppedEvidence > 0 && (
+            <div className="muted-sm mt-1">
+              {t('subsidy.profile.droppedEvidence', { n: interpretation.meta.droppedEvidence })}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="field">
         <span className="group-label">{t('subsidy.profile.scopes')}</span>

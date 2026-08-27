@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAsync } from '@/hooks/useAsync';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonLine } from '@/components/ui/states';
+import { Input, Select, Textarea } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { LEGACY_MODULES_ENABLED } from '@/lib/env';
 import { useT, type TFunction, type TKey } from '@/i18n';
@@ -181,35 +182,28 @@ export function AutomationBuilderPage() {
 
       <div className="card mt-16">
         <div className="grid-2">
-          <div className="field">
-            <label htmlFor="wf-name">{t('automations.nameField')}</label>
-            <input id="wf-name" value={name} onChange={(e) => setName(e.target.value)}
-              maxLength={80} placeholder={t('automations.namePlaceholder')} />
-          </div>
-          <div className="field">
-            <label htmlFor="wf-desc">{t('automations.descriptionField')}</label>
-            <input id="wf-desc" value={description} onChange={(e) => setDescription(e.target.value)}
-              maxLength={500} placeholder={t('automations.descriptionPlaceholder')} />
-          </div>
+          <Input id="wf-name" label={t('automations.nameField')}
+            value={name} onChange={(e) => setName(e.target.value)}
+            maxLength={80} placeholder={t('automations.namePlaceholder')} />
+          <Input id="wf-desc" label={t('automations.descriptionField')}
+            value={description} onChange={(e) => setDescription(e.target.value)}
+            maxLength={500} placeholder={t('automations.descriptionPlaceholder')} />
         </div>
       </div>
 
       {/* ---- 1. QUANDO ---------------------------------------------------- */}
       <div className="card mt-16">
         <div className="card-title">{t('automations.step1')}</div>
-        <div className="field">
-          <label htmlFor="wf-trigger">{t('automations.triggerField')}</label>
-          <select id="wf-trigger" value={triggerType}
-            onChange={(e) => changeTrigger(e.target.value as AutomationEventType)}>
-            {/* `triggersOffered(triggerType)`: gli inneschi dei moduli fuori
-                perimetro non si offrono (D-10), ma quello di una regola
-                esistente resta — una tendina che non contiene il valore che
-                mostra è una tendina che mente. */}
-            {triggersOffered(LEGACY_MODULES_ENABLED, triggerType).map((tr) => (
-              <option key={tr.key} value={tr.key}>{t(tr.labelKey as TKey)}</option>
-            ))}
-          </select>
-        </div>
+        <Select id="wf-trigger" label={t('automations.triggerField')} value={triggerType}
+          onChange={(e) => changeTrigger(e.target.value as AutomationEventType)}>
+          {/* `triggersOffered(triggerType)`: gli inneschi dei moduli fuori
+              perimetro non si offrono (D-10), ma quello di una regola
+              esistente resta — una tendina che non contiene il valore che
+              mostra è una tendina che mente. */}
+          {triggersOffered(LEGACY_MODULES_ENABLED, triggerType).map((tr) => (
+            <option key={tr.key} value={tr.key}>{t(tr.labelKey as TKey)}</option>
+          ))}
+        </Select>
         <p className="muted-sm">{t(trigger.descriptionKey as TKey)}</p>
       </div>
 
@@ -549,74 +543,62 @@ function ActionCard({
 
       {action.key === 'create_task' && (
         <>
-          <div className="field">
-            <label htmlFor={`${id}-title`}>{t('automations.taskTitleField')}</label>
-            <input id={`${id}-title`} value={String(config.titleTemplate ?? '')} maxLength={200}
-              onChange={(e) => set({ titleTemplate: e.target.value })} />
-            <div className="field-hint">{t('automations.placeholdersAvailable', { list: trigger.templates.join(' ') })}</div>
-          </div>
-          <div className="field">
-            <label htmlFor={`${id}-desc`}>{t('automations.taskDescriptionField')}</label>
-            <textarea id={`${id}-desc`} rows={2} maxLength={1000}
-              value={String(config.descriptionTemplate ?? '')}
-              onChange={(e) => set({ descriptionTemplate: e.target.value })} />
-          </div>
+          <Input id={`${id}-title`} label={t('automations.taskTitleField')}
+            value={String(config.titleTemplate ?? '')} maxLength={200}
+            onChange={(e) => set({ titleTemplate: e.target.value })}
+            hint={t('automations.placeholdersAvailable', { list: trigger.templates.join(' ') })} />
+          <Textarea id={`${id}-desc`} label={t('automations.taskDescriptionField')}
+            rows={2} maxLength={1000}
+            value={String(config.descriptionTemplate ?? '')}
+            onChange={(e) => set({ descriptionTemplate: e.target.value })} />
           <div className="grid-2">
-            <div className="field">
-              <label htmlFor={`${id}-prio`}>{t('automations.priorityField')}</label>
-              <select id={`${id}-prio`} value={String(config.priority ?? 'medium')}
-                onChange={(e) => set({ priority: e.target.value })}>
-                <option value="high">{pickLabel(t, 'automations.values.taskPriority', 'high')}</option>
-                <option value="medium">{pickLabel(t, 'automations.values.taskPriority', 'medium')}</option>
-                <option value="low">{pickLabel(t, 'automations.values.taskPriority', 'low')}</option>
-                {trigger.fields.some((f) => f.path === 'analysis.urgency') && (
-                  <option value="from_urgency">{t('automations.describe.priorityFromUrgency')}</option>
-                )}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor={`${id}-assignee`}>{t('automations.assigneeField')}</label>
-              <select id={`${id}-assignee`} value={String(config.assigneeUserId ?? '')}
-                onChange={(e) => set({ assigneeUserId: e.target.value || null })}>
-                <option value="">{t('tasks.unassigned')}</option>
-                {members.map((m) => (
-                  <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor={`${id}-due`}>{t('automations.dueDateField')}</label>
-              <select id={`${id}-due`} value={String(config.dueDate ?? 'none')}
-                onChange={(e) => set({ dueDate: e.target.value })}>
-                <option value="none">{t('automations.due.none')}</option>
-                {trigger.fields.some((f) => f.path === 'analysis.deadline') && (
-                  <>
-                    <option value="from_deadline">{t('automations.due.fromDeadline')}</option>
-                    <option value="before_deadline">{t('automations.due.beforeDeadline')}</option>
-                  </>
-                )}
-                {/* 0021 — la scadenza di PAGAMENTO, offerta solo dove esiste:
-                    sugli inneschi di Finanze. Mostrarla altrove significherebbe
-                    far comporre una regola che non potrà mai produrre una data,
-                    ed è la stessa ragione per cui «dalla scadenza del
-                    documento» compare solo dove c'è un'analisi. */}
-                {trigger.fields.some((f) => f.path === 'finance.due_date') && (
-                  <>
-                    <option value="from_finance_due_date">{t('automations.due.fromFinanceDue')}</option>
-                    <option value="before_finance_due_date">{t('automations.due.beforeFinanceDue')}</option>
-                  </>
-                )}
-                <option value="in_days">{t('automations.due.inDays')}</option>
-              </select>
-            </div>
+            <Select id={`${id}-prio`} label={t('automations.priorityField')}
+              value={String(config.priority ?? 'medium')}
+              onChange={(e) => set({ priority: e.target.value })}>
+              <option value="high">{pickLabel(t, 'automations.values.taskPriority', 'high')}</option>
+              <option value="medium">{pickLabel(t, 'automations.values.taskPriority', 'medium')}</option>
+              <option value="low">{pickLabel(t, 'automations.values.taskPriority', 'low')}</option>
+              {trigger.fields.some((f) => f.path === 'analysis.urgency') && (
+                <option value="from_urgency">{t('automations.describe.priorityFromUrgency')}</option>
+              )}
+            </Select>
+            <Select id={`${id}-assignee`} label={t('automations.assigneeField')}
+              value={String(config.assigneeUserId ?? '')}
+              onChange={(e) => set({ assigneeUserId: e.target.value || null })}>
+              <option value="">{t('tasks.unassigned')}</option>
+              {members.map((m) => (
+                <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
+              ))}
+            </Select>
+            <Select id={`${id}-due`} label={t('automations.dueDateField')}
+              value={String(config.dueDate ?? 'none')}
+              onChange={(e) => set({ dueDate: e.target.value })}>
+              <option value="none">{t('automations.due.none')}</option>
+              {trigger.fields.some((f) => f.path === 'analysis.deadline') && (
+                <>
+                  <option value="from_deadline">{t('automations.due.fromDeadline')}</option>
+                  <option value="before_deadline">{t('automations.due.beforeDeadline')}</option>
+                </>
+              )}
+              {/* 0021 — la scadenza di PAGAMENTO, offerta solo dove esiste:
+                  sugli inneschi di Finanze. Mostrarla altrove significherebbe
+                  far comporre una regola che non potrà mai produrre una data,
+                  ed è la stessa ragione per cui «dalla scadenza del
+                  documento» compare solo dove c'è un'analisi. */}
+              {trigger.fields.some((f) => f.path === 'finance.due_date') && (
+                <>
+                  <option value="from_finance_due_date">{t('automations.due.fromFinanceDue')}</option>
+                  <option value="before_finance_due_date">{t('automations.due.beforeFinanceDue')}</option>
+                </>
+              )}
+              <option value="in_days">{t('automations.due.inDays')}</option>
+            </Select>
             {(config.dueDate === 'before_deadline' || config.dueDate === 'in_days'
               || config.dueDate === 'before_finance_due_date') && (
-              <div className="field">
-                <label htmlFor={`${id}-days`}>{t('automations.daysField')}</label>
-                <input id={`${id}-days`} type="number" min={0} max={365}
-                  value={String(config.dueDateDays ?? '')}
-                  onChange={(e) => set({ dueDateDays: Number(e.target.value) })} />
-              </div>
+              <Input id={`${id}-days`} label={t('automations.daysField')}
+                type="number" min={0} max={365}
+                value={String(config.dueDateDays ?? '')}
+                onChange={(e) => set({ dueDateDays: Number(e.target.value) })} />
             )}
           </div>
           {/* ⚠️ L'etichetta nomina CIÒ CHE VIENE COLLEGATO DAVVERO. Diceva
@@ -640,95 +622,81 @@ function ActionCard({
       )}
 
       {action.key === 'assign_task' && (
-        <div className="field">
-          <label htmlFor={`${id}-assignee`}>{t('automations.assigneeField')}</label>
-          <select id={`${id}-assignee`} value={String(config.assigneeUserId ?? '')}
-            onChange={(e) => set({ assigneeUserId: e.target.value })}>
-            <option value="">{t('automations.chooseValue')}</option>
-            {members.map((m) => (
-              <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
-            ))}
-          </select>
-        </div>
+        <Select id={`${id}-assignee`} label={t('automations.assigneeField')}
+          value={String(config.assigneeUserId ?? '')}
+          onChange={(e) => set({ assigneeUserId: e.target.value })}>
+          <option value="">{t('automations.chooseValue')}</option>
+          {members.map((m) => (
+            <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
+          ))}
+        </Select>
       )}
 
       {action.key === 'set_task_priority' && (
-        <div className="field">
-          <label htmlFor={`${id}-prio`}>{t('automations.priorityField')}</label>
-          <select id={`${id}-prio`} value={String(config.priority ?? 'high')}
-            onChange={(e) => set({ priority: e.target.value })}>
-            <option value="high">{pickLabel(t, 'automations.values.taskPriority', 'high')}</option>
-            <option value="medium">{pickLabel(t, 'automations.values.taskPriority', 'medium')}</option>
-            <option value="low">{pickLabel(t, 'automations.values.taskPriority', 'low')}</option>
-          </select>
-        </div>
+        <Select id={`${id}-prio`} label={t('automations.priorityField')}
+          value={String(config.priority ?? 'high')}
+          onChange={(e) => set({ priority: e.target.value })}>
+          <option value="high">{pickLabel(t, 'automations.values.taskPriority', 'high')}</option>
+          <option value="medium">{pickLabel(t, 'automations.values.taskPriority', 'medium')}</option>
+          <option value="low">{pickLabel(t, 'automations.values.taskPriority', 'low')}</option>
+        </Select>
       )}
 
       {action.key === 'set_document_category' && (
         <>
-          <div className="field">
-            <label htmlFor={`${id}-cat`}>{t('automations.categoryField')}</label>
-            <select id={`${id}-cat`} value={String(config.category ?? '')}
-              onChange={(e) => set({ category: e.target.value })}>
-              <option value="">{t('automations.chooseValue')}</option>
-              {(findField(trigger, 'document.category')?.options ?? []).map((opt) => (
-                <option key={opt} value={opt}>{pickLabel(t, 'labels.categories', opt)}</option>
-              ))}
-            </select>
-          </div>
+          <Select id={`${id}-cat`} label={t('automations.categoryField')}
+            value={String(config.category ?? '')}
+            onChange={(e) => set({ category: e.target.value })}>
+            <option value="">{t('automations.chooseValue')}</option>
+            {(findField(trigger, 'document.category')?.options ?? []).map((opt) => (
+              <option key={opt} value={opt}>{pickLabel(t, 'labels.categories', opt)}</option>
+            ))}
+          </Select>
           {/* §89 — va detto PRIMA, non scoperto leggendo lo storico. */}
           <p className="muted-sm">{t('automations.categoryManualHint')}</p>
         </>
       )}
 
       {action.key === 'add_document_tag' && (
-        <div className="field">
-          <label htmlFor={`${id}-tag`}>{t('automations.tagField')}</label>
-          <select id={`${id}-tag`} value={String(config.tagId ?? '')}
-            onChange={(e) => set({ tagId: e.target.value })}>
-            <option value="">{t('automations.chooseValue')}</option>
-            {tags.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-          </select>
-          <div className="field-hint">{t('automations.tagHint')}</div>
-        </div>
+        <Select id={`${id}-tag`} label={t('automations.tagField')}
+          value={String(config.tagId ?? '')}
+          onChange={(e) => set({ tagId: e.target.value })}
+          hint={t('automations.tagHint')}>
+          <option value="">{t('automations.chooseValue')}</option>
+          {tags.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+        </Select>
       )}
 
       {action.key === 'create_notification' && (
         <>
           <div className="grid-2">
-            <div className="field">
-              <label htmlFor={`${id}-rec`}>{t('automations.recipientField')}</label>
-              <select id={`${id}-rec`} value={String(config.recipient ?? 'admins')}
-                onChange={(e) => set({ recipient: e.target.value })}>
-                <option value="admins">{t('automations.recipients.admins')}</option>
-                {/* Offerto dove l'entità ha davvero un responsabile: attività,
-                    contratto, controparte, trattativa. Il validatore applica lo
-                    stesso elenco — è la stessa funzione, non una copia. */}
-                {triggerHasOwner(trigger) && (
-                  <option value="assignee">{t('automations.recipients.assignee')}</option>
-                )}
-                <option value="user">{t('automations.recipients.user')}</option>
-              </select>
-            </div>
+            <Select id={`${id}-rec`} label={t('automations.recipientField')}
+              value={String(config.recipient ?? 'admins')}
+              onChange={(e) => set({ recipient: e.target.value })}>
+              <option value="admins">{t('automations.recipients.admins')}</option>
+              {/* Offerto dove l'entità ha davvero un responsabile: attività,
+                  contratto, controparte, trattativa. Il validatore applica lo
+                  stesso elenco — è la stessa funzione, non una copia. */}
+              {triggerHasOwner(trigger) && (
+                <option value="assignee">{t('automations.recipients.assignee')}</option>
+              )}
+              <option value="user">{t('automations.recipients.user')}</option>
+            </Select>
             {config.recipient === 'user' && (
-              <div className="field">
-                <label htmlFor={`${id}-user`}>{t('automations.recipientUserField')}</label>
-                <select id={`${id}-user`} value={String(config.userId ?? '')}
-                  onChange={(e) => set({ userId: e.target.value })}>
-                  <option value="">{t('automations.chooseValue')}</option>
-                  {members.map((m) => (
-                    <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
-                  ))}
-                </select>
-              </div>
+              <Select id={`${id}-user`} label={t('automations.recipientUserField')}
+                value={String(config.userId ?? '')}
+                onChange={(e) => set({ userId: e.target.value })}>
+                <option value="">{t('automations.chooseValue')}</option>
+                {members.map((m) => (
+                  <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
+                ))}
+              </Select>
             )}
           </div>
-          <div className="field">
-            <label htmlFor={`${id}-msg`}>{t('automations.messageField')}</label>
-            <input id={`${id}-msg`} value={String(config.messageTemplate ?? '')} maxLength={200}
-              onChange={(e) => set({ messageTemplate: e.target.value })} />
-            <div className="field-hint">{t('automations.placeholdersAvailable', { list: trigger.templates.join(' ') })}</div>
-          </div>
+          <Input id={`${id}-msg`} label={t('automations.messageField')}
+            value={String(config.messageTemplate ?? '')} maxLength={200}
+            onChange={(e) => set({ messageTemplate: e.target.value })}
+            hint={t('automations.placeholdersAvailable', { list: trigger.templates.join(' ') })} />
         </>
       )}
     </div>

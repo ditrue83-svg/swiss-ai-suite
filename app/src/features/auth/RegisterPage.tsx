@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { Input } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 
@@ -58,24 +59,11 @@ export function RegisterPage() {
 
         <form onSubmit={onSubmit} noValidate>
           <div className="grid-2">
-            <div className="field">
-              <label htmlFor="reg-first">{t('auth.register.firstName')}</label>
-              <input id="reg-first" autoComplete="given-name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder={t('auth.register.firstNamePlaceholder')} />
-            </div>
-            <div className="field">
-              <label htmlFor="reg-last">{t('auth.register.lastName')}</label>
-              <input id="reg-last" autoComplete="family-name" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder={t('auth.register.lastNamePlaceholder')} />
-            </div>
+            <Input id="reg-first" label={t('auth.register.firstName')} autoComplete="given-name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder={t('auth.register.firstNamePlaceholder')} />
+            <Input id="reg-last" label={t('auth.register.lastName')} autoComplete="family-name" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder={t('auth.register.lastNamePlaceholder')} />
           </div>
-          <div className="field">
-            <label htmlFor="reg-email">{t('auth.emailLabel')}</label>
-            <input id="reg-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
-          </div>
-          <div className="field">
-            <label htmlFor="reg-password">{t('auth.passwordLabel')}</label>
-            <input id="reg-password" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.passwordPlaceholder')} />
-            <span className="field-hint">{t('auth.register.passwordHint')}</span>
-          </div>
+          <Input id="reg-email" label={t('auth.emailLabel')} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
+          <Input id="reg-password" label={t('auth.passwordLabel')} type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.passwordPlaceholder')} hint={t('auth.register.passwordHint')} />
           <div className="auth-actions">
             <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
               {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.register.submit')}

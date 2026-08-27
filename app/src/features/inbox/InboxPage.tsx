@@ -516,7 +516,7 @@ export function InboxPage() {
       {connectionsLoaded && !connectionsError && !hasConnection && (
         <div className="card">
           <EmptyCta
-            icon="inbox"
+            art="inbox"
             title={t('inbox.empty.title')}
             subtitle={t('inbox.empty.subtitle')}
             action={

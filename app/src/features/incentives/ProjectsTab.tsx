@@ -27,6 +27,7 @@ import { useState } from 'react';
 import { Tag } from '@/components/ui/Tag';
 import { Icon } from '@/components/ui/Icon';
 import { Button, EmptyCta, ErrorState, SkeletonCard } from '@/components/ui/states';
+import { Input, Select, Textarea } from '@/components/ui/forms';
 import { useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -289,85 +290,111 @@ function ProjectForm({
 
       {error && <div className="form-error mt-8">{error}</div>}
 
-      <div className="field mt-12">
-        <label htmlFor="pr-title">{t('incentives.projects.fieldTitle')}</label>
-        <input id="pr-title" value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} />
+      <div className="mt-12">
+        <Input
+          id="pr-title"
+          label={t('incentives.projects.fieldTitle')}
+          value={title}
+          maxLength={200}
+          onChange={(e) => setTitle(e.target.value)}
+        />
       </div>
 
-      <div className="field mt-8">
-        <label htmlFor="pr-desc">{t('incentives.projects.fieldDescription')}</label>
-        <textarea id="pr-desc" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
-        <div className="field-hint">{t('incentives.projects.descriptionHint')}</div>
-      </div>
-
-      <div className="grid-2 mt-8">
-        <div className="field">
-          <label htmlFor="pr-stage">{t('incentives.projects.fieldStage')}</label>
-          <select id="pr-stage" value={stage} onChange={(e) => setStage(e.target.value as SubsidyProjectStage)}>
-            {PROJECT_STAGES.map((s) => <option key={s} value={s}>{t(STAGE_KEY[s])}</option>)}
-          </select>
-          {/* §71 — moltissimi programmi richiedono che la domanda preceda
-              l'avvio, e un progetto già iniziato non li perde per un dettaglio:
-              li perde del tutto. Per questo lo stadio si dichiara, e un
-              progetto avviato non nasconde il programma — lo segnala. */}
-          <div className="field-hint">{t('incentives.projects.stageHint')}</div>
-        </div>
-        <div className="field">
-          <label htmlFor="pr-canton">{t('incentives.projects.fieldCanton')}</label>
-          <select id="pr-canton" value={canton} onChange={(e) => setCanton(e.target.value)}>
-            <option value="">{t('incentives.projects.notSpecified')}</option>
-            {SWISS_CANTONS.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          {/* Dove si REALIZZA, che può differire dalla sede: un'impresa
-              ticinese con un impianto a Zugo non accede ai programmi ticinesi
-              per quell'impianto. */}
-          <div className="field-hint">{t('incentives.projects.cantonHint')}</div>
-        </div>
+      <div className="mt-8">
+        <Textarea
+          id="pr-desc"
+          label={t('incentives.projects.fieldDescription')}
+          hint={t('incentives.projects.descriptionHint')}
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
       </div>
 
       <div className="grid-2 mt-8">
-        <div className="field">
-          <label htmlFor="pr-sector">{t('incentives.projects.fieldSector')}</label>
-          <select id="pr-sector" value={sector} onChange={(e) => setSector(e.target.value)}>
-            <option value="">{t('incentives.projects.notSpecified')}</option>
-            {SUBSIDY_SECTORS.map((s) => <option key={s} value={s}>{L.sector(s)}</option>)}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="pr-employees">{t('incentives.projects.fieldEmployees')}</label>
-          <input id="pr-employees" inputMode="numeric" value={employees} onChange={(e) => setEmployees(e.target.value)} />
-          <div className="field-hint">{t('incentives.projects.employeesHint')}</div>
-        </div>
+        <Select
+          id="pr-stage"
+          label={t('incentives.projects.fieldStage')}
+          hint={t('incentives.projects.stageHint')}
+          value={stage}
+          onChange={(e) => setStage(e.target.value as SubsidyProjectStage)}
+        >
+          {PROJECT_STAGES.map((s) => <option key={s} value={s}>{t(STAGE_KEY[s])}</option>)}
+        </Select>
+        {/* §71 — moltissimi programmi richiedono che la domanda preceda
+            l'avvio, e un progetto già iniziato non li perde per un dettaglio:
+            li perde del tutto. Per questo lo stadio si dichiara, e un
+            progetto avviato non nasconde il programma — lo segnala. */}
+        <Select
+          id="pr-canton"
+          label={t('incentives.projects.fieldCanton')}
+          hint={t('incentives.projects.cantonHint')}
+          value={canton}
+          onChange={(e) => setCanton(e.target.value)}
+        >
+          <option value="">{t('incentives.projects.notSpecified')}</option>
+          {SWISS_CANTONS.map((c) => <option key={c} value={c}>{c}</option>)}
+        </Select>
+        {/* Dove si REALIZZA, che può differire dalla sede: un'impresa
+            ticinese con un impianto a Zugo non accede ai programmi ticinesi
+            per quell'impianto. */}
       </div>
 
       <div className="grid-2 mt-8">
-        <div className="field">
-          <label htmlFor="pr-start">{t('incentives.projects.fieldStart')}</label>
-          <input id="pr-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        </div>
-        <div className="field">
-          <label htmlFor="pr-end">{t('incentives.projects.fieldEnd')}</label>
-          <input id="pr-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        </div>
+        <Select
+          id="pr-sector"
+          label={t('incentives.projects.fieldSector')}
+          value={sector}
+          onChange={(e) => setSector(e.target.value)}
+        >
+          <option value="">{t('incentives.projects.notSpecified')}</option>
+          {SUBSIDY_SECTORS.map((s) => <option key={s} value={s}>{L.sector(s)}</option>)}
+        </Select>
+        <Input
+          id="pr-employees"
+          label={t('incentives.projects.fieldEmployees')}
+          hint={t('incentives.projects.employeesHint')}
+          inputMode="numeric"
+          value={employees}
+          onChange={(e) => setEmployees(e.target.value)}
+        />
       </div>
 
       <div className="grid-2 mt-8">
-        <div className="field">
-          <label htmlFor="pr-amount">{t('incentives.projects.fieldBudget')}</label>
-          <input id="pr-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        </div>
-        <div className="field">
-          <label htmlFor="pr-currency">{t('incentives.projects.fieldCurrency')}</label>
-          <input
-            id="pr-currency"
-            maxLength={3}
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-          />
-          {/* §67 — nessuna conversione e nessun CHF d'ufficio: un importo senza
-              valuta non è un importo, e il database lo rifiuta. */}
-          <div className="field-hint">{t('incentives.projects.currencyHint')}</div>
-        </div>
+        <Input
+          id="pr-start"
+          label={t('incentives.projects.fieldStart')}
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
+        <Input
+          id="pr-end"
+          label={t('incentives.projects.fieldEnd')}
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
+      </div>
+
+      <div className="grid-2 mt-8">
+        <Input
+          id="pr-amount"
+          label={t('incentives.projects.fieldBudget')}
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <Input
+          id="pr-currency"
+          label={t('incentives.projects.fieldCurrency')}
+          hint={t('incentives.projects.currencyHint')}
+          maxLength={3}
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+        />
+        {/* §67 — nessuna conversione e nessun CHF d'ufficio: un importo senza
+            valuta non è un importo, e il database lo rifiuta. */}
       </div>
 
       <div className="field mt-8">
@@ -412,9 +439,14 @@ function ProjectForm({
         />
       </div>
 
-      <div className="field mt-8">
-        <label htmlFor="pr-goals">{t('incentives.projects.fieldGoals')}</label>
-        <textarea id="pr-goals" rows={3} value={goals} onChange={(e) => setGoals(e.target.value)} />
+      <div className="mt-8">
+        <Textarea
+          id="pr-goals"
+          label={t('incentives.projects.fieldGoals')}
+          rows={3}
+          value={goals}
+          onChange={(e) => setGoals(e.target.value)}
+        />
       </div>
 
       <div className="row-wrap mt-16">

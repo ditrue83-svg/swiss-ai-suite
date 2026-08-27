@@ -39,10 +39,13 @@ che l'archivio custodisce già, non un secondo posto dove scrivere.
 |---|---|---|
 | [`app/`](app/) | **L'applicazione.** React + TypeScript su Supabase (Auth, PostgreSQL, Storage privato, RLS), con l'analisi eseguita da Claude lato server. È qui che prosegue lo sviluppo. | `cd app && npm install`, configura `.env` (vedi [`app/README.md`](app/README.md)) → `npm run dev` |
 | [`site/`](site/) | **La vetrina** `ai-swisse.com`. Generatore statico senza dipendenze, contenuti in `content.mjs` (unica fonte, tre lingue), pubblicata da GitHub Actions. | `cd site && node build.mjs` → `site/dist` |
-| [`html/`](html/) | Prototipo dimostrativo in un unico `index.html` (vanilla JS, `localStorage`). Resta come riferimento storico del design; non è più la fonte. | Apri `html/index.html` nel browser. |
 
 > Un primo scaffold React senza backend (`react/`) è stato rimosso perché superato da `app/`;
 > resta recuperabile dalla storia git (fino al commit `89588a8`).
+> Anche il prototipo dimostrativo `html/` (un unico `index.html` in vanilla JS) è uscito dal
+> repository il 2026-08-27: mostrava un'interfaccia che non esiste più e rischiava la deriva
+> visiva. Copia identica in `02-Archivio-versioni-vecchie/swiss-ai-suite-html/`, o dalla
+> storia git fino al commit `5fe18d5`.
 
 ## Dove sta la documentazione
 

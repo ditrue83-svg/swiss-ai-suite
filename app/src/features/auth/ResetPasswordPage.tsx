@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { Input } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 
@@ -51,14 +52,8 @@ export function ResetPasswordPage() {
           <div className="form-success">{t('auth.redirecting')}</div>
         ) : (
           <form onSubmit={onSubmit} noValidate>
-            <div className="field">
-              <label htmlFor="rp-pass">{t('auth.reset.newPassword')}</label>
-              <input id="rp-pass" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.passwordPlaceholder')} />
-            </div>
-            <div className="field">
-              <label htmlFor="rp-conf">{t('auth.confirmPassword')}</label>
-              <input id="rp-conf" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-            </div>
+            <Input id="rp-pass" label={t('auth.reset.newPassword')} type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.passwordPlaceholder')} />
+            <Input id="rp-conf" label={t('auth.confirmPassword')} type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             <div className="auth-actions">
               <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
                 {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.reset.submit')}

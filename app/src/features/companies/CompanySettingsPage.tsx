@@ -24,6 +24,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonLine } from '@/components/ui/states';
+import { Input, Select } from '@/components/ui/forms';
 import { useToast } from '@/components/ui/Toast';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useT } from '@/i18n';
@@ -216,11 +217,8 @@ export function CompanySettings({ sede }: { sede: Sede }) {
         )}
 
         <div className="grid-2">
-          <div className="field">
-            <label htmlFor="cs-name">{t('onboarding.legalName')}</label>
-            <input id="cs-name" required disabled={!isAdmin} value={legalName}
-              onChange={(e) => setLegalName(e.target.value)} placeholder={t('onboarding.legalNamePlaceholder')} />
-          </div>
+          <Input id="cs-name" label={t('onboarding.legalName')} required disabled={!isAdmin} value={legalName}
+            onChange={(e) => setLegalName(e.target.value)} placeholder={t('onboarding.legalNamePlaceholder')} />
           <div className="field">
             <label htmlFor="cs-che">{t('onboarding.uid')}</label>
             <input id="cs-che" disabled={!isAdmin} value={uidChe}
@@ -235,23 +233,14 @@ export function CompanySettings({ sede }: { sede: Sede }) {
               </div>
             )}
           </div>
-          <div className="field">
-            <label htmlFor="cs-canton">{t('onboarding.canton')}</label>
-            <select id="cs-canton" disabled={!isAdmin} value={canton} onChange={(e) => setCanton(e.target.value)}>
-              {CANTONI.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="cs-mun">{t('onboarding.municipality')}</label>
-            <input id="cs-mun" disabled={!isAdmin} value={municipality}
-              onChange={(e) => setMunicipality(e.target.value)} placeholder={t('onboarding.municipalityPlaceholder')} />
-          </div>
-          <div className="field">
-            <label htmlFor="cs-form">{t('onboarding.legalForm')}</label>
-            <select id="cs-form" disabled={!isAdmin} value={legalForm} onChange={(e) => setLegalForm(e.target.value)}>
-              {FORME_GIURIDICHE.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </div>
+          <Select id="cs-canton" label={t('onboarding.canton')} disabled={!isAdmin} value={canton} onChange={(e) => setCanton(e.target.value)}>
+            {CANTONI.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+          <Input id="cs-mun" label={t('onboarding.municipality')} disabled={!isAdmin} value={municipality}
+            onChange={(e) => setMunicipality(e.target.value)} placeholder={t('onboarding.municipalityPlaceholder')} />
+          <Select id="cs-form" label={t('onboarding.legalForm')} disabled={!isAdmin} value={legalForm} onChange={(e) => setLegalForm(e.target.value)}>
+            {FORME_GIURIDICHE.map((f) => <option key={f} value={f}>{f}</option>)}
+          </Select>
         </div>
 
         {companyError && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{companyError}</span></div>}
@@ -270,26 +259,17 @@ export function CompanySettings({ sede }: { sede: Sede }) {
         <div className="muted-sm mb-3">{t('companySettings.profileDesc')}</div>
 
         <div className="grid-2">
-          <div className="field">
-            <label htmlFor="cs-sector">{t('onboarding.sector')}</label>
-            <select id="cs-sector" value={sector} onChange={(e) => setSector(e.target.value)}>
-              <option value="">{t('onboarding.sectorPlaceholder')}</option>
-              {SETTORI.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="cs-emp">{t('onboarding.employees')}</label>
-            <input id="cs-emp" type="number" min={0} value={employeeCount}
-              onChange={(e) => setEmployeeCount(e.target.value)} placeholder={t('onboarding.employeesPlaceholder')} />
-          </div>
-          <div className="field">
-            <label htmlFor="cs-rev">{t('onboarding.revenue')}</label>
-            <select id="cs-rev" value={revenueBand} onChange={(e) => setRevenueBand(e.target.value)}>
-              {FASCE_FATTURATO.map((f) => (
-                <option key={f} value={f}>{f === NO_REVENUE ? t('onboarding.noPreference') : f}</option>
-              ))}
-            </select>
-          </div>
+          <Select id="cs-sector" label={t('onboarding.sector')} value={sector} onChange={(e) => setSector(e.target.value)}>
+            <option value="">{t('onboarding.sectorPlaceholder')}</option>
+            {SETTORI.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </Select>
+          <Input id="cs-emp" label={t('onboarding.employees')} type="number" min={0} value={employeeCount}
+            onChange={(e) => setEmployeeCount(e.target.value)} placeholder={t('onboarding.employeesPlaceholder')} />
+          <Select id="cs-rev" label={t('onboarding.revenue')} value={revenueBand} onChange={(e) => setRevenueBand(e.target.value)}>
+            {FASCE_FATTURATO.map((f) => (
+              <option key={f} value={f}>{f === NO_REVENUE ? t('onboarding.noPreference') : f}</option>
+            ))}
+          </Select>
         </div>
 
         {profileError && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{profileError}</span></div>}
