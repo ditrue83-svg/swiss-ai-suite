@@ -62,21 +62,24 @@ function rootBlock(text) {
   return blockAt(text, m.index + m[0].length - 1);
 }
 
-/**
- * La variante scura dei token.
- *
- * ⚠️ DAL 2026-08-16 NON È PIÙ UNA MEDIA QUERY. Nell'app il tema ha smesso di
- * seguire il sistema operativo — il predefinito è chiaro perché l'aspetto del
- * prodotto è una decisione di prodotto — e il blocco scuro è diventato
- * `:root[data-theme="dark"]`. Cercando ancora `@media (prefers-color-scheme:
- * dark)` questo script si fermava con «blocco del tema scuro non trovato»: non
- * inventava nulla, il che è giusto, ma non sincronizzava più niente.
- */
-function darkRootBlock(text) {
-  const m = /(^|\n)[ \t]*:root\[data-theme="dark"\]\s*\{/.exec(text);
-  if (!m) throw new Error('blocco del tema scuro (:root[data-theme="dark"]) non trovato');
-  return blockAt(text, m.index + m[0].length - 1);
-}
+// ----------------------------------------------------------------------------
+// LA VETRINA NON HA PIÙ IL TEMA SCURO (decisione del 2026-08-28, issue #86).
+//
+// Fino a quel giorno questo script estraeva dall'app ANCHE il blocco
+// `:root[data-theme="dark"]` e lo riscriveva in tokens.css, dove restava
+// dormiente: la vetrina è statica e nessuno scrive quell'attributo. Mantenere
+// allineato all'app un tema che nessun visitatore poteva vedere era debito
+// senza utenti, e teneva in piedi per riflesso anche il blocco scuro scritto a
+// mano in style.css — quello sì, debito vero: andava aggiornato a mano a ogni
+// ritocco dei token. Ora si estrae solo il `:root` chiaro; il blocco scuro di
+// style.css è stato cancellato lo stesso giorno.
+//
+// Il tema scuro dell'APP non c'entra: resta in app.css, attivo su
+// `data-theme="dark"` scritto dal ThemeSwitcher. Semplicemente non passa più
+// di qui, perché la vetrina è solo chiara per scelta. Se un giorno lo scuro
+// torna sulla vetrina, torna come decisione di prodotto: si riprende
+// `darkRootBlock` dalla storia di questo file (commit prima del 2026-08-28).
+// ----------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------
 // IL CARATTERE NON PASSA DI QUI
@@ -153,7 +156,6 @@ function keepTokens(block) {
 }
 
 const light = keepTokens(rootBlock(src));
-const dark = keepTokens(darkRootBlock(src));
 
 const out = `/* ============================================================================
    GENERATO — non modificare a mano.
@@ -174,25 +176,18 @@ const out = `/* ================================================================
    La documentazione delle scelte sta in docs/design-system.md del progetto
    principale.
 
-   ⚠️ IL TEMA CHIARO È IL PREDEFINITO, E NON SEGUE PIÙ IL SISTEMA OPERATIVO.
+   ⚠️ LA VETRINA È SOLO CHIARA, PER SCELTA (2026-08-28, issue #86).
    Fino al 2026-08-16 il blocco scuro era \`@media (prefers-color-scheme: dark)\`:
    chi arrivava con il portatile in tema scuro vedeva il sito scuro e, appena
    entrato, l'applicazione chiara — il salto che questo file esiste per evitare.
-   Ora è \`:root[data-theme="dark"]\`, esattamente come nell'app, e siccome la
-   vetrina è fatta di file statici senza JavaScript nessuno scrive mai
-   quell'attributo: il tema scuro resta scritto per intero e DORMIENTE.
+   Poi è diventato \`:root[data-theme="dark"]\`, dormiente perché su file statici
+   senza JavaScript nessuno scrive quell'attributo. Il 2026-08-28 è stato
+   cancellato: mantenere allineato all'app un tema che nessun visitatore poteva
+   vedere era debito senza utenti. Il tema scuro dell'APP resta attivo; qui
+   non arriva più.
    ========================================================================== */
 :root {
 ${light}
-}
-
-/* Dormiente sulla vetrina: nessuno scrive data-theme su file statici senza
-   JavaScript. Resta scritto per intero e allineato all'app — non si cancella un
-   tema, si smette di accenderlo. Vedi la testata.
-   (Niente apici inversi in questo blocco: vive dentro una stringa template e
-   un apice inverso la chiude, con un errore di sintassi che non nomina il CSS.) */
-:root[data-theme="dark"] {
-${dark}
 }
 `;
 
@@ -248,8 +243,8 @@ for (const f of ['style.css', 'build.mjs']) {
   if (!existsSync(percorso)) continue;
   if (/prefers-color-scheme/.test(senzaCommenti(readFileSync(percorso, 'utf8')))) {
     console.error(`\n  ${f} aggancia ancora il tema a prefers-color-scheme.`);
-    console.error('  Il chiaro è il predefinito della vetrina come dell\'app: lo scuro si accende');
-    console.error('  su :root[data-theme="dark"], e sulla vetrina statica resta dormiente.\n');
+    console.error('  La vetrina è solo chiara per scelta (2026-08-28, issue #86): il tema');
+    console.error('  scuro non viene più emesso né attivato — non si riaggancia al sistema.\n');
     process.exit(1);
   }
 }
