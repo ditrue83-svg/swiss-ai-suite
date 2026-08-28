@@ -2,9 +2,8 @@
 
 Stato: **in esercizio dal 2026-07-30**, interfaccia compresa.
 Migrazioni: **0026** (il modulo) e **0028** (la correzione della cascata), entrambe applicate.
-Test: `npm run test:crm-unit` **216/216** · `npm run test:crm` **74/74** (la
-sezione 14, aggiunta con l'import CSV, è scritta e non ancora eseguita: su
-questa macchina manca `.env.test`).
+Test: `npm run test:crm-unit` **218/218** · `npm run test:crm` **94/94 in 14
+sezioni, eseguite** il 2026-08-28, sezione 14 (import CSV) compresa.
 
 ---
 
@@ -502,10 +501,9 @@ nessun messaggio traduce.
 ## 12. Test
 
 ```bash
-npm run test:crm-unit   # 216 casi, offline, senza database e senza crediti
-npm run test:crm        # 74 asserzioni in 13 sezioni, sul database reale —
-                        # la sezione 14 (import CSV) è scritta e NON ancora
-                        # eseguita: su questa macchina manca .env.test
+npm run test:crm-unit   # 218 casi, offline, senza database e senza crediti
+npm run test:crm        # 94 asserzioni in 14 sezioni, sul database reale —
+                        # eseguite il 2026-08-28, sezione 14 (import CSV) compresa
 ```
 
 `test:crm-unit` — diciassette sezioni. La più importante **legge la migrazione 0026** ed
@@ -522,13 +520,15 @@ ultime cinque sono dell'import CSV: parser (virgolette, separatori, codifiche),
 auto-mappatura in quattro lingue senza indovinare, validazione di riga in codici,
 duplicati dentro e fuori il file, instradamento dei recapiti.
 
-`test:crm` — tredici sezioni eseguite: isolamento (anche chiamando la RPC col
+`test:crm` — quattordici sezioni eseguite il 2026-08-28, 94 asserzioni verdi:
+isolamento (anche chiamando la RPC col
 `p_company_id` altrui), cross-tenant (nemmeno il service role), responsabili,
 referente, permessi verificati **rileggendo** e non guardando l'esito dell'update,
 storico non falsificabile, identità dell'IDI, timbri delle fasi, ultimo contatto,
 il nome estratto che sopravvive, fusione, entità ammesse dal motore, candidato
-automatico, cascata. La quattordicesima — import CSV — è **scritta e non ancora
-eseguita**: percorso della riga con provenienza dichiarata, doppione duro e email
+automatico, cascata. La quattordicesima — import CSV, aggiunta con questa
+funzione — prova sul database reale: percorso della riga con provenienza
+dichiarata, doppione duro e email
 duplicata fermati dal vincolo, IDI errato che non collide, confine fra tenant.
 
 **Regressioni (2026-07-30): 18 suite verdi, 1578 asserzioni.** Offline 1037,
@@ -746,12 +746,31 @@ sarebbe peggio, e tacerlo una bugia.
 uscita questa scheda?». I duplicati interni al file si risolvono a favore della
 prima occorrenza.
 
-⚠️ **Stato della verifica.** La logica (parser, mappatura, validazione,
-duplicati, instradamento dei recapiti) è coperta dalle sezioni 13–17 di
-`test:crm-unit`, 94 casi verdi. La sezione 14 di `test:crm` prova le garanzie
-sul database reale ma **non è ancora stata eseguita** (manca `.env.test` su
-questa macchina), e la prova nel browser non è stata fatta: sono i due passi
-obbligatori prima di considerare la funzione in esercizio.
+✅ **Stato della verifica (misurato il 2026-08-28).** La logica (parser,
+mappatura, validazione, duplicati, instradamento dei recapiti) è coperta dalle
+sezioni 13–17 di `test:crm-unit`, 96 casi verdi. La sezione 14 di `test:crm` è
+stata **eseguita il 2026-08-28**: 94/94 asserzioni verdi in 14 sezioni. La
+prova nel browser è stata fatta il 2026-08-28 su un tenant usa-e-getta poi
+rimosso (rimozione verificata rileggendo tutte le tabelle `crm_*` e
+`auth.users`: zero residui), su un'istanza Chrome separata pilotata via CDP —
+il Chrome principale era in uso — e ha visto, in italiano: wizard completo con
+errori di riga in prosa, doppione interno al file senza scelta, duplicato di
+dominio deciso per riga, riepilogo «3 create, 3 saltate»; file Windows-1252 da
+40 righe con il banner di codifica dichiarato e le accentate corrette; import
+da 200 righe con il progresso «N di 200» avanzare riga per riga (~23 s); le
+schede create in `/clienti` (443 con `source = 'import'`, misurato via service
+role) e la provenienza «Da un'importazione» nel dettaglio. In tedesco e
+francese i passi e le etichette chiave sono corretti, in francese i due punti
+portano lo spazio insecabile stretto (U+202F, verificato nel DOM). A 375px
+nessuno scroll orizzontale nei tre passi (`scrollWidth` = 375, `scrollX` = 0,
+override di viewport CDP: le interazioni touch reali non sono state provate).
+
+⚠️ **Il difetto che la prova a schermo ha pagato**: la persona importata
+riceveva `first_name` e `last_name` giusti ma il `display_name` copiato dal
+nome dell'organizzazione — in «Persone» la card di «Chiara Moreschi» si
+intitolava «Galleria Ventuno Sagl». Corretto il 2026-08-28: il nome della
+persona lo dà `personDisplayName` (nome + cognome, mai l'organizzazione), e
+due asserzioni nella sezione 17 di `test:crm-unit` lo sorvegliano.
 
 ---
 

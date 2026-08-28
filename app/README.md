@@ -984,7 +984,7 @@ npm run test:crm-unit        # CRM offline: la copia SQL↔TypeScript dei domini
                              #   di controllo dell'IDI, il filtro anti-rumore dei mittenti, i
                              #   pareggi dell'abbinamento, la chiave di idempotenza del
                              #   candidato scritta due volte, nessuna somma fra valute, il
-                             #   parser e la validazione dell'import CSV (216 casi)
+                             #   parser e la validazione dell'import CSV (218 casi)
                              # aritmetica delle date sui casi limite, amendment che non sovrascrive
                              # (66 test — richiede la 0024 e la 0025)
 npm run test:subsidy-unit    # Incentivi offline: gli operatori dei criteri e soprattutto QUANDO
@@ -1301,7 +1301,7 @@ GIRA è eseguirla.
   amministrativo NON viene fermata); prompt injection nel corpo che non altera l'esito; adapter Google e
   Microsoft che da payload diversi producono lo **stesso** modello; cifratura dei token con AAD, IV
   irripetuto e rilevamento delle manomissioni.
-- **`test:crm-unit` (216)** — le decisioni del CRM che si sbagliano in silenzio. La più
+- **`test:crm-unit` (218)** — le decisioni del CRM che si sbagliano in silenzio. La più
   importante: legge la migrazione 0026 ed estrae l'elenco dei domini pubblici di
   `crm_is_public_domain`, confrontandolo con la costante TypeScript — due copie della stessa
   regola divergono, e il typecheck non guarda dentro l'SQL. Sorveglia anche che il file non
