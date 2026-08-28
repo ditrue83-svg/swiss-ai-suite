@@ -11,6 +11,8 @@ import { useLabels } from '@/i18n/labels';
 import type { MatchResult } from './engine';
 import { InterpretationPanel } from './Interpretation';
 import type { Company, ProjectInterpretation } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './subsidy-ai.module.css';
 
 function relClass(s: number) { return s >= 75 ? 'hi' : s >= 55 ? 'mid' : ''; }
 function SupportChip({ prog }: { prog: ProgramModel }) {
@@ -59,7 +61,7 @@ export function ResultsList({
   return (
     <>
       {panel}
-      <div className="demo-banner">
+      <div className={styles.demoBanner}>
         {t('subsidy.results.summary', {
           n: matches.length,
           company: company?.legalName ?? t('subsidy.results.yourCompany'),
@@ -72,13 +74,13 @@ export function ResultsList({
       {matches.map((m) => {
         const p = m.program;
         return (
-          <div className="card prog-card" key={p.id}>
-            <div className="prog-head">
-              <div className={`rel-badge ${relClass(m.relevanceScore)}`}>
-                <div className="rb-num">{m.relevanceScore}%</div><div className="rb-lbl">{t('subsidy.results.relevance')}</div>
+          <div className={cx('card', styles.progCard)} key={p.id}>
+            <div className={styles.progHead}>
+              <div className={cx(styles.relBadge, relClass(m.relevanceScore))}>
+                <div className={styles.rbNum}>{m.relevanceScore}%</div><div className={styles.rbLbl}>{t('subsidy.results.relevance')}</div>
               </div>
-              <div className="prog-main">
-                <div className="prog-name">{p.name}</div>
+              <div className={styles.progMain}>
+                <div className={styles.progName}>{p.name}</div>
                 <div className="list-sub">{p.authority}</div>
                 {/* Due pastiglie, non sei. Prima ce n'erano sei con quattro
                     colori diversi, e una conteneva una frase intera di due
@@ -111,17 +113,17 @@ export function ResultsList({
                       segni condivisi col 2.0, come già fa ProgramDetail. */}
                   <SourceStamp state={p.dataStatus === 'verified' ? 'fresh' : p.dataStatus === 'recheck' ? 'aging' : 'demo'} />
                 </div>
-                <div className="prog-meta">
+                <div className={styles.progMeta}>
                   <SupportChip prog={p} />
                   <span>{t('subsidy.results.requirementsToVerify', { n: m.reqToVerify })}</span>
-                  <span className="mark-field">{t('marks.legend.priority')} <PriorityMark level={m.priority.level} /></span>
+                  <span className={styles.markField}>{t('marks.legend.priority')} <PriorityMark level={m.priority.level} /></span>
                 </div>
                 {/* ⚠️ LA FINESTRA DELL'1.0 È UNA FRASE, non uno stato: il
                     catalogo dice «domande entro il 31.03 di ogni anno» e nessuno
                     ha controllato oggi se sia davvero aperta. Il segno lo DICHIARA
                     («la fonte non lo dice») invece di lasciare che una data
                     scritta sembri una finestra aperta. */}
-                <div className="prog-window">
+                <div className={styles.progWindow}>
                   <WindowMark status="unknown" />
                   <span>{p.applicationWindow}</span>
                 </div>

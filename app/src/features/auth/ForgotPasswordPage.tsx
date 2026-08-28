@@ -6,6 +6,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
 import { Input } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
+import styles from './auth.module.css';
 
 export function ForgotPasswordPage() {
   const t = useT();
@@ -41,13 +42,13 @@ export function ForgotPasswordPage() {
 
         {error && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{error}</span></div>}
         {sent ? (
-          <div className="form-success">
+          <div className={styles.formSuccess}>
             {t('auth.forgot.sent')}
           </div>
         ) : (
           <form onSubmit={onSubmit} noValidate>
             <Input id="fp-email" label={t('auth.emailLabel')} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
-            <div className="auth-actions">
+            <div className={styles.authActions}>
               <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
                 {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.forgot.submit')}
               </button>
@@ -55,7 +56,7 @@ export function ForgotPasswordPage() {
           </form>
         )}
 
-        <div className="auth-alt"><Link className="btn-link" to="/login">← {t('auth.forgot.backToLogin')}</Link></div>
+        <div className={styles.authAlt}><Link className="btn-link" to="/login">← {t('auth.forgot.backToLogin')}</Link></div>
       </div>
     </div>
   );

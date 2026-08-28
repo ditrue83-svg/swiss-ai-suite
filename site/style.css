@@ -153,18 +153,15 @@
      po' del colore della pagina. */
   --ms-shadow: 0 1px 2px rgba(11, 26, 46, 0.07), 0 16px 40px -12px rgba(11, 26, 46, 0.16);
 }
-/* I due valori che la vetrina ha in proprio e che il tema scuro cambierebbe.
-   ⚠️ Dal 2026-08-16 non è più `@media (prefers-color-scheme: dark)`: il chiaro è
-   il predefinito anche qui, e lo scuro si accende su `data-theme` come nell'app.
-   La vetrina è statica e nessuno scrive quell'attributo, quindi questo blocco
-   resta DORMIENTE — allineato, non cancellato.
-   ⛔ Non va cancellato nemmeno se «nessuno lo vede» (verificato il 2026-08-27):
-   `sync-tokens.mjs` lo CERCA per riscrivere i token dall'app e si rifiuta di
-   girare se non lo trova. Dormiente è la sua forma di lavoro, non un debito. */
-:root[data-theme="dark"] {
-  --ms-well: hsl(213, 28%, 9%);
-  --ms-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 20px 48px -12px rgba(0, 0, 0, 0.6);
-}
+/* La vetrina è SOLO CHIARA per scelta (decisione del 2026-08-28, issue #86).
+   Fino a quel giorno qui c'era il blocco `:root[data-theme="dark"]` con i due
+   valori della vetrina che il tema scuro cambiava (--ms-well, --ms-shadow):
+   dormiente per scelta dal 2026-08-16, perché nessuno scrive `data-theme` su
+   file statici senza JavaScript. Mantenere allineato all'app un tema che
+   nessun visitatore poteva vedere era debito senza utenti: cancellato.
+   Se un giorno lo scuro torna, torna come decisione di prodotto — non come
+   codice che aspetta. Il tema scuro dell'APP resta dove è: questo riguarda
+   solo la vetrina. */
 
 /* ---------- base ---------- */
 * { margin: 0; padding: 0; box-sizing: border-box; }

@@ -1,0 +1,97 @@
+/* ============================================================================
+   contracts.module.css — «Contratti» (0024): righe-elenco, ricerca, date non
+   verificate, documenti, milestone, clausole e riga-chiave del dettaglio
+   (feature `contracts`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/app.css` (sezione «CONTRATTI (0024)»): la usano solo i
+   componenti di `features/contracts/`. Commenti compresi, come da regola
+   della migrazione.
+
+   ⚠️ Nessuna misura in px per il testo: la scala tipografica è quella del
+   sistema (`--fs-*`), e le spaziature sono multipli di 4 (`--sp-*`).
+
+   Adattamenti di selettore (solo `:global`, nessuna classe rinominata):
+   · `.ct-row-link:hover .list-title` → `:global(.list-title)`: il titolo
+     delle righe-elenco è condiviso;
+   · `.ct-search .btn` → `:global(.btn)`: il pulsante è del sistema.
+
+   NON sono qui, e perché:
+   · `.ct-head`, `.ct-toolbar`, `.ct-inline`, `.ct-narrow` e `.ct-kpi`
+     (con `.is-active`) RESTANO globali in `app.css`: le usano anche
+     `features/crm/`, `features/incentives/` e `features/audit/` — compresa
+     la riga `.ct-toolbar` della `@media (max-width: 640px)`, che per questo
+     è stata DIVISA;
+   · `.ct-cmp` RESTA globale: la usa anche
+     `features/incentives/CatalogReviewPage.tsx`;
+   · `.doc-filters`, `.fin-pager`, `.fin-page-n`, `.result-row`,
+     `.result-label`, `.kpi-*`, `.badge`, `.info-box` sono classi condivise
+     e restano globali.
+   ============================================================================ */
+
+/* La riga della lista è un collegamento che avvolge tutto: il bersaglio è la
+   riga intera, non il solo titolo. `color: inherit` perché senza diventerebbe
+   blu — la lezione delle righe di priorità della Home. */
+.ct-row-link { display: block; color: var(--ink); text-decoration: none; padding: var(--sp-3) 0; }
+.ct-row-link:hover :global(.list-title) { color: var(--accent-text); }
+
+/* ⚠️ IL SEGNO CHE DISTINGUE UNA PROPOSTA DA UN FATTO.
+   Non è decorazione: accompagna ogni data che nessuno ha ancora verificato, e
+   deve restare leggibile in entrambi i temi (contrasto verificato sui token,
+   non a occhio). Non corsivo-e-basta: il corsivo da solo sparisce. */
+.ct-unverified { font-style: normal; color: var(--amber); font-weight: 600; }
+
+/* ⚠️ La ricerca è un FORM: `.field` impila i figli, e il pulsante finiva sotto
+   la casella, largo quanto lei. Qui i due stanno in riga. */
+.ct-search { flex: 1 1 260px; display: flex; gap: var(--sp-2); align-items: stretch; }
+.ct-search input { flex: 1; min-width: 0; }
+.ct-search :global(.btn) { flex: 0 0 auto; }
+
+.ct-list { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
+.ct-list > li { padding: var(--sp-2) 0; border-top: 1px solid var(--line); font-size: var(--fs-meta); }
+.ct-list > li:first-child { border-top: none; }
+.ct-pick > li,
+.ct-docs > li,
+.ct-ms > li { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; justify-content: space-between; }
+
+.ct-docs, .ct-ms { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
+.ct-doc-row, .ct-ms-row { padding: var(--sp-3) 0; border-top: 1px solid var(--line); font-size: var(--fs-meta); }
+.ct-doc-row:first-child, .ct-ms-row:first-child { border-top: none; }
+
+.ct-clauses { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
+.ct-clauses > li { padding: var(--sp-3) 0; border-top: 1px solid var(--line); font-size: var(--fs-meta); display: grid; gap: var(--sp-1); }
+.ct-clauses > li:first-child { border-top: none; }
+
+.ct-add { margin-top: var(--sp-4); display: grid; gap: var(--sp-3); }
+
+/* Il valore della riga-chiave del dettaglio: fratello di `.result-row` e
+   `.result-label`, che restano globali perché le usa anche `subsidy-ai`. */
+.result-value { font-size: var(--fs-body); }
+
+/* La scheda che porta un avviso: stesso bordo dell'accento, senza gridare. */
+.info-box-card { border-left: 3px solid var(--accent); }
+
+/* Nascosto agli occhi, presente per chi legge con uno screen reader. */
+.ct-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ⚠️ DIVISA dalla `@media (max-width: 640px)` di `app.css`: là resta la riga
+   di `.ct-toolbar`, condivisa con `features/crm/` e `features/incentives/`.
+   §122 — il dettaglio resta leggibile: una colonna sola, date in cima. */
+@media (max-width: 640px) {
+  .ct-doc-row, .ct-ms-row { display: grid; gap: var(--sp-2); }
+}
+
+/* ============================================================================
+   STAMPA — migrate il 2026-08-28 dalla `@media print` multi-feature di
+   `src/styles/extra.css` (issue #83, sweep finale): con i CSS Modules il
+   selettore globale non aggancia più le classi hashate, e la regola vive
+   dove vive la classe.
+   ========================================================================== */
+@media print {
+  /* Le schede dei moduli non si spezzano, come quelle generiche. */
+  .ct-doc-row,
+  .ct-ms-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

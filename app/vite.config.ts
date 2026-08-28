@@ -8,5 +8,12 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, 'src') },
   },
+  // CSS Modules (issue #83): le regole di una sola feature vivono co-locate in
+  // `*.module.css`. `localsConvention: 'camelCase'` esporta ENTRAMBE le forme
+  // — `.doc-row` resta leggibile come styles['doc-row'] e come styles.docRow —
+  // così il CSS migrato si sposta dai globali senza essere riscritto.
+  css: {
+    modules: { localsConvention: 'camelCase' },
+  },
   server: { port: 5174 },
 });

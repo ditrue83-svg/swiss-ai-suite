@@ -21,6 +21,8 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { useDocumentLabel } from '@/i18n/documentLabel';
 import { useT, useTn } from '@/i18n';
 import type { OverviewData } from './useOverview';
+import { cx } from '@/lib/cx';
+import styles from './dashboard.module.css';
 
 export function AttenzioneColumn({ data }: { data: OverviewData }) {
   const t = useT();
@@ -34,11 +36,11 @@ export function AttenzioneColumn({ data }: { data: OverviewData }) {
   if (attenzione !== null && attenzione.total === 0) return null;
 
   return (
-    <section className="card att-col" aria-labelledby="att-col-title">
+    <section className={cx('card', styles.attCol)} aria-labelledby="att-col-title">
       <h2 className="card-title" id="att-col-title">
         {t('home.attentionTitle')}
         {attenzione !== null && (
-          <span className="att-count muted-sm">{tn('home.attentionItems', attenzione.total)}</span>
+          <span className={cx(styles.attCount, 'muted-sm')}>{tn('home.attentionItems', attenzione.total)}</span>
         )}
       </h2>
 
@@ -46,21 +48,21 @@ export function AttenzioneColumn({ data }: { data: OverviewData }) {
         <div className="muted-sm">{t('home.attentionUnknown')}</div>
       ) : (
         <>
-          <div className="att-list">
+          <div className={styles.attList}>
             {attenzione.items.map((item) => {
               const scaduta = item.deadline !== null && item.deadline < data.today;
               return (
-                <Link key={item.id} to={`/documenti/${item.id}`} className="att-row">
-                  <span className="att-main">
-                    <span className="att-title">{etichetta(item.label)}</span>
-                    {item.sender && <span className="att-sender">{item.sender}</span>}
+                <Link key={item.id} to={`/documenti/${item.id}`} className={styles.attRow}>
+                  <span className={styles.attMain}>
+                    <span className={styles.attTitle}>{etichetta(item.label)}</span>
+                    {item.sender && <span className={styles.attSender}>{item.sender}</span>}
                   </span>
-                  <span className="att-figures">
+                  <span className={styles.attFigures}>
                     {item.amount !== null && (
-                      <span className="att-amount">{formatCurrency(item.amount, item.amountCurrency)}</span>
+                      <span className={styles.attAmount}>{formatCurrency(item.amount, item.amountCurrency)}</span>
                     )}
                     {item.deadline !== null && (
-                      <span className={`att-date${scaduta ? ' overdue' : ''}`}>
+                      <span className={cx(styles.attDate, scaduta && styles.overdue)}>
                         {formatDate(item.deadline)}
                       </span>
                     )}

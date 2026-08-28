@@ -17,13 +17,15 @@
    La documentazione delle scelte sta in docs/design-system.md del progetto
    principale.
 
-   ⚠️ IL TEMA CHIARO È IL PREDEFINITO, E NON SEGUE PIÙ IL SISTEMA OPERATIVO.
+   ⚠️ LA VETRINA È SOLO CHIARA, PER SCELTA (2026-08-28, issue #86).
    Fino al 2026-08-16 il blocco scuro era `@media (prefers-color-scheme: dark)`:
    chi arrivava con il portatile in tema scuro vedeva il sito scuro e, appena
    entrato, l'applicazione chiara — il salto che questo file esiste per evitare.
-   Ora è `:root[data-theme="dark"]`, esattamente come nell'app, e siccome la
-   vetrina è fatta di file statici senza JavaScript nessuno scrive mai
-   quell'attributo: il tema scuro resta scritto per intero e DORMIENTE.
+   Poi è diventato `:root[data-theme="dark"]`, dormiente perché su file statici
+   senza JavaScript nessuno scrive quell'attributo. Il 2026-08-28 è stato
+   cancellato: mantenere allineato all'app un tema che nessun visitatore poteva
+   vedere era debito senza utenti. Il tema scuro dell'APP resta attivo; qui
+   non arriva più.
    ========================================================================== */
 :root {
 
@@ -235,6 +237,24 @@
   --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
   --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.12);  /* pannelli sospesi (popover) */
 
+  /* --- Movimento -------------------------------------------------------------
+     Nominati il 2026-08-27: prima ogni transizione portava la sua durata a
+     mano — 120ms, 180ms, 200ms, 220ms, 400ms — aggiustamenti fatti a occhio
+     per schermata, lo stesso difetto delle 23 dimensioni di testo. La scala
+     reale era di tre gradini, e tre sono i token:
+       · `--dur-fast` il feedback al passaggio (colori, bordi, sfondi);
+       · `--dur` l'entrata o lo spostamento (pagine, cassetti, toast) — 180ms,
+         200ms e 220ms erano la stessa intenzione con tre valori, ora uno;
+       · `--dur-slow` i riempimenti (barre), lenti di proposito perché si
+         legga la crescita.
+     `--ease` sostituisce la parola chiave `ease`: stessa curva standard, ma
+     scritta una volta. Chi chiede movimento ridotto al sistema continua a
+     trovare la risposta nel blocco `prefers-reduced-motion` più sotto. */
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 400ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
   /* Il velo dietro un cassetto aperto. Era scritto due volte, con due valori
      diversi (0,0,0/.35 e 16,24,40/.4): stesso ruolo, una voce sola. */
   --scrim: rgba(16, 24, 40, 0.4);
@@ -245,85 +265,4 @@
      vede sulla superficie su cui compare più spesso. Questo azzurro, dello
      stesso tono ma più fondo, ne fa 3,94 su `--card` e 3,77 su `--bg`. */
   --focus: hsl(201, 88%, 42%);         /* anello del focus da tastiera */
-}
-
-/* Dormiente sulla vetrina: nessuno scrive data-theme su file statici senza
-   JavaScript. Resta scritto per intero e allineato all'app — non si cancella un
-   tema, si smette di accenderlo. Vedi la testata.
-   (Niente apici inversi in questo blocco: vive dentro una stringa template e
-   un apice inverso la chiude, con un errore di sintassi che non nomina il CSS.) */
-:root[data-theme="dark"] {
-
-    /* Fondo e superficie distanziati di 8 punti di luminosità: le schede si
-       staccano dalla pagina. Il bordo delle schede è decorativo e non deve
-       raggiungere 3:1 — quella soglia WCAG vale per i CONTROLLI (input, select,
-       pulsanti), che infatti usano --line-strong, portato a 48%. */
-    --bg: hsl(213, 30%, 6%);
-    --card: hsl(213, 22%, 14%);
-    --fill-subtle: hsl(213, 18%, 20%);
-    --track: hsl(213, 18%, 22%);
-    --line: hsl(213, 16%, 28%);
-    --line-strong: hsl(213, 14%, 48%);   /* 3.31:1 su --card: bordo dei controlli */
-
-    --ink: hsl(210, 25%, 93%);
-    --ink-soft: hsl(210, 14%, 78%);
-    --muted: hsl(210, 10%, 64%);
-    --on-ink: hsl(213, 30%, 10%);      /* il toast inverte: fondo chiaro, testo scuro */
-
-    /* ⚠️ L'ACCENTO È LO STESSO DEI DUE TEMI, e adesso è vero alla lettera: qui
-       era hsl(207,75%,58%) — un azzurro schiarito apposta per staccarsi dal
-       fondo scuro — e la sua luminosità era già quella di #37AEEF. Da quando il
-       tema chiaro ha scelto quell'azzurro, i due temi condividono l'accento e
-       non c'è più un valore da tenere allineato a mano. 6,38:1 sulla scheda
-       scura: si stacca. */
-    --accent: #37AEEF;
-    --accent-dark: hsl(201, 85%, 66%);  /* in scuro l'hover SCHIARISCE            */
-    --accent-text: hsl(201, 80%, 72%);
-    --accent-soft: hsl(201, 40%, 20%);
-    --on-accent: hsl(213, 35%, 10%);    /* testo scuro sopra l'accento chiaro     */
-    /* Sopra il rosso, che in scuro si schiarisce, si scrive scuro: è il
-       ribaltamento che il commento di --red-dark descrive. */
-    --on-red: hsl(213, 35%, 10%);
-
-    --red: hsl(0, 62%, 58%);
-    --red-soft: hsl(0, 35%, 17%);
-    --red-line: hsl(0, 32%, 30%);
-    --red-hover: hsl(0, 35%, 23%);
-    /* Il rosso che porta CONTRASTO: in scuro schiarisce, perché il neutro da
-       cui deve staccarsi è diventato scuro. Vale per entrambe le sue parti —
-       inchiostro sulla scheda (6,56:1) e superficie sotto `--on-accent`, che
-       qui è inchiostro scuro (7,34:1). */
-    --red-dark: hsl(0, 75%, 74%);
-
-    --green: hsl(151, 45%, 62%);
-    --green-soft: hsl(151, 30%, 14%);
-    --green-line: hsl(151, 26%, 26%);
-
-    --amber: hsl(38, 75%, 64%);
-    --amber-soft: hsl(38, 35%, 15%);
-    --amber-line: hsl(38, 30%, 28%);
-
-    --accent-line: hsl(201, 40%, 34%);
-    --amber-fill: hsl(38, 80%, 58%);
-    --green-fill: hsl(151, 48%, 50%);
-
-    /* Il BLOCCO resta l'azzurro del marchio — è il segno, e un segno che
-       cambia colore col tema è due segni. Cambia la PAROLA, che su fondo scuro
-       in #37AEEF vibrerebbe: diventa bianca, esattamente come fa l'artefatto
-       `logo-ai-swisse-scuro.svg` che la vetrina serve al tema scuro. */
-    --brand-word: #ffffff;
-
-    /* In scuro l'evidenziazione diventa un ocra di luminanza media: il testo
-       sopra deve restare SCURO, non seguire --ink che qui è quasi bianco.
-       Con --ink il contrasto era 2.54:1, sotto la soglia AA di 4.5. */
-    --highlight: hsl(48, 85%, 38%);
-    --on-highlight: hsl(45, 80%, 8%);
-
-    /* Su fondo scuro un'ombra chiara non esiste: la profondità la dà il bordo,
-       quindi le ombre restano appena accennate e più profonde. */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
-
-    --focus: hsl(201, 80%, 66%);
 }

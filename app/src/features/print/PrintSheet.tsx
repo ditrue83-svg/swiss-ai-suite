@@ -14,9 +14,11 @@
 // ============================================================================
 import { useT } from '@/i18n';
 import { formatDateTime } from '@/lib/format';
+import { cx } from '@/lib/cx';
 import type { ChecklistAction } from '@/types/models';
 import type { PrintCitation, PrintFooter } from './printModel';
 import type { TKey } from '@/i18n';
+import styles from './print.module.css';
 
 export interface PrintSheetProps {
   /** Titolo del foglio: che cosa si sta archiviando. */
@@ -65,7 +67,7 @@ export function PrintSheet({
   const shownFacts = facts.filter((f) => (f.value ?? '').toString().trim() !== '');
 
   return (
-    <section className="print-only print-sheet" aria-hidden="true">
+    <section className={cx(styles.printOnly, styles.printSheet)} aria-hidden="true">
       <h2>{title}</h2>
 
       {trust && (
@@ -74,16 +76,16 @@ export function PrintSheet({
           {/* Due righe NOMINATE, mai una sola: il livello mostrato e il
               grezzo del modello sono due numeri diversi, e su carta la
               differenza non si può chiedere. */}
-          <dl className="print-kv">
+          <dl className={styles.printKv}>
             <dt>{t('documents.trust.shownLabel')}</dt>
             <dd>{trust.shown}</dd>
           </dl>
-          <dl className="print-kv">
+          <dl className={styles.printKv}>
             <dt>{t('documents.trust.readingLabel')}</dt>
             <dd>{trust.reading}</dd>
           </dl>
           {trust.reasons.length > 0 && (
-            <ul className="print-list">
+            <ul className={styles.printList}>
               {trust.reasons.map((r, i) => <li key={i}>{r}</li>)}
             </ul>
           )}
@@ -94,7 +96,7 @@ export function PrintSheet({
         <>
           <h3>{t('print.section.identification')}</h3>
           {shownFacts.map((f) => (
-            <dl className="print-kv" key={f.labelKey}>
+            <dl className={styles.printKv} key={f.labelKey}>
               <dt>{t(f.labelKey)}</dt>
               <dd>{f.value}</dd>
             </dl>
@@ -106,7 +108,7 @@ export function PrintSheet({
         <>
           <h3>{t('print.section.deadlineAndAmounts')}</h3>
           {deadline && (
-            <dl className="print-kv">
+            <dl className={styles.printKv}>
               <dt>{t('print.deadline.label')}</dt>
               {/* ⚠️ Il TIPO accanto alla data, sempre. Una scadenza «da
                   verificare» stampata come una data qualunque diventa un
@@ -115,7 +117,7 @@ export function PrintSheet({
             </dl>
           )}
           {appointment && (
-            <dl className="print-kv">
+            <dl className={styles.printKv}>
               <dt>{t('print.appointment.label')}</dt>
               {/* La parola «non è un termine» accanto alla data, come il tipo
                   accanto alla scadenza: su carta non c'è modo di chiedere. */}
@@ -123,7 +125,7 @@ export function PrintSheet({
             </dl>
           )}
           {amounts.map((a, i) => (
-            <dl className="print-kv" key={`${a.display}-${i}`}>
+            <dl className={styles.printKv} key={`${a.display}-${i}`}>
               <dt>{t('print.amount.label')}</dt>
               <dd>
                 {a.display}
@@ -144,16 +146,16 @@ export function PrintSheet({
               alla prima lettura veloce. */}
           {actions.requested.length > 0 && (
             <>
-              <dl className="print-kv"><dt>{t('print.actions.requested')}</dt></dl>
-              <ul className="print-list">
+              <dl className={styles.printKv}><dt>{t('print.actions.requested')}</dt></dl>
+              <ul className={styles.printList}>
                 {actions.requested.map((a) => <li key={a.id}>{a.text}</li>)}
               </ul>
             </>
           )}
           {actions.suggested.length > 0 && (
             <>
-              <dl className="print-kv"><dt>{t('print.actions.suggested')}</dt></dl>
-              <ul className="print-list">
+              <dl className={styles.printKv}><dt>{t('print.actions.suggested')}</dt></dl>
+              <ul className={styles.printList}>
                 {actions.suggested.map((a) => <li key={a.id}>{a.text}</li>)}
               </ul>
             </>
@@ -164,10 +166,10 @@ export function PrintSheet({
       {citations.length > 0 && (
         <>
           <h3>{t('print.section.citations')}</h3>
-          <p className="print-url">{t('print.citations.intro')}</p>
+          <p className={styles.printUrl}>{t('print.citations.intro')}</p>
           {citations.map((c, i) => (
             <div key={`${c.labelKey}-${i}`}>
-              <dl className="print-kv">
+              <dl className={styles.printKv}>
                 <dt>{t(c.labelKey)}</dt>
                 {c.subject && <dd>{c.subject}</dd>}
               </dl>
@@ -175,10 +177,10 @@ export function PrintSheet({
                   scritte qui sarebbero testo dentro il JSX, cioè la cosa che
                   `i18n:coverage` vieta — e in Svizzera i caporali valgono per
                   tutte e tre le lingue, quindi non hanno bisogno del dizionario. */}
-              <blockquote className="print-quote">
+              <blockquote className={styles.printQuote}>
                 {c.quote}
                 {c.page !== null && (
-                  <span className="print-quote-src"> — {t('print.citations.page', { n: String(c.page) })}</span>
+                  <span className={styles.printQuoteSrc}> — {t('print.citations.page', { n: String(c.page) })}</span>
                 )}
               </blockquote>
             </div>
@@ -189,7 +191,7 @@ export function PrintSheet({
       {toVerify.length > 0 && (
         <>
           <h3>{t('print.section.toVerify')}</h3>
-          <ul className="print-list">
+          <ul className={styles.printList}>
             {toVerify.map((v, i) => <li key={i}>{v}</li>)}
           </ul>
         </>
@@ -199,17 +201,17 @@ export function PrintSheet({
         <>
           <h3>{t('print.section.sources')}</h3>
           {sources.map((s, i) => (
-            <dl className="print-kv" key={`${s.url}-${i}`}>
+            <dl className={styles.printKv} key={`${s.url}-${i}`}>
               <dt>{s.label}</dt>
               {/* L'indirizzo per esteso: un collegamento stampato senza URL è un
                   vicolo cieco, e questo foglio vive dove non si può cliccare. */}
-              <dd className="print-url">{s.url}</dd>
+              <dd className={styles.printUrl}>{s.url}</dd>
             </dl>
           ))}
         </>
       )}
 
-      <div className="print-foot">
+      <div className={styles.printFoot}>
         <p>{t('print.footer.company', { name: footer.companyName || t('print.footer.companyUnknown') })}</p>
         <p>{t('print.footer.printedAt', { when: formatDateTime(footer.printedAt) })}</p>
         <p>
@@ -219,7 +221,7 @@ export function PrintSheet({
         {/* ⚠️ La riga che dichiara il limite non è un formalismo: questo foglio
             finisce in un fascicolo e sarà riletto da qualcuno che non c'era
             quando è stato prodotto. */}
-        <p className="print-disclaimer">{t('print.footer.disclaimer')}</p>
+        <p className={styles.printDisclaimer}>{t('print.footer.disclaimer')}</p>
       </div>
     </section>
   );

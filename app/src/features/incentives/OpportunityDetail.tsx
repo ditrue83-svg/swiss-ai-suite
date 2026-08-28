@@ -41,6 +41,8 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { PrintButton } from '@/components/ui/PrintButton';
 import { PrintSheet } from '@/features/print/PrintSheet';
 import { buildFooter } from '@/features/print/printModel';
+import { cx } from '@/lib/cx';
+import styles from './incentives.module.css';
 
 interface Props {
   companyId: string;
@@ -178,7 +180,7 @@ export function OpportunityDetail({ companyId, opportunity: o, onBack, onChanged
           </div>
         </div>
 
-        <div className="inc-next mt-8">
+        <div className={cx(styles.incNext, 'mt-8')}>
           <Icon name="arrowRight" className="ic-sm" /> {t(NEXT_STEP_KEY[step])}
         </div>
 
@@ -371,16 +373,16 @@ function CriterionRow({
   const evidence = c.sourceEvidence;
 
   return (
-    <div className="inc-criterion">
-      <div className="inc-crit-head">
-        <div className="inc-crit-label">{c.label}</div>
+    <div className={styles.incCriterion}>
+      <div className={styles.incCritHead}>
+        <div className={styles.incCritLabel}>{c.label}</div>
         <span className={`mark mark-elig ${CRITERION_MARK[c.state].cls}`}>
           <MarkGlyph name={CRITERION_MARK[c.state].glyph} />
           {t(CRITERION_STATE_KEY[c.state])}
         </span>
       </div>
 
-      <div className="inc-crit-meta">
+      <div className={styles.incCritMeta}>
         {t(HARDNESS_KEY[c.hardness])}
         {/* ⚠️ Il valore osservato e la SUA PROVENIENZA vanno insieme: senza la
             seconda il primo è un numero senza padre. */}
@@ -396,9 +398,9 @@ function CriterionRow({
           fonte, che può non essere quella dell'interfaccia. §139 — si mostra
           l'evidenza originale e si spiega nella lingua dell'utente. */}
       {evidence?.quote && (
-        <blockquote className="inc-quote">
+        <blockquote className={styles.incQuote}>
           <mark className="ev-hl">{evidence.quote}</mark>
-          <div className="inc-quote-src">
+          <div className={styles.incQuoteSrc}>
             {evidence.section && <>{evidence.section} · </>}
             {evidence.checkedAt && <>{t('incentives.criteria.checkedOn', { date: formatDate(evidence.checkedAt) })} · </>}
             {evidence.url && (
@@ -436,7 +438,7 @@ function CriterionRow({
           l'ultima valutazione è quella che è: dire «adesso è soddisfatto»
           sarebbe raccontare un verdetto che nessuno ha prodotto. */}
       {answered && (
-        <div className="inc-crit-answered">
+        <div className={styles.incCritAnswered}>
           <Icon name="checkCircle" className="ic-sm" />
           {t('incentives.criteria.answerRecorded', {
             value: t(answered === 'yes' ? 'common.yes' : answered === 'no' ? 'common.no' : 'common.dontKnow'),
@@ -454,7 +456,7 @@ function CriterionRow({
           esiste apposta: una regola che nomina un fatto che il motore non
           conosce deve dirlo, non sparire. */}
       {c.reasonCode && (
-        <div className="inc-crit-reason">
+        <div className={styles.incCritReason}>
           {(() => {
             const key = `incentives.reasonCodes.${c.reasonCode}` as TKey;
             const text = t(key);

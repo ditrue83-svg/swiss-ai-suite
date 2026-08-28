@@ -47,6 +47,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useT, useTn, type PluralBase, type TKey } from '@/i18n';
 import type { DataDocumentoRiga } from '@/services/documentHubService';
 import type { DocumentHubItem } from '@/types/models';
+import styles from './dashboard.module.css';
 
 /**
  * Il saluto, con il nome quando lo sappiamo.
@@ -419,8 +420,8 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
 
       {/* DUE COLONNE: il lavoro a sinistra, la lista operativa a destra. La
           logica dei blocchi NON è cambiata — è cambiato solo dove stanno. */}
-      <div className="home-grid">
-        <div className="home-main">
+      <div className={styles.homeGrid}>
+        <div className={styles.homeMain}>
           {inEvidenza && <DocumentoInEvidenza item={inEvidenza} today={data.today} />}
 
           {blocchi.decisioni && <BloccoDecisioni data={data} />}
@@ -446,7 +447,7 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
           {blocchi.opportunita && <BloccoOpportunita data={data} companyName={companyName} />}
         </div>
 
-        <div className="home-side">
+        <div className={styles.homeSide}>
           <AttenzioneColumn data={data} />
         </div>
       </div>
@@ -499,16 +500,16 @@ export function HomePage() {
           saluto — che è l'identità della pagina — con sotto l'istante della
           lettura; a destra la pastiglia di ciò che richiede attenzione e il
           gesto primario, «Carica documento». */}
-      <div className="home-head">
+      <div className={styles.homeHead}>
         <div className="page-head">
-          <div className="greeting">{name ? t(slot.named, { name }) : t(slot.plain)}</div>
+          <div className={styles.greeting}>{name ? t(slot.named, { name }) : t(slot.plain)}</div>
           {data && (
-            <div className="greeting-sub">{t('home.updatedAt', { time: formatTime(data.loadedAt) })}</div>
+            <div className={styles.greetingSub}>{t('home.updatedAt', { time: formatTime(data.loadedAt) })}</div>
           )}
         </div>
-        <div className="home-head-actions">
+        <div className={styles.homeHeadActions}>
           {nAttenzione > 0 && (
-            <Link className="att-pill" to="/documenti?stato=to_verify">
+            <Link className={styles.attPill} to="/documenti?stato=to_verify">
               <Icon name="alert" className="ic-sm" />
               {tn('home.attentionPill', nAttenzione)}
             </Link>

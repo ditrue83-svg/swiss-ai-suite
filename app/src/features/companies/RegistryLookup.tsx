@@ -30,6 +30,7 @@ import { toUserMessage } from '@/lib/errors';
 import { companyLookupService, LookupError, type CompanyCandidate } from '@/services/companyLookupService';
 import { CANTONI } from '@/features/subsidy-ai/programs';
 import { formatUid } from '@/lib/uid';
+import styles from './companies.module.css';
 
 /** Ciò che il registro ha davvero dato. `canton: null` = non l'ha dato. */
 export interface RegistryFields {
@@ -167,7 +168,7 @@ export function RegistryLookup({ current, onApply, idPrefix, disabled, messages 
       )}
 
       {candidates.length > 0 && (
-        <ul role="listbox" aria-label={t('onboarding.registryResultsAria')} className="registry-candidates">
+        <ul role="listbox" aria-label={t('onboarding.registryResultsAria')} className={styles.registryCandidates}>
           {candidates.map((c, i) => (
             <li key={c.uid ?? i}>
               <button type="button" className="btn btn-sm mb-2" onClick={() => void applyCandidate(c)}

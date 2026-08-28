@@ -11,6 +11,7 @@ import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useT, type TKey } from '@/i18n';
 import type { SubsidyCase, SubsidyCaseStatus, EligibilityStatus } from '@/types/models';
+import styles from './subsidy-ai.module.css';
 
 // Solo l'ELENCO degli stati: l'etichetta la dà il dizionario, perché queste
 // cinque parole comparivano in italiano anche in tedesco e in francese.
@@ -80,7 +81,7 @@ export function CasesList({ onGoResults }: { onGoResults: () => void }) {
         const url = snapshotUrl(c);
         return (
           <div className="card" key={c.id}>
-            <div className="pratica-head">
+            <div className={styles.praticaHead}>
               <div><div className="list-title">{c.programName}</div><div className="list-sub">{c.authority}</div></div>
               <div className="row-wrap">
                 <select className="select-inline" value={c.status} onChange={(e) => changeStatus(c.id, e.target.value as SubsidyCaseStatus)} aria-label={t('subsidy.cases.caseStatusAria')}>
@@ -100,7 +101,7 @@ export function CasesList({ onGoResults }: { onGoResults: () => void }) {
                 : <Tag>{t('subsidy.cases.kindApplication')}</Tag>}
               {/* L'idoneità registrata alla creazione della pratica: il segno
                   della sua famiglia, non la pastiglia negli allarmi. */}
-              {elig && <span className="mark-field">{t('subsidy.cases.eligibility')} <EligibilityMark status={elig} /></span>}
+              {elig && <span className={styles.markField}>{t('subsidy.cases.eligibility')} <EligibilityMark status={elig} /></span>}
               <span className="muted-sm">{t('subsidy.cases.createdOn', { date: formatDate(c.createdAt) })}{c.sourceLastCheckedAt ? ` · ${t('subsidy.cases.sourceOf', { date: c.sourceLastCheckedAt })}` : ''}</span>
             </div>
             <div className="ax-progress mt-12"><span className="pg-label">{t('subsidy.cases.documentsProgress', { done, total: items.length })}</span>

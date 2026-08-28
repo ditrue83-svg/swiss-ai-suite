@@ -121,22 +121,28 @@ function nearestStep(px, spMap) {
 //   dalla gerarchia del testo.
 // ---------------------------------------------------------------------------
 const EXCEPTIONS = [
+  // ⚠️ RIALLINEO 2026-08-28 (issue #83, sweep finale): le eccezioni di
+  // `.dash-inc-stats`, `.dash-sorted`, `.ct-sr`, `.print-kv dt`, `.print-url`
+  // e `.print-foot` non puntano più ai due globali ma al MODULO dove la regola
+  // è migrata — ripuntate, non cancellate: la regola «eccezione morta =
+  // fallimento» continua a valere, e se il frammento sparisce dal modulo il
+  // controllo esce rosso come prima.
   // ⚠️ L'eccezione di `.brand-sub` («margin-top: -1px») è stata TOLTA il
   // 2026-08-14, non dimenticata: compensava il line-height del nome composto in
   // Inter, e il nome composto non esiste più — il marchio è un disegno. Sotto
   // un SVG non c'è nessun line-height da recuperare, quindi il sottotitolo
   // torna sulla scala (`--sp-1`). L'ha fatto notare questo stesso controllo,
   // uscendo rosso per «eccezione morta»: è il suo mestiere.
-  { file: 'src/styles/app.css', contesto: '.dash-inc-stats', frammento: 'margin: -2px 0 var(--sp-3)', motivo: 'compensa il line-height del titolo sopra: valore negativo, la scala non parla in negativo' },
-  { file: 'src/styles/extra.css', contesto: '.dash-sorted', frammento: 'margin: -6px 0 var(--sp-2)', motivo: 'risale sotto il titolo che il card-title ha già distanziato: negativo, fuori dal ritmo' },
+  { file: 'src/features/subsidy-ai/subsidy-ai.module.css', contesto: '.dash-inc-stats', frammento: 'margin: -2px 0 var(--sp-3)', motivo: 'compensa il line-height del titolo sopra: valore negativo, la scala non parla in negativo' },
+  { file: 'src/features/dashboard/dashboard.module.css', contesto: '.dash-sorted', frammento: 'margin: -6px 0 var(--sp-2)', motivo: 'risale sotto il titolo che il card-title ha già distanziato: negativo, fuori dal ritmo' },
   { file: 'src/styles/app.css', contesto: '.segmented .btn + .btn', frammento: 'margin-left: -1px', motivo: 'i due estremi di un interruttore condividono UN bordo: risale esattamente 1px, cioè lo spessore del bordo che sta sovrapponendo — negativo, e la scala non parla in negativo' },
-  { file: 'src/styles/app.css', contesto: '.ct-sr', frammento: 'margin: -1px', motivo: 'idioma sr-only: la scatola da 1px esce dal flusso per i soli lettori di schermo' },
+  { file: 'src/features/contracts/contracts.module.css', contesto: '.ct-sr', frammento: 'margin: -1px', motivo: 'idioma sr-only: la scatola da 1px esce dal flusso per i soli lettori di schermo' },
   { file: 'src/styles/extra.css', contesto: '.sr-only', frammento: 'margin: -1px', motivo: 'idioma sr-only: la scatola da 1px esce dal flusso per i soli lettori di schermo' },
   { file: 'src/styles/app.css', contesto: 'html, body', frammento: 'background: #ffffff !important', motivo: 'stampa: rete di sicurezza contro i default del browser, documentata nel blocco — protegge anche a token rotti' },
   { file: 'src/styles/app.css', contesto: 'html, body', frammento: 'color: #000000 !important', motivo: 'stampa: rete di sicurezza contro i default del browser, documentata nel blocco — protegge anche a token rotti' },
-  { file: 'src/styles/extra.css', contesto: '.print-kv dt', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
-  { file: 'src/styles/extra.css', contesto: '.print-url', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
-  { file: 'src/styles/extra.css', contesto: '.print-foot', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
+  { file: 'src/features/print/print.module.css', contesto: '.print-kv dt', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
+  { file: 'src/features/print/print.module.css', contesto: '.print-url', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
+  { file: 'src/features/print/print.module.css', contesto: '.print-foot', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
   { file: 'src/styles/app.css', contesto: '.state-list li::before', frammento: 'font-size: 11px', motivo: 'la spunta segue il cerchio che la contiene, non la gerarchia del testo (documentato nella scala tipografica)' },
   // `.verify-box li::before` non è più qui: il blocco «da verificare» è la
   // `.verify-note` delle marcature (2026-08-12), e il «?» è un glifo SVG, non
@@ -629,13 +635,19 @@ function senzaCommenti(text) {
 // sottocartella — o in qualunque altro punto di src/ — sfuggiva al lint intero,
 // provato con un `color: #c00` in src/styles/temi/ che usciva verde. Ora ogni
 // `.css` sotto src/ viene lintato ovunque stia: non esiste un «fuori
-// perimetro» da sorvegliare.
+// perimetro» da sorvegliare. Dal 2026-08-28 il perimetro copre quindi anche i
+// 17 CSS Modules delle feature (issue #83) senza cambiare una riga.
+// ⚠️ I `*.stories.tsx` RESTANO FUORI (decisione del 2026-08-28): sono il
+// cantiere Ladle, non l'applicazione, e i loro `style={{ … }}` servono a
+// MOSTRARE i casi — segnalarli vorrebbe dire vietare alla vetrina di esibire
+// ciò che la regola vieta all'app.
 const cssFiles = [];
 const tsxFiles = [];
 (function walk(dir) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p);
+    else if (name.endsWith('.stories.tsx')) continue;
     else if (name.endsWith('.tsx')) tsxFiles.push(p);
     else if (name.endsWith('.css')) cssFiles.push(p);
   }

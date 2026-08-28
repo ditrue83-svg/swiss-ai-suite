@@ -23,6 +23,8 @@ import { useI18n, useT } from '@/i18n';
 import { notificationService } from '@/services/notificationService';
 import { badgeLabel, isProblem, notificationLink, notificationTitleKey, relativeTime } from './notificationFormat';
 import { formatDate } from '@/lib/format';
+import { cx } from '@/lib/cx';
+import styles from './notifications.module.css';
 import type { AppNotification } from '@/types/models';
 
 /**
@@ -165,10 +167,10 @@ export function NotificationBell({ count, setCount }: NotificationBellProps) {
   const badge = badgeLabel(count);
 
   return (
-    <div className="bell-wrap">
+    <div className={styles.bellWrap}>
       <button
         ref={buttonRef}
-        className="bell-btn"
+        className={styles.bellBtn}
         onClick={toggle}
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -177,13 +179,13 @@ export function NotificationBell({ count, setCount }: NotificationBellProps) {
         aria-label={count > 0 ? t('notifications.bellAriaUnread', { n: count }) : t('notifications.bellAria')}
       >
         <Icon name="bell" />
-        {badge && <span className="bell-badge" aria-hidden="true">{badge}</span>}
+        {badge && <span className={styles.bellBadge} aria-hidden="true">{badge}</span>}
       </button>
 
       {open && (
-        <div className="bell-panel" ref={panelRef} role="dialog" aria-label={t('notifications.title')}>
-          <div className="bell-head">
-            <span className="bell-title">{t('notifications.title')}</span>
+        <div className={styles.bellPanel} ref={panelRef} role="dialog" aria-label={t('notifications.title')}>
+          <div className={styles.bellHead}>
+            <span className={styles.bellTitle}>{t('notifications.title')}</span>
             {count > 0 && (
               <button className="btn btn-sm btn-link" onClick={() => void markAll()}>
                 {t('notifications.markAllRead')}
@@ -191,14 +193,14 @@ export function NotificationBell({ count, setCount }: NotificationBellProps) {
             )}
           </div>
 
-          {loading && <div className="bell-empty">{t('states.loading')}</div>}
+          {loading && <div className={styles.bellEmpty}>{t('states.loading')}</div>}
 
           {/* Il guasto viene PRIMA di qualunque interpretazione: finché non si
               sa cosa c'è, non si dice che non c'è niente. */}
           {!loading && error && <ErrorState message={error} onRetry={() => void load()} />}
 
           {!loading && !error && items.length === 0 && (
-            <div className="bell-empty">
+            <div className={styles.bellEmpty}>
               <div>{t('notifications.empty')}</div>
               <div className="muted-sm mt-10">{t('notifications.emptyHint')}</div>
             </div>
@@ -207,18 +209,18 @@ export function NotificationBell({ count, setCount }: NotificationBellProps) {
           {!loading && !error && items.map((n) => (
             <button
               key={n.id}
-              className={`bell-row${n.readAt ? '' : ' is-unread'}`}
+              className={cx(styles.bellRow, !n.readAt && styles.isUnread)}
               onClick={() => void openNotification(n)}
             >
-              <span className={`bell-dot${isProblem(n.type) ? ' is-problem' : ''}`} aria-hidden="true" />
-              <span className="bell-main">
-                <span className="bell-row-title">{t(notificationTitleKey(n))}</span>
+              <span className={cx(styles.bellDot, isProblem(n.type) && styles.isProblem)} aria-hidden="true" />
+              <span className={styles.bellMain}>
+                <span className={styles.bellRowTitle}>{t(notificationTitleKey(n))}</span>
                 {/* Il testo di un avviso prodotto da una regola lo ha scritto
                     l'azienda, e si mostra com'è: non passa dai dizionari perché
                     non è testo del prodotto, e tradurlo lo falserebbe. */}
-                {n.payload?.text && <span className="bell-row-sub">{n.payload.text}</span>}
-                {n.payload?.title && <span className="bell-row-sub">{n.payload.title}</span>}
-                <span className="bell-row-meta">
+                {n.payload?.text && <span className={styles.bellRowSub}>{n.payload.text}</span>}
+                {n.payload?.title && <span className={styles.bellRowSub}>{n.payload.title}</span>}
+                <span className={styles.bellRowMeta}>
                   {n.payload?.dueDate
                     ? t('notifications.deadline', { date: formatDate(n.payload.dueDate) })
                     : null}
@@ -229,7 +231,7 @@ export function NotificationBell({ count, setCount }: NotificationBellProps) {
             </button>
           ))}
 
-          <div className="bell-foot">
+          <div className={styles.bellFoot}>
             <Link className="btn btn-sm" to="/calendario/impostazioni" onClick={() => setOpen(false)}>
               <Icon name="settings" className="ic-sm" /> {t('calendar.settingsTitle')}
             </Link>

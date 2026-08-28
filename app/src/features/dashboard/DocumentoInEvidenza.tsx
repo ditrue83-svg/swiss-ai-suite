@@ -29,17 +29,19 @@ import { useDocumentLabel } from '@/i18n/documentLabel';
 import { useLabels } from '@/i18n/labels';
 import { useT, useTn } from '@/i18n';
 import type { DocumentHubItem } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './dashboard.module.css';
 
 function CampoEstratto({ nome, valore, nota, corretto }: {
   nome: string; valore: string; nota?: string | null; corretto?: boolean;
 }) {
   const t = useT();
   return (
-    <div className="spot-field">
-      <div className="spot-field-name">{nome}</div>
-      <div className="spot-field-value">{valore}</div>
-      {corretto && <div className="spot-field-note ok">{t('home.spotCorrected')}</div>}
-      {!corretto && nota && <div className="spot-field-note">{nota}</div>}
+    <div className={styles.spotField}>
+      <div className={styles.spotFieldName}>{nome}</div>
+      <div className={styles.spotFieldValue}>{valore}</div>
+      {corretto && <div className={cx(styles.spotFieldNote, styles.ok)}>{t('home.spotCorrected')}</div>}
+      {!corretto && nota && <div className={styles.spotFieldNote}>{nota}</div>}
     </div>
   );
 }
@@ -65,10 +67,10 @@ export function DocumentoInEvidenza({ item, today }: { item: DocumentHubItem; to
   const importo = formatCurrency(item.amount, item.amountCurrency);
 
   return (
-    <section className="card spot" aria-labelledby="spot-title">
-      <div className="spot-head">
-        <div className="spot-head-main">
-          <h2 className="spot-title" id="spot-title">{etichetta(item.label)}</h2>
+    <section className={cx('card', styles.spot)} aria-labelledby="spot-title">
+      <div className={styles.spotHead}>
+        <div className={styles.spotHeadMain}>
+          <h2 className={styles.spotTitle} id="spot-title">{etichetta(item.label)}</h2>
           <div className="muted-sm">
             {analisi?.createdAt
               ? t('home.spotAnalyzedAt', { time: formatDateTime(analisi.createdAt) })
@@ -76,16 +78,16 @@ export function DocumentoInEvidenza({ item, today }: { item: DocumentHubItem; to
           </div>
         </div>
         {item.pageCount !== null && item.pageCount !== undefined && (
-          <span className="spot-chip">
+          <span className={styles.spotChip}>
             <Icon name="document" className="ic-sm" />
             {tn('home.spotPages', item.pageCount)}
           </span>
         )}
       </div>
 
-      <div className="spot-body">
-        <div className="spot-fields">
-          <div className="spot-fields-title">{t('home.spotFields')}</div>
+      <div className={styles.spotBody}>
+        <div className={styles.spotFields}>
+          <div className={styles.spotFieldsTitle}>{t('home.spotFields')}</div>
           <CampoEstratto
             nome={t('home.spotSender')}
             valore={item.sender ?? '—'}
@@ -108,7 +110,7 @@ export function DocumentoInEvidenza({ item, today }: { item: DocumentHubItem; to
               ? t('home.spotDeadlineToVerify')
               : scaduta ? t('home.spotDeadlineOverdue') : null}
           />
-          <div className="spot-actions">
+          <div className={styles.spotActions}>
             <Link className="btn btn-primary btn-sm" to={`/documenti/${item.id}`}>
               <Icon name="checkCircle" className="ic-sm" /> {t('home.spotOpen')}
             </Link>
@@ -116,9 +118,9 @@ export function DocumentoInEvidenza({ item, today }: { item: DocumentHubItem; to
         </div>
 
         {citazione && (
-          <div className="spot-quote">
-            <div className="spot-fields-title">{t('home.spotQuote')}</div>
-            <blockquote className="spot-quote-text">«{citazione.quote}»</blockquote>
+          <div className={styles.spotQuote}>
+            <div className={styles.spotFieldsTitle}>{t('home.spotQuote')}</div>
+            <blockquote className={styles.spotQuoteText}>«{citazione.quote}»</blockquote>
             <div className="muted-sm">
               {citazione.pageNumber
                 ? t('home.spotQuoteSourcePage', { page: citazione.pageNumber })

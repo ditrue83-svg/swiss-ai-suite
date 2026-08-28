@@ -37,6 +37,8 @@ import {
   contractState, filtersFromParams, hasActiveFilters, paramsFromFilters,
   type ContractState,
 } from './contractModel';
+import { cx } from '@/lib/cx';
+import styles from './contracts.module.css';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import type {
@@ -215,10 +217,10 @@ export function ContractsPage() {
 
       <div className="row-wrap ct-toolbar">
         <form
-          className="field ct-search"
+          className={cx('field', styles.ctSearch)}
           onSubmit={(e) => { e.preventDefault(); update({ query: draftQuery }); }}
         >
-          <label className="ct-sr" htmlFor="contract-q">{t('contracts.searchPlaceholder')}</label>
+          <label className={styles.ctSr} htmlFor="contract-q">{t('contracts.searchPlaceholder')}</label>
           <input
             id="contract-q" type="search" value={draftQuery}
             maxLength={MAX_QUERY_LENGTH}
@@ -430,7 +432,7 @@ function ContractRow(props: {
 
   return (
     <li className="list-row">
-      <Link to={`/contratti/${c.id}`} className="ct-row-link">
+      <Link to={`/contratti/${c.id}`} className={styles.ctRowLink}>
         <div className="list-main">
           <span className="list-title">{c.displayName}</span>
           {state === 'to_verify'
@@ -467,7 +469,7 @@ function ContractRow(props: {
               {/* ⚠️ Il preavviso c'è ma la data no: si dice, invece di lasciare
                   un posto vuoto che verrebbe letto come «nessuna scadenza». */}
               {!c.nextNoticeDate ? (
-                <em className="ct-unverified"> · {t('contracts.row.noDate')}</em>
+                <em className={styles.ctUnverified}> · {t('contracts.row.noDate')}</em>
               ) : (
                 <>
                   {' '}

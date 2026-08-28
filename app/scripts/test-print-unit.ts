@@ -18,7 +18,7 @@
 // copiato qui dentro invecchia al primo ritocco del foglio di stile e comincia
 // a garantire una cosa che non c'è più.
 // ============================================================================
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -50,8 +50,17 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  */
 const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 const readCss = (f: string) => stripComments(readFileSync(join(HERE, '..', 'src', 'styles', f), 'utf8'));
+// ⚠️ DAL 2026-08-28 (issue #83) le regole di stampa delle FEATURE vivono nei
+// moduli CSS delle feature, dove il riferimento alla classe locale funziona:
+// un controllo che le cercasse solo nei globali dichiarerebbe morte regole
+// vive — la regressione che questo riallineo chiude.
+const readMod = (f: string) => stripComments(readFileSync(join(HERE, '..', 'src', 'features', f), 'utf8'));
 const APP = readCss('app.css');
 const EXTRA = readCss('extra.css');
+const PRINT_MOD = readMod('print/print.module.css');
+const ADMIN_AI = readMod('admin-ai/admin-ai.module.css');
+const CONTRACTS = readMod('contracts/contracts.module.css');
+const INCENTIVES = readMod('incentives/incentives.module.css');
 
 /**
  * Il corpo di un blocco `@media …`, contando le graffe.
@@ -79,6 +88,10 @@ function mediaBlock(css: string, condition: string): { body: string; start: numb
 
 const printApp = mediaBlock(APP, 'print');
 const printExtra = mediaBlock(EXTRA, 'print');
+const printPrintMod = mediaBlock(PRINT_MOD, 'print');
+const printAdminAi = mediaBlock(ADMIN_AI, 'print');
+const printContracts = mediaBlock(CONTRACTS, 'print');
+const printIncentives = mediaBlock(INCENTIVES, 'print');
 
 /**
  * Il blocco del TEMA SCURO.
@@ -106,6 +119,10 @@ section('0. I blocchi ci sono, e il lettore li ha letti davvero');
 
 check('app.css ha un blocco @media print', printApp !== null);
 check('extra.css ha un blocco @media print', printExtra !== null);
+check('print.module.css ha un blocco @media print', printPrintMod !== null);
+check('admin-ai.module.css ha un blocco @media print', printAdminAi !== null);
+check('contracts.module.css ha un blocco @media print', printContracts !== null);
+check('incentives.module.css ha un blocco @media print', printIncentives !== null);
 check('app.css ha ancora il blocco del tema scuro', darkApp !== null);
 // ⚠️ Se l'estrattore prendesse tre righe invece del blocco intero, tutte le
 // asserzioni qui sotto passerebbero o fallirebbero per la ragione sbagliata.
@@ -114,6 +131,7 @@ check('il blocco di stampa è stato estratto per intero, non troncato alla prima
 
 const P = printApp?.body ?? '';
 const PX = printExtra?.body ?? '';
+const PM = printPrintMod?.body ?? '';
 
 // ---------------------------------------------------------------------------
 section('1. Navigazione e comandi: fuori dalla carta');
@@ -132,10 +150,13 @@ for (const sel of MUST_HIDE) {
 }
 check('il selettore di lingua sparisce col suo contenitore, o esplicitamente',
   hidden.has('.no-print'), 'LanguageSwitcher sta dentro .sidebar/.account-box, entrambi nascosti');
-check('`.print-only` è nascosto FUORI dalla stampa',
-  /\.print-only\s*\{\s*display:\s*none/.test(APP.slice(0, printApp?.start ?? APP.length)));
-check('`.print-only` compare DENTRO la stampa',
-  /\.print-only\s*\{[^}]*display:\s*block/.test(P));
+// ⚠️ `.print-only` è migrata il 2026-08-28 in `print/print.module.css` (issue
+// #83): è la sola classe usata dalla sola feature `print`. Le due facce della
+// regola — nascosta a schermo, visibile su carta — si leggono lì.
+check('`.print-only` è nascosto FUORI dalla stampa (print.module.css)',
+  /\.print-only\s*\{\s*display:\s*none/.test(PRINT_MOD.slice(0, printPrintMod?.start ?? PRINT_MOD.length)));
+check('`.print-only` compare DENTRO la stampa (print.module.css)',
+  /\.print-only\s*\{[^}]*display:\s*block/.test(PM));
 
 // ---------------------------------------------------------------------------
 section('2. Tema scuro: il foglio resta bianco');
@@ -200,7 +221,29 @@ check('il contenitore principale perde l’altezza fissa',
 check('nel blocco di stampa non compare nessun `overflow: hidden`',
   !/overflow:\s*hidden/.test(P) && !/overflow:\s*hidden/.test(PX));
 check('i moduli non si spezzano (extra.css)', /break-inside:\s*avoid/.test(PX));
-check('il visualizzatore del documento non va su carta', /\.pdf-viewer[\s\S]{0,120}display:\s*none/.test(PX));
+// ⚠️ LE REGOLE DELLE FEATURE VIVONO NEI MODULI dal 2026-08-28 (issue #83): con
+// i CSS Modules il selettore globale non aggancia più le classi hashate — era
+// la regressione di stampa della migrazione. Qui si controlla che ogni regola
+// migrata esista nel modulo della sua feature e punti alla classe locale.
+// `.doc-viewer`/`.pdf-viewer`, che il blocco globale nominava accanto ad
+// `.ax-doc`, non ci sono più: mai definiti in nessun foglio, mai scritti da
+// nessun componente — erano selettori morti, cancellati nello sweep.
+check('le schede dell’analisi non si spezzano (admin-ai.module.css)',
+  /\.ax-header[\s\S]{0,120}break-inside:\s*avoid/.test(printAdminAi?.body ?? '')
+    && /\.ax-actions-card/.test(printAdminAi?.body ?? ''));
+check('il visualizzatore del documento non va su carta (`.ax-doc`, admin-ai.module.css)',
+  /\.ax-doc\s*\{[^}]*display:\s*none/.test(printAdminAi?.body ?? ''),
+  'era `.doc-viewer`/`.pdf-viewer`/`.ax-doc` in extra.css: i primi due erano morti, `.ax-doc` è la classe viva');
+check('le righe documento/scadenza del contratto non si spezzano (contracts.module.css)',
+  /\.ct-doc-row[\s\S]{0,140}break-inside:\s*avoid/.test(printContracts?.body ?? '')
+    && /\.ct-ms-row/.test(printContracts?.body ?? ''));
+check('la scheda del criterio non si spezza (incentives.module.css)',
+  /\.inc-criterion\s*\{[^}]*break-inside:\s*avoid/.test(printIncentives?.body ?? ''),
+  'il selettore storico era `.inc-crit`: mai esistito, la classe è `.inc-criterion` dal 2026-07-30');
+// La controprova della migrazione: il blocco GLOBALE non deve più nominare le
+// classi scopate — se tornasse, tornerebbe il selettore che non aggancia.
+check('il blocco globale non nomina più classi scopate nei moduli',
+  !/\.ax-header|\.ax-actions-card|\.ax-doc|\.ct-doc-row|\.ct-ms-row|\.inc-crit|\.doc-viewer|\.pdf-viewer/.test(PX));
 
 // ---------------------------------------------------------------------------
 section('4. Le citazioni finiscono nel foglio, per esteso');
@@ -333,9 +376,25 @@ for (const [lang, d] of Object.entries(dicts)) {
 // «font» non compariva in questo file. La prova esisteva — un PDF vero
 // ispezionato il 2026-08-10, con i tre sottoinsiemi incorporati — ma una prova
 // fatta una volta non impedisce la riga che la smentisce il mese dopo.
+//
+// ⚠️ DAL 2026-08-28 il perimetro sono TUTTI i CSS di src/: con la migrazione a
+// CSS Modules (issue #83) ogni feature ha il suo foglio, e una `@media print`
+// può vivere in qualunque modulo — sorvegliare solo i due globali lascerebbe
+// la porta aperta proprio dove le regole di stampa si sono spostate.
 {
+  const moduli: string[] = [];
+  for (const feature of readdirSync(join(HERE, '..', 'src', 'features'))) {
+    const dir = join(HERE, '..', 'src', 'features', feature);
+    if (!statSync(dir).isDirectory()) continue;
+    for (const f of readdirSync(dir)) if (f.endsWith('.module.css')) moduli.push(join(dir, f));
+  }
+  const fogli: [string, string][] = [
+    ['app.css', APP],
+    ['extra.css', EXTRA],
+    ...moduli.map((p): [string, string] => [p.split('/src/')[1] ?? p, stripComments(readFileSync(p, 'utf8'))]),
+  ];
   const blocchi: { file: string; corpo: string }[] = [];
-  for (const [file, css] of [['app.css', APP], ['extra.css', EXTRA]] as const) {
+  for (const [file, css] of fogli) {
     let da = 0;
     for (;;) {
       const at = css.indexOf('@media print', da);

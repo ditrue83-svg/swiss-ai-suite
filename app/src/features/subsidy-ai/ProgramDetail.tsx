@@ -22,6 +22,8 @@ import {
 } from './engine';
 import { InterpretationPanel } from './Interpretation';
 import type { ProjectInterpretation } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './subsidy-ai.module.css';
 
 function relClass(s: number) { return s >= 75 ? 'hi' : s >= 55 ? 'mid' : ''; }
 
@@ -66,21 +68,21 @@ function Quiz({ prog, answers, setAnswers, onVerdict }: {
 
   return (
     <div>
-      <div className="quiz-progress">{t('subsidy.detail.questionOf', { i: i + 1, n: N })} · <span className={q.kind === 'soft' ? 'req-soft-tag' : 'req-hard-tag'}>{tag}</span></div>
-      <div className="quiz-question">{q.question}</div>
+      <div className={styles.quizProgress}>{t('subsidy.detail.questionOf', { i: i + 1, n: N })} · <span className={q.kind === 'soft' ? styles.reqSoftTag : styles.reqHardTag}>{tag}</span></div>
+      <div className={styles.quizQuestion}>{q.question}</div>
       <div className="quiz-opts">
         {([['si', t('common.yes')], ['no', t('common.no')], ['ns', t('common.dontKnow')]] as const).map(([v, l]) => (
           <button key={v} className={`quiz-opt${answers[q.key] === v ? ' sel-' + v : ''}`} onClick={() => answer(v)}>{l}</button>
         ))}
       </div>
-      <div className="quiz-foot">
+      <div className={styles.quizFoot}>
         {i > 0 ? <button className="btn btn-sm" onClick={() => setIndex(Math.max(0, i - 1))}>← {t('common.back')}</button> : <span />}
         {/* ⚠️ ERA UNA PASTIGLIA COLORATA DA `ELIGIBILITY_BADGE`, che traduceva
             l'idoneità nella scala degli allarmi: `unlikely` e `ineligible` in
             rosso, `likely` in verde. Rosso vuol dire che qualcosa è andato
             storto; «probabilmente non idoneo» è un giudizio ponderato, e per
             giunta un giudizio ancora provvisorio mentre si risponde. */}
-        <span className="quiz-live">{t('subsidy.detail.currentEligibility')} <EligibilityMark status={live.status} /></span>
+        <span className={styles.quizLive}>{t('subsidy.detail.currentEligibility')} <EligibilityMark status={live.status} /></span>
       </div>
     </div>
   );
@@ -142,7 +144,7 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
   }
 
   const reqItem = (r: Requirement) => (
-    <li key={r.id}>{r.text} {r.hard ? <span className="req-hard-tag">{t('common.required')}</span> : <span className="req-soft-tag">{t('subsidy.detail.tagSoft')}</span>}</li>
+    <li key={r.id}>{r.text} {r.hard ? <span className={styles.reqHardTag}>{t('common.required')}</span> : <span className={styles.reqSoftTag}>{t('subsidy.detail.tagSoft')}</span>}</li>
   );
 
   return (
@@ -152,13 +154,13 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
       <div className="card">
         <div className="ax-head-top">
           <div className="ax-title">{p.name}</div>
-          <div className="ax-badges"><span className={`rel-badge sm ${relClass(match.relevanceScore)}`}><div className="rb-num">{match.relevanceScore}%</div><div className="rb-lbl">{t('subsidy.results.relevance')}</div></span></div>
+          <div className="ax-badges"><span className={cx(styles.relBadge, styles.sm, relClass(match.relevanceScore))}><div className={styles.rbNum}>{match.relevanceScore}%</div><div className={styles.rbLbl}>{t('subsidy.results.relevance')}</div></span></div>
         </div>
         <div className="ax-meta mt-10">
           <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> {L.supportType(p.supportType)}</span>
           <span className="ax-chip"><Icon name="banknote" className="ic-sm" /> <b>{p.authority}</b></span>
-          <span className="mark-field"><WindowMark status="unknown" /> {p.applicationWindow}</span>
-          <span className="mark-field">{t('marks.legend.priority')} <PriorityMark level={match.priority.level} /></span>
+          <span className={styles.markField}><WindowMark status="unknown" /> {p.applicationWindow}</span>
+          <span className={styles.markField}>{t('marks.legend.priority')} <PriorityMark level={match.priority.level} /></span>
         </div>
         {/* 0011 — la sospensione viene PRIMA di ogni altra informazione: il
             resto della scheda descrive un contributo che oggi non si ottiene, e
@@ -202,7 +204,7 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
         )}
         <div className="result-row"><div className="result-label">{t('subsidy.detail.requirements')}</div><div><ul className="detail-list">{[...p.hardRequirements, ...p.softRequirements].map(reqItem)}{p.requirements.length === 0 && <li className="text-muted">{t('subsidy.detail.noRequirements')}</li>}</ul></div></div>
         {p.evaluableExclusions.length > 0 && (
-          <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsEvaluated')}</div><div><ul className="detail-list bad">{p.evaluableExclusions.map((r) => <li key={r.id}>{r.text} <span className="req-hard-tag">{t('subsidy.detail.blocksEligibility')}</span></li>)}</ul></div></div>
+          <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsEvaluated')}</div><div><ul className="detail-list bad">{p.evaluableExclusions.map((r) => <li key={r.id}>{r.text} <span className={styles.reqHardTag}>{t('subsidy.detail.blocksEligibility')}</span></li>)}</ul></div></div>
         )}
         {p.informativeExclusions.length > 0 && (
           <div className="result-row"><div className="result-label">{t('subsidy.detail.exclusionsManual')}</div><div><ul className="detail-list warn">{p.informativeExclusions.map((r) => <li key={r.id}>{r.text}</li>)}</ul><div className="muted-sm">{t('subsidy.detail.exclusionsManualHint')}</div></div></div>
@@ -223,17 +225,17 @@ export function ProgramDetail({ match, companyId, interpretation, onBack, onCrea
           showTimingWarning={interpretation.timing.alreadyStarted === true && p.mustApplyBeforeStart} />
       )}
 
-      <div className="card source-card">
+      <div className={cx('card', styles.sourceCard)}>
         <div className="card-title"><Icon name="fileSearch" className="ic-sm" /> {t('subsidy.detail.source')}</div>
-        <div className="source-grid">
-          <div className="src-k">{t('subsidy.detail.authority')}</div><div className="src-v">{p.authority}</div>
-          <div className="src-k">{t('subsidy.detail.sourceTitle')}</div><div className="src-v">{p.sourceTitle}</div>
-          <div className="src-k">{t('subsidy.detail.sourceUrl')}</div><div className="src-v"><a href={p.officialSourceUrl} target="_blank" rel="noreferrer">{p.officialSourceUrl}</a></div>
-          <div className="src-k">{t('subsidy.detail.lastChecked')}</div><div className="src-v">{p.lastCheckedAt ? <>{p.lastCheckedAt} <span className="muted-sm">({t('subsidy.detail.lastCheckedHint')})</span></> : <span className="muted-sm">{t('subsidy.detail.notAvailable')}</span>}</div>
-          <div className="src-k">{t('subsidy.detail.dataStatus')}</div>
+        <div className={styles.sourceGrid}>
+          <div className={styles.srcK}>{t('subsidy.detail.authority')}</div><div className={styles.srcV}>{p.authority}</div>
+          <div className={styles.srcK}>{t('subsidy.detail.sourceTitle')}</div><div className={styles.srcV}>{p.sourceTitle}</div>
+          <div className={styles.srcK}>{t('subsidy.detail.sourceUrl')}</div><div className={styles.srcV}><a href={p.officialSourceUrl} target="_blank" rel="noreferrer">{p.officialSourceUrl}</a></div>
+          <div className={styles.srcK}>{t('subsidy.detail.lastChecked')}</div><div className={styles.srcV}>{p.lastCheckedAt ? <>{p.lastCheckedAt} <span className="muted-sm">({t('subsidy.detail.lastCheckedHint')})</span></> : <span className="muted-sm">{t('subsidy.detail.notAvailable')}</span>}</div>
+          <div className={styles.srcK}>{t('subsidy.detail.dataStatus')}</div>
           {/* Il timbro della famiglia FONTE, al posto della pastiglia ds-badge:
               i tre stati dell'1.0 mappati sui segni condivisi con il 2.0. */}
-          <div className="src-v"><SourceStamp state={p.dataStatus === 'verified' ? 'fresh' : p.dataStatus === 'recheck' ? 'aging' : 'demo'} /></div>
+          <div className={styles.srcV}><SourceStamp state={p.dataStatus === 'verified' ? 'fresh' : p.dataStatus === 'recheck' ? 'aging' : 'demo'} /></div>
         </div>
         {/* ⚠️ Fino al 2026-08-12 questo avviso compariva INCONDIZIONATAMENTE:
             anche un programma con dati verificati dichiarava «dati
@@ -286,12 +288,12 @@ function Verdict({ prog, v, savingCase, onCreate, onPreliminare, onRiferimento, 
 
   return (
     <div className="verdict">
-      <div className={`verdict-head vh-${tone}`}>
+      <div className={cx(styles.verdictHead, `vh-${tone}`)}>
         {/* Niente riquadro con l'icona d'allarme accanto: il segno dell'idoneità
             porta già il suo glifo di giudizio, e due segni per lo stesso fatto
             sono due segni che un giorno diranno cose diverse. */}
-        <div><div className="vh-kicker">{t('subsidy.detail.verdict')}</div>
-          <div className="vh-title"><EligibilityMark status={s} /></div></div>
+        <div><div className={styles.vhKicker}>{t('subsidy.detail.verdict')}</div>
+          <div className={styles.vhTitle}><EligibilityMark status={s} /></div></div>
       </div>
       {s === 'ineligible' && v.cause && (
         <div className="warn-box mb-14"><Icon name="alert" /><span>{t(v.cause.type === 'exclusion' ? 'subsidy.detail.exclusionTriggered' : 'subsidy.detail.requirementFailed')}: <strong>{v.cause.item.text}</strong>. {t('subsidy.detail.prevails')}</span></div>

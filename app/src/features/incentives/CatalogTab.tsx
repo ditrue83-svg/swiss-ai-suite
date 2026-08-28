@@ -31,6 +31,8 @@ import { incentivesService } from '@/services/incentivesService';
 import type { IncentiveCatalogProgram } from '@/types/models';
 import { WindowMark } from '@/components/ui/WindowMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
+import { cx } from '@/lib/cx';
+import styles from './incentives.module.css';
 
 export function CatalogTab() {
   const t = useT();
@@ -81,10 +83,10 @@ export function CatalogTab() {
         {items.map((p) => {
           const open = openId === p.id;
           return (
-            <div key={p.id} className="list-row inc-cat-row">
+            <div key={p.id} className={cx('list-row', styles.incCatRow)}>
               <div className="list-main">
                 <div className="list-title">
-                  <button type="button" className="inc-open" onClick={() => setOpenId(open ? null : p.id)}>
+                  <button type="button" className={styles.incOpen} onClick={() => setOpenId(open ? null : p.id)}>
                     {p.name}
                   </button>
                 </div>
@@ -106,7 +108,7 @@ export function CatalogTab() {
                     <span className="decl-flag">{t('incentives.catalog.suspended')}</span>
                   )}
                   {p.lifecycle === 'retired' && (
-                    <span className="decl-flag df-muted">{t('incentives.catalog.retired')}</span>
+                    <span className={cx('decl-flag', styles.dfMuted)}>{t('incentives.catalog.retired')}</span>
                   )}
                   {p.mustApplyBeforeStart && (
                     <span className="decl-flag">{t('incentives.catalog.applyBeforeStart')}</span>
@@ -135,7 +137,7 @@ export function CatalogTab() {
                 {open && <CatalogDetail program={p} />}
               </div>
 
-              <div className="inc-row-side">
+              <div className={styles.incRowSide}>
                 <a
                   className="mini-btn"
                   href={p.officialSourceUrl}
@@ -166,7 +168,7 @@ function CatalogDetail({ program: p }: { program: IncentiveCatalogProgram }) {
   const L = useLabels();
 
   return (
-    <div className="inc-cat-detail">
+    <div className={styles.incCatDetail}>
       {p.contributionDescription && (
         <p className="mt-8">{p.contributionDescription}</p>
       )}

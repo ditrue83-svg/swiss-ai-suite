@@ -408,13 +408,17 @@ input, select, textarea { font: inherit; color: var(--ink); }
 b, strong { font-weight: 600; }
 /* I collegamenti non sono sottolineati per default: nell'app quasi tutti sono
    voci di navigazione o pulsanti, dove la sottolineatura è rumore — la stessa
-   convenzione che già seguono .action-link e .ev-btn.
+   convenzione che segue `.ev-btn`. (Fino al 2026-08-28 citava anche
+   `.action-link`, cancellata con la famiglia `.action-*`: zero usi.)
    Restano invece sottolineati i collegamenti dentro un testo corrente, dove
    sono l'unico segnale che distingue un link da una parola qualsiasi. */
 a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; }
 .nav-btn:hover, .btn:hover, .brand:hover, .company-switch:hover { text-decoration: none; }
-p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-sub a, .legal-note a {
+/* `.demo-banner a` è migrata il 2026-08-28 in
+   `src/features/subsidy-ai/subsidy-ai.module.css` (CSS Modules, issue #83),
+   insieme a `.demo-banner`. */
+p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-note a {
   text-decoration: underline;
 }
 /* Focus da tastiera: una regola sola per tutta l'app.
@@ -574,7 +578,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    l'icona giusta è il blu fondo di `--accent-text`. */
 .nav-btn:hover .ic { color: var(--accent-text); }
 .nav-btn.active .ic { color: var(--accent-text); }
-.sidebar-footer { margin-top: auto; padding: var(--sp-3) var(--sp-3) var(--sp-05); font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line); line-height: 1.5; }
+/* `.sidebar-footer` è stata CANCELLATA il 2026-08-28 (censimento regole morte,
+   issue #83): nessun componente la scriveva — grep su src/, scripts/,
+   index.html e site/. Una regola per una classe che nessuno rende è un indizio
+   falso per chi legge il foglio. */
 
 /* top bar mobile + drawer (nascosti su desktop) */
 .topbar { display: none; }
@@ -596,7 +603,8 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   .topbar .brand-logo { width: 120px; }
   .hamburger { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
   .hamburger:hover { background: var(--bg); }
-  .topbar-demo { margin-left: auto; }
+  /* `.topbar-demo` è stata CANCELLATA il 2026-08-28 (censimento regole morte,
+     issue #83): zero usi in src/, scripts/, index.html e site/. */
   .drawer {
     position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw;
     background: var(--card); border-right: 1px solid var(--line); z-index: 60;
@@ -647,7 +655,9 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    è nato. Il sottotitolo di OGNI pagina è testo corrente, ed era l'unico rimasto
    con una misura propria decisa a occhio. */
 .page-desc { color: var(--muted); margin-top: var(--sp-1); max-width: var(--measure); font-size: var(--fs-body); }
-.demo-banner { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-line); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); font-size: var(--fs-body); margin-bottom: var(--sp-6); }
+/* `.demo-banner` (con il suo `a` sottolineato) è migrata il 2026-08-28 in
+   `src/features/subsidy-ai/subsidy-ai.module.css` (CSS Modules, issue #83):
+   la usa solo la feature `subsidy-ai`. */
 
 /* ---- I tre livelli di superficie (token in :root) --------------------------
    `.card` È il livello 1: lo stesso selettore, non una copia. Due regole con
@@ -678,14 +688,14 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    accanto. Una scheda intera per una riga sola dice «questo conta quanto
    l'analisi», e non è vero. */
 .surface-3 { background: var(--surface-3); display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-2); font-size: var(--fs-meta); }
-.surface-3 .sf-k { color: var(--muted); font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ls-label); flex: none; }
-.surface-3 .sf-v { color: var(--ink-soft); min-width: 0; }
+/* I figli `.sf-k`/`.sf-v` di `.surface-3` sono migrati il 2026-08-28 in
+   `src/features/documents/documents.module.css` (CSS Modules, issue #83): li
+   usa solo il dettaglio del documento, e là dentro il genitore condiviso è
+   nominato con `:global(.surface-3)`. */
 
-/* La colonna di lettura e la misura del testo corrente. Le tabelle e gli
-   elenchi possono uscire dalla misura — sono strutture, non prosa — ma non
-   dalla colonna. */
-.reading-col { max-width: var(--content-max); }
-.prose { max-width: var(--measure); }
+/* `.reading-col` e `.prose` (con il loro commento) sono migrate il 2026-08-28
+   in `src/features/documents/documents.module.css` (CSS Modules, issue #83):
+   le usa solo la feature `documents`. */
 /* L'avvertenza legale è testo corrente e non aveva NESSUNA regola propria: la
    classe esisteva solo per colorare i suoi collegamenti. Vive in quattro
    schermate (Contratti ×3, Assistente) con 234 caratteri dentro, e senza tetto
@@ -694,9 +704,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .card-title { font-size: var(--fs-body); font-weight: 600; letter-spacing: -0.1px; margin-bottom: var(--sp-4); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .section-title { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.2px; margin: var(--sp-1) 0 var(--sp-3); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
-.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
-@media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .main { padding: var(--sp-6) var(--sp-4) var(--sp-12); } }
+/* `.grid-3` è migrata il 2026-08-28 in `src/features/crm/crm.module.css` e
+   `.grid-4` in `src/features/pricing/pricing.module.css` (CSS Modules,
+   issue #83): la prima la usa solo `features/crm/`, la seconda solo
+   `features/pricing/`. Trovate nella ricognizione finale del lotto 6;
+   `.grid-2` RESTA globale perché condivisa. */
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } .main { padding: var(--sp-6) var(--sp-4) var(--sp-12); } }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; font-size: var(--fs-body); transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast); }
 .btn:hover { border-color: var(--line-strong); background: var(--bg); }
@@ -710,14 +723,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .btn-danger:hover { background: var(--red-hover); border-color: var(--red); }
 .btn-sm { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body); }
 .btn-icon { padding: var(--sp-2); width: 34px; height: 34px; }
-/* L'etichetta che si ritira su schermo stretto, lasciando l'icona. Serve dove
-   la parola è lunga in una lingua e corta in un'altra: la riga non può
-   dipendere dalla traduzione. ⚠️ Chi la usa DEVE mettere `aria-label` sul
-   comando, altrimenti su un telefono il pulsante perde il nome invece di
-   perdere solo il testo. 720px è la soglia con cui il calendario sceglie già
-   l'agenda (NARROW in CalendarPage.tsx): una soglia nuova sarebbe un secondo
-   punto in cui la schermata cambia forma. */
-@media (max-width: 720px) { .btn-label-wide { display: none; } }
+/* `.btn-label-wide` (con il suo commento e la sua `@media (max-width:
+   720px)`, che era TUTTA sua) è migrata il 2026-08-28 in
+   `src/features/calendar/calendar.module.css` (CSS Modules, issue #83): la
+   usa solo `features/calendar/` (CalendarPage.tsx). Trovata nella
+   ricognizione finale del lotto 6. */
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -862,13 +872,19 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    `badge-alta` e `badge-media`, cioè la scala degli errori. */
 .decl-flag { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-meta); font-weight: 600; color: var(--amber); }
 .decl-flag .ic { color: var(--amber); }
-.decl-flag.df-muted, .decl-flag.df-muted .ic { color: var(--muted); }
+/* `.decl-flag.df-muted` (la variante spenta della segnalazione, che usa solo
+   `features/incentives/`) è migrata il 2026-08-28 in
+   `src/features/incentives/incentives.module.css` (CSS Modules, issue #83):
+   là dentro nomina `.decl-flag` con `:global`, perché la classe base resta
+   condivisa con `subsidy-ai`. */
 
 /* Un segno con il NOME DELLA SUA FAMIGLIA davanti, per i posti in cui non c'è
    già un'etichetta di colonna o di riga: nelle tabelle («Idoneità: …») il nome
    ce l'ha la cella, in una scheda no, e un chevron con scritto «alta» accanto
-   al tipo di sostegno non dice di che cosa sia alta. */
-.mark-field { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-meta); color: var(--muted); }
+   al tipo di sostegno non dice di che cosa sia alta.
+   `.mark-field` è migrata il 2026-08-28 in
+   `src/features/subsidy-ai/subsidy-ai.module.css` (CSS Modules, issue #83):
+   la usa solo la feature `subsidy-ai`. */
 
 /* -- FINESTRA DI CANDIDATURA: la parentesi. ---------------------------------
    Le parentesi arrivano da `content` e non dal testo tradotto: sono la FORMA
@@ -1022,10 +1038,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .result-row { display: grid; grid-template-columns: 170px 1fr; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
 .result-row:first-child { border-top: none; }
 .result-label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); }
-.checklist-item { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) 0; cursor: pointer; }
-.checklist-item input { margin-top: var(--sp-1); accent-color: var(--accent-text); }
-.checklist-item.done span { text-decoration: line-through; color: var(--muted); }
-.draft-box { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: var(--sp-4); white-space: pre-wrap; font-size: var(--fs-body); }
+/* `.checklist-item` (con `.done`) è migrata il 2026-08-28 in
+   `src/features/incentives/incentives.module.css` (CSS Modules, issue #83):
+   la usa solo la checklist delle pratiche di `features/incentives/`. */
+/* `.draft-box` è stata CANCELLATA il 2026-08-28 (censimento regole morte,
+   issue #83): zero usi in src/, scripts/, index.html e site/. La bozza oggi
+   è `.draft-editor`, nel modulo di `admin-ai`. */
 .warn-box { background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: 8px; padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); font-weight: 600; display: flex; gap: var(--sp-3); align-items: flex-start; }
 .info-box { background: var(--amber-soft); border: 1px solid var(--amber-line); color: var(--amber); border-radius: 8px; padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); }
 
@@ -1076,13 +1094,11 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 }
 .empty { color: var(--muted); font-size: var(--fs-body); padding: var(--sp-4) 0; text-align: center; }
 
-.match-head { display: flex; align-items: flex-start; gap: var(--sp-4); flex-wrap: wrap; }
-.match-body { flex: 1; min-width: 240px; }
-.match-name { font-size: var(--fs-strong); }
+/* La famiglia `.match-*` (`.match-head`, `.match-body`, `.match-name`,
+   `.match-score` con `.hi`/`.mid`) è stata CANCELLATA il 2026-08-28
+   (censimento regole morte, issue #83): zero usi in src/, scripts/,
+   index.html e site/, nessuna costruzione dinamica che la componga. */
 .badge-row { margin-top: var(--sp-2); display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
-.match-score { width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-weight: 600; font-size: var(--fs-strong); border: 3px solid var(--line); color: var(--ink-soft); }
-.match-score.hi { border-color: var(--accent); color: var(--accent-text); }
-.match-score.mid { border-color: var(--amber); color: var(--amber); }
 .detail-list { list-style: none; }
 .detail-list li { padding: var(--sp-1) 0 var(--sp-1) var(--sp-6); position: relative; font-size: var(--fs-body); }
 .detail-list li::before { content: '•'; position: absolute; left: 8px; color: var(--accent-text); font-weight: 600; }
@@ -1090,32 +1106,27 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .detail-list.warn li::before { content: '?'; color: var(--amber); }
 .detail-list.bad li::before { content: '✕'; color: var(--red-dark); }
 
-.quiz-q { padding: var(--sp-4) 0; border-top: 1px solid var(--line); }
-.quiz-q:first-child { border-top: none; }
+/* `.quiz-q` è stata CANCELLATA il 2026-08-28 (censimento regole morte, issue
+   #83): zero usi. Il quiz vero usa `.quiz-opts`/`.quiz-opt`, qui sotto. */
 .quiz-opts { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
 .quiz-opt { padding: var(--sp-2) var(--sp-4); border-radius: 8px; border: 1px solid var(--line); background: var(--card); font-size: var(--fs-body); font-weight: 600; }
 .quiz-opt.sel-si { background: var(--green-soft); border-color: var(--green); color: var(--green); }
 .quiz-opt.sel-no { background: var(--red-soft); border-color: var(--red); color: var(--red-dark); }
 .quiz-opt.sel-ns { background: var(--fill-subtle); border-color: var(--line-strong); color: var(--ink-soft); }
 
-.price-card { position: relative; display: flex; flex-direction: column; }
-.price-card.featured { border-color: var(--accent); box-shadow: var(--shadow-md); }
-.price-tag { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.5px; }
-.price-tag small { font-size: var(--fs-body); font-weight: 500; color: var(--muted); }
-.price-target { font-size: var(--fs-body); color: var(--muted); margin-bottom: var(--sp-3); }
-.price-custom { font-size: var(--fs-h2); }
-.price-feats { list-style: none; margin: var(--sp-4) 0 var(--sp-4); flex: 1; }
-.price-feats li { padding: var(--sp-2) 0 var(--sp-2) var(--sp-6); position: relative; font-size: var(--fs-body); }
-.price-feats li::before { content: '✓'; position: absolute; left: 4px; color: var(--accent-text); font-weight: 600; }
-.featured-flag { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--on-accent); font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.03em; padding: var(--sp-05) var(--sp-2); border-radius: 99px; }
+/* Il blocco dei piani (`.price-card`, `.price-tag`, `.price-target`,
+   `.price-custom`, `.price-feats`, `.featured-flag`) è migrato il 2026-08-28
+   in `src/features/pricing/pricing.module.css` (CSS Modules, issue #83):
+   lo usa solo la feature `pricing`. */
 
-.hero { padding: var(--sp-6) 0 var(--sp-2); }
-.hero h1 { font-size: var(--fs-h1); letter-spacing: -0.6px; line-height: 1.22; max-width: 640px; }
-.hero h1 em { color: var(--accent-text); font-style: normal; }
-.hero p { color: var(--ink-soft); max-width: var(--measure); margin-top: var(--sp-3); font-size: var(--fs-body); }
-.hero-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-6); }
-.module-card { border-top: 3px solid var(--accent); }
-.module-kicker { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-text); }
+/* La famiglia `.hero*` (`.hero`, `.hero h1` con `em`, `.hero p`,
+   `.hero-actions` con le sue righe nelle `@media` più sotto) e
+   `.module-card`/`.module-kicker` sono state CANCELLATE il 2026-08-28
+   (censimento regole morte, issue #83): zero usi in src/, scripts/ e
+   index.html. Gli oltre 140 riscontri di `hero` in `site/` appartengono al
+   SITO VETRINA, che ha il suo foglio di stile e non importa questo — la
+   cancellazione non lo tocca. Con `.hero p` è uscita anche la sua riga
+   dall'elenco PROSA di `test:shell-unit` (sezione «misura di lettura»). */
 /* Il piè di pagina porta il testo corrente più lungo dell'applicazione (le
    avvertenze legali, oltre 400 caratteri): senza tetto correva per tutta la
    larghezza della schermata, che è il difetto per cui `--measure` esiste. */
@@ -1139,120 +1150,47 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .tab:hover { color: var(--ink); }
 .tab.active { color: var(--accent-text); border-bottom-color: var(--accent); }
 
-.upload-zone { display: block; width: 100%; border: 2px dashed var(--line); border-radius: var(--radius); padding: var(--sp-6); text-align: center; font-size: var(--fs-body); color: var(--muted); background: var(--card); cursor: pointer; transition: border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast); }
-.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
-.uz-icon { width: 40px; height: 40px; margin: 0 auto var(--sp-2); border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
-.uz-icon .ic { width: 22px; height: 22px; }
-.uz-title { font-weight: 600; color: var(--ink); font-size: var(--fs-body); }
-.uz-formats { margin-top: var(--sp-2); display: inline-flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center; }
-.uz-fmt { font-size: var(--fs-label); font-weight: 600; letter-spacing: .03em; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: var(--sp-05) var(--sp-2); }
-.uz-ocr { margin-top: var(--sp-3); font-size: var(--fs-meta); color: var(--muted); display: inline-flex; align-items: center; gap: var(--sp-2); }
-.uz-ocr .ic { width: 14px; height: 14px; }
-.file-status { margin-top: var(--sp-3); }
-.file-chip { display: flex; align-items: center; gap: var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-3); background: var(--bg); }
-.file-chip .fc-ico { color: var(--accent-text); flex-shrink: 0; }
-.file-chip .fc-main { flex: 1; min-width: 0; }
-.file-chip .fc-name { font-weight: 600; font-size: var(--fs-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.file-chip .fc-sub { font-size: var(--fs-meta); color: var(--muted); }
-.file-chip.err { border-color: var(--red-line); background: var(--red-soft); }
-.file-chip.err .fc-ico { color: var(--red-dark); }
+/* Il blocco del caricamento (`.upload-zone`, `.uz-icon`, `.uz-title`,
+   `.uz-formats`, `.uz-fmt`, `.uz-ocr`, `.file-status`, `.file-chip` con
+   `.fc-ico`/`.fc-main`/`.fc-name`/`.fc-sub`) è migrato il 2026-08-28 in
+   `src/features/admin-ai/admin-ai.module.css` (CSS Modules, issue #83):
+   lo usava solo la feature `admin-ai`. */
+
 .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------- Admin AI: vista analisi ---------- */
-.ax-header { display: flex; flex-direction: column; gap: var(--sp-3); }
+/* ---------- Admin AI: vista analisi ----------
+   ⚠️ La maggior parte di questa sezione è migrata il 2026-08-28 in
+   `src/features/admin-ai/admin-ai.module.css` (CSS Modules, issue #83):
+   `.ax-header`, `.ax-badge-pair`, `.ax-badge-key`, `.ax-callout` con i figli
+   `.co-*`, `.ax-field-row`/`.ax-field-head`/`.ax-field-edit`, `.ax-grid`,
+   `.ax-doc`, `.ax-doc-view`, `.ax-col`, `.ev-btn`, `.ev-shown`/`.ev-shown-q`/
+   `.ev-none`, `.deadline-card` con `.dl-*` e le composte `.lvl-*`,
+   `.deadline-none`, `.ax-actions-card`, `.action-item .ai-meta`, `.verify-ok`,
+   il blocco `.risk-*`, `.draft-editor`/`.draft-controls`/`.dc-field` e la
+   `@media (max-width: 600px)` di `.ax-doc-view`/`.draft-controls`, con le
+   `@media (max-width: 900px)` di `.ax-grid`/`.ax-doc`. Commenti compresi.
+   RESTANO qui le classi legate anche ad altre feature (subsidy-ai in testa):
+   `.ax-head-top`, `.ax-title`, `.ax-badges`, `.ax-meta`, `.ax-chip`,
+   `.ev-quote`, `.ax-progress` con `.pg-label` e `.meter-track`,
+   `.action-item` con `.ai-main`/`.ai-text`, `.mini-btn`, `.draft-actions`. */
 .ax-head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
 .ax-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.3px; }
 .ax-badges { display: flex; gap: var(--sp-2); flex-wrap: wrap; flex-shrink: 0; }
-/* Il nome della famiglia davanti al segno, e SOLO qui: è l'unico punto in cui
-   priorità e confidenza stanno affiancate senza altro contesto. La coppia non
-   si spezza andando a capo — `inline-flex` la tiene insieme, altrimenti in
-   tedesco «Zuverlässigkeit» finirebbe su una riga e il suo segno sull'altra,
-   che è peggio di non avere l'etichetta. */
-.ax-badge-pair { display: inline-flex; align-items: center; gap: var(--sp-2); }
-.ax-badge-key { font-size: var(--fs-label); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-label); }
 .ax-meta { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .ax-chip { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-1) var(--sp-3); }
 .ax-chip .ic { width: 14px; height: 14px; color: var(--muted); }
 .ax-chip b { color: var(--ink); font-weight: 600; }
 
-.ax-callout { border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: var(--radius); padding: var(--sp-4) var(--sp-6); margin-top: var(--sp-4); display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
-.ax-callout .co-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex-shrink: 0; }
-.ax-callout .co-main { flex: 1; min-width: 200px; }
-.ax-callout .co-kicker { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text); }
-.ax-callout .co-action { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.2px; margin-top: var(--sp-05); }
-.ax-callout .co-when { font-size: var(--fs-body); color: var(--ink-soft); margin-top: var(--sp-1); }
-.ax-callout .co-when b { color: var(--ink); }
-/* Il cancello dell'appartenenza: il pulsante e il PERCHÉ stanno nella stessa
-   colonna, perché un pulsante spento e muto manda a cercare il guasto altrove.
-   Colonna e non riga: la frase è lunga quanto una riga di testo, e accanto al
-   pulsante spingerebbe il riquadro a capo su ogni schermo stretto. */
-.ax-callout .co-act { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
-
-/* Campo correggibile dell'analisi: una riga per fatto, separata dalla
-   precedente da una linea più tenue del bordo scheda (--line-subtle). */
-.ax-field-row { padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle); }
-.ax-field-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
-.ax-field-edit { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); flex-wrap: wrap; }
-
-.ax-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr); gap: var(--sp-4); margin-top: var(--sp-4); align-items: start; }
-@media (max-width: 900px) { .ax-grid { grid-template-columns: 1fr; } }
-.ax-doc { position: sticky; top: 16px; }
-@media (max-width: 900px) { .ax-doc { position: static; } }
-.ax-doc-view { white-space: pre-wrap; word-break: break-word; font-size: var(--fs-body); line-height: 1.6; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-4); max-height: 62vh; overflow: auto; }
-.ax-doc-view mark.ev-hl { background: var(--highlight); color: var(--on-highlight); border-radius: 3px; padding: 0 var(--sp-05); box-shadow: 0 0 0 3px var(--highlight); }
-.ax-col > .card + .card { margin-top: var(--sp-4); }
-
-/* evidence "Mostra nel documento" */
-/* Superficie comoda su portatile con trackpad: WCAG 2.2 chiede 24×24 CSS px
-   per un bersaglio isolato, e questi pulsanti stavano a 22 e a 20. */
-.ev-btn { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 26px; font-size: var(--fs-meta); font-weight: 600; color: var(--accent-text); background: none; border: none; padding: var(--sp-1) var(--sp-2); border-radius: 6px; cursor: pointer; }
-.ev-btn:hover { text-decoration: underline; }
-.ev-btn .ic { width: 13px; height: 13px; }
+/* evidence "Mostra nel documento" — `.ev-quote` RESTA globale: la usano anche
+   `assistant` (`ev-quote show as-quote`) e `contracts`. `.ev-btn` e il blocco
+   `.ev-shown-*`/`.ev-none` sono nel modulo di `admin-ai`. */
 .ev-quote { margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); background: var(--bg); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: var(--sp-2) var(--sp-3); font-style: italic; display: none; }
 .ev-quote.show { display: block; }
 
-/* ⚠️⚠️ LA PROVA SOTTO I DATI CHE GENERANO LAVORO, VISIBILE SENZA UN GESTO.
-   Sopra c'è `.ev-quote`, che sta dietro «Mostra nel documento» ed è giusta così
-   per i campi minori. Per scadenza, appuntamento, importi e mittente non lo è:
-   il 2026-08-15 la citazione che smascherava una scadenza falsa esisteva, era
-   esatta, ed era invisibile — e chi guardava non aveva ragione di aprirla,
-   perché il sistema si dichiarava sicuro. Una prova che si vede solo se la si
-   cerca protegge chi già sospetta, cioè nessuno.
-
-   Il peso tipografico è MINORE del dato (13px, inchiostro tenue, filetto
-   sottile e neutro invece dell'accento): deve accompagnare, non competere. */
-.ev-shown { margin-top: var(--sp-2); }
-.ev-shown-q { margin: 0; font-size: var(--fs-meta); color: var(--ink-soft); border-left: 2px solid var(--line); padding: 0 0 0 var(--sp-3); font-style: italic; }
-/* Un campo MUTO e un campo SENZA PROVA non devono somigliarsi: lo spazio vuoto
-   si legge come «non c'è niente da dire», e qui invece c'è da dire che il dato
-   non ha un appiglio nel documento. */
-.ev-none { margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--muted); display: inline-flex; align-items: center; gap: var(--sp-2); font-style: italic; }
-
-/* card scadenza dedicata */
-.deadline-card { display: flex; align-items: center; gap: var(--sp-4); }
-.deadline-card .dl-ico { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
-.deadline-card .dl-main { flex: 1; min-width: 0; }
-.dl-kicker { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-/* ⚠️ CIFRE TABULARI, e non era necessario prima del 2026-08-10. Lo stack di
-   sistema incolonnava le cifre da sé: misurate a 22px, «11%», «92%» e «88%»
-   davano tutte 45px esatti. Inter di default usa cifre PROPORZIONALI — il suo
-   «1» è molto più stretto — e le stesse tre misurano 39,2 · 48,4 · 48,8. In una
-   pila di scadenze o di schede incentivo i numeri ballano da una riga all'altra.
-   Con `tabular-nums` tornano identiche (49,1), e le date passano da uno scarto
-   di 3,6px a zero. È la stessa dichiarazione che gli importi usano già in
-   `.fin-num`: qui mancava perché il carattere di prima non la richiedeva. */
-.dl-date { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
-.dl-rem { font-size: var(--fs-meta); margin-top: var(--sp-05); }
-.lvl-scaduta .dl-ico { background: var(--red-soft); color: var(--red-dark); } .lvl-scaduta .dl-rem { color: var(--red-dark); font-weight: 600; }
-.lvl-urgente .dl-ico { background: var(--red-soft); color: var(--red-dark); } .lvl-urgente .dl-rem { color: var(--red-dark); font-weight: 600; }
-.lvl-prossima .dl-ico { background: var(--amber-soft); color: var(--amber); } .lvl-prossima .dl-rem { color: var(--amber); }
-.lvl-nessuna .dl-ico { background: var(--accent-soft); color: var(--accent-text); } .lvl-nessuna .dl-rem { color: var(--muted); }
-.deadline-none { display: flex; align-items: flex-start; gap: var(--sp-3); color: var(--ink-soft); font-size: var(--fs-body); }
-.deadline-none .ic { color: var(--muted); flex-shrink: 0; margin-top: var(--sp-05); }
-
-/* checklist dominante */
-.ax-actions-card { border-top: 3px solid var(--accent); }
+/* checklist dominante — `.ax-progress`, `.action-item` e `.mini-btn` RESTANO:
+   li usa anche `subsidy-ai` (e `.mini-btn` molte altre feature).
+   `.ax-actions-card` e `.action-item .ai-meta` sono nel modulo di `admin-ai`. */
 .ax-progress { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .ax-progress .pg-label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
 .ax-progress .meter-track { height: 8px; }
@@ -1265,26 +1203,13 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    quadratino di 18 pixel. */
 .action-item .ai-text label { cursor: pointer; }
 .action-item.done .ai-text { text-decoration: line-through; color: var(--muted); }
-.action-item .ai-meta { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); flex-wrap: wrap; }
 .mini-btn { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 26px; font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: var(--sp-1) var(--sp-2); cursor: pointer; }
 .mini-btn:hover { border-color: var(--accent); color: var(--accent-text); }
 .mini-btn .ic { width: 13px; height: 13px; }
 
-.verify-ok { display: flex; align-items: center; gap: var(--sp-2); color: var(--green); font-size: var(--fs-body); }
-
-/* rischio etichettato */
-.risk-tag { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; padding: var(--sp-05) var(--sp-2); border-radius: 6px; }
-.risk-explicit { background: var(--red-soft); color: var(--red-dark); }
-.risk-possible { background: var(--amber-soft); color: var(--amber); }
-.risk-unknown { background: var(--fill-subtle); color: var(--ink-soft); }
-.risk-text { font-size: var(--fs-body); margin-top: var(--sp-2); }
-
-/* editor bozza */
-.draft-editor textarea { width: 100%; min-height: 190px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); line-height: 1.6; resize: vertical; background: var(--card); font-family: inherit; }
-.draft-editor textarea:focus { border-color: var(--accent); }
-.draft-controls { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--sp-3); }
-.draft-controls .dc-field { display: flex; flex-direction: column; gap: var(--sp-1); }
-.draft-controls label { font-size: var(--fs-label); font-weight: 600; color: var(--muted); }
+/* editor bozza — `.draft-actions` RESTA: la usa anche `subsidy-ai`.
+   `.draft-editor`, `.draft-controls` e `.dc-field` sono nel modulo di
+   `admin-ai`. */
 .draft-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
 
 /* empty state con CTA */
@@ -1297,7 +1222,6 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 /* `margin-inline: auto` e non solo il tetto: il blocco vuoto è centrato, e una
    misura senza centratura avrebbe spostato il testo a sinistra dentro di esso. */
 .empty-cta .ec-sub { color: var(--muted); font-size: var(--fs-meta); margin: var(--sp-1) auto var(--sp-4); max-width: var(--measure); }
-@media (max-width: 600px) { .ax-doc-view { max-height: 40vh; } .draft-controls { gap: var(--sp-2); } }
 
 /* ---------- Dashboard ---------- */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
@@ -1339,22 +1263,12 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 @media (max-width: 1200px) {
   .kpi-lead { grid-template-columns: minmax(0, 1fr); }
 }
-/* ⚠️ La differenza NON la fa un settimo gradino tipografico: la scala ha sei
-   gradini, uno per compito, e «il numero che domina la schermata» non è un
-   compito nuovo — è --fs-h1, che le altre quattro lasciano libero scendendo a
-   --fs-h2. Trenta contro ventidue più il doppio di superficie: la gerarchia è
-   un fatto misurabile, non un modo di dire. */
-.kpi-sm .kpi-value { font-size: var(--fs-h2); }
-/* ⚠️ NIENTE PIÙ `justify-content: center` QUI, e la riga tolta è la correzione:
-   centrava il contenuto dentro una scheda alta il doppio del necessario. Ora la
-   scheda è alta quanto le altre e il contenuto parte dall'alto come ovunque —
-   `.kpi-sub` con il suo `margin-top: auto` riallinea la didascalia al piede,
-   che è esattamente ciò che fa nelle quattro schede accanto: le cinque
-   didascalie stanno su una riga sola.
-   L'etichetta invece continua a NON riservare due righe: la scheda è sola nella
-   sua colonna e non ha nessuna fila con cui allinearsi, quindi due righe
-   riservate sarebbero uno spazio bianco in più sotto una parola sola. */
-.kpi-hero .kpi-label { min-height: 0; }
+/* `.kpi-sm .kpi-value` e `.kpi-hero .kpi-label` (con i loro commenti sulla
+   gerarchia e sulle due righe riservate) sono state CANCELLATE il 2026-08-28
+   (censimento regole morte, issue #83): `.kpi-sm` e `.kpi-hero` non le scrive
+   nessun componente — zero usi in src/, scripts/, index.html e site/. La
+   decisione che quei commenti registravano resta valida e viva nelle classi
+   base `.kpi-value`/`.kpi-label` qui sotto. */
 @media (max-width: 600px) { .kpi-lead-rest { grid-template-columns: minmax(0, 1fr); } }
 .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); }
 /* Due righe di spazio riservate all'etichetta: le traduzioni non hanno la
@@ -1407,180 +1321,95 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    quantità che non esiste. A zero la barra non c'è, e il numero accanto lo
    dice. */
 .bar-fill { height: 100%; border-radius: 6px; background: var(--accent); transition: width var(--dur-slow) var(--ease); }
-.bar-fill.s-alta { background: var(--red); }
-.bar-fill.s-media { background: var(--amber-fill); }
-.bar-fill.s-bassa { background: var(--green-fill); }
+/* I toni `.s-alta`/`.s-media`/`.s-bassa` di `.bar-fill` e i pallini
+   `.dot-alta`/`.dot-media`/`.dot-bassa` sono migrati il 2026-08-28 in
+   `src/features/documents/documents.module.css` (CSS Modules, issue #83):
+   li usa solo `features/documents/` (DocumentStatsPanel.tsx), che li passa
+   al componente condiviso `components/ui/Bars.tsx`; là dentro `.bar-fill`
+   è nominata con `:global`. Trovati nella ricognizione finale del lotto 6.
+   Le basi `.bar-fill` e `.bar-dot` RESTANO globali perché il markup è del
+   componente condiviso. */
 .bar-val { font-size: var(--fs-meta); font-weight: 600; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
 .bar-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
-.dot-alta { background: var(--red); } .dot-media { background: var(--amber-fill); } .dot-bassa { background: var(--green-fill); }
 
-/* meter completamento */
-.meter { display: flex; align-items: center; gap: var(--sp-4); }
-/* ⚠️ `--fs-h2` e non `--fs-h1`: misurato sulla Panoramica il 2026-08-13, «53%»
-   usciva a 30px — cioè ESATTAMENTE come il «9» delle azioni da completare,
-   che è il numero su cui questo prodotto lavora. Due numeri della stessa misura
-   non fanno gerarchia, fanno due primi posti, e quello a pari merito qui era
-   una percentuale di completamento che sta a metà pagina dentro una scheda
-   secondaria. Il numero più grande della schermata dev'essere quello che conta
-   di più: adesso il metro pesa quanto le quattro schede piccole, che è il suo
-   grado. */
-.meter-num { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.5px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+/* meter completamento: RESTANO `.meter-track` e `.meter-fill`, vive (le
+   scrivono `admin-ai`, `subsidy-ai` e `incentives` come stringhe globali).
+   `.meter` (il contenitore flex) e `.meter-num` (la percentuale grande, con il
+   suo commento sul perché di `--fs-h2`) sono state CANCELLATE il 2026-08-28
+   (censimento regole morte, issue #83): zero usi in src/, scripts/, index.html
+   e site/ — il markup usa `.meter-track` nuda dentro i propri contenitori.
+   Con `.meter-num` sono uscite le sue due righe da `test:shell-unit`
+   (sezione «Cifre tabulari» e il confronto con il numero che conta di più). */
 .meter-track { flex: 1; background: var(--track); border-radius: 99px; height: 10px; overflow: hidden; }
 .meter-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width var(--dur-slow) var(--ease); }
 
-.chart-empty { color: var(--muted); font-size: var(--fs-meta); padding: var(--sp-4) 0; text-align: center; }
-.lang-card { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.lang-title { font-weight: 600; font-size: var(--fs-meta); color: var(--ink-soft); margin-right: var(--sp-1); }
-.lang-chip { font-size: var(--fs-meta); color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-1) var(--sp-3); }
-.lang-chip b { color: var(--ink); font-weight: 600; }
+/* `.chart-empty`, `.lang-card`, `.lang-title` e `.lang-chip` sono migrate il
+   2026-08-28 in `src/features/documents/documents.module.css` (CSS Modules,
+   issue #83): le lega solo la feature `documents`. */
 
-/* La dichiarazione «questo nome l'abbiamo messo noi», sotto il titolo del
-   dettaglio: il segno della famiglia provenienza e una riga di spiegazione, sul
-   filo di base del segno. */
-.doc-name-composed { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+/* `.doc-name-composed` (con il suo commento) è migrata il 2026-08-28 in
+   `src/features/documents/documents.module.css` (CSS Modules, issue #83). */
 
-/* Interruttore della sezione statistiche (archivio). È un pulsante vero — si
-   raggiunge da tastiera e annuncia `aria-expanded` — con l'aspetto di una
-   intestazione: chi non la apre non deve nemmeno accorgersi che c'è un comando,
-   chi la cerca la trova dove finisce la lista. */
-.stats-toggle { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: 0; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; }
-.stats-toggle:hover { color: var(--accent-text); }
+/* `.stats-toggle` (con il suo commento) è migrata il 2026-08-28 in
+   `src/features/documents/documents.module.css` (CSS Modules, issue #83). */
 
 /* ---------- KPI compatti (dashboard/home) ---------- */
 .kpi-value { display: flex; align-items: baseline; gap: var(--sp-2); }
-.kpi-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); margin-bottom: var(--sp-3); }
-.kpi-ico.warn { background: var(--red-soft); color: var(--red-dark); }
-.kpi-ico.ok { background: var(--green-soft); color: var(--green); }
-.kpi-ico.amb { background: var(--amber-soft); color: var(--amber); }
+/* `.kpi-ico` con le varianti `.warn`/`.ok`/`.amb` è stata CANCELLATA il
+   2026-08-28 (censimento regole morte, issue #83): zero usi in src/, scripts/,
+   index.html e site/. */
 
-/* ---------- greeting / home operativa ---------- */
-.greeting { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.5px; }
-/* Il sottotitolo della Panoramica è il gemello di `.page-desc` — stessa cosa,
-   altro nome, perché qui il titolo è un saluto. Prende la stessa misura di
-   lettura: correggere il tetto di uno solo dei due avrebbe lasciato in piedi
-   proprio l'incoerenza che si stava togliendo. */
-.greeting-sub { color: var(--muted); margin-top: var(--sp-1); font-size: var(--fs-body); max-width: var(--measure); }
+/* ---------- greeting / home operativa ----------
+   `.greeting` e `.greeting-sub` (con il loro commento e la riga di `.greeting`
+   nella `@media (max-width: 600px)` più sotto) sono migrate il 2026-08-28 in
+   `src/features/dashboard/dashboard.module.css` (CSS Modules, issue #83):
+   le usa solo la Panoramica (`features/dashboard/`). */
 
-/* righe azione con priorità (home + dashboard) */
-.action-row { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
-.action-row:first-child { border-top: none; }
-.action-ico { width: 34px; height: 34px; border-radius: var(--radius-sm); display: grid; place-items: center; flex-shrink: 0; background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
-.action-ico.p-alta { background: var(--red-soft); color: var(--red-dark); border-color: transparent; }
-.action-ico.p-media { background: var(--amber-soft); color: var(--amber); border-color: transparent; }
-.action-ico.p-bassa { background: var(--accent-soft); color: var(--accent-text); border-color: transparent; }
-.action-main { flex: 1; min-width: 0; }
-.action-title { font-weight: 600; font-size: var(--fs-body); }
-.action-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
-.action-meta { flex-shrink: 0; display: flex; align-items: center; gap: var(--sp-2); }
-.action-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1); min-width: 30px; min-height: 30px; font-size: var(--fs-body); font-weight: 600; color: var(--accent-text); background: none; border: none; padding: var(--sp-1); border-radius: 6px; }
-.action-link:hover { text-decoration: underline; }
-/* La riga intera porta dove porta la freccia: il bersaglio è la riga, non
-   l'icona di 16 pixel in fondo. La freccia resta, come indizio di dove si va. */
-.action-row.is-link { cursor: pointer; color: var(--ink); border-radius: var(--radius-sm); transition: background var(--dur-fast); }
-.action-row.is-link:hover { background: var(--bg); text-decoration: none; }
-.action-row.is-link:hover .action-link { text-decoration: underline; }
-.priority-empty { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-6); border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); font-size: var(--fs-body); background: var(--card); }
-.priority-empty .ic { color: var(--green); }
+/* La famiglia «righe azione con priorità» (`.action-row` con `:first-child`,
+   `.is-link` e le sue `:hover`, `.action-ico` con `.p-alta`/`.p-media`/
+   `.p-bassa`, `.action-main`, `.action-title`, `.action-sub`, `.action-meta`,
+   `.action-link` con `:hover`) e `.priority-empty` (con `.ic`) sono state
+   CANCELLATE il 2026-08-28 (censimento regole morte, issue #83): zero usi in
+   src/, scripts/, index.html e site/, nessuna costruzione dinamica. ⚠️ Le
+   stringhe `p-${task.priority}` che compone `features/calendar/` non le
+   toccano: nessuna regola le vestiva nemmeno prima — `.action-ico.p-*`
+   richiedeva anche `.action-ico`, che il calendario non usa. NON confondere
+   con `.action-item` (checklist di admin-ai/subsidy-ai), che è viva e resta. */
 
 /* utility per ridurre inline style */
-.mt-10 { margin-top: var(--sp-3); } .mt-12 { margin-top: var(--sp-3); } .mt-14 { margin-top: var(--sp-4); } .mt-16 { margin-top: var(--sp-4); } .mt-28 { margin-top: var(--sp-8); }
+.mt-10 { margin-top: var(--sp-3); } .mt-12 { margin-top: var(--sp-3); } .mt-14 { margin-top: var(--sp-4); } .mt-16 { margin-top: var(--sp-4); }
+/* `.mt-28` è uscita da questa riga il 2026-08-28 (censimento regole morte,
+   issue #83): zero usi in src/, scripts/, index.html e site/. */
 .mb-12 { margin-bottom: var(--sp-3); } .mb-14 { margin-bottom: var(--sp-4); }
 .row-wrap { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
-/* La riga delle azioni di una schermata: UNA primaria, le secondarie accanto,
-   il trabocco in fondo. Non è `.row-wrap` con altri pulsanti dentro — la
-   differenza è che qui l'ordine SIGNIFICA qualcosa, e il margine automatico
-   davanti al trabocco lo tiene lontano dalla primaria anche quando le
-   secondarie sono zero. */
-.action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
-.action-bar-secondary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
-.action-bar-more { margin-left: auto; }
+/* La famiglia `.action-bar` (`.action-bar`, `.action-bar-secondary`,
+   `.action-bar-more`, con il suo commento e le sue righe nella
+   `@media (max-width: 600px)`) è migrata il 2026-08-28 in
+   `src/features/documents/documents.module.css` (CSS Modules, issue #83):
+   la usa solo la feature `documents`. */
 .push-right { margin-left: auto; }
 .filter-group { margin-left: auto; display: flex; gap: var(--sp-2); }
-/* Il conteggio accanto all'etichetta del filtro.
-   ⚠️ NESSUN COLORE PROPRIO, ed è deliberato: eredita quello del bottone, che
-   cambia fra riposo e stato attivo (dove il fondo è `--accent` e il testo
-   `--on-accent`). Un token fisso qui avrebbe retto su un fondo solo — è il
-   difetto che la sezione 12 di `test:shell-unit` pesa, e il modo più semplice
-   di non averlo è non introdurre un secondo colore.
-   La gerarchia la fa la MISURA, non il contrasto: un gradino di scala sotto
-   l'etichetta. Cifre tabulari perché il numero cambia e la barra non deve
-   ballare — la stessa regola di `.dl-date` e `.rb-num`. */
-.filter-count { margin-left: var(--sp-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+/* `.filter-count` (con il suo commento) è migrata il 2026-08-28 in
+   `src/features/inbox/inbox.module.css` (CSS Modules, issue #83): la usa solo
+   la barra dei filtri della feature `inbox`. */
 .muted-sm { color: var(--muted); font-size: var(--fs-body); }
 .text-muted { color: var(--muted); }
 .hint-accent { font-size: var(--fs-meta); color: var(--accent-text); }
 .stack-sm > * + * { margin-top: var(--sp-2); }
 .select-inline { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-2); font-size: var(--fs-body); background: var(--card); }
 
-/* ---------- Subsidy AI ---------- */
-.dash-inc-stats { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin: -2px 0 var(--sp-3); }
-.stepper { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-.step-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); color: var(--muted); display: grid; place-items: center; font-size: var(--fs-body); font-weight: 600; flex-shrink: 0; background: var(--card); }
-/* Alone dell'accento, non l'anello del focus: quello deve restare il segnale
-   di «sei qui con la tastiera», e riusarlo come decorazione glielo toglieva. */
-.step-dot.active { border-color: var(--accent); color: var(--accent-text); box-shadow: 0 0 0 3px var(--accent-soft); }
-.step-dot.done { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
-.step-line { height: 2px; flex: 1; background: var(--line); max-width: 60px; }
-
-.prog-card .prog-head { display: flex; align-items: flex-start; gap: var(--sp-4); flex-wrap: wrap; }
-.prog-main { flex: 1; min-width: 220px; }
-.prog-name { font-weight: 600; font-size: var(--fs-strong); letter-spacing: -0.2px; }
-/* Larghezza automatica con un minimo, non fissa: l'etichetta cambia con la
-   lingua — RILEVANZA, RELEVANZ, PERTINENCE — e a 66px il testo usciva dal
-   riquadro. Il minimo tiene allineate le schede quando le etichette sono corte. */
-.rel-badge { flex-shrink: 0; width: auto; min-width: 66px; text-align: center; border: 2px solid var(--line); border-radius: 10px; padding: var(--sp-2) var(--sp-3); }
-.rel-badge.hi { border-color: var(--accent); }
-.rel-badge.mid { border-color: var(--amber); }
-/* La percentuale di rilevanza sta in una PILA di schede: le cifre tabulari la
-   tengono ferma da una scheda all'altra (vedi la nota estesa su `.dl-date`). */
-.rel-badge .rb-num { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
-.rel-badge.hi .rb-num { color: var(--accent-text); } .rel-badge.mid .rb-num { color: var(--amber); }
-.rel-badge .rb-lbl { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
-.rel-badge.sm { width: auto; display: inline-flex; align-items: baseline; gap: var(--sp-2); padding: var(--sp-1) var(--sp-3); border-radius: 8px; }
-.rel-badge.sm .rb-num { font-size: var(--fs-body); } .rel-badge.sm .rb-lbl { font-size: var(--fs-label); }
-
-/* Righe di dettaglio della scheda programma: testo, non pastiglie. Il tipo di
-   sostegno resta un chip perché è una categoria; requisiti e priorità sono
-   numeri e giudizi, e come pastiglie colorate competevano con gli avvisi. */
-.prog-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--muted); }
-.prog-window { display: flex; align-items: flex-start; gap: var(--sp-2); margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); }
-.prog-window .ic { color: var(--muted); flex-shrink: 0; margin-top: var(--sp-05); }
-
-.source-card { background: var(--bg); }
-.source-grid { display: grid; grid-template-columns: 130px 1fr; gap: var(--sp-2) var(--sp-4); align-items: baseline; }
-@media (max-width: 600px) { .source-grid { grid-template-columns: 1fr; gap: var(--sp-05) 0; } .source-grid .src-k { margin-top: var(--sp-2); } }
-.src-k { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
-.src-v { font-size: var(--fs-body); word-break: break-word; }
-
-.req-hard-tag { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--red-dark); background: var(--red-soft); padding: var(--sp-05) var(--sp-2); border-radius: 5px; }
-.req-soft-tag { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); background: var(--fill-subtle); padding: var(--sp-05) var(--sp-2); border-radius: 5px; }
-
-.quiz-progress { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-.quiz-question { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.2px; margin: var(--sp-2) 0 var(--sp-3); }
-.quiz-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-4); flex-wrap: wrap; }
-.quiz-live { font-size: var(--fs-body); color: var(--muted); }
-
-/* IL VERDETTO D'IDONEITÀ.
-   ⚠️ Le tre vesti di prima (`vh-ok` verde, `vh-warn` ambra, `vh-bad` ROSSO)
-   sono state tolte, non rinominate: `vh-bad` copriva sia «probabilmente non
-   idoneo» sia «non idoneo», e li dipingeva col colore dei guasti. Un'impresa
-   che non rientra nei criteri di un programma non ha subito un errore — ed è
-   proprio nel punto in cui il prodotto dà il suo giudizio più delicato che il
-   linguaggio dell'allarme fa più danno. Il fondo resta un tono di superficie;
-   il giudizio lo porta il segno dell'idoneità, glifo e parola insieme. */
-.verdict-head { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4); border-radius: var(--radius-sm); margin-bottom: var(--sp-2); }
-.vh-kicker { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.vh-title { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.3px; }
-/* Il verdetto è la riga più importante della scheda: il segno cresce fino alla
-   misura del titolo che sostituisce, invece di restare la marcatura minuta
-   delle righe d'elenco. */
-.vh-title .mark-elig { font-size: var(--fs-strong); font-weight: 600; }
-.vh-title .mark-elig .mk-glyph { width: 18px; height: 18px; }
-.vh-yes { background: var(--green-soft); }
-.vh-verify { background: var(--amber-soft); }
-.vh-no { background: var(--fill-subtle); }
-
-.pratica-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+/* ---------- Subsidy AI ----------
+   La sezione è migrata il 2026-08-28 in
+   `src/features/subsidy-ai/subsidy-ai.module.css` (CSS Modules, issue #83),
+   commenti compresi — compresa la `@media (max-width: 600px)` di
+   `.source-grid`, e con `.demo-banner` e `.mark-field`, che stavano più
+   sopra. RESTA qui:
+   · `.state-list` con `st-ok`/`st-warn`/`st-bad` e `.st-note`, perché la usa
+     anche `features/incentives/CatalogTab.tsx`.
+   ⚠️ `design-lint.mjs` dichiara un'eccezione su `.dash-inc-stats` in QUESTO
+   file: la regola è migrata nel modulo, quindi l'eccezione è morta e va
+   riallineata nella fase finale della migrazione (lo script non è stato
+   toccato, come da consegna). */
 /* lista requisiti con stato per-elemento (esito verifica) */
 .state-list { list-style: none; }
 .state-list li { position: relative; padding: var(--sp-2) 0 var(--sp-2) var(--sp-6); font-size: var(--fs-body); border-top: 1px solid var(--line); }
@@ -1622,31 +1451,27 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
   body { font-size: var(--fs-body); }
   .main { padding: var(--sp-4) var(--sp-4) var(--sp-12); }
   .page-title { font-size: var(--fs-h1); }
-  .greeting { font-size: var(--fs-h1); }
-  .hero h1 { font-size: var(--fs-h1); }
+  /* `.greeting { font-size: var(--fs-h1); }` è migrata il 2026-08-28 in
+     `src/features/dashboard/dashboard.module.css` (CSS Modules, issue #83),
+     dentro una `@media (max-width: 600px)` tutta sua. `.hero h1`, che stava
+     qui con la stessa dichiarazione, è stata cancellata il 2026-08-28 con la
+     famiglia `.hero*` (censimento regole morte). */
   .card, .surface-1 { padding: var(--sp-4); }
   .surface-2 { padding-top: var(--sp-4); margin-top: var(--sp-4); }
-  /* L'azione del momento prende tutta la riga: a 375px tre pulsanti affiancati
-     diventano tre pulsanti stretti, e nessuno dei tre è più «quello da
-     premere». Le secondarie restano in riga sotto, e si dividono lo spazio. */
-  .action-bar > .btn-primary { width: 100%; }
-  .action-bar-secondary { flex: 1; }
-  .action-bar-secondary .btn { flex: 1 1 auto; }
-  /* ⚠️ Il trabocco si aggancia in ALTO. Con le etichette tedesche le tre
-     secondarie diventano tre righe, e un `...` centrato verticalmente finiva
-     accanto a quella di mezzo: sembrava appartenerle. In alto sta accanto alla
-     prima, cioè dove comincia il gruppo di cui è la coda. */
-  .action-bar { align-items: flex-start; }
-  .action-bar-more { align-self: flex-start; }
+  /* Le righe di `.action-bar` che stavano qui sono migrate il 2026-08-28 in
+     `src/features/documents/documents.module.css` (CSS Modules, issue #83),
+     dentro una `@media (max-width: 600px)` tutta loro. */
   .result-row { grid-template-columns: 1fr; gap: var(--sp-1); padding: var(--sp-3) 0; }
   .result-label { color: var(--muted); }
   .bar-row { grid-template-columns: 96px 1fr max-content; gap: var(--sp-2); }
   .btn-block-mobile { width: 100%; }
-  .hero-actions { width: 100%; }
-  .hero-actions .btn { flex: 1 1 auto; }
-  .list-row, .action-row { gap: var(--sp-3); }
+  /* `.hero-actions` (2 righe) è uscita da questa `@media` il 2026-08-28 con la
+     famiglia `.hero*` (censimento regole morte, issue #83); `.action-row` e
+     `.action-main` sono usciti dai due selettori composti qui sotto con la
+     famiglia `.action-*`. */
+  .list-row { gap: var(--sp-3); }
   .badge { white-space: nowrap; }
-  .list-main, .action-main { flex-basis: 100%; }
+  .list-main { flex-basis: 100%; }
   /* ⚠️ `flex-wrap: wrap` dal 2026-08-16, e viene da una MISURA. A 375px la
      barra dei filtri chiedeva 429px in 341px di spazio: sforava già di 88px, e
      le due voci di destra erano tagliate dal bordo della scheda — un filtro che
@@ -1661,104 +1486,15 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 }
 
 /* ---------- Inbox ----------
-   Nessun colore nuovo, nessuna misura in px per il testo: la scala tipografica
-   e i token esistenti bastano. L'unico elemento con un carattere proprio è il
-   corpo del messaggio, che è testo grezzo di provenienza esterna e va reso
-   riconoscibile come tale — non impaginato come se fosse contenuto nostro. */
-.inbox-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
-.inbox-head-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
-.inbox-status { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); font-size: var(--fs-meta); }
-.inbox-tools { display: flex; gap: var(--sp-2); align-items: center; margin-left: auto; flex-wrap: wrap; }
-
-.inbox-search {
-  font: inherit; font-size: var(--fs-meta); color: var(--ink);
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
-  padding: var(--sp-2) var(--sp-3); min-width: 220px; min-height: 32px;
-}
-.inbox-search::placeholder { color: var(--muted); }
-
-.inbox-list { list-style: none; margin: 0; padding: 0; }
-.inbox-row {
-  display: flex; align-items: flex-start; gap: var(--sp-4); width: 100%;
-  padding: var(--sp-3) 0; border-top: 1px solid var(--line);
-  background: none; border-left: 0; border-right: 0; border-bottom: 0;
-  text-align: left; cursor: pointer; color: var(--ink); font: inherit;
-}
-.inbox-list li:first-child .inbox-row { border-top: none; }
-.inbox-row:hover { background: var(--fill-subtle); }
-.inbox-row-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1; }
-.inbox-row-side { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
-/* Il grassetto NON è l'unico segnale del non letto: la pastiglia di stato dice
-   già cosa richiede attenzione, e questo resta una comodità visiva. */
-.inbox-row.is-unseen .inbox-subject { font-weight: 600; }
-.inbox-sender { font-size: var(--fs-meta); color: var(--muted); }
-.inbox-subject {
-  font-size: var(--fs-body); color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.inbox-meta { font-size: var(--fs-meta); color: var(--muted); }
-.inbox-processing { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-label); color: var(--muted); margin-top: var(--sp-05); }
-.inbox-processing.is-failed { color: var(--red-dark); }
-.inbox-more { margin-top: var(--sp-4); }
-
-/* ---- Il peso di una riga --------------------------------------------------
-   Fino al 2026-08-16 tutte le righe avevano la stessa altezza, lo stesso peso
-   e la stessa posizione: il modulo classificava e poi mostrava tutto uguale.
-   Le tre classi qui sotto sono la classificazione resa visibile.
-
-   ⚠️ Il peso si abbassa con la DIMENSIONE e con lo spazio, non spegnendo il
-   contrasto: `--ink-soft` e `--muted` restano leggibili su fondo chiaro e su
-   fondo scuro. Una gerarchia che si ottiene rendendo un testo quasi invisibile
-   non è una gerarchia: è un testo che non si può leggere. */
-
-/* Informativa: riguarda l'azienda, non chiede niente. Resta intera, pesa meno. */
-.inbox-row.is-informational { padding: var(--sp-2) 0; }
-.inbox-row.is-informational .inbox-subject { color: var(--ink-soft); }
-/* La specificità è più alta di `.is-unseen` di proposito: il grassetto del non
-   letto è una comodità visiva, e non deve poter risalire sopra la gerarchia. */
-.inbox-row.is-informational.is-unseen .inbox-subject,
-.inbox-row.is-collapsed.is-unseen .inbox-subject { font-weight: 400; }
-
-/* Non amministrativa: la riga esiste, ed è la più leggera delle tre. */
-.inbox-row.is-collapsed { padding: var(--sp-1) 0; }
-.inbox-row.is-collapsed .inbox-subject { font-size: var(--fs-meta); color: var(--muted); }
-.inbox-row.is-collapsed .inbox-sender { color: var(--muted); }
-
-/* La riga che le tiene piegate. Sta in fondo, non è un pulsante grande e non
-   somiglia a un'azione distruttiva: comprimere è reversibile con un clic. */
-.inbox-collapsed { margin-top: var(--sp-4); border-top: 1px solid var(--line); padding-top: var(--sp-3); }
-.inbox-collapsed-head { font-size: var(--fs-meta); color: var(--muted); }
-.inbox-collapsed-count { color: var(--muted); }
+   La sezione è migrata il 2026-08-28 in `src/features/inbox/inbox.module.css`
+   (CSS Modules, issue #83), commenti compresi — compresa la `@media
+   (max-width: 600px)` che chiudeva il blocco e `.filter-count`, che stava con
+   le utility. Due eccezioni:
+   · `.inbox-actions` RESTA qui, perché la usa anche `features/calendar/`;
+   · `is-informational` e `is-collapsed` restano stringhe globali costruite
+     dinamicamente (`is-${emphasis}`): nel modulo i composti le nominano con
+     `:global`. */
 .inbox-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
-
-.inbox-fields { display: grid; gap: var(--sp-2); margin: 0; }
-.inbox-fields > div { display: grid; grid-template-columns: 180px 1fr; gap: var(--sp-3); align-items: baseline; }
-.inbox-fields dt { font-size: var(--fs-label); color: var(--muted); letter-spacing: var(--ls-label); text-transform: uppercase; }
-.inbox-fields dd { margin: 0; font-size: var(--fs-body); color: var(--ink); overflow-wrap: anywhere; }
-
-/* Corpo del messaggio: testo di provenienza esterna, mostrato come testo.
-   `white-space: pre-wrap` conserva gli a capo dell'originale senza permettere
-   ad alcun markup di prendere forma — qui non arriva mai HTML. */
-.inbox-body {
-  white-space: pre-wrap; overflow-wrap: anywhere;
-  font-size: var(--fs-body); line-height: var(--lh); color: var(--ink);
-  background: var(--fill-subtle); border: 1px solid var(--line);
-  border-radius: var(--radius-sm); padding: var(--sp-4);
-  max-height: 32em; overflow-y: auto;
-}
-.inbox-link-row { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; font-size: var(--fs-body); }
-.inbox-link-row .text-muted { font-size: var(--fs-meta); }
-
-@media (max-width: 600px) {
-  .inbox-head-actions { width: 100%; }
-  .inbox-head-actions .btn { flex: 1 1 auto; }
-  .inbox-tools { width: 100%; margin-left: 0; }
-  .inbox-search { min-width: 0; flex: 1; }
-  .inbox-row { gap: var(--sp-2); }
-  .inbox-row-side { flex-basis: 100%; }
-  .inbox-fields > div { grid-template-columns: 1fr; gap: var(--sp-05); }
-  .inbox-fields dd { margin-bottom: var(--sp-2); }
-}
 
 /* Checklist delle attività (0016).
    Il bersaglio da toccare è la LABEL, non la casella: avvolge testo e casella,
@@ -1781,123 +1517,21 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 
 /* ============================================================================
    Documenti — Smart Document Hub (0017)
-   Nessun colore scritto a mano e nessuna misura di testo in px: solo i token
-   della scala tipografica e delle spaziature. Le aree cliccabili restano sopra
-   i 24px richiesti da WCAG 2.2.
+   La sezione è migrata il 2026-08-28 in
+   `src/features/documents/documents.module.css` (CSS Modules, issue #83),
+   commenti compresi — compresa la `@media (max-width: 900px)` che la
+   chiudeva. RESTANO qui:
+   · `.doc-filters`, perché la usano anche `features/contracts/` e
+     `features/crm/`;
+   · `.detail-list`, più sotto, perché la usano anche `features/finance/`,
+     `features/incentives/` e `features/subsidy-ai/`.
    ============================================================================ */
 
-/* La ricerca è l'elemento dominante della pagina: occupa lo spazio che avanza
-   accanto al pulsante di caricamento e scende a tutta larghezza sul telefono. */
-.doc-search { flex: 1; min-width: 220px; margin: 0; }
-
-/* Barra delle categorie a sinistra sul desktop, striscia scorrevole sul
-   telefono: le stesse voci, senza un secondo componente da mantenere. */
-/* ⚠️ 184px e non 232: la colonna prendeva il 30% della larghezza utile per tre
-   o quattro voci — e quel 30% lo pagava l'elenco, che è ciò per cui si apre
-   questa pagina. Non è larghezza a caso: «Sozialversicherungen» a 184 sta su
-   una riga con il suo conteggio accanto (verificato nelle tre lingue), e sotto
-   i 900px la colonna diventa comunque una striscia orizzontale. */
-.doc-layout { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: var(--sp-4); }
-.doc-side { display: flex; flex-direction: column; gap: var(--sp-05); }
-.doc-cat {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
-  min-height: 32px; padding: var(--sp-2) var(--sp-3);
-  border: 1px solid transparent; border-radius: 8px; background: none;
-  color: var(--ink); font: inherit; font-size: var(--fs-meta); text-align: left; cursor: pointer;
-}
-.doc-cat:hover { background: var(--fill-subtle); }
-/* La categoria scelta è una selezione, come la voce della barra: fondo pieno. */
-.doc-cat.is-active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
-.doc-cat-n { color: var(--muted); font-variant-numeric: tabular-nums; }
-.doc-cat.is-active .doc-cat-n { color: var(--on-accent); }
-
 .doc-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
-.doc-filter-wide { grid-column: 1 / -1; }
-
-.doc-bulk {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2);
-  padding: var(--sp-3); margin-bottom: var(--sp-3);
-  background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 8px;
-}
-
-.doc-row { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
-.doc-row:first-of-type { border-top: none; }
-.doc-row.is-selected { background: var(--accent-soft); }
-/* Il bersaglio della casella è la label, non il quadratino: 26px di altezza,
-   come nella checklist delle attività. */
-.doc-check { display: flex; align-items: center; min-height: 26px; min-width: 26px; padding-top: var(--sp-05); }
-.doc-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent-text); cursor: pointer; }
-/* Tutta la riga è il collegamento: centrare una freccia di sedici pixel su un
-   trackpad è una prova di mira. */
-.doc-row-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1; color: var(--ink); text-decoration: none; }
-.doc-row-main:hover .doc-row-title { text-decoration: underline; }
-.doc-row-title { font-size: var(--fs-body); font-weight: 600; min-width: 0; }
-/* ⚠️ `tabular-nums`, e non è un vezzo: Inter usa cifre PROPORZIONALI per
-   default — il suo «1» è molto più stretto — e in una pila di venticinque date
-   «11.03.2026» e «28.09.2026» non si incolonnano. È la stessa correzione già
-   fatta a `.dl-date` e a `.rb-num`, documentata in docs/design-system.md.
-   ⚠️ Le cifre tabulari da sole NON bastano: la data deve anche stare in una
-   colonna che non si muove da una riga all'altra — per questo vive nella
-   colonna di destra e non in coda a un titolo di lunghezza variabile. */
-.doc-row-date { flex: none; font-size: var(--fs-meta); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-/* La riga dei metadati ha una struttura, non una catena di punti mediani. */
-.doc-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-05) var(--sp-2); }
-.doc-sender { font-size: var(--fs-meta); font-weight: 600; color: var(--ink); }
-/* Il tipo è una MARCATURA, non una pastiglia di stato: nessun colore forte —
-   quelli restano alle pastiglie di destra, che dicono scadenza e stato
-   (regola 8: un solo colore forte per riga). */
-.doc-type {
-  font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
-  color: var(--ink-soft); background: var(--fill-subtle); padding: var(--sp-05) var(--sp-2); border-radius: 5px;
-}
-.doc-row-sub { font-size: var(--fs-meta); color: var(--muted); }
-.doc-snippet {
-  font-size: var(--fs-meta); color: var(--ink-soft); margin-top: var(--sp-1);
-  padding-left: var(--sp-3); border-left: 2px solid var(--line-strong);
-}
-/* La colonna di destra: la data sulla riga del titolo, le pastiglie sotto.
-   40% e non 50: metà riga alle pastiglie lasciava all'elenco — cioè al titolo e
-   al mittente — l'altra metà, ed è il titolo che si legge per primo. */
-.doc-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex-shrink: 0; max-width: 40%; }
-.doc-row-badges { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
-
-.doc-tag {
-  display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 26px;
-  padding: var(--sp-05) var(--sp-2); border-radius: 999px;
-  background: var(--fill-subtle); color: var(--ink-soft); font-size: var(--fs-label);
-}
-.doc-tag-x {
-  display: inline-flex; align-items: center; justify-content: center;
-  /* ⚠️ 24 e non 22: è il minimo che le WCAG 2.2 (§2.5.8) chiedono a un
-     bersaglio, ed è la crocetta che TOGLIE un'etichetta da un documento — un
-     gesto distruttivo che si preme per sbaglio con un dito. Due pixel di
-     differenza sono anche il gradino --sp-05 della scala: non è un numero
-     scelto a occhio, è la soglia. */
-  width: 24px; height: 24px; padding: 0; border: none; border-radius: 999px;
-  background: none; color: var(--muted); cursor: pointer;
-}
-.doc-tag-x:hover { background: var(--line); color: var(--ink); }
 
 /* Le schede di dettaglio: etichetta e valore, in colonna sul telefono. */
 .detail-list dt { font-size: var(--fs-label); color: var(--muted); margin-top: var(--sp-3); }
 .detail-list dd { font-size: var(--fs-body); color: var(--ink); margin: 0; }
-
-@media (max-width: 900px) {
-  .doc-layout { grid-template-columns: minmax(0, 1fr); }
-  /* Le categorie diventano una striscia orizzontale scorrevole: stessi
-     pulsanti, stesso stato premuto, nessun menu nascosto da imparare. */
-  .doc-side { flex-direction: row; overflow-x: auto; padding-bottom: var(--sp-2); }
-  .doc-cat { flex: none; }
-  /* Sotto i 900px la riga va a capo: la colonna di destra diventa una fascia
-     larga quanto la riga, con data e pastiglie allineate a sinistra come tutto
-     il resto — a destra non c'è più niente con cui incolonnarsi.
-     ⚠️ `flex-basis: 100%` e non «va a capo se non ci sta»: senza, una riga
-     senza pastiglie teneva la data in cima accanto al titolo mentre quella
-     accanto ce l'aveva sotto, e la stessa informazione cambiava posto da una
-     riga all'altra. */
-  .doc-row-side { max-width: none; flex: 1 0 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--sp-2); }
-  .doc-row { flex-wrap: wrap; }
-}
 
 /* ===========================================================================
    CONTRATTI (0024)
@@ -1905,31 +1539,25 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    `list-row`, `badge`, `kpi`, `result-row`, `ev-quote`, `btn`.
    ⚠️ Nessuna misura in px per il testo: la scala tipografica è quella del
    sistema (`--fs-*`), e le spaziature sono multipli di 4 (`--sp-*`).
+   ⚠️ Le regole ESCLUSIVE della feature sono migrate il 2026-08-28 in
+   `src/features/contracts/contracts.module.css` (CSS Modules, issue #83),
+   commenti compresi: `.ct-row-link`, `.ct-unverified`, `.ct-search`,
+   `.ct-list` con `.ct-pick`, `.ct-docs` e `.ct-ms` con le loro righe,
+   `.ct-clauses`, `.ct-add`, `.result-value`, `.info-box-card` e `.ct-sr`.
+   Qui restano le condivise: `.ct-head`, `.ct-toolbar`, `.ct-inline`,
+   `.ct-narrow`, `.ct-kpi` e `.ct-cmp` (le usano anche `features/crm/`,
+   `features/incentives/` e `features/audit/`).
+   ⚠️ `design-lint.mjs` dichiara un'eccezione su `.ct-sr` («margin: -1px») in
+   QUESTO file: la regola è migrata nel modulo, quindi l'eccezione è morta e
+   va riallineata nella fase finale della migrazione (lo script non è stato
+   toccato, come da consegna).
    =========================================================================== */
-
-/* La riga della lista è un collegamento che avvolge tutto: il bersaglio è la
-   riga intera, non il solo titolo. `color: inherit` perché senza diventerebbe
-   blu — la lezione delle righe di priorità della Home. */
-.ct-row-link { display: block; color: var(--ink); text-decoration: none; padding: var(--sp-3) 0; }
-.ct-row-link:hover .list-title { color: var(--accent-text); }
-
-/* ⚠️ IL SEGNO CHE DISTINGUE UNA PROPOSTA DA UN FATTO.
-   Non è decorazione: accompagna ogni data che nessuno ha ancora verificato, e
-   deve restare leggibile in entrambi i temi (contrasto verificato sui token,
-   non a occhio). Non corsivo-e-basta: il corsivo da solo sparisce. */
-.ct-unverified { font-style: normal; color: var(--amber); font-weight: 600; }
-
 
 /* Titolo a sinistra, azione a destra: senza `flex` il pulsante finisce sotto
    il sottotitolo, largo quanto la pagina. Visto aprendo la schermata. */
 .ct-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); }
 
 .ct-toolbar { align-items: flex-end; gap: var(--sp-3); margin-top: var(--sp-4); }
-/* ⚠️ La ricerca è un FORM: `.field` impila i figli, e il pulsante finiva sotto
-   la casella, largo quanto lei. Qui i due stanno in riga. */
-.ct-search { flex: 1 1 260px; display: flex; gap: var(--sp-2); align-items: stretch; }
-.ct-search input { flex: 1; min-width: 0; }
-.ct-search .btn { flex: 0 0 auto; }
 .ct-inline { min-width: 180px; }
 .ct-narrow { max-width: 620px; }
 
@@ -1944,45 +1572,22 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 .ct-kpi { text-align: left; cursor: pointer; background: var(--card); color: var(--ink); font: inherit; }
 .ct-kpi.is-active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 
-.ct-list { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
-.ct-list > li { padding: var(--sp-2) 0; border-top: 1px solid var(--line); font-size: var(--fs-meta); }
-.ct-list > li:first-child { border-top: none; }
-.ct-pick > li,
-.ct-docs > li,
-.ct-ms > li { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; justify-content: space-between; }
-
-.ct-docs, .ct-ms { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
-.ct-doc-row, .ct-ms-row { padding: var(--sp-3) 0; border-top: 1px solid var(--line); font-size: var(--fs-meta); }
-.ct-doc-row:first-child, .ct-ms-row:first-child { border-top: none; }
-
-.ct-clauses { list-style: none; margin: var(--sp-2) 0 0; padding: 0; }
-.ct-clauses > li { padding: var(--sp-3) 0; border-top: 1px solid var(--line); font-size: var(--fs-meta); display: grid; gap: var(--sp-1); }
-.ct-clauses > li:first-child { border-top: none; }
-
-.ct-add { margin-top: var(--sp-4); display: grid; gap: var(--sp-3); }
-
 /* Il confronto «prima / adesso» di un amendment. Scorre da sola su schermo
    stretto: la pagina non deve mai scorrere in orizzontale. */
 .ct-cmp { width: 100%; border-collapse: collapse; font-size: var(--fs-meta); margin: var(--sp-3) 0; display: block; overflow-x: auto; }
 .ct-cmp th, .ct-cmp td { text-align: left; padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--line); vertical-align: top; }
 .ct-cmp thead th { color: var(--ink-soft); font-size: var(--fs-label); text-transform: uppercase; letter-spacing: .04em; border-top: none; }
 
-.result-value { font-size: var(--fs-body); }
-
-/* La scheda che porta un avviso: stesso bordo dell'accento, senza gridare. */
-.info-box-card { border-left: 3px solid var(--accent); }
-
-/* Nascosto agli occhi, presente per chi legge con uno screen reader. */
-.ct-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-
+/* ⚠️ `@media` DIVISA il 2026-08-28: la riga `.ct-doc-row, .ct-ms-row` (§122 —
+   il dettaglio resta leggibile: una colonna sola, date in cima) è migrata in
+   `src/features/contracts/contracts.module.css` (CSS Modules, issue #83),
+   dentro una `@media (max-width: 640px)` tutta sua; qui resta `.ct-toolbar`,
+   condivisa. La correzione di `.crm-search` che accompagnava questa `@media`
+   è migrata con `.crm-search` in `src/features/crm/crm.module.css`: con i CSS
+   Modules la base e la correzione sono la STESSA classe nello STESSO foglio,
+   e l'ordine di caricamento fra i fogli non decide più niente. */
 @media (max-width: 640px) {
-  /* §122 — il dettaglio resta leggibile: una colonna sola, date in cima. */
-  .ct-doc-row, .ct-ms-row { display: grid; gap: var(--sp-2); }
   .ct-toolbar { flex-direction: column; align-items: stretch; }
-  /* ⚠️ La correzione di `.crm-search` che accompagna questa riga sta in
-     `extra.css`, non qui: là è definita la sua base, e `extra.css` viene
-     caricato DOPO — a parità di specificità vince l'ultimo, quindi una
-     correzione scritta qui non toccherebbe niente. Provato a schermo. */
 }
 
 /* ============================================================================
@@ -2016,8 +1621,9 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
    `html, body` restano come rete di sicurezza per gli stili del browser.
    ========================================================================== */
 
-/* Fuori dalla stampa, ciò che è SOLO per la carta non esiste. */
-.print-only { display: none; }
+/* `.print-only` (fuori e dentro la stampa) è migrata il 2026-08-28 in
+   `src/features/print/print.module.css` (CSS Modules, issue #83): è la sola
+   classe usata dalla sola feature `print`. */
 
 @media print {
   :root, :root[data-theme] {
@@ -2093,8 +1699,9 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
     display: none !important;
   }
 
-  /* Ciò che esiste SOLO per la carta compare qui, e solo qui. */
-  .print-only { display: block !important; }
+  /* Ciò che esiste SOLO per la carta compare qui, e solo qui. La regola di
+     `.print-only` è migrata il 2026-08-28 in
+     `src/features/print/print.module.css` (CSS Modules, issue #83). */
 
   /* ⚠️ NIENTE SCROLL, NIENTE ALTEZZE FISSE, NIENTE OVERFLOW CHE TAGLIA.
      A schermo un pannello alto 100vh con `overflow:auto` è comodo; su carta è
@@ -2129,9 +1736,10 @@ p a, .muted-sm a, .footnote a, .demo-banner a, .warn-box a, .info-box a, .auth-s
 
   /* Un'analisi non si spezza a metà fra due fogli. `page-break-inside` sta
      accanto alla proprietà moderna perché i motori di stampa non concordano
-     ancora, e qui l'esito si vede solo su carta. */
+     ancora, e qui l'esito si vede solo su carta. `.print-block` è uscita da
+     questo selettore il 2026-08-28 (censimento regole morte, issue #83): mai
+     definita in nessun foglio, mai scritta da nessun componente. */
   .card,
-  .print-block,
   .empty-cta,
   figure,
   table {

@@ -27,6 +27,8 @@ import { TrustIndicator } from '@/features/documents/TrustIndicator';
 import { useAnalysisTrust } from '@/features/documents/useAnalysisTrust';
 import { MarkGlyph } from '@/components/ui/MarkGlyph';
 import { MarkLegend } from '@/components/ui/MarkLegend';
+import { cx } from '@/lib/cx';
+import styles from './admin-ai.module.css';
 import type { AnalysisCorrection, ChecklistAction, DocumentAnalysis, DocumentReply, DocumentRecord, Evidence } from '@/types/models';
 
 /** Tono predefinito della bozza, come prima della 0010 (era il default di reply_tone). */
@@ -38,7 +40,7 @@ function EvidenceButton({ evidence, label, onShow }: { evidence: Evidence | null
   if (!evidence) return null;
   return (
     <>
-      <button type="button" className="ev-btn" onClick={() => { setOpen((o) => !o); onShow(evidence); }}>
+      <button type="button" className={styles.evBtn} onClick={() => { setOpen((o) => !o); onShow(evidence); }}>
         <Icon name="fileSearch" className="ic-sm" />{label ?? t('adminAi.result.showInDocument')}
       </button>
       <div className={`ev-quote${open ? ' show' : ''}`}>«{evidence.quote}»</div>
@@ -74,18 +76,18 @@ function EvidenceShown({ evidence, onShow }: { evidence: Evidence | null; onShow
   const t = useT();
   if (!evidence) {
     return (
-      <div className="ev-none">
+      <div className={styles.evNone}>
         <MarkGlyph name="dash" />{t('adminAi.result.noEvidenceInDocument')}
       </div>
     );
   }
   return (
-    <div className="ev-shown">
+    <div className={styles.evShown}>
       {/* `lang=""` — la citazione è nella lingua del DOCUMENTO, non
           dell'interfaccia: dichiararlo evita che un lettore di schermo la
           pronunci con la fonetica sbagliata. */}
-      <blockquote className="ev-shown-q" lang="">«{evidence.quote}»</blockquote>
-      <button type="button" className="ev-btn" onClick={() => onShow(evidence)}>
+      <blockquote className={styles.evShownQ} lang="">«{evidence.quote}»</blockquote>
+      <button type="button" className={styles.evBtn} onClick={() => onShow(evidence)}>
         <Icon name="fileSearch" className="ic-sm" />{t('adminAi.result.goToPoint')}
       </button>
     </div>
@@ -117,7 +119,7 @@ function DocViewer({ text, pages, highlight }: { text: string | null | undefined
     const target = highlight?.pageNumber ?? null;
     const first = pages[0].pageNumber;
     return (
-      <div className="ax-doc-view" ref={ref}>
+      <div className={styles.axDocView} ref={ref}>
         {pages.map((p) => {
           const onThisPage = !!q && (target == null || target === p.pageNumber) && p.text.toLowerCase().includes(q.trim().toLowerCase());
           return (
@@ -132,7 +134,7 @@ function DocViewer({ text, pages, highlight }: { text: string | null | undefined
   }
 
   if (!text) {
-    return <div className="ax-doc-view"><span className="muted-sm">{t('adminAi.result.noOriginalText')}</span></div>;
+    return <div className={styles.axDocView}><span className="muted-sm">{t('adminAi.result.noOriginalText')}</span></div>;
   }
   let content: React.ReactNode = text;
   if (highlight && highlight.start >= 0 && highlight.end > highlight.start && highlight.end <= text.length) {
@@ -144,7 +146,7 @@ function DocViewer({ text, pages, highlight }: { text: string | null | undefined
       </>
     );
   }
-  return <div className="ax-doc-view" ref={ref}>{content}</div>;
+  return <div className={styles.axDocView} ref={ref}>{content}</div>;
 }
 
 // Riga di correzione (§34): mostra il valore AI, permette di correggerlo senza alterarlo.
@@ -167,8 +169,8 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
   }
 
   return (
-    <div className="ax-field-row">
-      <div className="ax-field-head">
+    <div className={styles.axFieldRow}>
+      <div className={styles.axFieldHead}>
         <div><b>{label}:</b>{' '}
           {current != null
             ? <span>{current} <Tag>{tt('adminAi.result.correctedByHand')}</Tag></span>
@@ -182,7 +184,7 @@ function CorrectionRow({ label, field, aiDisplay, aiValue, correction, inputType
       </div>
       {current != null && <div className="muted-sm">{tt('adminAi.result.aiDetectedValue', { value: aiDisplay || '—' })}</div>}
       {editing && (
-        <div className="ax-field-edit">
+        <div className={styles.axFieldEdit}>
           <input type={inputType ?? 'text'} className="select-inline" value={value} onChange={(e) => setValue(e.target.value)} style={{ flex: 1, minWidth: 150 }} aria-label={tt('adminAi.result.correctAria', { label })} />
           <button className="btn btn-sm btn-primary" onClick={save} disabled={saving} aria-busy={saving || undefined}>{saving ? <span className="spinner" aria-hidden="true" /> : null} {tt('common.save')}</button>
           <button className="btn btn-sm" onClick={() => setEditing(false)}>{tt('common.cancel')}</button>
@@ -451,7 +453,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
   if (r.analysisStatus === 'failed') {
     return (
       <div>
-        <div className="card ax-header">
+        <div className={cx('card', styles.axHeader)}>
           <div className="ax-head-top">
             <div className="ax-title">{nome}</div>
             <div className="ax-badges"><Tag tone="alert">{t('adminAi.result.failedTitle')}</Tag></div>
@@ -512,7 +514,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
         </div>
       )}
 
-      <div className="card ax-header">
+      <div className={cx('card', styles.axHeader)}>
         <div className="ax-head-top">
           <div className="ax-title">{nome}</div>
           <div className="ax-badges">
@@ -535,8 +537,8 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                 Altrove i due segni non si toccano e non serve: nella riga di
                 un'attività l'ordine stato · priorità · termine è fisso, e nel
                 dettaglio del documento stanno dentro campi già intestati. */}
-            <span className="ax-badge-pair">
-              <span className="ax-badge-key">{t('marks.legend.priority')}</span>
+            <span className={styles.axBadgePair}>
+              <span className={styles.axBadgeKey}>{t('marks.legend.priority')}</span>
               <PriorityMark level={r.urgency} />
             </span>
             {/* ⚠️⚠️ QUI STAVA LA SICUREZZA FALSA. Il 2026-08-15 questa testata
@@ -549,7 +551,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                 ⚠️ Il caveat del termine resta un segno suo: la verifica che
                 manca non è fiducia, e le due cose hanno due segni. */}
             {trust && (
-              <span className="ax-badge-pair">
+              <span className={styles.axBadgePair}>
                 <TrustIndicator verdict={trust} schemaVersion={analysis.schemaVersion} analysedAt={analysis.createdAt} />
                 {r.deadlineRequiresVerification && r.analysisStatus !== 'needs_review'
                   && <ProvenanceMark kind="toVerify" />}
@@ -585,16 +587,16 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
       </div>
 
       {/* Callout: cosa devi fare adesso */}
-      <div className="ax-callout">
-        <div className="co-ico"><Icon name="checkCircle" /></div>
-        <div className="co-main">
-          <div className="co-kicker">{t('adminAi.result.whatToDoNow')}</div>
-          <div className="co-action">{r.primaryAction ?? t('adminAi.result.fallbackAction')} <ActionOriginMark source={r.primaryActionSource} /></div>
+      <div className={styles.axCallout}>
+        <div className={styles.coIco}><Icon name="checkCircle" /></div>
+        <div className={styles.coMain}>
+          <div className={styles.coKicker}>{t('adminAi.result.whatToDoNow')}</div>
+          <div className={styles.coAction}>{r.primaryAction ?? t('adminAi.result.fallbackAction')} <ActionOriginMark source={r.primaryActionSource} /></div>
           {/* ⚠️ Tre casi, non due. Senza scadenza ma con un appuntamento, qui
               diceva soltanto «nessuna scadenza individuata» — vero e monco: la
               data che il documento fissa esiste, e tacerla manda a cercarla
               altrove. La si nomina per quello che è. */}
-          <div className="co-when">{r.deadline
+          <div className={styles.coWhen}>{r.deadline
             ? <>{t('adminAi.result.by')} <b>{formatDate(r.deadline)}</b>{remaining ? ' · ' + remaining : ''}</>
             : r.appointmentDate
               ? <>{t('adminAi.result.noDeadlineFound')} · <AppointmentMark date={r.appointmentDate} display={formatDate(r.appointmentDate)} /></>
@@ -603,7 +605,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
         {/* ⚠️ Disabilitato NON basta: un pulsante spento e muto manda a cercare
             il guasto altrove. La frase è la stessa del dettaglio del documento
             — una regola sola, una spiegazione sola. */}
-        <div className="co-act">
+        <div className={styles.coAct}>
           <button className="btn btn-primary" disabled={appartenenzaDubbia}
             onClick={() => createTask(r.primaryAction || nome)}>
             <Icon name="calendar" className="ic-sm" /> {t('adminAi.result.createTask')}
@@ -614,8 +616,8 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
         </div>
       </div>
 
-      <div className="ax-grid">
-        <div className="ax-col ax-doc">
+      <div className={styles.axGrid}>
+        <div className={cx(styles.axCol, styles.axDoc)}>
           <div className="card">
             <div className="card-title">
               <Icon name="document" className="ic-sm" /> {t('adminAi.result.originalDocument')}
@@ -634,15 +636,15 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
           </div>
         </div>
 
-        <div className="ax-col">
+        <div className={styles.axCol}>
           {r.deadline ? (
             <div className={`card lvl-${lvl}`}>
-              <div className="deadline-card">
-                <div className="dl-ico"><Icon name="calendar" /></div>
-                <div className="dl-main">
-                  <div className="dl-kicker">{t('adminAi.result.deadlineKicker')} · {L.deadlineLevel(lvl)}</div>
-                  <div className="dl-date">{formatDate(r.deadline)}</div>
-                  <div className="dl-rem">{remaining}</div>
+              <div className={styles.deadlineCard}>
+                <div className={styles.dlIco}><Icon name="calendar" /></div>
+                <div className={styles.dlMain}>
+                  <div className={styles.dlKicker}>{t('adminAi.result.deadlineKicker')} · {L.deadlineLevel(lvl)}</div>
+                  <div className={styles.dlDate}>{formatDate(r.deadline)}</div>
+                  <div className={styles.dlRem}>{remaining}</div>
                 </div>
                 {/* ⚠️ Qui c'era una pastiglia che RIPETEVA il livello già scritto
                     nel kicker due righe sopra: colore in più, informazione in
@@ -658,7 +660,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               )}
             </div>
           ) : (
-            <div className="card"><div className="deadline-none"><Icon name="alert" /><div><strong>{t('adminAi.result.deadlineNoneTitle')}</strong><br /><span className="muted-sm">{t('adminAi.result.deadlineNoneSub')}</span></div></div></div>
+            <div className="card"><div className={styles.deadlineNone}><Icon name="alert" /><div><strong>{t('adminAi.result.deadlineNoneTitle')}</strong><br /><span className="muted-sm">{t('adminAi.result.deadlineNoneSub')}</span></div></div></div>
           )}
 
           {/* ⚠️⚠️ L'APPUNTAMENTO HA UNA SCHEDA SUA, E VIENE DOPO LA SCADENZA.
@@ -674,12 +676,12 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               ciò che è mancato alle tre attività datate 10.09.2026. */}
           {r.appointmentDate && (
             <div className="card">
-              <div className="deadline-card">
-                <div className="dl-ico"><Icon name="calendar" /></div>
-                <div className="dl-main">
-                  <div className="dl-kicker">{t('adminAi.result.appointmentKicker')}</div>
-                  <div className="dl-date">{formatDate(r.appointmentDate)}</div>
-                  <div className="dl-rem"><AppointmentMark date={r.appointmentDate} /></div>
+              <div className={styles.deadlineCard}>
+                <div className={styles.dlIco}><Icon name="calendar" /></div>
+                <div className={styles.dlMain}>
+                  <div className={styles.dlKicker}>{t('adminAi.result.appointmentKicker')}</div>
+                  <div className={styles.dlDate}>{formatDate(r.appointmentDate)}</div>
+                  <div className={styles.dlRem}><AppointmentMark date={r.appointmentDate} /></div>
                 </div>
               </div>
               <div className="muted-sm mt-2">{t('adminAi.result.appointmentNotADeadline')}</div>
@@ -687,7 +689,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             </div>
           )}
 
-          <div className="card ax-actions-card">
+          <div className={cx('card', styles.axActionsCard)}>
             <div className="card-title">{t('adminAi.result.checklist')}</div>
             <div className="ax-progress">
               <span className="pg-label">{t('adminAi.result.checklistProgress', { done, total: tot })}</span>
@@ -701,7 +703,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
                   <input type="checkbox" id={`act-${r.id}-${c.id}`} checked={c.done} onChange={(e) => toggleAction(c.id, e.target.checked)} />
                   <div className="ai-main">
                     <div className="ai-text"><label htmlFor={`act-${r.id}-${c.id}`}>{c.text}</label> <ActionOriginMark source={c.sourceType} /></div>
-                    <div className="ai-meta">
+                    <div className={styles.aiMeta}>
                       {c.sourceType === 'extracted' && c.evidence && <EvidenceButton evidence={c.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />}
                       <button type="button" className="mini-btn" disabled={appartenenzaDubbia}
                         onClick={() => createTask(c.text)}><Icon name="calendar" className="ic-sm" /> {t('adminAi.result.addToTasks')}</button>
@@ -730,7 +732,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             </div>
           ) : (
             trust?.level
-              ? <div className="card"><div className="verify-ok"><Icon name="checkCircle" className="ic-sm" /> {t('adminAi.result.mainInfoConfirmed', { level: L.confidence(trust.level) })}</div></div>
+              ? <div className="card"><div className={styles.verifyOk}><Icon name="checkCircle" className="ic-sm" /> {t('adminAi.result.mainInfoConfirmed', { level: L.confidence(trust.level) })}</div></div>
               : null
           )}
 
@@ -746,7 +748,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               {r.risk.level === 'explicit' ? t('adminAi.result.riskExplicit') : r.risk.level === 'possible' ? t('adminAi.result.riskInferred') : t('adminAi.result.riskUnknown')}
             </span>
           </div>
-            {r.risk.level !== 'unknown' && <div className="risk-text">{r.risk.text}</div>}
+            {r.risk.level !== 'unknown' && <div className={styles.riskText}>{r.risk.text}</div>}
             <EvidenceButton evidence={r.risk.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} />
           </div>
 
@@ -754,7 +756,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             {r.requestedDocuments.length > 0 ? r.requestedDocuments.map((d, i) => (
               <div className="action-item py-2" key={i}>
                 <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{d.label}</span>
-                  {d.evidence && <div className="ai-meta"><EvidenceButton evidence={d.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
+                  {d.evidence && <div className={styles.aiMeta}><EvidenceButton evidence={d.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                 </span>
               </div>
             )) : <span className="muted-sm">{t('adminAi.result.noRequestedDocuments')}</span>}
@@ -781,14 +783,14 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
               {r.referenceNumbers.map((ref, i) => (
                 <div className="action-item py-2" key={`ref-${i}`}>
                   <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{ref.label ? `${ref.label}: ` : ''}<b>{ref.value}</b></span>
-                    {ref.evidence && <div className="ai-meta"><EvidenceButton evidence={ref.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
+                    {ref.evidence && <div className={styles.aiMeta}><EvidenceButton evidence={ref.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                   </span>
                 </div>
               ))}
               {r.legalReferences.map((leg, i) => (
                 <div className="action-item py-2" key={`leg-${i}`}>
                   <span className="ai-main"><span className="ai-text" style={{ fontWeight: 400 }}>{leg.text}</span>
-                    {leg.evidence && <div className="ai-meta"><EvidenceButton evidence={leg.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
+                    {leg.evidence && <div className={styles.aiMeta}><EvidenceButton evidence={leg.evidence} label={t('adminAi.result.showInDocument')} onShow={setHighlight} /></div>}
                   </span>
                 </div>
               ))}
@@ -804,14 +806,14 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             <CorrectionRow label={t('adminAi.result.amount')} field="amount" aiDisplay={r.amountDisplay ?? ''} aiValue={r.amount} correction={corrections.amount} onSave={saveCorrection} />
           </div>
 
-          <div className="card draft-editor">
+          <div className={cx('card', styles.draftEditor)}>
             <div className="card-title">{t('adminAi.result.replyDraftTitle')}</div>
-            <div className="draft-controls">
-              <div className="dc-field"><label htmlFor="draft-lang">{t('adminAi.result.replyLanguage')}</label>
+            <div className={styles.draftControls}>
+              <div className={styles.dcField}><label htmlFor="draft-lang">{t('adminAi.result.replyLanguage')}</label>
                 <select id="draft-lang" className="select-inline" value={lang} onChange={(e) => setLang(e.target.value)}>
                   {(['it', 'de', 'fr'] as const).map((k) => <option key={k} value={k}>{L.language(k)}</option>)}
                 </select></div>
-              <div className="dc-field"><label htmlFor="draft-tone">{t('adminAi.result.replyTone')}</label>
+              <div className={styles.dcField}><label htmlFor="draft-tone">{t('adminAi.result.replyTone')}</label>
                 <select id="draft-tone" className="select-inline" value={tone} onChange={(e) => setTone(e.target.value)}>
                   {Object.keys(TONI).map((k) => <option key={k} value={k}>{L.tone(k)}</option>)}
                 </select></div>

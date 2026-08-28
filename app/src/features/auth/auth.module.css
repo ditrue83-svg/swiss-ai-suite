@@ -1,0 +1,24 @@
+/* ============================================================================
+   auth.module.css — le schermate di accesso (feature `auth`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/extra.css` (sezione «Schermate centrate»). Sono migrate solo le
+   classi usate ESCLUSIVAMENTE dalle quattro pagine di `features/auth/`:
+   `.centered-screen`, `.auth-card`, `.auth-brand`, `.auth-title` e `.auth-sub`
+   restano GLOBALI perché le usano anche `App.tsx`, `components/layout/
+   guards.tsx` e l'onboarding (`features/companies`).
+   `.btn` e `.btn-link` sono condivise: dentro i selettori composti restano
+   globali con `:global`, altrimenti il modulo le localizzerebbe e le regole
+   non combacerebbero più.
+   ========================================================================== */
+
+.auth-alt { margin-top: var(--sp-4); font-size: var(--fs-body); color: var(--muted); text-align: center; }
+.auth-alt :global(.btn-link) { font-size: var(--fs-body); }
+.auth-actions { margin-top: var(--sp-2); }
+.auth-actions :global(.btn) { width: 100%; }
+
+/* ---- Ritrovamento del lotto 6 (ricognizione finale, 2026-08-28) -----------
+   `.form-success` viene da `src/styles/extra.css`, dove stava accanto a
+   `.form-error`: quella RESTA globale (la usano anche incentives, crm e
+   companies), questa la usano solo le pagine di `features/auth/`. */
+.form-success { background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green); border-radius: var(--radius-sm); padding: var(--sp-3); font-size: var(--fs-body); margin-bottom: var(--sp-4); }

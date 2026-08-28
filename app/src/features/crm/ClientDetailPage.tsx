@@ -46,6 +46,8 @@ import {
   organizationState, organizationStateKey, opportunityState, opportunityStateKey,
   safeWebsite, secondaryName,
 } from './crmModel';
+import { cx } from '@/lib/cx';
+import styles from './crm.module.css';
 
 type Tab = 'overview' | 'people' | 'opportunities' | 'tasks'
   | 'communications' | 'documents' | 'contracts' | 'finance' | 'history';
@@ -193,7 +195,7 @@ export function ClientDetailPage() {
         <div>
           <div className="page-title">{org.displayName}</div>
           {legal && <div className="page-desc">{legal}</div>}
-          <div className="crm-roles">
+          <div className={styles.crmRoles}>
             <Tag>{t(organizationStateKey(state))}</Tag>
             {/* Neutro, non blu: gli stessi ruoli erano neutri nell'elenco e blu
                 qui — due pesi per lo stesso fatto. E `badge-blue` è il blu
@@ -403,7 +405,7 @@ function OverviewTab(props: {
 
         <div className="card">
           <div className="card-title">{t('crm.detail.roles')}</div>
-          <div className="crm-roles">
+          <div className={styles.crmRoles}>
             {ALL_ROLES.map((r) => {
               const on = o.roles.includes(r);
               // ⚠️ `.check-pill` e NON `.badge`: questo si CLICCA. Un badge su
@@ -439,14 +441,14 @@ function OverviewTab(props: {
 
       {/* §28-§30 — i duplicati si MOSTRANO, non si risolvono da soli. */}
       {props.duplicates.length > 0 && (
-        <div className="crm-ask">
+        <div className={styles.crmAsk}>
           <div className="crm-sec-head">
             <strong>{t('crm.duplicates.title')}</strong>
             <span className="muted-sm">{t('crm.duplicates.hint')}</span>
           </div>
           {props.duplicates.map((d) => (
-            <div className="crm-ask-row" key={d.duplicateId}>
-              <div className="crm-ask-main">
+            <div className={styles.crmAskRow} key={d.duplicateId}>
+              <div className={styles.crmAskMain}>
                 <Link to={`/clienti/${d.duplicateId}`}>{d.duplicateName}</Link>
                 <div className="muted-sm">
                   {/* I due punti nella chiave: in francese vogliono U+202F. */}
@@ -507,7 +509,7 @@ function PeopleTab(props: {
       </div>
 
       {open && (
-        <form className="card crm-narrow" onSubmit={add}>
+        <form className={cx('card', styles.crmNarrow)} onSubmit={add}>
           <div className="field">
             <label htmlFor="p-name">{t('crm.people.name')}</label>
             <input id="p-name" value={name} required maxLength={200}
@@ -590,7 +592,7 @@ function OpportunitiesTab(props: {
         const st = opportunityState(d);
         return (
           <li className="list-row" key={d.id}>
-            <Link className="crm-row-link" to={`/clienti/${props.orgId}/opportunita/${d.id}`}>
+            <Link className={styles.crmRowLink} to={`/clienti/${props.orgId}/opportunita/${d.id}`}>
               <div className="list-main">
                 <span className="list-title">{d.title}</span>
                 <Tag>{L.crmStage(d.stage)}</Tag>
@@ -629,7 +631,7 @@ function TasksTab(props: {
   return (
     <>
       <form
-        className="field crm-narrow"
+        className={cx('field', styles.crmNarrow)}
         onSubmit={(e) => {
           e.preventDefault();
           if (title.trim() === '') return;
@@ -653,7 +655,7 @@ function TasksTab(props: {
         <ul className="crm-list">
           {props.tasks.map((k) => (
             <li className="list-row" key={k.id}>
-              <Link className="crm-row-link" to={`/attivita/${k.id}`}>
+              <Link className={styles.crmRowLink} to={`/attivita/${k.id}`}>
                 <div className="list-main">
                   <span className="list-title">{k.title}</span>
                 </div>
@@ -711,7 +713,7 @@ function DocumentsTab(props: {
     <ul className="crm-list">
       {props.docs.map((d) => (
         <li className="list-row" key={d.id}>
-          <Link className="crm-row-link" to={`/documenti/${d.documentId}`}>
+          <Link className={styles.crmRowLink} to={`/documenti/${d.documentId}`}>
             <div className="list-main">
               <span className="list-title">{docLabel(d.label)}</span>
               <Tag>{L.crmRelation(d.relation)}</Tag>
@@ -749,7 +751,7 @@ function ContractsTab(props: {
     <ul className="crm-list">
       {props.contracts.map((c) => (
         <li className="list-row" key={c.id}>
-          <Link className="crm-row-link" to={`/contratti/${c.id}`}>
+          <Link className={styles.crmRowLink} to={`/contratti/${c.id}`}>
             <div className="list-main">
               <span className="list-title">{c.displayName}</span>
               <Tag>{L.contractType(c.contractType)}</Tag>
@@ -784,7 +786,7 @@ function FinanceTab(props: { items: CrmFinanceLink[]; t: TFunction }) {
       <ul className="crm-list">
         {props.items.map((f) => (
           <li className="list-row" key={f.id}>
-            <Link className="crm-row-link" to={`/finanze/${f.id}`}>
+            <Link className={styles.crmRowLink} to={`/finanze/${f.id}`}>
               <div className="list-main">
                 {/* Il fornitore ESTRATTO dal documento, non il nome CRM. */}
                 <span className="list-title">{f.supplierName ?? <em>—</em>}</span>
@@ -837,7 +839,7 @@ function HistoryTab(props: {
       {/* §63 — un contatto che nessun altro modulo registra. Le email NON si
           scrivono qui: restano nell'Inbox e si collegano (§64). */}
       <form
-        className="card crm-narrow"
+        className={cx('card', styles.crmNarrow)}
         onSubmit={(e) => {
           e.preventDefault();
           props.onAddInteraction(type, subject.trim() || null, notes.trim() || null);
@@ -884,7 +886,7 @@ function HistoryTab(props: {
                   {t(KIND_KEY[e.kind])}
                   {e.title ? <> — {e.title}</> : null}
                 </div>
-                <div className="crm-tl-sub">
+                <div className={styles.crmTlSub}>
                   {e.actorUserId
                     ? (props.nameOf(e.actorUserId) ?? t('crm.timeline.someone'))
                     : null}

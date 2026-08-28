@@ -39,6 +39,7 @@ import {
   PROJECT_STAGES, STAGE_KEY, SUBSIDY_PROJECT_TYPES, SUBSIDY_SECTORS,
   subsidyErrorKey, validateProject,
 } from './incentivesModel';
+import styles from './incentives.module.css';
 
 interface Props {
   companyId: string;
@@ -157,7 +158,7 @@ export function ProjectsTab({
                   </div>
                 )}
               </div>
-              <div className="inc-row-side">
+              <div className={styles.incRowSide}>
                 {p.opportunityCount > 0 && (
                   <button type="button" className="mini-btn" onClick={() => onOpenOpportunities(p.id)}>
                     {t('incentives.projects.seeOpportunities')}

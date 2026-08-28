@@ -28,9 +28,11 @@ import { Icon } from '@/components/ui/Icon';
 import { NAV_SETTINGS } from '@/components/layout/nav';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useT } from '@/i18n';
+import { cx } from '@/lib/cx';
 import { PreferencesPanel } from '@/features/settings/PreferencesPanel';
 import { CompanySettings } from '@/features/companies/CompanySettingsPage';
 import { Pricing } from '@/features/pricing/PricingPage';
+import styles from './settings.module.css';
 
 export interface SettingsDialogProps {
   open: boolean;
@@ -62,13 +64,13 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onClose={onClose} title={t('nav.settings')} className="dialog-settings">
-      <div className="settings-layout">
-        <nav className="settings-rail" aria-label={t('settings.railAria')}>
+      <div className={styles.settingsLayout}>
+        <nav className={styles.settingsRail} aria-label={t('settings.railAria')}>
           {voci.map((v) => (
             <button
               key={v.id}
               type="button"
-              className={`settings-rail-btn${v.apre === 'pannello' && attivo === v.id ? ' active' : ''}`}
+              className={cx(styles.settingsRailBtn, v.apre === 'pannello' && attivo === v.id && styles.active)}
               // ⚠️ `aria-current` solo per i pannelli: dice «sei qui», e una
               // voce che porta altrove non è un posto in cui si è.
               aria-current={v.apre === 'pannello' && attivo === v.id ? 'true' : undefined}
@@ -76,13 +78,13 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             >
               <span>{t(v.labelKey)}</span>
               {v.apre === 'pagina' && (
-                <Icon name="arrowRight" className="ic-sm settings-rail-out" aria-hidden="true" />
+                <Icon name="arrowRight" className={cx('ic-sm', styles.settingsRailOut)} aria-hidden="true" />
               )}
             </button>
           ))}
         </nav>
 
-        <div className="settings-pane">
+        <div className={styles.settingsPane}>
           {attivo === 'preferences' && <PreferencesPanel sede="pannello" />}
           {attivo === 'company' && <CompanySettings sede="pannello" />}
           {attivo === 'pricing' && <Pricing sede="pannello" />}

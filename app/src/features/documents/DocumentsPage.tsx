@@ -41,6 +41,8 @@ import type {
   DocumentCategory, DocumentHubFilters, DocumentHubItem, DocumentSort, DocumentSourceType,
   DocumentState, DocumentTag,
 } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './documents.module.css';
 
 /**
  * Una pagina alla volta, accumulando.
@@ -333,7 +335,7 @@ export function DocumentsPage() {
         <Link className="btn btn-primary btn-block-mobile" to="/admin">
           <Icon name="document" className="ic-sm" /> {t('documents.upload')}
         </Link>
-        <div className="field doc-search">
+        <div className={cx('field', styles.docSearch)}>
           <input
             id="doc-search" type="search" value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -343,14 +345,14 @@ export function DocumentsPage() {
         </div>
       </div>
 
-      <div className="doc-layout mt-16">
-        <nav className="doc-side" aria-label={t('documents.allCategories')}>
+      <div className={cx(styles.docLayout, 'mt-16')}>
+        <nav className={styles.docSide} aria-label={t('documents.allCategories')}>
           <button
-            className={`doc-cat${!filters.category && !filters.uncategorized ? ' is-active' : ''}`}
+            className={cx(styles.docCat, !filters.category && !filters.uncategorized && styles.isActive)}
             aria-pressed={!filters.category && !filters.uncategorized}
             onClick={() => update({ category: null, uncategorized: false })}
           >
-            <span>{t('documents.allCategories')}</span><span className="doc-cat-n">{totalActive}</span>
+            <span>{t('documents.allCategories')}</span><span className={styles.docCatN}>{totalActive}</span>
           </button>
           {/* ⚠️ Le categorie vuote non si mostrano, MA quella attiva sì anche a
               zero: arrivando da un collegamento con `?categoria=taxes` su una
@@ -361,25 +363,25 @@ export function DocumentsPage() {
               sostituisca davvero. */}
           {counts.get('none') || filters.uncategorized ? (
             <button
-              className={`doc-cat${filters.uncategorized ? ' is-active' : ''}`}
+              className={cx(styles.docCat, filters.uncategorized && styles.isActive)}
               aria-pressed={filters.uncategorized === true}
               onClick={() => update({ category: null, uncategorized: true })}
             >
               <span>{t('documents.uncategorized')}</span>
-              <span className="doc-cat-n">{counts.get('none')}</span>
+              <span className={styles.docCatN}>{counts.get('none')}</span>
             </button>
           ) : null}
           {CATEGORIES.filter((c) => counts.get(c) || filters.category === c).map((c) => (
             <button
               key={c}
-              className={`doc-cat${filters.category === c ? ' is-active' : ''}`}
+              className={cx(styles.docCat, filters.category === c && styles.isActive)}
               aria-pressed={filters.category === c}
               onClick={() => update({ category: c, uncategorized: false })}
             >
               {/* `?? 0` e non `counts.get(c)`: la categoria attiva compare
                   anche quando è vuota, e senza il numero la riga sembrerebbe
                   un conteggio non caricato invece di uno zero. */}
-              <span>{L.category(c)}</span><span className="doc-cat-n">{counts.get(c) ?? 0}</span>
+              <span>{L.category(c)}</span><span className={styles.docCatN}>{counts.get(c) ?? 0}</span>
             </button>
           ))}
         </nav>
@@ -462,7 +464,7 @@ export function DocumentsPage() {
                   onChange={(e) => update({ dateFrom: e.target.value || null })} />
                 <Input id="f-to" label={t('documents.dateTo')} type="date" value={filters.dateTo ?? ''}
                   onChange={(e) => update({ dateTo: e.target.value || null })} />
-                <div className="field doc-filter-wide">
+                <div className={cx('field', styles.docFilterWide)}>
                   <label className="task-check" htmlFor="f-deadline">
                     <input id="f-deadline" type="checkbox" checked={filters.hasDeadline === true}
                       onChange={(e) => update({ hasDeadline: e.target.checked })} />
@@ -471,7 +473,7 @@ export function DocumentsPage() {
                   <div className="muted-sm">{t('documents.dateHint')}</div>
                 </div>
                 {filtersActive && (
-                  <div className="doc-filter-wide">
+                  <div className={styles.docFilterWide}>
                     <button className="btn btn-sm" onClick={() => setParams(new URLSearchParams())}>
                       {t('documents.clearFilters')}
                     </button>
@@ -481,7 +483,7 @@ export function DocumentsPage() {
             )}
 
             {ids.length > 0 && (
-              <div className="doc-bulk" role="group" aria-label={t('documents.bulkCategory')}>
+              <div className={styles.docBulk} role="group" aria-label={t('documents.bulkCategory')}>
                 <span className="muted-sm">
                   {ids.length === 1 ? t('documents.selectedOne') : t('documents.selectedMany', { n: ids.length })}
                 </span>
@@ -651,22 +653,22 @@ function DocumentRow({
   const snippet = splitSnippet(item.snippet);
 
   return (
-    <div className={`doc-row${selected ? ' is-selected' : ''}`}>
-      <label className="doc-check">
+    <div className={cx(styles.docRow, selected && styles.isSelected)}>
+      <label className={styles.docCheck}>
         <input type="checkbox" checked={selected} onChange={onSelect}
           aria-label={t('documents.selectAria', { title: nome })} />
       </label>
-      <Link className="doc-row-main" to={`/documenti/${item.id}`} aria-label={t('documents.openAria', { title: nome })}>
-        <div className="doc-row-title">{nome}</div>
-        <div className="doc-row-meta">
-          {item.sender && <span className="doc-sender">{item.sender}</span>}
-          {typeMark && <span className="doc-type">{typeMark}</span>}
-          {rest.length > 0 && <span className="doc-row-sub">{rest.join(' · ')}</span>}
+      <Link className={styles.docRowMain} to={`/documenti/${item.id}`} aria-label={t('documents.openAria', { title: nome })}>
+        <div className={styles.docRowTitle}>{nome}</div>
+        <div className={styles.docRowMeta}>
+          {item.sender && <span className={styles.docSender}>{item.sender}</span>}
+          {typeMark && <span className={styles.docType}>{typeMark}</span>}
+          {rest.length > 0 && <span className={styles.docRowSub}>{rest.join(' · ')}</span>}
         </div>
         {snippet.length > 0 && (
           // L'estratto arriva dal database come TESTO: i punti trovati
           // diventano elementi, non HTML da interpretare.
-          <div className="doc-snippet">
+          <div className={styles.docSnippet}>
             {snippet.map((p, i) => (p.hit ? <mark className="ev-hl" key={i}>{p.text}</mark> : <span key={i}>{p.text}</span>))}
           </div>
         )}
@@ -679,9 +681,9 @@ function DocumentRow({
           destra» dentro un contenitore che si muove non è allineata. Il prezzo
           è che la data non fa parte del bersaglio cliccabile; il bersaglio
           restano il titolo e il mittente, che è quello che si legge. */}
-      <div className="doc-row-side">
-        <span className="doc-row-date">{formatDate(item.documentDate ?? item.createdAt)}</span>
-        <div className="doc-row-badges">
+      <div className={styles.docRowSide}>
+        <span className={styles.docRowDate}>{formatDate(item.documentDate ?? item.createdAt)}</span>
+        <div className={styles.docRowBadges}>
           {marks.deadline && item.deadline && (
             <DeadlineMark
               date={item.deadline}
@@ -709,7 +711,7 @@ function DocumentRow({
                 : t('documents.tasksOpenMany', { n: item.openTaskCount })}
             </Tag>
           )}
-          {item.tags.slice(0, 2).map((tag) => <span className="doc-tag" key={tag.id}>{tag.name}</span>)}
+          {item.tags.slice(0, 2).map((tag) => <span className={styles.docTag} key={tag.id}>{tag.name}</span>)}
         </div>
       </div>
     </div>

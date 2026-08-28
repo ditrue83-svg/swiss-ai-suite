@@ -8,6 +8,8 @@ import { Tag, type TagTone } from '@/components/ui/Tag';
 import { ProvenanceMark } from '@/components/ui/ProvenanceMark';
 import { useT, type TFunction } from '@/i18n';
 import type { EmailAttentionStatus, EmailMessageSummary } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './inbox.module.css';
 
 /** Etichetta del mittente: il nome se c'è, altrimenti l'indirizzo. Mai vuoto. */
 export function senderLabel(message: { senderName: string | null; senderEmail: string | null }, t: TFunction): string {
@@ -68,7 +70,7 @@ export function ProcessingNote({ message }: { message: EmailMessageSummary }) {
   if (message.processingStatus === 'done' || message.processingStatus === 'pending') return null;
   const failed = message.processingStatus === 'failed';
   return (
-    <span className={`inbox-processing${failed ? ' is-failed' : ''}`}>
+    <span className={cx(styles.inboxProcessing, failed && styles.isFailed)}>
       {failed
         ? <Icon name="alert" className="ic-sm" />
         : <span className="spinner" aria-hidden="true" />}

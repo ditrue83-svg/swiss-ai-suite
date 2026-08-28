@@ -1,0 +1,341 @@
+/* ============================================================================
+   assistant.module.css — «Chiedi ad AI-Swisse»: conversazioni, conversazione,
+   composer e pannelli delle fonti (feature `assistant`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/extra.css`: l'intera sezione «CHIEDI AD AI-SWISSE (0027)»
+   (prefisso `as-`), con le sue `@media (max-width: 900px)`,
+   `@media (max-width: 600px)` e `@media (prefers-reduced-motion: reduce)`.
+   Commenti compresi, come da regola della migrazione.
+
+   Adattamenti di selettore (solo `:global`, nessuna classe rinominata):
+   · `.main:has(.as-page)` → `:global(.main):has(.as-page)`: `.main` è
+     dell'AppShell e resta globale;
+   · `.as-page .page-head` → `.as-page :global(.page-head)`;
+   · `.as-col-head > .section-title` / `> .btn` → figli condivisi in `:global`.
+
+   NON sono qui, e perché:
+   · `.ev-quote` RESTA globale in `app.css`: la usano anche `admin-ai` e
+     `contracts` (qui compare come `ev-quote show as-quote`, e `.as-quote` —
+     che le sta accanto ed è solo di questa feature — è migrata);
+   · `badge badge-*`, `mark mark-prov mp-*`, `crm-list`, `legal-note`,
+     `muted-sm`, `empty`, `info-box`, `section-title`, `ic-sm` sono classi
+     condivise e restano globali;
+   · `as-unanswered` non ha regole in nessun foglio: è restata una stringa nel
+     TSX, come prima.
+
+   ⚠️ `test:shell-unit` (sezione 15) legge `.as-page`, `.as-layout`, `.as-main`
+   e `.main:has(.as-page)` in `extra.css`: spostandole qui quei controlli vanno
+   riallineati (fase finale della migrazione).
+   ========================================================================== */
+
+/* ==========================================================================
+   CHIEDI AD AI-SWISSE (0027)
+   Prefisso `as-`. DUE colonne su schermo largo — le conversazioni e la
+   conversazione — e una su telefono. Le fonti sono un pannello a richiesta a
+   ogni larghezza.
+
+   ⚠️ LA CONVERSAZIONE È LA PAGINA. Fino al 2026-08-17 le colonne erano tre e la
+   conversazione era la più stretta: 468px misurati a 1440×900, cioè il 33 %
+   della finestra, stretta fra la barra dell'applicazione (264), l'elenco delle
+   conversazioni (264) e una colonna «Fonti» da 300 che per la maggior parte del
+   tempo diceva soltanto «scegli una risposta per vederne le fonti». Ora la
+   conversazione prende ~800px a 1440 — più della somma di tutto ciò che le sta
+   accanto — e le fonti si aprono dalla pastiglia «N fonti» che ogni risposta
+   porta già con sé. Le citazioni NON sono sparite dalla vista: restano in linea
+   sotto ogni risposta, ed è il DETTAGLIO (testo citato, pagina, grado di
+   verifica) che si apre a richiesta. Il conto sta nella sezione 15 di
+   `test:shell-unit`, che lo rifà dai fogli.
+
+   ⚠️ NON si riusano `.drawer` / `.drawer-overlay`: appartengono al menu
+   dell'AppShell, esistono solo sotto 900px e stanno a sinistra a z-index 60.
+   Qui servono due pannelli, uno per lato, e riusare quelle classi li farebbe
+   collidere con il menu. La MECCANICA è la stessa (translateX + overlay), i
+   nomi no.
+
+   ⚠️ Ogni colonna della griglia è `minmax(0, …)` e non `1fr` secco: con `1fr`
+   una riga lunga — il testo di una citazione, il nome di un fornitore — allarga
+   la colonna e fa comparire lo scorrimento orizzontale della pagina.
+   ========================================================================== */
+/* ⚠️ LA SCHERMATA STA NELLO SCHERMO E A SCORRERE SONO LE COLONNE.
+   È l'unica pagina del prodotto fatta così, e la ragione è il composer: se a
+   scorrere è la pagina, il campo della domanda — che sta sotto la conversazione
+   — finisce fuori schermo a ogni risposta. Misurato il 2026-07-30: 163px sotto
+   la piega, con il pulsante «Chiedi» invisibile.
+
+   `--as-shell-y` sono le spaziature verticali di `.main` (app.css), ripetute
+   qui ai suoi stessi tre punti di rottura.
+
+   ⚠️⚠️ E SI RIPETONO COI TOKEN, NON COL RISULTATO. Fino al 2026-08-17 qui c'era
+   scritto «94px», con accanto un commento che diceva «30 + 64»: due numeri che
+   i token non facevano più da un pezzo — `--sp-8` è 32 e `--sp-12` è 48, cioè
+   80. Quattordici pixel di altezza tolti alla conversazione da un commento che
+   nessuno rileggeva, e sotto i 900px il segno era pure invertito (68 dichiarati
+   contro 72 veri: la pagina sfondava di 4). Con la somma scritta in `calc()` il
+   valore non può più restare indietro, e la sezione 15 di `test:shell-unit`
+   controlla che i token sommati qui siano gli STESSI del padding di `.main` là.
+   `dvh` con `vh` di riserva — su telefono la barra degli indirizzi entra ed
+   esce, e con `100vh` il composer resterebbe sotto il bordo proprio mentre si
+   scrive. Chi non conosce `dvh` ignora la seconda riga. */
+.as-page { --as-shell-y: calc(var(--sp-8) + var(--sp-12));
+  display: flex; flex-direction: column; min-height: 0;
+  height: calc(100vh - var(--as-shell-y));
+  height: calc(100dvh - var(--as-shell-y)); }
+
+/* ⚠️ QUI IL TETTO DI 1160px NON VALE. `.main` lo porta perché una pagina di
+   contenuto oltre quella misura diventa illeggibile; una conversazione no — a
+   1440 quel tetto lasciava 16px di vuoto a destra, a 1920 ne lasciava 496, e
+   intanto la conversazione stava in 468. Il `:has()` tiene la deroga QUI, nella
+   sezione della pagina che se la prende, invece di far sapere all'involucro che
+   esiste una schermata speciale. La riga di lettura resta protetta dal tetto
+   sulla conversazione, qui sotto. */
+:global(.main):has(.as-page) { max-width: none; }
+
+/* Il titolo sta su UNA riga: il sottotitolo diceva ciò che il vuoto iniziale
+   dice già, e insieme costavano 121px degli 806 della pagina. */
+.as-page :global(.page-head) { margin-bottom: var(--sp-4); }
+
+.as-layout { display: grid; align-items: stretch; gap: var(--sp-4);
+  flex: 1 1 auto; min-height: 0;
+  grid-template-columns: minmax(0, 264px) minmax(0, 1fr); }
+
+/* Il pulsante che apre l'elenco esiste solo dove le colonne spariscono. */
+.as-only-narrow { display: none; }
+
+/* Le colonne laterali non hanno più bisogno di `sticky`: la griglia che le
+   contiene è già alta quanto lo schermo, e ciascuna scorre per conto suo. */
+/* ⚠️ `hidden auto` e non `auto`: dichiarando il solo asse verticale, il browser
+   risolve ANCHE l'orizzontale a `auto`, e quando compare la barra verticale
+   toglie 16px di larghezza — comparivano puntualmente 16px di sfondamento
+   orizzontale nel pannello delle fonti, cioè una seconda barra sotto la prima
+   (misurato il 2026-07-30: scrollWidth 299 su clientWidth 283). Niente viene
+   tagliato: i titoli lunghi vanno a capo con `overflow-wrap: anywhere`. */
+.as-side { border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card); padding: var(--sp-3);
+  height: 100%; min-height: 0; overflow: hidden auto; }
+/* ⚠️ `wrap` E il pulsante che non si stringe. In francese «Nouvelle» è più
+   lungo di «Nuova» e di «Neu», e in una colonna da 232px usciva dal pannello:
+   15px oltre il bordo della scheda, misurati il 2026-07-30. Con l'a capo la
+   riga si allunga solo dove serve, e nessuna lingua viene tagliata. */
+.as-col-head { display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.as-col-head > :global(.section-title) { min-width: 0; overflow-wrap: anywhere; }
+.as-col-head > :global(.btn) { flex: 0 0 auto; white-space: nowrap; }
+.as-col-empty { display: flex; justify-content: center; padding: var(--sp-4); }
+
+/* ---- Conversazioni ------------------------------------------------------ */
+.as-threads { margin: var(--sp-2) 0 0; padding: 0; }
+.as-thread { display: flex; align-items: stretch; gap: var(--sp-1);
+  border-radius: var(--radius-sm); }
+.as-thread + .as-thread { margin-top: var(--sp-05); }
+.as-thread.is-active { background: var(--accent-soft); }
+.as-thread-open { flex: 1 1 auto; min-width: 0; text-align: left;
+  background: transparent; color: var(--ink); border: 0; cursor: pointer;
+  padding: var(--sp-2); border-radius: var(--radius-sm); min-height: 26px; }
+.as-thread-open:hover { background: var(--fill-subtle); }
+.as-thread.is-active .as-thread-open:hover { background: var(--accent-soft); }
+.as-thread-title { display: block; font-size: var(--fs-meta); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-thread-meta { display: block; font-size: var(--fs-label); color: var(--muted); }
+.as-thread-actions { display: flex; align-items: center; gap: var(--sp-05); }
+/* ⚠️ `background` e `color` DICHIARATI: senza, il browser applica `buttonface`
+   e in tema scuro il testo diventa illeggibile (lezione di `.ct-kpi`). */
+.as-icon-btn { background: transparent; color: var(--muted); border: 0;
+  cursor: pointer; padding: var(--sp-1); border-radius: var(--radius-sm);
+  min-width: 26px; min-height: 26px; }
+.as-icon-btn:hover { background: var(--fill-subtle); color: var(--ink); }
+
+/* ---- La conversazione --------------------------------------------------- */
+/* A scorrere è il FLUSSO, non la pagina: il composer resta sempre a schermo. */
+/* ⚠️ IL TETTO TOLTO A `.main` SI RIMETTE QUI, e non è un ripensamento: sono due
+   misure diverse. Là il tetto teneva stretta la PAGINA, cioè anche le colonne e
+   i margini; qui tiene la riga di TESTO. Senza, su uno schermo da 1920 una
+   risposta si stenderebbe su 1280px — circa 170 caratteri per riga, dove
+   `--content-max` esiste proprio per dire quanto è larga una colonna che si
+   legge. Sotto i ~1520px di finestra il tetto non tocca niente: la colonna è
+   già più stretta. `margin-inline: auto` la centra nella cella, così ciò che
+   avanza si divide invece di ammucchiarsi tutto a destra. */
+.as-main { display: flex; flex-direction: column; min-width: 0;
+  height: 100%; min-height: 0;
+  max-width: var(--content-max); margin-inline: auto; width: 100%; }
+.as-stream { display: flex; flex-direction: column; gap: var(--sp-3);
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+.as-context { display: inline-flex; align-items: center; gap: var(--sp-2);
+  align-self: flex-start; border: 1px solid var(--accent-line);
+  background: var(--accent-soft); color: var(--accent-text);
+  border-radius: 99px; padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-meta); margin-bottom: var(--sp-3); max-width: 100%; }
+.as-context > span { min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.as-context-x { background: transparent; color: var(--accent-text); border: 0;
+  cursor: pointer; min-width: 26px; min-height: 26px; padding: 0; }
+
+/* La domanda: allineata a destra, come in ogni conversazione. */
+.as-q { align-self: flex-end; max-width: 88%; }
+.as-q-text { background: var(--accent); color: var(--on-accent);
+  border-radius: var(--radius); padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+.as-a { border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--card); padding: var(--sp-3); min-width: 0; }
+.as-a.is-selected { border-color: var(--accent-line); }
+.as-a-head { margin-bottom: var(--sp-2); }
+.as-a-hint { font-size: var(--fs-meta); color: var(--muted); margin: 0 0 var(--sp-2); }
+/* `pre-wrap`: il modello scrive elenchi con trattini e a capo, non markdown. */
+.as-a-text { font-size: var(--fs-body); color: var(--ink); white-space: pre-wrap;
+  overflow-wrap: anywhere; }
+.as-a-foot { display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-3);
+  padding-top: var(--sp-2); border-top: 1px solid var(--line); }
+.as-feedback { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.as-why { margin-top: var(--sp-2); }
+
+/* Le pastiglie delle fonti. */
+.as-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.as-chip { display: inline-flex; align-items: center; gap: var(--sp-1);
+  border: 1px solid var(--line); border-radius: 99px;
+  padding: var(--sp-1) var(--sp-3); font-size: var(--fs-meta);
+  background: var(--fill-subtle); color: var(--ink); text-decoration: none;
+  min-height: 26px; max-width: 100%; cursor: pointer; }
+.as-chip:hover { border-color: var(--accent-line); }
+.as-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.as-chip-more { background: transparent; }
+
+.as-follow { margin-top: var(--sp-3); }
+.as-follow-title { font-size: var(--fs-label); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: var(--sp-2); }
+
+.as-suggestions { display: flex; flex-wrap: wrap; gap: var(--sp-2);
+  justify-content: center; margin-top: var(--sp-3); }
+.as-suggestion { border: 1px solid var(--line); border-radius: 99px;
+  background: var(--card); color: var(--ink); cursor: pointer;
+  padding: var(--sp-2) var(--sp-3); font-size: var(--fs-meta); min-height: 26px; }
+.as-suggestion:hover { border-color: var(--accent-line); background: var(--accent-soft);
+  color: var(--accent-text); }
+
+.as-progress { display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-meta); color: var(--muted); padding: var(--sp-2) 0; }
+.as-error { display: flex; align-items: center; gap: var(--sp-2);
+  border: 1px solid var(--red-line); background: var(--red-soft);
+  color: var(--red-dark); border-radius: var(--radius-sm);
+  padding: var(--sp-2) var(--sp-3); font-size: var(--fs-meta); }
+
+/* ---- Il composer -------------------------------------------------------- */
+.as-composer { margin-top: var(--sp-4); border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--card); padding: var(--sp-3); }
+.as-input { width: 100%; resize: vertical; min-height: 64px;
+  font-size: var(--fs-body); font-family: inherit; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: var(--sp-2) var(--sp-3); }
+.as-composer-actions { display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-2); }
+.as-hint { min-width: 0; }
+.as-note { margin-top: var(--sp-2); }
+
+/* ---- Le fonti ----------------------------------------------------------- */
+.as-sources { margin: var(--sp-3) 0 0; padding: 0; }
+.as-source { border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: var(--sp-3); min-width: 0; }
+.as-source + .as-source { margin-top: var(--sp-2); }
+.as-source-head { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-1); margin-bottom: var(--sp-1); }
+.as-source-type { font-size: var(--fs-label); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; }
+/* ⚠️ `color` riportato: la regola globale `a { color: var(--accent-text) }`
+   tingerebbe di blu un titolo che qui deve leggersi come testo. */
+.as-source-title { display: block; font-size: var(--fs-meta); color: var(--ink);
+  text-decoration: none; overflow-wrap: anywhere; }
+.as-source-title:hover { color: var(--accent-text); }
+.as-source-quote-label { font-size: var(--fs-label); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; margin-top: var(--sp-2); }
+.as-quote { margin: var(--sp-1) 0; font-size: var(--fs-meta);
+  overflow-wrap: anywhere; }
+.as-group { list-style: none; margin: var(--sp-2) 0 0; padding: 0;
+  font-size: var(--fs-meta); }
+.as-group > li { padding: var(--sp-05) 0; overflow-wrap: anywhere; }
+
+/* ---- I pannelli ---------------------------------------------------------- */
+/* Il pannello delle FONTI vale a ogni larghezza (è la sola sede del dettaglio
+   di una citazione); quello delle CONVERSAZIONI solo sotto i 900px, dove la
+   colonna non c'è.
+
+   ⚠️⚠️ CHIUSO NON VUOL DIRE FUORI DALLA TABULAZIONE. Un pannello spostato con
+   `translateX` resta visibile per il browser: i suoi collegamenti restano nella
+   catena del Tab, e chi naviga da tastiera cade dentro un pannello che non vede
+   — fuori dallo schermo, a destra. `visibility: hidden` lo toglie davvero.
+   Prima valeva solo sotto i 900px e il difetto si vedeva su un telefono; ora
+   che le fonti sono un pannello ovunque, varrebbe su ogni schermo.
+
+   ⚠️ E LE DUE DIREZIONI HANNO DUE TRANSIZIONI DIVERSE, che non è pignoleria.
+   In CHIUSURA la visibilità va INTERPOLATA (`visibility .2s`): è una proprietà
+   a scatti, e la regola vuole che resti `visible` per tutta la durata e cambi
+   in fondo — così il pannello si vede per tutto il tempo in cui scorre via.
+   In APERTURA quella stessa scrittura dice che nell'ISTANTE ZERO il valore è
+   ancora `hidden`: il `.focus()` che il pannello fa entrando gira in un
+   `useEffect`, cioè prima del primo fotogramma, e trova un elemento invisibile
+   — il fuoco non entra. Misurato al banco il 2026-08-17: restava sulla
+   pastiglia «4 fonti». Quindi `.open` la commuta a DURATA ZERO, e il cambio non
+   dipende più dall'orologio dei fotogrammi.
+   ⚠️ Ed è la stessa lezione del `requestAnimationFrame` in `Dialog.tsx`: a
+   documento non in primo piano quell'orologio è FERMO (al banco `rAF` non è mai
+   scattato e `document.hidden` era vero), e una transizione ferma all'istante
+   zero non è un ritardo — è uno stato che non finisce più. Ciò che regge il
+   fuoco non deve passare di lì. */
+.as-overlay { display: none; }
+.as-drawer { position: fixed; top: 0; bottom: 0; z-index: 50;
+  width: 300px; max-width: 84vw; background: var(--card);
+  border: 1px solid var(--line); padding: var(--sp-4) var(--sp-3);
+  overflow-y: auto; box-shadow: var(--shadow-md);
+  visibility: hidden; transition: transform .2s ease, visibility .2s ease; }
+.as-drawer.open { transform: translateX(0); visibility: visible;
+  transition: transform .2s ease, visibility 0s linear 0s; }
+/* Sopra i 900px la colonna delle conversazioni c'è: il suo pannello no. */
+.as-drawer-left { display: none; left: 0; transform: translateX(-100%); }
+.as-drawer-right { right: 0; transform: translateX(100%); }
+/* ⚠️ 44px, non 26: è un bersaglio per un dito, non per un puntatore. E
+   l'intestazione gli lascia il posto — con la × sovrapposta al pulsante
+   «Nuova» (22×15px di sovrapposizione, misurati il 2026-07-30) chi mirava
+   all'angolo del pulsante chiudeva il pannello. */
+.as-drawer-close { position: absolute; top: var(--sp-1); right: var(--sp-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--ink); border: 0; cursor: pointer;
+  min-width: 44px; min-height: 44px; border-radius: var(--radius-sm); }
+.as-drawer-close:hover { background: var(--fill-subtle); }
+.as-drawer .as-col-head { padding-right: var(--sp-12); }
+
+@media (max-width: 900px) {
+  /* Una colonna: le due laterali diventano pannelli.
+     ⚠️ E QUI C'È ANCHE LA BARRA IN CIMA, che su desktop non esiste: 56px in
+     flusso sopra `.main`. Non è mai stata contata — dichiarati 68 dove ne
+     servivano 128 — e su telefono la pagina sfondava di 60px, cioè proprio il
+     composer, che è la ragione per cui questa schermata sta dentro lo schermo.
+     Misurato al banco il 2026-08-17 a 800×900: documento 956 su 900. */
+  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-6) + var(--sp-12)); }
+  .as-layout { grid-template-columns: minmax(0, 1fr); }
+  .as-side { display: none; }
+  .as-only-narrow { display: inline-flex; align-self: flex-start; }
+  .as-drawer-left { display: block; }
+
+  /* Il velo è del TELEFONO. Su schermo largo le fonti si leggono ACCANTO alla
+     risposta che le cita — velarla mentre la si verifica sarebbe togliere
+     proprio il confronto per cui il pannello si apre. Là il pannello si chiude
+     con la × o con Esc; qui, dove copre quasi tutto, si chiude anche toccando
+     fuori. */
+  .as-overlay { display: block; position: fixed; inset: 0; z-index: 45;
+    background: var(--scrim); opacity: 0; pointer-events: none;
+    transition: opacity .18s ease; }
+  .as-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .as-q { max-width: 100%; }
+}
+
+@media (max-width: 600px) {
+  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-4) + var(--sp-12)); }
+}
+
+/* Chi ha chiesto meno movimento non deve vedere i pannelli scorrere. */
+@media (prefers-reduced-motion: reduce) {
+  .as-drawer, .as-overlay { transition: none; }
+}

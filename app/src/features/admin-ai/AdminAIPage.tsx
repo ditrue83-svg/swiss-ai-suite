@@ -17,6 +17,8 @@ import { formatBytes } from '@/lib/format';
 import { extractFromFile, reconstructText, type ClientExtraction } from './pdf';
 import { analyzeStoredDocument } from './analyzeStored';
 import { ResultView } from './ResultView';
+import { cx } from '@/lib/cx';
+import styles from './admin-ai.module.css';
 import type { DocumentAnalysis, DocumentRecord } from '@/types/models';
 
 interface FileState { name: string; size?: number; state: 'loading' | 'ok' | 'err'; msg?: string }
@@ -234,27 +236,27 @@ export function AdminAIPage() {
         <div className="card-title">{t('adminAi.stepDoc')}</div>
         <button
           type="button"
-          className={`upload-zone${drag ? ' drag' : ''}`}
+          className={cx(styles.uploadZone, drag && styles.drag)}
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); void handleFile(e.dataTransfer.files[0]); }}
           aria-label={t('adminAi.dropzoneAria')}
         >
-          <span className="uz-icon" aria-hidden="true"><Icon name="document" /></span>
-          <span className="uz-title">{t('adminAi.dropzone')}</span>
-          <span className="uz-formats"><span className="uz-fmt">PDF</span><span className="uz-fmt">IMG</span><span className="uz-fmt">EMAIL</span><span className="uz-fmt">TXT</span></span>
-          <span className="uz-ocr"><Icon name="fileSearch" className="ic-sm" /><span>{t('adminAi.ocrNote')}</span></span>
+          <span className={styles.uzIcon} aria-hidden="true"><Icon name="document" /></span>
+          <span className={styles.uzTitle}>{t('adminAi.dropzone')}</span>
+          <span className={styles.uzFormats}><span className={styles.uzFmt}>PDF</span><span className={styles.uzFmt}>IMG</span><span className={styles.uzFmt}>EMAIL</span><span className={styles.uzFmt}>TXT</span></span>
+          <span className={styles.uzOcr}><Icon name="fileSearch" className="ic-sm" /><span>{t('adminAi.ocrNote')}</span></span>
         </button>
         <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,.eml,text/plain,application/pdf,image/*" hidden onChange={(e) => void handleFile(e.target.files?.[0])} />
 
         {fileState && (
-          <div className="file-status">
-            <div className={`file-chip${fileState.state === 'err' ? ' err' : ''}`}>
-              {fileState.state === 'loading' ? <span className="spinner" /> : <span className="fc-ico"><Icon name={fileState.state === 'err' ? 'alert' : 'document'} /></span>}
-              <div className="fc-main">
-                <div className="fc-name">{fileState.name}</div>
-                <div className="fc-sub">{fileState.state === 'loading' ? t('adminAi.extracting') : fileState.state === 'ok' ? `${formatBytes(fileState.size ?? 0)}${fileState.msg ? ` · ${fileState.msg}` : ''}` : fileState.msg}</div>
+          <div className={styles.fileStatus}>
+            <div className={cx(styles.fileChip, fileState.state === 'err' && styles.err)}>
+              {fileState.state === 'loading' ? <span className="spinner" /> : <span className={styles.fcIco}><Icon name={fileState.state === 'err' ? 'alert' : 'document'} /></span>}
+              <div className={styles.fcMain}>
+                <div className={styles.fcName}>{fileState.name}</div>
+                <div className={styles.fcSub}>{fileState.state === 'loading' ? t('adminAi.extracting') : fileState.state === 'ok' ? `${formatBytes(fileState.size ?? 0)}${fileState.msg ? ` · ${fileState.msg}` : ''}` : fileState.msg}</div>
               </div>
               <button className="btn btn-sm btn-icon" onClick={() => { setFileState(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} aria-label={t('adminAi.removeFile')}><Icon name="close" className="ic-sm" /></button>
             </div>

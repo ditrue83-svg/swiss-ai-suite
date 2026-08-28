@@ -31,6 +31,8 @@ import { MessageDetail } from './MessageDetail';
 import { inboxEmphasis, type InboxEmphasis } from './emphasis';
 import { AttentionBadge, ProcessingNote, senderLabel, subjectLabel } from './parts';
 import type { EmailConnection, EmailMessageSummary, EmailProvider, InboxFilter } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './inbox.module.css';
 
 const FILTERS = INBOX_FILTERS;
 const FILTER_KEY = {
@@ -60,13 +62,13 @@ function InboxRow({ message, emphasis, showBadge = true, onOpen }: {
   const { localeTag } = useI18n();
   return (
     <button
-      className={`inbox-row${emphasis === 'action' ? '' : ` is-${emphasis}`}${message.seenAt ? '' : ' is-unseen'}`}
+      className={cx(styles.inboxRow, emphasis !== 'action' && `is-${emphasis}`, !message.seenAt && styles.isUnseen)}
       onClick={onOpen}
     >
-      <span className="inbox-row-main">
-        <span className="inbox-sender">{senderLabel(message, t)}</span>
-        <span className="inbox-subject">{subjectLabel(message.subject, t)}</span>
-        <span className="inbox-meta">
+      <span className={styles.inboxRowMain}>
+        <span className={styles.inboxSender}>{senderLabel(message, t)}</span>
+        <span className={styles.inboxSubject}>{subjectLabel(message.subject, t)}</span>
+        <span className={styles.inboxMeta}>
           {formatReceived(message.receivedAt, localeTag)}
           {message.attachmentCount > 0 && (
             <> · {message.attachmentCount === 1 ? t('inbox.attachmentOne') : t('inbox.attachmentMany', { n: message.attachmentCount })}</>
@@ -76,7 +78,7 @@ function InboxRow({ message, emphasis, showBadge = true, onOpen }: {
         <ProcessingNote message={message} />
       </span>
       {showBadge && (
-        <span className="inbox-row-side">
+        <span className={styles.inboxRowSide}>
           <AttentionBadge message={message} />
         </span>
       )}
@@ -461,12 +463,12 @@ export function InboxPage() {
   return (
     <>
       <div className="page-head">
-        <div className="inbox-head">
+        <div className={styles.inboxHead}>
           <div>
             <div className="page-title">{t('inbox.title')}</div>
             <div className="page-desc">{t('inbox.subtitle')}</div>
           </div>
-          <div className="inbox-head-actions">
+          <div className={styles.inboxHeadActions}>
             {hasConnection && (
               <Button
                 icon="refresh"
@@ -483,7 +485,7 @@ export function InboxPage() {
           </div>
         </div>
         {hasConnection && (
-          <div className="inbox-status">
+          <div className={styles.inboxStatus}>
             <span className="text-muted">
               {syncInProgress ? (
                 <><span className="spinner" aria-hidden="true" /> {t('inbox.syncing')}</>
@@ -556,11 +558,11 @@ export function InboxPage() {
                   aria-pressed={filter === f}
                 >
                   {t(FILTER_KEY[f])}
-                  {counts && <span className="filter-count">{counts[f]}</span>}
+                  {counts && <span className={styles.filterCount}>{counts[f]}</span>}
                 </button>
               ))}
             </span>
-            <span className="inbox-tools">
+            <span className={styles.inboxTools}>
               {activeConnections.length > 1 && (
                 <select
                   className="select-inline"
@@ -575,7 +577,7 @@ export function InboxPage() {
                 </select>
               )}
               <input
-                className="inbox-search"
+                className={styles.inboxSearch}
                 type="search"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -608,7 +610,7 @@ export function InboxPage() {
           )}
 
           {!loading && !listError && items.length > 0 && (
-            <ul className="inbox-list" aria-label={t('inbox.listAria')}>
+            <ul className={styles.inboxList} aria-label={t('inbox.listAria')}>
               {items.map((m) => (
                 <li key={m.id}>
                   {/* ⚠️ IL PESO SOLO DOVE SI DIVIDE. Gli altri quattro filtri sono
@@ -628,7 +630,7 @@ export function InboxPage() {
           )}
 
           {!loading && !listError && cursor && (
-            <div className="inbox-more">
+            <div className={styles.inboxMore}>
               <Button loading={loadingMore} onClick={() => loadPage(false, cursor)}>{t('inbox.loadMore')}</Button>
             </div>
           )}
@@ -651,9 +653,9 @@ export function InboxPage() {
               sono archiviati, non sono messi via, non sono usciti dalla
               ricerca: sono soltanto piegati. */}
           {!loading && !listError && splitByEmphasis && compressi > 0 && (
-            <div className="inbox-collapsed">
-              <div className="inbox-collapsed-head">
-                <span className="inbox-collapsed-count">
+            <div className={styles.inboxCollapsed}>
+              <div className={styles.inboxCollapsedHead}>
+                <span className={styles.inboxCollapsedCount}>
                   {compressi === 1 ? t('inbox.collapsed.one') : t('inbox.collapsed.many', { n: compressi })}
                 </span>
                 {' — '}
@@ -677,7 +679,7 @@ export function InboxPage() {
                 )}
                 {collapsedOpen && collapsedItems.length > 0 && (
                   <>
-                    <ul className="inbox-list" aria-label={t('inbox.collapsed.listAria')}>
+                    <ul className={styles.inboxList} aria-label={t('inbox.collapsed.listAria')}>
                       {collapsedItems.map((m) => (
                         <li key={m.id}>
                           <InboxRow
@@ -690,7 +692,7 @@ export function InboxPage() {
                       ))}
                     </ul>
                     {collapsedCursor && (
-                      <div className="inbox-more">
+                      <div className={styles.inboxMore}>
                         <Button loading={collapsedLoading} onClick={() => loadCollapsed(false, collapsedCursor)}>
                           {t('inbox.loadMore')}
                         </Button>

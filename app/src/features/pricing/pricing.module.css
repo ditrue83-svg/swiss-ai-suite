@@ -1,0 +1,30 @@
+/* ============================================================================
+   pricing.module.css — la pagina/pannello dei piani (feature `pricing`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/app.css` (blocco `.price-card` e compagni). La classe
+   `.featured` qui è un valore del modulo (`styles.featured`), non più una
+   stringa globale. Restano GLOBALI `.card`, `.card-title`, `.btn` e
+   `.footnote` (condivise: la usano anche dashboard, incentives e subsidy-ai).
+   ========================================================================== */
+
+.price-card { position: relative; display: flex; flex-direction: column; }
+.price-card.featured { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.price-tag { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.5px; }
+.price-tag small { font-size: var(--fs-body); font-weight: 500; color: var(--muted); }
+.price-target { font-size: var(--fs-body); color: var(--muted); margin-bottom: var(--sp-3); }
+.price-custom { font-size: var(--fs-h2); }
+.price-feats { list-style: none; margin: var(--sp-4) 0 var(--sp-4); flex: 1; }
+.price-feats li { padding: var(--sp-2) 0 var(--sp-2) var(--sp-6); position: relative; font-size: var(--fs-body); }
+.price-feats li::before { content: '✓'; position: absolute; left: 4px; color: var(--accent-text); font-weight: 600; }
+.featured-flag { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--on-accent); font-size: var(--fs-label); font-weight: 600; letter-spacing: 0.03em; padding: var(--sp-05) var(--sp-2); border-radius: 99px; }
+
+/* ---- Ritrovamento del lotto 6 (ricognizione finale, 2026-08-28) -----------
+   `.grid-4` viene da `src/styles/app.css`, dove stava fra `.grid-2`
+   (condivisa, resta globale) e `.grid-3` (migrata in `features/crm/`): la
+   usa solo questa feature. La sua riga nella `@media (max-width: 900px)` è
+   venuta con lei, come da divisione. */
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
+@media (max-width: 900px) {
+  .grid-4 { grid-template-columns: 1fr; }
+}

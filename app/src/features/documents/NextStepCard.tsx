@@ -28,6 +28,8 @@ import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { useT, type TFunction, type TKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import type { NextStep, NextStepAction, NextStepChoice, NextStepKind } from './nextStep';
+import { cx } from '@/lib/cx';
+import styles from './documents.module.css';
 
 const KIND_KEY: Record<NextStepKind, TKey> = {
   processing: 'documents.nextStep.kindProcessing',
@@ -158,10 +160,10 @@ export function NextStepCard({ step }: { step: NextStep }) {
           l'analisi lavora questo riquadro cambia da solo e chi non guarda lo
           schermo deve sentirlo. */}
       <div role="status">
-        <p className="prose">{t(KIND_KEY[step.kind])}</p>
+        <p className={styles.prose}>{t(KIND_KEY[step.kind])}</p>
 
         {step.kind === 'processing' && (
-          <p className="muted-sm prose"><span className="spinner" aria-hidden="true" /> {t('documents.analysisProcessing')}</p>
+          <p className={cx('muted-sm', styles.prose)}><span className="spinner" aria-hidden="true" /> {t('documents.analysisProcessing')}</p>
         )}
       </div>
 
@@ -195,7 +197,7 @@ export function NextStepCard({ step }: { step: NextStep }) {
       )}
 
       {step.notices.length > 0 && (
-        <ul className="stack-sm muted-sm prose mt-10">
+        <ul className={cx('stack-sm', 'muted-sm', styles.prose, 'mt-10')}>
           {step.notices.map((n) => <li key={n.key}>{t(n.key, n.params)}</li>)}
         </ul>
       )}

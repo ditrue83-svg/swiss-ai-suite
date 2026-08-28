@@ -1,0 +1,162 @@
+/* ============================================================================
+   calendar.module.css — griglia del mese, agenda e impostazioni (feature
+   `calendar`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/extra.css` (blocco «Calendario e notifiche (0018)», parte
+   calendario: da «Barra degli strumenti» alla `@media (max-width: 720px)`
+   compresa), commenti compresi. Le classi `p-high`/`p-medium`/`p-low` RESTANO
+   globali perché sono costruite dinamicamente (`p-${task.priority}` in
+   CalendarPage): dentro i selettori composti stanno in `:global`, altrimenti
+   il modulo le localizzerebbe. `.cal-agenda-day` non ha mai avuto una regola:
+   è un gancio senza stile e resta una stringa nel JSX.
+   ========================================================================== */
+
+/* ---- Barra degli strumenti del calendario -------------------------------- */
+.cal-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.cal-nav { display: flex; align-items: center; gap: var(--sp-1); }
+.cal-title { font-size: var(--fs-h2); font-weight: 600; }
+.cal-title::first-letter { text-transform: uppercase; }
+.cal-filters { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-left: auto; }
+
+/* ---- Griglia del mese ---------------------------------------------------- */
+.cal-grid { width: 100%; table-layout: fixed; border-collapse: collapse; }
+/* La didascalia serve a chi naviga con uno screen reader: dice di che mese è
+   la tabella. Visivamente il titolo è già nella barra, quindi qui si nasconde
+   senza toglierla dall'albero di accessibilità. */
+.cal-caption {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+.cal-grid th {
+  padding: var(--sp-1) var(--sp-2); text-align: left;
+  font-size: var(--fs-label); font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line);
+}
+/* `height` su una cella di tabella vale come MINIMO: una giornata piena fa
+   crescere la riga invece di far uscire il contenuto dal bordo. */
+.cal-cell {
+  vertical-align: top; height: 100px; padding: var(--sp-1);
+  border: 1px solid var(--line); background: var(--card);
+}
+.cal-cell.out { background: var(--bg); }
+.cal-cell.out .cal-daynum { color: var(--muted); }
+/* Oggi: un cerchio pieno intorno al numero. È una FORMA, non un colore, quindi
+   resta riconoscibile anche a chi non distingue le tinte — e l'etichetta della
+   cella lo dice comunque a parole (§98). */
+.cal-cell.today .cal-daynum {
+  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+}
+.cal-daynum {
+  display: grid; place-items: center; min-width: 24px; min-height: 24px;
+  margin-bottom: var(--sp-05); padding: 0 var(--sp-1);
+  border: 1px solid transparent; border-radius: 12px;
+  background: transparent; color: var(--ink); font-size: var(--fs-meta);
+}
+.cal-daynum:hover { background: var(--bg); border-color: var(--line); }
+/* ⚠️ `min-height: 24px` non è estetica: è la soglia dei bersagli cliccabili di
+   WCAG 2.2, la stessa regola che nella 0016 ha alzato `.mini-btn` e `.ev-btn`.
+   Misurato qui a 20 pixel aprendo la griglia, non leggendo il codice. */
+.cal-item {
+  display: flex; align-items: center; min-height: 24px;
+  margin-bottom: var(--sp-05); padding: var(--sp-05) var(--sp-1);
+  border-left: 3px solid var(--accent-line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--ink);
+  font-size: var(--fs-label); line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cal-item:hover { background: var(--card); border-left-color: var(--accent); }
+.cal-item:global(.p-high) { border-left-color: var(--red); }
+.cal-item:global(.p-medium) { border-left-color: var(--amber-fill); }
+.cal-item:global(.p-low) { border-left-color: var(--green-fill); }
+/* Un'attività conclusa resta visibile — vedere che una cosa è stata fatta ha
+   valore — ma non compete con ciò che c'è ancora da fare. */
+.cal-item.is-done { opacity: .6; text-decoration: line-through; }
+/* ⚠️ UN APPUNTAMENTO NON HA IL BORDO PIENO DI UN TERMINE. Nella casella del
+   mese non c'è spazio per la parola «Appuntamento» — c'è un filetto e basta —
+   quindi la differenza la porta la FORMA del filetto: tratteggiato, come tutto
+   ciò che in questo prodotto non è un fatto duro. Il colore resta quello della
+   priorità, perché la priorità è un'altra domanda. */
+.cal-item.is-appt { border-left-style: dashed; }
+.cal-more {
+  display: flex; align-items: center; width: 100%; min-height: 24px; padding: 0 var(--sp-1);
+  border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: var(--accent-text); font-size: var(--fs-label); text-align: left;
+}
+.cal-more:hover { background: var(--bg); }
+
+/* ---- Agenda -------------------------------------------------------------- */
+.cal-agenda { display: flex; flex-direction: column; gap: var(--sp-4); }
+.cal-agenda-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  padding-bottom: var(--sp-1); border-bottom: 1px solid var(--line);
+}
+/* ⚠️ `capitalize` maiuscolerebbe OGNI parola: «Lunedì 27 Luglio», che in
+   italiano e in francese è sbagliato — i nomi dei mesi sono minuscoli. Solo la
+   prima lettera, quindi. In tedesco non cambia niente perché i sostantivi sono
+   già maiuscoli, ed è per questo che il difetto si vedeva in due lingue su tre. */
+.cal-agenda-date { font-size: var(--fs-strong); font-weight: 600; }
+.cal-agenda-date::first-letter { text-transform: uppercase; }
+.cal-agenda-date.is-today { color: var(--accent-text); }
+
+.cal-overdue { border-left: 3px solid var(--red); }
+
+/* Un canale non disponibile non è una casella spenta: è un testo che dice
+   perché. Una casella che non si può spuntare sembra un guasto (§79). */
+.check-off { display: flex; flex-direction: column; gap: var(--sp-05); padding: var(--sp-1) 0; }
+.connect-choice { display: flex; flex-direction: column; gap: var(--sp-2); max-width: 460px; }
+
+/* ---- Schermi stretti ------------------------------------------------------
+   La griglia resta usabile e NON obbliga a scorrere in orizzontale (§97): le
+   celle si abbassano, il testo delle attività sparisce e resta un segnale di
+   presenza. Chi vuole leggerle passa all'agenda, che su telefono è già la vista
+   predefinita. */
+@media (max-width: 720px) {
+  .cal-filters { margin-left: 0; width: 100%; }
+  .cal-cell { height: 62px; padding: var(--sp-05); }
+  .cal-grid th { padding: var(--sp-05); font-size: var(--fs-label); }
+  /* Il numero del giorno è l'UNICO controllo della casella su telefono, quindi
+     prende tutta la larghezza: è il bersaglio, e deve essere facile da colpire. */
+  .cal-daynum { width: 100%; min-height: 24px; border-radius: var(--radius-sm); }
+  /* Le barre sono indicatori, non controlli: qui sono `<span>` e non
+     collegamenti, perché tre bersagli da 24 pixel non stanno in una casella
+     alta 62 — e un collegamento alto 6 pixel non è un collegamento. */
+  .cal-item {
+    display: block; height: 5px; margin-bottom: var(--sp-05); padding: 0;
+    border-left-width: 0; border-radius: 3px;
+    background: var(--accent-line); font-size: 0; color: transparent;
+    pointer-events: none;
+  }
+  .cal-item:global(.p-high) { background: var(--red); }
+  .cal-item:global(.p-medium) { background: var(--amber-fill); }
+  .cal-item:global(.p-low) { background: var(--green-fill); }
+  /* Da telefono la barra è alta cinque pixel e il tratteggio non si vede: qui
+     la differenza è PIENO contro VUOTO, che regge anche a quella dimensione e
+     non dipende dal colore. */
+  .cal-item.is-appt { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent-line); }
+  .cal-item.is-appt:global(.p-high) { background: transparent; box-shadow: inset 0 0 0 1.5px var(--red); }
+  .cal-item.is-appt:global(.p-medium) { background: transparent; box-shadow: inset 0 0 0 1.5px var(--amber-fill); }
+  .cal-item.is-appt:global(.p-low) { background: transparent; box-shadow: inset 0 0 0 1.5px var(--green-fill); }
+  .cal-more { font-size: var(--fs-label); }
+  /* `.bell-panel` stava qui ed è migrata il 2026-08-28 in
+     `src/features/notifications/notifications.module.css` (issue #83). */
+}
+
+/* ---- L'etichetta che si ritira su schermo stretto -------------------------
+   Migrata da `src/styles/app.css` il 2026-08-28 (lotto 6, ricognizione
+   finale): la usa solo questa feature (CalendarPage.tsx). Il commento
+   originale migra con la regola, come da regola della migrazione.
+
+   L'etichetta che si ritira su schermo stretto, lasciando l'icona. Serve dove
+   la parola è lunga in una lingua e corta in un'altra: la riga non può
+   dipendere dalla traduzione. ⚠️ Chi la usa DEVE mettere `aria-label` sul
+   comando, altrimenti su un telefono il pulsante perde il nome invece di
+   perdere solo il testo. 720px è la soglia con cui il calendario sceglie già
+   l'agenda (NARROW in CalendarPage.tsx): una soglia nuova sarebbe un secondo
+   punto in cui la schermata cambia forma. */
+@media (max-width: 720px) {
+  .btn-label-wide { display: none; }
+}

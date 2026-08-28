@@ -43,6 +43,8 @@ import {
   ENTITY_LABEL_PARAM, ENTITY_PARAM, citationLabel, dedupeCitations, groupItems, parseEntityContext,
   runningKey, sourceIcon, sourceTypeKey, statusBadgeClass, statusKey, statusNeedsHint,
 } from './assistantModel';
+import { cx } from '@/lib/cx';
+import styles from './assistant.module.css';
 
 // ---------------------------------------------------------------------------
 
@@ -340,7 +342,7 @@ export function AssistantPage() {
   const busy = pending?.running === true;
 
   return (
-    <div className="as-page">
+    <div className={styles.asPage}>
       {/* ⚠️ UNA RIGA SOLA, e il sottotitolo è sceso nel vuoto iniziale (sotto,
           nella EmptyCta): titolo e sottotitolo insieme costavano 121px degli
           806 che questa pagina ha in tutto, e lo dicevano a chi sta guardando
@@ -351,11 +353,11 @@ export function AssistantPage() {
         <h1 className="page-title">{t('assistant.title')}</h1>
       </div>
 
-      <div className="as-layout">
+      <div className={styles.asLayout}>
         {/* ---- Conversazioni ------------------------------------------- */}
         <button
           type="button"
-          className="btn btn-sm as-only-narrow"
+          className={cx('btn btn-sm', styles.asOnlyNarrow)}
           onClick={() => setThreadsOpen(true)}
           aria-expanded={threadsOpen}
           aria-haspopup="dialog"
@@ -380,18 +382,18 @@ export function AssistantPage() {
         />
 
         {/* ---- Conversazione ------------------------------------------- */}
-        <section className="as-main" aria-label={t('assistant.title')}>
+        <section className={styles.asMain} aria-label={t('assistant.title')}>
           {entityContext && (
-            <div className="as-context">
+            <div className={styles.asContext}>
               <Icon name="fileSearch" className="ic-sm" />
               <span>{t('assistant.context.label', { entity: entityContext.label || entityContext.id })}</span>
-              <button type="button" className="as-context-x" onClick={clearContext} aria-label={t('assistant.context.remove')}>
+              <button type="button" className={styles.asContextX} onClick={clearContext} aria-label={t('assistant.context.remove')}>
                 <Icon name="close" className="ic-sm" />
               </button>
             </div>
           )}
 
-          <div className="as-stream" ref={streamRef}>
+          <div className={styles.asStream} ref={streamRef}>
             {/* Ordine obbligatorio: prima il guasto, poi il vuoto, poi i dati. */}
             {messagesError && <ErrorState message={messagesError} />}
 
@@ -404,7 +406,7 @@ export function AssistantPage() {
                 // risposta porta le sue fonti — ma nomina i cinque moduli.
                 subtitle={t('assistant.subtitle')}
                 action={
-                  <div className="as-suggestions">
+                  <div className={styles.asSuggestions}>
                     {/* Le domande verso i moduli fuori perimetro (D-10) non si
                         propongono quando i moduli sono nascosti: suggerire una
                         domanda su un'area invisibile sarebbe una porta verso
@@ -415,7 +417,7 @@ export function AssistantPage() {
                       ? ['attention', 'finance', 'contracts', 'tasks', 'clients'] as const
                       : ['attention', 'tasks'] as const
                     ).map((k) => (
-                      <button key={k} type="button" className="as-suggestion" onClick={() => void ask(t(`assistant.suggestions.${k}` as never))}>
+                      <button key={k} type="button" className={styles.asSuggestion} onClick={() => void ask(t(`assistant.suggestions.${k}` as never))}>
                         {t(`assistant.suggestions.${k}` as never)}
                       </button>
                     ))}
@@ -443,15 +445,15 @@ export function AssistantPage() {
 
             {pending && (
               <>
-                <div className="as-q"><div className="as-q-text">{pending.question}</div></div>
-                <div className="as-progress" role="status" aria-live="polite" aria-label={t('assistant.running.live')}>
+                <div className={styles.asQ}><div className={styles.asQText}>{pending.question}</div></div>
+                <div className={styles.asProgress} role="status" aria-live="polite" aria-label={t('assistant.running.live')}>
                   <Spinner /> <span>{pending.statusLine}</span>
                 </div>
               </>
             )}
 
             {askError && (
-              <div className="as-error" role="alert">
+              <div className={styles.asError} role="alert">
                 <Icon name="alert" className="ic-sm" /> <span>{askError}</span>
               </div>
             )}
@@ -462,20 +464,20 @@ export function AssistantPage() {
                 interruzione vive solo finché la schermata è aperta — questa
                 riga resta, e vale anche per una richiesta non riuscita. */}
             {unanswered && !pending && !askError && (
-              <p className="as-a-hint as-unanswered">{t('assistant.unanswered')}</p>
+              <p className={cx(styles.asAHint, 'as-unanswered')}>{t('assistant.unanswered')}</p>
             )}
           </div>
 
           {/* ---- Composer --------------------------------------------- */}
           <form
-            className="as-composer"
+            className={styles.asComposer}
             onSubmit={(e) => { e.preventDefault(); void ask(question); }}
           >
             <label className="sr-only" htmlFor="as-question">{t('assistant.composer.label')}</label>
             <textarea
               id="as-question"
               ref={composerRef}
-              className="as-input"
+              className={styles.asInput}
               rows={2}
               value={question}
               maxLength={1000}
@@ -487,15 +489,15 @@ export function AssistantPage() {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void ask(question); }
               }}
             />
-            <div className="as-composer-actions">
-              <span className="muted-sm as-hint">{t('assistant.composer.hint')}</span>
+            <div className={styles.asComposerActions}>
+              <span className={cx('muted-sm', styles.asHint)}>{t('assistant.composer.hint')}</span>
               {busy
                 ? <Button type="button" variant="default" icon="close" onClick={stop}>{t('assistant.composer.stop')}</Button>
                 : <Button type="submit" variant="primary" icon="arrowRight" disabled={!question.trim()}>{t('assistant.composer.send')}</Button>}
             </div>
           </form>
 
-          <p className="legal-note as-note">{t('assistant.readOnly')} {t('assistant.privacy')}</p>
+          <p className={cx('legal-note', styles.asNote)}>{t('assistant.readOnly')} {t('assistant.privacy')}</p>
         </section>
 
         {/* ---- Fonti: un pannello, non una colonna ----------------------- */}
@@ -535,8 +537,8 @@ function errorMessage(t: ReturnType<typeof useT>, code: string): string {
 
 function QuestionBubble({ message }: { message: AssistantMessage }) {
   return (
-    <div className="as-q">
-      <div className="as-q-text">{message.content}</div>
+    <div className={styles.asQ}>
+      <div className={styles.asQText}>{message.content}</div>
     </div>
   );
 }
@@ -559,17 +561,17 @@ function AnswerBlock({
   const citations = useMemo(() => dedupeCitations(message.citations), [message.citations]);
 
   return (
-    <article className={`as-a${selected ? ' is-selected' : ''}`} aria-label={t(statusKey(status))}>
+    <article className={cx(styles.asA, selected && styles.isSelected)} aria-label={t(statusKey(status))}>
       {badge && (
-        <div className="as-a-head">
+        <div className={styles.asAHead}>
           <span className={badge}>{t(statusKey(status))}</span>
         </div>
       )}
       {statusNeedsHint(status) && (
-        <p className="as-a-hint">{t(`assistant.statusHint.${status}` as never, {})}</p>
+        <p className={styles.asAHint}>{t(`assistant.statusHint.${status}` as never, {})}</p>
       )}
 
-      <div className="as-a-text">{message.content}</div>
+      <div className={styles.asAText}>{message.content}</div>
 
       {message.uncertainty && (
         <div className="info-box mt-12">
@@ -579,7 +581,7 @@ function AnswerBlock({
       )}
 
       {citations.length > 0 && (
-        <div className="as-chips">
+        <div className={styles.asChips}>
           {citations.map((c) => <CitationChip key={c.index} citation={c} />)}
           {/* ⚠️ È il SOLO modo di arrivare al dettaglio delle fonti, da quando
               la colonna non c'è più: quindi dichiara che apre un pannello
@@ -588,7 +590,7 @@ function AnswerBlock({
               sorprende — la stessa regola del pulsante Impostazioni. */}
           <button
             type="button"
-            className="as-chip as-chip-more"
+            className={cx(styles.asChip, styles.asChipMore)}
             onClick={onSelect}
             aria-controls={panelId}
             aria-expanded={panelOpen}
@@ -602,19 +604,19 @@ function AnswerBlock({
       )}
 
       {message.followUps.length > 0 && (
-        <div className="as-follow">
-          <div className="as-follow-title">{t('assistant.followUps')}</div>
+        <div className={styles.asFollow}>
+          <div className={styles.asFollowTitle}>{t('assistant.followUps')}</div>
           <div className="row-wrap">
             {message.followUps.map((f) => (
-              <button key={f} type="button" className="as-suggestion" onClick={() => onFollowUp(f)}>{f}</button>
+              <button key={f} type="button" className={styles.asSuggestion} onClick={() => onFollowUp(f)}>{f}</button>
             ))}
           </div>
         </div>
       )}
 
-      <div className="as-a-foot">
+      <div className={styles.asAFoot}>
         <span className="muted-sm">{formatDate(message.createdAt)}</span>
-        <div className="as-feedback">
+        <div className={styles.asFeedback}>
           <button type="button" className="btn btn-sm btn-ghost" onClick={() => onFeedback('helpful')}>
             <Icon name="checkCircle" className="ic-sm" /> {t('assistant.feedback.helpful')}
           </button>
@@ -625,14 +627,14 @@ function AnswerBlock({
       </div>
 
       {askWhy && (
-        <div className="as-why">
+        <div className={styles.asWhy}>
           <div className="muted-sm">{t('assistant.feedback.why')}</div>
           <div className="row-wrap mt-8">
             {(['wrong_data', 'wrong_source', 'incomplete', 'misunderstood'] as const).map((r) => (
               <button
                 key={r}
                 type="button"
-                className="as-suggestion"
+                className={styles.asSuggestion}
                 onClick={() => { onFeedback('not_helpful', r); setAskWhy(false); }}
               >
                 {t(`assistant.feedback.${r}` as never)}
@@ -655,9 +657,9 @@ function CitationChip({ citation }: { citation: AssistantCitation }) {
     ? t('assistant.sources.groupOne')
     : t('assistant.sources.group', { count })));
   return (
-    <Link className="as-chip" to={citation.route} title={citation.title}>
+    <Link className={styles.asChip} to={citation.route} title={citation.title}>
       <Icon name={sourceIcon(citation.sourceType)} className="ic-sm" />
-      <span className="as-chip-text">{label}</span>
+      <span className={styles.asChipText}>{label}</span>
     </Link>
   );
 }
@@ -682,14 +684,14 @@ function ThreadColumn(props: {
   const t = useT();
   const body = (
     <>
-      <div className="as-col-head">
+      <div className={styles.asColHead}>
         <span className="section-title">{t('assistant.threads.title')}</span>
         <Button size="sm" variant="primary" icon="plus" onClick={props.onNew}>{t('assistant.threads.newShort')}</Button>
       </div>
 
       {props.error && <ErrorState message={props.error} onRetry={props.onRetry} />}
 
-      {!props.error && props.loading && <div className="as-col-empty"><Spinner /></div>}
+      {!props.error && props.loading && <div className={styles.asColEmpty}><Spinner /></div>}
 
       {!props.error && !props.loading && !props.threads.length && (
         <div className="empty">
@@ -699,22 +701,22 @@ function ThreadColumn(props: {
       )}
 
       {!props.error && !props.loading && props.threads.length > 0 && (
-        <ul className="crm-list as-threads">
+        <ul className={cx('crm-list', styles.asThreads)}>
           {props.threads.map((th) => (
-            <li key={th.id} className={`as-thread${th.id === props.activeId ? ' is-active' : ''}`}>
-              <button type="button" className="as-thread-open" onClick={() => props.onOpen(th.id)}>
-                <span className="as-thread-title">{th.title || t('assistant.threads.new')}</span>
-                <span className="as-thread-meta">
+            <li key={th.id} className={cx(styles.asThread, th.id === props.activeId && styles.isActive)}>
+              <button type="button" className={styles.asThreadOpen} onClick={() => props.onOpen(th.id)}>
+                <span className={styles.asThreadTitle}>{th.title || t('assistant.threads.new')}</span>
+                <span className={styles.asThreadMeta}>
                   {formatDate(th.updatedAt)}
                   {th.status === 'archived' ? ` · ${t('assistant.threads.archived')}` : ''}
                 </span>
               </button>
-              <div className="as-thread-actions">
-                <button type="button" className="as-icon-btn" onClick={() => props.onArchive(th)}
+              <div className={styles.asThreadActions}>
+                <button type="button" className={styles.asIconBtn} onClick={() => props.onArchive(th)}
                   aria-label={th.status === 'active' ? t('assistant.threads.archive') : t('assistant.threads.unarchive')}>
                   <Icon name="archive" className="ic-sm" />
                 </button>
-                <button type="button" className="as-icon-btn" onClick={() => props.onDelete(th.id)}
+                <button type="button" className={styles.asIconBtn} onClick={() => props.onDelete(th.id)}
                   aria-label={t('assistant.threads.remove')}>
                   <Icon name="trash" className="ic-sm" />
                 </button>
@@ -732,15 +734,15 @@ function ThreadColumn(props: {
 
   return (
     <>
-      <aside className="as-side as-side-left" aria-label={t('assistant.threads.list')}>{body}</aside>
+      <aside className={cx(styles.asSide, styles.asSideLeft)} aria-label={t('assistant.threads.list')}>{body}</aside>
 
-      <div className={`as-overlay${props.drawerOpen ? ' open' : ''}`} hidden={!props.drawerOpen} onClick={props.onCloseDrawer} />
+      <div className={cx(styles.asOverlay, props.drawerOpen && styles.open)} hidden={!props.drawerOpen} onClick={props.onCloseDrawer} />
       <aside
-        className={`as-drawer as-drawer-left${props.drawerOpen ? ' open' : ''}`}
+        className={cx(styles.asDrawer, styles.asDrawerLeft, props.drawerOpen && styles.open)}
         aria-label={t('assistant.threads.list')}
         aria-hidden={!props.drawerOpen}
       >
-        <button type="button" className="as-drawer-close" onClick={props.onCloseDrawer} aria-label={t('assistant.threads.close')}>
+        <button type="button" className={styles.asDrawerClose} onClick={props.onCloseDrawer} aria-label={t('assistant.threads.close')}>
           <Icon name="close" />
         </button>
         {body}
@@ -806,24 +808,24 @@ function SourcesPanel({
       {/* Il velo esiste solo sotto i 900px (il CSS lo tiene spento sopra): là il
           pannello copre quasi tutto e toccare fuori è il gesto che tutti
           provano. */}
-      <div className={`as-overlay${open ? ' open' : ''}`} hidden={!open} onClick={onClose} />
+      <div className={cx(styles.asOverlay, open && styles.open)} hidden={!open} onClick={onClose} />
       <aside
         id={panelId}
-        className={`as-drawer as-drawer-right${open ? ' open' : ''}`}
+        className={cx(styles.asDrawer, styles.asDrawerRight, open && styles.open)}
         aria-label={t('assistant.sources.title')}
         aria-hidden={!open}
       >
         <button
           ref={chiusura}
           type="button"
-          className="as-drawer-close"
+          className={styles.asDrawerClose}
           onClick={onClose}
           aria-label={t('assistant.sources.close')}
         >
           <Icon name="close" />
         </button>
 
-        <div className="as-col-head">
+        <div className={styles.asColHead}>
           <span className="section-title">{t('assistant.sources.title')}</span>
         </div>
         <p className="muted-sm">{t('assistant.sources.subtitle')}</p>
@@ -834,7 +836,7 @@ function SourcesPanel({
         {message && !citations.length && <div className="empty">{t('assistant.sources.empty')}</div>}
 
         {message && citations.length > 0 && (
-          <ul className="crm-list as-sources">
+          <ul className={cx('crm-list', styles.asSources)}>
             {citations.map((c) => <SourceCard key={c.index} citation={c} />)}
           </ul>
         )}
@@ -847,10 +849,10 @@ function SourceCard({ citation }: { citation: AssistantCitation }) {
   const t = useT();
   const items = groupItems(citation);
   return (
-    <li className="as-source">
-      <div className="as-source-head">
+    <li className={styles.asSource}>
+      <div className={styles.asSourceHead}>
         <Icon name={sourceIcon(citation.sourceType)} className="ic-sm" />
-        <span className="as-source-type">{t(sourceTypeKey(citation.sourceType))}</span>
+        <span className={styles.asSourceType}>{t(sourceTypeKey(citation.sourceType))}</span>
         {/* Il grado di verifica della fonte, nella grammatica della famiglia
             provenienza: verificata da una persona = filetto pieno, non
             verificata = puntinato «da verificare». Le PAROLE restano quelle
@@ -865,7 +867,7 @@ function SourceCard({ citation }: { citation: AssistantCitation }) {
         )}
       </div>
 
-      <Link className="as-source-title" to={citation.route}>{citation.title}</Link>
+      <Link className={styles.asSourceTitle} to={citation.route}>{citation.title}</Link>
       {citation.subtitle && <div className="muted-sm">{citation.subtitle}</div>}
       {citation.pageNumber != null && (
         <div className="muted-sm">{t('assistant.sources.page', { page: citation.pageNumber })}</div>
@@ -876,14 +878,14 @@ function SourceCard({ citation }: { citation: AssistantCitation }) {
           un'interfaccia italiana sembra altrimenti una traduzione mancata. */}
       {citation.citedText && (
         <>
-          <div className="as-source-quote-label">{t('assistant.sources.original')}</div>
-          <blockquote className="ev-quote show as-quote" lang="">{citation.citedText}</blockquote>
+          <div className={styles.asSourceQuoteLabel}>{t('assistant.sources.original')}</div>
+          <blockquote className={cx('ev-quote show', styles.asQuote)} lang="">{citation.citedText}</blockquote>
           <div className="muted-sm">{t('assistant.sources.originalHint')}</div>
         </>
       )}
 
       {items.length > 0 && (
-        <ul className="as-group">
+        <ul className={styles.asGroup}>
           {items.map((i) => (
             <li key={i.route}><Link to={i.route}>{i.title}</Link></li>
           ))}

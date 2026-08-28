@@ -63,19 +63,22 @@
 /* ---- Schermate centrate (auth / onboarding / stati globali) ---- */
 .centered-screen { min-height: 100vh; width: 100%; display: flex; align-items: center; justify-content: center; padding: var(--sp-8) var(--sp-4); background: var(--bg); }
 .auth-card { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: var(--sp-8); }
-.onboarding-card { max-width: 640px; }
-/* Candidati Zefix: lista nuda — il segno di lista e i rientri del browser
-   non c'entrano con un elenco di scelte. */
-.registry-candidates { list-style: none; padding: 0; margin: var(--sp-2) 0 0; }
+/* `.onboarding-card` e `.registry-candidates` sono migrate il 2026-08-28 in
+   `src/features/companies/companies.module.css` (CSS Modules, issue #83):
+   le lega solo `features/companies/`. */
 .auth-brand { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 .auth-title { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.4px; }
 .auth-sub { color: var(--muted); font-size: var(--fs-body); margin-top: var(--sp-1); margin-bottom: var(--sp-4); }
-.auth-alt { margin-top: var(--sp-4); font-size: var(--fs-body); color: var(--muted); text-align: center; }
-.auth-alt .btn-link { font-size: var(--fs-body); }
-.auth-actions { margin-top: var(--sp-2); }
-.auth-actions .btn { width: 100%; }
+/* `.auth-alt` e `.auth-actions` (con le loro composte su `.btn-link` e `.btn`,
+   che là dentro usano `:global`) sono migrate il 2026-08-28 in
+   `src/features/auth/auth.module.css` (CSS Modules, issue #83): le usano solo
+   le pagine di `features/auth/`. */
 .form-error { background: var(--red-soft); border: 1px solid var(--red-line); color: var(--red-dark); border-radius: var(--radius-sm); padding: var(--sp-3); font-size: var(--fs-body); margin-bottom: var(--sp-4); display: flex; gap: var(--sp-2); align-items: flex-start; }
-.form-success { background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green); border-radius: var(--radius-sm); padding: var(--sp-3); font-size: var(--fs-body); margin-bottom: var(--sp-4); }
+/* `.form-success` è migrata il 2026-08-28 in
+   `src/features/auth/auth.module.css` (CSS Modules, issue #83): la usano
+   solo le pagine di `features/auth/` (`.form-error`, qui sopra, RESTA
+   globale: la usano anche incentives, crm e companies). Trovata nella
+   ricognizione finale del lotto 6. */
 .field-hint { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
 
 /* ---- Stati globali (loading/error/empty) ---- */
@@ -122,12 +125,14 @@
 .skel-card { height: 120px; border-radius: var(--radius); }
 
 /* piccole utility aggiuntive */
-.mt-8 { margin-top: var(--sp-2); } .mt-20 { margin-top: var(--sp-6); } .mt-24 { margin-top: var(--sp-6); }
-.mb-8 { margin-bottom: var(--sp-2); } .mb-16 { margin-bottom: var(--sp-4); } .mb-18 { margin-bottom: var(--sp-4); }
-.text-center { text-align: center; }
-.w-full { width: 100%; }
-.spin-btn { position: relative; }
-.divider { height: 1px; background: var(--line); margin: var(--sp-4) 0; }
+.mt-8 { margin-top: var(--sp-2); }
+.mb-8 { margin-bottom: var(--sp-2); }
+/* `.mt-20`, `.mt-24`, `.mb-16`, `.mb-18`, `.text-center`, `.w-full` e
+   `.spin-btn` sono state CANCELLATE il 2026-08-28 (censimento regole morte,
+   issue #83): zero usi in src/, scripts/, index.html e site/. */
+/* `.divider` è migrata il 2026-08-28 in `src/features/crm/crm.module.css`
+   (CSS Modules, issue #83): la usa solo `features/crm/`
+   (ClientCreatePage.tsx). Trovata nella ricognizione finale del lotto 6. */
 .badge-alta.badge, .badge-media.badge, .badge-bassa.badge { white-space: nowrap; }
 
 /* ============================================================================
@@ -140,214 +145,25 @@
    scritto a mano.
    ============================================================================ */
 
-/* ---- Campanella ---------------------------------------------------------- */
-.bell-wrap { position: relative; margin-left: auto; }
-/* Un ACCESSORIO, non un pari grado del marchio: a riposo niente bordo e niente
-   fondo — la scatola bordata da 40px accanto al marchio da 32 erano due scatole
-   affiancate, cioè due pari grado. I 36px sono l'area di tocco, non un peso
-   visivo: quello che si vede a riposo è il solo glifo in --muted. Il fondo
-   appartiene all'hover, che è feedback e non contenitore (test:shell-unit). */
-.bell-btn {
-  position: relative; display: grid; place-items: center;
-  width: 36px; height: 36px; border: 0;
-  border-radius: var(--radius-sm); background: transparent; color: var(--muted);
-}
-.bell-btn:hover { background: var(--bg); color: var(--ink); }
-.bell-btn .ic { width: 18px; height: 18px; }
-/* Il pallino non contiene mai più di due caratteri: oltre il nove diventa «9+»,
-   perché un pallino che deve stare dietro a «147» o cresce quanto una parola o
-   rimpicciolisce il testo sotto la soglia leggibile (§80). */
-.bell-badge {
-  position: absolute; top: 0; right: 0; min-width: 18px; height: 18px;
-  /* ⚠️ IL FONDO È `--red-dark`, NON `--red`, e la differenza è il contrasto.
-     `--red` è il rosso che si RICONOSCE — barre, pallini, bordi, dove non c'è
-     testo sopra — ed è troppo chiaro per portarne: bianco su `--red` faceva
-     3,78:1 in chiaro e 4,35:1 in scuro, sotto la soglia AA di 4,5, da sempre.
-     `--red-dark` è il rosso che porta CONTRASTO, e regge le due parti in tutti
-     e tre i temi: 5,83 · 7,34 · 21. Il pallino ci guadagna anche in evidenza —
-     contro la scheda passa da 3,78:1 a 5,83:1: più scuro non vuol dire più
-     timido.
-     ⚠️ Non si è toccato `--red`: riempie barre e bordi ovunque, e scurirlo per
-     un pallino avrebbe spostato un colore usato in dieci punti per correggerne
-     uno. Il testo è `--on-red`, che si inverte da sé nel tema scuro.
-     ⚠️ Era `--on-accent` fino al 2026-08-17: quel token voleva dire «ciò che si
-     scrive sopra un fondo pieno colorato», e con l'accento diventato azzurro
-     CHIARO è diventato inchiostro scuro — sopra questo rosso avrebbe fatto
-     3,04:1. Il perché di due token invece di uno sta in app.css, accanto a
-     `--red-dark`.
-     Il guardiano che tiene ferma questa misura è la sezione 12 di
-     `test:shell-unit`, che pesa tutte e 90 le coppie fondo/testo del progetto. */
-  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red-dark); color: var(--on-red);
-  font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
-}
-.bell-panel {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 70;
-  width: 340px; max-width: calc(100vw - 28px);
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow-lg); max-height: 70vh; overflow-y: auto;
-}
-.bell-head {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
-  padding: var(--sp-3); border-bottom: 1px solid var(--line);
-}
-.bell-title { font-size: var(--fs-strong); font-weight: 600; }
-.bell-empty { padding: var(--sp-6) var(--sp-3); text-align: center; color: var(--muted); }
-.bell-row {
-  display: flex; gap: var(--sp-2); width: 100%; text-align: left;
-  padding: var(--sp-3); border: 0; border-bottom: 1px solid var(--line); background: transparent;
-}
-.bell-row:hover { background: var(--bg); }
-.bell-row.is-unread { background: var(--accent-soft); }
-/* Il pallino NON è l'unico segnale del non letto: lo sfondo cambia e il testo
-   del titolo è in grassetto. Un indicatore di solo colore non dice niente a chi
-   non lo distingue (§98). */
-.bell-row.is-unread .bell-row-title { font-weight: 600; }
-.bell-dot {
-  flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--accent); margin-top: var(--sp-2);
-}
-.bell-dot.is-problem { background: var(--red); }
-.bell-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; }
-.bell-row-title { font-size: var(--fs-body); }
-.bell-row-sub { font-size: var(--fs-meta); color: var(--ink); overflow-wrap: anywhere; }
-.bell-row-meta { font-size: var(--fs-label); color: var(--muted); }
-.bell-foot { padding: var(--sp-3); }
+/* ---- Campanella ----------------------------------------------------------
+   Tutte le regole `.bell-*` sono migrate il 2026-08-28 in
+   `src/features/notifications/notifications.module.css` (CSS Modules,
+   issue #83), commenti compresi — compresa la riga `.bell-panel` che stava
+   nella `@media (max-width: 720px)` qui sotto. */
 
-/* ---- Barra degli strumenti del calendario -------------------------------- */
-.cal-toolbar {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3);
-  margin-bottom: var(--sp-4);
-}
-.cal-nav { display: flex; align-items: center; gap: var(--sp-1); }
-.cal-title { font-size: var(--fs-h2); font-weight: 600; }
-.cal-title::first-letter { text-transform: uppercase; }
-.cal-filters { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-left: auto; }
-
-/* ---- Griglia del mese ---------------------------------------------------- */
-.cal-grid { width: 100%; table-layout: fixed; border-collapse: collapse; }
-/* La didascalia serve a chi naviga con uno screen reader: dice di che mese è
-   la tabella. Visivamente il titolo è già nella barra, quindi qui si nasconde
-   senza toglierla dall'albero di accessibilità. */
-.cal-caption {
-  position: absolute; width: 1px; height: 1px; overflow: hidden;
-  clip-path: inset(50%); white-space: nowrap;
-}
-.cal-grid th {
-  padding: var(--sp-1) var(--sp-2); text-align: left;
-  font-size: var(--fs-label); font-weight: 600; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line);
-}
-/* `height` su una cella di tabella vale come MINIMO: una giornata piena fa
-   crescere la riga invece di far uscire il contenuto dal bordo. */
-.cal-cell {
-  vertical-align: top; height: 100px; padding: var(--sp-1);
-  border: 1px solid var(--line); background: var(--card);
-}
-.cal-cell.out { background: var(--bg); }
-.cal-cell.out .cal-daynum { color: var(--muted); }
-/* Oggi: un cerchio pieno intorno al numero. È una FORMA, non un colore, quindi
-   resta riconoscibile anche a chi non distingue le tinte — e l'etichetta della
-   cella lo dice comunque a parole (§98). */
-.cal-cell.today .cal-daynum {
-  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
-}
-.cal-daynum {
-  display: grid; place-items: center; min-width: 24px; min-height: 24px;
-  margin-bottom: var(--sp-05); padding: 0 var(--sp-1);
-  border: 1px solid transparent; border-radius: 12px;
-  background: transparent; color: var(--ink); font-size: var(--fs-meta);
-}
-.cal-daynum:hover { background: var(--bg); border-color: var(--line); }
-/* ⚠️ `min-height: 24px` non è estetica: è la soglia dei bersagli cliccabili di
-   WCAG 2.2, la stessa regola che nella 0016 ha alzato `.mini-btn` e `.ev-btn`.
-   Misurato qui a 20 pixel aprendo la griglia, non leggendo il codice. */
-.cal-item {
-  display: flex; align-items: center; min-height: 24px;
-  margin-bottom: var(--sp-05); padding: var(--sp-05) var(--sp-1);
-  border-left: 3px solid var(--accent-line); border-radius: var(--radius-sm);
-  background: var(--bg); color: var(--ink);
-  font-size: var(--fs-label); line-height: 1.35;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.cal-item:hover { background: var(--card); border-left-color: var(--accent); }
-.cal-item.p-high { border-left-color: var(--red); }
-.cal-item.p-medium { border-left-color: var(--amber-fill); }
-.cal-item.p-low { border-left-color: var(--green-fill); }
-/* Un'attività conclusa resta visibile — vedere che una cosa è stata fatta ha
-   valore — ma non compete con ciò che c'è ancora da fare. */
-.cal-item.is-done { opacity: .6; text-decoration: line-through; }
-/* ⚠️ UN APPUNTAMENTO NON HA IL BORDO PIENO DI UN TERMINE. Nella casella del
-   mese non c'è spazio per la parola «Appuntamento» — c'è un filetto e basta —
-   quindi la differenza la porta la FORMA del filetto: tratteggiato, come tutto
-   ciò che in questo prodotto non è un fatto duro. Il colore resta quello della
-   priorità, perché la priorità è un'altra domanda. */
-.cal-item.is-appt { border-left-style: dashed; }
-.cal-more {
-  display: flex; align-items: center; width: 100%; min-height: 24px; padding: 0 var(--sp-1);
-  border: 0; border-radius: var(--radius-sm); background: transparent;
-  color: var(--accent-text); font-size: var(--fs-label); text-align: left;
-}
-.cal-more:hover { background: var(--bg); }
-
-/* ---- Agenda -------------------------------------------------------------- */
-.cal-agenda { display: flex; flex-direction: column; gap: var(--sp-4); }
-.cal-agenda-head {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
-  padding-bottom: var(--sp-1); border-bottom: 1px solid var(--line);
-}
-/* ⚠️ `capitalize` maiuscolerebbe OGNI parola: «Lunedì 27 Luglio», che in
-   italiano e in francese è sbagliato — i nomi dei mesi sono minuscoli. Solo la
-   prima lettera, quindi. In tedesco non cambia niente perché i sostantivi sono
-   già maiuscoli, ed è per questo che il difetto si vedeva in due lingue su tre. */
-.cal-agenda-date { font-size: var(--fs-strong); font-weight: 600; }
-.cal-agenda-date::first-letter { text-transform: uppercase; }
-.cal-agenda-date.is-today { color: var(--accent-text); }
-
-.cal-overdue { border-left: 3px solid var(--red); }
-
-/* Un canale non disponibile non è una casella spenta: è un testo che dice
-   perché. Una casella che non si può spuntare sembra un guasto (§79). */
-.check-off { display: flex; flex-direction: column; gap: var(--sp-05); padding: var(--sp-1) 0; }
-.connect-choice { display: flex; flex-direction: column; gap: var(--sp-2); max-width: 460px; }
-
-/* ---- Schermi stretti ------------------------------------------------------
-   La griglia resta usabile e NON obbliga a scorrere in orizzontale (§97): le
-   celle si abbassano, il testo delle attività sparisce e resta un segnale di
-   presenza. Chi vuole leggerle passa all'agenda, che su telefono è già la vista
-   predefinita. */
-@media (max-width: 720px) {
-  .cal-filters { margin-left: 0; width: 100%; }
-  .cal-cell { height: 62px; padding: var(--sp-05); }
-  .cal-grid th { padding: var(--sp-05); font-size: var(--fs-label); }
-  /* Il numero del giorno è l'UNICO controllo della casella su telefono, quindi
-     prende tutta la larghezza: è il bersaglio, e deve essere facile da colpire. */
-  .cal-daynum { width: 100%; min-height: 24px; border-radius: var(--radius-sm); }
-  /* Le barre sono indicatori, non controlli: qui sono `<span>` e non
-     collegamenti, perché tre bersagli da 24 pixel non stanno in una casella
-     alta 62 — e un collegamento alto 6 pixel non è un collegamento. */
-  .cal-item {
-    display: block; height: 5px; margin-bottom: var(--sp-05); padding: 0;
-    border-left-width: 0; border-radius: 3px;
-    background: var(--accent-line); font-size: 0; color: transparent;
-    pointer-events: none;
-  }
-  .cal-item.p-high { background: var(--red); }
-  .cal-item.p-medium { background: var(--amber-fill); }
-  .cal-item.p-low { background: var(--green-fill); }
-  /* Da telefono la barra è alta cinque pixel e il tratteggio non si vede: qui
-     la differenza è PIENO contro VUOTO, che regge anche a quella dimensione e
-     non dipende dal colore. */
-  .cal-item.is-appt { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent-line); }
-  .cal-item.is-appt.p-high { background: transparent; box-shadow: inset 0 0 0 1.5px var(--red); }
-  .cal-item.is-appt.p-medium { background: transparent; box-shadow: inset 0 0 0 1.5px var(--amber-fill); }
-  .cal-item.is-appt.p-low { background: transparent; box-shadow: inset 0 0 0 1.5px var(--green-fill); }
-  .cal-more { font-size: var(--fs-label); }
-  .bell-panel { width: calc(100vw - 28px); }
-}
+/* ---- Calendario ------------------------------------------------------------
+   Tutte le regole `.cal-*`, `.check-off` e `.connect-choice` — dalla barra
+   degli strumenti alla `@media (max-width: 720px)` compresa — sono migrate il
+   2026-08-28 in `src/features/calendar/calendar.module.css` (CSS Modules,
+   issue #83), commenti compresi. Le classi `p-high`/`p-medium`/`p-low` restano
+   globali perché costruite dinamicamente (`p-${task.priority}`): là dentro i
+   composti usano `:global(.p-high)` e compagni. */
 
 /* Un KPI che è anche un collegamento: la riga intera è il bersaglio, non una
    freccia da centrare. Eredita `--ink` perché altrimenti il numero diventerebbe
-   blu — la stessa correzione già fatta su `.action-row.is-link` nella 0016.
+   blu — la stessa correzione già fatta su `.action-row.is-link` nella 0016
+   (classe poi cancellata il 2026-08-28: zero usi; la citazione resta come
+   storia della decisione, non come riferimento a una regola viva).
    ⚠️⚠️ `display: flex` E NON `block`, e la riga cambiata è una correzione:
    `.kpi` è una colonna flex, questa regola arriva dopo e con `block` la
    sovrascriveva. Effetto misurato il 2026-08-14, quando la sola scheda
@@ -359,7 +175,8 @@
    sarebbe stata l'intera fila a scivolare. */
 .kpi-link { color: var(--ink); text-decoration: none; display: flex; position: relative; transition: border-color .12s, background .12s; }
 /* L'hover parla il vocabolario delle altre superfici premibili — `.nav-btn` e
-   `.action-row.is-link` usano ENTRAMBE `--bg`, e questa è la terza: il bordo si
+   `.action-row.is-link` usavano ENTRAMBE `--bg` (la seconda cancellata il
+   2026-08-28: zero usi), e questa è la terza: il bordo si
    colora del blu tenue e il fondo scende al colore della pagina. Nessuna ombra
    e nessun sollevamento — una scheda numerica non deve sembrare un pulsante.
    ⚠️⚠️ `text-decoration: none` ANCHE QUI, e non è una ripetizione: la regola
@@ -371,85 +188,47 @@
    ora che lo sono tutte sarebbe stata l'intera fila. Stessa forma della riga
    282 di app.css, che fa la stessa cosa per `.nav-btn`, `.btn` e `.brand`. */
 .kpi-link:hover { border-color: var(--accent-line); background: var(--bg); text-decoration: none; }
-/* La freccia: presente sempre, discreta finché non serve. Non compare
-   SOLTANTO al passaggio del mouse, perché su un portatile con trackpad — e su
-   un tablet, dove il passaggio non esiste — l'unico indizio che la scheda si
-   può premere sparirebbe. */
-.kpi-go { position: absolute; right: var(--sp-3); bottom: var(--sp-3); color: var(--muted); display: flex; transition: transform .12s, color .12s; }
-.kpi-link:hover .kpi-go { color: var(--accent-text); transform: translateX(2px); }
+/* La freccia `.kpi-go` (con la sua `:hover`, le sue righe nella
+   `@media (prefers-reduced-motion)` e il `padding-inline-end` di
+   `.kpi-link .kpi-sub` che le lasciava il posto) è stata CANCELLATA il
+   2026-08-28 (censimento regole morte, issue #83): zero usi in src/, scripts/,
+   index.html e site/ — la scheda collegata non porta più nessuna freccia. */
 /* Chi ha chiesto meno animazione non riceve nemmeno questa. */
 @media (prefers-reduced-motion: reduce) {
-  .kpi-link, .kpi-go { transition: none; }
-  .kpi-link:hover .kpi-go { transform: none; }
+  .kpi-link { transition: none; }
 }
-/* La didascalia non finisce sotto la freccia: le si lascia il posto. */
-.kpi-link .kpi-sub { padding-inline-end: var(--sp-6); }
 
 /* ===========================================================================
    Finanze (0021)
 
-   ⚠️ Nessuna regola qui costruisce un'affordance di pagamento: niente pulsanti
-   che sembrino «Paga», niente evidenziazione a chiamata all'azione sull'IBAN.
-   Un dato di pagamento si legge, e la sua veste dice «leggi», non «premi».
-
-   Nessun px sul testo: solo i token `--fs-*`. Spaziature `--sp-*`.
+   ⚠️ La sezione è migrata il 2026-08-28 in
+   `src/features/finance/finance.module.css` (CSS Modules, issue #83),
+   commenti compresi — avvertenza sull'affordance di pagamento inclusa. Qui
+   restano le condivise: `.sr-only`, `.fin-pager` e `.fin-page-n`.
    =========================================================================== */
 
 /* Utilità: visibile ai lettori di schermo, non agli occhi. La usa la didascalia
    della tabella IVA — una tabella senza `caption` costringe chi naviga con lo
-   screen reader a indovinare che cosa sta leggendo. */
+   screen reader a indovinare che cosa sta leggendo.
+   ⚠️ RESTA globale (2026-08-28): la usano anche `features/crm/` e
+   `features/assistant/`. */
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 
-/* ---- Cruscotto ------------------------------------------------------------
-   Gli importi stanno UNO SOTTO L'ALTRO, mai su una riga sola: due valute
-   affiancate si leggono come una somma, ed è proprio la lettura che il modulo
-   non deve permettere (§22). */
-.fin-amounts { list-style: none; margin: var(--sp-1) 0 0; padding: 0; }
-.fin-amounts li {
-  font-size: var(--fs-strong); font-weight: 600;
-  font-variant-numeric: tabular-nums; line-height: 1.3;
-}
-
-/* ---- Testata dell'elenco -------------------------------------------------- */
-.fin-search { flex: 1; min-width: 220px; margin: 0; }
-.fin-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; }
-.fin-filters {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--sp-3); margin-bottom: var(--sp-3);
-}
-.fin-filter-wide { grid-column: 1 / -1; }
-.fin-checks { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
-.fin-close { margin-left: auto; }
-
-/* ---- Una riga ------------------------------------------------------------
-   Tre zone: chi, quanto, come sta. L'importo ha una colonna sua e a larghezza
-   fissa, così i numeri si incolonnano davvero — `tabular-nums` allinea le cifre
-   fra loro, ma senza una colonna comune resterebbero righe di lunghezza
-   diversa. */
-.fin-row {
-  display: flex; align-items: flex-start; gap: var(--sp-3);
-  padding: var(--sp-3) 0; border-top: 1px solid var(--line);
-}
-.fin-row:first-of-type { border-top: none; }
-.fin-row-main {
-  display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1;
-  color: var(--ink); text-decoration: none; min-height: 24px;
-}
-.fin-row-main:hover .fin-row-title { text-decoration: underline; }
-.fin-row-title { font-size: var(--fs-body); font-weight: 600; }
-.fin-row-sub { font-size: var(--fs-meta); color: var(--muted); }
-.fin-row-amount {
-  min-width: 132px; text-align: right; flex-shrink: 0;
-  font-size: var(--fs-body); font-weight: 600; font-variant-numeric: tabular-nums;
-}
-.fin-row-amount .muted-sm { font-weight: 500; }
-.fin-row-side {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
-  gap: var(--sp-2); flex-shrink: 0; max-width: 42%;
-}
+/* Le regole `.fin-*` ESCLUSIVE della feature — `.fin-amounts`, `.fin-search`,
+   `.fin-actions`, `.fin-filters`, `.fin-filter-wide`, `.fin-checks`,
+   `.fin-close`, la famiglia `.fin-row`, `.fin-flags`, `.fin-blockers`, la
+   famiglia `.fin-field` con `.fin-num`, `.fin-edit`, `.fin-edit-form`,
+   `.fin-prov`, `.fin-quote`, `.fin-tablewrap`, `.fin-table`, `.fin-tools` e
+   `.fin-add-count` — sono migrate il 2026-08-28, commenti compresi,
+   in `src/features/finance/finance.module.css` (CSS Modules, issue #83): le
+   usa solo la feature `finance`. Con loro sono migrate le righe `.fin-*` della
+   `@media (max-width: 720px)`: qui resta la sola riga di `.fin-pager`, perché
+   `.fin-pager` e `.fin-page-n` sono condivise con Contratti, CRM e Incentivi.
+   Là dentro `.muted-sm`, `.btn`, `.field` e `.select-inline` sono nominati con
+   `:global`, perché restano condivisi. */
 
 .fin-pager {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -457,89 +236,26 @@
 }
 .fin-page-n { font-variant-numeric: tabular-nums; }
 
-/* ---- Dettaglio: elenchi in parole ---------------------------------------- */
-.fin-flags, .fin-blockers { list-style: none; margin: 0; padding: 0; }
-.fin-flags li, .fin-blockers li {
-  position: relative; padding: var(--sp-1) 0 var(--sp-1) var(--sp-6);
-  font-size: var(--fs-body);
-}
-.fin-flags li::before, .fin-blockers li::before {
-  content: '•'; position: absolute; left: var(--sp-2); font-weight: 600;
-}
-.fin-flags li::before { color: var(--amber); }
-.fin-blockers li::before { color: var(--red-dark); }
-
-/* ---- Dettaglio: un campo -------------------------------------------------- */
-.fin-field { padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
-.fin-field:first-of-type { border-top: none; }
-.fin-field-label { font-size: var(--fs-label); color: var(--muted); font-weight: 600; }
-.fin-field-value {
-  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
-  font-size: var(--fs-body); color: var(--ink); margin-top: var(--sp-05);
-}
-.fin-num { font-variant-numeric: tabular-nums; }
-/* Il bersaglio minimo di WCAG 2.2: `.btn-sm` da solo resta sotto i 24 pixel. */
-.fin-edit { margin-top: var(--sp-2); min-height: 24px; }
-.fin-edit-form { margin-top: var(--sp-2); max-width: 420px; }
-
-/* La provenienza di un dato è una verifica, non una decorazione: chiusa per
-   difetto, aperta da chi la sta cercando. */
-.fin-prov { margin-top: var(--sp-2); }
-.fin-prov summary {
-  font-size: var(--fs-meta); color: var(--accent-text); cursor: pointer;
-  min-height: 24px; display: flex; align-items: center;
-}
-.fin-quote {
-  margin: var(--sp-1) 0 0; padding: var(--sp-2) var(--sp-3);
-  border-left: 3px solid var(--accent-line); background: var(--bg);
-  font-size: var(--fs-meta); color: var(--ink-soft);
-}
-
-/* ---- Dettaglio IVA -------------------------------------------------------
-   La tabella scorre DENTRO il proprio contenitore: la pagina non deve mai
-   scorrere in orizzontale (§97). */
-.fin-tablewrap { overflow-x: auto; }
-.fin-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
-.fin-table caption { text-align: left; }
-.fin-table th, .fin-table td {
-  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); text-align: left;
-}
-.fin-table thead th {
-  font-size: var(--fs-label); color: var(--muted); text-transform: uppercase;
-  letter-spacing: 0.04em; white-space: nowrap;
-}
-.fin-table .fin-num { text-align: right; font-variant-numeric: tabular-nums; }
-
 /* ---- Schermi stretti ------------------------------------------------------
    Fino a 360 pixel senza scorrimento orizzontale: l'importo passa sotto e
    torna allineato a sinistra, perché una colonna di numeri larga metà schermo
-   non è più una colonna. */
+   non è più una colonna.
+   ⚠️ `@media` DIVISA il 2026-08-28: le righe `.fin-row`, `.fin-row-main`,
+   `.fin-row-amount`, `.fin-row-side` e `.fin-actions` (con il suo `.btn`, là
+   dentro `:global`) sono migrate in
+   `src/features/finance/finance.module.css` (CSS Modules, issue #83); qui
+   resta `.fin-pager`, condivisa. */
 @media (max-width: 720px) {
-  .fin-row { flex-wrap: wrap; }
-  .fin-row-main { flex-basis: 100%; }
-  .fin-row-amount { min-width: 0; text-align: left; }
-  .fin-row-side { max-width: none; justify-content: flex-start; }
-  .fin-actions { width: 100%; }
-  .fin-actions .btn { flex: 1; }
   .fin-pager { justify-content: flex-start; }
 }
 
-/* ⚠️ `.filter-group` NON manda a capo, e la voce di ordinamento predefinita di
-   questa pagina è la frase più lunga dell'intera interfaccia («Prima ciò che
-   richiede attenzione», e in tedesco è ancora più lunga). A 360 pixel spingeva
-   il pulsante accanto fuori dallo schermo: 379 pixel di contenuto in 360 di
-   finestra, cioè scorrimento orizzontale (§97). Misurato nel browser, non
-   dedotto. Si corregge QUI e non su `.filter-group`, che è condiviso con
-   Documenti e Attività: allargare una regola per un caso solo significa
-   cambiare tre schermate senza averle guardate. */
-.fin-tools { flex-wrap: wrap; }
-.fin-tools > .field { min-width: 0; flex: 1 1 auto; }
-.fin-tools .select-inline { max-width: 100%; width: 100%; }
-
-/* Panoramica — la riga che spiega l'ordine dell'elenco delle priorità.
-   Era uno stile in linea con due margini scritti a mano: fuori dal sistema di
-   spaziature, e invisibile a chi cerca le regole nel foglio di stile. */
-.dash-sorted { margin: -6px 0 var(--sp-2); }
+/* `.dash-sorted` (con il suo commento) è migrata il 2026-08-28 in
+   `src/features/dashboard/dashboard.module.css` (CSS Modules, issue #83):
+   appartiene alla Panoramica.
+   ⚠️ `design-lint.mjs` dichiara un'eccezione su `.dash-sorted` in QUESTO
+   file: la regola è migrata nel modulo, quindi l'eccezione è morta e va
+   riallineata nella fase finale della migrazione (lo script non è stato
+   toccato, come da consegna). */
 
 /* ⚠️ QUI C'ERA `#home-body .kpi-grid`, RIMOSSA il 2026-08-13 perché non
    toccava più niente: la Panoramica ha smesso di usare `.kpi-grid` quando è
@@ -551,10 +267,6 @@
    perché il prossimo lettore ci crede. `.kpi-grid` resta viva e giusta dove è
    nata: Finanze, Incentivi, CRM, Contratti, Automazioni. */
 
-/* «Aggiungi alle finanze» — il conteggio accanto al titolo dell'elenco: dice
-   che un elenco c'è, prima ancora di leggerlo. */
-.fin-add-count { color: var(--muted); font-weight: 500; margin-left: var(--sp-2); }
-
 /* ===========================================================================
    CRM Light (0026) — «Clienti»
    Le classi stanno qui e non in app.css perché è dove sono finite tutte le
@@ -562,72 +274,25 @@
    ⚠️ `.crm-list` DICHIARA `list-style: none`. La classe `.list` usata dai
    Contratti non esiste: funziona solo per via del reset globale, e un elenco
    che dipende dal reset si rompe il giorno in cui il reset cambia.
+   ⚠️ Le regole `.crm-*` ESCLUSIVE della feature sono migrate il 2026-08-28 in
+   `src/features/crm/crm.module.css` (CSS Modules, issue #83), commenti
+   compresi. Qui restano le condivise: `.crm-list` (la usa anche
+   `features/assistant/`), `.crm-kv`, `.crm-sec`, `.crm-sec-head` e la
+   famiglia `.crm-tl` senza `crm-tl-sub` (le usa anche `features/incentives/`).
    =========================================================================== */
 .crm-list { list-style: none; margin: 0; padding: 0; }
 
-/* ⚠️ `flex-direction: row` DICHIARATO, e non è ridondante: `.field` imposta
-   `flex-direction: column` (app.css:295) e `.ct-search` non lo sovrascrive, così
-   nei Contratti il pulsante «Cerca» finisce SOTTO il campo a piena larghezza.
-   Si vede solo aprendo la schermata — il typecheck non guarda il CSS. */
-.crm-search { flex: 1 1 260px; display: flex; flex-direction: row; gap: var(--sp-2);
-  align-items: stretch; margin-bottom: 0; }
-.crm-search input { flex: 1; min-width: 0; }
-.crm-search .btn { flex: 0 0 auto; }
-/* ⚠️⚠️ SOTTO I 640px IL CAMPO DIVENTAVA ALTO 260 PIXEL.
-   `flex: 1 1 260px` qui sopra: 260 è la larghezza minima che si vuole quando la
-   barra è in FILA. Ma `flex-basis` si misura sull'asse principale, e a 640px
-   `.ct-toolbar` gira in colonna (app.css): quei 260 diventano un'ALTEZZA.
-   Misurato sul telefono il 2026-08-14, Clienti a 375px: campo 258×260 e
-   pulsante «Cerca» 77×260 — un terzo dello schermo per una casella vuota.
-   `auto` restituisce la misura al contenuto; la larghezza minima non serve più,
-   perché in colonna la barra è già larga quanto la pagina.
-   ⚠️ La soglia è 640px perché è quella in cui `.ct-toolbar` cambia asse: una
-   soglia diversa qui vorrebbe dire una fascia di larghezze in cui il difetto
-   resta. Le due righe vanno lette insieme. */
-@media (max-width: 640px) { .crm-search { flex-basis: auto; } }
-.crm-row-link { display: block; color: var(--ink); text-decoration: none; padding: var(--sp-3) 0; }
-.crm-row-link:hover .list-title { color: var(--accent-text); }
-.crm-roles { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-05); }
-
-/* La board della pipeline. §54 — colonne semplici, nessun trascinamento:
-   il cambio di fase avviene da una tendina, che è accessibile da tastiera
-   senza alcun lavoro in più. */
-.crm-board { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr));
-  gap: var(--sp-3); overflow-x: auto; padding-bottom: var(--sp-2); }
-.crm-col { background: var(--fill-subtle); border: 1px solid var(--line);
-  border-radius: 10px; padding: var(--sp-3); min-width: 180px; }
-.crm-col-head { display: flex; align-items: baseline; justify-content: space-between;
-  gap: var(--sp-2); margin-bottom: var(--sp-2); }
-.crm-col-title { font-size: var(--fs-label); font-weight: 600; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .03em;
-  /* ⚠️ Altezza minima: in tedesco «Offene Verkaufschancen» va a capo e
-     disallineerebbe la fila. Regola 6 del sistema di design. */
-  min-height: 2.4em; }
-.crm-col-n { font-size: var(--fs-meta); color: var(--muted); }
-.crm-card { display: block; background: var(--card); border: 1px solid var(--line);
-  border-radius: 8px; padding: var(--sp-3); margin-bottom: var(--sp-2);
-  color: var(--ink); text-decoration: none; }
-.crm-card:hover { border-color: var(--accent); }
-/* ⚠️⚠️ `display: block`, E SENZA QUESTA PAROLA IL TABELLONE ERA ILLEGGIBILE.
-   `.crm-card` è un blocco e i suoi quattro figli sono `<span>`: in flusso
-   inline finivano tutti su una riga sola, incollati, e il `margin-top` qui
-   sotto non toccava niente — su uno span in linea il margine verticale non ha
-   effetto. Letto a schermo il 2026-08-14, nella colonna «Contatto»:
-
-       «Erstauftrag WartungMeier Präzisionstechnik GmbHCHF 21'000»
-
-   Tre dati diversi — che cosa, con chi, quanto — in un paragrafo unico che
-   andava a capo dove capitava. È lo stesso difetto di `.list-sub`, nato dallo
-   stesso gesto: si sceglie `<span>` per un pezzo di testo e si dà per scontato
-   che il CSS lo impili. */
-.crm-card-title { display: block; font-weight: 600; font-size: var(--fs-body); }
-.crm-card-sub { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
-/* La pastiglia resta in linea — è un segno, non una riga — ma stacca da sopra. */
-.crm-card .badge { margin-top: var(--sp-2); }
-.crm-col-empty { font-size: var(--fs-meta); color: var(--muted); padding: var(--sp-2) 0; }
+/* `.crm-search` (con la sua `@media (max-width: 640px)` e i suoi avvisi),
+   `.crm-row-link`, `.crm-roles`, la board `.crm-board` con `.crm-col*`,
+   `.crm-card*`, `.crm-col-empty`, `.crm-narrow`, `.crm-tl-sub` e la famiglia
+   `.crm-ask` sono migrate il 2026-08-28 in
+   `src/features/crm/crm.module.css` (CSS Modules, issue #83), commenti
+   compresi: le usa solo la feature `crm`. Là dentro `.btn`, `.list-title` e
+   `.badge` sono nominati con `:global`, perché restano condivisi. La riga di
+   `.crm-board` della `@media (max-width: 720px)` è migrata con lei: qui
+   restano le righe di `.crm-kv`, condivisa. */
 
 /* Il dettaglio */
-.crm-narrow { max-width: 660px; }
 .crm-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr);
   gap: var(--sp-1) var(--sp-4); margin: 0; }
 .crm-kv dt { font-size: var(--fs-label); color: var(--muted); }
@@ -667,432 +332,88 @@
   width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .crm-tl-when { font-size: var(--fs-label); color: var(--muted); }
 .crm-tl-what { font-size: var(--fs-body); }
-.crm-tl-sub { font-size: var(--fs-meta); color: var(--muted); }
+/* `.crm-tl-sub` è migrata il 2026-08-28 in `src/features/crm/crm.module.css`
+   (CSS Modules, issue #83): è la sola della famiglia che `features/incentives/`
+   NON usa. */
 
-/* Suggerimenti e duplicati: due riquadri che chiedono una decisione. */
-.crm-ask { border: 1px solid var(--line); border-radius: 10px; padding: var(--sp-3);
-  background: var(--fill-subtle); margin-top: var(--sp-4); }
-.crm-ask-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2);
-  padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
-.crm-ask-row:first-of-type { border-top: none; }
-.crm-ask-main { flex: 1 1 220px; min-width: 0; }
+/* La famiglia `.crm-ask` (suggerimenti e duplicati, con il suo commento) è
+   migrata il 2026-08-28 in `src/features/crm/crm.module.css` (CSS Modules,
+   issue #83): la usa solo la feature `crm`. */
 
+/* ⚠️ `@media` DIVISA il 2026-08-28: la riga di `.crm-board` è migrata in
+   `src/features/crm/crm.module.css` (CSS Modules, issue #83), dentro una
+   `@media (max-width: 720px)` tutta sua; qui resta `.crm-kv`, condivisa con
+   `features/incentives/`. */
 @media (max-width: 720px) {
-  .crm-board { grid-template-columns: repeat(5, minmax(70vw, 1fr)); }
   .crm-kv { grid-template-columns: minmax(0, 1fr); gap: var(--sp-05); }
   .crm-kv dd { margin-bottom: var(--sp-2); }
 }
 
 /* ==========================================================================
-   CHIEDI AD AI-SWISSE (0027)
-   Prefisso `as-`. DUE colonne su schermo largo — le conversazioni e la
-   conversazione — e una su telefono. Le fonti sono un pannello a richiesta a
-   ogni larghezza.
-
-   ⚠️ LA CONVERSAZIONE È LA PAGINA. Fino al 2026-08-17 le colonne erano tre e la
-   conversazione era la più stretta: 468px misurati a 1440×900, cioè il 33 %
-   della finestra, stretta fra la barra dell'applicazione (264), l'elenco delle
-   conversazioni (264) e una colonna «Fonti» da 300 che per la maggior parte del
-   tempo diceva soltanto «scegli una risposta per vederne le fonti». Ora la
-   conversazione prende ~800px a 1440 — più della somma di tutto ciò che le sta
-   accanto — e le fonti si aprono dalla pastiglia «N fonti» che ogni risposta
-   porta già con sé. Le citazioni NON sono sparite dalla vista: restano in linea
-   sotto ogni risposta, ed è il DETTAGLIO (testo citato, pagina, grado di
-   verifica) che si apre a richiesta. Il conto sta nella sezione 15 di
-   `test:shell-unit`, che lo rifà dai fogli.
-
-   ⚠️ NON si riusano `.drawer` / `.drawer-overlay`: appartengono al menu
-   dell'AppShell, esistono solo sotto 900px e stanno a sinistra a z-index 60.
-   Qui servono due pannelli, uno per lato, e riusare quelle classi li farebbe
-   collidere con il menu. La MECCANICA è la stessa (translateX + overlay), i
-   nomi no.
-
-   ⚠️ Ogni colonna della griglia è `minmax(0, …)` e non `1fr` secco: con `1fr`
-   una riga lunga — il testo di una citazione, il nome di un fornitore — allarga
-   la colonna e fa comparire lo scorrimento orizzontale della pagina.
+   CHIEDI AD AI-SWISSE (0027) — la sezione (prefisso `as-`, con le sue
+   `@media (max-width: 900px)`, `@media (max-width: 600px)` e
+   `@media (prefers-reduced-motion: reduce)`) è migrata il 2026-08-28 in
+   `src/features/assistant/assistant.module.css` (CSS Modules, issue #83):
+   la usava solo la feature `assistant`. Commenti compresi. `.main:has(…)` là
+   dentro nomina `.main` con `:global`, e `.page-head`/`.section-title`/`.btn`
+   figlie di classi migrate restano `:global`.
+   ⚠️ `test:shell-unit` (sezione 15) leggeva qui `.as-page`, `.as-layout`,
+   `.as-main` e `.main:has(.as-page)`: quei controlli vanno riallineati nella
+   fase finale della migrazione.
    ========================================================================== */
-/* ⚠️ LA SCHERMATA STA NELLO SCHERMO E A SCORRERE SONO LE COLONNE.
-   È l'unica pagina del prodotto fatta così, e la ragione è il composer: se a
-   scorrere è la pagina, il campo della domanda — che sta sotto la conversazione
-   — finisce fuori schermo a ogni risposta. Misurato il 2026-07-30: 163px sotto
-   la piega, con il pulsante «Chiedi» invisibile.
-
-   `--as-shell-y` sono le spaziature verticali di `.main` (app.css), ripetute
-   qui ai suoi stessi tre punti di rottura.
-
-   ⚠️⚠️ E SI RIPETONO COI TOKEN, NON COL RISULTATO. Fino al 2026-08-17 qui c'era
-   scritto «94px», con accanto un commento che diceva «30 + 64»: due numeri che
-   i token non facevano più da un pezzo — `--sp-8` è 32 e `--sp-12` è 48, cioè
-   80. Quattordici pixel di altezza tolti alla conversazione da un commento che
-   nessuno rileggeva, e sotto i 900px il segno era pure invertito (68 dichiarati
-   contro 72 veri: la pagina sfondava di 4). Con la somma scritta in `calc()` il
-   valore non può più restare indietro, e la sezione 15 di `test:shell-unit`
-   controlla che i token sommati qui siano gli STESSI del padding di `.main` là.
-   `dvh` con `vh` di riserva — su telefono la barra degli indirizzi entra ed
-   esce, e con `100vh` il composer resterebbe sotto il bordo proprio mentre si
-   scrive. Chi non conosce `dvh` ignora la seconda riga. */
-.as-page { --as-shell-y: calc(var(--sp-8) + var(--sp-12));
-  display: flex; flex-direction: column; min-height: 0;
-  height: calc(100vh - var(--as-shell-y));
-  height: calc(100dvh - var(--as-shell-y)); }
-
-/* ⚠️ QUI IL TETTO DI 1160px NON VALE. `.main` lo porta perché una pagina di
-   contenuto oltre quella misura diventa illeggibile; una conversazione no — a
-   1440 quel tetto lasciava 16px di vuoto a destra, a 1920 ne lasciava 496, e
-   intanto la conversazione stava in 468. Il `:has()` tiene la deroga QUI, nella
-   sezione della pagina che se la prende, invece di far sapere all'involucro che
-   esiste una schermata speciale. La riga di lettura resta protetta dal tetto
-   sulla conversazione, qui sotto. */
-.main:has(.as-page) { max-width: none; }
-
-/* Il titolo sta su UNA riga: il sottotitolo diceva ciò che il vuoto iniziale
-   dice già, e insieme costavano 121px degli 806 della pagina. */
-.as-page .page-head { margin-bottom: var(--sp-4); }
-
-.as-layout { display: grid; align-items: stretch; gap: var(--sp-4);
-  flex: 1 1 auto; min-height: 0;
-  grid-template-columns: minmax(0, 264px) minmax(0, 1fr); }
-
-/* Il pulsante che apre l'elenco esiste solo dove le colonne spariscono. */
-.as-only-narrow { display: none; }
-
-/* Le colonne laterali non hanno più bisogno di `sticky`: la griglia che le
-   contiene è già alta quanto lo schermo, e ciascuna scorre per conto suo. */
-/* ⚠️ `hidden auto` e non `auto`: dichiarando il solo asse verticale, il browser
-   risolve ANCHE l'orizzontale a `auto`, e quando compare la barra verticale
-   toglie 16px di larghezza — comparivano puntualmente 16px di sfondamento
-   orizzontale nel pannello delle fonti, cioè una seconda barra sotto la prima
-   (misurato il 2026-07-30: scrollWidth 299 su clientWidth 283). Niente viene
-   tagliato: i titoli lunghi vanno a capo con `overflow-wrap: anywhere`. */
-.as-side { border: 1px solid var(--line); border-radius: var(--radius);
-  background: var(--card); padding: var(--sp-3);
-  height: 100%; min-height: 0; overflow: hidden auto; }
-/* ⚠️ `wrap` E il pulsante che non si stringe. In francese «Nouvelle» è più
-   lungo di «Nuova» e di «Neu», e in una colonna da 232px usciva dal pannello:
-   15px oltre il bordo della scheda, misurati il 2026-07-30. Con l'a capo la
-   riga si allunga solo dove serve, e nessuna lingua viene tagliata. */
-.as-col-head { display: flex; flex-wrap: wrap; align-items: center;
-  justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
-.as-col-head > .section-title { min-width: 0; overflow-wrap: anywhere; }
-.as-col-head > .btn { flex: 0 0 auto; white-space: nowrap; }
-.as-col-empty { display: flex; justify-content: center; padding: var(--sp-4); }
-
-/* ---- Conversazioni ------------------------------------------------------ */
-.as-threads { margin: var(--sp-2) 0 0; padding: 0; }
-.as-thread { display: flex; align-items: stretch; gap: var(--sp-1);
-  border-radius: var(--radius-sm); }
-.as-thread + .as-thread { margin-top: var(--sp-05); }
-.as-thread.is-active { background: var(--accent-soft); }
-.as-thread-open { flex: 1 1 auto; min-width: 0; text-align: left;
-  background: transparent; color: var(--ink); border: 0; cursor: pointer;
-  padding: var(--sp-2); border-radius: var(--radius-sm); min-height: 26px; }
-.as-thread-open:hover { background: var(--fill-subtle); }
-.as-thread.is-active .as-thread-open:hover { background: var(--accent-soft); }
-.as-thread-title { display: block; font-size: var(--fs-meta); color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.as-thread-meta { display: block; font-size: var(--fs-label); color: var(--muted); }
-.as-thread-actions { display: flex; align-items: center; gap: var(--sp-05); }
-/* ⚠️ `background` e `color` DICHIARATI: senza, il browser applica `buttonface`
-   e in tema scuro il testo diventa illeggibile (lezione di `.ct-kpi`). */
-.as-icon-btn { background: transparent; color: var(--muted); border: 0;
-  cursor: pointer; padding: var(--sp-1); border-radius: var(--radius-sm);
-  min-width: 26px; min-height: 26px; }
-.as-icon-btn:hover { background: var(--fill-subtle); color: var(--ink); }
-
-/* ---- La conversazione --------------------------------------------------- */
-/* A scorrere è il FLUSSO, non la pagina: il composer resta sempre a schermo. */
-/* ⚠️ IL TETTO TOLTO A `.main` SI RIMETTE QUI, e non è un ripensamento: sono due
-   misure diverse. Là il tetto teneva stretta la PAGINA, cioè anche le colonne e
-   i margini; qui tiene la riga di TESTO. Senza, su uno schermo da 1920 una
-   risposta si stenderebbe su 1280px — circa 170 caratteri per riga, dove
-   `--content-max` esiste proprio per dire quanto è larga una colonna che si
-   legge. Sotto i ~1520px di finestra il tetto non tocca niente: la colonna è
-   già più stretta. `margin-inline: auto` la centra nella cella, così ciò che
-   avanza si divide invece di ammucchiarsi tutto a destra. */
-.as-main { display: flex; flex-direction: column; min-width: 0;
-  height: 100%; min-height: 0;
-  max-width: var(--content-max); margin-inline: auto; width: 100%; }
-.as-stream { display: flex; flex-direction: column; gap: var(--sp-3);
-  flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-
-.as-context { display: inline-flex; align-items: center; gap: var(--sp-2);
-  align-self: flex-start; border: 1px solid var(--accent-line);
-  background: var(--accent-soft); color: var(--accent-text);
-  border-radius: 99px; padding: var(--sp-1) var(--sp-3);
-  font-size: var(--fs-meta); margin-bottom: var(--sp-3); max-width: 100%; }
-.as-context > span { min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; }
-.as-context-x { background: transparent; color: var(--accent-text); border: 0;
-  cursor: pointer; min-width: 26px; min-height: 26px; padding: 0; }
-
-/* La domanda: allineata a destra, come in ogni conversazione. */
-.as-q { align-self: flex-end; max-width: 88%; }
-.as-q-text { background: var(--accent); color: var(--on-accent);
-  border-radius: var(--radius); padding: var(--sp-2) var(--sp-3);
-  font-size: var(--fs-body); overflow-wrap: anywhere; white-space: pre-wrap; }
-
-.as-a { border: 1px solid var(--line); border-radius: var(--radius);
-  background: var(--card); padding: var(--sp-3); min-width: 0; }
-.as-a.is-selected { border-color: var(--accent-line); }
-.as-a-head { margin-bottom: var(--sp-2); }
-.as-a-hint { font-size: var(--fs-meta); color: var(--muted); margin: 0 0 var(--sp-2); }
-/* `pre-wrap`: il modello scrive elenchi con trattini e a capo, non markdown. */
-.as-a-text { font-size: var(--fs-body); color: var(--ink); white-space: pre-wrap;
-  overflow-wrap: anywhere; }
-.as-a-foot { display: flex; flex-wrap: wrap; align-items: center;
-  justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-3);
-  padding-top: var(--sp-2); border-top: 1px solid var(--line); }
-.as-feedback { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
-.as-why { margin-top: var(--sp-2); }
-
-/* Le pastiglie delle fonti. */
-.as-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
-.as-chip { display: inline-flex; align-items: center; gap: var(--sp-1);
-  border: 1px solid var(--line); border-radius: 99px;
-  padding: var(--sp-1) var(--sp-3); font-size: var(--fs-meta);
-  background: var(--fill-subtle); color: var(--ink); text-decoration: none;
-  min-height: 26px; max-width: 100%; cursor: pointer; }
-.as-chip:hover { border-color: var(--accent-line); }
-.as-chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; }
-.as-chip-more { background: transparent; }
-
-.as-follow { margin-top: var(--sp-3); }
-.as-follow-title { font-size: var(--fs-label); color: var(--muted);
-  text-transform: uppercase; letter-spacing: .04em; margin-bottom: var(--sp-2); }
-
-.as-suggestions { display: flex; flex-wrap: wrap; gap: var(--sp-2);
-  justify-content: center; margin-top: var(--sp-3); }
-.as-suggestion { border: 1px solid var(--line); border-radius: 99px;
-  background: var(--card); color: var(--ink); cursor: pointer;
-  padding: var(--sp-2) var(--sp-3); font-size: var(--fs-meta); min-height: 26px; }
-.as-suggestion:hover { border-color: var(--accent-line); background: var(--accent-soft);
-  color: var(--accent-text); }
-
-.as-progress { display: flex; align-items: center; gap: var(--sp-2);
-  font-size: var(--fs-meta); color: var(--muted); padding: var(--sp-2) 0; }
-.as-error { display: flex; align-items: center; gap: var(--sp-2);
-  border: 1px solid var(--red-line); background: var(--red-soft);
-  color: var(--red-dark); border-radius: var(--radius-sm);
-  padding: var(--sp-2) var(--sp-3); font-size: var(--fs-meta); }
-
-/* ---- Il composer -------------------------------------------------------- */
-.as-composer { margin-top: var(--sp-4); border: 1px solid var(--line);
-  border-radius: var(--radius); background: var(--card); padding: var(--sp-3); }
-.as-input { width: 100%; resize: vertical; min-height: 64px;
-  font-size: var(--fs-body); font-family: inherit; color: var(--ink);
-  background: var(--bg); border: 1px solid var(--line);
-  border-radius: var(--radius-sm); padding: var(--sp-2) var(--sp-3); }
-.as-composer-actions { display: flex; flex-wrap: wrap; align-items: center;
-  justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-2); }
-.as-hint { min-width: 0; }
-.as-note { margin-top: var(--sp-2); }
-
-/* ---- Le fonti ----------------------------------------------------------- */
-.as-sources { margin: var(--sp-3) 0 0; padding: 0; }
-.as-source { border: 1px solid var(--line); border-radius: var(--radius-sm);
-  padding: var(--sp-3); min-width: 0; }
-.as-source + .as-source { margin-top: var(--sp-2); }
-.as-source-head { display: flex; flex-wrap: wrap; align-items: center;
-  gap: var(--sp-1); margin-bottom: var(--sp-1); }
-.as-source-type { font-size: var(--fs-label); color: var(--muted);
-  text-transform: uppercase; letter-spacing: .04em; }
-/* ⚠️ `color` riportato: la regola globale `a { color: var(--accent-text) }`
-   tingerebbe di blu un titolo che qui deve leggersi come testo. */
-.as-source-title { display: block; font-size: var(--fs-meta); color: var(--ink);
-  text-decoration: none; overflow-wrap: anywhere; }
-.as-source-title:hover { color: var(--accent-text); }
-.as-source-quote-label { font-size: var(--fs-label); color: var(--muted);
-  text-transform: uppercase; letter-spacing: .04em; margin-top: var(--sp-2); }
-.as-quote { margin: var(--sp-1) 0; font-size: var(--fs-meta);
-  overflow-wrap: anywhere; }
-.as-group { list-style: none; margin: var(--sp-2) 0 0; padding: 0;
-  font-size: var(--fs-meta); }
-.as-group > li { padding: var(--sp-05) 0; overflow-wrap: anywhere; }
-
-/* ---- I pannelli ---------------------------------------------------------- */
-/* Il pannello delle FONTI vale a ogni larghezza (è la sola sede del dettaglio
-   di una citazione); quello delle CONVERSAZIONI solo sotto i 900px, dove la
-   colonna non c'è.
-
-   ⚠️⚠️ CHIUSO NON VUOL DIRE FUORI DALLA TABULAZIONE. Un pannello spostato con
-   `translateX` resta visibile per il browser: i suoi collegamenti restano nella
-   catena del Tab, e chi naviga da tastiera cade dentro un pannello che non vede
-   — fuori dallo schermo, a destra. `visibility: hidden` lo toglie davvero.
-   Prima valeva solo sotto i 900px e il difetto si vedeva su un telefono; ora
-   che le fonti sono un pannello ovunque, varrebbe su ogni schermo.
-
-   ⚠️ E LE DUE DIREZIONI HANNO DUE TRANSIZIONI DIVERSE, che non è pignoleria.
-   In CHIUSURA la visibilità va INTERPOLATA (`visibility .2s`): è una proprietà
-   a scatti, e la regola vuole che resti `visible` per tutta la durata e cambi
-   in fondo — così il pannello si vede per tutto il tempo in cui scorre via.
-   In APERTURA quella stessa scrittura dice che nell'ISTANTE ZERO il valore è
-   ancora `hidden`: il `.focus()` che il pannello fa entrando gira in un
-   `useEffect`, cioè prima del primo fotogramma, e trova un elemento invisibile
-   — il fuoco non entra. Misurato al banco il 2026-08-17: restava sulla
-   pastiglia «4 fonti». Quindi `.open` la commuta a DURATA ZERO, e il cambio non
-   dipende più dall'orologio dei fotogrammi.
-   ⚠️ Ed è la stessa lezione del `requestAnimationFrame` in `Dialog.tsx`: a
-   documento non in primo piano quell'orologio è FERMO (al banco `rAF` non è mai
-   scattato e `document.hidden` era vero), e una transizione ferma all'istante
-   zero non è un ritardo — è uno stato che non finisce più. Ciò che regge il
-   fuoco non deve passare di lì. */
-.as-overlay { display: none; }
-.as-drawer { position: fixed; top: 0; bottom: 0; z-index: 50;
-  width: 300px; max-width: 84vw; background: var(--card);
-  border: 1px solid var(--line); padding: var(--sp-4) var(--sp-3);
-  overflow-y: auto; box-shadow: var(--shadow-md);
-  visibility: hidden; transition: transform .2s ease, visibility .2s ease; }
-.as-drawer.open { transform: translateX(0); visibility: visible;
-  transition: transform .2s ease, visibility 0s linear 0s; }
-/* Sopra i 900px la colonna delle conversazioni c'è: il suo pannello no. */
-.as-drawer-left { display: none; left: 0; transform: translateX(-100%); }
-.as-drawer-right { right: 0; transform: translateX(100%); }
-/* ⚠️ 44px, non 26: è un bersaglio per un dito, non per un puntatore. E
-   l'intestazione gli lascia il posto — con la × sovrapposta al pulsante
-   «Nuova» (22×15px di sovrapposizione, misurati il 2026-07-30) chi mirava
-   all'angolo del pulsante chiudeva il pannello. */
-.as-drawer-close { position: absolute; top: var(--sp-1); right: var(--sp-1);
-  display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; color: var(--ink); border: 0; cursor: pointer;
-  min-width: 44px; min-height: 44px; border-radius: var(--radius-sm); }
-.as-drawer-close:hover { background: var(--fill-subtle); }
-.as-drawer .as-col-head { padding-right: var(--sp-12); }
-
-@media (max-width: 900px) {
-  /* Una colonna: le due laterali diventano pannelli.
-     ⚠️ E QUI C'È ANCHE LA BARRA IN CIMA, che su desktop non esiste: 56px in
-     flusso sopra `.main`. Non è mai stata contata — dichiarati 68 dove ne
-     servivano 128 — e su telefono la pagina sfondava di 60px, cioè proprio il
-     composer, che è la ragione per cui questa schermata sta dentro lo schermo.
-     Misurato al banco il 2026-08-17 a 800×900: documento 956 su 900. */
-  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-6) + var(--sp-12)); }
-  .as-layout { grid-template-columns: minmax(0, 1fr); }
-  .as-side { display: none; }
-  .as-only-narrow { display: inline-flex; align-self: flex-start; }
-  .as-drawer-left { display: block; }
-
-  /* Il velo è del TELEFONO. Su schermo largo le fonti si leggono ACCANTO alla
-     risposta che le cita — velarla mentre la si verifica sarebbe togliere
-     proprio il confronto per cui il pannello si apre. Là il pannello si chiude
-     con la × o con Esc; qui, dove copre quasi tutto, si chiude anche toccando
-     fuori. */
-  .as-overlay { display: block; position: fixed; inset: 0; z-index: 45;
-    background: var(--scrim); opacity: 0; pointer-events: none;
-    transition: opacity .18s ease; }
-  .as-overlay.open { opacity: 1; pointer-events: auto; }
-
-  .as-q { max-width: 100%; }
-}
-
-@media (max-width: 600px) {
-  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-4) + var(--sp-12)); }
-}
-
-/* Chi ha chiesto meno movimento non deve vedere i pannelli scorrere. */
-@media (prefers-reduced-motion: reduce) {
-  .as-drawer, .as-overlay { transition: none; }
-}
 
 /* ===========================================================================
    INCENTIVI (Subsidy AI 2.0)
    ---------------------------------------------------------------------------
-   ⚠️ Nessun valore scritto a mano: misure e colori vengono dai token, e nessuna
-   regola qui sotto usa px per il testo (regola 1 e §«Scala tipografica» del
-   sistema di design).
-
-   ⚠️ NESSUNA LARGHEZZA FISSA DOVE C'È TESTO TRADOTTO. Le etichette delle sei
-   misure sono RILEVANZA / RELEVANZ / PERTINENCE e IDONEITÀ / FÖRDERFÄHIGKEIT /
-   ÉLIGIBILITÉ: la griglia si adatta al contenuto (`auto-fit` + `minmax`),
-   perché a larghezza fissa il tedesco esce dal riquadro — è già successo con
-   la rilevanza a 66px.
+   La sezione è migrata il 2026-08-28 in
+   `src/features/incentives/incentives.module.css` (CSS Modules, issue #83),
+   commenti compresi: la usava solo la feature `incentives`. Con lei, da
+   `app.css`, sono migrate `.checklist-item` (con `.done`) e
+   `.decl-flag.df-muted` — che là dentro nomina `.decl-flag` con `:global`,
+   perché la classe base resta condivisa con `subsidy-ai`.
+   NON sono migrate: `.quiz-opts`/`.quiz-opt`/`sel-*` e `.state-list`, che
+   usa anche `features/subsidy-ai/`. La riga `.inc-crit` della `@media print`
+   qui sotto è stata riallineata il 2026-08-28 (sweep finale): vedi il blocco
+   di stampa.
    =========================================================================== */
 
-/* Il titolo di una riga è un pulsante, ma deve leggersi come un titolo: senza
-   questa regola il fondo e il bordo del browser lo trasformano in un bottone
-   grigio dentro un elenco. */
-.inc-open { background: none; border: 0; padding: 0; font: inherit; color: var(--accent-text);
-  cursor: pointer; text-align: left; }
-.inc-open:hover { text-decoration: underline; }
-
-.inc-row-side { display: flex; flex-wrap: wrap; align-items: flex-start;
-  gap: var(--sp-2); margin-left: auto; }
-
-/* Le sei misure. Etichetta sopra, valore sotto: in colonna reggono le tre
-   lingue senza che nessuna riga vada a capo in modo diverso dalle altre. */
-.inc-measures { display: grid; gap: var(--sp-2) var(--sp-4); margin: var(--sp-3) 0 0;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
-.inc-measure dt { font-size: var(--fs-label); color: var(--muted);
-  text-transform: uppercase; letter-spacing: .02em;
-  /* Due righe riservate: «Freschezza della fonte» in tedesco va a capo, e senza
-     l'altezza minima il suo valore scenderebbe disallineando tutta la fila.
-     ⚠️ 2.4em NON bastavano, e si vedeva anche in ITALIANO: «Freschezza della
-     fonte» va a capo pure lui, e con l'interlinea predefinita del browser
-     (~1.5) due righe di un testo a 12px ne occupano 2.9em — il valore sotto
-     scendeva lo stesso e la fila restava sfalsata. Sono gli stessi due numeri
-     già provati su `.kpi-label` (app.css), che risolve lo stesso problema
-     nella stessa forma: si dichiara l'interlinea e poi si riservano due righe
-     di QUELLA interlinea, invece di riservarne due di un'altezza ignota. */
-  line-height: 1.3; min-height: 2.7em; }
-.inc-measure dd { font-size: var(--fs-meta); color: var(--ink); margin: 0; }
-
-/* «Che cosa fare adesso»: una riga sola, e l'unica con l'accento. */
-.inc-next { display: flex; align-items: center; gap: var(--sp-2);
-  margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--accent-text); }
-
-/* La scadenza. ⚠️ Il rosso lo prende SOLO quando il motore dichiara l'urgenza:
-   un colore forte su ogni data trasformerebbe l'avviso in decorazione, e due
-   avvisi rossi affiancati non dicono «due volte urgente», dicono «non
-   guardare». */
-.inc-deadline { display: flex; align-items: center; gap: var(--sp-2);
-  margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); }
-.inc-deadline.is-urgent { color: var(--red-dark); font-weight: 600; }
-
-.inc-flag { margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--amber); }
-
-/* Un criterio. */
-.inc-criterion { padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
-.inc-criterion:first-child { border-top: none; }
-.inc-crit-head { display: flex; flex-wrap: wrap; align-items: center;
-  justify-content: space-between; gap: var(--sp-2); }
-.inc-crit-label { font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
-.inc-crit-meta { margin-top: var(--sp-1); font-size: var(--fs-meta); color: var(--muted); }
-.inc-crit-reason { margin-top: var(--sp-1); font-size: var(--fs-label); color: var(--muted); }
-.inc-crit-reason code { font-size: inherit; }
-
-/* La citazione della fonte: l'evidenza originale, che può essere in una lingua
-   diversa da quella dell'interfaccia. `mark.ev-hl` porta già il proprio colore
-   di testo (`--on-highlight`) in entrambi i temi. */
-.inc-quote { margin: var(--sp-2) 0 0; padding-left: var(--sp-3);
-  border-left: 2px solid var(--accent-line); }
-.inc-quote-src { margin-top: var(--sp-1); font-size: var(--fs-label); color: var(--muted); }
-
-/* Un passo della checklist: la spunta occupa la riga, il cestino sta a destra.
-   Il bersaglio della spunta è la FRASE (label), non la casella. */
-.inc-step { display: flex; align-items: flex-start; gap: var(--sp-3); }
-.inc-step .checklist-item { flex: 1; min-width: 0; }
-
-.inc-cat-detail { margin-top: var(--sp-3); }
-.inc-cat-row { align-items: flex-start; }
-
-/* La conferma che la risposta è stata REGISTRATA — non che il criterio sia
-   cambiato. Verde perché è una scrittura riuscita, discreta perché il verdetto
-   resta quello del badge sopra. */
-.inc-crit-answered { display: flex; align-items: center; gap: var(--sp-2);
-  margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--green); }
-
 /* ============================================================================
-   STAMPA — il foglio dei moduli, e la scheda che esiste solo su carta
+   STAMPA — il foglio dei moduli
    ============================================================================
    `app.css` decide il FOGLIO (token, cosa sparisce, cosa non si spezza).
-   Qui c'è ciò che riguarda i moduli e il blocco `.print-sheet`, che a schermo
-   non esiste: è la versione stampabile dell'analisi, con dentro le cose che a
-   video sono un COMANDO e su carta devono essere un TESTO.
+   Qui c'è ciò che riguarda i moduli. Il blocco `.print-sheet` — la scheda che
+   esiste solo su carta, con le cose che a video sono un COMANDO e su carta
+   devono essere un TESTO — è migrato il 2026-08-28 in
+   `src/features/print/print.module.css` (CSS Modules, issue #83), commenti
+   compresi.
 
    ⚠️ La citazione è il caso che giustifica tutto il resto. A schermo «Mostra
    nel documento» è un pulsante: porta l'occhio sulla frase. Su carta quel
    pulsante non si può premere, e se la frase non è stampata la verificabilità
    sparisce proprio nel supporto che finisce nel fascicolo — cioè dove serviva.
+
+   ⚠️ RIALLINEO DEL 2026-08-28 (issue #83, sweep finale). Finché le classi dei
+   moduli erano globali, questo blocco le nominava da qui; con i CSS Modules i
+   nomi sono hashati e un selettore globale non li aggancia più — era la
+   regressione di stampa della migrazione. Le righe che nominavano classi di
+   UNA feature sono migrate nel modulo della feature, in una `@media print`
+   locale dove il riferimento funziona:
+   · `.ax-header` e `.ax-actions-card` (non si spezzano) e `.ax-doc` (non va
+     su carta) → `src/features/admin-ai/admin-ai.module.css`, commenti compresi;
+   · `.ct-doc-row` e `.ct-ms-row` → `src/features/contracts/contracts.module.css`;
+   · `.inc-crit` → `src/features/incentives/incentives.module.css`, come
+     `.inc-criterion`: il selettore `.inc-crit` non ha MAI agganciato niente —
+     la classe si chiama `.inc-criterion` dal 2026-07-30 (commit 04b625d) e
+     nessuna regola l'ha mai definita. Selettore nato morto, corretto nello
+     spostamento, non copiato.
+   · `.doc-viewer` e `.pdf-viewer` → CANCELLATI: nessuna regola li definiva in
+     nessun foglio e nessun componente li scrive (censimento regole morte del
+     2026-08-28, grep su src/, scripts/, index.html e site/). Erano indizi
+     falsi: chi leggeva il blocco concludeva che esistesse un visualizzatore
+     con quel nome.
+   Restano qui le righe che nominano classi GLOBALI (`.grid-2`, `.crm-kv`,
+   `.kpi-grid`, `.ct-cmp`, `.crm-sec`): condivise fra più feature, vivono nei
+   globali e il selettore globale continua ad agganciarle.
    ========================================================================== */
 @media print {
   /* Le griglie a due colonne diventano una: su A4 la seconda colonna finisce
@@ -1112,92 +433,17 @@
   }
 
   /* Le schede dei moduli non si spezzano, come quelle generiche. */
-  .crm-sec,
-  .ax-header,
-  .ax-actions-card,
-  .inc-crit,
-  .ct-doc-row,
-  .ct-ms-row {
+  .crm-sec {
     break-inside: avoid;
     page-break-inside: avoid;
-  }
-
-  /* Il visualizzatore del documento e l'anteprima PDF non vanno su carta: sono
-     un modo di guardare il file, non il file. Chi archivia stampa l'ANALISI e
-     conserva il documento originale a parte. */
-  .doc-viewer,
-  .pdf-viewer,
-  .ax-doc {
-    display: none !important;
   }
 }
 
 /* ---------------------------------------------------------------------------
-   La scheda di stampa. Fuori dalla stampa non esiste (`.print-only` in
-   app.css); qui c'è solo il suo aspetto quando esiste.
+   La scheda di stampa (`.print-sheet`, `.print-kv`, `.print-quote` e compagni)
+   è migrata il 2026-08-28 in `src/features/print/print.module.css`
+   (CSS Modules, issue #83): riguarda esclusivamente la feature `print`.
    ------------------------------------------------------------------------- */
-@media print {
-  .print-sheet {
-    font-size: 10pt;
-    line-height: 1.45;
-    color: var(--ink);
-  }
-
-  .print-sheet h2 {
-    font-size: 13pt;
-    margin: 0 0 2pt;
-  }
-
-  .print-sheet h3 {
-    font-size: 11pt;
-    margin: 10pt 0 3pt;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 1pt;
-  }
-
-  /* Coppie etichetta/valore: l'etichetta in grigio scuro, il valore in nero.
-     Niente due colonne — su A4 una riga per fatto si legge meglio. */
-  .print-kv { margin: 0 0 2pt; }
-  .print-kv dt { display: inline; font-weight: 600; color: #333; }
-  .print-kv dt::after { content: ' '; }
-  .print-kv dd { display: inline; margin: 0; }
-
-  .print-list { margin: 2pt 0 0; padding-left: 14pt; }
-  .print-list li { margin-bottom: 2pt; }
-
-  /* ⚠️ LA CITAZIONE. Rientrata e con la barra a sinistra perché si veda a colpo
-     d'occhio che è testo DEL DOCUMENTO e non nostro: su carta non c'è nessun
-     colore a dirlo, e confondere le due cose in un fascicolo è grave. */
-  .print-quote {
-    margin: 2pt 0 4pt 10pt;
-    padding-left: 6pt;
-    border-left: 2px solid var(--line-strong);
-    font-style: italic;
-  }
-  /* I caporali li mette il CSS e non il JSX: scritti nel markup sarebbero testo
-     scritto a mano dentro un componente, che `i18n:coverage` vieta. In Svizzera
-     valgono per italiano, tedesco e francese, quindi non servono tre varianti. */
-  .print-quote::before { content: '\00AB\00A0'; }
-  .print-quote::after { content: '\00A0\00BB'; }
-  .print-quote-src { font-style: normal; color: var(--muted); }
-
-  /* L'URL scritto per esteso accanto al collegamento: un link stampato senza
-     indirizzo è un vicolo cieco. */
-  .print-url { color: #333; word-break: break-all; }
-
-  /* Il piè di pagina si stacca e resta unito. */
-  .print-foot {
-    margin-top: 12pt;
-    padding-top: 4pt;
-    border-top: 1px solid var(--line-strong);
-    font-size: 8.5pt;
-    color: #333;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  .print-foot p { margin: 0 0 1pt; }
-  .print-disclaimer { font-weight: 600; }
-}
 
 /* ============================================================================
    UTILITÀ DI SPAZIATURA — le uniche righe di stile ammesse nel markup.
@@ -1270,196 +516,50 @@
 
 /* ---- La finestra delle impostazioni --------------------------------------
    Colonnina a sinistra, pannello a destra: la stessa forma della barra
-   laterale, perché è lo stesso gesto — si sceglie dove andare e si guarda. */
-.settings-layout { display: grid; grid-template-columns: 200px 1fr; min-height: 380px; }
-.settings-rail {
-  display: flex; flex-direction: column; gap: var(--sp-05);
-  padding: var(--sp-4) var(--sp-3);
-  border-right: 1px solid var(--line); background: var(--bg);
-}
-/* Stessa densità della colonna (`--sp-1`): qui si punta con un mouse. Il bordo
-   sinistro trasparente c'è sempre, come in `.nav-btn`: comparisse solo con la
-   voce scelta, il testo si sposterebbe di 3px a ogni clic. */
-.settings-rail-btn {
-  display: flex; align-items: center; gap: var(--sp-2); width: 100%; text-align: left;
-  padding: var(--sp-1) var(--sp-3); border: none; border-left: 3px solid transparent;
-  background: none; border-radius: var(--radius-sm);
-  color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body);
-  transition: background .12s, color .12s;
-}
-.settings-rail-btn:hover { background: var(--fill-subtle); color: var(--ink); }
-/* Selezione = fondo pieno, la stessa regola della voce attiva nella colonna. */
-.settings-rail-btn.active {
-  background: var(--accent); color: var(--on-accent); font-weight: 600;
-  border-left-color: var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-/* La freccia delle voci che PORTANO ALTROVE: non è una decorazione, è la
-   differenza fra un pannello che si apre qui e una pagina che sostituisce la
-   schermata. Vedi `apre` in nav.ts. */
-.settings-rail-out { margin-left: auto; color: var(--muted); }
-.settings-rail-btn:hover .settings-rail-out { color: var(--accent-text); }
-.settings-pane { padding: var(--sp-6); min-width: 0; }
-/* Dentro il pannello l'intestazione non ha il respiro di una pagina: il titolo
-   lo porta già la finestra. */
-.settings-pane .page-head { margin-bottom: var(--sp-4); }
+   laterale, perché è lo stesso gesto — si sceglie dove andare e si guarda.
+   Le regole `.settings-layout`, `.settings-rail`, `.settings-rail-btn`,
+   `.settings-rail-out` e `.settings-pane` (con la loro `@media (max-width:
+   900px)`) sono migrate il 2026-08-28 in
+   `src/features/settings/settings.module.css` (CSS Modules, issue #83),
+   commenti compresi — compresa la composta su `.page-head`, che là dentro
+   usa `:global(.page-head)` perché la classe resta condivisa. */
 
 @media (max-width: 900px) {
   .dialog-scrim { padding: 0; align-items: stretch; }
   /* Sul telefono la finestra È la schermata: bordi via, tutta l'altezza. */
   .dialog { width: 100%; max-height: 100vh; border: none; border-radius: 0; }
-  /* La colonnina va sopra e diventa una riga che scorre in orizzontale: 200px
-     di rail su 375 di schermo lascerebbero 175 al pannello. */
-  .settings-layout { grid-template-columns: 1fr; min-height: 0; }
-  .settings-rail {
-    flex-direction: row; overflow-x: auto; border-right: none;
-    border-bottom: 1px solid var(--line); padding: var(--sp-2) var(--sp-3);
-  }
-  /* 44px, come i tre comandi personali del cassetto: qui si tocca con un dito,
-     e una riga di voci che scorre in orizzontale è già un bersaglio difficile. */
-  .settings-rail-btn { width: auto; white-space: nowrap; padding: var(--sp-2) var(--sp-3); border-left: none; min-height: 44px; }
-  .settings-rail-btn.active { border-radius: var(--radius-sm); }
-  .settings-rail-out { margin-left: var(--sp-1); }
-  .settings-pane { padding: var(--sp-4); }
 }
 
 /* ---- Attendibilità dell'analisi (2026-08-19) --------------------------------
-   L'indicatore nell'INTESTAZIONE della scheda «Analisi», non più una voce
-   dell'elenco dei campi: un giudizio di sintesi stampato alla pari dei campi
-   che riassume poteva contraddirli da pari. Il livello lo decide
-   `analysisTrust.ts`, in un posto solo; qui c'è soltanto la forma.
-   ⚠️ Nessun colore nuovo e nessun segno nuovo: i pallini sono ConfidenceBadge,
-   i toni sono i token esistenti. */
-.trust-head {
-  margin-left: auto; display: inline-flex; align-items: baseline;
-  gap: var(--sp-1); flex-wrap: wrap;
-  font-size: var(--fs-meta); font-weight: 500; color: var(--ink-soft);
-}
-/* «non valutabile» NON ha pallini: è l'assenza del giudizio, detta a parole. */
-.trust-unavailable { font-weight: 600; }
-.trust-points { color: var(--muted); font-weight: 400; }
-/* Il motivo del tetto: una riga intera sotto il titolo (il contenitore è un
-   flex con wrap, e la base al 100% manda a capo). */
-.trust-reason {
-  flex-basis: 100%; display: inline-flex; align-items: baseline;
-  gap: var(--sp-2); flex-wrap: wrap;
-  font-size: var(--fs-meta); font-weight: 400; color: var(--muted);
-}
-.trust-why { display: inline; }
-.trust-why summary { display: inline; cursor: pointer; color: var(--accent-text); }
-.trust-why-panel {
-  display: flex; flex-direction: column; gap: var(--sp-1);
-  margin-top: var(--sp-1); padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--line); border-radius: var(--radius-sm);
-  background: var(--bg); color: var(--ink-soft);
-}
-.trust-why-title { font-weight: 600; color: var(--ink); }
-/* La riga della conferma di appartenenza sotto il campo «Destinatario». */
-.trust-confirmed { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
+   Il blocco `.trust-*` è migrato il 2026-08-28 in
+   `src/features/documents/documents.module.css` (CSS Modules, issue #83),
+   commenti compresi: lo usano solo i componenti di `features/documents/`
+   (TrustIndicator e il dettaglio del documento). */
 
 /* ===========================================================================
    Panoramica — restyling 2026-08-26 (modello Lovable)
-   La testata, la striscia KPI, le due colonne, la scheda in evidenza e la
-   colonna «Richiede attenzione». Le REGOLE dei numeri non stanno qui: qui c'è
-   solo la forma. La striscia riusa la famiglia `.kpi` esistente (app.css) —
-   la stessa di Finanze e Incentivi: una card KPI è una card KPI.
+   ---------------------------------------------------------------------------
+   La sezione è migrata il 2026-08-28 in
+   `src/features/dashboard/dashboard.module.css` (CSS Modules, issue #83),
+   commenti compresi — la testata (`home-head`), la pastiglia (`att-pill`),
+   le due colonne (`home-grid`), il segno del trend (`kpi-trend`), la colonna
+   «Richiede attenzione» (`att-*`), la scheda in evidenza (`spot-*`) e
+   `.dash-sorted`, che stava più sopra. Con loro, da `app.css`, sono migrate
+   `.greeting` e `.greeting-sub`. Le classi figlie condivise (`.page-head`,
+   `.btn`, `.card`, `.card-title`) là dentro sono nominate con `:global`.
+   RESTANO qui le tre regole della sparkline, perché il suo markup è di
+   `components/ui/Sparkline.tsx`, fuori dalla feature.
+   ⚠️ `design-lint.mjs` dichiara un'eccezione su `.dash-sorted` in QUESTO
+   file: la regola è migrata nel modulo, quindi l'eccezione è morta e va
+   riallineata nella fase finale della migrazione (lo script non è stato
+   toccato, come da consegna).
    =========================================================================== */
 
-/* La testata: saluto e istante della lettura a sinistra, i gesti a destra.
-   Su schermo stretto i gesti vanno a capo e i pulsanti prendono tutta la
-   larghezza — il pollice non mira al bottone stretto. */
-.home-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
-.home-head .page-head { margin-bottom: 0; }
-.home-head-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding-top: var(--sp-1); }
-@media (max-width: 700px) {
-  .home-head-actions { width: 100%; }
-  .home-head-actions .btn { flex: 1 1 auto; justify-content: center; }
-}
-
-/* La pastiglia «N documenti richiedono attenzione»: velatura d'accento (è
-   INFORMAZIONE, non selezione — la regola del 2026-08-17), collegamento alla
-   stessa lista che dichiara. */
-.att-pill {
-  display: inline-flex; align-items: center; gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3); border-radius: var(--radius);
-  background: var(--accent-soft); color: var(--accent-text);
-  border: 1px solid var(--accent-line);
-  font-size: var(--fs-body); font-weight: 500; text-decoration: none;
-}
-.att-pill:hover { text-decoration: none; border-color: var(--accent-text); }
-
-/* Le due colonne: il lavoro a sinistra (il doppio), la lista operativa a
-   destra. Sotto i 1100px si torna a colonna unica, lista SOTTO il lavoro —
-   il modello a fianco presuppone un monitor, non un portatile stretto. */
-.home-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; margin-top: var(--sp-4); }
-@media (max-width: 1100px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
-/* I figli della griglia portano i propri margini (`mt-16` sui blocchi): la
-   colonna è un contenitore neutro, altrimenti i blocchi si allineerebbero
-   alle card della colonna accanto invece che fra loro. */
-.home-main, .home-side { min-width: 0; }
-.home-main > .card:first-child, .home-side > .card:first-child { margin-top: 0; }
-
 /* La striscia KPI: la griglia è `.kpi-grid` (4 colonne, 2 sotto i 900px).
-   Qui solo ciò che la Panoramica aggiunge: la sparkline e il segno del trend. */
+   Qui solo ciò che la Panoramica aggiunge: la sparkline e il segno del trend.
+   Il segno del trend (`.kpi-trend`, con `.down`) è migrato il 2026-08-28 in
+   `src/features/dashboard/dashboard.module.css`; la sparkline RESTA qui. */
 .kpi .sparkline { margin-top: var(--sp-2); }
-.kpi-trend { color: var(--green); font-weight: 600; margin-left: var(--sp-1); }
-.kpi-trend.down { color: var(--red-dark); }
 /* La sparkline colora coi token, non coi numeri: il tema scuro la segue da sé. */
 .sparkline-line { fill: none; stroke: var(--accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .sparkline-area { fill: var(--accent-soft); }
-
-/* La colonna «Richiede attenzione»: un elenco di righe-collegamento, come
-   `.crm-row-link` ma con le cifre a destra — importo e data stanno insieme
-   perché rispondono alla stessa domanda («quanto, entro quando»). */
-.att-col .card-title { justify-content: space-between; }
-.att-count { font-weight: 400; }
-.att-list { display: flex; flex-direction: column; }
-.att-row {
-  display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3);
-  padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle);
-  color: var(--ink); text-decoration: none;
-}
-.att-row:first-child { border-top: none; }
-.att-row:hover { text-decoration: none; }
-.att-row:hover .att-title { color: var(--accent-text); }
-.att-main { min-width: 0; display: flex; flex-direction: column; }
-.att-title { font-weight: 600; font-size: var(--fs-body); }
-.att-sender { font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.att-figures { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
-.att-amount { font-weight: 600; font-size: var(--fs-body); font-variant-numeric: tabular-nums; }
-.att-date { font-size: var(--fs-meta); color: var(--muted); }
-/* Scaduta è rossa: i colori di stato dicono quanto manca, e «è già passata»
-   è lo stato che costa di più. */
-.att-date.overdue { color: var(--red-dark); font-weight: 600; }
-
-/* La scheda del documento in evidenza: testata con titolo e chip pagine, poi
-   due colonne — campi estratti e citazione di origine. */
-.spot-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); }
-.spot-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.2px; }
-.spot-chip {
-  display: inline-flex; align-items: center; gap: var(--sp-1); flex-shrink: 0;
-  padding: var(--sp-1) var(--sp-2); border: 1px solid var(--line);
-  border-radius: var(--radius-sm); font-size: var(--fs-meta); color: var(--muted);
-}
-.spot-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); }
-@media (max-width: 700px) { .spot-body { grid-template-columns: minmax(0, 1fr); } }
-.spot-fields-title {
-  font-size: var(--fs-label); font-weight: 600; text-transform: uppercase;
-  letter-spacing: var(--ls-label); color: var(--muted); margin-bottom: var(--sp-2);
-}
-.spot-field { padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle); }
-.spot-field-name { font-size: var(--fs-meta); color: var(--muted); }
-.spot-field-value { font-weight: 600; font-size: var(--fs-body); margin-top: var(--sp-05); }
-.spot-field-note { font-size: var(--fs-meta); color: var(--amber); margin-top: var(--sp-05); }
-.spot-field-note.ok { color: var(--green); }
-.spot-actions { margin-top: var(--sp-3); }
-/* La citazione: velatura d'accento con il filetto — la forma che il prodotto
-   dà a ciò che viene dal documento (stessa famiglia di `.ax-callout`). */
-.spot-quote {
-  background: var(--accent-soft); border: 1px solid var(--accent-line);
-  border-radius: var(--radius); padding: var(--sp-3) var(--sp-4);
-}
-.spot-quote-text {
-  margin: 0 0 var(--sp-2); padding-left: var(--sp-3);
-  border-left: 3px solid var(--accent);
-  font-size: var(--fs-body); line-height: 1.55; color: var(--ink);
-}

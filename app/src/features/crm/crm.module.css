@@ -1,0 +1,130 @@
+/* ============================================================================
+   crm.module.css — «Clienti», CRM Light (0026): ricerca, board della pipeline,
+   schede trattativa, riquadri che chiedono una decisione (feature `crm`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/extra.css` (sezione «CRM Light (0026)»): la usano solo i
+   componenti di `features/crm/`. Commenti compresi, come da regola della
+   migrazione.
+
+   Adattamenti di selettore (solo `:global`, nessuna classe rinominata):
+   · `.crm-search .btn` → `:global(.btn)`: il pulsante è del sistema;
+   · `.crm-row-link:hover .list-title` → `:global(.list-title)`: il titolo
+     delle righe-elenco è condiviso;
+   · `.crm-card .badge` → `:global(.badge)`: la pastiglia è condivisa.
+
+   NON sono qui, e perché:
+   · `.crm-list` RESTA globale in `extra.css`: la usa anche
+     `features/assistant/` (e il suo avviso su `.list` dei Contratti resta
+     con lei);
+   · `.crm-kv`, `.crm-sec`, `.crm-sec-head` e la famiglia `.crm-tl`
+     (`.crm-tl`, `crm-tl-when`, `crm-tl-what`) RESTANO globali: le usa anche
+     `features/incentives/` — compresa la `@media (max-width: 720px)` di
+     `.crm-kv`, che per questo è stata DIVISA (qui è venuta solo la riga di
+     `.crm-board`);
+   · `.ct-head`, `.ct-toolbar`, `.ct-inline`, `.ct-kpi`, `.fin-pager`,
+     `.fin-page-n`, `.sr-only`, `.doc-filters` sono classi condivise e
+     restano globali.
+   ============================================================================ */
+
+/* ⚠️ `flex-direction: row` DICHIARATO, e non è ridondante: `.field` imposta
+   `flex-direction: column` (app.css:295) e `.ct-search` non lo sovrascrive, così
+   nei Contratti il pulsante «Cerca» finisce SOTTO il campo a piena larghezza.
+   Si vede solo aprendo la schermata — il typecheck non guarda il CSS. */
+.crm-search { flex: 1 1 260px; display: flex; flex-direction: row; gap: var(--sp-2);
+  align-items: stretch; margin-bottom: 0; }
+.crm-search input { flex: 1; min-width: 0; }
+.crm-search :global(.btn) { flex: 0 0 auto; }
+/* ⚠️⚠️ SOTTO I 640px IL CAMPO DIVENTAVA ALTO 260 PIXEL.
+   `flex: 1 1 260px` qui sopra: 260 è la larghezza minima che si vuole quando la
+   barra è in FILA. Ma `flex-basis` si misura sull'asse principale, e a 640px
+   `.ct-toolbar` gira in colonna (app.css): quei 260 diventano un'ALTEZZA.
+   Misurato sul telefono il 2026-08-14, Clienti a 375px: campo 258×260 e
+   pulsante «Cerca» 77×260 — un terzo dello schermo per una casella vuota.
+   `auto` restituisce la misura al contenuto; la larghezza minima non serve più,
+   perché in colonna la barra è già larga quanto la pagina.
+   ⚠️ La soglia è 640px perché è quella in cui `.ct-toolbar` cambia asse: una
+   soglia diversa qui vorrebbe dire una fascia di larghezze in cui il difetto
+   resta. Le due righe vanno lette insieme.
+   ⚠️ E questa correzione sta NELLO STESSO foglio della sua base anche dopo la
+   migrazione: in CSS Modules non esiste più «chi viene caricato dopo» fra
+   `app.css` ed `extra.css`, perché le due regole non sono più in cascata
+   fra loro — sono la stessa classe. */
+@media (max-width: 640px) { .crm-search { flex-basis: auto; } }
+.crm-row-link { display: block; color: var(--ink); text-decoration: none; padding: var(--sp-3) 0; }
+.crm-row-link:hover :global(.list-title) { color: var(--accent-text); }
+.crm-roles { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-05); }
+
+/* La board della pipeline. §54 — colonne semplici, nessun trascinamento:
+   il cambio di fase avviene da una tendina, che è accessibile da tastiera
+   senza alcun lavoro in più. */
+.crm-board { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: var(--sp-3); overflow-x: auto; padding-bottom: var(--sp-2); }
+.crm-col { background: var(--fill-subtle); border: 1px solid var(--line);
+  border-radius: 10px; padding: var(--sp-3); min-width: 180px; }
+.crm-col-head { display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.crm-col-title { font-size: var(--fs-label); font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .03em;
+  /* ⚠️ Altezza minima: in tedesco «Offene Verkaufschancen» va a capo e
+     disallineerebbe la fila. Regola 6 del sistema di design. */
+  min-height: 2.4em; }
+.crm-col-n { font-size: var(--fs-meta); color: var(--muted); }
+.crm-card { display: block; background: var(--card); border: 1px solid var(--line);
+  border-radius: 8px; padding: var(--sp-3); margin-bottom: var(--sp-2);
+  color: var(--ink); text-decoration: none; }
+.crm-card:hover { border-color: var(--accent); }
+/* ⚠️⚠️ `display: block`, E SENZA QUESTA PAROLA IL TABELLONE ERA ILLEGGIBILE.
+   `.crm-card` è un blocco e i suoi quattro figli sono `<span>`: in flusso
+   inline finivano tutti su una riga sola, incollati, e il `margin-top` qui
+   sotto non toccava niente — su uno span in linea il margine verticale non ha
+   effetto. Letto a schermo il 2026-08-14, nella colonna «Contatto»:
+
+       «Erstauftrag WartungMeier Präzisionstechnik GmbHCHF 21'000»
+
+   Tre dati diversi — che cosa, con chi, quanto — in un paragrafo unico che
+   andava a capo dove capitava. È lo stesso difetto di `.list-sub`, nato dallo
+   stesso gesto: si sceglie `<span>` per un pezzo di testo e si dà per scontato
+   che il CSS lo impili. */
+.crm-card-title { display: block; font-weight: 600; font-size: var(--fs-body); }
+.crm-card-sub { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
+/* La pastiglia resta in linea — è un segno, non una riga — ma stacca da sopra. */
+.crm-card :global(.badge) { margin-top: var(--sp-2); }
+.crm-col-empty { font-size: var(--fs-meta); color: var(--muted); padding: var(--sp-2) 0; }
+
+/* Il dettaglio */
+.crm-narrow { max-width: 660px; }
+
+/* La voce secondaria della timeline: la sola della famiglia `.crm-tl` che
+   `features/incentives/` NON usa — il resto della famiglia resta globale. */
+.crm-tl-sub { font-size: var(--fs-meta); color: var(--muted); }
+
+/* Suggerimenti e duplicati: due riquadri che chiedono una decisione. */
+.crm-ask { border: 1px solid var(--line); border-radius: 10px; padding: var(--sp-3);
+  background: var(--fill-subtle); margin-top: var(--sp-4); }
+.crm-ask-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
+.crm-ask-row:first-of-type { border-top: none; }
+.crm-ask-main { flex: 1 1 220px; min-width: 0; }
+
+/* ⚠️ DIVISA dalla `@media (max-width: 720px)` di `extra.css`: là restano le
+   righe di `.crm-kv`, che è condivisa con `features/incentives/`; qui è
+   venuta solo `.crm-board`. */
+@media (max-width: 720px) {
+  .crm-board { grid-template-columns: repeat(5, minmax(70vw, 1fr)); }
+}
+
+/* ---- Ritrovamenti del lotto 6 (ricognizione finale, 2026-08-28) -----------
+   Due classi sfuggite al lotto della feature: le usa solo `features/crm/`. */
+
+/* `.divider` viene da `src/styles/extra.css` (sezione «piccole utility
+   aggiuntive»): il filetto fra due blocchi del modulo «Nuovo cliente». */
+.divider { height: 1px; background: var(--line); margin: var(--sp-4) 0; }
+
+/* `.grid-3` viene da `src/styles/app.css`, dove stava fra `.grid-2` (condivisa,
+   resta globale) e `.grid-4` (migrata in `features/pricing/`); la sua riga
+   nella `@media (max-width: 900px)` è venuta con lei, come da divisione. */
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
+@media (max-width: 900px) {
+  .grid-3 { grid-template-columns: 1fr; }
+}
