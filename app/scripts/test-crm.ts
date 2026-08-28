@@ -3,14 +3,14 @@
 //   npm run test:crm
 //
 // Richiede le migrazioni 0026, 0028 e 0030 applicate, e `.env.test` valorizzato.
-// ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 14 FALLISCE, perché lo
+// ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 15 FALLISCE, perché lo
 // storico del CRM impedisce la cancellazione di un'azienda. È il difetto che
 // questo file ha trovato alla prima esecuzione.
 // ⚠️ Senza la 0030 fallisce la sezione 13: `crm_scan_link_suggestions` non
 // esiste ancora e la RPC risponde `PGRST202`.
 //
 // Non prova che il codice sia scritto bene: prova che le GARANZIE siano in
-// vigore. Sono dodici, e stanno tutte nel DATABASE, perché un servizio ben
+// vigore. Sono quindici, e stanno tutte nel DATABASE, perché un servizio ben
 // educato non è una garanzia — è la lezione della 0014, dove i permessi di
 // colonna dichiarati nei commenti non restringevano nulla e il difetto è emerso
 // solo ESEGUENDO.
@@ -28,7 +28,11 @@
 //    9. ULTIMO CONTATTO — calcolato, non scrivibile, e una nota non conta.
 //   10. IL NOME ESTRATTO SOPRAVVIVE allo scollegamento (§188, §189).
 //   11. FUSIONE — solo amministratori, transazionale, senza duplicare.
-//   12. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
+//   12. AUTOMAZIONI — l'entità CRM è ammessa dal motore.
+//   13. CANDIDATO — la scansione PROPONE e non crea, e un no resta un no.
+//   14. IMPORT CSV — la riga entra intera e dichiara la provenienza; il
+//       doppione duro si ferma sul vincolo, non sulla fiducia nel client.
+//   15. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
 //
 // ⚠️ LA PULIZIA CONTROLLA IL PROPRIO ESITO, e l'ORDINE non è indifferente:
 // PRIMA l'azienda, POI l'utente. Al contrario, cancellare l'utente porta via a
@@ -644,7 +648,96 @@ async function main() {
     ((orphan ?? []) as unknown[]).length === 0);
 
   // -------------------------------------------------------------------------
-  section('14. Cascata — cancellata l’azienda non resta niente');
+  section('14. Import CSV — la riga entra intera, il doppione duro si ferma');
+
+  // Il percorso è quello del wizard (ClientImportPage.importRow), passo per
+  // passo: organizzazione con la PROVENIENZA dichiarata, poi ruoli, persona,
+  // recapiti. Le colonne `source`/`source_detail` devono essere scrivibili
+  // dall'utente: se un grant mancasse lo direbbe questa asserzione, non un
+  // riepilogo a schermo.
+  const impOrg = await A.client.from('crm_organizations').insert({
+    company_id: A.companyId, display_name: `Importata ${stamp} Sagl`,
+    uid_che: 'CHE-432.187.666', city: 'Bellinzona', canton: 'TI',
+    source: 'import', source_detail: 'contatti-prova.csv',
+  }).select('id, source, source_detail').single();
+  check('la riga importata si inserisce con la provenienza dichiarata',
+    !impOrg.error
+    && (impOrg.data as { source?: string } | null)?.source === 'import'
+    && (impOrg.data as { source_detail?: string } | null)?.source_detail === 'contatti-prova.csv',
+    msg(impOrg.error));
+  const impOrgId = (impOrg.data as { id: string } | null)?.id ?? '';
+
+  const impRole = await A.client.from('crm_organization_roles').insert({
+    company_id: A.companyId, organization_id: impOrgId, role: 'customer',
+  });
+  check('i ruoli della riga si salvano', !impRole.error, msg(impRole.error));
+
+  const impContact = await A.client.from('crm_contacts')
+    .insert({
+      company_id: A.companyId, display_name: 'Mario Fontana',
+      first_name: 'Mario', last_name: 'Fontana',
+    }).select('id').single();
+  check('la persona della riga si crea', !impContact.error, msg(impContact.error));
+  const impContactId = (impContact.data as { id: string } | null)?.id ?? '';
+  const impLink = await A.client.from('crm_contact_organizations').insert({
+    company_id: A.companyId, contact_id: impContactId, organization_id: impOrgId,
+    job_title: 'Amministratore', is_primary: true,
+  });
+  check('e si collega all’organizzazione importata', !impLink.error, msg(impLink.error));
+
+  const impMail = await A.client.from('crm_contact_methods').insert({
+    company_id: A.companyId, contact_id: impContactId, type: 'email',
+    value: `mario.fontana.${stamp}@import-test.ch`, is_primary: true,
+  });
+  check('il recapito della persona si registra', !impMail.error, msg(impMail.error));
+
+  // ⚠️ IL DOPPIONE DURO. L'anteprima dichiara l'IDI già presente e salta la
+  // riga, ma l'ultima parola resta al vincolo: se un giorno il client
+  // sbagliasse, il database — non la fiducia — impedirebbe la scheda doppia.
+  const impDup = await A.client.from('crm_organizations').insert({
+    company_id: A.companyId, display_name: 'Importata di nuovo',
+    uid_che: 'CHE432187666', source: 'import', source_detail: 'contatti-prova.csv',
+  });
+  check('reimportare lo stesso IDI valido è un 23505, non una scheda doppia',
+    Boolean(impDup.error) && code(impDup.error) === '23505',
+    `${code(impDup.error)} ${msg(impDup.error)}`);
+
+  // La stessa prova per l'email: è il vincolo per cui il client omette
+  // l'indirizzo già registrato invece di tentarlo e mostrare un errore atteso.
+  const impMailDup = await A.client.from('crm_contact_methods').insert({
+    company_id: A.companyId, contact_id: impContactId, type: 'email',
+    value: `MARIO.FONTANA.${stamp}@IMPORT-TEST.CH`, is_primary: false,
+  });
+  check('reimportare la stessa email è un 23505: il client la omette e lo dichiara',
+    Boolean(impMailDup.error) && code(impMailDup.error) === '23505',
+    `${code(impMailDup.error)} ${msg(impMailDup.error)}`);
+
+  // ⚠️ L'IDI con la cifra errata ENTRA due volte: non identifica nessuno,
+  // quindi non collide (uid_norm resta null, sezione 7). La riga si importa
+  // e l'anteprima lo ha già detto con l'errore di riga.
+  const impBad1 = await A.client.from('crm_organizations').insert({
+    company_id: A.companyId, display_name: 'IDI errato 1',
+    uid_che: 'CHE-432.187.667', source: 'import',
+  });
+  const impBad2 = await A.client.from('crm_organizations').insert({
+    company_id: A.companyId, display_name: 'IDI errato 2',
+    uid_che: 'CHE-432.187.667', source: 'import',
+  });
+  check('un IDI con la cifra errata si importa due volte senza collidere',
+    !impBad1.error && !impBad2.error, `${msg(impBad1.error)} / ${msg(impBad2.error)}`);
+
+  // ⚠️ IL CONFINE. Lo stesso IDI valido importato da B non collide con la
+  // scheda di A: l'indice unico è per company_id, e l'import di un tenant non
+  // deve sapere che cosa l'altro ha già.
+  const impB = await Bt.client.from('crm_organizations').insert({
+    company_id: Bt.companyId, display_name: 'Importata da B',
+    uid_che: 'CHE-432.187.666', source: 'import',
+  });
+  check('lo stesso IDI valido si importa in un’altra azienda senza collidere',
+    !impB.error, msg(impB.error));
+
+  // -------------------------------------------------------------------------
+  section('15. Cascata — cancellata l’azienda non resta niente');
 
   const tables: Array<[string, string]> = [
     ['crm_organizations', 'company_id'],

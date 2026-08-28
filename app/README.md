@@ -986,7 +986,8 @@ npm run test:contracts       # Contratti su DB: isolamento, cross-tenant su docu
 npm run test:crm-unit        # CRM offline: la copia SQL↔TypeScript dei domini pubblici, la cifra
                              #   di controllo dell'IDI, il filtro anti-rumore dei mittenti, i
                              #   pareggi dell'abbinamento, la chiave di idempotenza del
-                             #   candidato scritta due volte, nessuna somma fra valute (132 casi)
+                             #   candidato scritta due volte, nessuna somma fra valute, il
+                             #   parser e la validazione dell'import CSV (218 casi)
                              # aritmetica delle date sui casi limite, amendment che non sovrascrive
                              # (66 test — richiede la 0024 e la 0025)
 npm run test:subsidy-unit    # Incentivi offline: gli operatori dei criteri e soprattutto QUANDO
@@ -1303,7 +1304,7 @@ GIRA è eseguirla.
   amministrativo NON viene fermata); prompt injection nel corpo che non altera l'esito; adapter Google e
   Microsoft che da payload diversi producono lo **stesso** modello; cifratura dei token con AAD, IV
   irripetuto e rilevamento delle manomissioni.
-- **`test:crm-unit` (132)** — le decisioni del CRM che si sbagliano in silenzio. La più
+- **`test:crm-unit` (218)** — le decisioni del CRM che si sbagliano in silenzio. La più
   importante: legge la migrazione 0026 ed estrae l'elenco dei domini pubblici di
   `crm_is_public_domain`, confrontandolo con la costante TypeScript — due copie della stessa
   regola divergono, e il typecheck non guarda dentro l'SQL. Sorveglia anche che il file non
@@ -1312,7 +1313,10 @@ GIRA è eseguirla.
   di controllo errata non identifichi nessuno, e che i valori di valute diverse non si sommino.
   Dalla 0030 confronta anche la **chiave di idempotenza** del candidato automatico — composta
   una volta in SQL e una in `suggestionKey()` — perché due forme diverse riempirebbero l'elenco
-  «da verificare» di copie senza rompere nulla di visibile.
+  «da verificare» di copie senza rompere nulla di visibile. Le ultime cinque sezioni sono
+  dell'**import CSV**: parser (virgolette, separatori, codifiche), auto-mappatura delle colonne
+  in quattro lingue senza indovinare, validazione di riga in codici, duplicati dentro e fuori
+  il file secondo la scala di §25, instradamento dei recapiti fra persona e organizzazione.
 - **`test:finance-unit` (202)** — le decisioni finanziarie che si sbagliano in silenzio, provate
   **offline**: le quattro convenzioni di importo che convivono su una scrivania svizzera lette con
   aritmetica **esatta** (`0.10 + 0.20` fa `0.30`), due valute che non si sommano mai e un importo senza

@@ -2,7 +2,8 @@
 
 Stato: **in esercizio dal 2026-07-30**, interfaccia compresa.
 Migrazioni: **0026** (il modulo) e **0028** (la correzione della cascata), entrambe applicate.
-Test: `npm run test:crm-unit` **122/122** · `npm run test:crm` **74/74**.
+Test: `npm run test:crm-unit` **218/218** · `npm run test:crm` **94/94 in 14
+sezioni, eseguite** il 2026-08-28, sezione 14 (import CSV) compresa.
 
 ---
 
@@ -500,11 +501,12 @@ nessun messaggio traduce.
 ## 12. Test
 
 ```bash
-npm run test:crm-unit   # 122 casi, offline, senza database e senza crediti
-npm run test:crm        # 74 asserzioni in 13 sezioni, sul database reale
+npm run test:crm-unit   # 218 casi, offline, senza database e senza crediti
+npm run test:crm        # 94 asserzioni in 14 sezioni, sul database reale —
+                        # eseguite il 2026-08-28, sezione 14 (import CSV) compresa
 ```
 
-`test:crm-unit` — dieci sezioni. La più importante **legge la migrazione 0026** ed
+`test:crm-unit` — diciassette sezioni. La più importante **legge la migrazione 0026** ed
 estrae l'array di `crm_is_public_domain`, i valori dei quattro enum e il blocco di
 autoverifica, confrontandoli con le costanti TypeScript. Sorveglia anche che il file
 **non contraddica se stesso**: nessuna colonna può essere insieme «timbrata dal
@@ -512,13 +514,22 @@ database» e concessa al client. Poi: normalizzazione e ciò che **non** si
 normalizza, la cifra di controllo dell'IDI (confrontata con `isValidUid` su sette
 IDI veri e inventati), il filtro anti-rumore sul campione reale, i pareggi
 dell'abbinamento, l'ordine delle priorità di stato, nessuna somma fra valute, giorni
-di calendario alle 23:30, filtri in URL, ordinamenti stabili.
+di calendario alle 23:30, filtri in URL, ordinamenti stabili, la chiave del
+candidato scritta due volte, il sito web come link che può essere codice. Le
+ultime cinque sono dell'import CSV: parser (virgolette, separatori, codifiche),
+auto-mappatura in quattro lingue senza indovinare, validazione di riga in codici,
+duplicati dentro e fuori il file, instradamento dei recapiti.
 
-`test:crm` — tredici sezioni: isolamento (anche chiamando la RPC col `p_company_id`
-altrui), cross-tenant (nemmeno il service role), responsabili, referente, permessi
-verificati **rileggendo** e non guardando l'esito dell'update, storico non
-falsificabile, identità dell'IDI, timbri delle fasi, ultimo contatto, il nome
-estratto che sopravvive, fusione, entità ammesse dal motore, cascata.
+`test:crm` — quattordici sezioni eseguite il 2026-08-28, 94 asserzioni verdi:
+isolamento (anche chiamando la RPC col
+`p_company_id` altrui), cross-tenant (nemmeno il service role), responsabili,
+referente, permessi verificati **rileggendo** e non guardando l'esito dell'update,
+storico non falsificabile, identità dell'IDI, timbri delle fasi, ultimo contatto,
+il nome estratto che sopravvive, fusione, entità ammesse dal motore, candidato
+automatico, cascata. La quattordicesima — import CSV, aggiunta con questa
+funzione — prova sul database reale: percorso della riga con provenienza
+dichiarata, doppione duro e email
+duplicata fermati dal vincolo, IDI errato che non collide, confine fra tenant.
 
 **Regressioni (2026-07-30): 18 suite verdi, 1578 asserzioni.** Offline 1037,
 su database reale 541. Nessun modulo rotto dal CRM. Dopo nove suite su database:
@@ -691,6 +702,78 @@ erano nel JSX (§ la stessa trappola di «Priorité: toutes» nel Calendario).
 
 ---
 
+## 15-ter. L'import CSV
+
+Il secondo modo in cui il CRM «si riempie confermando»: un file di contatti che
+arriva da fuori — un foglio di calcolo, l'esportazione di un gestionale — entra
+da `/clienti/importa`, con un wizard in tre passi.
+
+**1. Il file.** Al massimo 1000 righe e 1 MB: oltre il primo tetto il file
+viene troncato e la schermata lo dichiara, oltre il secondo viene rifiutato. Il
+separatore (`;`, `,`, tab) si riconosce da solo contando fuori dalle virgolette;
+un file non UTF-8 viene letto come Windows-1252 e la scelta è dichiarata a
+schermo, con l'invito a risalvare come «CSV UTF-8» se le accentate non tornano.
+
+**2. La mappatura.** Le intestazioni si confrontano con una tabella di alias in
+quattro lingue e ogni colonna si PROPONE verso un campo: la persona conferma o
+cambia, e un campo sta su una colonna sola. Una colonna non riconosciuta resta
+«Non importata» invece di essere indovinata. Per proseguire serve almeno un
+nome: l'organizzazione, oppure nome E cognome della persona.
+
+**3. L'anteprima.** Ogni riga mostra il proprio stato PRIMA di toccare il
+database: valida, con errori (nome mancante, email o sito malformati, cantone o
+paese che non sono la sigla di due lettere, IDI con la cifra errata, ruolo
+sconosciuto) oppure possibile duplicato, con il motivo. Le righe con errori
+vengono saltate; sui duplicati decide la persona, riga per riga o in blocco.
+
+**I duplicati si mostrano, non si risolvono da soli.** MAI fusione, MAI
+aggiornamento dell'esistente, nessun arricchimento: l'import crea schede nuove
+o non tocca niente. L'unica eccezione è quella che il database impone: un IDI
+valido già presente non si può inserire (vincolo unico), quindi là la scelta
+non esiste e la riga viene saltata col motivo scritto. Per lo stesso motivo
+l'email già registrata non viene nemmeno tentata (`uq_crm_method_email`
+risponderebbe 23505): viene omessa e dichiarata in nota, invece di mostrare un
+errore atteso.
+
+**L'esecuzione non è una transazione finta.** Va riga per riga: una che
+fallisce viene registrata col motivo e le altre continuano. Se l'organizzazione
+è creata ma la persona o i recapiti no, il riepilogo la conta come «parziale»
+e lo dichiara — far sparire il lavoro riuscito per colpa di quello secondario
+sarebbe peggio, e tacerlo una bugia.
+
+**Provenienza.** Ogni scheda importata porta `source = 'import'` e
+`source_detail` = nome del file: fra sei mesi si potrà rispondere a «da dove è
+uscita questa scheda?». I duplicati interni al file si risolvono a favore della
+prima occorrenza.
+
+✅ **Stato della verifica (misurato il 2026-08-28).** La logica (parser,
+mappatura, validazione, duplicati, instradamento dei recapiti) è coperta dalle
+sezioni 13–17 di `test:crm-unit`, 96 casi verdi. La sezione 14 di `test:crm` è
+stata **eseguita il 2026-08-28**: 94/94 asserzioni verdi in 14 sezioni. La
+prova nel browser è stata fatta il 2026-08-28 su un tenant usa-e-getta poi
+rimosso (rimozione verificata rileggendo tutte le tabelle `crm_*` e
+`auth.users`: zero residui), su un'istanza Chrome separata pilotata via CDP —
+il Chrome principale era in uso — e ha visto, in italiano: wizard completo con
+errori di riga in prosa, doppione interno al file senza scelta, duplicato di
+dominio deciso per riga, riepilogo «3 create, 3 saltate»; file Windows-1252 da
+40 righe con il banner di codifica dichiarato e le accentate corrette; import
+da 200 righe con il progresso «N di 200» avanzare riga per riga (~23 s); le
+schede create in `/clienti` (443 con `source = 'import'`, misurato via service
+role) e la provenienza «Da un'importazione» nel dettaglio. In tedesco e
+francese i passi e le etichette chiave sono corretti, in francese i due punti
+portano lo spazio insecabile stretto (U+202F, verificato nel DOM). A 375px
+nessuno scroll orizzontale nei tre passi (`scrollWidth` = 375, `scrollX` = 0,
+override di viewport CDP: le interazioni touch reali non sono state provate).
+
+⚠️ **Il difetto che la prova a schermo ha pagato**: la persona importata
+riceveva `first_name` e `last_name` giusti ma il `display_name` copiato dal
+nome dell'organizzazione — in «Persone» la card di «Chiara Moreschi» si
+intitolava «Galleria Ventuno Sagl». Corretto il 2026-08-28: il nome della
+persona lo dà `personDisplayName` (nome + cognome, mai l'organizzazione), e
+due asserzioni nella sezione 17 di `test:crm-unit` lo sorvegliano.
+
+---
+
 ## 16. Configurazione
 
 Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
@@ -725,7 +808,7 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
 - Nessuna fattura cliente, quindi **nessun ricavo**: Finanze gestisce fatture
   fornitore e spese. Un valore di opportunità è una stima e un contratto non è un
   incasso.
-- Nessun import CSV, nessuna sincronizzazione rubriche, nessun OCR di biglietti da
+- Nessuna sincronizzazione rubriche, nessun OCR di biglietti da
   visita, nessun help desk, nessun portale clienti.
 - Nessun campo personalizzato.
 

@@ -193,9 +193,16 @@ export function ClientsPage() {
           <div className="page-title">{t('crm.title')}</div>
           <div className="page-desc">{t('crm.subtitle')}</div>
         </div>
-        <Link className="btn btn-primary" to="/clienti/nuovo">
-          <Icon name="plus" className="ic-sm" /> {t('crm.add')}
-        </Link>
+        <div className="row-wrap">
+          {/* Azione secondaria: la primaria resta «Nuovo cliente», una sola
+              per schermata. */}
+          <Link className="btn" to="/clienti/importa">
+            <Icon name="upload" className="ic-sm" /> {t('crm.import.action')}
+          </Link>
+          <Link className="btn btn-primary" to="/clienti/nuovo">
+            <Icon name="plus" className="ic-sm" /> {t('crm.add')}
+          </Link>
+        </div>
       </div>
 
       {error && <ErrorState message={t(error as TKey) || error} />}
@@ -401,6 +408,7 @@ export function ClientsPage() {
             action={(
               <div className="row-wrap">
                 <Link className="btn btn-primary" to="/clienti/nuovo">{t('crm.add')}</Link>
+                <Link className="btn" to="/clienti/importa">{t('crm.import.action')}</Link>
                 <Link className="btn" to="/inbox">{t('crm.emptySecondary')}</Link>
               </div>
             )}
