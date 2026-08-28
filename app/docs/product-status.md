@@ -1957,16 +1957,21 @@ decidere: mostra ciò che serve per guardare, e lascia il gesto a una persona.
 in `diff.ts`).** La decisione di prodotto è arrivata: il **chi** resta
 l'operatore del catalogo della 0037 (nessun ruolo nuovo), il **dove** resta
 `/incentivi/revisioni` (nessuna schermata nuova). Ciò che cambia è **quando**
-nasce la scheda: `runSourceChecks` apre una revisione `recheck_due` quando la
-verifica umana di un programma supera i 30 giorni (`VERIFY_STALE_DAYS` in
-`contract.ts`, tenuto uguale alla soglia della health da un controllo della
-sezione 18 di `test:subsidy-unit`). La scheda non propone campi — non c'è nulla
-da applicare, c'è una fonte da rileggere — e la sua chiave di deduplicazione
-porta la data della verifica, quindi si ri-arma solo dopo un `accepted` vero.
-⚠️ **NON ancora in produzione**: finché la 0046 non è applicata e
-`subsidy-worker` non è rideployata, il comportamento resta quello descritto
-sopra — come per il difetto del campo fantasma, il codice corretto vive in una
-Edge Function che nessun workflow deploya.
+nasce la scheda: una volta per giro del worker, `openRecheckReviews` apre una
+revisione `recheck_due` per ogni programma la cui verifica umana supera i 30
+giorni (`VERIFY_STALE_DAYS` in `contract.ts`, tenuto uguale alla soglia della
+health da un controllo della sezione 18 di `test:subsidy-unit`). La scheda non
+propone campi — non c'è nulla da applicare, c'è una fonte da rileggere — e la
+sua chiave di deduplicazione porta la data della verifica, quindi si ri-arma
+solo dopo un `accepted` vero.
+⚠️ **La 0046 è applicata in produzione** (2026-08-28). La prima versione del
+worker apriva la scheda DENTRO il ciclo delle fonti in scadenza: corretta nei
+conti, sbagliata nel quando — `ti-lrilocc` (cadenza 180 giorni) avrebbe visto la
+sua scheda a gennaio 2027. Corretto in giornata con `openRecheckReviews`
+svincolato dalla cadenza (test su stub nella sezione 18), deployato dopo il
+merge; la lezione è la stessa del campo fantasma: il difetto è stato trovato
+guardando il database (`subsidy_sources.next_check_at`), non rileggendo il
+codice.
 
 ### Le sette revisioni chiuse dal sistema — non può più succedere in silenzio, ma restano AMBIGUE
 

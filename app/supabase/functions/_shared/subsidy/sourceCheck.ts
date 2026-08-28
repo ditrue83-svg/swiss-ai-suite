@@ -16,6 +16,7 @@ import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { findAdapter } from './adapters.ts';
 import { fetchSource } from './fetchGuard.ts';
 import { detectChanges, detectRecheckDue } from './diff.ts';
+import type { ChangeProposal } from './diff.ts';
 import { SOURCE_CHECK_BATCH, SOURCE_CHECK_SLOT_MS, VERIFY_STALE_DAYS } from './contract.ts';
 
 export interface SourceCheckReport {
@@ -42,6 +43,94 @@ export interface SourceCheckDeps {
   now: () => number;
   deadlineMs: number;
   limit?: number;
+}
+
+/**
+ * L'inserimento di una proposta di revisione, un posto solo.
+ *
+ * ⚠️ SELECT + INSERT e non `upsert`. L'indice unico su `dedupe_key` è PARZIALE
+ * (`where dedupe_key is not null`) e PostgREST rifiuta un `on_conflict` che non
+ * corrisponda a un vincolo pieno.
+ *
+ * ⚠️⚠️ IL DIFETTO CHE QUESTA RIGA CHIUDE ERA UN FALLBACK SILENCIOSO, ed è stato
+ * trovato guardando il database dopo la prima esecuzione in produzione — non
+ * rileggendo il codice. Il rapporto diceva `reviewsCreated: 0` su sette fonti
+ * cambiate, e quello zero sembrava «non c'era niente da revisionare» mentre
+ * significava «la scrittura è stata rifiutata sette volte». Un guasto travestito
+ * da risultato: la stessa forma della coda dell'Inbox che si sarebbe svuotata
+ * senza analizzare niente. Ora un errore si CONTA e finisce nei codici.
+ */
+async function insertProposal(
+  sb: SupabaseClient,
+  report: SourceCheckReport,
+  p: ChangeProposal,
+  refs: { fetchId?: string | null; snapshotId?: string | null; programId: string | null },
+): Promise<void> {
+  const { data: already } = await sb.from('subsidy_catalog_reviews')
+    .select('id').eq('dedupe_key', p.dedupeKey).maybeSingle();
+  if (already) return;
+
+  const { error: rErr } = await sb.from('subsidy_catalog_reviews').insert({
+    source_fetch_id: refs.fetchId ?? null,
+    snapshot_id: refs.snapshotId ?? null,
+    program_id: refs.programId,
+    change_type: p.changeType,
+    previous_values: p.previousValues,
+    proposed_values: p.proposedValues,
+    risk_level: p.risk,
+    notes: p.notes,
+    dedupe_key: p.dedupeKey,
+  });
+  if (rErr) {
+    // Una corsa fra due esecuzioni non è un errore: l'indice ha fatto il
+    // suo lavoro. Tutto il resto va dichiarato.
+    if (rErr.code !== '23505') {
+      report.errors++;
+      report.codes.push(`review:${rErr.code ?? 'error'}`);
+    }
+  } else {
+    report.reviewsCreated++;
+  }
+}
+
+/**
+ * ⚠️ LA RIVERIFICA UMANA È SVINCOLATA DALLA CADENZA DELLE FONTI (0046).
+ *
+ * La prima versione apriva la scheda `recheck_due` DENTRO il ciclo delle fonti
+ * in scadenza — e una fonte su cadenza lunga avrebbe rimandato la scheda del
+ * suo programma di mesi (misurato in produzione il 2026-08-28: `ti-lrilocc`
+ * sarebbe tornata a gennaio 2027, con `subsidy:health` rosso per tutto il
+ * tempo). La domanda «nessuno ha guardato troppo a lungo?» non dipende da
+ * quando la pagina viene riletta: si fa una volta per giro, su TUTTI i
+ * programmi che hanno una fonte primaria.
+ *
+ * La scheda porta `proposedValues` vuoto: non c'è nulla da applicare, c'è una
+ * pagina ufficiale da rileggere. La chiave di dedupe contiene la data della
+ * verifica, quindi si ri-arma solo dopo un `accepted` vero.
+ */
+export async function openRecheckReviews(
+  sb: SupabaseClient,
+  report: SourceCheckReport,
+  now: Date,
+): Promise<void> {
+  const { data: programs, error } = await sb.from('subsidy_programs')
+    .select('id, last_checked_at, primary_source_id')
+    .not('primary_source_id', 'is', null);
+  if (error) {
+    report.errors++;
+    report.codes.push(`recheck:${error.code ?? 'error'}`);
+    return;
+  }
+  for (const prog of (programs ?? []) as Array<Record<string, unknown>>) {
+    const recheck = detectRecheckDue({
+      sourceId: prog.primary_source_id as string,
+      programId: prog.id as string,
+      lastCheckedAt: (prog.last_checked_at as string | null) ?? null,
+      now,
+      staleDays: VERIFY_STALE_DAYS,
+    });
+    if (recheck) await insertProposal(sb, report, recheck, { programId: prog.id as string });
+  }
 }
 
 export async function runSourceChecks(deps: SourceCheckDeps): Promise<SourceCheckReport> {
@@ -152,7 +241,7 @@ export async function runSourceChecks(deps: SourceCheckDeps): Promise<SourceChec
     //    quale programma appartenesse — e una coda di cambiamenti anonimi non
     //    la si può revisionare.
     const { data: owner } = await sb.from('subsidy_programs')
-      .select('id, last_checked_at').eq('primary_source_id', sourceId).maybeSingle();
+      .select('id').eq('primary_source_id', sourceId).maybeSingle();
 
     const proposals = detectChanges({
       sourceId,
@@ -162,62 +251,12 @@ export async function runSourceChecks(deps: SourceCheckDeps): Promise<SourceChec
       previousNormalized: (prevSnap?.normalized as Record<string, unknown>) ?? {},
     });
 
-    // ⚠️ LA RIVERIFICA UMANA HA UN PERCORSO (0046). Fino a qui una revisione
-    //    nasceva solo se la FONTE si muoveva: a coda vuota `last_checked_at`
-    //    invecchiava oltre soglia senza che nessuno potesse riaprirla da dentro
-    //    il prodotto, e `subsidy:health` usciva 1 senza un gesto che lo
-    //    chiudesse. Quando è la verifica a essere vecchia — non la fonte — si
-    //    apre una scheda `recheck_due` con `proposedValues` vuoto: non c'è
-    //    nulla da applicare, c'è una pagina ufficiale da rileggere.
-    if (owner?.id) {
-      const recheck = detectRecheckDue({
-        sourceId,
-        programId: owner.id as string,
-        lastCheckedAt: (owner.last_checked_at as string | null) ?? null,
-        now: new Date(deps.now()),
-        staleDays: VERIFY_STALE_DAYS,
-      });
-      if (recheck) proposals.push(recheck);
-    }
-
     for (const p of proposals) {
-      // ⚠️ SELECT + INSERT e non `upsert`. L'indice unico su `dedupe_key` è
-      //    PARZIALE (`where dedupe_key is not null`) e PostgREST rifiuta un
-      //    `on_conflict` che non corrisponda a un vincolo pieno.
-      //
-      // ⚠️⚠️ IL DIFETTO CHE QUESTA RIGA CHIUDE ERA UN FALLBACK SILENZIOSO, ed è
-      //    stato trovato guardando il database dopo la prima esecuzione in
-      //    produzione — non rileggendo il codice. Il rapporto diceva
-      //    `reviewsCreated: 0` su sette fonti cambiate, e quello zero sembrava
-      //    «non c'era niente da revisionare» mentre significava «la scrittura è
-      //    stata rifiutata sette volte». Un guasto travestito da risultato: la
-      //    stessa forma della coda dell'Inbox che si sarebbe svuotata senza
-      //    analizzare niente. Ora un errore si CONTA e finisce nei codici.
-      const { data: already } = await sb.from('subsidy_catalog_reviews')
-        .select('id').eq('dedupe_key', p.dedupeKey).maybeSingle();
-      if (already) continue;
-
-      const { error: rErr } = await sb.from('subsidy_catalog_reviews').insert({
-        source_fetch_id: fetchRow?.id ?? null,
-        snapshot_id: snapshotId,
-        program_id: owner?.id ?? null,
-        change_type: p.changeType,
-        previous_values: p.previousValues,
-        proposed_values: p.proposedValues,
-        risk_level: p.risk,
-        notes: p.notes,
-        dedupe_key: p.dedupeKey,
+      await insertProposal(sb, report, p, {
+        fetchId: fetchRow?.id ?? null,
+        snapshotId,
+        programId: owner?.id ?? null,
       });
-      if (rErr) {
-        // Una corsa fra due esecuzioni non è un errore: l'indice ha fatto il
-        // suo lavoro. Tutto il resto va dichiarato.
-        if (rErr.code !== '23505') {
-          report.errors++;
-          report.codes.push(`review:${rErr.code ?? 'error'}`);
-        }
-      } else {
-        report.reviewsCreated++;
-      }
     }
 
     // ⚠️ La freschezza si aggiorna SOLO dopo un controllo riuscito.
@@ -236,6 +275,13 @@ export async function runSourceChecks(deps: SourceCheckDeps): Promise<SourceChec
         next_check_at: new Date(deps.now() + 6 * 3600 * 1000).toISOString(),
       }).eq('id', sourceId);
     }
+  }
+
+  // ⚠️ LA RIVERIFICA UMANA UNA VOLTA PER GIRO, dopo le fonti e solo se resta
+  //    tempo: è una lettura di sette righe, non una richiesta in rete, e non
+  //    deve rubare il budget a un controllo di fonte iniziato.
+  if (deps.now() < deps.deadlineMs) {
+    await openRecheckReviews(sb, report, new Date(deps.now()));
   }
 
   return report;

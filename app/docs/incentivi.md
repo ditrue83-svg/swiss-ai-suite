@@ -274,12 +274,14 @@ coda vuota `last_checked_at` invecchiava oltre la soglia dei 30 giorni e
 `subsidy:health` usciva 1 **senza che esistesse un gesto per chiuderlo** — un
 rosso senza rimedio, che è il modo in cui si insegna a ignorare un controllo.
 
-La 0046 aggiunge il tipo di cambiamento `recheck_due` (rischio `low`): quando
-`runSourceChecks` trova un programma la cui verifica umana è più vecchia di
-`VERIFY_STALE_DAYS` (30, in `contract.ts` — tenuto uguale alla soglia della
-health da un controllo dedicato di `test:subsidy-unit`), apre una scheda con
-`proposed_values` **vuoto**: non c'è nulla da applicare al catalogo, c'è una
-fonte ufficiale da riaprire. I tre gesti restano quelli della 0037, e solo
+La 0046 aggiunge il tipo di cambiamento `recheck_due` (rischio `low`): una volta
+per giro del worker, **svincolata dalla cadenza delle fonti** — la prima versione
+lo faceva dentro il ciclo delle fonti in scadenza, e `ti-lrilocc` (cadenza 180
+giorni) avrebbe visto la sua scheda a gennaio 2027 — `openRecheckReviews` trova
+i programmi la cui verifica umana è più vecchia di `VERIFY_STALE_DAYS` (30, in
+`contract.ts` — tenuto uguale alla soglia della health da un controllo dedicato
+di `test:subsidy-unit`) e apre una scheda con `proposed_values` **vuoto**: non
+c'è nulla da applicare al catalogo, c'è una fonte ufficiale da riaprire. I tre gesti restano quelli della 0037, e solo
 **Approva** sposta `last_checked_at` — «Irrilevante» chiude la scheda senza
 fingere una verifica, e la chiave di deduplicazione porta la data della
 verifica proprio perché una scheda ignorata non ne riapra un'altra identica:
