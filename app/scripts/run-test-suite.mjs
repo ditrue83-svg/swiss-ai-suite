@@ -571,6 +571,13 @@ const FUORI_SUITE = {
   // Gli strumenti di CORREZIONE: riscrivono i file, non provano un invariante.
   'lint:fix': 'corregge i file (eslint --fix): scrive, non prova un invariante',
   format: 'riformatta i file (prettier --write): scrive, non prova un invariante',
+  // Il cantiere Ladle (vetrina dei componenti, `*.stories.tsx`): aggiunto da un
+  // altro lotto di lavoro, non prova un invariante dell'applicazione — `ladle`
+  // non termina e `ladle:build` costruisce la vetrina, non la verifica.
+  // Dichiarati qui il 2026-08-28 (sweep finale issue #83): la riconciliazione
+  // li aveva trovati «persi».
+  ladle: 'la vetrina dei componenti: non termina, non ha un esito; cantiere di un altro lotto',
+  'ladle:build': 'costruisce la vetrina dei componenti: un artefatto, non un controllo; cantiere di un altro lotto',
 };
 
 /**

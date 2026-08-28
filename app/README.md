@@ -207,6 +207,7 @@ npx supabase db push
 cp .env.example .env      # imposta VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
 npm install
 npm run dev               # http://localhost:5174
+npm run ladle             # banco di prova dei componenti UI (Ladle), http://localhost:61000
 ```
 
 ### 4) Edge Functions + chiave AI
@@ -904,6 +905,8 @@ se `SUPABASE_URL` punta a `127.0.0.1`, invece di dare un verde vuoto.
 ```bash
 npm run dev             # server di sviluppo (5174)
 npm run build           # typecheck + build di produzione
+npm run ladle           # vetrina dei componenti (storie Ladle, *.stories.tsx): non termina
+npm run ladle:build     # costruisce la vetrina come sito statico — un artefatto, non un controllo
 npm run typecheck       # type-check di TUTTO: app + Edge Function (i due tsconfig)
 npm run typecheck:app        # solo src/ e scripts/ (tsconfig.json)
 npm run typecheck:functions  # solo supabase/functions/ (tsconfig.functions.json).
