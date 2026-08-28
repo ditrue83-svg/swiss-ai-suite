@@ -31,6 +31,10 @@ import { readFileSync } from 'node:fs';
 import {
   checkDecision, diffValues, waitingDays,
 } from '../src/features/incentives/reviewModel.ts';
+// Sezione 18 — la riverifica umana (0046): la funzione pura e il suo innesto.
+import {
+  emptySourceReport, openRecheckReviews,
+} from '../supabase/functions/_shared/subsidy/sourceCheck.ts';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -1277,6 +1281,109 @@ check('e la stessa data produce la stessa chiave (nessun duplicato)',
     join(HERE, '..', 'supabase', 'functions', '_shared', 'subsidy', 'diff.ts'), 'utf8');
   check('il tipo TS `ReviewChangeType` conosce `recheck_due`',
     /'recheck_due'/.test(diffSource));
+}
+
+// ---------------------------------------------------------------------------
+// L'innesto: `openRecheckReviews` gira UNA VOLTA PER GIRO su tutti i programmi
+// con fonte primaria — non dentro il ciclo delle fonti in scadenza.
+//
+// ⚠️ PERCHÉ QUESTO TEST ESISTE. La prima versione (PR #89) apriva la scheda
+//    DENTRO il ciclo di `subsidy_sources_due`: corretta nei conti, sbagliata
+//    nel QUANDO — misurato in produzione il 2026-08-28, `ti-lrilocc` ha cadenza
+//    180 giorni e la sua scheda sarebbe nata a gennaio 2027, con la health
+//    rossa per tutto il tempo. Un percorso che dipende dalla cadenza della
+//    pagina non è un percorso per la verifica umana.
+//
+// Lo stub replica la catena minima del client (from→select→not / →eq→maybeSingle
+// / →insert) e butta se si tocca una tabella inattesa: il passo DEVE limitarsi
+// a `subsidy_programs` e `subsidy_catalog_reviews`.
+// ---------------------------------------------------------------------------
+interface StubRecheckOpts {
+  programs: Array<{ id: string; last_checked_at: string | null; primary_source_id: string }>;
+  existingKeys?: string[];
+  insertError?: { code: string } | null;
+}
+function stubSbRecheck({ programs, existingKeys = [], insertError = null }: StubRecheckOpts) {
+  const inserted: Array<Record<string, unknown>> = [];
+  const sb = {
+    from(table: string) {
+      if (table === 'subsidy_programs') {
+        return {
+          select: (_cols: string) => ({
+            not: (_c: string, _op: string, _v: unknown) =>
+              Promise.resolve({ data: programs, error: null }),
+          }),
+        };
+      }
+      if (table === 'subsidy_catalog_reviews') {
+        return {
+          select: (_cols: string) => ({
+            eq: (_c: string, key: string) => ({
+              maybeSingle: () =>
+                Promise.resolve({ data: existingKeys.includes(key) ? { id: 'gia' } : null }),
+            }),
+          }),
+          insert: (row: Record<string, unknown>) => {
+            inserted.push(row);
+            return Promise.resolve({ error: insertError });
+          },
+        };
+      }
+      throw new Error(`tabella inattesa: ${table}`);
+    },
+  };
+  // ⚠️ Il cast è il prezzo di non importare il client vero in una suite offline:
+  //    lo stub implementa la porzione di contratto che il passo usa, e il
+  //    typecheck sorveglia il resto dal lato della funzione.
+  return { sb: sb as unknown as Parameters<typeof openRecheckReviews>[0], inserted };
+}
+
+{
+  const SETTE = ['innosuisse', 'prokilowatt', 'pronovo', 'ti-linn',
+    'programma-edifici', 'ti-fer', 'ti-lrilocc']
+    .map((id) => ({ id, last_checked_at: '2026-07-25', primary_source_id: `src-${id}` }));
+
+  // 1. Tutti e sette oltre soglia → sette schede, una per programma, senza fetch.
+  const r1 = emptySourceReport();
+  const s1 = stubSbRecheck({ programs: SETTE });
+  await openRecheckReviews(s1.sb, r1, new Date('2026-08-28T12:00:00Z'));
+  check('sette programmi fermi al 2026-07-25 → sette schede recheck_due',
+    s1.inserted.length === 7 && r1.reviewsCreated === 7
+    && s1.inserted.every((r) => r.change_type === 'recheck_due'
+      && r.program_id !== null && r.source_fetch_id === null
+      && Object.keys(r.proposed_values as object).length === 0));
+
+  // 2. Un programma fresco non produce niente.
+  const r2 = emptySourceReport();
+  const s2 = stubSbRecheck({
+    programs: [{ id: 'fresco', last_checked_at: '2026-08-20', primary_source_id: 'src-f' }],
+  });
+  await openRecheckReviews(s2.sb, r2, new Date('2026-08-28T12:00:00Z'));
+  check('un programma verificato otto giorni fa non apre niente',
+    s2.inserted.length === 0 && r2.reviewsCreated === 0);
+
+  // 3. Chiave già presente → nessun doppione (il giro ogni 15 minuti lo
+  //    ripeterebbe quattro volte l'ora).
+  const staleKey = detectRecheckDue({
+    sourceId: 'src-innosuisse', programId: 'innosuisse',
+    lastCheckedAt: '2026-07-25', now: new Date('2026-08-28T12:00:00Z'), staleDays: 30,
+  })!.dedupeKey;
+  const r3 = emptySourceReport();
+  const s3 = stubSbRecheck({ programs: SETTE, existingKeys: [staleKey] });
+  await openRecheckReviews(s3.sb, r3, new Date('2026-08-28T12:00:00Z'));
+  check('una scheda già aperta non si riapre (dedupe vera, non per if)',
+    s3.inserted.length === 6 && r3.reviewsCreated === 6);
+
+  // 4. ⚠️ Un insert rifiutato si CONTA: il «tutto a posto» di un errore
+  //    silenzioso è il difetto che questa coda ha già pagato una volta.
+  const r4 = emptySourceReport();
+  const s4 = stubSbRecheck({
+    programs: [{ id: 'x', last_checked_at: null, primary_source_id: 'src-x' }],
+    insertError: { code: '42501' },
+  });
+  await openRecheckReviews(s4.sb, r4, new Date('2026-08-28T12:00:00Z'));
+  check('un rifiuto del database finisce nei codici, non sotto il tappeto',
+    r4.errors === 1 && r4.codes.includes('review:42501') && r4.reviewsCreated === 0);
 }
 
 // ===========================================================================
