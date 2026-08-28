@@ -81,6 +81,7 @@
 --   0043_inbox_admin_domains
 --   0044_inbox_dismissed_value
 --   0045_inbox_promozione
+--   0046_subsidy_recheck_review
 --
 -- SERVE A INSTALLARE DA ZERO. Su un database già in esercizio si applica UNA
 -- MIGRAZIONE ALLA VOLTA: questo file non aggiunge niente e in caso di errore
@@ -26226,4 +26227,38 @@ grant execute on function public.email_promote_message(uuid, uuid) to authentica
 
 comment on function public.email_promote_message(uuid, uuid) is
   'D-13: scrive il legame messaggio→documento e porta il messaggio a «Da gestire». Idempotente per costruzione (uq_email_msg_doc_body). Con p_document_id NULL è una sola lettura: «è già promosso?».';
+
+-- >>>>>>>>>>>>>>>>>>>>  0046_subsidy_recheck_review  <<<<<<<<<<<<<<<<<<<<
+
+-- ============================================================================
+-- AI-Swisse — 0046 LA RIVERIFICA UMANA HA UN PERCORSO — solo il valore dell'enum
+--
+-- ⚠️⚠️ QUESTA MIGRAZIONE FA UNA COSA SOLA, come la 0044 e per la stessa trappola
+-- già pagata (0027): in PostgreSQL un valore aggiunto a un enum NON è
+-- utilizzabile nella stessa transazione che lo aggiunge — neppure per
+-- VERIFICARLO, perché un controllo che nomina l'etichetta nuova è già un uso.
+-- Il valore nasce qui e lo usa `_shared/subsidy/sourceCheck.ts`, che scrive le
+-- schede `recheck_due` dal prossimo deploy di `subsidy-worker`.
+--
+-- PERCHÉ SERVE UN VALORE NUOVO. La verifica UMANA di un programma
+-- (`subsidy_programs.last_checked_at`) si muove soltanto con la decisione
+-- `accepted` di `resolve_subsidy_catalog_review` (0037) — ed è giusto così. Ma
+-- fino a qui una revisione nasceva solo quando una FONTE si muoveva: a coda
+-- vuota, misurato in produzione il 2026-08-28, sette programmi erano fermi al
+-- 2026-07-25 e `subsidy:health` usciva 1 senza che esistesse un gesto per
+-- chiuderlo. `recheck_due` è la scheda che il rilevatore apre quando non è la
+-- fonte ad essersi mossa ma la verifica ad essere vecchia: `previousValues`
+-- porta la data e i giorni, `proposedValues` è vuoto perché non c'è niente da
+-- applicare — c'è una pagina ufficiale da riaprire e un «ciò che pubblichiamo
+-- è ancora vero» da dire di nuovo.
+--
+-- ⚠️ RIUSARE `other` SAREBBE STATO PIÙ SEMPLICE E SBAGLIATO: il tipo di
+-- cambiamento governa il rischio (§23) e chi smaltisce la coda deve distinguere
+-- «la fonte è cambiata» da «nessuno ha guardato troppo a lungo» senza leggere
+-- la nota — sono due lavori diversi, con due urgenze diverse.
+--
+-- Requisiti: 0032 (l'enum), 0037 (la coda e il cancello). Idempotente.
+-- ============================================================================
+
+alter type public.subsidy_review_change_type add value if not exists 'recheck_due';
 

@@ -15,8 +15,8 @@
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import { findAdapter } from './adapters.ts';
 import { fetchSource } from './fetchGuard.ts';
-import { detectChanges } from './diff.ts';
-import { SOURCE_CHECK_BATCH, SOURCE_CHECK_SLOT_MS } from './contract.ts';
+import { detectChanges, detectRecheckDue } from './diff.ts';
+import { SOURCE_CHECK_BATCH, SOURCE_CHECK_SLOT_MS, VERIFY_STALE_DAYS } from './contract.ts';
 
 export interface SourceCheckReport {
   sourcesChecked: number;
@@ -152,7 +152,7 @@ export async function runSourceChecks(deps: SourceCheckDeps): Promise<SourceChec
     //    quale programma appartenesse — e una coda di cambiamenti anonimi non
     //    la si può revisionare.
     const { data: owner } = await sb.from('subsidy_programs')
-      .select('id').eq('primary_source_id', sourceId).maybeSingle();
+      .select('id, last_checked_at').eq('primary_source_id', sourceId).maybeSingle();
 
     const proposals = detectChanges({
       sourceId,
@@ -161,6 +161,24 @@ export async function runSourceChecks(deps: SourceCheckDeps): Promise<SourceChec
       result,
       previousNormalized: (prevSnap?.normalized as Record<string, unknown>) ?? {},
     });
+
+    // ⚠️ LA RIVERIFICA UMANA HA UN PERCORSO (0046). Fino a qui una revisione
+    //    nasceva solo se la FONTE si muoveva: a coda vuota `last_checked_at`
+    //    invecchiava oltre soglia senza che nessuno potesse riaprirla da dentro
+    //    il prodotto, e `subsidy:health` usciva 1 senza un gesto che lo
+    //    chiudesse. Quando è la verifica a essere vecchia — non la fonte — si
+    //    apre una scheda `recheck_due` con `proposedValues` vuoto: non c'è
+    //    nulla da applicare, c'è una pagina ufficiale da rileggere.
+    if (owner?.id) {
+      const recheck = detectRecheckDue({
+        sourceId,
+        programId: owner.id as string,
+        lastCheckedAt: (owner.last_checked_at as string | null) ?? null,
+        now: new Date(deps.now()),
+        staleDays: VERIFY_STALE_DAYS,
+      });
+      if (recheck) proposals.push(recheck);
+    }
 
     for (const p of proposals) {
       // ⚠️ SELECT + INSERT e non `upsert`. L'indice unico su `dedupe_key` è
