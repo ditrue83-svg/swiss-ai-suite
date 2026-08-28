@@ -53,9 +53,11 @@ const PROGRAMS = [
     requirements: [
       req('owner', 'Immobile in Svizzera (di proprietà o in diritto di superficie)', 'L’azienda è proprietaria dell’immobile da risanare (o ne ha il diritto di superficie)?', true),
       req('before', 'Domanda presentata al Cantone PRIMA dell’inizio dei lavori', 'I lavori NON sono ancora iniziati?', true),
-      req('measure', 'Intervento ammissibile: isolamento termico dell’involucro o sostituzione del riscaldamento fossile con energie rinnovabili', 'L’intervento riguarda l’isolamento dell’involucro o la sostituzione di un riscaldamento fossile?', true),
+      req('measure', 'Intervento ammissibile: isolamento termico dell’involucro, sostituzione di un riscaldamento fossile o elettrico con energie rinnovabili o rete di riscaldamento, risanamento completo (anche in fasi) o nuova costruzione in standard Minergie-P', 'L’intervento rientra fra quelli ammessi (isolamento dell’involucro, sostituzione del riscaldamento, risanamento completo o nuova costruzione Minergie-P)?', true),
     ],
-    exclusions: [exc('newbuild', 'Edifici nuovi (sono ammessi solo i risanamenti)', 'Si tratta di un edificio nuovo (e non di un risanamento)?', 'si')],
+    // ⚠️ NON «edifici nuovi» in assoluto: la pagina ufficiale ammette le nuove
+    // costruzioni in standard Minergie-P (verificato a mano il 2026-08-28).
+    exclusions: [exc('newbuild', 'Nuove costruzioni fuori dallo standard Minergie-P', 'Si tratta di una nuova costruzione che NON raggiunge lo standard Minergie-P?', 'si')],
     contribution_description: 'Contributo per m² di superficie isolata o forfait per impianto. Gli importi variano per Cantone (da confermare sul programma cantonale in vigore).',
     application_window: 'Domanda in ogni momento, sempre prima dell’inizio dei lavori. Consigliato un CECE Plus.',
     must_apply_before_start: true,
@@ -99,7 +101,7 @@ const PROGRAMS = [
       req('procedure', 'Notifica e domanda secondo la procedura Pronovo dopo la messa in servizio', 'L’impianto è (o sarà) messo in servizio e notificato secondo la procedura Pronovo?', true),
     ],
     exclusions: [],
-    contribution_description: 'Rimunerazione unica: contributo base + contributo per kW installato. Categorie RUP (<100 kW), RUG (>100 kW), RUE elevata (fino al 60% dei costi di riferimento per impianti ≥150 kW senza consumo proprio).',
+    contribution_description: 'Rimunerazione unica: contributo base + contributo per kW installato. Categorie RUP (<100 kW), RUG (>100 kW), RUE elevata per impianti senza consumo proprio (fino al 60% dei costi di riferimento): senz’aste da 2 a 149,99 kW, tramite aste da 150 kW.',
     application_window: 'Domanda dopo la messa in servizio, secondo la procedura Pronovo (nessuna domanda preventiva obbligatoria).',
     must_apply_before_start: false,
     must_apply_before_start_text: null,

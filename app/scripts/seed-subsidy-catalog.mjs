@@ -187,15 +187,20 @@ const RULES = {
       source_evidence: evidence(SOURCES[1].canonical_url,
         'La domanda va presentata prima dell’inizio dei lavori'),
     }),
-    r('measure', 'Intervento ammissibile: isolamento dell’involucro o sostituzione del riscaldamento fossile', {
-      question: 'L’intervento riguarda l’isolamento dell’involucro o la sostituzione di un riscaldamento fossile?',
+    r('measure', 'Intervento ammissibile: isolamento dell’involucro, sostituzione del riscaldamento, risanamento completo o nuova costruzione Minergie-P', {
+      question: 'L’intervento rientra fra quelli ammessi (isolamento, sostituzione del riscaldamento, risanamento completo o nuova costruzione Minergie-P)?',
     }),
     r('amounts', 'Gli importi variano per Cantone e si leggono sul programma cantonale in vigore', {
       hardness: 'informative', evaluability: 'manual',
     }),
-    r('newbuild', 'Edifici nuovi: sono ammessi solo i risanamenti', {
+    // ⚠️ L'esclusione NON è «edificio nuovo» in assoluto: dal confronto manuale
+    //    del 2026-08-28 la pagina ufficiale ammette le nuove costruzioni in
+    //    standard Minergie-P. Escluso è ciò che è nuovo E fuori standard.
+    r('newbuild', 'Nuove costruzioni: ammesse solo nello standard Minergie-P', {
       hardness: 'exclusion',
-      question: 'Si tratta di un edificio nuovo, e non di un risanamento?',
+      question: 'Si tratta di una nuova costruzione fuori dallo standard Minergie-P?',
+      source_evidence: evidence(SOURCES[1].canonical_url,
+        'Sono sostenuti isolamento dell’involucro, sostituzione dei riscaldamenti fossili o elettrici, risanamenti completi o in fasi e nuove costruzioni in standard Minergie-P'),
     }),
   ],
   prokilowatt: [
@@ -227,14 +232,16 @@ const RULES = {
     r('procedure', 'Notifica e domanda secondo la procedura Pronovo dopo la messa in servizio', {
       question: 'L’impianto è (o sarà) messo in servizio e notificato secondo la procedura Pronovo?',
     }),
-    // ⚠️ CRITERIO INFORMATIVO E NON VALUTABILE, di proposito. Il 2026-07-30 la
-    //    pagina ufficiale e il catalogo divergono sulla soglia della RUE
-    //    (2–149,99 kW contro ≥150 kW). La divergenza è dichiarata invece di
-    //    essere risolta a favore di una delle due: correggerla su una lettura
-    //    automatica sarebbe esattamente ciò che il modulo vieta.
-    r('categoria', 'La categoria (RUP, RUG, RUE) dipende dalla potenza dell’impianto: la soglia va letta sulla fonte ufficiale', {
+    // ⚠️ CRITERIO INFORMATIVO E NON VALUTABILE. La divergenza del 2026-07-30
+    //    sulla soglia della RUE (2–149,99 kW contro ≥150 kW) è stata verificata
+    //    a mano il 2026-08-28: ERANO VERE TUTTE E DUE, perché la RUE esiste in
+    //    due forme — senz'aste (2–149,99 kW) e tramite aste (≥150 kW, fino al
+    //    60% dei costi di riferimento). Resta `manual` perché la potenza
+    //    dell'impianto non è un fatto del fascicolo: la categoria si legge
+    //    sulla fonte, non si deduce.
+    r('categoria', 'La categoria dipende dalla potenza: RUP <100 kW, RUG >100 kW, RUE senza consumo proprio (senz’aste 2–149,99 kW, tramite aste da 150 kW)', {
       hardness: 'informative', evaluability: 'manual',
-      notes: 'Divergenza rilevata il 2026-07-30 fra il catalogo e la pagina Pronovo sulla soglia della RUE. Da verificare a mano prima di trasformarla in un criterio valutabile.',
+      notes: 'Soglie verificate a mano il 2026-08-28 sulla pagina RU e sulla pagina delle aste di Pronovo: la RUE esiste senz’aste (2–149,99 kW) e tramite aste (da 150 kW).',
     }),
   ],
   'ti-linn': [
