@@ -31,7 +31,7 @@ import { useT, type TKey } from '@/i18n';
 import {
   IMPORT_MAX_FILE_BYTES, IMPORT_MAX_ROWS,
   buildDrafts, contactRoute, decodeCsvBytes, effectiveName, flagDuplicates,
-  mappingHasName, parseCsv, parseRoles, suggestMapping, validateDraft,
+  mappingHasName, parseCsv, parseRoles, personDisplayName, suggestMapping, validateDraft,
   type CsvEncoding, type DuplicateFlag, type DuplicateKind, type ExistingIndex,
   type ImportDraft, type ImportField, type ImportRowErrorCode, type ParsedCsv,
 } from './csvImport';
@@ -279,7 +279,10 @@ export function ClientImportPage() {
     if (contactRoute(d) === 'person') {
       try {
         const contactId = await crmService.addPerson(company!.id, orgId, {
-          displayName: name,
+          // Il nome della persona è il SUO (nome + cognome), mai quello
+          // dell'organizzazione: visto a schermo il 2026-08-28, la card della
+          // persona si intitolava come la ditta.
+          displayName: personDisplayName(d),
           firstName: d.firstName,
           lastName: d.lastName,
           jobTitle: d.jobTitle || null,

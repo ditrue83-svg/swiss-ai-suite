@@ -39,7 +39,7 @@ import {
 import {
   IMPORT_FIELDS, IMPORT_MAX_ROWS, HEADER_ALIASES,
   decodeCsvBytes, detectDelimiter, parseCsv, suggestMapping, mappingHasName,
-  parseRoles, buildDrafts, effectiveName, contactRoute, validateDraft,
+  parseRoles, buildDrafts, effectiveName, personDisplayName, contactRoute, validateDraft,
   normNameKey, flagDuplicates,
   type ExistingIndex, type ImportDraft,
 } from '../src/features/crm/csvImport.ts';
@@ -910,6 +910,16 @@ check('il nome effettivo deriva dalla persona quando l’organizzazione manca',
   effectiveName({ displayName: '', firstName: 'Laura', lastName: 'Bianchi' }) === 'Laura Bianchi');
 check('e resta quello dell’organizzazione quando c’è',
   effectiveName({ displayName: 'Rossi SA', firstName: 'Laura', lastName: 'Bianchi' }) === 'Rossi SA');
+// ⚠️ IL DIFETTO VISTO A SCHERMO IL 2026-08-28: la persona importata riceveva
+// come `display_name` il nome DELL'ORGANIZZAZIONE — la card di «Chiara
+// Moreschi» si intitolava «Galleria Ventuno Sagl». Il nome della persona è
+// il suo, anche quando la riga porta un'organizzazione.
+check('il nome della persona è il suo anche quando c’è l’organizzazione',
+  personDisplayName({ firstName: 'Laura', lastName: 'Bianchi' }) === 'Laura Bianchi'
+  && personDisplayName({ firstName: 'Laura', lastName: 'Bianchi' }) !== 'Rossi SA');
+check('persona a metà: nessun nome di persona (e contactRoute non la crea)',
+  personDisplayName({ firstName: 'Laura', lastName: '' }) === ''
+  && contactRoute({ firstName: 'Laura', lastName: '' }) === 'organization');
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);

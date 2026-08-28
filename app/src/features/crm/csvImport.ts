@@ -465,6 +465,19 @@ export function effectiveName(d: Pick<ImportDraft, 'displayName' | 'firstName' |
 }
 
 /**
+ * Il nome della PERSONA della riga: nome e cognome, MAI il nome
+ * dell'organizzazione — una persona intitolata come la propria ditta è il
+ * difetto visto nella prova a schermo del 2026-08-28 (la scheda di
+ * «Chiara Moreschi» si intitolava «Galleria Ventuno Sagl»). Vuoto quando la
+ * persona non c'è tutta: in quel caso `contactRoute` non la crea proprio.
+ */
+export function personDisplayName(d: Pick<ImportDraft, 'firstName' | 'lastName'>): string {
+  const first = d.firstName.trim();
+  const last = d.lastName.trim();
+  return first !== '' && last !== '' ? `${first} ${last}` : '';
+}
+
+/**
  * A CHI vanno i recapiti della riga. §127 — se c'è una persona, l'email e i
  * telefoni sono SUOI; senza persona, sono dell'organizzazione. «C'è una
  * persona» vuol dire nome E cognome: con uno solo non si sa chi sia, e creare
