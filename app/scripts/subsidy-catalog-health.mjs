@@ -156,12 +156,16 @@ export function giudicaCodaRevisioni(revisioni, oggi, soglie = {}) {
 //     ha detto «ciò che pubblichiamo è ancora vero». La muove soltanto la
 //     decisione `accepted` di `resolve_subsidy_catalog_review`.
 //
-// ⚠️ Ne discende una cosa che va detta: se il rilevatore non produce revisioni,
-// **non esiste alcun percorso per cui la verifica umana riparta**. Una coda
-// vuota, che sembra la situazione migliore, è anche quella in cui
-// `last_checked_at` invecchia senza che nessuno possa farci niente da dentro il
-// prodotto. Per questo la soglia qui sotto non è un errore di integrità: è un
-// promemoria che esce non-zero, come le revisioni in coda.
+// ⚠️ Ne discendeva una cosa che andava detta: se il rilevatore non produceva
+// revisioni, **non esisteva alcun percorso per cui la verifica umana
+// ripartisse** — misurato in produzione il 2026-08-28, con sette programmi
+// fermi al 2026-07-25 e questo comando a exit 1 senza un gesto che lo
+// chiudesse. La 0046 ha chiuso il buco: quando è la verifica a essere vecchia
+// — non la fonte — `runSourceChecks` apre una revisione `recheck_due`, e
+// l'`accepted` dell'operatore aggiorna `last_checked_at` come per ogni altra
+// scheda. Questa soglia resta un promemoria che esce non-zero, non un errore
+// di integrità: ora però il rosso ha un rimedio, e un rosso senza rimedio è
+// il modo in cui si insegna a ignorarlo.
 //
 // TRENTA GIORNI, come per la coda di revisione, e per la stessa ragione: le
 // finestre di domanda svizzere si misurano in mesi, quindi un mese di ritardo
