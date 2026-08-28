@@ -1953,6 +1953,21 @@ scrive con il ruolo di servizio), ed è una decisione di prodotto, non
 consolidamento. `npm run subsidy:sources` è la metà che si poteva fare senza
 decidere: mostra ciò che serve per guardare, e lascia il gesto a una persona.
 
+✅ **2026-08-28 — la porta è stata aperta (migrazione 0046 + `detectRecheckDue`
+in `diff.ts`).** La decisione di prodotto è arrivata: il **chi** resta
+l'operatore del catalogo della 0037 (nessun ruolo nuovo), il **dove** resta
+`/incentivi/revisioni` (nessuna schermata nuova). Ciò che cambia è **quando**
+nasce la scheda: `runSourceChecks` apre una revisione `recheck_due` quando la
+verifica umana di un programma supera i 30 giorni (`VERIFY_STALE_DAYS` in
+`contract.ts`, tenuto uguale alla soglia della health da un controllo della
+sezione 18 di `test:subsidy-unit`). La scheda non propone campi — non c'è nulla
+da applicare, c'è una fonte da rileggere — e la sua chiave di deduplicazione
+porta la data della verifica, quindi si ri-arma solo dopo un `accepted` vero.
+⚠️ **NON ancora in produzione**: finché la 0046 non è applicata e
+`subsidy-worker` non è rideployata, il comportamento resta quello descritto
+sopra — come per il difetto del campo fantasma, il codice corretto vive in una
+Edge Function che nessun workflow deploya.
+
 ### Le sette revisioni chiuse dal sistema — non può più succedere in silenzio, ma restano AMBIGUE
 
 **Verificato il 2026-08-14, e sono due domande distinte.**

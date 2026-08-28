@@ -69,6 +69,12 @@ supabase/
                                          idempotente per vincolo, non per `if`.
                                          «Ignora» diventa una decisione umana
                                          con chi e quando (`dismissed_by`).
+                0046_subsidy_recheck_review — il solo valore `recheck_due`
+                                         dell'enum: la scheda che il rilevatore
+                                         apre quando è la VERIFICA UMANA di un
+                                         programma a essere troppo vecchia, non
+                                         la fonte — il percorso che chiude il
+                                         rosso di `subsidy:health` a coda vuota.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

@@ -24,7 +24,7 @@ import type { AdapterResult } from './adapters.ts';
 export type ReviewChangeType =
   | 'new_program' | 'program_metadata' | 'program_requirements' | 'program_exclusions'
   | 'contribution' | 'deadline' | 'call_status' | 'new_call' | 'availability'
-  | 'source_unreachable' | 'source_structure_changed' | 'other';
+  | 'source_unreachable' | 'source_structure_changed' | 'recheck_due' | 'other';
 
 export type ReviewRisk = 'low' | 'medium' | 'high' | 'critical';
 
@@ -63,6 +63,13 @@ export const RISK_BY_CHANGE: Record<ReviewChangeType, ReviewRisk> = {
   source_structure_changed: 'medium',
   source_unreachable: 'medium',
   program_metadata: 'low',
+  /**
+   * ⚠️ `recheck_due` è `low` e non di più: la scheda non dichiara che qualcosa
+   * è cambiato — dichiara che è passato troppo tempo dall'ultima volta che una
+   * persona ha guardato. Il rischio vero è non averla mai vista, e lo copre il
+   * promemoria di `subsidy:health`, non il livello di rischio della riga.
+   */
+  recheck_due: 'low',
   other: 'low',
 };
 
@@ -235,6 +242,54 @@ export function detectChanges(input: DetectInput): ChangeProposal[] {
   });
 
   return out;
+}
+
+export interface RecheckInput {
+  sourceId: string;
+  programId: string;
+  /** Data dell'ultima verifica UMANA (YYYY-MM-DD), o null se mai verificato. */
+  lastCheckedAt: string | null;
+  /** Istante di adesso, iniettato: la funzione resta pura e provabile. */
+  now: Date;
+  /** Soglia in giorni — il chiamante la prende da `VERIFY_STALE_DAYS`. */
+  staleDays: number;
+}
+
+/**
+ * La scheda che nasce quando non è la FONTE ad essersi mossa ma la VERIFICA
+ * ad essere vecchia.
+ *
+ * ⚠️ PERCHÉ ESISTE. `last_checked_at` si muove solo con un `accepted` su una
+ * revisione, e fino alla 0046 una revisione nasceva solo se una fonte cambiava:
+ * a coda vuota la data invecchiava senza che nessuno potesse farci niente da
+ * dentro il prodotto, e `subsidy:health` usciva 1 senza un gesto che lo
+ * chiudesse. Questa proposta è quel gesto.
+ *
+ * ⚠️ `proposedValues` è VUOTO di proposito: non c'è nulla da applicare al
+ * catalogo — c'è una pagina ufficiale da riaprire. La tabella «prima/dopo»
+ * della schermata mostrerà «nessun cambiamento», che è la verità.
+ *
+ * ⚠️ LA CHIAVE PORTA LA DATA DELLA VERIFICA, non il mese corrente: si ri-arma
+ * solo quando una verifica vera la sposta. Se la scheda viene ignorata la data
+ * resta ferma e nessuna seconda scheda riapre la stessa richiesta — il
+ * promemoria che resta è il rosso di `subsidy:health`, che è il posto giusto.
+ */
+export function detectRecheckDue(input: RecheckInput): ChangeProposal | null {
+  const giorni = input.lastCheckedAt
+    ? Math.floor((input.now.getTime() - new Date(`${input.lastCheckedAt}T00:00:00Z`).getTime()) / 86_400_000)
+    : null;
+  if (giorni !== null && (Number.isNaN(giorni) || giorni <= input.staleDays)) return null;
+
+  return {
+    changeType: 'recheck_due',
+    risk: RISK_BY_CHANGE.recheck_due,
+    previousValues: { lastCheckedAt: input.lastCheckedAt, days: giorni },
+    proposedValues: {},
+    dedupeKey: `prog:${input.programId}:recheck:${input.lastCheckedAt ?? 'mai'}`,
+    notes: giorni === null
+      ? `Questo programma non è mai stato verificato a mano contro la fonte ufficiale. Aprirla e confermare che ciò che pubblichiamo è ancora vero.`
+      : `La verifica umana di questo programma ha ${giorni} giorni (soglia ${input.staleDays}). Aprire la fonte ufficiale e confermare che ciò che pubblichiamo è ancora vero.`,
+  };
 }
 
 /**

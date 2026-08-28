@@ -63,7 +63,7 @@ import {
   guardUrl, isPrivateAddress, hostMatches, isAllowedHost, ALLOWED_SOURCE_HOSTS,
 } from '../supabase/functions/_shared/subsidy/fetchGuard.ts';
 import {
-  detectChanges, diffFields, isAutoUpdatable, NEVER_AUTO_UPDATE, RISK_BY_CHANGE,
+  detectChanges, detectRecheckDue, diffFields, isAutoUpdatable, NEVER_AUTO_UPDATE, RISK_BY_CHANGE,
   compareCaseSnapshot,
 } from '../supabase/functions/_shared/subsidy/diff.ts';
 import {
@@ -1177,6 +1177,107 @@ check('⚠️ una data illeggibile dà null, NON zero: «non lo so» tranquilliz
 check('e una data assente pure', waitingDays(null, new Date()) === null);
 check('una data nel futuro non produce giorni negativi',
   waitingDays('2026-09-01T00:00:00Z', new Date('2026-08-05T00:00:00Z')) === 0);
+
+// ===========================================================================
+section('18. La riverifica umana ha un percorso — `recheck_due` (0046)');
+// ===========================================================================
+// ⚠️ IL BUCO CHE QUESTA SEZIONE CHIUDE. La verifica umana di un programma
+//    (`last_checked_at`) si muove solo con un `accepted` su una revisione, e
+//    fino alla 0046 una revisione nasceva solo se la FONTE si muoveva: a coda
+//    vuota — misurato in produzione il 2026-08-28, sette programmi fermi al
+//    2026-07-25 — la data invecchiava oltre i 30 giorni e `subsidy:health`
+//    usciva 1 senza che esistesse un gesto per chiuderlo. Un controllo rosso
+//    senza rimedio insegna a ignorarlo, che è la fine di ogni controllo utile.
+
+const NOW_18 = new Date('2026-08-28T12:00:00Z');
+const stale = detectRecheckDue({
+  sourceId: 's', programId: 'p', lastCheckedAt: '2026-07-25', now: NOW_18, staleDays: 30,
+});
+
+check('verifica umana oltre soglia (34g > 30) → una scheda `recheck_due`',
+  stale !== null && stale.changeType === 'recheck_due');
+check('e il rischio è `low`: non è la fonte ad essersi mossa',
+  stale?.risk === 'low' && RISK_BY_CHANGE.recheck_due === 'low');
+check('⚠️ la scheda NON propone campi: non c\'è nulla da applicare, c\'è da rileggere',
+  stale !== null && Object.keys(stale.proposedValues).length === 0);
+check('la nota dice i giorni e la soglia, in linguaggio umano',
+  stale?.notes.includes('34') === true && stale.notes.includes('30'));
+
+const maiVerificato = detectRecheckDue({
+  sourceId: 's', programId: 'p', lastCheckedAt: null, now: NOW_18, staleDays: 30,
+});
+check('mai verificato → la scheda si apre, e la nota non inventa un\'età',
+  maiVerificato !== null && maiVerificato.previousValues.days === null
+  && maiVerificato.notes.includes('mai'));
+
+// I confini della soglia: 30 giorni sono DENTRO, 31 fuori — la health esce 1
+// oltre i 30, e le due devono raccontare la stessa storia.
+check('30 giorni esatti non aprono la scheda',
+  detectRecheckDue({ sourceId: 's', programId: 'p', lastCheckedAt: '2026-07-29', now: NOW_18, staleDays: 30 }) === null);
+check('31 giorni la aprono',
+  detectRecheckDue({ sourceId: 's', programId: 'p', lastCheckedAt: '2026-07-28', now: NOW_18, staleDays: 30 }) !== null);
+check('una verifica fresca non apre niente',
+  detectRecheckDue({ sourceId: 's', programId: 'p', lastCheckedAt: '2026-08-27', now: NOW_18, staleDays: 30 }) === null);
+
+// ⚠️ «Non lo so» non è «vecchio»: una data illeggibile non deve aprire una
+//    scheda con un'età inventata — la stessa regola di `waitingDays`.
+check('una data illeggibile NON apre la scheda',
+  detectRecheckDue({ sourceId: 's', programId: 'p', lastCheckedAt: 'non-una-data', now: NOW_18, staleDays: 30 }) === null);
+
+// ⚠️ IL RI-ARMO. La chiave porta la data della verifica: dopo un `accepted`
+//    la data cambia e la prossima scadenza della soglia può aprire una scheda
+//    NUOVA; ignorata la scheda, la data resta ferma e nessun duplicato nasce —
+//    il promemoria che resta è il rosso della health, nel posto giusto.
+const dopoVerifica = detectRecheckDue({
+  sourceId: 's', programId: 'p', lastCheckedAt: '2026-08-28', now: new Date('2026-09-28T12:00:00Z'), staleDays: 30,
+});
+check('la chiave si ri-arma quando una verifica vera sposta la data',
+  stale !== null && dopoVerifica !== null && stale.dedupeKey !== dopoVerifica.dedupeKey);
+check('e la stessa data produce la stessa chiave (nessun duplicato)',
+  stale?.dedupeKey === detectRecheckDue({
+    sourceId: 's', programId: 'p', lastCheckedAt: '2026-07-25', now: NOW_18, staleDays: 30,
+  })?.dedupeKey);
+
+// ⚠️ LE DUE SOGLIE DEVONO COINCIDERE, lette dai file e non dalla memoria: il
+//    rilevatore (contract.ts, lato Edge) e il giudice (subsidy-catalog-health.mjs,
+//    lato CLI) sono due runtime che non si importano a vicenda — se divergono,
+//    uno dice «c'è lavoro» mentre l'altro mostra una coda vuota.
+{
+  const contract = readFileSync(
+    join(HERE, '..', 'supabase', 'functions', '_shared', 'subsidy', 'contract.ts'), 'utf8');
+  const health = readFileSync(
+    join(HERE, 'subsidy-catalog-health.mjs'), 'utf8');
+  const sogliaWorker = contract.match(/VERIFY_STALE_DAYS\s*=\s*(\d+)/)?.[1];
+  const sogliaHealth = health.match(/VERIFY_STALE_DAYS\s*=\s*[^\n]*\|\|\s*(\d+)/)?.[1]
+    ?? health.match(/VERIFY_STALE_DAYS\s*=\s*[^\n]*:\s*(\d+)\s*;/)?.[1];
+  check('la soglia del rilevatore e quella della health sono la stessa',
+    sogliaWorker !== undefined && sogliaWorker === sogliaHealth,
+    `worker=${sogliaWorker} health=${sogliaHealth}`);
+}
+
+// ⚠️ L'ENUM SQL DEVE CONOSCERE IL VALORE, e il typecheck non guarda l'SQL — la
+//    stessa ragione della sezione 1. La 0046 aggiunge il valore con un
+//    `alter type`, quindi la lettura va fatta sul file della 0046, non sulla
+//    0032: cercarlo nel posto sbagliato è il modo in cui un controllo mente.
+{
+  const m0046 = readFileSync(
+    join(HERE, '..', 'supabase', 'migrations', '0046_subsidy_recheck_review.sql'), 'utf8');
+  check('la 0046 aggiunge `recheck_due` all\'enum, in modo idempotente',
+    /alter type public\.subsidy_review_change_type add value if not exists 'recheck_due'/.test(m0046));
+  // ⚠️ La trappola della 0044/0027: un valore enum appena aggiunto non è
+  //    usabile nella stessa transazione — neppure per un'autoverifica che lo
+  //    nomini. Il valore deve comparire UNA volta sola, nell'istruzione che lo
+  //    aggiunge: questa riga sorveglia che la tentazione di «verificarlo» non
+  //    torni (ci è caduto questo stesso branch, fermato da `db:bundle --check`).
+  const occorrenze = m0046.replace(/--[^\n]*/g, '').match(/'recheck_due'/g) ?? [];
+  check('e il valore compare UNA sola volta nel file — aggiunto, mai usato (55P04)',
+    occorrenze.length === 1, `occorrenze: ${occorrenze.length}`);
+  // Controprova della copia: il tipo TS deve nominare lo stesso valore.
+  const diffSource = readFileSync(
+    join(HERE, '..', 'supabase', 'functions', '_shared', 'subsidy', 'diff.ts'), 'utf8');
+  check('il tipo TS `ReviewChangeType` conosce `recheck_due`',
+    /'recheck_due'/.test(diffSource));
+}
 
 // ===========================================================================
 console.log(`\n${B}Risultato:${X} ${G}${pass} passati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);

@@ -158,7 +158,10 @@ resta verde.
   abbia approvato sette schede, ma perché quelle sette **non erano un
   cambiamento**: vedi § 7. `subsidy:health` esce 0.
   ⚠️ **`last_checked_at` è rimasto al 2026-07-25 per tutti e sette i programmi**:
-  chiuderle non è stata una verifica, e la data lo dice.
+  chiuderle non è stata una verifica, e la data lo dice. Dal 2026-08-28 la data
+  ha però un percorso per ripartire — la scheda `recheck_due` della 0046, § 7 —
+  che fino a quel giorno **non esisteva**: a coda vuota la verifica umana
+  invecchiava senza rimedio, e `subsidy:health` è uscito 1 per questo.
 - **Non ancora fatti**: strumenti dell'assistente sugli incentivi, health-check
   2.0, valutazioni (`eval`) del modulo.
 
@@ -263,3 +266,29 @@ ogni riga lo dice per esteso.
 ⚠️ **Resta vero che nessuno ha ancora verificato i contenuti contro le fonti**:
 le date di `last_checked_at` sono ferme al 2026-07-25. La coda vuota dice che non
 c'è nulla *in sospeso*, non che il catalogo sia stato ricontrollato.
+
+### La riverifica ha un percorso (0046) — `recheck_due`
+
+Fino al 2026-08-28 una revisione nasceva solo se una **fonte** si muoveva: a
+coda vuota `last_checked_at` invecchiava oltre la soglia dei 30 giorni e
+`subsidy:health` usciva 1 **senza che esistesse un gesto per chiuderlo** — un
+rosso senza rimedio, che è il modo in cui si insegna a ignorare un controllo.
+
+La 0046 aggiunge il tipo di cambiamento `recheck_due` (rischio `low`): quando
+`runSourceChecks` trova un programma la cui verifica umana è più vecchia di
+`VERIFY_STALE_DAYS` (30, in `contract.ts` — tenuto uguale alla soglia della
+health da un controllo dedicato di `test:subsidy-unit`), apre una scheda con
+`proposed_values` **vuoto**: non c'è nulla da applicare al catalogo, c'è una
+fonte ufficiale da riaprire. I tre gesti restano quelli della 0037, e solo
+**Approva** sposta `last_checked_at` — «Irrilevante» chiude la scheda senza
+fingere una verifica, e la chiave di deduplicazione porta la data della
+verifica proprio perché una scheda ignorata non ne riapra un'altra identica:
+il promemoria che resta è il rosso della health, nel posto giusto.
+
+Un programma **mai verificato** apre la stessa scheda, con la nota che lo dichiara
+invece di un'età inventata.
+
+Coperto dalla sezione 18 di `test:subsidy-unit` (14 asserzioni, con le tre
+controprove eseguite: regola spenta, chiave costante, soglia divergente fra
+worker e health). ⚠️ **Non ancora in produzione**: serve applicare la 0046 e
+rideployare `subsidy-worker`.

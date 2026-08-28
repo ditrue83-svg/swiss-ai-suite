@@ -119,6 +119,16 @@ export const SOURCE_CHECK_BATCH = 8;
 export const EDGE_TIME_BUDGET_MS = 100_000;
 /** Tempo da riservare a un singolo controllo di fonte prima di cominciarlo. */
 export const SOURCE_CHECK_SLOT_MS = 15_000;
+/**
+ * Giorni oltre i quali la verifica UMANA di un programma
+ * (`subsidy_programs.last_checked_at`) è vecchia e il rilevatore apre una
+ * revisione `recheck_due`: a coda vuota, altrimenti, quella data invecchia
+ * senza che nessuno possa farci niente da dentro il prodotto.
+ * ⚠️ Deve restare uguale al default `--verify-stale-days=30` di
+ * `scripts/subsidy-catalog-health.mjs`: due soglie diverse farebbero dire al
+ * controllo «c'è lavoro» senza che la coda lo mostri, o il contrario.
+ */
+export const VERIFY_STALE_DAYS = 30;
 
 // ---------------------------------------------------------------------------
 // La lettura delle fonti (§147, §148)
