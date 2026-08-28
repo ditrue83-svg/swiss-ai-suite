@@ -47,6 +47,8 @@ import { CONTRACT_EVIDENCE_LABELS, buildFooter, contractCitations } from '@/feat
 import {
   canCreateTask, compareTerms, noticeUnavailableReason, openMilestones,
 } from './contractModel';
+import { cx } from '@/lib/cx';
+import styles from './contracts.module.css';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import type {
   AssignableMember, ContractDetail, ContractDocumentLink, ContractDocumentRelation,
@@ -206,7 +208,7 @@ export function ContractDetailPage() {
       {c.qualityFlags.length > 0 && (
         <section className="card">
           <div className="card-title">{t('contracts.flagsTitle')}</div>
-          <ul className="ct-list">
+          <ul className={styles.ctList}>
             {c.qualityFlags.map((f) => <li key={f}>{L.contractFlag(f)}</li>)}
           </ul>
         </section>
@@ -217,7 +219,7 @@ export function ContractDetailPage() {
           mostra il confronto PRIMA di tutto il resto, e si dichiara che finché
           nessuno conferma i termini non cambiano. */}
       {draft && changes.length > 0 && (
-        <section className="card info-box-card">
+        <section className={cx('card', styles.infoBoxCard)}>
           <div className="card-title">{t('contracts.amendment.title')}</div>
           <p>{t('contracts.amendment.intro')}</p>
           <table className="ct-cmp">
@@ -433,7 +435,7 @@ export function ContractDetailPage() {
         {mainExtraction && mainExtraction.obligations.length > 0 && (
           <section className="card">
             <div className="card-title">{t('contracts.detail.sections.obligations')}</div>
-            <ul className="ct-clauses">
+            <ul className={styles.ctClauses}>
               {mainExtraction.obligations.map((o, i) => (
                 <li key={i}>
                   <span>{o.text}</span>
@@ -448,7 +450,7 @@ export function ContractDetailPage() {
           <section className="card">
             {/* §59/§60 — «da tenere presenti», non «rischi legali». */}
             <div className="card-title">{t('contracts.detail.sections.clauses')}</div>
-            <ul className="ct-clauses">
+            <ul className={styles.ctClauses}>
               {mainExtraction.attentionClauses.map((cl, i) => (
                 <li key={i}>
                   <strong>{L.contractFlag(cl.kind) !== cl.kind ? L.contractFlag(cl.kind) : cl.kind}</strong>
@@ -467,7 +469,7 @@ export function ContractDetailPage() {
         {detail.documents.length === 0 ? (
           <p className="muted">{t('contracts.documents.empty')}<br />{t('contracts.documents.emptyHint')}</p>
         ) : (
-          <ul className="ct-docs">
+          <ul className={styles.ctDocs}>
             {detail.documents.map((d) => (
               <DocumentRow
                 key={d.id} link={d} busy={busy} t={t} L={L}
@@ -499,7 +501,7 @@ export function ContractDetailPage() {
         {detail.tasks.length === 0 ? (
           <p className="muted">{t('contracts.tasks.empty')}</p>
         ) : (
-          <ul className="ct-list">
+          <ul className={styles.ctList}>
             {detail.tasks.map((task) => (
               <li key={task.id}>
                 <Link to={`/attivita/${task.id}`}>{task.title}</Link>
@@ -516,7 +518,7 @@ export function ContractDetailPage() {
       {/* ---- Storico ------------------------------------------------------ */}
       <section className="card">
         <div className="card-title">{t('contracts.detail.sections.history')}</div>
-        <ul className="ct-list">
+        <ul className={styles.ctList}>
           {detail.events.map((ev) => (
             <li key={ev.id}>
               <span className="muted-sm">{formatDate(ev.createdAt)}</span>{' '}
@@ -567,7 +569,7 @@ function Field(props: { label: string; children: React.ReactNode }) {
   return (
     <div className="result-row">
       <span className="result-label">{props.label}</span>
-      <span className="result-value">{props.children}</span>
+      <span className={styles.resultValue}>{props.children}</span>
     </div>
   );
 }
@@ -649,10 +651,10 @@ function MilestoneList(props: {
     return <p className="muted">{t('contracts.milestones.empty')}</p>;
   }
   return (
-    <ul className="ct-ms">
+    <ul className={styles.ctMs}>
       {props.milestones.map((m) => {
         return (
-          <li key={m.id} className="ct-ms-row">
+          <li key={m.id} className={styles.ctMsRow}>
             <div>
               <strong>{L.milestoneKind(m.kind)}</strong>
               {/* ⚠️ Lo stato DENTRO la marcatura del termine, accanto alla data:
@@ -717,7 +719,7 @@ function DocumentRow(props: {
   const { link: d, t, L } = props;
   const docLabel = useDocumentLabel();
   return (
-    <li className="ct-doc-row">
+    <li className={styles.ctDocRow}>
       <div>
         <Link to={`/documenti/${d.documentId}`}>{docLabel(d.label)}</Link>
         <div className="muted-sm">
@@ -736,7 +738,7 @@ function DocumentRow(props: {
       </div>
       <div className="row-wrap">
         <div className="field ct-inline">
-          <label className="ct-sr" htmlFor={`rel-${d.id}`}>
+          <label className={styles.ctSr} htmlFor={`rel-${d.id}`}>
             {t('contracts.documents.relation')}
           </label>
           <select
@@ -818,7 +820,7 @@ function AddDocument(props: {
   }
 
   return (
-    <div className="ct-add">
+    <div className={styles.ctAdd}>
       <div className="field">
         <label htmlFor="doc-filter">
           {t('contracts.documents.filterPlaceholder')}
@@ -854,7 +856,7 @@ function AddDocument(props: {
           ) : visible.length === 0 ? (
             <p className="muted">{t('contracts.documents.noMatch')}</p>
           ) : (
-            <ul className="ct-list ct-pick">
+            <ul className={cx(styles.ctList, styles.ctPick)}>
               {visible.map((d) => (
                 <li key={d.id}>
                   <span>{d.nome}</span>

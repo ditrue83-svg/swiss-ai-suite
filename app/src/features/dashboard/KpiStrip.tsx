@@ -28,6 +28,8 @@ import { formatCurrency } from '@/lib/format';
 import { useT, useTn } from '@/i18n';
 import { totaleConto } from './overviewBlocks';
 import type { OverviewData } from './useOverview';
+import { cx } from '@/lib/cx';
+import styles from './dashboard.module.css';
 
 function KpiCard({ to, icon, label, children }: {
   to: string; icon: IconName; label: string; children: React.ReactNode;
@@ -95,7 +97,7 @@ export function KpiStrip({ data }: { data: OverviewData }) {
             <div className="kpi-sub">
               {t('home.kpiAnalyzedCaption')}
               {analisi.trend !== null && (
-                <span className={`kpi-trend${analisi.trend < 0 ? ' down' : ''}`}>
+                <span className={cx(styles.kpiTrend, analisi.trend < 0 && styles.down)}>
                   {t(analisi.trend < 0 ? 'home.kpiAnalyzedTrendDown' : 'home.kpiAnalyzedTrend', { n: Math.abs(analisi.trend) })}
                 </span>
               )}

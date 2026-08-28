@@ -28,6 +28,7 @@ import { useLabels } from '@/i18n/labels';
 import { formatDate } from '@/lib/format';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { radiceCampo, type TrustCap, type TrustVerdict } from './analysisTrust';
+import styles from './documents.module.css';
 
 /** I nomi tradotti dei campi coinvolti in un tetto, come elenco. */
 function nomiCampi(fields: readonly string[], t: ReturnType<typeof useT>): string {
@@ -92,7 +93,7 @@ export function TrustIndicator({ verdict, schemaVersion, analysedAt, withTitle =
 
   return (
     <>
-      <span className="trust-head">
+      <span className={styles.trustHead}>
         {withTitle && (
           <>
             <span className="trust-title">{t('documents.trust.title')}</span>
@@ -100,11 +101,11 @@ export function TrustIndicator({ verdict, schemaVersion, analysedAt, withTitle =
           </>
         )}
         {verdict.unavailable === 'ownership'
-          ? <span className="trust-unavailable">{t('documents.trust.unavailableOwnership')}</span>
+          ? <span className={styles.trustUnavailable}>{t('documents.trust.unavailableOwnership')}</span>
           : (
             <>
               <ConfidenceBadge level={verdict.level ?? 'bassa'} />
-              {verdict.pointCount > 0 && <span className="trust-points">{' · '}{points}</span>}
+              {verdict.pointCount > 0 && <span className={styles.trustPoints}>{' · '}{points}</span>}
             </>
           )}
       </span>
@@ -113,12 +114,12 @@ export function TrustIndicator({ verdict, schemaVersion, analysedAt, withTitle =
           l'indicatore è assente: chi non vede un livello ha ancora più diritto
           di sapere che cosa lo tratterrebbe. */}
       {verdict.binding && (
-        <span className="trust-reason">
+        <span className={styles.trustReason}>
           {reasonText(verdict.binding, t, meta)}
-          <details className="trust-why">
+          <details className={styles.trustWhy}>
             <summary>{t('documents.trust.why')}</summary>
-            <span className="trust-why-panel" role="note">
-              <span className="trust-why-title">{t('documents.trust.whyTitle')}</span>
+            <span className={styles.trustWhyPanel} role="note">
+              <span className={styles.trustWhyTitle}>{t('documents.trust.whyTitle')}</span>
               <span>{t('documents.trust.whyModel', { level: L.confidence(verdict.modelLevel) })}</span>
               {verdict.caps.length === 0
                 ? <span>{t('documents.trust.whyNoCaps')}</span>

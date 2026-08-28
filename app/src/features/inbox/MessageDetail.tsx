@@ -41,6 +41,7 @@ import { inboxService } from '@/services/inboxService';
 import { senderLabel, subjectLabel } from './parts';
 import { messageDocumentRows, primaryDocumentOf } from './messageDocuments';
 import type { DocumentAnalysis, EmailAttachment, EmailMessageDetail } from '@/types/models';
+import styles from './inbox.module.css';
 
 interface Props {
   messageId: string;
@@ -242,7 +243,7 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
 
       {/* Intestazione: chi, quando, su quale casella. */}
       <div className="card">
-        <dl className="inbox-fields">
+        <dl className={styles.inboxFields}>
           <div><dt>{t('inbox.detail.from')}</dt><dd>{message.senderEmail ?? t('inbox.unknownSender')}</dd></div>
           {message.toRecipients.length > 0 && (
             <div><dt>{t('inbox.detail.to')}</dt><dd>{message.toRecipients.map((r) => r.email).join(', ')}</dd></div>
@@ -323,7 +324,7 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
           <div className="empty"><span className="spinner" aria-hidden="true" /> {t('inbox.detail.attentionPending')}</div>
         ) : analysis && analysis.analysisStatus !== 'failed' ? (
           <>
-            <dl className="inbox-fields">
+            <dl className={styles.inboxFields}>
               {analysis.deadline && (
                 <div>
                   <dt>{t('adminAi.result.deadline')}</dt>
@@ -485,7 +486,7 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
       <div className="card">
         <div className="card-title"><span>{t('inbox.detail.body')}</span></div>
         {message.bodyText?.trim()
-          ? <div className="inbox-body">{message.bodyText}</div>
+          ? <div className={styles.inboxBody}>{message.bodyText}</div>
           : <div className="empty">{t('inbox.detail.bodyEmpty')}</div>}
         <p className="muted-sm">{t('inbox.detail.bodyNotice')}</p>
         {message.isBulk && <p className="muted-sm">{t('inbox.detail.bulk')}</p>}
@@ -496,7 +497,7 @@ export function MessageDetail({ messageId, onBack, onChanged }: Props) {
           <div className="card-title"><span>{t('inbox.detail.links')}</span></div>
           <ul className="stack-sm">
             {message.bodyLinks.map((link, i) => (
-              <li key={`${link.url}-${i}`} className="inbox-link-row">
+              <li key={`${link.url}-${i}`} className={styles.inboxLinkRow}>
                 {/* L'URL è già validato server-side: solo http/https, letto da
                     un parser. `noopener noreferrer` impedisce alla pagina
                     aperta di raggiungere questa finestra. */}

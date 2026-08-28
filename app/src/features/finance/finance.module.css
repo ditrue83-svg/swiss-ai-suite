@@ -1,0 +1,167 @@
+/* ============================================================================
+   finance.module.css — «Finanze» (0021): cruscotto, elenco fatture, dettaglio
+   con campi, provenienza dei dati e tabella IVA (feature `finance`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/extra.css` (sezione «Finanze (0021)»): la usano solo i
+   componenti di `features/finance/`. Commenti compresi, come da regola della
+   migrazione.
+
+   ⚠️ Nessuna regola qui costruisce un'affordance di pagamento: niente pulsanti
+   che sembrino «Paga», niente evidenziazione a chiamata all'azione sull'IBAN.
+   Un dato di pagamento si legge, e la sua veste dice «leggi», non «premi».
+
+   Nessun px sul testo: solo i token `--fs-*`. Spaziature `--sp-*`.
+
+   Adattamenti di selettore (solo `:global`, nessuna classe rinominata):
+   · `.fin-row-amount .muted-sm` → `.fin-row-amount :global(.muted-sm)`:
+     `.muted-sm` è un'utilità condivisa;
+   · `.fin-actions .btn` (nella `@media (max-width: 720px)`) →
+     `:global(.btn)`: il pulsante è del sistema;
+   · `.fin-tools > .field` e `.fin-tools .select-inline` →
+     `:global(.field)` / `:global(.select-inline)`: classi condivise.
+
+   NON sono qui, e perché:
+   · `.sr-only` RESTA globale in `extra.css`: la usano anche `features/crm/`
+     e `features/assistant/`;
+   · `.fin-pager` e `.fin-page-n` RESTANO globali: le usano anche
+     `features/contracts/`, `features/crm/` e `features/incentives/`
+     (compresa la riga `.fin-pager` della `@media (max-width: 720px)`,
+     che per questo è stata DIVISA);
+   · `.kpi-*` (cruscotto), `.filter-group`, `.field`, `.select-inline`,
+     `.muted-sm`, `.btn`, `.info-box`, `.tab` sono classi condivise e
+     restano globali.
+   ============================================================================ */
+
+/* ---- Cruscotto ------------------------------------------------------------
+   Gli importi stanno UNO SOTTO L'ALTRO, mai su una riga sola: due valute
+   affiancate si leggono come una somma, ed è proprio la lettura che il modulo
+   non deve permettere (§22). */
+.fin-amounts { list-style: none; margin: var(--sp-1) 0 0; padding: 0; }
+.fin-amounts li {
+  font-size: var(--fs-strong); font-weight: 600;
+  font-variant-numeric: tabular-nums; line-height: 1.3;
+}
+
+/* ---- Testata dell'elenco -------------------------------------------------- */
+.fin-search { flex: 1; min-width: 220px; margin: 0; }
+.fin-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; }
+.fin-filters {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-3); margin-bottom: var(--sp-3);
+}
+.fin-filter-wide { grid-column: 1 / -1; }
+.fin-checks { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.fin-close { margin-left: auto; }
+
+/* ---- Una riga ------------------------------------------------------------
+   Tre zone: chi, quanto, come sta. L'importo ha una colonna sua e a larghezza
+   fissa, così i numeri si incolonnano davvero — `tabular-nums` allinea le cifre
+   fra loro, ma senza una colonna comune resterebbero righe di lunghezza
+   diversa. */
+.fin-row {
+  display: flex; align-items: flex-start; gap: var(--sp-3);
+  padding: var(--sp-3) 0; border-top: 1px solid var(--line);
+}
+.fin-row:first-of-type { border-top: none; }
+.fin-row-main {
+  display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1;
+  color: var(--ink); text-decoration: none; min-height: 24px;
+}
+.fin-row-main:hover .fin-row-title { text-decoration: underline; }
+.fin-row-title { font-size: var(--fs-body); font-weight: 600; }
+.fin-row-sub { font-size: var(--fs-meta); color: var(--muted); }
+.fin-row-amount {
+  min-width: 132px; text-align: right; flex-shrink: 0;
+  font-size: var(--fs-body); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.fin-row-amount :global(.muted-sm) { font-weight: 500; }
+.fin-row-side {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+  gap: var(--sp-2); flex-shrink: 0; max-width: 42%;
+}
+
+/* ---- Dettaglio: elenchi in parole ---------------------------------------- */
+.fin-flags, .fin-blockers { list-style: none; margin: 0; padding: 0; }
+.fin-flags li, .fin-blockers li {
+  position: relative; padding: var(--sp-1) 0 var(--sp-1) var(--sp-6);
+  font-size: var(--fs-body);
+}
+.fin-flags li::before, .fin-blockers li::before {
+  content: '•'; position: absolute; left: var(--sp-2); font-weight: 600;
+}
+.fin-flags li::before { color: var(--amber); }
+.fin-blockers li::before { color: var(--red-dark); }
+
+/* ---- Dettaglio: un campo -------------------------------------------------- */
+.fin-field { padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.fin-field:first-of-type { border-top: none; }
+.fin-field-label { font-size: var(--fs-label); color: var(--muted); font-weight: 600; }
+.fin-field-value {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
+  font-size: var(--fs-body); color: var(--ink); margin-top: var(--sp-05);
+}
+.fin-num { font-variant-numeric: tabular-nums; }
+/* Il bersaglio minimo di WCAG 2.2: `.btn-sm` da solo resta sotto i 24 pixel. */
+.fin-edit { margin-top: var(--sp-2); min-height: 24px; }
+.fin-edit-form { margin-top: var(--sp-2); max-width: 420px; }
+
+/* La provenienza di un dato è una verifica, non una decorazione: chiusa per
+   difetto, aperta da chi la sta cercando. */
+.fin-prov { margin-top: var(--sp-2); }
+.fin-prov summary {
+  font-size: var(--fs-meta); color: var(--accent-text); cursor: pointer;
+  min-height: 24px; display: flex; align-items: center;
+}
+.fin-quote {
+  margin: var(--sp-1) 0 0; padding: var(--sp-2) var(--sp-3);
+  border-left: 3px solid var(--accent-line); background: var(--bg);
+  font-size: var(--fs-meta); color: var(--ink-soft);
+}
+
+/* ---- Dettaglio IVA -------------------------------------------------------
+   La tabella scorre DENTRO il proprio contenitore: la pagina non deve mai
+   scorrere in orizzontale (§97). */
+.fin-tablewrap { overflow-x: auto; }
+.fin-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
+.fin-table caption { text-align: left; }
+.fin-table th, .fin-table td {
+  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); text-align: left;
+}
+.fin-table thead th {
+  font-size: var(--fs-label); color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.04em; white-space: nowrap;
+}
+.fin-table .fin-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- Schermi stretti ------------------------------------------------------
+   Fino a 360 pixel senza scorrimento orizzontale: l'importo passa sotto e
+   torna allineato a sinistra, perché una colonna di numeri larga metà schermo
+   non è più una colonna.
+   ⚠️ La riga `.fin-pager { justify-content: flex-start; }` che stava in questa
+   `@media` NON è migrata: `.fin-pager` è condivisa e resta in `extra.css`,
+   dentro una `@media (max-width: 720px)` tutta sua. */
+@media (max-width: 720px) {
+  .fin-row { flex-wrap: wrap; }
+  .fin-row-main { flex-basis: 100%; }
+  .fin-row-amount { min-width: 0; text-align: left; }
+  .fin-row-side { max-width: none; justify-content: flex-start; }
+  .fin-actions { width: 100%; }
+  .fin-actions :global(.btn) { flex: 1; }
+}
+
+/* ⚠️ `.filter-group` NON manda a capo, e la voce di ordinamento predefinita di
+   questa pagina è la frase più lunga dell'intera interfaccia («Prima ciò che
+   richiede attenzione», e in tedesco è ancora più lunga). A 360 pixel spingeva
+   il pulsante accanto fuori dallo schermo: 379 pixel di contenuto in 360 di
+   finestra, cioè scorrimento orizzontale (§97). Misurato nel browser, non
+   dedotto. Si corregge QUI e non su `.filter-group`, che è condiviso con
+   Documenti e Attività: allargare una regola per un caso solo significa
+   cambiare tre schermate senza averle guardate. */
+.fin-tools { flex-wrap: wrap; }
+.fin-tools > :global(.field) { min-width: 0; flex: 1 1 auto; }
+.fin-tools :global(.select-inline) { max-width: 100%; width: 100%; }
+
+/* «Aggiungi alle finanze» — il conteggio accanto al titolo dell'elenco: dice
+   che un elenco c'è, prima ancora di leggerlo. */
+.fin-add-count { color: var(--muted); font-weight: 500; margin-left: var(--sp-2); }

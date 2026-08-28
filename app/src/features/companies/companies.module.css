@@ -1,0 +1,16 @@
+/* ============================================================================
+   companies.module.css — onboarding e anagrafica azienda (feature `companies`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/extra.css` (sezione «Schermate centrate»), commenti compresi.
+   Sono migrate solo le classi usate ESCLUSIVAMENTE dentro `features/companies/`:
+   il guscio (`.centered-screen`, `.auth-card`, `.auth-brand`, `.auth-title`,
+   `.auth-sub`) resta GLOBALE perché condiviso con `App.tsx`, le guardie e le
+   pagine di auth. `RegistryLookup` è montato anche dal CRM, ma le sue classi
+   sono legate qui, nel file del componente: il modulo viaggia con lui.
+   ========================================================================== */
+
+.onboarding-card { max-width: 640px; }
+/* Candidati Zefix: lista nuda — il segno di lista e i rientri del browser
+   non c'entrano con un elenco di scelte. */
+.registry-candidates { list-style: none; padding: 0; margin: var(--sp-2) 0 0; }

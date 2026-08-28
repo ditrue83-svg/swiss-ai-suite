@@ -49,11 +49,11 @@
 // giro di questo lavoro ha prodotto file senza cifre tabulari, e il file
 // sembrava a posto. Verificato riaprendo i .woff2, non fidandosi del comando.
 // ============================================================================
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { brotliDecompressSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, relative } from 'node:path';
 // L'elenco dei dizionari vive in UN posto: il disco, riconciliato con LOCALES.
 import { dizionari } from './i18n-locales.mjs';
 
@@ -430,9 +430,25 @@ if (citaGoogleFonts(html + css)) {
 // SEISCENTO. `.kpi-value` a 800 e `.kpi-label` a 600 erano lo stesso peso: un
 // gradino di gerarchia dichiarato nel codice e inesistente sullo schermo.
 // Nessun rosso da nessuna parte, perché nulla confrontava le due liste.
+//
+// ⚠️ PERIMETRO: TUTTI i `.css` di src/ dal 2026-08-28 (issue #83). Fino ad
+// allora si leggevano solo i due globali, ma con la migrazione a CSS Modules
+// ogni feature dichiara i propri `font-weight` nel suo foglio: un 700 scritto
+// in un modulo sarebbe sfuggito al controllo proprio dove le regole si sono
+// spostate. La decisione sorvegliata è la stessa — nessuna regola chiede un
+// peso che non esiste come file — cambiato solo dove la si legge.
 const PESI_SERVITI = new Set(CARATTERI.map((c) => c.peso));
-for (const rel of ['src/styles/app.css', 'src/styles/extra.css']) {
-  const foglio = senzaCommenti(readFileSync(resolve(ROOT, rel), 'utf8'));
+const fogliDiStile = [];
+(function walkCss(dir) {
+  for (const nome of readdirSync(dir)) {
+    const p = resolve(dir, nome);
+    if (statSync(p).isDirectory()) walkCss(p);
+    else if (nome.endsWith('.css')) fogliDiStile.push(p);
+  }
+})(resolve(ROOT, 'src'));
+for (const percorso of fogliDiStile) {
+  const rel = relative(ROOT, percorso);
+  const foglio = senzaCommenti(readFileSync(percorso, 'utf8'));
   const chiesti = new Set([...foglio.matchAll(/font-weight:\s*(\d{3})/g)].map((m) => Number(m[1])));
   for (const peso of [...chiesti].sort((a, b) => a - b)) {
     if (PESI_SERVITI.has(peso)) continue;

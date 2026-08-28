@@ -43,6 +43,8 @@ import {
   groupByDay, groupKind, itemKey, overdueItems, shiftMonth, shortTitle, todayISO,
 } from './calendarModel';
 import type { CalendarTaskItem, TaskPriority, TaskStatus } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './calendar.module.css';
 
 type CalView = 'mese' | 'agenda';
 
@@ -200,7 +202,7 @@ export function CalendarPage() {
           aria-label={t('calendar.sync')}
         >
           <Icon name="refresh" className="ic-sm" />
-          <span className="btn-label-wide">{t('calendar.sync')}</span>
+          <span className={styles.btnLabelWide}>{t('calendar.sync')}</span>
         </Link>
       </div>
 
@@ -208,7 +210,7 @@ export function CalendarPage() {
           sarebbero legate al mese che si sta guardando, e sparirebbero
           voltando pagina — che è esattamente il contrario di ciò che serve. */}
       {overdue.length > 0 && (
-        <div className="card cal-overdue mt-16">
+        <div className={cx('card', styles.calOverdue, 'mt-16')}>
           <div className="card-title">
             <span>{t('calendar.overdueTitle')}</span>
             {/* Il numero delle scadute: rosso sì — un termine mancato è
@@ -243,10 +245,10 @@ export function CalendarPage() {
       )}
 
       <div className="card mt-16">
-        <div className="cal-toolbar">
+        <div className={styles.calToolbar}>
           {view === 'mese' ? (
             <>
-              <div className="cal-nav">
+              <div className={styles.calNav}>
                 <button className="btn btn-sm btn-icon" aria-label={t('calendar.prevMonth')}
                   onClick={() => setCursor((c) => shiftMonth(c.year, c.month, -1))}>
                   <Icon name="arrowLeft" className="ic-sm" />
@@ -262,13 +264,13 @@ export function CalendarPage() {
               </div>
               {/* `aria-live` perché il titolo cambia senza che la pagina cambi:
                   chi non vede la griglia deve sapere dove è finito. */}
-              <div className="cal-title" aria-live="polite">{monthLabel}</div>
+              <div className={styles.calTitle} aria-live="polite">{monthLabel}</div>
             </>
           ) : (
-            <div className="cal-title">{t('calendar.viewAgenda')}</div>
+            <div className={styles.calTitle}>{t('calendar.viewAgenda')}</div>
           )}
 
-          <div className="cal-filters">
+          <div className={styles.calFilters}>
             {/* L'AMBITO sta qui, con gli altri filtri: «Le mie / Tutte»
                 sceglie QUALI attività si vedono, esattamente come priorità e
                 stato. Fuori dalla scheda occupava una riga propria e sembrava
@@ -417,8 +419,8 @@ function MonthGrid({
   }
 
   return (
-    <table className="cal-grid">
-      <caption className="cal-caption">
+    <table className={styles.calGrid}>
+      <caption className={styles.calCaption}>
         {new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(localeTag, { month: 'long', year: 'numeric', timeZone: 'UTC' })}
       </caption>
       <thead>
@@ -436,7 +438,7 @@ function MonthGrid({
               return (
                 <td
                   key={day.date}
-                  className={`cal-cell${day.inMonth ? '' : ' out'}${isToday ? ' today' : ''}`}
+                  className={cx(styles.calCell, !day.inMonth && styles.out, isToday && styles.today)}
                   aria-label={
                     (dayItems.length
                       ? t('calendar.dayAria', { date: longDate(day.date), n: dayItems.length })
@@ -447,7 +449,7 @@ function MonthGrid({
                   }
                 >
                   <button
-                    className="cal-daynum"
+                    className={styles.calDaynum}
                     onClick={() => onCreate(day.date)}
                     aria-label={t('calendar.newTaskOn', { date: longDate(day.date) })}
                   >
@@ -460,13 +462,13 @@ function MonthGrid({
                   {shown.map((task) => (narrow ? (
                     <span
                       key={itemKey(task)}
-                      className={`cal-item p-${task.priority}${task.dateKind === 'appointment' ? ' is-appt' : ''}${task.status === 'completed' ? ' is-done' : ''}`}
+                      className={cx(styles.calItem, `p-${task.priority}`, task.dateKind === 'appointment' && styles.isAppt, task.status === 'completed' && styles.isDone)}
                       aria-hidden="true"
                     />
                   ) : (
                     <Link
                       key={itemKey(task)}
-                      className={`cal-item p-${task.priority}${task.dateKind === 'appointment' ? ' is-appt' : ''}${task.status === 'completed' ? ' is-done' : ''}`}
+                      className={cx(styles.calItem, `p-${task.priority}`, task.dateKind === 'appointment' && styles.isAppt, task.status === 'completed' && styles.isDone)}
                       to={`/attivita/${task.id}`}
                       title={task.title}
                     >
@@ -478,13 +480,13 @@ function MonthGrid({
                       della casella, e un pulsante che espande righe non
                       cliccabili non servirebbe a niente. */}
                   {!narrow && hidden > 0 && (
-                    <button className="cal-more" onClick={() => onToggleDay(day.date)}
+                    <button className={styles.calMore} onClick={() => onToggleDay(day.date)}
                       aria-label={t('calendar.moreAria', { n: hidden, date: longDate(day.date) })}>
                       {t('calendar.more', { n: hidden })}
                     </button>
                   )}
                   {!narrow && expanded && dayItems.length > MAX_PER_DAY && (
-                    <button className="cal-more" onClick={() => onToggleDay(null)}>
+                    <button className={styles.calMore} onClick={() => onToggleDay(null)}>
                       {t('common.close')}
                     </button>
                   )}
@@ -520,7 +522,7 @@ function AgendaList({
   }
 
   return (
-    <div className="cal-agenda">
+    <div className={styles.calAgenda}>
       {groups.map((group) => {
         const kind = groupKind(group.items);
         const label = new Date(`${group.date}T12:00:00Z`).toLocaleDateString(localeTag, {
@@ -528,8 +530,8 @@ function AgendaList({
         });
         return (
           <div key={group.date} className="cal-agenda-day">
-            <div className="cal-agenda-head">
-              <span className={group.date === today ? 'cal-agenda-date is-today' : 'cal-agenda-date'}>{label}</span>
+            <div className={styles.calAgendaHead}>
+              <span className={cx(styles.calAgendaDate, group.date === today && styles.isToday)}>{label}</span>
               {/* La distanza del GIORNO, non di un'attività. ⚠️ E il segno
                   segue ciò che quel giorno contiene: una giornata fatta di soli
                   appuntamenti non si annuncia col segno del termine, o

@@ -1,0 +1,195 @@
+/* ============================================================================
+   admin-ai.module.css — Admin AI: zona di caricamento, vista analisi,
+   scadenza, checklist, rischio, editor della bozza (feature `admin-ai`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/app.css`: il blocco `.upload-zone`/`.uz-*`/`.file-*`/`.fc-*` e
+   la sezione «Admin AI: vista analisi» (solo le classi che lega questa
+   feature), con le `@media (max-width: 900px)` di `.ax-grid`/`.ax-doc` e la
+   `@media (max-width: 600px)` di `.ax-doc-view`/`.draft-controls`. Commenti
+   compresi, come da regola della migrazione.
+
+   Adattamenti di selettore (solo `:global`, nessuna classe rinominata):
+   · `mark.ev-hl`, `.ic`, `.card` figli di classi migrate → `:global(...)`:
+     sono classi condivise e restano nei fogli globali;
+   · `.lvl-scaduta/.lvl-urgente/.lvl-prossima/.lvl-nessuna` → `:global(...)`: la
+     classe è costruita dinamicamente nel TSX (`card lvl-${lvl}`) e resta una
+     stringa, quindi resta globale (regola della migrazione);
+   · `.action-item .ai-meta` → `:global(.action-item) .ai-meta`: il genitore è
+     condiviso con `subsidy-ai`, il figlio è solo di questa feature.
+
+   NON sono qui, e perché:
+   · `.ax-head-top`, `.ax-title`, `.ax-badges`, `.ax-meta`, `.ax-chip`,
+     `.ax-progress`, `.pg-label`, `.action-item` (con `.ai-main`/`.ai-text`),
+     `.draft-actions` RESTANO globali in `app.css`: le usa anche
+     `features/subsidy-ai/`;
+   · `.mini-btn`, `.meter-track`/`.meter-fill`, `.ev-quote`, `.ev-hl`,
+     `.verify-note`/`.vn-title`, `.select-inline`, `.hint-accent`,
+     `.spinner`/`@keyframes spin`, `.mark`/`.mark-prov`/`.mp-*` restano
+     globali: condivise fra più feature e componenti;
+   · le righe `.ax-header`/`.ax-actions-card`/`.ax-doc` della `@media print`
+     multi-feature di `extra.css` sono migrate QUI il 2026-08-28 (sweep
+     finale), in una `@media print` locale in fondo al foglio: con i CSS
+     Modules il selettore globale non agganciava più le classi hashate — era
+     la regressione di stampa della migrazione;
+   · `risk-tag`/`risk-explicit`/`risk-possible`/`risk-unknown` sono migrate
+     insieme al loro blocco pur non avendo oggi alcun uso nel TSX: spostate,
+     mai cancellate (regola della migrazione);
+   · `ax-subject` e `draft-empty` non hanno regole in nessun foglio: restano
+     stringhe nel TSX, come prima.
+
+   ⚠️ `test:shell-unit` (sezione 8, «Cifre tabulari») legge `.dl-date` in
+   `app.css`: spostandola qui quel controllo va riallineato (fase finale della
+   migrazione).
+   ========================================================================== */
+
+/* ---- Zona di caricamento ------------------------------------------------ */
+.upload-zone { display: block; width: 100%; border: 2px dashed var(--line); border-radius: var(--radius); padding: var(--sp-6); text-align: center; font-size: var(--fs-body); color: var(--muted); background: var(--card); cursor: pointer; transition: border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast); }
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.uz-icon { width: 40px; height: 40px; margin: 0 auto var(--sp-2); border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
+.uz-icon :global(.ic) { width: 22px; height: 22px; }
+.uz-title { font-weight: 600; color: var(--ink); font-size: var(--fs-body); }
+.uz-formats { margin-top: var(--sp-2); display: inline-flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center; }
+.uz-fmt { font-size: var(--fs-label); font-weight: 600; letter-spacing: .03em; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: var(--sp-05) var(--sp-2); }
+.uz-ocr { margin-top: var(--sp-3); font-size: var(--fs-meta); color: var(--muted); display: inline-flex; align-items: center; gap: var(--sp-2); }
+.uz-ocr :global(.ic) { width: 14px; height: 14px; }
+.file-status { margin-top: var(--sp-3); }
+.file-chip { display: flex; align-items: center; gap: var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-3); background: var(--bg); }
+.file-chip .fc-ico { color: var(--accent-text); flex-shrink: 0; }
+.file-chip .fc-main { flex: 1; min-width: 0; }
+.file-chip .fc-name { font-weight: 600; font-size: var(--fs-meta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-chip .fc-sub { font-size: var(--fs-meta); color: var(--muted); }
+.file-chip.err { border-color: var(--red-line); background: var(--red-soft); }
+.file-chip.err .fc-ico { color: var(--red-dark); }
+
+/* ---------- Vista analisi ---------- */
+.ax-header { display: flex; flex-direction: column; gap: var(--sp-3); }
+/* Il nome della famiglia davanti al segno, e SOLO qui: è l'unico punto in cui
+   priorità e confidenza stanno affiancate senza altro contesto. La coppia non
+   si spezza andando a capo — `inline-flex` la tiene insieme, altrimenti in
+   tedesco «Zuverlässigkeit» finirebbe su una riga e il suo segno sull'altra,
+   che è peggio di non avere l'etichetta. */
+.ax-badge-pair { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.ax-badge-key { font-size: var(--fs-label); color: var(--muted); text-transform: uppercase; letter-spacing: var(--ls-label); }
+
+.ax-callout { border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: var(--radius); padding: var(--sp-4) var(--sp-6); margin-top: var(--sp-4); display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+.ax-callout .co-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex-shrink: 0; }
+.ax-callout .co-main { flex: 1; min-width: 200px; }
+.ax-callout .co-kicker { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-text); }
+.ax-callout .co-action { font-size: var(--fs-strong); font-weight: 600; letter-spacing: -0.2px; margin-top: var(--sp-05); }
+.ax-callout .co-when { font-size: var(--fs-body); color: var(--ink-soft); margin-top: var(--sp-1); }
+.ax-callout .co-when b { color: var(--ink); }
+/* Il cancello dell'appartenenza: il pulsante e il PERCHÉ stanno nella stessa
+   colonna, perché un pulsante spento e muto manda a cercare il guasto altrove.
+   Colonna e non riga: la frase è lunga quanto una riga di testo, e accanto al
+   pulsante spingerebbe il riquadro a capo su ogni schermo stretto. */
+.ax-callout .co-act { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
+
+/* Campo correggibile dell'analisi: una riga per fatto, separata dalla
+   precedente da una linea più tenue del bordo scheda (--line-subtle). */
+.ax-field-row { padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle); }
+.ax-field-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
+.ax-field-edit { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); flex-wrap: wrap; }
+
+.ax-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr); gap: var(--sp-4); margin-top: var(--sp-4); align-items: start; }
+@media (max-width: 900px) { .ax-grid { grid-template-columns: 1fr; } }
+.ax-doc { position: sticky; top: 16px; }
+@media (max-width: 900px) { .ax-doc { position: static; } }
+.ax-doc-view { white-space: pre-wrap; word-break: break-word; font-size: var(--fs-body); line-height: 1.6; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-4); max-height: 62vh; overflow: auto; }
+.ax-doc-view :global(mark.ev-hl) { background: var(--highlight); color: var(--on-highlight); border-radius: 3px; padding: 0 var(--sp-05); box-shadow: 0 0 0 3px var(--highlight); }
+.ax-col > :global(.card) + :global(.card) { margin-top: var(--sp-4); }
+
+/* evidence "Mostra nel documento" */
+/* Superficie comoda su portatile con trackpad: WCAG 2.2 chiede 24×24 CSS px
+   per un bersaglio isolato, e questi pulsanti stavano a 22 e a 20. */
+.ev-btn { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 26px; font-size: var(--fs-meta); font-weight: 600; color: var(--accent-text); background: none; border: none; padding: var(--sp-1) var(--sp-2); border-radius: 6px; cursor: pointer; }
+.ev-btn:hover { text-decoration: underline; }
+.ev-btn :global(.ic) { width: 13px; height: 13px; }
+
+/* ⚠️⚠️ LA PROVA SOTTO I DATI CHE GENERANO LAVORO, VISIBILE SENZA UN GESTO.
+   Sopra c'è `.ev-quote` (restata globale: la usano anche `assistant` e
+   `contracts`), che sta dietro «Mostra nel documento» ed è giusta così
+   per i campi minori. Per scadenza, appuntamento, importi e mittente non lo è:
+   il 2026-08-15 la citazione che smascherava una scadenza falsa esisteva, era
+   esatta, ed era invisibile — e chi guardava non aveva ragione di aprirla,
+   perché il sistema si dichiarava sicuro. Una prova che si vede solo se la si
+   cerca protegge chi già sospetta, cioè nessuno.
+
+   Il peso tipografico è MINORE del dato (13px, inchiostro tenue, filetto
+   sottile e neutro invece dell'accento): deve accompagnare, non competere. */
+.ev-shown { margin-top: var(--sp-2); }
+.ev-shown-q { margin: 0; font-size: var(--fs-meta); color: var(--ink-soft); border-left: 2px solid var(--line); padding: 0 0 0 var(--sp-3); font-style: italic; }
+/* Un campo MUTO e un campo SENZA PROVA non devono somigliarsi: lo spazio vuoto
+   si legge come «non c'è niente da dire», e qui invece c'è da dire che il dato
+   non ha un appiglio nel documento. */
+.ev-none { margin-top: var(--sp-2); font-size: var(--fs-meta); color: var(--muted); display: inline-flex; align-items: center; gap: var(--sp-2); font-style: italic; }
+
+/* card scadenza dedicata */
+.deadline-card { display: flex; align-items: center; gap: var(--sp-4); }
+.deadline-card .dl-ico { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
+.deadline-card .dl-main { flex: 1; min-width: 0; }
+.dl-kicker { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+/* ⚠️ CIFRE TABULARI, e non era necessario prima del 2026-08-10. Lo stack di
+   sistema incolonnava le cifre da sé: misurate a 22px, «11%», «92%» e «88%»
+   davano tutte 45px esatti. Inter di default usa cifre PROPORZIONALI — il suo
+   «1» è molto più stretto — e le stesse tre misurano 39,2 · 48,4 · 48,8. In una
+   pila di scadenze o di schede incentivo i numeri ballano da una riga all'altra.
+   Con `tabular-nums` tornano identiche (49,1), e le date passano da uno scarto
+   di 3,6px a zero. È la stessa dichiarazione che gli importi usano già in
+   `.fin-num`: qui mancava perché il carattere di prima non la richiedeva. */
+.dl-date { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
+.dl-rem { font-size: var(--fs-meta); margin-top: var(--sp-05); }
+:global(.lvl-scaduta) .dl-ico { background: var(--red-soft); color: var(--red-dark); } :global(.lvl-scaduta) .dl-rem { color: var(--red-dark); font-weight: 600; }
+:global(.lvl-urgente) .dl-ico { background: var(--red-soft); color: var(--red-dark); } :global(.lvl-urgente) .dl-rem { color: var(--red-dark); font-weight: 600; }
+:global(.lvl-prossima) .dl-ico { background: var(--amber-soft); color: var(--amber); } :global(.lvl-prossima) .dl-rem { color: var(--amber); }
+:global(.lvl-nessuna) .dl-ico { background: var(--accent-soft); color: var(--accent-text); } :global(.lvl-nessuna) .dl-rem { color: var(--muted); }
+.deadline-none { display: flex; align-items: flex-start; gap: var(--sp-3); color: var(--ink-soft); font-size: var(--fs-body); }
+.deadline-none :global(.ic) { color: var(--muted); flex-shrink: 0; margin-top: var(--sp-05); }
+
+/* checklist dominante */
+.ax-actions-card { border-top: 3px solid var(--accent); }
+:global(.action-item) .ai-meta { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); flex-wrap: wrap; }
+
+.verify-ok { display: flex; align-items: center; gap: var(--sp-2); color: var(--green); font-size: var(--fs-body); }
+
+/* rischio etichettato (oggi nel TSX compare solo `.risk-text`: le altre tre
+   classi del blocco sono state spostate, non cancellate — regola della
+   migrazione) */
+.risk-tag { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; padding: var(--sp-05) var(--sp-2); border-radius: 6px; }
+.risk-explicit { background: var(--red-soft); color: var(--red-dark); }
+.risk-possible { background: var(--amber-soft); color: var(--amber); }
+.risk-unknown { background: var(--fill-subtle); color: var(--ink-soft); }
+.risk-text { font-size: var(--fs-body); margin-top: var(--sp-2); }
+
+/* editor bozza */
+.draft-editor textarea { width: 100%; min-height: 190px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-3) var(--sp-4); font-size: var(--fs-body); line-height: 1.6; resize: vertical; background: var(--card); font-family: inherit; }
+.draft-editor textarea:focus { border-color: var(--accent); }
+.draft-controls { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--sp-3); }
+.draft-controls .dc-field { display: flex; flex-direction: column; gap: var(--sp-1); }
+.draft-controls label { font-size: var(--fs-label); font-weight: 600; color: var(--muted); }
+
+@media (max-width: 600px) { .ax-doc-view { max-height: 40vh; } .draft-controls { gap: var(--sp-2); } }
+
+/* ============================================================================
+   STAMPA — migrate il 2026-08-28 dalla `@media print` multi-feature di
+   `src/styles/extra.css` (issue #83, sweep finale). Con i CSS Modules il
+   selettore globale `.ax-header` non aggancia più la classe hashata: la
+   regola di stampa vive dove vive la classe. Le righe che nominano classi
+   GLOBALI (`.grid-2`, `.crm-kv`, `.kpi-grid`, `.ct-cmp`, `.crm-sec`) restano
+   nel blocco di `extra.css`.
+   ========================================================================== */
+@media print {
+  /* Le schede dei moduli non si spezzano, come quelle generiche. */
+  .ax-header,
+  .ax-actions-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Il visualizzatore del documento non va su carta: è un modo di guardare il
+     file, non il file. Chi archivia stampa l'ANALISI e conserva il documento
+     originale a parte. */
+  .ax-doc {
+    display: none !important;
+  }
+}

@@ -1,0 +1,92 @@
+/* ============================================================================
+   notifications.module.css — la campanella (feature `notifications`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/extra.css` (sezione «Campanella» del blocco «Calendario e
+   notifiche (0018)», più la riga `.bell-panel` nella `@media (max-width:
+   720px)`), commenti compresi. `.ic` è la classe GLOBALE dell'icona
+   (`components/ui/Icon`): dentro il selettore composto resta globale con
+   `:global`, altrimenti il modulo la localizzerebbe. `.is-unread` e
+   `.is-problem` qui sono valori del modulo, non più stringhe globali.
+
+   ⚠️ `test:shell-unit` legge `.bell-btn` e `.bell-badge` in `extra.css`:
+   spostandole qui quel controllo va riallineato (fase finale della
+   migrazione).
+   ========================================================================== */
+
+/* ---- Campanella ---------------------------------------------------------- */
+.bell-wrap { position: relative; margin-left: auto; }
+/* Un ACCESSORIO, non un pari grado del marchio: a riposo niente bordo e niente
+   fondo — la scatola bordata da 40px accanto al marchio da 32 erano due scatole
+   affiancate, cioè due pari grado. I 36px sono l'area di tocco, non un peso
+   visivo: quello che si vede a riposo è il solo glifo in --muted. Il fondo
+   appartiene all'hover, che è feedback e non contenitore (test:shell-unit). */
+.bell-btn {
+  position: relative; display: grid; place-items: center;
+  width: 36px; height: 36px; border: 0;
+  border-radius: var(--radius-sm); background: transparent; color: var(--muted);
+}
+.bell-btn:hover { background: var(--bg); color: var(--ink); }
+.bell-btn :global(.ic) { width: 18px; height: 18px; }
+/* Il pallino non contiene mai più di due caratteri: oltre il nove diventa «9+»,
+   perché un pallino che deve stare dietro a «147» o cresce quanto una parola o
+   rimpicciolisce il testo sotto la soglia leggibile (§80). */
+.bell-badge {
+  position: absolute; top: 0; right: 0; min-width: 18px; height: 18px;
+  /* ⚠️ IL FONDO È `--red-dark`, NON `--red`, e la differenza è il contrasto.
+     `--red` è il rosso che si RICONOSCE — barre, pallini, bordi, dove non c'è
+     testo sopra — ed è troppo chiaro per portarne: bianco su `--red` faceva
+     3,78:1 in chiaro e 4,35:1 in scuro, sotto la soglia AA di 4,5, da sempre.
+     `--red-dark` è il rosso che porta CONTRASTO, e regge le due parti in tutti
+     e tre i temi: 5,83 · 7,34 · 21. Il pallino ci guadagna anche in evidenza —
+     contro la scheda passa da 3,78:1 a 5,83:1: più scuro non vuol dire più
+     timido.
+     ⚠️ Non si è toccato `--red`: riempie barre e bordi ovunque, e scurirlo per
+     un pallino avrebbe spostato un colore usato in dieci punti per correggerne
+     uno. Il testo è `--on-red`, che si inverte da sé nel tema scuro.
+     ⚠️ Era `--on-accent` fino al 2026-08-17: quel token voleva dire «ciò che si
+     scrive sopra un fondo pieno colorato», e con l'accento diventato azzurro
+     CHIARO è diventato inchiostro scuro — sopra questo rosso avrebbe fatto
+     3,04:1. Il perché di due token invece di uno sta in app.css, accanto a
+     `--red-dark`.
+     Il guardiano che tiene ferma questa misura è la sezione 12 di
+     `test:shell-unit`, che pesa tutte e 90 le coppie fondo/testo del progetto. */
+  padding: 0 var(--sp-1); border-radius: 9px; background: var(--red-dark); color: var(--on-red);
+  font-size: var(--fs-label); line-height: 18px; text-align: center; font-weight: 600;
+}
+.bell-panel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 70;
+  width: 340px; max-width: calc(100vw - 28px);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg); max-height: 70vh; overflow-y: auto;
+}
+.bell-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  padding: var(--sp-3); border-bottom: 1px solid var(--line);
+}
+.bell-title { font-size: var(--fs-strong); font-weight: 600; }
+.bell-empty { padding: var(--sp-6) var(--sp-3); text-align: center; color: var(--muted); }
+.bell-row {
+  display: flex; gap: var(--sp-2); width: 100%; text-align: left;
+  padding: var(--sp-3); border: 0; border-bottom: 1px solid var(--line); background: transparent;
+}
+.bell-row:hover { background: var(--bg); }
+.bell-row.is-unread { background: var(--accent-soft); }
+/* Il pallino NON è l'unico segnale del non letto: lo sfondo cambia e il testo
+   del titolo è in grassetto. Un indicatore di solo colore non dice niente a chi
+   non lo distingue (§98). */
+.bell-row.is-unread .bell-row-title { font-weight: 600; }
+.bell-dot {
+  flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); margin-top: var(--sp-2);
+}
+.bell-dot.is-problem { background: var(--red); }
+.bell-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; }
+.bell-row-title { font-size: var(--fs-body); }
+.bell-row-sub { font-size: var(--fs-meta); color: var(--ink); overflow-wrap: anywhere; }
+.bell-row-meta { font-size: var(--fs-label); color: var(--muted); }
+.bell-foot { padding: var(--sp-3); }
+
+@media (max-width: 720px) {
+  .bell-panel { width: calc(100vw - 28px); }
+}

@@ -1,0 +1,161 @@
+/* ============================================================================
+   dashboard.module.css — la Panoramica (restyling 2026-08-26, modello
+   Lovable): testata col saluto, striscia KPI, due colonne, scheda in evidenza
+   e colonna «Richiede attenzione» (feature `dashboard`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da:
+   · `src/styles/extra.css`: la sezione «Panoramica — restyling 2026-08-26»
+     (`home-*`, `att-*`, `spot-*`, `.kpi-trend`), con le sue
+     `@media (max-width: 700px)` e `@media (max-width: 1100px)`, e
+     `.dash-sorted` (la riga che spiega l'ordine dell'elenco delle priorità);
+   · `src/styles/app.css`: `.greeting` e `.greeting-sub` («greeting / home
+     operativa»), con la riga di `.greeting` che stava nella
+     `@media (max-width: 600px)` mista e qui ha una `@media` tutta sua.
+   Commenti compresi, come da regola della migrazione.
+
+   Adattamenti di selettore (solo `:global`, nessuna classe rinominata):
+   · `.home-head .page-head` → `.home-head :global(.page-head)`;
+   · `.home-head-actions .btn` → `.home-head-actions :global(.btn)`;
+   · `.home-main > .card:first-child` / `.home-side > .card:first-child` →
+     `:global(.card)`: la scheda è il livello di superficie condiviso;
+   · `.att-col .card-title` → `.att-col :global(.card-title)`.
+
+   NON sono qui, e perché:
+   · `.kpi`, `.kpi-grid`, `.kpi-label`, `.kpi-value`, `.kpi-sub`, `.kpi-link`
+     RESTANO globali in `app.css`: sono la famiglia condivisa con Finanze,
+     CRM, Contratti e Automazioni (la striscia della Panoramica la RIUSA);
+   · `.kpi .sparkline`, `.sparkline-line` e `.sparkline-area` RESTANO globali
+     in `extra.css`: il markup è di `components/ui/Sparkline.tsx`, fuori da
+     questa feature;
+   · le classi `ov-*` (`ov-block`, `ov-line`, `ov-term`, `ov-terms-head`,
+     `ov-example`) non hanno regole in nessun foglio: sono ganci semantici e
+     restano stringhe nel TSX, come prima;
+   · `.footnote` è condivisa e resta globale.
+
+   ⚠️ `design-lint.mjs` ha un'eccezione che cita `.dash-sorted` in
+   `src/styles/extra.css`: la regola è MIGRATA QUI (oggi non la usa nessun
+   TSX), quindi l'eccezione è morta e va riallineata nella fase finale della
+   migrazione. Lo script non è stato toccato, come da consegna.
+   ========================================================================== */
+
+/* Panoramica — la riga che spiega l'ordine dell'elenco delle priorità.
+   Era uno stile in linea con due margini scritti a mano: fuori dal sistema di
+   spaziature, e invisibile a chi cerca le regole nel foglio di stile. */
+.dash-sorted { margin: -6px 0 var(--sp-2); }
+
+/* ---------- greeting / home operativa ---------- */
+.greeting { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.5px; }
+/* Il sottotitolo della Panoramica è il gemello di `.page-desc` — stessa cosa,
+   altro nome, perché qui il titolo è un saluto. Prende la stessa misura di
+   lettura: correggere il tetto di uno solo dei due avrebbe lasciato in piedi
+   proprio l'incoerenza che si stava togliendo. */
+.greeting-sub { color: var(--muted); margin-top: var(--sp-1); font-size: var(--fs-body); max-width: var(--measure); }
+
+@media (max-width: 600px) {
+  .greeting { font-size: var(--fs-h1); }
+}
+
+/* ===========================================================================
+   Panoramica — restyling 2026-08-26 (modello Lovable)
+   La testata, la striscia KPI, le due colonne, la scheda in evidenza e la
+   colonna «Richiede attenzione». Le REGOLE dei numeri non stanno qui: qui c'è
+   solo la forma. La striscia riusa la famiglia `.kpi` esistente (app.css) —
+   la stessa di Finanze e Incentivi: una card KPI è una card KPI.
+   =========================================================================== */
+
+/* La testata: saluto e istante della lettura a sinistra, i gesti a destra.
+   Su schermo stretto i gesti vanno a capo e i pulsanti prendono tutta la
+   larghezza — il pollice non mira al bottone stretto. */
+.home-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+.home-head :global(.page-head) { margin-bottom: 0; }
+.home-head-actions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding-top: var(--sp-1); }
+@media (max-width: 700px) {
+  .home-head-actions { width: 100%; }
+  .home-head-actions :global(.btn) { flex: 1 1 auto; justify-content: center; }
+}
+
+/* La pastiglia «N documenti richiedono attenzione»: velatura d'accento (è
+   INFORMAZIONE, non selezione — la regola del 2026-08-17), collegamento alla
+   stessa lista che dichiara. */
+.att-pill {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--radius);
+  background: var(--accent-soft); color: var(--accent-text);
+  border: 1px solid var(--accent-line);
+  font-size: var(--fs-body); font-weight: 500; text-decoration: none;
+}
+.att-pill:hover { text-decoration: none; border-color: var(--accent-text); }
+
+/* Le due colonne: il lavoro a sinistra (il doppio), la lista operativa a
+   destra. Sotto i 1100px si torna a colonna unica, lista SOTTO il lavoro —
+   il modello a fianco presuppone un monitor, non un portatile stretto. */
+.home-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; margin-top: var(--sp-4); }
+@media (max-width: 1100px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
+/* I figli della griglia portano i propri margini (`mt-16` sui blocchi): la
+   colonna è un contenitore neutro, altrimenti i blocchi si allineerebbero
+   alle card della colonna accanto invece che fra loro. */
+.home-main, .home-side { min-width: 0; }
+.home-main > :global(.card):first-child, .home-side > :global(.card):first-child { margin-top: 0; }
+
+/* Il segno del trend della striscia KPI: la griglia è `.kpi-grid` (4 colonne,
+   2 sotto i 900px) e le regole della sparkline restano in `extra.css` —
+   il suo markup è di `components/ui/Sparkline.tsx`, fuori da questa feature. */
+.kpi-trend { color: var(--green); font-weight: 600; margin-left: var(--sp-1); }
+.kpi-trend.down { color: var(--red-dark); }
+
+/* La colonna «Richiede attenzione»: un elenco di righe-collegamento, come
+   `.crm-row-link` ma con le cifre a destra — importo e data stanno insieme
+   perché rispondono alla stessa domanda («quanto, entro quando»). */
+.att-col :global(.card-title) { justify-content: space-between; }
+.att-count { font-weight: 400; }
+.att-list { display: flex; flex-direction: column; }
+.att-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle);
+  color: var(--ink); text-decoration: none;
+}
+.att-row:first-child { border-top: none; }
+.att-row:hover { text-decoration: none; }
+.att-row:hover .att-title { color: var(--accent-text); }
+.att-main { min-width: 0; display: flex; flex-direction: column; }
+.att-title { font-weight: 600; font-size: var(--fs-body); }
+.att-sender { font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.att-figures { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+.att-amount { font-weight: 600; font-size: var(--fs-body); font-variant-numeric: tabular-nums; }
+.att-date { font-size: var(--fs-meta); color: var(--muted); }
+/* Scaduta è rossa: i colori di stato dicono quanto manca, e «è già passata»
+   è lo stato che costa di più. */
+.att-date.overdue { color: var(--red-dark); font-weight: 600; }
+
+/* La scheda del documento in evidenza: testata con titolo e chip pagine, poi
+   due colonne — campi estratti e citazione di origine. */
+.spot-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.spot-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.2px; }
+.spot-chip {
+  display: inline-flex; align-items: center; gap: var(--sp-1); flex-shrink: 0;
+  padding: var(--sp-1) var(--sp-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); font-size: var(--fs-meta); color: var(--muted);
+}
+.spot-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); }
+@media (max-width: 700px) { .spot-body { grid-template-columns: minmax(0, 1fr); } }
+.spot-fields-title {
+  font-size: var(--fs-label); font-weight: 600; text-transform: uppercase;
+  letter-spacing: var(--ls-label); color: var(--muted); margin-bottom: var(--sp-2);
+}
+.spot-field { padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle); }
+.spot-field-name { font-size: var(--fs-meta); color: var(--muted); }
+.spot-field-value { font-weight: 600; font-size: var(--fs-body); margin-top: var(--sp-05); }
+.spot-field-note { font-size: var(--fs-meta); color: var(--amber); margin-top: var(--sp-05); }
+.spot-field-note.ok { color: var(--green); }
+.spot-actions { margin-top: var(--sp-3); }
+/* La citazione: velatura d'accento con il filetto — la forma che il prodotto
+   dà a ciò che viene dal documento (stessa famiglia di `.ax-callout`). */
+.spot-quote {
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  border-radius: var(--radius); padding: var(--sp-3) var(--sp-4);
+}
+.spot-quote-text {
+  margin: 0 0 var(--sp-2); padding-left: var(--sp-3);
+  border-left: 3px solid var(--accent);
+  font-size: var(--fs-body); line-height: 1.55; color: var(--ink);
+}

@@ -1,0 +1,68 @@
+/* ============================================================================
+   settings.module.css — la finestra delle impostazioni (feature `settings`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/extra.css` (sezione «La finestra delle impostazioni»), commenti
+   compresi. Note di confine:
+   - `.settings-pane :global(.page-head)`: `.page-head` è condivisa da tutte
+     le pagine e resta globale; il `:global` evita che il modulo la localizzi
+     (senza, la regola smetterebbe di combaciare);
+   - le regole `.dialog*` che stavano nella stessa `@media (max-width: 900px)`
+     RESTANO in `extra.css`: il dialogo è un componente condiviso
+     (`components/ui/Dialog.tsx`).
+   La classe di stato si chiama `.active` anche qui: nei moduli è un valore
+   (`styles.active`), non più una stringa globale.
+   ========================================================================== */
+
+/* ---- La finestra delle impostazioni --------------------------------------
+   Colonnina a sinistra, pannello a destra: la stessa forma della barra
+   laterale, perché è lo stesso gesto — si sceglie dove andare e si guarda. */
+.settings-layout { display: grid; grid-template-columns: 200px 1fr; min-height: 380px; }
+.settings-rail {
+  display: flex; flex-direction: column; gap: var(--sp-05);
+  padding: var(--sp-4) var(--sp-3);
+  border-right: 1px solid var(--line); background: var(--bg);
+}
+/* Stessa densità della colonna (`--sp-1`): qui si punta con un mouse. Il bordo
+   sinistro trasparente c'è sempre, come in `.nav-btn`: comparisse solo con la
+   voce scelta, il testo si sposterebbe di 3px a ogni clic. */
+.settings-rail-btn {
+  display: flex; align-items: center; gap: var(--sp-2); width: 100%; text-align: left;
+  padding: var(--sp-1) var(--sp-3); border: none; border-left: 3px solid transparent;
+  background: none; border-radius: var(--radius-sm);
+  color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body);
+  transition: background .12s, color .12s;
+}
+.settings-rail-btn:hover { background: var(--fill-subtle); color: var(--ink); }
+/* Selezione = fondo pieno, la stessa regola della voce attiva nella colonna. */
+.settings-rail-btn.active {
+  background: var(--accent); color: var(--on-accent); font-weight: 600;
+  border-left-color: var(--accent); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+/* La freccia delle voci che PORTANO ALTROVE: non è una decorazione, è la
+   differenza fra un pannello che si apre qui e una pagina che sostituisce la
+   schermata. Vedi `apre` in nav.ts. */
+.settings-rail-out { margin-left: auto; color: var(--muted); }
+.settings-rail-btn:hover .settings-rail-out { color: var(--accent-text); }
+.settings-pane { padding: var(--sp-6); min-width: 0; }
+/* Dentro il pannello l'intestazione non ha il respiro di una pagina: il titolo
+   lo porta già la finestra. `.page-head` è GLOBALE (condivisa da tutte le
+   pagine): resta tale dentro il modulo con `:global`, altrimenti verrebbe
+   localizzata e la regola non combacerebbe più. */
+.settings-pane :global(.page-head) { margin-bottom: var(--sp-4); }
+
+@media (max-width: 900px) {
+  /* La colonnina va sopra e diventa una riga che scorre in orizzontale: 200px
+     di rail su 375 di schermo lascerebbero 175 al pannello. */
+  .settings-layout { grid-template-columns: 1fr; min-height: 0; }
+  .settings-rail {
+    flex-direction: row; overflow-x: auto; border-right: none;
+    border-bottom: 1px solid var(--line); padding: var(--sp-2) var(--sp-3);
+  }
+  /* 44px, come i tre comandi personali del cassetto: qui si tocca con un dito,
+     e una riga di voci che scorre in orizzontale è già un bersaglio difficile. */
+  .settings-rail-btn { width: auto; white-space: nowrap; padding: var(--sp-2) var(--sp-3); border-left: none; min-height: 44px; }
+  .settings-rail-btn.active { border-radius: var(--radius-sm); }
+  .settings-rail-out { margin-left: var(--sp-1); }
+  .settings-pane { padding: var(--sp-4); }
+}

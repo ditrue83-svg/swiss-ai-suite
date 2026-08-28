@@ -1,0 +1,244 @@
+/* ============================================================================
+   documents.module.css — il Document Hub: elenco, dettaglio, statistiche e
+   attendibilità dell'analisi (feature `documents`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da:
+   - `src/styles/app.css`: `.reading-col`/`.prose`, `.sf-k`/`.sf-v` (figli di
+     `.surface-3`), `.chart-empty`, `.lang-*`, `.doc-name-composed`,
+     `.stats-toggle`, la famiglia `.action-bar` (con le sue righe nella
+     `@media (max-width: 600px)`) e la sezione «Documenti — Smart Document Hub
+     (0017)» con la sua `@media (max-width: 900px)`;
+   - `src/styles/extra.css`: il blocco «Attendibilità dell'analisi
+     (2026-08-19)» (`.trust-*`).
+   Commenti compresi, come da regola della migrazione.
+
+   NON sono qui, e perché:
+   · `.doc-filters` RESTA globale in `app.css`: la usano anche
+     `features/contracts/` e `features/crm/`;
+   · `.detail-list` RESTA globale: la usano anche `features/finance/`,
+     `features/incentives/` e `features/subsidy-ai/`;
+   · `.surface-3` è la classe condivisa del livello 3: qui dentro i suoi figli
+     `.sf-k`/`.sf-v` (che lega solo questa feature) la nominano con `:global`,
+     come `.btn-primary`/`.btn` nelle composte della `@media (max-width:
+     600px)`;
+   · `verify-note`, `vn-title`, `ev-hl` restano globali: le condividono altre
+     feature (`admin-ai`, `subsidy-ai`, `incentives`).
+
+   ⚠️ `test:shell-unit` legge `.prose` e `.doc-row-date` in `app.css`:
+   spostandole qui quei due controlli vanno riallineati (fase finale della
+   migrazione).
+   ========================================================================== */
+
+/* La colonna di lettura e la misura del testo corrente. Le tabelle e gli
+   elenchi possono uscire dalla misura — sono strutture, non prosa — ma non
+   dalla colonna. */
+.reading-col { max-width: var(--content-max); }
+.prose { max-width: var(--measure); }
+
+/* Livello 3 — riga inline (il contenitore `.surface-3` resta globale): le
+   chiavi e i valori che porta li usa solo il dettaglio del documento. */
+:global(.surface-3) .sf-k { color: var(--muted); font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ls-label); flex: none; }
+:global(.surface-3) .sf-v { color: var(--ink-soft); min-width: 0; }
+
+.chart-empty { color: var(--muted); font-size: var(--fs-meta); padding: var(--sp-4) 0; text-align: center; }
+.lang-card { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.lang-title { font-weight: 600; font-size: var(--fs-meta); color: var(--ink-soft); margin-right: var(--sp-1); }
+.lang-chip { font-size: var(--fs-meta); color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-1) var(--sp-3); }
+.lang-chip b { color: var(--ink); font-weight: 600; }
+
+/* La dichiarazione «questo nome l'abbiamo messo noi», sotto il titolo del
+   dettaglio: il segno della famiglia provenienza e una riga di spiegazione, sul
+   filo di base del segno. */
+.doc-name-composed { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+
+/* Interruttore della sezione statistiche (archivio). È un pulsante vero — si
+   raggiunge da tastiera e annuncia `aria-expanded` — con l'aspetto di una
+   intestazione: chi non la apre non deve nemmeno accorgersi che c'è un comando,
+   chi la cerca la trova dove finisce la lista. */
+.stats-toggle { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: 0; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; }
+.stats-toggle:hover { color: var(--accent-text); }
+
+/* La riga delle azioni di una schermata: UNA primaria, le secondarie accanto,
+   il trabocco in fondo. Non è `.row-wrap` con altri pulsanti dentro — la
+   differenza è che qui l'ordine SIGNIFICA qualcosa, e il margine automatico
+   davanti al trabocco lo tiene lontano dalla primaria anche quando le
+   secondarie sono zero. */
+.action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.action-bar-secondary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.action-bar-more { margin-left: auto; }
+
+@media (max-width: 600px) {
+  /* L'azione del momento prende tutta la riga: a 375px tre pulsanti affiancati
+     diventano tre pulsanti stretti, e nessuno dei tre è più «quello da
+     premere». Le secondarie restano in riga sotto, e si dividono lo spazio. */
+  .action-bar > :global(.btn-primary) { width: 100%; }
+  .action-bar-secondary { flex: 1; }
+  .action-bar-secondary :global(.btn) { flex: 1 1 auto; }
+  /* ⚠️ Il trabocco si aggancia in ALTO. Con le etichette tedesche le tre
+     secondarie diventano tre righe, e un `...` centrato verticalmente finiva
+     accanto a quella di mezzo: sembrava appartenerle. In alto sta accanto alla
+     prima, cioè dove comincia il gruppo di cui è la coda. */
+  .action-bar { align-items: flex-start; }
+  .action-bar-more { align-self: flex-start; }
+}
+
+/* ============================================================================
+   Documenti — Smart Document Hub (0017)
+   Nessun colore scritto a mano e nessuna misura di testo in px: solo i token
+   della scala tipografica e delle spaziature. Le aree cliccabili restano sopra
+   i 24px richiesti da WCAG 2.2.
+   ============================================================================ */
+
+/* La ricerca è l'elemento dominante della pagina: occupa lo spazio che avanza
+   accanto al pulsante di caricamento e scende a tutta larghezza sul telefono. */
+.doc-search { flex: 1; min-width: 220px; margin: 0; }
+
+/* Barra delle categorie a sinistra sul desktop, striscia scorrevole sul
+   telefono: le stesse voci, senza un secondo componente da mantenere. */
+/* ⚠️ 184px e non 232: la colonna prendeva il 30% della larghezza utile per tre
+   o quattro voci — e quel 30% lo pagava l'elenco, che è ciò per cui si apre
+   questa pagina. Non è larghezza a caso: «Sozialversicherungen» a 184 sta su
+   una riga con il suo conteggio accanto (verificato nelle tre lingue), e sotto
+   i 900px la colonna diventa comunque una striscia orizzontale. */
+.doc-layout { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: var(--sp-4); }
+.doc-side { display: flex; flex-direction: column; gap: var(--sp-05); }
+.doc-cat {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
+  min-height: 32px; padding: var(--sp-2) var(--sp-3);
+  border: 1px solid transparent; border-radius: 8px; background: none;
+  color: var(--ink); font: inherit; font-size: var(--fs-meta); text-align: left; cursor: pointer;
+}
+.doc-cat:hover { background: var(--fill-subtle); }
+/* La categoria scelta è una selezione, come la voce della barra: fondo pieno. */
+.doc-cat.is-active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.doc-cat-n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.doc-cat.is-active .doc-cat-n { color: var(--on-accent); }
+
+.doc-filter-wide { grid-column: 1 / -1; }
+
+.doc-bulk {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3); margin-bottom: var(--sp-3);
+  background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 8px;
+}
+
+.doc-row { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.doc-row:first-of-type { border-top: none; }
+.doc-row.is-selected { background: var(--accent-soft); }
+/* Il bersaglio della casella è la label, non il quadratino: 26px di altezza,
+   come nella checklist delle attività. */
+.doc-check { display: flex; align-items: center; min-height: 26px; min-width: 26px; padding-top: var(--sp-05); }
+.doc-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent-text); cursor: pointer; }
+/* Tutta la riga è il collegamento: centrare una freccia di sedici pixel su un
+   trackpad è una prova di mira. */
+.doc-row-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1; color: var(--ink); text-decoration: none; }
+.doc-row-main:hover .doc-row-title { text-decoration: underline; }
+.doc-row-title { font-size: var(--fs-body); font-weight: 600; min-width: 0; }
+/* ⚠️ `tabular-nums`, e non è un vezzo: Inter usa cifre PROPORZIONALI per
+   default — il suo «1» è molto più stretto — e in una pila di venticinque date
+   «11.03.2026» e «28.09.2026» non si incolonnano. È la stessa correzione già
+   fatta a `.dl-date` e a `.rb-num`, documentata in docs/design-system.md.
+   ⚠️ Le cifre tabulari da sole NON bastano: la data deve anche stare in una
+   colonna che non si muove da una riga all'altra — per questo vive nella
+   colonna di destra e non in coda a un titolo di lunghezza variabile. */
+.doc-row-date { flex: none; font-size: var(--fs-meta); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* La riga dei metadati ha una struttura, non una catena di punti mediani. */
+.doc-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-05) var(--sp-2); }
+.doc-sender { font-size: var(--fs-meta); font-weight: 600; color: var(--ink); }
+/* Il tipo è una MARCATURA, non una pastiglia di stato: nessun colore forte —
+   quelli restano alle pastiglie di destra, che dicono scadenza e stato
+   (regola 8: un solo colore forte per riga). */
+.doc-type {
+  font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--ink-soft); background: var(--fill-subtle); padding: var(--sp-05) var(--sp-2); border-radius: 5px;
+}
+.doc-row-sub { font-size: var(--fs-meta); color: var(--muted); }
+.doc-snippet {
+  font-size: var(--fs-meta); color: var(--ink-soft); margin-top: var(--sp-1);
+  padding-left: var(--sp-3); border-left: 2px solid var(--line-strong);
+}
+/* La colonna di destra: la data sulla riga del titolo, le pastiglie sotto.
+   40% e non 50: metà riga alle pastiglie lasciava all'elenco — cioè al titolo e
+   al mittente — l'altra metà, ed è il titolo che si legge per primo. */
+.doc-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex-shrink: 0; max-width: 40%; }
+.doc-row-badges { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
+
+.doc-tag {
+  display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 26px;
+  padding: var(--sp-05) var(--sp-2); border-radius: 999px;
+  background: var(--fill-subtle); color: var(--ink-soft); font-size: var(--fs-label);
+}
+.doc-tag-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  /* ⚠️ 24 e non 22: è il minimo che le WCAG 2.2 (§2.5.8) chiedono a un
+     bersaglio, ed è la crocetta che TOGLIE un'etichetta da un documento — un
+     gesto distruttivo che si preme per sbaglio con un dito. Due pixel di
+     differenza sono anche il gradino --sp-05 della scala: non è un numero
+     scelto a occhio, è la soglia. */
+  width: 24px; height: 24px; padding: 0; border: none; border-radius: 999px;
+  background: none; color: var(--muted); cursor: pointer;
+}
+.doc-tag-x:hover { background: var(--line); color: var(--ink); }
+
+@media (max-width: 900px) {
+  .doc-layout { grid-template-columns: minmax(0, 1fr); }
+  /* Le categorie diventano una striscia orizzontale scorrevole: stessi
+     pulsanti, stesso stato premuto, nessun menu nascosto da imparare. */
+  .doc-side { flex-direction: row; overflow-x: auto; padding-bottom: var(--sp-2); }
+  .doc-cat { flex: none; }
+  /* Sotto i 900px la riga va a capo: la colonna di destra diventa una fascia
+     larga quanto la riga, con data e pastiglie allineate a sinistra come tutto
+     il resto — a destra non c'è più niente con cui incolonnarsi.
+     ⚠️ `flex-basis: 100%` e non «va a capo se non ci sta»: senza, una riga
+     senza pastiglie teneva la data in cima accanto al titolo mentre quella
+     accanto ce l'aveva sotto, e la stessa informazione cambiava posto da una
+     riga all'altra. */
+  .doc-row-side { max-width: none; flex: 1 0 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--sp-2); }
+  .doc-row { flex-wrap: wrap; }
+}
+
+/* ---- Attendibilità dell'analisi (2026-08-19) --------------------------------
+   L'indicatore nell'INTESTAZIONE della scheda «Analisi», non più una voce
+   dell'elenco dei campi: un giudizio di sintesi stampato alla pari dei campi
+   che riassume poteva contraddirli da pari. Il livello lo decide
+   `analysisTrust.ts`, in un posto solo; qui c'è soltanto la forma.
+   ⚠️ Nessun colore nuovo e nessun segno nuovo: i pallini sono ConfidenceBadge,
+   i toni sono i token esistenti. */
+.trust-head {
+  margin-left: auto; display: inline-flex; align-items: baseline;
+  gap: var(--sp-1); flex-wrap: wrap;
+  font-size: var(--fs-meta); font-weight: 500; color: var(--ink-soft);
+}
+/* «non valutabile» NON ha pallini: è l'assenza del giudizio, detta a parole. */
+.trust-unavailable { font-weight: 600; }
+.trust-points { color: var(--muted); font-weight: 400; }
+/* Il motivo del tetto: una riga intera sotto il titolo (il contenitore è un
+   flex con wrap, e la base al 100% manda a capo). */
+.trust-reason {
+  flex-basis: 100%; display: inline-flex; align-items: baseline;
+  gap: var(--sp-2); flex-wrap: wrap;
+  font-size: var(--fs-meta); font-weight: 400; color: var(--muted);
+}
+.trust-why { display: inline; }
+.trust-why summary { display: inline; cursor: pointer; color: var(--accent-text); }
+.trust-why-panel {
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  margin-top: var(--sp-1); padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--ink-soft);
+}
+.trust-why-title { font-weight: 600; color: var(--ink); }
+/* La riga della conferma di appartenenza sotto il campo «Destinatario». */
+.trust-confirmed { display: block; font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
+
+/* ---- Ritrovamenti del lotto 6 (ricognizione finale, 2026-08-28) -----------
+   I toni d'urgenza delle barre e dei pallini delle statistiche: li passa
+   DocumentStatsPanel.tsx al componente condiviso `components/ui/Bars.tsx`,
+   le cui basi `.bar-fill` e `.bar-dot` RESTANO globali (il markup è suo).
+   Vengono da `src/styles/app.css`, sezione delle barre orizzontali. */
+:global(.bar-fill).s-alta { background: var(--red); }
+:global(.bar-fill).s-media { background: var(--amber-fill); }
+:global(.bar-fill).s-bassa { background: var(--green-fill); }
+.dot-alta { background: var(--red); }
+.dot-media { background: var(--amber-fill); }
+.dot-bassa { background: var(--green-fill); }

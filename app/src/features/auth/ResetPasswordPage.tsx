@@ -8,6 +8,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
 import { Input } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
+import styles from './auth.module.css';
 
 export function ResetPasswordPage() {
   const t = useT();
@@ -49,12 +50,12 @@ export function ResetPasswordPage() {
         {!session && <div className="info-box mb-14">{t('auth.openFromLink')}</div>}
         {error && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{error}</span></div>}
         {done ? (
-          <div className="form-success">{t('auth.redirecting')}</div>
+          <div className={styles.formSuccess}>{t('auth.redirecting')}</div>
         ) : (
           <form onSubmit={onSubmit} noValidate>
             <Input id="rp-pass" label={t('auth.reset.newPassword')} type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.passwordPlaceholder')} />
             <Input id="rp-conf" label={t('auth.confirmPassword')} type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-            <div className="auth-actions">
+            <div className={styles.authActions}>
               <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
                 {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.reset.submit')}
               </button>

@@ -35,6 +35,7 @@ import {
   DEFAULT_TIMEZONE, TIMEZONE_CHOICES, defaultPreferences, notificationService,
 } from '@/services/notificationService';
 import type { CalendarConnection, CalendarProvider, NotificationPreferences } from '@/types/models';
+import styles from './calendar.module.css';
 
 const STATUS_KEY = {
   active: 'calendar.statusConnected',
@@ -225,7 +226,7 @@ export function CalendarSettingsPage() {
               <Toggle id="c-mail" label={t('calendar.channelEmail')} checked={prefs.emailEnabled} disabled={saving}
                 onChange={(v) => void savePrefs({ ...prefs, emailEnabled: v })} />
             ) : (
-              <div className="check-off">
+              <div className={styles.checkOff}>
                 <span className="text-muted">{t('calendar.channelEmail')} — {t('calendar.emailUnavailable')}</span>
                 <div className="muted-sm">{t('calendar.emailUnavailableWhy')}</div>
               </div>
@@ -372,7 +373,7 @@ export function CalendarSettingsPage() {
               <div className="inbox-actions mt-14">
                 {(['google', 'microsoft'] as CalendarProvider[]).map((provider) => (
                   available.includes(provider) ? (
-                    <div key={provider} className="connect-choice">
+                    <div key={provider} className={styles.connectChoice}>
                       <Button variant="primary" icon="calendar" loading={connecting === provider}
                         onClick={() => void connect(provider)}>
                         {provider === 'google' ? t('calendar.connectGoogle') : t('calendar.connectMicrosoft')}

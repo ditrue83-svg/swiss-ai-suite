@@ -12,7 +12,9 @@ import { toUserMessage } from '@/lib/errors';
 import { formatUid, isValidUid } from '@/lib/uid';
 import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { cx } from '@/lib/cx';
 import { CANTONI, FORME_GIURIDICHE, SETTORI, FASCE_FATTURATO, NO_REVENUE } from '@/features/subsidy-ai/programs';
+import styles from './companies.module.css';
 
 export function OnboardingPage() {
   const navigate = useNavigate();
@@ -93,7 +95,7 @@ export function OnboardingPage() {
 
   return (
     <div className="centered-screen">
-      <div className="auth-card onboarding-card">
+      <div className={cx('auth-card', styles.onboardingCard)}>
         <div className="auth-brand">
           <BrandMark />
         </div>

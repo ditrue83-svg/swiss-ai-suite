@@ -45,6 +45,8 @@ import {
   paramsFromFilters, pipelineByCurrency, secondaryName,
   type CrmFilters, type CrmOrganizationState, type CrmSort, type CrmView,
 } from './crmModel';
+import { cx } from '@/lib/cx';
+import styles from './crm.module.css';
 
 /**
  * Gli elenchi chiusi come `Record` COMPLETI e non funzioni con ripiego: se
@@ -254,7 +256,7 @@ export function ClientsPage() {
 
       <div className="row-wrap ct-toolbar">
         <form
-          className="field crm-search"
+          className={cx('field', styles.crmSearch)}
           onSubmit={(e) => { e.preventDefault(); update({ query: draftQuery.trim() || null }); }}
         >
           <label className="sr-only" htmlFor="crm-q">{t('crm.searchPlaceholder')}</label>
@@ -491,7 +493,7 @@ function OrganizationRow(props: {
 
   return (
     <li className="list-row">
-      <Link to={`/clienti/${o.id}`} className="crm-row-link">
+      <Link to={`/clienti/${o.id}`} className={styles.crmRowLink}>
         <div className="list-main">
           <span className="list-title">{o.displayName}</span>
           <Tag tone={STATE_TONE[state]}>{t(STATE_KEY[state])}</Tag>
@@ -499,7 +501,7 @@ function OrganizationRow(props: {
 
         {legal && <div className="list-sub">{legal}</div>}
 
-        <div className="crm-roles">
+        <div className={styles.crmRoles}>
           {o.roles.length === 0
             ? <em className="muted-sm">{t('crm.row.noRoles')}</em>
             : o.roles.map((r) => (
@@ -569,9 +571,9 @@ function PipelineBoard(props: {
   const { t, L } = props;
   if (props.loading) {
     return (
-      <div className="crm-board">
+      <div className={styles.crmBoard}>
         {PIPELINE_STAGES.map((s) => (
-          <div className="crm-col" key={s}><SkeletonLine /><SkeletonLine /></div>
+          <div className={styles.crmCol} key={s}><SkeletonLine /><SkeletonLine /></div>
         ))}
       </div>
     );
@@ -580,7 +582,7 @@ function PipelineBoard(props: {
   return (
     <>
       {/* §45 — il valore per VALUTA, e nessun totale unico. */}
-      <div className="crm-ask">
+      <div className={styles.crmAsk}>
         <div className="crm-sec-head">
           <strong>{t('crm.opp.pipelineValue')}</strong>
           <span className="muted-sm">{t('crm.opp.pipelineByCurrency')}</span>
@@ -613,33 +615,33 @@ function PipelineBoard(props: {
         <p className="muted-sm mt-8">{props.loadedCount} / {props.total}</p>
       )}
 
-      <div className="crm-board mt-8">
+      <div className={cx(styles.crmBoard, 'mt-8')}>
         {PIPELINE_STAGES.map((stage) => {
           const cards = props.deals.filter((d) => d.stage === stage);
           return (
-            <div className="crm-col" key={stage}>
-              <div className="crm-col-head">
-                <span className="crm-col-title">{L.crmStage(stage)}</span>
-                <span className="crm-col-n">{props.stageCounts[stage]}</span>
+            <div className={styles.crmCol} key={stage}>
+              <div className={styles.crmColHead}>
+                <span className={styles.crmColTitle}>{L.crmStage(stage)}</span>
+                <span className={styles.crmColN}>{props.stageCounts[stage]}</span>
               </div>
               {cards.length === 0 ? (
-                <div className="crm-col-empty">—</div>
+                <div className={styles.crmColEmpty}>—</div>
               ) : cards.map((d) => {
                 const st = opportunityState(d);
                 return (
                   <Link
-                    key={d.id} className="crm-card"
+                    key={d.id} className={styles.crmCard}
                     to={`/clienti/${d.organizationId}/opportunita/${d.id}`}
                   >
-                    <span className="crm-card-title">{d.title}</span>
-                    <span className="crm-card-sub">{d.organizationName}</span>
+                    <span className={styles.crmCardTitle}>{d.title}</span>
+                    <span className={styles.crmCardSub}>{d.organizationName}</span>
                     {/* ⚠️ `formatCurrency` e non `toLocaleString('de-CH')`: la
                         riga inchiodava la Svizzera TEDESCA anche a chi usa
                         l'app in italiano o in francese, e senza decimali fissi
                         «CHF 8'900» e «CHF 8'900.50» finivano in colonna con
                         due forme diverse. La funzione di `lib/format` è la
                         stessa che scrivono Finanze e Contratti. */}
-                    <span className="crm-card-sub">
+                    <span className={styles.crmCardSub}>
                       {d.valueAmount === null || !d.valueCurrency
                         ? <em>{t('crm.opp.noValue')}</em>
                         : formatCurrency(d.valueAmount, d.valueCurrency)}

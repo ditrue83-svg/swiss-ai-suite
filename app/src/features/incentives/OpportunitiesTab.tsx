@@ -36,6 +36,8 @@ import { EligibilityMark } from '@/components/ui/EligibilityMark';
 import { SourceStamp } from '@/components/ui/SourceStamp';
 import { MarkLegend } from '@/components/ui/MarkLegend';
 import { OpportunityDetail } from './OpportunityDetail';
+import { cx } from '@/lib/cx';
+import styles from './incentives.module.css';
 
 interface Props {
   companyId: string;
@@ -239,10 +241,10 @@ function OpportunityRow({
   const step = nextStep(o, today);
 
   return (
-    <div className="list-row inc-row">
+    <div className={cx('list-row', styles.incRow)}>
       <div className="list-main">
         <div className="list-title">
-          <button type="button" className="inc-open" onClick={onOpen}>{o.programName}</button>
+          <button type="button" className={styles.incOpen} onClick={onOpen}>{o.programName}</button>
         </div>
         <div className="list-sub">
           {o.authority}
@@ -256,7 +258,7 @@ function OpportunityRow({
 
         {/* LE SEI MISURE. Etichetta e valore, una accanto all'altra: sono sei
             domande diverse e nessuna è una probabilità. */}
-        <dl className="inc-measures">
+        <dl className={styles.incMeasures}>
           <Measure label={t('incentives.measures.relevance')} value={t(RELEVANCE_KEY[o.relevanceLevel])} />
           {/* Idoneità e freschezza portano il SEGNO della loro famiglia
               (giudizio, timbro): le altre quattro misure restano testo — non
@@ -270,7 +272,7 @@ function OpportunityRow({
         </dl>
 
         {/* Che cosa fare adesso. È la domanda a cui il 1.0 non rispondeva. */}
-        <div className="inc-next">
+        <div className={styles.incNext}>
           <Icon name="arrowRight" className="ic-sm" /> {t(NEXT_STEP_KEY[step])}
         </div>
 
@@ -280,7 +282,7 @@ function OpportunityRow({
             promemoria su una data che non controlliamo da mesi è peggio di
             nessun promemoria. */}
         {notice.daysLeft !== null && (
-          <div className={`inc-deadline${notice.urgent ? ' is-urgent' : ''}`}>
+          <div className={cx(styles.incDeadline, notice.urgent && styles.isUrgent)}>
             <Icon name="clock" className="ic-sm" />
             {notice.expired
               ? t('incentives.deadlineExpired', { date: formatDate(o.callDeadlineOn) })
@@ -294,14 +296,14 @@ function OpportunityRow({
         )}
 
         {o.assessmentStale && (
-          <div className="inc-flag">{t('incentives.staleAssessment')}</div>
+          <div className={styles.incFlag}>{t('incentives.staleAssessment')}</div>
         )}
         {o.reopenSuggestedAt && o.dismissedAt && (
-          <div className="inc-flag">{t('incentives.reopenSuggested')}</div>
+          <div className={styles.incFlag}>{t('incentives.reopenSuggested')}</div>
         )}
       </div>
 
-      <div className="inc-row-side">
+      <div className={styles.incRowSide}>
         {o.dismissedAt ? (
           <>
             <Tag>
@@ -332,7 +334,7 @@ function OpportunityRow({
 
 function Measure({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="inc-measure">
+    <div className={styles.incMeasure}>
       <dt>{label}</dt>
       <dd>{value}</dd>
     </div>

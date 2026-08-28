@@ -26,6 +26,8 @@ import { useLabels } from '@/i18n/labels';
 import { useToast } from '@/components/ui/Toast';
 import type { CrmOrganizationRole } from '@/types/database';
 import { SWISS_CANTONS } from './crmModel';
+import { cx } from '@/lib/cx';
+import styles from './crm.module.css';
 
 /**
  * ⚠️ I TESTI DEL REGISTRO SONO NOSTRI, i due DISCLAIMER restano di Zefix.
@@ -184,7 +186,7 @@ export function ClientCreatePage() {
 
       {error && <ErrorState message={t(error as TKey) || error} />}
 
-      <form className="card crm-narrow" onSubmit={submit}>
+      <form className={cx('card', styles.crmNarrow)} onSubmit={submit}>
         <RegistryLookup
           current={{ legalName, uidChe, canton, municipality: city }}
           onApply={applyRegistry}
@@ -193,7 +195,7 @@ export function ClientCreatePage() {
           messages={REGISTRY_MESSAGES}
         />
 
-        <div className="divider" />
+        <div className={styles.divider} />
 
         {/* ⚠️ OGNI CAMPO DENTRO `.field`: lo stile di input e textarea è legato a
             quella classe, e un input scritto fuori mostra lo sfondo bianco del
@@ -250,7 +252,7 @@ export function ClientCreatePage() {
           />
         </div>
 
-        <div className="grid-3">
+        <div className={styles.grid3}>
           <div className="field">
             <label htmlFor="c-zip">{t('crm.form.postalCode')}</label>
             <input

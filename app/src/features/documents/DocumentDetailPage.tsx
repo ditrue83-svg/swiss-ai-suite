@@ -55,6 +55,8 @@ import { useI18n, useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { useDocumentLabel } from '@/i18n/documentLabel';
 import { etichettaComposta } from '@/lib/documentTitle';
+import { cx } from '@/lib/cx';
+import styles from './documents.module.css';
 import { CATEGORIES } from './documentModel';
 import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
@@ -511,7 +513,7 @@ export function DocumentDetailPage() {
   });
 
   return (
-    <div className="reading-col">
+    <div className={styles.readingCol}>
       <div className="page-head">
         <Link className="btn btn-sm btn-ghost mb-8" to="/documenti">
           <Icon name="arrowLeft" className="ic-sm" /> {t('documents.back')}
@@ -524,7 +526,7 @@ export function DocumentDetailPage() {
             vocabolario usa già per un valore ricavato e non letto —
             «Inferenza», stessa famiglia della provenienza. */}
         {etichettaComposta(item.label) && (
-          <div className="doc-name-composed">
+          <div className={styles.docNameComposed}>
             <ProvenanceMark kind="inference" />
             <span className="muted-sm">
               {grezzo
@@ -564,11 +566,11 @@ export function DocumentDetailPage() {
            le due cose che si fanno su QUALUNQUE documento a prescindere dallo
            stato dell'analisi. In fondo, staccato dal margine automatico, il
            trabocco: archivia, stampa, elimina. ------------------------- */}
-      <div className="action-bar mt-12">
+      <div className={cx(styles.actionBar, 'mt-12')}>
         {/* Sotto un dubbio di appartenenza l'azione del momento è UNA:
             rispondere alla domanda. Il prossimo passo torna dopo. */}
         {!ownershipDoubt && <NextStepPrimary {...stepActions} />}
-        <div className="action-bar-secondary">
+        <div className={styles.actionBarSecondary}>
           {!ownershipDoubt && <NextStepSecondary {...stepActions} />}
           {doc.storagePath && (
             <button className="btn btn-sm" onClick={() => void openFile()} disabled={busy}>
@@ -578,7 +580,7 @@ export function DocumentDetailPage() {
           {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
           <AskAbout type="document" id={doc.id} label={nome} />
         </div>
-        <div className="action-bar-more">
+        <div className={styles.actionBarMore}>
           <ActionMenu label={t('documents.moreActions')} items={menuItems} />
         </div>
       </div>
@@ -593,7 +595,7 @@ export function DocumentDetailPage() {
           <Icon name="alert" className="ic-sm" />
           <div>
             <div><b>{t('documents.dangerZone')}</b></div>
-            <div className="prose">{t('documents.deleteExplain')}</div>
+            <div className={styles.prose}>{t('documents.deleteExplain')}</div>
             <div className="row-wrap mt-10">
               <span>{t('documents.deleteAsk')}</span>
               <button className="btn btn-sm btn-danger" onClick={() => void removeForever()} disabled={busy}
@@ -617,12 +619,12 @@ export function DocumentDetailPage() {
           <Icon name="alert" className="ic-sm" />
           <div>
             <div><b>{t('documents.ownership.warnTitle', { company: activeCompany?.legalName ?? '' })}</b></div>
-            <div className="prose">
+            <div className={styles.prose}>
               {trust.ownership.doubt && trust.ownership.other
                 ? t('documents.ownership.warnRecipient', { recipient: trust.ownership.other })
                 : t('documents.ownership.warnNoRecipient')}
             </div>
-            {recipientPoint && <div className="muted-sm prose">{recipientPoint.description}</div>}
+            {recipientPoint && <div className={cx('muted-sm', styles.prose)}>{recipientPoint.description}</div>}
             <div className="muted-sm">{t('documents.ownership.warnGate')}</div>
             <div className="row-wrap mt-10">
               <button className="btn btn-sm" onClick={() => void confirmOwnership()} disabled={busy}>
@@ -648,13 +650,13 @@ export function DocumentDetailPage() {
            contiene. Resta prima di tutto perché «che cos'è questo documento»
            viene comunque prima di «che cosa devo farne». --------------- */}
       <div className="surface-3 mt-16">
-        <span className="sf-k">{t('documents.origin')}</span>
+        <span className={styles.sfK}>{t('documents.origin')}</span>
         {doc.sourceType === 'email' || detail.emails.length > 0 ? (
           detail.emails.length === 0 ? (
-            <span className="sf-v">{t('documents.sources.email')}</span>
+            <span className={styles.sfV}>{t('documents.sources.email')}</span>
           ) : (
             detail.emails.map((mail) => (
-              <span className="sf-v" key={`${mail.messageId}-${mail.relation}`}>
+              <span className={styles.sfV} key={`${mail.messageId}-${mail.relation}`}>
                 {[
                   mail.subject || t('documents.sources.email'),
                   mail.senderName || mail.senderEmail,
@@ -668,7 +670,7 @@ export function DocumentDetailPage() {
             ))
           )
         ) : (
-          <span className="sf-v">
+          <span className={styles.sfV}>
             {doc.sourceType === 'pasted_text'
               ? t('documents.originText')
               : t('documents.originUploadUnknown')}
@@ -682,7 +684,7 @@ export function DocumentDetailPage() {
       {detail.sameContentIds.length > 0 && (
         <div className="info-box mt-12">
           <div><b>{t('documents.sameContent')}</b></div>
-          <div className="muted-sm prose">{t('documents.sameContentSub')}</div>
+          <div className={cx('muted-sm', styles.prose)}>{t('documents.sameContentSub')}</div>
           <Link className="btn btn-sm mt-8" to={`/documenti/${detail.sameContentIds[0]}`}>
             {t('documents.sameContentOpen')}
           </Link>
@@ -758,7 +760,7 @@ export function DocumentDetailPage() {
                   ? <>{analysis.recipient} <ProvenanceMark kind="toVerify" /></>
                   : undefined}
                 extra={ownershipConf && (
-                  <span className="trust-confirmed">
+                  <span className={styles.trustConfirmed}>
                     {t('documents.ownership.confirmedLine', {
                       name: assigneeName(ownershipConf.by),
                       date: formatDate(ownershipConf.at),
@@ -811,7 +813,7 @@ export function DocumentDetailPage() {
                 l'occhio perde il capo della riga successiva. Le tabelle e gli
                 elenchi qui sopra restano larghi: sono strutture, e la misura di
                 lettura non li riguarda. */}
-            {analysis?.summary && <p className="muted-sm prose mt-12">{analysis.summary}</p>}
+            {analysis?.summary && <p className={cx('muted-sm', styles.prose, 'mt-12')}>{analysis.summary}</p>}
 
             {analysis && analysis.uncertaintyItems.length > 0 && (
               /* ⚠️ NON è un guasto, e fino al 2026-08-12 era vestito da guasto:
@@ -1069,7 +1071,7 @@ export function DocumentDetailPage() {
       {/* ---- Organizzazione ---------------------------------------------- */}
       <div className="surface-2">
         <div className="card-title">{t('documents.organization')}</div>
-        <div className="muted-sm prose">{t('documents.organizationHint')}</div>
+        <div className={cx('muted-sm', styles.prose)}>{t('documents.organizationHint')}</div>
 
         <div className="grid-2 mt-12">
           <Select id="doc-category" label={t('documents.category')} value={doc.category ?? ''} disabled={busy}
@@ -1092,9 +1094,9 @@ export function DocumentDetailPage() {
           <div className="row-wrap">
             {detail.tags.length === 0 && <span className="muted-sm">{t('documents.tagsNone')}</span>}
             {detail.tags.map((tag) => (
-              <span className="doc-tag" key={tag.id}>
+              <span className={styles.docTag} key={tag.id}>
                 {tag.name}
-                <button type="button" className="doc-tag-x" disabled={busy}
+                <button type="button" className={styles.docTagX} disabled={busy}
                   onClick={() => void removeTag(tag.id)}
                   aria-label={t('documents.tagRemoveAria', { name: tag.name })}>
                   <Icon name="close" className="ic-sm" />

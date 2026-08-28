@@ -28,6 +28,8 @@ import { crmService } from '@/services/crmService';
 import { useT, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import type { CrmEmailMatch, CrmOrganizationOption } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './crm.module.css';
 
 interface Props {
   /** L'organizzazione già collegata, se c'è. */
@@ -118,7 +120,7 @@ export function CrmLinkPicker(props: Props) {
   if (!company) return null;
 
   return (
-    <div className={props.className ?? 'crm-ask'}>
+    <div className={props.className ?? styles.crmAsk}>
       <div className="crm-sec-head">
         <strong>{t('crm.link.toOrganization')}</strong>
         {props.linkedId && (
@@ -158,8 +160,8 @@ export function CrmLinkPicker(props: Props) {
           {matches.length > 0 && (
             <>
               {matches.map((m) => (
-                <div className="crm-ask-row" key={`${m.organizationId ?? ''}-${m.reason}`}>
-                  <div className="crm-ask-main">
+                <div className={styles.crmAskRow} key={`${m.organizationId ?? ''}-${m.reason}`}>
+                  <div className={styles.crmAskMain}>
                     <strong>{m.organizationName ?? m.contactName ?? '—'}</strong>
                     <div className="muted-sm">
                       {m.reason === 'email_exact'
@@ -191,7 +193,7 @@ export function CrmLinkPicker(props: Props) {
             </button>
           ) : (
             <>
-              <div className="field crm-search">
+              <div className={cx('field', styles.crmSearch)}>
                 <label className="sr-only" htmlFor="crm-pick">
                   {t('crm.link.searchOrganization')}
                 </label>
@@ -219,8 +221,8 @@ export function CrmLinkPicker(props: Props) {
               ) : (
                 <ul className="crm-list">
                   {options.map((o) => (
-                    <li className="crm-ask-row" key={o.id}>
-                      <div className="crm-ask-main">
+                    <li className={styles.crmAskRow} key={o.id}>
+                      <div className={styles.crmAskMain}>
                         <strong>{o.displayName}</strong>
                         <div className="muted-sm">
                           {o.city ?? ''}

@@ -1,8 +1,10 @@
 import { useToast } from '@/components/ui/Toast';
 import { useT } from '@/i18n';
+import { cx } from '@/lib/cx';
 import type { Sede } from '@/features/companies/CompanySettingsPage';
 
 import type { TKey } from '@/i18n';
+import styles from './pricing.module.css';
 
 // I piani portano CHIAVI, non testo: nomi dei piani e prezzi restano invariati
 // (sono dati commerciali), ma target e caratteristiche si traducono al render.
@@ -31,14 +33,14 @@ export function Pricing({ sede }: { sede: Sede }) {
 
       {/* ⚠️ Quattro colonne stanno in una pagina larga 1160px, non nei 560 utili
           di una finestra: dentro il pannello i piani vanno a capo da soli. */}
-      <div className={sede === 'pannello' ? 'grid-2' : 'grid-4'}>
+      <div className={sede === 'pannello' ? 'grid-2' : styles.grid4}>
         {PLANS.map((p) => (
-          <div key={p.nome} className={`card price-card${p.featured ? ' featured' : ''}`}>
-            {p.featured && <div className="featured-flag">{t('pricing.plans.recommended')}</div>}
+          <div key={p.nome} className={cx('card', styles.priceCard, p.featured && styles.featured)}>
+            {p.featured && <div className={styles.featuredFlag}>{t('pricing.plans.recommended')}</div>}
             <div className="card-title">{p.nome}</div>
-            <div className="price-target">{t(p.targetKey)}</div>
-            <div className="price-tag">{p.prezzo ? <>CHF {p.prezzo}<small> {t('pricing.plans.perMonth')}</small></> : <span className="price-custom">{t('pricing.plans.custom')}</span>}</div>
-            <ul className="price-feats">{p.featureKeys.map((k) => <li key={k}>{t(k)}</li>)}</ul>
+            <div className={styles.priceTarget}>{t(p.targetKey)}</div>
+            <div className={styles.priceTag}>{p.prezzo ? <>CHF {p.prezzo}<small> {t('pricing.plans.perMonth')}</small></> : <span className={styles.priceCustom}>{t('pricing.plans.custom')}</span>}</div>
+            <ul className={styles.priceFeats}>{p.featureKeys.map((k) => <li key={k}>{t(k)}</li>)}</ul>
             <button className={`btn${p.featured ? ' btn-primary' : ''}`} onClick={() => showToast(t('pricing.demoNote'))}>
               {t('pricing.plans.request')}
             </button>

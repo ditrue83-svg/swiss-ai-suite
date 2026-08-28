@@ -1,0 +1,87 @@
+/* ============================================================================
+   print.module.css — la scheda che esiste SOLO su carta (feature `print`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da:
+   - `src/styles/app.css`: `.print-only` nascosta a schermo e mostrata in
+     `@media print` (il resto del blocco di stampa di app.css — token da
+     inchiostro, cosa sparisce, cosa non si spezza — nomina classi di TUTTE le
+     feature e resta globale);
+   - `src/styles/extra.css`: il blocco `.print-sheet` e compagni, con i loro
+     commenti originali.
+
+   ⚠️ `test:print-unit` legge queste regole nei due CSS globali: spostandole
+   qui quel controllo va riallineato (fase finale della migrazione).
+   ========================================================================== */
+
+/* Fuori dalla stampa, ciò che è SOLO per la carta non esiste. */
+.print-only { display: none; }
+
+/* ---------------------------------------------------------------------------
+   La scheda di stampa. Fuori dalla stampa non esiste (`.print-only` qui
+   sopra); qui c'è solo il suo aspetto quando esiste.
+   ------------------------------------------------------------------------- */
+@media print {
+  /* Ciò che esiste SOLO per la carta compare qui, e solo qui. */
+  .print-only { display: block !important; }
+
+  .print-sheet {
+    font-size: 10pt;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+
+  .print-sheet h2 {
+    font-size: 13pt;
+    margin: 0 0 2pt;
+  }
+
+  .print-sheet h3 {
+    font-size: 11pt;
+    margin: 10pt 0 3pt;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 1pt;
+  }
+
+  /* Coppie etichetta/valore: l'etichetta in grigio scuro, il valore in nero.
+     Niente due colonne — su A4 una riga per fatto si legge meglio. */
+  .print-kv { margin: 0 0 2pt; }
+  .print-kv dt { display: inline; font-weight: 600; color: #333; }
+  .print-kv dt::after { content: ' '; }
+  .print-kv dd { display: inline; margin: 0; }
+
+  .print-list { margin: 2pt 0 0; padding-left: 14pt; }
+  .print-list li { margin-bottom: 2pt; }
+
+  /* ⚠️ LA CITAZIONE. Rientrata e con la barra a sinistra perché si veda a colpo
+     d'occhio che è testo DEL DOCUMENTO e non nostro: su carta non c'è nessun
+     colore a dirlo, e confondere le due cose in un fascicolo è grave. */
+  .print-quote {
+    margin: 2pt 0 4pt 10pt;
+    padding-left: 6pt;
+    border-left: 2px solid var(--line-strong);
+    font-style: italic;
+  }
+  /* I caporali li mette il CSS e non il JSX: scritti nel markup sarebbero testo
+     scritto a mano dentro un componente, che `i18n:coverage` vieta. In Svizzera
+     valgono per italiano, tedesco e francese, quindi non servono tre varianti. */
+  .print-quote::before { content: '\00AB\00A0'; }
+  .print-quote::after { content: '\00A0\00BB'; }
+  .print-quote-src { font-style: normal; color: var(--muted); }
+
+  /* L'URL scritto per esteso accanto al collegamento: un link stampato senza
+     indirizzo è un vicolo cieco. */
+  .print-url { color: #333; word-break: break-all; }
+
+  /* Il piè di pagina si stacca e resta unito. */
+  .print-foot {
+    margin-top: 12pt;
+    padding-top: 4pt;
+    border-top: 1px solid var(--line-strong);
+    font-size: 8.5pt;
+    color: #333;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-foot p { margin: 0 0 1pt; }
+  .print-disclaimer { font-weight: 600; }
+}

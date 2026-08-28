@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import styles from './auth.module.css';
 
 export function LoginPage() {
   const t = useT();
@@ -48,17 +49,17 @@ export function LoginPage() {
         <form onSubmit={onSubmit} noValidate>
           <Input id="login-email" label={t('auth.emailLabel')} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
           <Input id="login-password" label={t('auth.passwordLabel')} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-          <div className="auth-actions">
+          <div className={styles.authActions}>
             <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
               {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.login.submit')}
             </button>
           </div>
         </form>
 
-        <div className="auth-alt">
+        <div className={styles.authAlt}>
           <Link className="btn-link" to="/forgot-password">{t('auth.login.forgot')}</Link>
         </div>
-        <div className="auth-alt">
+        <div className={styles.authAlt}>
           {t('auth.login.noAccount')} <Link className="btn-link" to="/register">{t('auth.login.createAccount')}</Link>
         </div>
         {/* La lingua si sceglie PRIMA di accedere: chi non legge l'italiano

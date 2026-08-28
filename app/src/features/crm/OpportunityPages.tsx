@@ -32,6 +32,8 @@ import { useLabels } from '@/i18n/labels';
 import type { AssignableMember, CrmOpportunity, CrmOrganization, CrmPerson } from '@/types/models';
 import type { CrmOpportunityStage } from '@/types/database';
 import { ALL_STAGES, isOpen, opportunityState, opportunityStateKey } from './crmModel';
+import { cx } from '@/lib/cx';
+import styles from './crm.module.css';
 
 /** ISO 4217, tre lettere. Le tre che una PMI svizzera incontra davvero. */
 const CURRENCIES = ['CHF', 'EUR', 'USD'];
@@ -121,7 +123,7 @@ export function OpportunityCreatePage() {
 
       {error && <ErrorState message={t(error as TKey) || error} />}
 
-      <form className="card crm-narrow" onSubmit={submit}>
+      <form className={cx('card', styles.crmNarrow)} onSubmit={submit}>
         <div className="field">
           <label htmlFor="o-title">{t('crm.opp.title')}</label>
           <input id="o-title" value={title} required maxLength={200}
@@ -159,7 +161,7 @@ export function OpportunityCreatePage() {
           </select>
         </div>
 
-        <div className="grid-3">
+        <div className={styles.grid3}>
           <div className="field">
             <label htmlFor="o-amount">{t('crm.opp.value')}</label>
             <input id="o-amount" value={amount} inputMode="decimal" maxLength={16}
@@ -291,7 +293,7 @@ export function OpportunityDetailPage() {
           <div className="page-desc">
             <Link to={`/clienti/${deal.organizationId}`}>{deal.organizationName}</Link>
           </div>
-          <div className="crm-roles">
+          <div className={styles.crmRoles}>
             <Tag tone="info">{L.crmStage(deal.stage)}</Tag>
             <Tag>{t(opportunityStateKey(st))}</Tag>
           </div>
@@ -319,7 +321,7 @@ export function OpportunityDetailPage() {
           si può chiudere una trattativa senza saper dire perché. */}
       {askLost && (
         <form
-          className="crm-ask"
+          className={styles.crmAsk}
           onSubmit={(e) => {
             e.preventDefault();
             setAskLost(false);
@@ -422,7 +424,7 @@ export function OpportunityDetailPage() {
           <ul className="crm-list">
             {tasks.map((k) => (
               <li className="list-row" key={k.id}>
-                <Link className="crm-row-link" to={`/attivita/${k.id}`}>
+                <Link className={styles.crmRowLink} to={`/attivita/${k.id}`}>
                   <span className="list-title">{k.title}</span>
                   {k.dueDate && <div className="list-sub">{formatDate(k.dueDate)}</div>}
                 </Link>

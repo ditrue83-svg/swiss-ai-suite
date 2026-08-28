@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/Icon';
 import { documentService } from '@/services/documentService';
 import { useT } from '@/i18n';
 import type { Evidence } from '@/types/models';
+import styles from './admin-ai.module.css';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -138,7 +139,7 @@ export function PdfViewer({ storagePath, highlight }: {
         <div className="muted-sm mb-2"><span className="spinner" aria-hidden="true" /> {t('adminAi.result.loadingDocument')}</div>
       )}
 
-      <div className="ax-doc-view" ref={containerRef} />
+      <div className={styles.axDocView} ref={containerRef} />
 
       {truncated && (
         <div className="muted-sm mt-2">

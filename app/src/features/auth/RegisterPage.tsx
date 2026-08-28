@@ -6,6 +6,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
 import { Input } from '@/components/ui/forms';
 import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
+import styles from './auth.module.css';
 
 export function RegisterPage() {
   const t = useT();
@@ -55,7 +56,7 @@ export function RegisterPage() {
         <div className="auth-sub">{t('auth.register.subtitle')}</div>
 
         {error && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{error}</span></div>}
-        {info && <div className="form-success">{info}</div>}
+        {info && <div className={styles.formSuccess}>{info}</div>}
 
         <form onSubmit={onSubmit} noValidate>
           <div className="grid-2">
@@ -64,14 +65,14 @@ export function RegisterPage() {
           </div>
           <Input id="reg-email" label={t('auth.emailLabel')} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('auth.emailPlaceholder')} />
           <Input id="reg-password" label={t('auth.passwordLabel')} type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.passwordPlaceholder')} hint={t('auth.register.passwordHint')} />
-          <div className="auth-actions">
+          <div className={styles.authActions}>
             <button className="btn btn-primary" type="submit" disabled={submitting} aria-busy={submitting || undefined}>
               {submitting ? <span className="spinner" aria-hidden="true" /> : null} {t('auth.register.submit')}
             </button>
           </div>
         </form>
 
-        <div className="auth-alt">
+        <div className={styles.authAlt}>
           {t('auth.register.haveAccount')} <Link className="btn-link" to="/login">{t('auth.register.goToLogin')}</Link>
         </div>
       </div>

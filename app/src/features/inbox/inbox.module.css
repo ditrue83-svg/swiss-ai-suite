@@ -1,0 +1,126 @@
+/* ============================================================================
+   inbox.module.css — l'elenco e il dettaglio delle comunicazioni (feature
+   `inbox`).
+
+   Migrazione a CSS Modules (issue #83), 2026-08-28. Le regole vengono da
+   `src/styles/app.css` (sezione «Inbox», più `.filter-count` e la sua
+   `@media (max-width: 600px)` dedicata), commenti compresi.
+   · `.inbox-actions` NON è qui: la usa anche `features/calendar/` e resta
+     globale in `app.css`.
+   · `is-informational` e `is-collapsed` RESTANO globali perché sono costruite
+     dinamicamente (`is-${emphasis}` in InboxPage): nei composti stanno in
+     `:global`, altrimenti il modulo le localizzerebbe. `.text-muted` dentro
+     `.inbox-link-row` è la classe condivisa: stessa ragione, stesso rimedio.
+   · `is-unseen` e `is-failed` sono condizionali semplici: qui sono valori del
+     modulo, non più stringhe globali.
+   ========================================================================== */
+
+/* ---------- Inbox ----------
+   Nessun colore nuovo, nessuna misura in px per il testo: la scala tipografica
+   e i token esistenti bastano. L'unico elemento con un carattere proprio è il
+   corpo del messaggio, che è testo grezzo di provenienza esterna e va reso
+   riconoscibile come tale — non impaginato come se fosse contenuto nostro. */
+.inbox-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+.inbox-head-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.inbox-status { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); font-size: var(--fs-meta); }
+.inbox-tools { display: flex; gap: var(--sp-2); align-items: center; margin-left: auto; flex-wrap: wrap; }
+
+.inbox-search {
+  font: inherit; font-size: var(--fs-meta); color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: var(--sp-2) var(--sp-3); min-width: 220px; min-height: 32px;
+}
+.inbox-search::placeholder { color: var(--muted); }
+
+.inbox-list { list-style: none; margin: 0; padding: 0; }
+.inbox-row {
+  display: flex; align-items: flex-start; gap: var(--sp-4); width: 100%;
+  padding: var(--sp-3) 0; border-top: 1px solid var(--line);
+  background: none; border-left: 0; border-right: 0; border-bottom: 0;
+  text-align: left; cursor: pointer; color: var(--ink); font: inherit;
+}
+.inbox-list li:first-child .inbox-row { border-top: none; }
+.inbox-row:hover { background: var(--fill-subtle); }
+.inbox-row-main { display: flex; flex-direction: column; gap: var(--sp-05); min-width: 0; flex: 1; }
+.inbox-row-side { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
+/* Il grassetto NON è l'unico segnale del non letto: la pastiglia di stato dice
+   già cosa richiede attenzione, e questo resta una comodità visiva. */
+.inbox-row.is-unseen .inbox-subject { font-weight: 600; }
+.inbox-sender { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-subject {
+  font-size: var(--fs-body); color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.inbox-meta { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-processing { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-label); color: var(--muted); margin-top: var(--sp-05); }
+.inbox-processing.is-failed { color: var(--red-dark); }
+.inbox-more { margin-top: var(--sp-4); }
+
+/* ---- Il peso di una riga --------------------------------------------------
+   Fino al 2026-08-16 tutte le righe avevano la stessa altezza, lo stesso peso
+   e la stessa posizione: il modulo classificava e poi mostrava tutto uguale.
+   Le tre classi qui sotto sono la classificazione resa visibile.
+
+   ⚠️ Il peso si abbassa con la DIMENSIONE e con lo spazio, non spegnendo il
+   contrasto: `--ink-soft` e `--muted` restano leggibili su fondo chiaro e su
+   fondo scuro. Una gerarchia che si ottiene rendendo un testo quasi invisibile
+   non è una gerarchia: è un testo che non si può leggere. */
+
+/* Informativa: riguarda l'azienda, non chiede niente. Resta intera, pesa meno. */
+.inbox-row:global(.is-informational) { padding: var(--sp-2) 0; }
+.inbox-row:global(.is-informational) .inbox-subject { color: var(--ink-soft); }
+/* La specificità è più alta di `.is-unseen` di proposito: il grassetto del non
+   letto è una comodità visiva, e non deve poter risalire sopra la gerarchia. */
+.inbox-row:global(.is-informational).is-unseen .inbox-subject,
+.inbox-row:global(.is-collapsed).is-unseen .inbox-subject { font-weight: 400; }
+
+/* Non amministrativa: la riga esiste, ed è la più leggera delle tre. */
+.inbox-row:global(.is-collapsed) { padding: var(--sp-1) 0; }
+.inbox-row:global(.is-collapsed) .inbox-subject { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-row:global(.is-collapsed) .inbox-sender { color: var(--muted); }
+
+/* La riga che le tiene piegate. Sta in fondo, non è un pulsante grande e non
+   somiglia a un'azione distruttiva: comprimere è reversibile con un clic. */
+.inbox-collapsed { margin-top: var(--sp-4); border-top: 1px solid var(--line); padding-top: var(--sp-3); }
+.inbox-collapsed-head { font-size: var(--fs-meta); color: var(--muted); }
+.inbox-collapsed-count { color: var(--muted); }
+
+.inbox-fields { display: grid; gap: var(--sp-2); margin: 0; }
+.inbox-fields > div { display: grid; grid-template-columns: 180px 1fr; gap: var(--sp-3); align-items: baseline; }
+.inbox-fields dt { font-size: var(--fs-label); color: var(--muted); letter-spacing: var(--ls-label); text-transform: uppercase; }
+.inbox-fields dd { margin: 0; font-size: var(--fs-body); color: var(--ink); overflow-wrap: anywhere; }
+
+/* Corpo del messaggio: testo di provenienza esterna, mostrato come testo.
+   `white-space: pre-wrap` conserva gli a capo dell'originale senza permettere
+   ad alcun markup di prendere forma — qui non arriva mai HTML. */
+.inbox-body {
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  font-size: var(--fs-body); line-height: var(--lh); color: var(--ink);
+  background: var(--fill-subtle); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: var(--sp-4);
+  max-height: 32em; overflow-y: auto;
+}
+.inbox-link-row { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; font-size: var(--fs-body); }
+.inbox-link-row :global(.text-muted) { font-size: var(--fs-meta); }
+
+/* Il conteggio accanto all'etichetta del filtro.
+   ⚠️ NESSUN COLORE PROPRIO, ed è deliberato: eredita quello del bottone, che
+   cambia fra riposo e stato attivo (dove il fondo è `--accent` e il testo
+   `--on-accent`). Un token fisso qui avrebbe retto su un fondo solo — è il
+   difetto che la sezione 12 di `test:shell-unit` pesa, e il modo più semplice
+   di non averlo è non introdurre un secondo colore.
+   La gerarchia la fa la MISURA, non il contrasto: un gradino di scala sotto
+   l'etichetta. Cifre tabulari perché il numero cambia e la barra non deve
+   ballare — la stessa regola di `.dl-date` e `.rb-num`. */
+.filter-count { margin-left: var(--sp-2); font-size: var(--fs-meta); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 600px) {
+  .inbox-head-actions { width: 100%; }
+  .inbox-head-actions :global(.btn) { flex: 1 1 auto; }
+  .inbox-tools { width: 100%; margin-left: 0; }
+  .inbox-search { min-width: 0; flex: 1; }
+  .inbox-row { gap: var(--sp-2); }
+  .inbox-row-side { flex-basis: 100%; }
+  .inbox-fields > div { grid-template-columns: 1fr; gap: var(--sp-05); }
+  .inbox-fields dd { margin-bottom: var(--sp-2); }
+}

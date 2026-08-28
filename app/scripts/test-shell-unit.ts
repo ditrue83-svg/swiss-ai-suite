@@ -80,6 +80,19 @@ const section = (title: string) => console.log(`\n${B}${title}${X}`);
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// ⚠️ DAL 2026-08-28 (issue #83) le regole delle feature vivono nei CSS Modules
+// delle feature, non più nei due globali: chi le cerca solo in app.css ed
+// extra.css dichiara morte regole vive — è il riallineo dello sweep finale.
+// Ogni controllo qui sotto legge la regola nel foglio dove vive ORA: la
+// decisione di design sorvegliata non è cambiata, è cambiato il file.
+const leggiCss = (rel: string) => readFileSync(join(root, rel), 'utf8');
+const MODULI_CSS = readdirSync(join(root, 'src/features'), { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory()
+    ? readdirSync(join(root, 'src/features', e.name))
+      .filter((f) => f.endsWith('.module.css'))
+      .map((f) => `src/features/${e.name}/${f}`)
+    : []));
+
 // ---------------------------------------------------------------------------
 section('1. Forme — una forma, un nome');
 
@@ -103,11 +116,13 @@ section('1. Forme — una forma, un nome');
 section('2. Campanella — accessorio, non pari grado');
 
 {
-  const css = readFileSync(join(root, 'src/styles/extra.css'), 'utf8');
+  // ⚠️ Dal 2026-08-28 (issue #83) la campanella vive in
+  // `notifications/notifications.module.css`: la usava solo quella feature.
+  const css = leggiCss('src/features/notifications/notifications.module.css');
   // Il PRIMO blocco `.bell-btn { … }` è lo stato a riposo; `:hover` è feedback
   // e non entra nel giudizio.
   const block = css.match(/\.bell-btn\s*\{([^}]*)\}/)?.[1] ?? '';
-  check('.bell-btn esiste in extra.css', block !== '');
+  check('.bell-btn esiste in notifications.module.css', block !== '');
 
   // `\bborder\s*:` e non `border`: `border-radius` è la geometria del velo di
   // hover, non una scatola, e non deve entrare nel giudizio. ⚠️ Gli spazi dopo
@@ -677,30 +692,40 @@ section('6. Gerarchia e densità dentro le pagine');
   // riga di testo decisa a occhio. Un controllo che grida su ciò che è giusto
   // si impara a ignorare, e da quel momento non protegge più niente.
   // Le classi qui sotto sono quelle che portano PROSA: chi ne aggiunge una
-  // aggiunge una riga qui.
+  // aggiunge una riga qui. ⚠️ DAL 2026-08-28 ogni riga dichiara il FOGLIO in
+  // cui la classe vive dopo la migrazione a CSS Modules (issue #83): `.prose`
+  // è di `documents`, `.greeting-sub` di `dashboard`; le altre restano
+  // globali. `.hero p` è USCITA dall'elenco il 2026-08-28 con la famiglia
+  // `.hero*` (censimento regole morte: zero usi) — una riga qui per una classe
+  // che non esiste più garantirebbe una misura che nessuno consumerà.
   // ⚠️ `.footnote` NON è in questo elenco dal 2026-08-14, ed è una promozione,
   // non un'esenzione: il suo testo resta nella misura ma con un padding, così
   // il filetto sopra può correre per intero. Il controllo suo sta più sotto,
   // nella sezione 10 — chi togliesse il padding lo farebbe fallire.
-  for (const classe of ['.prose', '.page-desc', '.greeting-sub', '.legal-note', '.hero p']) {
+  const PROSA: { classe: string; foglio: string }[] = [
+    { classe: '.prose', foglio: 'src/features/documents/documents.module.css' },
+    { classe: '.page-desc', foglio: 'src/styles/app.css' },
+    { classe: '.greeting-sub', foglio: 'src/features/dashboard/dashboard.module.css' },
+    { classe: '.legal-note', foglio: 'src/styles/app.css' },
+  ];
+  for (const { classe, foglio } of PROSA) {
     const sel = classe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const blocco = appCss.match(new RegExp(`${sel}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+    const sorgente = foglio === 'src/styles/app.css' ? appCss : leggiCss(foglio);
+    const blocco = sorgente.match(new RegExp(`${sel}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
     check(
       `${classe} porta la misura di lettura`,
       /max-width:\s*var\(--measure\)/.test(blocco),
-      blocco ? `trovato: ${blocco.trim().slice(0, 60)}` : 'regola assente',
+      blocco ? `trovato: ${blocco.trim().slice(0, 60)}` : `regola assente (cercata in ${foglio})`,
     );
   }
 
-  // (d) IL NUMERO PIÙ GRANDE È UNO SOLO.
-  // `.meter-num` era `--fs-h1` come il valore della scheda grande: due primi
-  // posti non fanno gerarchia.
-  const meter = appCss.match(/\.meter-num\s*\{([^}]*)\}/)?.[1] ?? '';
-  check(
-    'la percentuale di completamento non compete col numero che conta di più',
-    /font-size:\s*var\(--fs-h2\)/.test(meter),
-    `.meter-num: ${meter.trim().slice(0, 60)}`,
-  );
+  // (d) IL NUMERO PIÙ GRANDE È UNO SOLO. Fino al 2026-08-28 questa prova
+  // riguardava `.meter-num` (`--fs-h2`, non `--fs-h1` come il valore della
+  // scheda grande): la classe è stata CANCELLATA col censimento delle regole
+  // morte (issue #83) — zero usi in src/, scripts/, index.html e site/ — e con
+  // lei è uscita la prova: un controllo su una regola che non esiste garantisce
+  // una gerarchia che nessuno rende. La decisione resta scritta dove è viva:
+  // `.kpi-value` a `--fs-h1` è l'unico numero a quel gradino.
 }
 
 {
@@ -1079,14 +1104,19 @@ section('8. Cifre tabulari — dove i numeri stanno in colonna');
   // Il perimetro sono le classi il cui contenuto è SEMPRE un numero e che
   // stanno in una colonna. Non è l'elenco di tutti i numeri dell'app: è
   // l'elenco di quelli che si guardano uno sotto l'altro.
+  // ⚠️ DAL 2026-08-28 ogni riga punta al foglio dove la classe vive dopo la
+  // migrazione a CSS Modules (issue #83): `.dl-date` è di `admin-ai`,
+  // `.rb-num` di `subsidy-ai`, `.doc-row-date` di `documents`, `.fin-num` di
+  // `finance`; le altre restano globali. `.meter-num` è USCITA dall'elenco il
+  // 2026-08-28: classe cancellata col censimento delle regole morte (zero
+  // usi).
   const NUMERICHE: { selettore: string; file: string; perche: string }[] = [
     { selettore: '.kpi-value', file: 'src/styles/app.css', perche: 'griglia 2×2, e una colonna sola sotto i 600px' },
     { selettore: '.bar-val', file: 'src/styles/app.css', perche: 'colonna fissa da 42px allineata a destra' },
-    { selettore: '.meter-num', file: 'src/styles/app.css', perche: 'percentuale di completamento della Panoramica' },
-    { selettore: '.dl-date', file: 'src/styles/app.css', perche: 'pila di scadenze' },
-    { selettore: '.rb-num', file: 'src/styles/app.css', perche: 'percentuali di rilevanza, una scheda sotto l\'altra' },
-    { selettore: '.doc-row-date', file: 'src/styles/app.css', perche: 'colonna delle date nell\'elenco documenti' },
-    { selettore: '.fin-num', file: 'src/styles/extra.css', perche: 'gli importi' },
+    { selettore: '.dl-date', file: 'src/features/admin-ai/admin-ai.module.css', perche: 'pila di scadenze' },
+    { selettore: '.rb-num', file: 'src/features/subsidy-ai/subsidy-ai.module.css', perche: 'percentuali di rilevanza, una scheda sotto l\'altra' },
+    { selettore: '.doc-row-date', file: 'src/features/documents/documents.module.css', perche: 'colonna delle date nell\'elenco documenti' },
+    { selettore: '.fin-num', file: 'src/features/finance/finance.module.css', perche: 'gli importi' },
     { selettore: '.crm-kv dd', file: 'src/styles/extra.css', perche: 'colonna dei valori: importi e scadenze fuori da Finanze' },
   ];
   const fogli = new Map<string, string>();
@@ -1583,6 +1613,13 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
   const senzaCommenti = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '');
   const app = senzaCommenti(readFileSync(join(root, 'src/styles/app.css'), 'utf8'));
   const extra = senzaCommenti(readFileSync(join(root, 'src/styles/extra.css'), 'utf8'));
+  // ⚠️ IL CORPUS SONO TUTTI I FOGLI dal 2026-08-28 (issue #83): le regole con
+  // fondo+testo migrate nei moduli sparivano dal conto, e la soglia «trovate
+  // almeno N coppie» cadeva — il LETTORE che si rompe, esattamente ciò che la
+  // soglia è nata per denunciare. La decisione sorvegliata è la stessa, il
+  // perimetro segue le regole dove vivono.
+  const corpus = [app, extra, ...MODULI_CSS.map((f) => senzaCommenti(leggiCss(f)))].join('\n');
+  const notifiche = senzaCommenti(leggiCss('src/features/notifications/notifications.module.css'));
 
   const canale = (v: number) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
   const luminanza = (c: [number, number, number]) => 0.2126 * canale(c[0]) + 0.7152 * canale(c[1]) + 0.0722 * canale(c[2]);
@@ -1632,7 +1669,7 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
   };
 
   const coppie: { sel: string; bg: string; fg: string }[] = [];
-  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  for (const [, sel, corpo] of corpus.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const bg = /(?:^|;|\s)background(?:-color)?:\s*(var\(--[a-z0-9-]+\))/.exec(corpo!)?.[1];
     const fg = /(?:^|;|\s)color:\s*(var\(--[a-z0-9-]+\))/.exec(corpo!)?.[1];
     if (bg && fg) coppie.push({ sel: sel!.replace(/\s+/g, ' ').trim(), bg, fg });
@@ -1656,8 +1693,9 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
 
   // ⚠️ E il caso che ha fatto nascere la sezione, nominato: se qualcuno
   // rimettesse `--red` sotto il pallino, il conto sopra lo direbbe — ma non
-  // direbbe PERCHÉ. Questa riga lo dice.
-  const pallino = /\.bell-badge\s*\{([^}]*)\}/.exec(extra)?.[1] ?? '';
+  // direbbe PERCHÉ. Questa riga lo dice. (La regola vive in
+  // `notifications.module.css` dal 2026-08-28, issue #83.)
+  const pallino = /\.bell-badge\s*\{([^}]*)\}/.exec(notifiche)?.[1] ?? '';
   check('il pallino delle notifiche scrive su --red-dark, non su --red',
     /background:\s*var\(--red-dark\)/.test(pallino),
     'su --red il bianco fa 3,78:1 in chiaro: --red riempie, --red-dark porta testo');
@@ -1674,7 +1712,7 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
   // coppia da pesare. Da qui in poi `--accent` è un colore di RIEMPIMENTO:
   // l'inchiostro della sua famiglia si chiama `--accent-text`.
   const scriventi: string[] = [];
-  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  for (const [, sel, corpo] of corpus.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (/(?:^|;|\s)color:\s*var\(--accent\)/.test(corpo!)) scriventi.push(sel!.replace(/\s+/g, ' ').trim());
   }
   check("nessuna regola SCRIVE con --accent (l'inchiostro è --accent-text)",
@@ -1685,7 +1723,7 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
   // il colore che gli si dà è un fondo, e sopra un azzurro chiaro quella spunta
   // sparisce. `accent-color` vuole quindi l'inchiostro, non il riempimento.
   const caselle: string[] = [];
-  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  for (const [, sel, corpo] of corpus.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (/accent-color:\s*var\(--accent\)\s*[;}]/.test(`${corpo!};`)) caselle.push(sel!.replace(/\s+/g, ' ').trim());
   }
   check('le caselle native usano accent-color: var(--accent-text)',
@@ -1703,7 +1741,7 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
   // `--on-accent`. È l'unico inchiostro garantito su quel fondo — in tutt'e tre
   // i temi, perché il token si ribalta con loro.
   const riempieAccento = new Set<string>();
-  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  for (const [, sel, corpo] of corpus.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (!/(?:^|;|\s)background(?:-color)?:\s*var\(--accent\)\s*[;}]/.test(`${corpo!};`)) continue;
     for (const p of sel!.split(',')) riempieAccento.add(p.replace(/\s+/g, ' ').trim());
   }
@@ -1711,7 +1749,7 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
     riempieAccento.size >= 8, `trovati ${riempieAccento.size}`);
 
   const dentro: string[] = [];
-  for (const [, sel, corpo] of (`${app}\n${extra}`).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  for (const [, sel, corpo] of corpus.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const inchiostro = /(?:^|;|\s)color:\s*([^;}]+)/.exec(corpo!)?.[1]?.trim();
     if (!inchiostro) continue;
     for (const p of sel!.split(',')) {
@@ -1796,7 +1834,11 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
   const brandArt = readFileSync(join(root, 'src/components/ui/brandArt.ts'), 'utf8');
   const lingua = readFileSync(join(root, 'src/components/ui/LanguageSwitcher.tsx'), 'utf8');
   const aspetto = readFileSync(join(root, 'src/components/ui/ThemeSwitcher.tsx'), 'utf8');
-  const css = `${app}\n${extra}`;
+  // ⚠️ `.bell-btn` vive in `notifications.module.css` dal 2026-08-28 (issue
+  // #83): senza quel foglio la sua altezza cadrebbe sul ripiego `?? 36` più
+  // sotto, e il bilancio tornerebbe verde su una misura dedotta.
+  const notifiche = senzaCommenti(leggiCss('src/features/notifications/notifications.module.css'));
+  const css = `${app}\n${extra}\n${notifiche}`;
 
   // La scala: i px dei token, così il modello parla la lingua dei fogli.
   const scala = new Map<string, number>();
@@ -2119,7 +2161,11 @@ section('15. I fogli come li legge il BROWSER — un commento che si chiude due 
 // calcolato. Qui si controlla la sola cosa che si può controllare leggendo:
 // che tagliando i commenti come li taglia un parser non avanzi un `*/` orfano.
 {
-  const FOGLI = ['src/styles/app.css', 'src/styles/extra.css', 'src/styles/fonts.css'];
+  // ⚠️ DAL 2026-08-28 il perimetro include i CSS Modules delle feature (issue
+  // #83): un commento chiuso due volte fa lo stesso danno in qualunque foglio,
+  // e i moduli sono 17 fogli nati da spostamenti di testo — il cantiere esatto
+  // in cui un `*/` di troppo si perde.
+  const FOGLI = ['src/styles/app.css', 'src/styles/extra.css', 'src/styles/fonts.css', ...MODULI_CSS];
   let commentiTotali = 0;
   for (const f of FOGLI) {
     const testo = readFileSync(join(root, f), 'utf8');
@@ -2135,7 +2181,7 @@ section('15. I fogli come li legge il BROWSER — un commento che si chiude due 
   }
   // ⚠️ CONTROPROVA DEL LETTORE: se i fogli si leggessero vuoti, «nessun orfano»
   // sarebbe vero per vacuità — e lo sarebbe per sempre.
-  check(`i tre fogli sono stati letti davvero (${commentiTotali} commenti)`,
+  check(`i fogli sono stati letti davvero (${FOGLI.length} fogli, ${commentiTotali} commenti)`,
     commentiTotali > 200, `trovati ${commentiTotali} commenti: troppo pochi perché la lettura sia avvenuta`);
 }
 
@@ -2160,6 +2206,11 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   const extraRaw = readFileSync(join(root, 'src/styles/extra.css'), 'utf8');
   const app = senzaCommenti(appRaw);
   const extra = senzaCommenti(extraRaw);
+  // ⚠️ LA SEZIONE `as-*` VIVE IN `assistant.module.css` dal 2026-08-28 (issue
+  // #83): la usava solo questa feature. Le geometrie qui sotto si leggono lì —
+  // `.main:has(.as-page)` là dentro è `:global(.main):has(.as-page)`, perché
+  // `.main` resta globale. Il conto e le soglie non cambiano.
+  const assistant = senzaCommenti(leggiCss('src/features/assistant/assistant.module.css'));
   // ⚠️ I COMMENTI VANNO VIA PRIMA DI GUARDARE, ed è la TERZA volta in questo
   // file: qui sotto si pretende che `requestAnimationFrame` non compaia nella
   // pagina, e il commento che spiega perché lo NOMINA. Alla prima stesura il
@@ -2217,9 +2268,9 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
 
   const gColonna = regola('.sidebar', app);
   const gMain = regola('.main', app);
-  const gPage = regola('.as-page', extra);
-  const gLayout = regola('.as-layout', extra);
-  const gConv = regola('.as-main', extra);
+  const gPage = regola('.as-page', assistant);
+  const gLayout = regola('.as-layout', assistant);
+  const gConv = regola('.as-main', assistant);
 
   const colonnaW = px(dichiarazione(gColonna, 'width'));
   const mainPad = (dichiarazione(gMain, 'padding') ?? '').split(/\s+/);
@@ -2247,7 +2298,7 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   // ⚠️ La colonna morta non deve tornare, come `.nav-caret` e `.nav-subitem`:
   // una classe che nessuno rende è un indizio falso per chi rifà questo conto.
   check('la colonna «Fonti» non è tornata: nessun `.as-side-right` nei fogli',
-    !/\.as-side-right\b/.test(app) && !/\.as-side-right\b/.test(extra));
+    !/\.as-side-right\b/.test(app) && !/\.as-side-right\b/.test(extra) && !/\.as-side-right\b/.test(assistant));
   check('e nessun componente la scrive',
     !/as-side-right/.test(pagina),
     'le fonti sono un pannello: se torna la colonna, torna anche la conversazione stretta');
@@ -2276,7 +2327,8 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
     (scala.get('--content-max') ?? 0) >= conversazione,
     `--content-max ${scala.get('--content-max')} < ${conversazione}: il tetto starebbe togliendo larghezza invece di darla`);
   check("il tetto di `.main` è tolto solo QUI, e solo dove c'è questa pagina",
-    /\.main:has\(\.as-page\)\s*\{[^}]*max-width:\s*none/.test(extra),
+    // Nel modulo la classe condivisa è nominata con `:global` (issue #83).
+    /:global\(\.main\):has\(\.as-page\)\s*\{[^}]*max-width:\s*none/.test(assistant),
     'senza, a 1920 la pagina si ferma a 1160 e lascia 496px di vuoto');
 
   // --- (d) L'ALTEZZA: gli stessi token del padding di `.main`, non due numeri -
@@ -2285,9 +2337,9 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   // 68 dichiarati dove ne servivano 128 (la barra in cima non era contata).
   const PUNTI: [string, string, string[]][] = [
     ['schermo largo', gPage, ['--sp-8', '--sp-12']],
-    ['fino a 900px', regola('.as-page', bloccoMedia('900px', extra, '--as-shell-y')),
+    ['fino a 900px', regola('.as-page', bloccoMedia('900px', assistant, '--as-shell-y')),
       ['--topbar-h', '--sp-6', '--sp-12']],
-    ['fino a 600px', regola('.as-page', bloccoMedia('600px', extra, '--as-shell-y')),
+    ['fino a 600px', regola('.as-page', bloccoMedia('600px', assistant, '--as-shell-y')),
       ['--topbar-h', '--sp-4', '--sp-12']],
   ];
   for (const [dove, corpo, attesi] of PUNTI) {
@@ -2317,16 +2369,16 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   // La barra in cima esiste solo sotto i 900px: sopra NON va contata.
   check('la barra in cima entra nel conto solo dove esiste (sotto i 900px)',
     !tokenDi(dichiarazione(gPage, '--as-shell-y')).includes('--topbar-h')
-      && /@media \(max-width: 900px\)/.test(extra),
+      && /@media \(max-width: 900px\)/.test(assistant),
     'su desktop `.topbar` è `display: none`: contarla toglierebbe 56px per niente');
 
   // --- (e) IL PANNELLO DELLE FONTI: raggiungibile, e chiuso davvero ---------
-  const gDrawer = regola('.as-drawer', extra);
+  const gDrawer = regola('.as-drawer', assistant);
   check('un pannello chiuso esce dalla catena del Tab (visibility: hidden)',
     /visibility:\s*hidden/.test(gDrawer),
     '`translateX` sposta i pixel e basta: i collegamenti restano tabulabili fuori schermo');
   check("in apertura la visibilità cambia a durata zero (il fuoco dev'entrare subito)",
-    /\.as-drawer\.open\s*\{[^}]*transition:[^;]*visibility 0s/.test(extra),
+    /\.as-drawer\.open\s*\{[^}]*transition:[^;]*visibility 0s/.test(assistant),
     'interpolata, nell’istante zero vale ancora `hidden` e il .focus() non prende');
   check('la pastiglia delle fonti dichiara che cosa apre e se è aperto',
     /aria-controls=\{panelId\}/.test(pagina) && /aria-expanded=\{panelOpen\}/.test(pagina));
@@ -2365,7 +2417,7 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
     !!effFuoco && !!effProvenienza && effFuoco[0] !== effProvenienza[0],
     'un effetto solo rimbalzerebbe il fuoco sulla pastiglia vecchia prima di entrare nel pannello');
   check('su schermo largo il pannello non vela la risposta che sta citando',
-    /\.as-overlay\s*\{\s*display:\s*none/.test(extra),
+    /\.as-overlay\s*\{\s*display:\s*none/.test(assistant),
     'il velo vive nel blocco dei 900px: le fonti si leggono ACCANTO alla risposta');
   // ⚠️ DENTRO L'EFFETTO, non «da qualche parte nel file»: `setSourcesOpen(false)`
   // c'è anche nella chiusura del pannello, e cercarlo nel testo intero lasciava

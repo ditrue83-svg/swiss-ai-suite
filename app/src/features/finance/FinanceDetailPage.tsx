@@ -49,6 +49,8 @@ import {
   FINANCE_HIGH_RISK_FIELDS, financeState, formatDecimal, isCorrectableField, readyBlockers,
   stateBadgeKey, type FinanceBadgeKey, type FinanceCorrectableField, type FinanceReadyBlocker,
 } from './financeModel';
+import styles from './finance.module.css';
+import { cx } from '@/lib/cx';
 import type {
   FinanceCorrection, FinanceDetail, FinanceExtraction, FinanceItem, FinanceQualityFlag,
   FinanceReferenceType,
@@ -396,7 +398,7 @@ export function FinanceDetailPage() {
             : (
               <>
                 <div>{t('finance.errors.cannotReview')}</div>
-                <ul className="fin-blockers">
+                <ul className={styles.finBlockers}>
                   {blockers.map((b) => <li key={b}>{t(BLOCKER_KEY[b])}</li>)}
                 </ul>
               </>
@@ -434,7 +436,7 @@ export function FinanceDetailPage() {
           <div className="card-title">
             <Icon name="alert" className="ic-sm" /> {t('finance.kpi.needsReview')}
           </div>
-          <ul className="fin-flags">
+          <ul className={styles.finFlags}>
             {item.qualityFlags.map((flag) => (
               <li key={flag}>{t(FLAG_KEY[flag])}</li>
             ))}
@@ -619,10 +621,10 @@ function FinField({
   if (!value && !field) return null;
 
   return (
-    <div className="fin-field">
-      <div className="fin-field-label" id={`lbl-${field ?? label}`}>{label}</div>
-      <div className="fin-field-value">
-        <span className={kind === 'amount' ? 'fin-num' : undefined}>{value ?? '—'}</span>
+    <div className={styles.finField}>
+      <div className={styles.finFieldLabel} id={`lbl-${field ?? label}`}>{label}</div>
+      <div className={styles.finFieldValue}>
+        <span className={kind === 'amount' ? styles.finNum : undefined}>{value ?? '—'}</span>
         {corrected && <Tag tone="info">{t('finance.detail.correctedManually')}</Tag>}
       </div>
 
@@ -635,7 +637,7 @@ function FinField({
       {highRisk && <div className="muted-sm">{t('finance.detail.highRiskField')}</div>}
 
       {field && !editing && (
-        <button className="btn btn-sm fin-edit" disabled={busy}
+        <button className={cx('btn btn-sm', styles.finEdit)} disabled={busy}
           onClick={() => setDraft(editValue ?? '')}>
           <Icon name="settings" className="ic-sm" /> {t('finance.detail.editField', { field: label })}
         </button>
@@ -643,7 +645,7 @@ function FinField({
 
       {field && editing && (
         <form
-          className="fin-edit-form"
+          className={styles.finEditForm}
           onSubmit={(e) => {
             e.preventDefault();
             const next = draft.trim();
@@ -684,7 +686,7 @@ function FinField({
       )}
 
       {field && (source || evidence) && (
-        <details className="fin-prov">
+        <details className={styles.finProv}>
           <summary>{t('finance.detail.extractedBy')}</summary>
           <div className="muted-sm">{L.fieldSource(source)}</div>
           {confidence !== null && (
@@ -694,7 +696,7 @@ function FinField({
           )}
           <div className="group-label mt-8">{t('finance.detail.evidence')}</div>
           {evidence
-            ? <blockquote className="fin-quote">{evidence.quote}</blockquote>
+            ? <blockquote className={styles.finQuote}>{evidence.quote}</blockquote>
             : <div className="muted-sm">{t('finance.detail.noEvidence')}</div>}
         </details>
       )}
@@ -783,8 +785,8 @@ function VatPanel({ ctx }: { ctx: FieldContext }) {
       {/* Il dettaglio per aliquota, quando il documento ce l'ha. Gli importi
           restano STRINGHE decimali: non passano da un double (§48). */}
       {lines.length > 0 && (
-        <div className="fin-tablewrap mt-12">
-          <table className="fin-table">
+        <div className={cx(styles.finTablewrap, 'mt-12')}>
+          <table className={styles.finTable}>
             <caption className="sr-only">{t('finance.detail.tabsVat')}</caption>
             <thead>
               <tr>
@@ -797,9 +799,9 @@ function VatPanel({ ctx }: { ctx: FieldContext }) {
             <tbody>
               {lines.map((line, i) => (
                 <tr key={`${line.rate}-${i}`}>
-                  <th scope="row" className="fin-num">{line.rate}</th>
-                  <td className="fin-num">{formatDecimal(line.taxableBase, item.currency, localeTag) ?? '—'}</td>
-                  <td className="fin-num">{formatDecimal(line.taxAmount, item.currency, localeTag) ?? '—'}</td>
+                  <th scope="row" className={styles.finNum}>{line.rate}</th>
+                  <td className={styles.finNum}>{formatDecimal(line.taxableBase, item.currency, localeTag) ?? '—'}</td>
+                  <td className={styles.finNum}>{formatDecimal(line.taxAmount, item.currency, localeTag) ?? '—'}</td>
                   <td>{L.fieldSource(line.source)}</td>
                 </tr>
               ))}

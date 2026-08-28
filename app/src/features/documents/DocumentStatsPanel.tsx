@@ -26,6 +26,8 @@ import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { buildDocumentStats } from './documentModel';
 import type { DocumentStatsSet } from '@/types/models';
+import { cx } from '@/lib/cx';
+import styles from './documents.module.css';
 
 export function DocumentStatsPanel({ companyId, archived, reloadKey }: {
   companyId: string;
@@ -63,7 +65,7 @@ export function DocumentStatsPanel({ companyId, archived, reloadKey }: {
   return (
     <div className="card mt-16">
       <button
-        className="stats-toggle"
+        className={styles.statsToggle}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
@@ -80,7 +82,7 @@ export function DocumentStatsPanel({ companyId, archived, reloadKey }: {
               // A insieme vuoto NON si dice anche «Su 0 documenti attivi»: una
               // frase che conta il nulla e una che dice che non c'è nulla sono
               // la stessa informazione scritta due volte.
-              <div className="chart-empty">{t('documents.stats.empty')}</div>
+              <div className={styles.chartEmpty}>{t('documents.stats.empty')}</div>
             ) : (
               <>
                 {/* ⚠️ L'INSIEME SI DICHIARA PRIMA DEI NUMERI, non dopo. «19
@@ -102,9 +104,9 @@ export function DocumentStatsPanel({ companyId, archived, reloadKey }: {
                   <div>
                     <div className="card-title">{t('documents.stats.byUrgency')}</div>
                     <Bars rows={[
-                      { cat: L.urgency('alta'), val: stats.urgency.alta, cls: 's-alta', dotCls: 'dot-alta' },
-                      { cat: L.urgency('media'), val: stats.urgency.media, cls: 's-media', dotCls: 'dot-media' },
-                      { cat: L.urgency('bassa'), val: stats.urgency.bassa, cls: 's-bassa', dotCls: 'dot-bassa' },
+                      { cat: L.urgency('alta'), val: stats.urgency.alta, cls: styles.sAlta, dotCls: styles.dotAlta },
+                      { cat: L.urgency('media'), val: stats.urgency.media, cls: styles.sMedia, dotCls: styles.dotMedia },
+                      { cat: L.urgency('bassa'), val: stats.urgency.bassa, cls: styles.sBassa, dotCls: styles.dotBassa },
                       // ⚠️ La quarta riga compare solo se esiste: una riga
                       // «Senza analisi 0» insegna che c'è un problema che non
                       // c'è. Un documento mai letto invece DEVE comparire —
@@ -121,10 +123,10 @@ export function DocumentStatsPanel({ companyId, archived, reloadKey }: {
                     }))} />
                   </div>
                 </div>
-                <div className="lang-card mt-16">
-                  <span className="lang-title">{t('documents.stats.languages')}</span>
+                <div className={cx(styles.langCard, 'mt-16')}>
+                  <span className={styles.langTitle}>{t('documents.stats.languages')}</span>
                   {stats.languages.map((b) => (
-                    <span className="lang-chip" key={b.key ?? 'none'}>
+                    <span className={styles.langChip} key={b.key ?? 'none'}>
                       {b.key ? L.language(b.key) : noneLabel} <b>{b.n}</b>
                     </span>
                   ))}

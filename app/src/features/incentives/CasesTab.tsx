@@ -32,6 +32,8 @@ import {
   CASE_STATUS_KEY, canMarkReady, caseDeadline, checklistProgress, nextStatuses,
   plural, subsidyErrorKey, todayISO,
 } from './incentivesModel';
+import { cx } from '@/lib/cx';
+import styles from './incentives.module.css';
 
 interface Props {
   companyId: string;
@@ -111,7 +113,7 @@ export function CasesTab({ companyId, showArchived, onShowArchived, onChanged }:
               <div key={c.id} className="list-row">
                 <div className="list-main">
                   <div className="list-title">
-                    <button type="button" className="inc-open" onClick={() => setOpenId(c.id)}>
+                    <button type="button" className={styles.incOpen} onClick={() => setOpenId(c.id)}>
                       {c.programName ?? c.programId}
                     </button>
                   </div>
@@ -134,7 +136,7 @@ export function CasesTab({ companyId, showArchived, onShowArchived, onChanged }:
                     )}
                   </div>
                   {due && (
-                    <div className={`inc-deadline${due.expired ? ' is-urgent' : ''}`}>
+                    <div className={cx(styles.incDeadline, due.expired && styles.isUrgent)}>
                       <Icon name="clock" className="ic-sm" />
                       {/* ⚠️ Si dichiara SEMPRE quale delle due scadenze è: dire
                           «fra 5 giorni» senza dire «interna» farebbe credere
@@ -147,10 +149,10 @@ export function CasesTab({ companyId, showArchived, onShowArchived, onChanged }:
                     </div>
                   )}
                   {c.sourceChangedAt && (
-                    <div className="inc-flag">{t('incentives.cases.sourceChanged')}</div>
+                    <div className={styles.incFlag}>{t('incentives.cases.sourceChanged')}</div>
                   )}
                 </div>
-                <div className="inc-row-side">
+                <div className={styles.incRowSide}>
                   <button type="button" className="mini-btn" onClick={() => setOpenId(c.id)}>
                     {t('incentives.openDetail')}
                   </button>
@@ -396,8 +398,8 @@ function CaseDetail({
         ) : (
           <div className="mt-8">
             {items.map((s) => (
-              <div key={s.id} className="inc-step">
-                <label className={`checklist-item${s.completed ? ' done' : ''}`}>
+              <div key={s.id} className={styles.incStep}>
+                <label className={cx(styles.checklistItem, s.completed && styles.done)}>
                   <input
                     type="checkbox"
                     checked={s.completed}

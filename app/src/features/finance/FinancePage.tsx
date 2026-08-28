@@ -40,6 +40,8 @@ import {
   paramsFromFilters, queueLooksStalled, stateBadgeKey, withoutCurrency,
   type FinanceBadgeKey, type FinanceTab,
 } from './financeModel';
+import { cx } from '@/lib/cx';
+import styles from './finance.module.css';
 import type {
   DocumentHubItem, DocumentSourceType, FinanceExpenseCategory, FinanceFilters, FinanceItem,
   FinanceItemType, FinanceProcessingStatus, FinanceReviewStatus, FinanceSort, FinanceSummary,
@@ -289,7 +291,7 @@ export function FinancePage() {
       </div>
 
       <div className="row-wrap">
-        <div className="field fin-search">
+        <div className={cx('field', styles.finSearch)}>
           <label htmlFor="fin-search">{t('finance.filters.search')}</label>
           <input
             id="fin-search" type="search" value={search}
@@ -306,7 +308,7 @@ export function FinancePage() {
             «Collega calendario» offerto senza credenziali. Il guasto è
             dichiarato sopra: qui non si aggiunge una promessa. */}
         {!list.error && (
-          <div className="fin-actions">
+          <div className={styles.finActions}>
             <button className="btn btn-sm" onClick={() => setAdding('receipt')}>
               <Icon name="plus" className="ic-sm" /> {t('finance.list.addExpense')}
             </button>
@@ -328,7 +330,7 @@ export function FinancePage() {
       {/* ---- Filtri ------------------------------------------------------ */}
       <div className="card mt-16">
         <div className="card-title">
-          <span className="filter-group fin-tools">
+          <span className={cx('filter-group', styles.finTools)}>
             {/* Il filtro rapido: la coda di lavoro vera del modulo. */}
             <button
               className="btn btn-sm btn-toggle"
@@ -345,7 +347,7 @@ export function FinancePage() {
               {t('finance.filters.duplicates')}
             </button>
           </span>
-          <span className="filter-group fin-tools">
+          <span className={cx('filter-group', styles.finTools)}>
             <div className="field m-0">
               <select
                 className="select-inline" value={filters.sort ?? 'default'}
@@ -374,7 +376,7 @@ export function FinancePage() {
         </div>
 
         {showFilters && (
-          <div className="fin-filters" id="fin-filters">
+          <div className={styles.finFilters} id="fin-filters">
             <div className="field">
               <label htmlFor="f-review">{t('finance.filters.review')}</label>
               <select
@@ -464,7 +466,7 @@ export function FinancePage() {
                 </div>
               </>
             )}
-            <div className="fin-filter-wide fin-checks">
+            <div className={cx(styles.finFilterWide, styles.finChecks)}>
               <label className="check-pill" htmlFor="f-flagged">
                 <input id="f-flagged" type="checkbox" checked={filters.flagged === true}
                   onChange={(e) => update({ flagged: e.target.checked })} />
@@ -598,7 +600,7 @@ function KpiTotals({
       <div className="kpi-label">{label}</div>
       <div className={`kpi-value${alert && count > 0 ? ' hot' : ''}`}>{count}</div>
       {known.length > 0 && (
-        <ul className="fin-amounts">
+        <ul className={styles.finAmounts}>
           {known.map((row) => (
             <li key={row.currency}>
               {/* `formatDecimal` e non `formatCurrency`: quest'ultima, quando la
@@ -667,13 +669,13 @@ function FinanceRow({
   ].filter(Boolean);
 
   return (
-    <div className="fin-row">
-      <Link className="fin-row-main" to={`/finanze/${item.id}`}>
-        <div className="fin-row-title">{who}</div>
-        <div className="fin-row-sub">{meta.join(' · ')}</div>
+    <div className={styles.finRow}>
+      <Link className={styles.finRowMain} to={`/finanze/${item.id}`}>
+        <div className={styles.finRowTitle}>{who}</div>
+        <div className={styles.finRowSub}>{meta.join(' · ')}</div>
       </Link>
 
-      <div className="fin-row-amount">
+      <div className={styles.finRowAmount}>
         {/* ⚠️ L'importo mancante si DICHIARA. Uno zero al suo posto sarebbe un
             numero inventato, e su una fattura è il tipo di invenzione che
             nessuno verifica. */}
@@ -686,7 +688,7 @@ function FinanceRow({
         )}
       </div>
 
-      <div className="fin-row-side">
+      <div className={styles.finRowSide}>
         {item.duplicateSuspected && (
           <Tag tone="attention">
             <Icon name="alert" className="ic-sm" /> {t('finance.duplicate.banner')}
@@ -775,7 +777,7 @@ function AddFromDocument({
     <div className="card mt-12">
       <div className="card-title">
         {t('finance.add.title')}
-        <button className="btn btn-sm btn-ghost fin-close" onClick={onClose}>
+        <button className={cx('btn btn-sm btn-ghost', styles.finClose)} onClick={onClose}>
           <Icon name="close" className="ic-sm" /> {t('common.close')}
         </button>
       </div>
@@ -805,7 +807,7 @@ function AddFromDocument({
       <div className="group-label">
         {t('finance.add.chooseDocument')}
         {!loading && !error && docs.length > 0 && (
-          <span className="fin-add-count">
+          <span className={styles.finAddCount}>
             {t(docs.length === 1 ? 'finance.add.countOne' : 'finance.add.countMany', { n: docs.length })}
           </span>
         )}
