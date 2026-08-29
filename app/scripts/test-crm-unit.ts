@@ -26,6 +26,8 @@
 //  15. La validazione di una riga — errori in codice, mai in prosa.
 //  16. I duplicati — la scala di §25, dentro e fuori dal file.
 //  17. A chi vanno i recapiti — la persona, se c'è.
+//  18. La migrazione 0047 letta da fuori — revoke, grant, sentinelle.
+//  19. crmFields — le regole pure della schermata, uguali al guardiano.
 // ============================================================================
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -51,6 +53,12 @@ import {
   safeWebsite,
   EMPTY_FILTERS, type CrmFilters,
 } from '../src/features/crm/crmModel.ts';
+import {
+  CRM_FIELD_ENTITIES, CRM_FIELD_OPTIONS_MAX, CRM_FIELD_TYPES,
+  parseFieldOptions, parseFieldValue, valueColumns, formatFieldValue,
+  sortFieldDefinitions, nextFieldPosition,
+} from '../src/features/crm/crmFields.ts';
+import type { CrmFieldDefinition } from '../src/types/models.ts';
 // ⚠️ `daysUntil` di `crmModel` non esiste più: era una copia letterale di quella
 // dei Contratti, e nessuna delle due sapeva dell'altra. Una risposta sola.
 import { calendarDaysUntil } from '../src/lib/calendarDays.ts';
@@ -920,6 +928,181 @@ check('il nome della persona è il suo anche quando c’è l’organizzazione',
 check('persona a metà: nessun nome di persona (e contactRoute non la crea)',
   personDisplayName({ firstName: 'Laura', lastName: '' }) === ''
   && contactRoute({ firstName: 'Laura', lastName: '' }) === 'organization');
+
+// ---------------------------------------------------------------------------
+section('18. La migrazione 0047, letta da fuori — i campi personalizzati');
+
+// Le stesse reti della sezione 1, tese fra il TypeScript e il file SQL della
+// 0047: ciò che è scritto due volte deve dire la stessa cosa, e il
+// typecheck non può vederlo perché guarda solo il TypeScript.
+const M47 = readFileSync(
+  join(HERE, '..', 'supabase', 'migrations', '0047_crm_custom_fields.sql'), 'utf8');
+
+const sqlEnum47 = (name: string): string[] => {
+  const i = M47.indexOf(`create type public.${name} as enum (`);
+  if (i < 0) return [];
+  const body = M47.slice(i, M47.indexOf(');', i));
+  return [...body.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]!);
+};
+
+check('crm_field_entity: stessi valori nel TS e nella migrazione',
+  JSON.stringify(sqlEnum47('crm_field_entity')) === JSON.stringify([...CRM_FIELD_ENTITIES]),
+  `SQL: ${sqlEnum47('crm_field_entity').join(', ')} · TS: ${CRM_FIELD_ENTITIES.join(', ')}`);
+check('crm_field_type: stessi valori nel TS e nella migrazione',
+  JSON.stringify(sqlEnum47('crm_field_type')) === JSON.stringify([...CRM_FIELD_TYPES]),
+  `SQL: ${sqlEnum47('crm_field_type').join(', ')} · TS: ${CRM_FIELD_TYPES.join(', ')}`);
+
+// REVOKE PRIMA DEI GRANT, come ovunque dalla 0014: su `public` una tabella
+// nasce con i privilegi completi, e un grant di colonna scritto dopo
+// AGGIUNGE invece di togliere. L'ordine nel file è la garanzia.
+for (const tabella of ['crm_field_definitions', 'crm_field_values'] as const) {
+  const revoke = M47.indexOf(`revoke all on public.${tabella}`);
+  const grant = M47.indexOf(`grant select on public.${tabella}`);
+  check(`${tabella}: revoke all prima del primo grant`, revoke > -1 && grant > revoke);
+}
+
+// I grant di colonna sono la seconda argine del congelamento: tipo, entità e
+// azienda non si riscrivono, e un campo nasce attivo (archived_at non si
+// concede in insert). Il guardiano lo impone; qui si prova che il permesso
+// non lo smentisca.
+//
+// ⚠️ L'ESTRATTO DEVE ESISTERE, altrimenti il controllo è VACUO: una fetta
+// vuota non contiene `field_type` e il test passerebbe senza aver guardato
+// (misurato con la controprova del 2026-08-29: grant manomesso, verde finto).
+// La fetta è il singolo statement, dal `grant` al suo `;`.
+const statementDa = (ancora: string, daIdx?: number): string => {
+  const i = daIdx ?? M47.indexOf(ancora);
+  return i < 0 ? '' : M47.slice(i, M47.indexOf(';', i));
+};
+const grantDefUpd = statementDa('grant update (');
+check('update delle definizioni: concessi solo nome, opzioni, obbligatorietà, posizione, archiviazione',
+  grantDefUpd.includes('on public.crm_field_definitions')
+  && !grantDefUpd.includes('entity') && !grantDefUpd.includes('field_type') && !grantDefUpd.includes('company_id'),
+  grantDefUpd);
+const grantDefIns = statementDa('grant insert (');
+check('insert delle definizioni: archived_at non si concede (un campo nasce attivo)',
+  grantDefIns.includes('on public.crm_field_definitions') && !grantDefIns.includes('archived_at'),
+  grantDefIns);
+const grantValUpd = statementDa('grant update (value_');
+check('update dei valori: solo le tre colonne del valore',
+  grantValUpd.includes('on public.crm_field_values')
+  && !grantValUpd.includes('field_id') && !grantValUpd.includes('organization_id')
+  && !grantValUpd.includes('opportunity_id') && !grantValUpd.includes('company_id'), grantValUpd);
+
+// Nessuna policy di DELETE sulle definizioni: si archiviano, non si cancellano.
+const policyDefs = [...M47.matchAll(/create policy \w+ on public\.crm_field_definitions\s+for (\w+)/g)]
+  .map((m) => m[1]!).sort();
+check('le definizioni non hanno una policy di delete (si archiviano)',
+  JSON.stringify(policyDefs) === JSON.stringify(['insert', 'select', 'update']),
+  `trovate: ${policyDefs.join(', ')}`);
+
+// Il tetto delle opzioni è scritto due volte: nel guardiano SQL e nella
+// costante TS che la schermata usa per spiegarlo.
+check('il tetto delle opzioni è lo stesso nel guardiano e nel TS',
+  M47.includes(`v_len > ${CRM_FIELD_OPTIONS_MAX}`), `TS: ${CRM_FIELD_OPTIONS_MAX}`);
+
+// La fusione impara i campi personalizzati: la sezione 7 della 0047 riscrive
+// `crm_merge_organizations` perché trasferisca anche i valori.
+check('la fusione trasferisce anche i valori dei campi personalizzati',
+  M47.includes('crm_merge_organizations') && M47.includes('crm_field_values')
+  && M47.indexOf('crm_field_values') < M47.indexOf('-- 8. RLS'));
+
+// ⚠️ OGNI SENTINELLA DEVE AVERE UN MESSAGGIO. Un `crm_field_…` non mappato
+// arriverebbe a schermo come stringa tecnica, in italiano, dentro
+// un'interfaccia tedesca — la trappola che `crmErrorMessage` esiste per
+// chiudere. Quelli che finiscono in `_company_mismatch` li copre la regola
+// generale: per chi legge la causa è la stessa.
+const SERVICE_SRC = readFileSync(join(HERE, '..', 'src', 'services', 'crmService.ts'), 'utf8');
+// Il guardiano solleva i sentinelle in due modi: `raise exception 'nome'`
+// diretto, e `raise exception '%', v_problem` dove il nome lo decide la
+// funzione pura (`return 'nome'`). Si raccolgono entrambe le forme.
+const sentinelleDirette = [...M47.matchAll(/raise exception '(crm_field_\w+)'/g)].map((m) => m[1]!);
+const sentinellePure = [...M47.matchAll(/return '(crm_field_\w+)'/g)].map((m) => m[1]!);
+const tutte = [...new Set([...sentinelleDirette, ...sentinellePure])].sort();
+const scoperte = tutte.filter((s) =>
+  !SERVICE_SRC.includes(s) && !s.endsWith('_company_mismatch'));
+check('ogni sentinella della 0047 ha un messaggio in crmErrorMessage',
+  scoperte.length === 0, `senza messaggio: ${scoperte.join(', ') || '—'}`);
+
+// ---------------------------------------------------------------------------
+section('19. crmFields — le regole pure della schermata');
+
+// Le stesse regole del guardiano, dalla parte di chi scrive: la schermata
+// SPIEGA, il database RIFIUTA, e le due risposte devono coincidere.
+const defTesto: Pick<CrmFieldDefinition, 'fieldType' | 'options'> = { fieldType: 'text', options: [] };
+const defNumero: Pick<CrmFieldDefinition, 'fieldType' | 'options'> = { fieldType: 'number', options: [] };
+const defData: Pick<CrmFieldDefinition, 'fieldType' | 'options'> = { fieldType: 'date', options: [] };
+const defLista: Pick<CrmFieldDefinition, 'fieldType' | 'options'> = { fieldType: 'select', options: ['Piccola', 'Media', 'Grande'] };
+
+check('testo: si misura dopo il trim, e il vuoto è «nessun valore»',
+  JSON.stringify(parseFieldValue(defTesto, '  Rossi  ')) === JSON.stringify({ kind: 'ok', value: 'Rossi' })
+  && parseFieldValue(defTesto, '').kind === 'empty'
+  && parseFieldValue(defTesto, '   ').kind === 'empty');
+check('numero: la virgola decimale è un numero, in tutte e tre le lingue',
+  JSON.stringify(parseFieldValue(defNumero, '12,5')) === JSON.stringify({ kind: 'ok', value: 12.5 })
+  && JSON.stringify(parseFieldValue(defNumero, '18000')) === JSON.stringify({ kind: 'ok', value: 18000 }));
+check('numero: lettere e doppi punti non sono un numero',
+  JSON.stringify(parseFieldValue(defNumero, 'abc')) === JSON.stringify({ kind: 'error', code: 'number' })
+  && JSON.stringify(parseFieldValue(defNumero, '12.5.6')) === JSON.stringify({ kind: 'error', code: 'number' })
+  && parseFieldValue(defNumero, '').kind === 'empty');
+check('data: solo la data pura, e solo se esiste nel calendario',
+  JSON.stringify(parseFieldValue(defData, '2026-08-29')) === JSON.stringify({ kind: 'ok', value: '2026-08-29' })
+  && JSON.stringify(parseFieldValue(defData, '2026-02-30')) === JSON.stringify({ kind: 'error', code: 'date' })
+  && JSON.stringify(parseFieldValue(defData, '29.08.2026')) === JSON.stringify({ kind: 'error', code: 'date' })
+  && parseFieldValue(defData, '').kind === 'empty');
+check('lista: solo ciò che elenca, come il guardiano — «media» non è «Media»',
+  JSON.stringify(parseFieldValue(defLista, 'Media')) === JSON.stringify({ kind: 'ok', value: 'Media' })
+  && JSON.stringify(parseFieldValue(defLista, 'media')) === JSON.stringify({ kind: 'error', code: 'option' })
+  && JSON.stringify(parseFieldValue(defLista, 'Enorme')) === JSON.stringify({ kind: 'error', code: 'option' })
+  && parseFieldValue(defLista, '').kind === 'empty');
+
+check('opzioni: le righe vuote si ignorano, il resto si misura',
+  JSON.stringify(parseFieldOptions('\nPiccola\n\nMedia\n')) === JSON.stringify({ kind: 'ok', options: ['Piccola', 'Media'] })
+  && parseFieldOptions('   \n  ').kind === 'empty');
+check('opzioni: il doppione è un ERRORE, non qualcosa da togliere in silenzio',
+  JSON.stringify(parseFieldOptions('Piccola\nPiccola')) === JSON.stringify({ kind: 'duplicate', value: 'Piccola' }));
+check('opzioni: il trim pareggia prima di misurare — « Verde » e «Verde» sono un doppione',
+  parseFieldOptions('Verde\n Verde ').kind === 'duplicate');
+check('opzioni: oltre il tetto del guardiano si ferma la schermata, non il database',
+  parseFieldOptions(Array.from({ length: CRM_FIELD_OPTIONS_MAX + 1 }, (_, i) => `Voce ${i}`).join('\n')).kind === 'tooMany'
+  && parseFieldOptions(Array.from({ length: CRM_FIELD_OPTIONS_MAX }, (_, i) => `Voce ${i}`).join('\n')).kind === 'ok');
+
+check('valueColumns: esattamente una colonna piena, quella del tipo',
+  JSON.stringify(valueColumns(defTesto, 'x')) === JSON.stringify({ value_text: 'x', value_number: null, value_date: null })
+  && JSON.stringify(valueColumns(defNumero, 12.5)) === JSON.stringify({ value_text: null, value_number: 12.5, value_date: null })
+  && JSON.stringify(valueColumns(defData, '2026-08-29')) === JSON.stringify({ value_text: null, value_number: null, value_date: '2026-08-29' }));
+
+// La formattazione segue la lingua: il banco gira con il default italiano
+// (it-CH). L'oracolo è il raggruppamento SEMPRE acceso — il difetto misurato
+// in `formatCurrency` era il separatore che compariva solo da cinque cifre —
+// non il GLIFO del separatore, che è affare del runtime (U+2019 in CLDR,
+// apostrofo ASCII nel Node di oggi).
+const RAGGRUPPATO = new Intl.NumberFormat('it-CH', { useGrouping: true, maximumFractionDigits: 20 });
+check('il numero si mostra raggruppato SEMPRE, anche sotto le cinque cifre',
+  formatFieldValue(defNumero, 18000) === RAGGRUPPATO.format(18000)
+  && formatFieldValue(defNumero, 18000) !== '18000',
+  `trovato: «${formatFieldValue(defNumero, 18000)}»`);
+check('la data pura si mostra come giorno, nella lingua dell’interfaccia',
+  formatFieldValue(defData, '2026-08-29') === '29.08.2026',
+  `trovato: «${formatFieldValue(defData, '2026-08-29')}»`);
+check('testo e lista si mostrano come sono, e l’assenza è «—»',
+  formatFieldValue(defTesto, 'Rossi') === 'Rossi'
+  && formatFieldValue(defLista, 'Media') === 'Media'
+  && formatFieldValue(defTesto, null) === '—'
+  && formatFieldValue(defNumero, null) === '—');
+
+const defAt = (position: number, createdAt: string, id: string): CrmFieldDefinition => ({
+  id, companyId: 'a', entity: 'organization', name: id, fieldType: 'text',
+  options: [], isRequired: false, position, archivedAt: null, createdAt, updatedAt: createdAt,
+});
+check('l’ordine è position, e a parità createdAt e id: stabile, mai un terno al lotto',
+  JSON.stringify(sortFieldDefinitions([
+    defAt(1, '2026-08-29T10:00:00Z', 'b'), defAt(0, '2026-08-29T10:00:00Z', 'z'),
+    defAt(0, '2026-08-29T09:00:00Z', 'y'), defAt(0, '2026-08-29T09:00:00Z', 'x'),
+  ]).map((d) => d.id)) === JSON.stringify(['x', 'y', 'z', 'b']));
+check('il prossimo campo nasce in fondo agli altri',
+  nextFieldPosition([]) === 0
+  && nextFieldPosition([defAt(3, 't', 'a'), defAt(1, 't', 'b')]) === 4);
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);

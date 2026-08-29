@@ -17,7 +17,7 @@ import type {
   FinanceFieldSource, FinanceReferenceType, FinanceExpenseCategory, FinancePaymentMethod,
   CrmOrganizationRole, CrmRelationshipStatus, CrmSource, CrmContactMethodType,
   CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
-  CrmLinkStatus, CrmEventKind, CrmLinkedEntity,
+  CrmLinkStatus, CrmEventKind, CrmLinkedEntity, CrmFieldEntity, CrmFieldType,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
   ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
@@ -46,7 +46,7 @@ export type {
   FinanceFieldSource, FinanceReferenceType, FinanceExpenseCategory, FinancePaymentMethod,
   CrmOrganizationRole, CrmRelationshipStatus, CrmSource, CrmContactMethodType,
   CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
-  CrmLinkStatus, CrmEventKind, CrmLinkedEntity,
+  CrmLinkStatus, CrmEventKind, CrmLinkedEntity, CrmFieldEntity, CrmFieldType,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
   ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
@@ -2192,6 +2192,49 @@ export interface CrmOrganizationDetail {
   contracts: CrmContractLink[];
   finance: CrmFinanceLink[];
   duplicates: CrmDuplicateCandidate[];
+}
+
+// ============================================================================
+// CAMPI PERSONALIZZATI (0047) — attributi decisi dall'azienda, non identità.
+//
+// ⚠️ Non entrano nella deduplicazione né nell'abbinamento: un «numero cliente»
+// identico su due schede non le rende doppioni. L'identità restano l'IDI e
+// l'email (§25 del modello CRM).
+// ============================================================================
+
+/** Un campo personalizzato come l'azienda l'ha definito. Si archivia, non si cancella. */
+export interface CrmFieldDefinition {
+  id: string;
+  companyId: string;
+  entity: CrmFieldEntity;
+  /** L'etichetta mostrata in scheda. Rinominarla non stacca nessun valore. */
+  name: string;
+  fieldType: CrmFieldType;
+  /** Le voci della lista, solo per `select`. Già normalizzate dal database. */
+  options: string[];
+  isRequired: boolean;
+  position: number;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Il valore di un campo su una scheda. Esiste solo se porta un valore. */
+export interface CrmFieldValue {
+  id: string;
+  fieldId: string;
+  organizationId: string | null;
+  opportunityId: string | null;
+  /** Delle tre colonne del database qui ne arriva una sola, scelta dal tipo. */
+  value: string | number | null;
+  updatedAt: string;
+}
+
+/** Definizione e valore insieme: la forma in cui la scheda li consuma. */
+export interface CrmFieldEntry {
+  definition: CrmFieldDefinition;
+  /** `null` = nessun valore: la riga nel database non esiste. */
+  value: CrmFieldValue | null;
 }
 
 // ============================================================================

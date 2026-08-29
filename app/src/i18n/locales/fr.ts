@@ -114,6 +114,7 @@ export const fr: Dictionary = {
     settings: 'Paramètres',
     preferences: 'Préférences',
     company: 'Entreprise',
+    crmFields: 'Champs personnalisés',
     subscription: 'Abonnement',
     activeCompany: 'Entreprise active',
     switchCompany: 'Changer d’entreprise',
@@ -1231,6 +1232,41 @@ export const fr: Dictionary = {
     profileDesc: 'Ces données servent à la recherche de subventions. Chaque membre de l’entreprise peut les mettre à jour.',
     savedCompany: 'Données de l’entreprise enregistrées.',
     savedProfile: 'Profil opérationnel enregistré.',
+  },
+  // Champs personnalisés du CRM (0047) — les DÉFINITIONS. Les valeurs se
+  // saisissent dans la fiche de la contrepartie ou de l’opportunité
+  // (clés `crm.fields`).
+  crmFields: {
+    title: 'Champs personnalisés',
+    subtitle: 'Champs que l’entreprise ajoute aux contreparties et aux opportunités : ils apparaissent au bas de la fiche, avec la même présentation que les champs prévus. Ils n’entrent ni dans la déduplication ni dans le rapprochement automatique : ce sont des attributs, pas une identité.',
+    readOnly: 'Seuls le titulaire et les administrateurs peuvent modifier les champs personnalisés. Vous pouvez les consulter.',
+    sectionOrganizations: 'Sur les contreparties',
+    sectionOpportunities: 'Sur les opportunités',
+    empty: 'Aucun champ personnalisé.',
+    archivedTag: 'Archivé',
+    moveUp: 'Déplacer vers le haut',
+    moveDown: 'Déplacer vers le bas',
+    addTitle: 'Nouveau champ',
+    editTitle: 'Modifier le champ',
+    fieldName: 'Nom',
+    fieldNamePlaceholder: 'Ex. Tranche de chiffre d’affaires',
+    fieldType: 'Type',
+    typeFrozen: 'Le type ne se change pas : un champ différent est un nouveau champ.',
+    fieldOptions: 'Valeurs de la liste',
+    fieldOptionsHint: 'Une valeur par ligne.',
+    optionsShrinkHint: 'Retirer une valeur ne supprime pas les valeurs déjà saisies : elles sont conservées et affichées telles quelles.',
+    fieldRequired: 'Obligatoire dans la fiche',
+    add: 'Ajouter le champ',
+    archiveRule: 'Les champs ne se suppriment pas : ils s’archivent. Les valeurs déjà saisies sont conservées et redeviennent visibles si le champ est restauré.',
+    created: 'Champ créé.',
+    updated: 'Champ mis à jour.',
+    moved: 'Ordre mis à jour.',
+    archived: 'Champ archivé. Ses valeurs sont conservées et reviennent à la restauration.',
+    restored: 'Champ restauré.',
+    errorNameRequired: 'Donnez un nom au champ.',
+    errorOptionsEmpty: 'Une liste vide n’offre aucun choix : saisissez au moins une valeur.',
+    errorOptionsTooMany: 'Trop de valeurs : {max} au maximum.',
+    errorOptionsDuplicate: '« {value} » apparaît deux fois dans la liste.',
   },
   pricing: {
     subtitle: 'Prix indicatifs pour les deux modules : Admin AI et Subsidy AI. Montants en CHF, TVA non comprise.',
@@ -2723,6 +2759,19 @@ export const fr: Dictionary = {
       noteMethodsFailed: 'La contrepartie a été créée, mais pas toutes les coordonnées.',
       finish: 'Retour aux clients',
     },
+    // Les champs personnalisés DANS LA FICHE (0047) : même présentation que
+    // les champs prévus, pas d’encadré séparé. Ils se configurent dans les
+    // Paramètres (clés `crmFields`).
+    fields: {
+      title: 'Champs personnalisés',
+      edit: 'Modifier',
+      noValue: '—',
+      saved: 'Champs enregistrés.',
+      errorNumber: 'Ce n’est pas un nombre. N’utilisez que des chiffres, avec le point ou la virgule pour les décimales.',
+      errorDate: 'Cette date n’existe pas.',
+      errorOption: 'Cette valeur ne figure pas dans la liste du champ.',
+      errorRequired: 'Ce champ est obligatoire.',
+    },
     errors: {
       ownerNotMember: 'La personne responsable choisie n’est pas membre de cette entreprise.',
       contactNotInOrganization: 'La personne choisie ne travaille pas pour cette contrepartie.',
@@ -2738,6 +2787,17 @@ export const fr: Dictionary = {
       suggestionNotLinked: 'La fiche a été créée, mais le lien avec le document d’origine n’a pas été enregistré. Vous pouvez le créer depuis la fiche.',
       suggestionSourceUnsupported: 'Cette proposition ne peut pas être acceptée ici.',
       websiteNotHttp: 'Le site web doit commencer par http:// ou https://. Les autres adresses ne peuvent pas être enregistrées.',
+      // Les sentinelles des champs personnalisés (0047) : si elles arrivent
+      // jusqu’ici, l’interface a été contournée ou le champ a changé pendant
+      // la saisie.
+      fieldTypeMismatch: 'La valeur ne correspond pas au type du champ.',
+      fieldOptionNotAllowed: 'Cette valeur ne figure pas dans la liste du champ.',
+      fieldValueEmpty: 'Une valeur vide n’est pas enregistrée : videz le champ pour la supprimer.',
+      fieldEntityMismatch: 'Ce champ n’appartient pas à cette fiche.',
+      fieldArchived: 'Le champ a été archivé entre-temps : ses valeurs ne peuvent plus être modifiées.',
+      fieldUnknown: 'Ce champ n’existe plus.',
+      fieldOptionsInvalid: 'Les valeurs de la liste ne sont pas valides.',
+      fieldOptionsDuplicate: 'La liste contient une valeur en double.',
     },
   },
   // ==========================================================================
@@ -3016,6 +3076,10 @@ export const fr: Dictionary = {
       domain_match: 'Même domaine', name_normalized: 'Raison sociale proche',
       manual: 'Liée manuellement',
       extracted_name: 'Nom lu sur le document',
+    },
+    // Les types des champs personnalisés (0047).
+    crmFieldTypes: {
+      text: 'Texte', number: 'Nombre', date: 'Date', select: 'Liste de choix',
     },
     contractLifecycle: {
       unknown: 'Non indiqué', upcoming: 'À venir', active: 'En cours',

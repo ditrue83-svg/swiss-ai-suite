@@ -413,13 +413,14 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   );
 
   // ⚠️ L'ORDINE È UNA DECISIONE, non l'ordine in cui le voci sono nate: prima
-  // ciò che vale per CHI GUARDA (preferenze), poi chi si è (azienda), poi che
-  // cosa si paga (abbonamento) — e in fondo, dopo la riga, i due luoghi in cui
-  // si lavora invece di configurare.
+  // ciò che vale per CHI GUARDA (preferenze), poi chi si è (azienda) e come
+  // l'azienda descrive le proprie controparti (campi personalizzati, 0047),
+  // poi che cosa si paga (abbonamento) — e in fondo, dopo la riga, i due
+  // luoghi in cui si lavora invece di configurare.
   const settingsShape = NAV_SETTINGS.map((s) => s.id);
   check(
-    'Impostazioni raccoglie preferenze · azienda · abbonamento · automazioni · registro',
-    JSON.stringify(settingsShape) === JSON.stringify(['preferences', 'company', 'pricing', 'automations', 'audit']),
+    'Impostazioni raccoglie preferenze · azienda · campi personalizzati · abbonamento · automazioni · registro',
+    JSON.stringify(settingsShape) === JSON.stringify(['preferences', 'company', 'crmFields', 'pricing', 'automations', 'audit']),
     `trovato ${settingsShape.join(' · ')}`,
   );
   // I pannelli PRIMA, le pagine DOPO: una colonnina che alterna «si apre qui» e

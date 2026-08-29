@@ -2,15 +2,19 @@
 // AI-Swisse — CRM Light: test d'integrazione sul DATABASE REALE.
 //   npm run test:crm
 //
-// Richiede le migrazioni 0026, 0028 e 0030 applicate, e `.env.test` valorizzato.
-// ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 15 FALLISCE, perché lo
-// storico del CRM impedisce la cancellazione di un'azienda. È il difetto che
-// questo file ha trovato alla prima esecuzione.
+// Richiede le migrazioni 0026, 0028, 0030 e 0047 applicate, e `.env.test`
+// valorizzato.
+// ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 16 FALLISCE, perché
+// lo storico del CRM impedisce la cancellazione di un'azienda. È il difetto
+// che questo file ha trovato alla prima esecuzione.
 // ⚠️ Senza la 0030 fallisce la sezione 13: `crm_scan_link_suggestions` non
 // esiste ancora e la RPC risponde `PGRST202`.
+// ⚠️ Senza la 0047 fallisce la sezione 15: `crm_field_definitions` e
+// `crm_field_values` non esistono ancora, e PostgREST risponde che la
+// relazione manca.
 //
 // Non prova che il codice sia scritto bene: prova che le GARANZIE siano in
-// vigore. Sono quindici, e stanno tutte nel DATABASE, perché un servizio ben
+// vigore. Sono sedici, e stanno tutte nel DATABASE, perché un servizio ben
 // educato non è una garanzia — è la lezione della 0014, dove i permessi di
 // colonna dichiarati nei commenti non restringevano nulla e il difetto è emerso
 // solo ESEGUENDO.
@@ -32,7 +36,10 @@
 //   13. CANDIDATO — la scansione PROPONE e non crea, e un no resta un no.
 //   14. IMPORT CSV — la riga entra intera e dichiara la provenienza; il
 //       doppione duro si ferma sul vincolo, non sulla fiducia nel client.
-//   15. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
+//   15. CAMPI PERSONALIZZATI — le definizioni le scrive chi amministra, i
+//       valori ogni membro; il tipo lo pretende il database, un campo
+//       archiviato è congelato, la fusione trasferisce i valori.
+//   16. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
 //
 // ⚠️ LA PULIZIA CONTROLLA IL PROPRIO ESITO, e l'ORDINE non è indifferente:
 // PRIMA l'azienda, POI l'utente. Al contrario, cancellare l'utente porta via a
@@ -737,7 +744,317 @@ async function main() {
     !impB.error, msg(impB.error));
 
   // -------------------------------------------------------------------------
-  section('15. Cascata — cancellata l’azienda non resta niente');
+  section('15. Campi personalizzati — definizioni e valori (0047)');
+
+  // ⚠️ LE DUE METÀ DEL MODELLO. Le definizioni le scrive CHI AMMINISTRA (la
+  // forma dei dati è di tutta l'azienda, come la fusione); i valori li scrive
+  // OGNI MEMBRO (sono dati come gli altri). E il tipo non lo decide il client:
+  // ogni rifiuto qui sotto arriva dal database, col suo sentinella.
+  const NIL = '00000000-0000-0000-0000-000000000000';
+
+  const defText = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'organization', name: 'Numero cliente', field_type: 'text',
+  }).select('id, created_by').single();
+  check('chi amministra crea un campo testo sulle controparti', !defText.error, msg(defText.error));
+  const defTextId = (defText.data as { id: string } | null)?.id ?? NIL;
+  check('e l’autore lo timbra il database',
+    (defText.data as { created_by: string | null } | null)?.created_by === A.userId);
+
+  const defSelect = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'organization', name: 'Fascia fatturato',
+    field_type: 'select', options: [' Piccola ', 'Media', 'Grande'],
+  }).select('id, options').single();
+  check('un campo a lista nasce con le sue opzioni', !defSelect.error, msg(defSelect.error));
+  const defSelectId = (defSelect.data as { id: string } | null)?.id ?? NIL;
+  check('e le opzioni si conservano normalizzate: spazi tolti, ordine tenuto',
+    JSON.stringify((defSelect.data as { options: unknown } | null)?.options)
+      === JSON.stringify(['Piccola', 'Media', 'Grande']),
+    JSON.stringify((defSelect.data as { options: unknown } | null)?.options));
+
+  const defDate = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'opportunity', name: 'Data rinnovo', field_type: 'date',
+  }).select('id').single();
+  check('un campo data nasce sulle trattative', !defDate.error, msg(defDate.error));
+  const defDateId = (defDate.data as { id: string } | null)?.id ?? NIL;
+
+  const defNum = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'organization', name: 'Dipendenti', field_type: 'number',
+  }).select('id').single();
+  check('un campo numero nasce sulle controparti', !defNum.error, msg(defNum.error));
+  const defNumId = (defNum.data as { id: string } | null)?.id ?? NIL;
+
+  const defByMember = await member.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'organization', name: 'Campo vietato', field_type: 'text',
+  });
+  check('un membro semplice NON crea definizioni: cambiano la forma dei dati',
+    Boolean(defByMember.error), msg(defByMember.error) || 'nessun errore');
+
+  const defCross = await A.client.from('crm_field_definitions').insert({
+    company_id: Bt.companyId, entity: 'organization', name: 'Campo altrui', field_type: 'text',
+  });
+  check('e nessuno dichiara un campo per un’altra azienda',
+    Boolean(defCross.error), msg(defCross.error) || 'nessun errore');
+
+  const { data: defsLeak } = await Bt.client.from('crm_field_definitions')
+    .select('id').eq('company_id', A.companyId);
+  check('B non vede le definizioni di A', ((defsLeak ?? []) as unknown[]).length === 0);
+
+  // ⚠️ Il nome è unico per azienda e scheda FRA I CAMPI ATTIVI, insensibile
+  // alle maiuscole: due «Cliente dal» sulla stessa scheda sarebbero
+  // indistinguibili a schermo. Archiviato il campo, il nome si libera.
+  const defDup = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'organization', name: 'numero CLIENTE', field_type: 'text',
+  });
+  check('due campi attivi con lo stesso nome sulla stessa scheda non esistono (23505)',
+    Boolean(defDup.error) && code(defDup.error) === '23505',
+    `${code(defDup.error)} ${msg(defDup.error)}`);
+
+  const defOtherEntity = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'opportunity', name: 'Numero cliente', field_type: 'text',
+  }).select('id').single();
+  check('lo stesso nome è libero sull’altra scheda', !defOtherEntity.error, msg(defOtherEntity.error));
+  const defOtherEntityId = (defOtherEntity.data as { id: string } | null)?.id ?? NIL;
+
+  await A.client.from('crm_field_definitions')
+    .update({ archived_at: new Date().toISOString() }).eq('id', defOtherEntityId);
+  const defReused = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'opportunity', name: 'Numero cliente', field_type: 'text',
+  });
+  check('archiviato il campo, il suo nome si libera', !defReused.error, msg(defReused.error));
+
+  const defDupOptions = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'organization', name: 'Lista doppia',
+    field_type: 'select', options: ['una', 'una'],
+  });
+  check('due voci uguali nella stessa lista sono rifiutate, e il rifiuto lo dice',
+    Boolean(defDupOptions.error) && /crm_field_options_duplicate/.test(msg(defDupOptions.error)),
+    `${code(defDupOptions.error)} ${msg(defDupOptions.error)}`);
+
+  const defMisplaced = await A.client.from('crm_field_definitions').insert({
+    company_id: A.companyId, entity: 'organization', name: 'Opzioni fuori posto',
+    field_type: 'text', options: ['x'],
+  }).select('options').single();
+  check('le opzioni dichiarate su un campo testo spariscono: non gli appartengono',
+    !defMisplaced.error && (defMisplaced.data as { options: unknown } | null)?.options === null,
+    `${msg(defMisplaced.error)} ${JSON.stringify((defMisplaced.data as { options: unknown } | null)?.options)}`);
+
+  // ⚠️ TIPO ED ENTITÀ SONO CONGELATI ALLA NASCITA: cambiare «numero» in
+  // «testo» con i valori già scritti renderebbe quelle righe false. Il primo
+  // argine è il permesso di colonna (42501); il guardiano ripristinerebbe il
+  // valore, ma il client non arriva nemmeno a parlarci.
+  const moveEntity = await A.client.from('crm_field_definitions')
+    .update({ entity: 'opportunity' }).eq('id', defTextId);
+  check('l’entità di un campo non si riscrive',
+    Boolean(moveEntity.error) && code(moveEntity.error) === '42501',
+    `${code(moveEntity.error)} ${msg(moveEntity.error)}`);
+  const changeType = await A.client.from('crm_field_definitions')
+    .update({ field_type: 'number' }).eq('id', defTextId);
+  check('e nemmeno il tipo: un campo diverso è un campo nuovo',
+    Boolean(changeType.error) && code(changeType.error) === '42501',
+    `${code(changeType.error)} ${msg(changeType.error)}`);
+
+  const valText = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defTextId, organization_id: orgA, value_text: 'CLI-0042',
+  }).select('id').single();
+  check('un valore di testo si scrive sulla controparte', !valText.error, msg(valText.error));
+  const valTextId = (valText.data as { id: string } | null)?.id ?? NIL;
+
+  const valTwice = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defTextId, organization_id: orgA, value_text: 'CLI-9999',
+  });
+  check('una seconda risposta alla stessa domanda è un 23505, non una doppia riga',
+    Boolean(valTwice.error) && code(valTwice.error) === '23505',
+    `${code(valTwice.error)} ${msg(valTwice.error)}`);
+
+  const valWrongColumn = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defTextId, organization_id: orgScan, value_number: 5,
+  });
+  check('un numero dentro un campo testo è rifiutato, con il suo sentinella',
+    Boolean(valWrongColumn.error) && /crm_field_type_mismatch/.test(msg(valWrongColumn.error)),
+    `${code(valWrongColumn.error)} ${msg(valWrongColumn.error)}`);
+
+  const valBlank = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defTextId, organization_id: orgScan, value_text: '   ',
+  });
+  check('un testo di soli spazi NON è un valore',
+    Boolean(valBlank.error) && /crm_field_value_empty/.test(msg(valBlank.error)),
+    `${code(valBlank.error)} ${msg(valBlank.error)}`);
+
+  const valOffList = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defSelectId, organization_id: orgA, value_text: 'Enorme',
+  });
+  check('una voce fuori lista è rifiutata',
+    Boolean(valOffList.error) && /crm_field_option_not_allowed/.test(msg(valOffList.error)),
+    `${code(valOffList.error)} ${msg(valOffList.error)}`);
+
+  const valSelect = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defSelectId, organization_id: orgA, value_text: 'Grande',
+  });
+  check('una voce della lista è accettata', !valSelect.error, msg(valSelect.error));
+
+  const valDate = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defDateId, opportunity_id: oppAId, value_date: '2027-03-31',
+  }).select('id, value_date').single();
+  check('una data si scrive sulla trattativa',
+    !valDate.error && (valDate.data as { value_date: string | null } | null)?.value_date === '2027-03-31',
+    msg(valDate.error));
+
+  // ⚠️ TRE company_id A CONFRONTO: riga, definizione, entità. A dichiara la
+  // PROPRIA azienda e aggancia la scheda di B — la RLS lascia passare (il
+  // company_id dichiarato è il suo), e a fermarla è il guardiano…
+  const valCross = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defTextId, organization_id: orgB, value_text: 'intrusione',
+  });
+  check('A non scrive valori su una scheda di B',
+    Boolean(valCross.error) && /crm_field_value_company_mismatch/.test(msg(valCross.error)),
+    `${code(valCross.error)} ${msg(valCross.error)}`);
+
+  // …e il guardiano si difende da sé: nemmeno il service role lo scavalca.
+  const valCrossAdmin = await admin.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defTextId, organization_id: orgB, value_text: 'intrusione',
+  });
+  check('e il rifiuto tiene ANCHE col service role: è il guardiano, non la policy',
+    Boolean(valCrossAdmin.error) && /crm_field_value_company_mismatch/.test(msg(valCrossAdmin.error)),
+    `${code(valCrossAdmin.error)} ${msg(valCrossAdmin.error)}`);
+
+  const valWrongEntity = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defDateId, organization_id: orgA, value_date: '2027-01-01',
+  });
+  check('un campo delle trattative non accetta una controparte',
+    Boolean(valWrongEntity.error) && /crm_field_entity_mismatch/.test(msg(valWrongEntity.error)),
+    `${code(valWrongEntity.error)} ${msg(valWrongEntity.error)}`);
+
+  const valUnknown = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: NIL, organization_id: orgA, value_text: 'orfano',
+  });
+  check('scrivere su un campo che non esiste è rifiutato',
+    Boolean(valUnknown.error) && /crm_field_unknown/.test(msg(valUnknown.error)),
+    `${code(valUnknown.error)} ${msg(valUnknown.error)}`);
+
+  const valUpdate = await A.client.from('crm_field_values')
+    .update({ value_text: 'CLI-0043' }).eq('id', valTextId);
+  const { data: valAfterUpdate } = await admin.from('crm_field_values')
+    .select('value_text').eq('id', valTextId).maybeSingle();
+  check('il valore si riscrive',
+    !valUpdate.error && (valAfterUpdate as { value_text: string | null } | null)?.value_text === 'CLI-0043',
+    msg(valUpdate.error));
+
+  const valMove = await A.client.from('crm_field_values')
+    .update({ field_id: defNumId }).eq('id', valTextId);
+  check('ma un valore non cambia campo: l’appartenenza è congelata',
+    Boolean(valMove.error) && code(valMove.error) === '42501',
+    `${code(valMove.error)} ${msg(valMove.error)}`);
+
+  const { data: valsLeak } = await Bt.client.from('crm_field_values')
+    .select('id').eq('organization_id', orgA);
+  check('B non vede i valori di A', ((valsLeak ?? []) as unknown[]).length === 0);
+
+  // I valori li scrive OGNI membro, e svuotare un campo CANCELLA la riga: un
+  // valore vuoto e l'assenza del valore direbbero la stessa cosa in due modi.
+  const valByMember = await member.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defNumId, organization_id: orgScan, value_number: 7,
+  }).select('id').single();
+  check('un membro semplice SCRIVE i valori: sono dati come gli altri',
+    !valByMember.error, msg(valByMember.error));
+  const valByMemberId = (valByMember.data as { id: string } | null)?.id ?? NIL;
+  const valDelByMember = await member.client.from('crm_field_values')
+    .delete().eq('id', valByMemberId).select('id');
+  check('e li cancella: svuotare un campo cancella la riga',
+    !valDelByMember.error && ((valDelByMember.data ?? []) as unknown[]).length === 1,
+    msg(valDelByMember.error));
+
+  // ⚠️ UN CAMPO ARCHIVIATO È CONGELATO: i valori esistenti restano leggibili
+  // e si possono cancellare, ma nessuno se ne aggiunge e nessuno si riscrive.
+  await A.client.from('crm_field_definitions')
+    .update({ archived_at: new Date().toISOString() }).eq('id', defTextId);
+  const { data: defArchived } = await admin.from('crm_field_definitions')
+    .select('archived_at, archived_by').eq('id', defTextId).single();
+  const darch = (defArchived ?? {}) as { archived_at: string | null; archived_by: string | null };
+  check('archiviare un campo lo timbra: quando e chi',
+    darch.archived_at !== null && darch.archived_by === A.userId, JSON.stringify(darch));
+
+  const valOnArchived = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defTextId, organization_id: orgScan, value_text: 'tardi',
+  });
+  check('su un campo archiviato non si scrive più',
+    Boolean(valOnArchived.error) && /crm_field_archived/.test(msg(valOnArchived.error)),
+    `${code(valOnArchived.error)} ${msg(valOnArchived.error)}`);
+
+  const valRewriteArchived = await A.client.from('crm_field_values')
+    .update({ value_text: 'tardi' }).eq('id', valTextId);
+  check('e non si riscrive ciò che c’è già',
+    Boolean(valRewriteArchived.error) && /crm_field_archived/.test(msg(valRewriteArchived.error)),
+    `${code(valRewriteArchived.error)} ${msg(valRewriteArchived.error)}`);
+
+  const { data: valsArchived } = await admin.from('crm_field_values')
+    .select('id, value_text').eq('field_id', defTextId);
+  check('ma i valori di un campo archiviato RESTANO: leggibili, intatti',
+    ((valsArchived ?? []) as unknown[]).length === 1
+    && ((valsArchived ?? []) as Array<{ value_text: string }>)[0]?.value_text === 'CLI-0043',
+    JSON.stringify(valsArchived));
+
+  const rename = await A.client.from('crm_field_definitions')
+    .update({ name: 'Codice cliente' }).eq('id', defTextId);
+  const { data: valsAfterRename } = await admin.from('crm_field_values')
+    .select('id').eq('field_id', defTextId);
+  check('rinominare il campo non stacca i valori: puntano all’id, non al nome',
+    !rename.error && ((valsAfterRename ?? []) as unknown[]).length === 1, msg(rename.error));
+
+  await A.client.from('crm_field_definitions').update({ archived_at: null }).eq('id', defTextId);
+  const { data: defRestored } = await admin.from('crm_field_definitions')
+    .select('archived_at, archived_by').eq('id', defTextId).single();
+  const drest = (defRestored ?? {}) as { archived_at: string | null; archived_by: string | null };
+  check('ripristinato, il timbro si cancella',
+    drest.archived_at === null && drest.archived_by === null, JSON.stringify(drest));
+  const valAfterRestore = await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defTextId, organization_id: orgScan, value_text: 'CLI-1000',
+  });
+  check('e si torna a scrivere', !valAfterRestore.error, msg(valAfterRestore.error));
+
+  // ⚠️ LA FUSIONE TRASFERISCE I VALORI: lasciarli sul secondario li
+  // seppellirebbe dentro una scheda archiviata. Dove il principale ha già un
+  // valore per lo stesso campo vince il principale, come per ruoli e recapiti.
+  const orgMergeFields = await makeOrg(A.client, A.companyId, `Fusa Campi ${stamp} Sagl`);
+  await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defSelectId, organization_id: orgMergeFields, value_text: 'Media',
+  });
+  await A.client.from('crm_field_values').insert({
+    company_id: A.companyId, field_id: defNumId, organization_id: orgMergeFields, value_number: 42,
+  });
+  // Il campo numero viene ARCHIVIATO prima della fusione: i valori devono
+  // passare lo stesso — la fusione sposta la storia, non la riscrive, e il
+  // guardiano la riconosce dal sentinella interno `ai_swisse.crm_internal`.
+  await A.client.from('crm_field_definitions')
+    .update({ archived_at: new Date().toISOString() }).eq('id', defNumId);
+
+  const mergeFields = await A.client.rpc('crm_merge_organizations', {
+    p_target_id: orgA, p_source_id: orgMergeFields,
+  });
+  check('la fusione con i campi personalizzati riesce', !mergeFields.error, msg(mergeFields.error));
+
+  const { data: valNumMerged } = await admin.from('crm_field_values')
+    .select('value_number').eq('field_id', defNumId).eq('organization_id', orgA);
+  check('il valore che mancava al principale passa, ANCHE da un campo archiviato',
+    ((valNumMerged ?? []) as Array<{ value_number: number | string }>).length === 1
+    && Number(((valNumMerged ?? []) as Array<{ value_number: number | string }>)[0]?.value_number) === 42,
+    JSON.stringify(valNumMerged));
+
+  const { data: valSelectMerged } = await admin.from('crm_field_values')
+    .select('value_text').eq('field_id', defSelectId).eq('organization_id', orgA);
+  check('dove il principale ha già un valore vince il principale',
+    ((valSelectMerged ?? []) as Array<{ value_text: string }>).length === 1
+    && ((valSelectMerged ?? []) as Array<{ value_text: string }>)[0]?.value_text === 'Grande',
+    JSON.stringify(valSelectMerged));
+
+  const { data: valsSource } = await admin.from('crm_field_values')
+    .select('id').eq('organization_id', orgMergeFields);
+  check('sulla scheda fusa non resta nessun valore',
+    ((valsSource ?? []) as unknown[]).length === 0);
+
+  await A.client.from('crm_field_definitions').update({ archived_at: null }).eq('id', defNumId);
+
+  // -------------------------------------------------------------------------
+  section('16. Cascata — cancellata l’azienda non resta niente');
 
   const tables: Array<[string, string]> = [
     ['crm_organizations', 'company_id'],
@@ -753,16 +1070,19 @@ async function main() {
     ['crm_contact_emails', 'company_id'],
     ['crm_opportunity_documents', 'company_id'],
     ['crm_link_suggestions', 'company_id'],
+    ['crm_field_definitions', 'company_id'],
+    ['crm_field_values', 'company_id'],
   ];
 
   await cleanup();
 
   // ⚠️ DOPO la pulizia, non prima: è il test della cascata E la prova che la
-  // pulizia ha davvero pulito.
+  // pulizia ha davvero pulito. Si esige `!error`: una tabella mancante (per
+  // esempio la migrazione non applicata) deve dare ROSSO, non zero righe.
   for (const [table, column] of tables) {
-    const { data } = await admin.from(table).select('id').eq(column, A.companyId);
+    const { data, error } = await admin.from(table).select('id').eq(column, A.companyId);
     check(`cancellata l’azienda, ${table} non ha residui`,
-      ((data ?? []) as unknown[]).length === 0);
+      !error && ((data ?? []) as unknown[]).length === 0, msg(error));
   }
 
   console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);

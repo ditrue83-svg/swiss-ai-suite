@@ -75,6 +75,13 @@ supabase/
                                          programma a essere troppo vecchia, non
                                          la fonte — il percorso che chiude il
                                          rosso di `subsidy:health` a coda vuota.
+                0047_crm_custom_fields — i campi personalizzati del CRM:
+                                         definizioni per azienda (nome, tipo,
+                                         opzioni, obbligatorietà, ordine) e
+                                         valori a colonne tipate, uno per riga.
+                                         Attributi, non identità: fuori da
+                                         deduplicazione e abbinamento. Si
+                                         archiviano, non si cancellano.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

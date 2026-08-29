@@ -119,10 +119,18 @@ export const NAV: NavEntry[] = [
 // La rotta resta in ogni caso: `/azienda` e `/prezzi` continuano a rispondere,
 // per i segnalibri e per chi arriva da un collegamento.
 export type ApreCome = 'pannello' | 'pagina';
-export interface NavSubItem { id: string; labelKey: TKey; path: string; adminOnly?: boolean; apre: ApreCome }
+export interface NavSubItem {
+  id: string; labelKey: TKey; path: string; adminOnly?: boolean; apre: ApreCome;
+  /** Come `NavItem.legacyOnly`: il CRM (D-10, Blocco C) si configura solo con
+   *  `VITE_LEGACY_MODULES=on`. Nasconde la porta, non protegge la rotta. */
+  legacyOnly?: boolean;
+}
 export const NAV_SETTINGS: NavSubItem[] = [
   { id: 'preferences', labelKey: 'nav.preferences', path: '/preferenze', apre: 'pannello' },
   { id: 'company', labelKey: 'nav.company', path: '/azienda', apre: 'pannello' },
+  // I campi personalizzati (0047) stanno con «chi si è»: definiscono come
+  // l'azienda descrive le proprie controparti, non una preferenza di chi guarda.
+  { id: 'crmFields', labelKey: 'nav.crmFields', path: '/campi-personalizzati', apre: 'pannello', legacyOnly: true },
   { id: 'pricing', labelKey: 'nav.subscription', path: '/prezzi', apre: 'pannello' },
   { id: 'automations', labelKey: 'nav.automations', path: '/automazioni', apre: 'pagina' },
   { id: 'audit', labelKey: 'nav.auditLog', path: '/registro', adminOnly: true, apre: 'pagina' },

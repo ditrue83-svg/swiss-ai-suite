@@ -43,6 +43,8 @@ export function useLabels() {
     crmRelation: (v: string | null | undefined) => pick('labels.crmRelations', v),
     /** Perché due cose sono state avvicinate. Decide se il collegamento è automatico. */
     crmReason: (v: string | null | undefined) => pick('labels.crmReasons', v),
+    /** Tipo di un campo personalizzato (0047): testo, numero, data, lista. */
+    crmFieldType: (v: string | null | undefined) => pick('labels.crmFieldTypes', v),
     /** Tipo di autorità mittente (§47). */
     authorityType: (v: string | null | undefined) => pick('labels.authorityTypes', v),
     /**

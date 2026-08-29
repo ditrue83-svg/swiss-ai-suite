@@ -28,9 +28,11 @@ import { Icon } from '@/components/ui/Icon';
 import { NAV_SETTINGS } from '@/components/layout/nav';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useT } from '@/i18n';
+import { LEGACY_MODULES_ENABLED } from '@/lib/env';
 import { cx } from '@/lib/cx';
 import { PreferencesPanel } from '@/features/settings/PreferencesPanel';
 import { CompanySettings } from '@/features/companies/CompanySettingsPage';
+import { CrmFieldsPanel } from '@/features/crm/CrmFieldsPanel';
 import { Pricing } from '@/features/pricing/PricingPage';
 import styles from './settings.module.css';
 
@@ -44,9 +46,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const navigate = useNavigate();
   const { isAdmin } = useCompany();
 
-  // Le voci riservate spariscono per chi non è titolare o amministratore. Il
-  // permesso però NON è questo: è la RLS della pagina (vedi nav.ts).
-  const voci = NAV_SETTINGS.filter((v) => !v.adminOnly || isAdmin);
+  // Le voci riservate spariscono per chi non è titolare o amministratore, e
+  // quelle dei moduli fuori perimetro se il flag è spento. Il permesso però
+  // NON è questo: è la RLS della pagina (vedi nav.ts).
+  const voci = NAV_SETTINGS.filter((v) =>
+    (!v.adminOnly || isAdmin) && (!v.legacyOnly || LEGACY_MODULES_ENABLED));
   const pannelli = voci.filter((v) => v.apre === 'pannello');
   const [attivo, setAttivo] = useState(pannelli[0]?.id ?? '');
 
@@ -87,6 +91,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         <div className={styles.settingsPane}>
           {attivo === 'preferences' && <PreferencesPanel sede="pannello" />}
           {attivo === 'company' && <CompanySettings sede="pannello" />}
+          {attivo === 'crmFields' && <CrmFieldsPanel sede="pannello" />}
           {attivo === 'pricing' && <Pricing sede="pannello" />}
         </div>
       </div>
