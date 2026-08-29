@@ -79,10 +79,10 @@ export const TRANSLATIONS = {
       requirements: {
         owner: { text: 'Liegenschaft in der Schweiz (im Eigentum oder im Baurecht)', question: 'Ist das Unternehmen Eigentümerin der zu sanierenden Liegenschaft (oder hat es ein Baurecht daran)?' },
         before: { text: 'Gesuch VOR Baubeginn beim Kanton eingereicht', question: 'Haben die Arbeiten NOCH NICHT begonnen?' },
-        measure: { text: 'Förderfähige Massnahme: Wärmedämmung der Gebäudehülle oder Ersatz der fossilen Heizung durch erneuerbare Energien', question: 'Betrifft die Massnahme die Dämmung der Gebäudehülle oder den Ersatz einer fossilen Heizung?' },
+        measure: { text: 'Förderfähige Massnahme: Wärmedämmung der Gebäudehülle, Ersatz einer fossilen oder elektrischen Heizung durch erneuerbare Energien oder den Anschluss an ein Wärmenetz, Gesamtsanierung (auch in Etappen) oder Neubau im Minergie-P-Standard', question: 'Gehört die Massnahme zu den förderfähigen (Dämmung der Hülle, Heizungsersatz, Gesamtsanierung oder Neubau im Minergie-P-Standard)?' },
       },
       exclusions: {
-        newbuild: { text: 'Neubauten (gefördert werden nur Sanierungen)', question: 'Handelt es sich um einen Neubau (und nicht um eine Sanierung)?' },
+        newbuild: { text: 'Neubauten ausserhalb des Minergie-P-Standards', question: 'Handelt es sich um einen Neubau, der den Minergie-P-Standard NICHT erreicht?' },
       },
     },
     fr: {
@@ -96,10 +96,10 @@ export const TRANSLATIONS = {
       requirements: {
         owner: { text: 'Bien immobilier en Suisse (en propriété ou en droit de superficie)', question: 'L’entreprise est-elle propriétaire du bien à assainir (ou en détient-elle le droit de superficie) ?' },
         before: { text: 'Demande déposée au canton AVANT le début des travaux', question: 'Les travaux n’ont-ils PAS encore commencé ?' },
-        measure: { text: 'Mesure éligible : isolation thermique de l’enveloppe ou remplacement du chauffage fossile par des énergies renouvelables', question: 'La mesure concerne-t-elle l’isolation de l’enveloppe ou le remplacement d’un chauffage fossile ?' },
+        measure: { text: 'Mesure éligible : isolation thermique de l’enveloppe, remplacement d’un chauffage fossile ou électrique par des énergies renouvelables ou un réseau de chaleur, assainissement complet (également en étapes) ou nouvelle construction au standard Minergie-P', question: 'La mesure figure-t-elle parmi celles admises (isolation de l’enveloppe, remplacement du chauffage, assainissement complet ou nouvelle construction Minergie-P) ?' },
       },
       exclusions: {
-        newbuild: { text: 'Bâtiments neufs (seuls les assainissements sont soutenus)', question: 'S’agit-il d’un bâtiment neuf (et non d’un assainissement) ?' },
+        newbuild: { text: 'Nouvelles constructions hors du standard Minergie-P', question: 'S’agit-il d’une nouvelle construction qui n’atteint PAS le standard Minergie-P ?' },
       },
     },
   },

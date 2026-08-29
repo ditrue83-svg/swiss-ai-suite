@@ -147,11 +147,13 @@ resta verde.
   suite che dipende da loro sarebbe rossa il giorno in cui uno cambia pagina.
 - **I contenuti del catalogo sono in italiano** anche con interfaccia tedesca o
   francese: vivono nel database, non nei dizionari.
-- **Divergenza nota e NON corretta di proposito**: il catalogo dice che la RUE
-  di Pronovo riguarda impianti ≥150 kW senza consumo proprio; la pagina
-  ufficiale letta il 2026-07-30 indica 2–149,99 kW. Correggerla su una lettura
-  automatica sarebbe esattamente ciò che questo modulo vieta: resta un criterio
-  `informative`/`manual` con la divergenza nelle note, **da verificare a mano**.
+- ✅ **Divergenza Pronovo RISOLTA il 2026-08-28**, con la verifica a mano che
+  la nota chiedeva: le due letture erano vere **tutte e due** — la RUE esiste
+  senz'aste (2–149,99 kW, pagina RU) e tramite aste (≥150 kW, fino al 60% dei
+  costi di riferimento, pagina delle aste). Il catalogo non era sbagliato, era
+  **incompleto**: ora descrive entrambe le forme. Lo stesso confronto ha
+  corretto `programma-edifici`: la fonte ammette le nuove costruzioni in
+  standard Minergie-P, l'esclusione assoluta dei nuovi era falsa.
 - **Le scadenze delle call Innosuisse sono DERIVATE** dalla regola delle sei
   settimane pubblicata, non lette come date esplicite. La nota lo dice.
 - ✅ **La coda di revisione è VUOTA dal 2026-08-05** — e non perché qualcuno
