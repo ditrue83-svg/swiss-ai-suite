@@ -41,6 +41,7 @@ import type {
 } from '@/types/models';
 import type { CrmInteractionType, CrmOrganizationRole } from '@/types/database';
 import { AskAbout } from '@/features/assistant/AskAbout';
+import { CrmFieldsCard } from './CrmFieldsCard';
 import {
   CRM_TIMELINE_PAGE_SIZE, DEFAULT_STALE_DAYS, daysSince,
   organizationState, organizationStateKey, opportunityState, opportunityStateKey,
@@ -260,7 +261,7 @@ export function ClientDetailPage() {
 
       {tab === 'overview' && (
         <OverviewTab
-          org={org} ownerName={nameOf(org.accountOwnerUserId)} members={members}
+          org={org} companyId={company.id} ownerName={nameOf(org.accountOwnerUserId)} members={members}
           duplicates={duplicates} busy={busy} t={t} L={L}
           onSetOwner={(uid) => void run(
             () => crmService.update(org.id, { accountOwnerUserId: uid }), 'crm.form.updated')}
@@ -321,7 +322,7 @@ export function ClientDetailPage() {
 
 // ---------------------------------------------------------------------------
 function OverviewTab(props: {
-  org: CrmOrganization; ownerName: string | null; members: AssignableMember[];
+  org: CrmOrganization; companyId: string; ownerName: string | null; members: AssignableMember[];
   duplicates: CrmDuplicateCandidate[]; busy: boolean;
   t: TFunction; L: ReturnType<typeof useLabels>;
   onSetOwner: (uid: string | null) => void;
@@ -438,6 +439,10 @@ function OverviewTab(props: {
           <p className="muted-sm">{t('crm.detail.notesHint')}</p>
         </div>
       )}
+
+      {/* 0047 — i campi decisi dall'azienda, IN FONDO ai campi nativi e con lo
+          stesso aspetto. Non rendono nulla se non ne esiste nessuno. */}
+      <CrmFieldsCard companyId={props.companyId} entity="organization" entityId={o.id} />
 
       {/* §28-§30 — i duplicati si MOSTRANO, non si risolvono da soli. */}
       {props.duplicates.length > 0 && (

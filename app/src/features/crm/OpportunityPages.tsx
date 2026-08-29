@@ -32,6 +32,7 @@ import { useLabels } from '@/i18n/labels';
 import type { AssignableMember, CrmOpportunity, CrmOrganization, CrmPerson } from '@/types/models';
 import type { CrmOpportunityStage } from '@/types/database';
 import { ALL_STAGES, isOpen, opportunityState, opportunityStateKey } from './crmModel';
+import { CrmFieldsCard } from './CrmFieldsCard';
 import { cx } from '@/lib/cx';
 import styles from './crm.module.css';
 
@@ -415,6 +416,10 @@ export function OpportunityDetailPage() {
           )}
         </div>
       </div>
+
+      {/* 0047 — i campi decisi dall'azienda, IN FONDO ai campi nativi e con lo
+          stesso aspetto. Non rendono nulla se non ne esiste nessuno. */}
+      <CrmFieldsCard companyId={company.id} entity="opportunity" entityId={deal.id} />
 
       <div className="crm-sec">
         <div className="crm-sec-head"><strong>{t('crm.detail.tasks')}</strong></div>
