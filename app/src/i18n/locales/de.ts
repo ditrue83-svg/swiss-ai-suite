@@ -118,6 +118,7 @@ export const de: Dictionary = {
     // guarda, non per l'azienda.
     preferences: 'Persönlich',
     company: 'Unternehmen',
+    crmFields: 'Eigene Felder',
     subscription: 'Abonnement',
     activeCompany: 'Aktives Unternehmen',
     switchCompany: 'Unternehmen wechseln',
@@ -1241,6 +1242,40 @@ export const de: Dictionary = {
     profileDesc: 'Diese Angaben dienen dem Förderungsabgleich. Jedes Mitglied des Unternehmens kann sie aktualisieren.',
     savedCompany: 'Angaben zum Unternehmen gespeichert.',
     savedProfile: 'Betriebsprofil gespeichert.',
+  },
+  // Eigene Felder des CRM (0047) — die DEFINITIONEN. Die Werte werden im
+  // Eintrag der Gegenpartei oder Verkaufschance erfasst (Schlüssel `crm.fields`).
+  crmFields: {
+    title: 'Eigene Felder',
+    subtitle: 'Felder, die das Unternehmen zu Gegenparteien und Verkaufschancen hinzufügt: Sie erscheinen am Ende des Eintrags, im gleichen Erscheinungsbild wie die vorgesehenen Felder. Sie fliessen weder in die Duplikaterkennung noch in den automatischen Abgleich ein: Sie sind Merkmale, keine Identität.',
+    readOnly: 'Nur Inhaberin oder Inhaber und Administratoren können eigene Felder ändern. Sie können sie einsehen.',
+    sectionOrganizations: 'Bei Gegenparteien',
+    sectionOpportunities: 'Bei Verkaufschancen',
+    empty: 'Keine eigenen Felder.',
+    archivedTag: 'Archiviert',
+    moveUp: 'Nach oben verschieben',
+    moveDown: 'Nach unten verschieben',
+    addTitle: 'Neues Feld',
+    editTitle: 'Feld bearbeiten',
+    fieldName: 'Name',
+    fieldNamePlaceholder: 'Z. B. Umsatzklasse',
+    fieldType: 'Typ',
+    typeFrozen: 'Der Typ lässt sich nicht ändern: Ein anderes Feld ist ein neues Feld.',
+    fieldOptions: 'Auswahlmöglichkeiten',
+    fieldOptionsHint: 'Eine Möglichkeit pro Zeile.',
+    optionsShrinkHint: 'Eine entfernte Möglichkeit löscht bereits erfasste Werte nicht: Sie bleiben erhalten und werden weiterhin angezeigt.',
+    fieldRequired: 'Pflichtfeld im Eintrag',
+    add: 'Feld hinzufügen',
+    archiveRule: 'Felder werden nicht gelöscht, sondern archiviert. Bereits erfasste Werte bleiben erhalten und werden bei einer Wiederherstellung wieder sichtbar.',
+    created: 'Feld erstellt.',
+    updated: 'Feld aktualisiert.',
+    moved: 'Reihenfolge aktualisiert.',
+    archived: 'Feld archiviert. Die Werte bleiben erhalten und kehren bei der Wiederherstellung zurück.',
+    restored: 'Feld wiederhergestellt.',
+    errorNameRequired: 'Geben Sie dem Feld einen Namen.',
+    errorOptionsEmpty: 'Eine leere Liste bietet keine Auswahl: Erfassen Sie mindestens eine Möglichkeit.',
+    errorOptionsTooMany: 'Zu viele Möglichkeiten: höchstens {max}.',
+    errorOptionsDuplicate: '«{value}» kommt in der Liste zweimal vor.',
   },
   pricing: {
     subtitle: 'Richtpreise für beide Module: Admin AI und Subsidy AI. Beträge in CHF, exkl. MWST.',
@@ -2727,6 +2762,19 @@ export const de: Dictionary = {
       noteMethodsFailed: 'Die Gegenpartei wurde erfasst, jedoch nicht alle Kontaktdaten.',
       finish: 'Zurück zu den Kunden',
     },
+    // Die eigenen Felder IM EINTRAG (0047): gleiche Form wie die vorgesehenen
+    // Felder, kein separater Kasten. Konfiguriert werden sie in den
+    // Einstellungen (Schlüssel `crmFields`).
+    fields: {
+      title: 'Eigene Felder',
+      edit: 'Bearbeiten',
+      noValue: '—',
+      saved: 'Felder gespeichert.',
+      errorNumber: 'Das ist keine Zahl. Verwenden Sie nur Ziffern, mit Punkt oder Komma für Dezimalstellen.',
+      errorDate: 'Dieses Datum existiert nicht.',
+      errorOption: 'Diese Möglichkeit steht nicht in der Liste des Feldes.',
+      errorRequired: 'Dieses Feld ist ein Pflichtfeld.',
+    },
     errors: {
       ownerNotMember: 'Die gewählte verantwortliche Person ist kein Mitglied dieses Unternehmens.',
       contactNotInOrganization: 'Die gewählte Person arbeitet nicht für diese Gegenpartei.',
@@ -2742,6 +2790,16 @@ export const de: Dictionary = {
       suggestionNotLinked: 'Der Eintrag wurde erfasst, die Verknüpfung mit dem ursprünglichen Dokument aber nicht gespeichert. Sie können sie im Eintrag herstellen.',
       suggestionSourceUnsupported: 'Dieser Vorschlag kann hier nicht angenommen werden.',
       websiteNotHttp: 'Die Website muss mit http:// oder https:// beginnen. Andere Adressen können nicht gespeichert werden.',
+      // Die Sentinelwerte der eigenen Felder (0047): kommen sie hier an, war
+      // die Oberfläche umgangen oder das Feld wurde während der Eingabe geändert.
+      fieldTypeMismatch: 'Der Wert entspricht nicht dem Feldtyp.',
+      fieldOptionNotAllowed: 'Diese Möglichkeit steht nicht in der Liste des Feldes.',
+      fieldValueEmpty: 'Ein leerer Wert wird nicht gespeichert: Leeren Sie das Feld, um ihn zu entfernen.',
+      fieldEntityMismatch: 'Dieses Feld gehört nicht zu diesem Eintrag.',
+      fieldArchived: 'Das Feld wurde inzwischen archiviert: Seine Werte lassen sich nicht ändern.',
+      fieldUnknown: 'Dieses Feld existiert nicht mehr.',
+      fieldOptionsInvalid: 'Die Auswahlmöglichkeiten sind ungültig.',
+      fieldOptionsDuplicate: 'Die Liste enthält eine doppelte Möglichkeit.',
     },
   },
   // ==========================================================================
@@ -3021,6 +3079,10 @@ export const de: Dictionary = {
       domain_match: 'Gleiche Domain', name_normalized: 'Ähnliche Firma',
       manual: 'Manuell verknüpft',
       extracted_name: 'Im Dokument gelesener Name',
+    },
+    // Die Typen der eigenen Felder (0047).
+    crmFieldTypes: {
+      text: 'Text', number: 'Zahl', date: 'Datum', select: 'Auswahlliste',
     },
     contractLifecycle: {
       unknown: 'Nicht angegeben', upcoming: 'Beginnt demnächst', active: 'Laufend',

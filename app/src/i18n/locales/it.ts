@@ -121,6 +121,7 @@ export const it = {
     settings: 'Impostazioni',
     preferences: 'Preferenze',
     company: 'Azienda',
+    crmFields: 'Campi personalizzati',
     auditLog: 'Registro attività',
     // Dentro l'app non si vende, si gestisce: «Piani e prezzi» è il nome
     // della vetrina, non di una pagina di lavoro.
@@ -1321,6 +1322,40 @@ export const it = {
     profileDesc: 'Servono al matching degli incentivi. Ogni membro dell’azienda può aggiornarli.',
     savedCompany: 'Dati dell’impresa salvati.',
     savedProfile: 'Profilo operativo salvato.',
+  },
+  // Campi personalizzati del CRM (0047) — le DEFINIZIONI. I valori si scrivono
+  // nella scheda della controparte o dell’opportunità (chiavi `crm.fields`).
+  crmFields: {
+    title: 'Campi personalizzati',
+    subtitle: 'I campi che l’azienda aggiunge a controparti e opportunità: compaiono in fondo alla scheda, con lo stesso aspetto dei campi previsti. Non entrano nella deduplicazione né nell’abbinamento automatico: sono attributi, non identità.',
+    readOnly: 'Solo il titolare e gli amministratori possono cambiare i campi personalizzati. Tu puoi vederli.',
+    sectionOrganizations: 'Sulle controparti',
+    sectionOpportunities: 'Sulle opportunità',
+    empty: 'Nessun campo personalizzato.',
+    archivedTag: 'Archiviato',
+    moveUp: 'Sposta su',
+    moveDown: 'Sposta giù',
+    addTitle: 'Nuovo campo',
+    editTitle: 'Modifica il campo',
+    fieldName: 'Nome',
+    fieldNamePlaceholder: 'Es. Fascia di fatturato',
+    fieldType: 'Tipo',
+    typeFrozen: 'Il tipo non si cambia: un campo diverso è un campo nuovo.',
+    fieldOptions: 'Voci della lista',
+    fieldOptionsHint: 'Una voce per riga.',
+    optionsShrinkHint: 'Togliere una voce non cancella i valori già scritti: restano e si mostrano com’erano.',
+    fieldRequired: 'Obbligatorio in scheda',
+    add: 'Aggiungi campo',
+    archiveRule: 'I campi non si cancellano: si archiviano. I valori già scritti restano, e tornano visibili se il campo viene ripristinato.',
+    created: 'Campo creato.',
+    updated: 'Campo aggiornato.',
+    moved: 'Ordine aggiornato.',
+    archived: 'Campo archiviato. I suoi valori restano e tornano al ripristino.',
+    restored: 'Campo ripristinato.',
+    errorNameRequired: 'Dai un nome al campo.',
+    errorOptionsEmpty: 'Una lista vuota non offre scelte: scrivi almeno una voce.',
+    errorOptionsTooMany: 'Troppe voci: al massimo {max}.',
+    errorOptionsDuplicate: '«{value}» compare due volte nell’elenco.',
   },
   pricing: {
     subtitle: 'Prezzi indicativi per entrambi i moduli: Admin AI e Subsidy AI. Importi in CHF, IVA esclusa.',
@@ -2865,6 +2900,19 @@ export const it = {
       noteMethodsFailed: 'La controparte è stata creata, ma non tutti i recapiti.',
       finish: 'Torna ai clienti',
     },
+    // I campi personalizzati NELLA SCHEDA (0047): stessa forma dei campi
+    // nativi, nessun riquadro a parte. Le definizioni si configurano nelle
+    // Impostazioni (chiavi `crmFields`).
+    fields: {
+      title: 'Campi personalizzati',
+      edit: 'Modifica',
+      noValue: '—',
+      saved: 'Campi salvati.',
+      errorNumber: 'Non è un numero. Scrivi solo cifre, con il punto o la virgola per i decimali.',
+      errorDate: 'Questa data non esiste.',
+      errorOption: 'Questa voce non è nell’elenco del campo.',
+      errorRequired: 'Questo campo è obbligatorio.',
+    },
     errors: {
       ownerNotMember: 'Il responsabile scelto non è un membro di questa azienda.',
       contactNotInOrganization: 'La persona scelta non lavora per questa controparte.',
@@ -2880,6 +2928,16 @@ export const it = {
       suggestionNotLinked: 'La scheda è stata creata, ma il collegamento con il documento d’origine non è stato salvato. Puoi collegarlo dalla scheda.',
       suggestionSourceUnsupported: 'Questo suggerimento non si può accettare da qui.',
       websiteNotHttp: 'Il sito web deve iniziare con http:// o https://. Altri indirizzi non si possono salvare.',
+      // I sentinella dei campi personalizzati (0047): se arrivano qui la
+      // schermata era aggirata o il campo è cambiato mentre si scriveva.
+      fieldTypeMismatch: 'Il valore non è del tipo del campo.',
+      fieldOptionNotAllowed: 'Questa voce non è nell’elenco del campo.',
+      fieldValueEmpty: 'Un valore vuoto non si salva: svuota il campo per toglierlo.',
+      fieldEntityMismatch: 'Questo campo non appartiene a questa scheda.',
+      fieldArchived: 'Il campo è stato archiviato nel frattempo: i suoi valori non si modificano.',
+      fieldUnknown: 'Questo campo non esiste più.',
+      fieldOptionsInvalid: 'Le voci della lista non sono valide.',
+      fieldOptionsDuplicate: 'Nell’elenco c’è una voce ripetuta.',
     },
   },
   // ==========================================================================
@@ -3169,6 +3227,11 @@ export const it = {
       domain_match: 'Stesso dominio', name_normalized: 'Ragione sociale simile',
       manual: 'Collegata a mano',
       extracted_name: 'Nome letto sul documento',
+    },
+    // I tipi dei campi personalizzati (0047). «Lista a scelta» e non «menu»:
+    // è ciò che il campo offre, non il controllo che lo disegna.
+    crmFieldTypes: {
+      text: 'Testo', number: 'Numero', date: 'Data', select: 'Lista a scelta',
     },
     contractLifecycle: {
       unknown: 'Non indicato', upcoming: 'In arrivo', active: 'In corso',

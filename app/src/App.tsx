@@ -11,6 +11,7 @@ import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { OnboardingPage } from '@/features/companies/OnboardingPage';
 import { CompanySettingsPage } from '@/features/companies/CompanySettingsPage';
+import { CrmFieldsPage } from '@/features/crm/CrmFieldsPanel';
 import { HomePage } from '@/features/dashboard/HomePage';
 import { AssistantPage } from '@/features/assistant/AssistantPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
@@ -200,6 +201,10 @@ export default function App() {
                 impostazioni: quello che si raggiunge solo aprendo una finestra non
                 si può mandare a qualcuno in un collegamento. */}
             <Route path="/preferenze" element={<PreferencesPage />} />
+            {/* Campi personalizzati del CRM (0047): la rotta resta viva come
+                ogni voce delle impostazioni, flag o no — una rotta nascosta
+                non è un permesso, il cancello è la RLS. */}
+            <Route path="/campi-personalizzati" element={<CrmFieldsPage />} />
           </Route>
         </Route>
       </Route>
