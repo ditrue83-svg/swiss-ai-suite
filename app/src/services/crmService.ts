@@ -19,16 +19,20 @@
 import { requireSupabase } from '@/lib/supabase';
 import type { Database, Json } from '@/types/database';
 import type {
-  CrmDocumentRelation, CrmInteractionType, CrmLinkStatus, CrmMatchReason,
-  CrmOpportunityStage, CrmOrganizationRole, CrmRelationshipStatus, CrmSource,
+  CrmDocumentRelation, CrmFieldEntity, CrmFieldType, CrmInteractionType, CrmLinkStatus,
+  CrmMatchReason, CrmOpportunityStage, CrmOrganizationRole, CrmRelationshipStatus, CrmSource,
   DocumentCategory,
 } from '@/types/database';
 import { toUserMessage } from '@/lib/errors';
 import { etichettaDaRigaDocumento } from '@/lib/documentTitle';
 import { normNameKey } from '@/features/crm/csvImport';
+import {
+  nextFieldPosition, sortFieldDefinitions, valueColumns,
+} from '@/features/crm/crmFields';
 import type {
   CrmContact, CrmContactMethod, CrmContactOrganization, CrmContractLink,
   CrmDocumentLink, CrmDuplicateCandidate, CrmEmailLink, CrmEmailMatch, CrmEvent,
+  CrmFieldDefinition, CrmFieldEntry, CrmFieldValue,
   CrmFinanceLink, CrmHomeSummary, CrmInteraction, CrmLinkSuggestion,
   CrmOpportunity, CrmOrganization, CrmOrganizationDetail, CrmOrganizationOption,
   CrmPerson, CrmPipelineCell, CrmTimelineEntry,
@@ -81,6 +85,17 @@ export function crmErrorMessage(error: unknown): string {
   if (text.includes('crm_merge_not_admin')) return 'crm.errors.mergeNotAdmin';
   if (text.includes('crm_merge_into_self')) return 'crm.errors.mergeIntoSelf';
   if (text.includes('crm_merge_company_mismatch')) return 'crm.errors.companyMismatch';
+  // I sentinella dei campi personalizzati (0047). `_company_mismatch` resta
+  // coperto dalla regola generale sotto: `crm_field_value_company_mismatch`
+  // ci finisce dentro da sé, e per chi legge la causa è la stessa.
+  if (text.includes('crm_field_type_mismatch')) return 'crm.errors.fieldTypeMismatch';
+  if (text.includes('crm_field_option_not_allowed')) return 'crm.errors.fieldOptionNotAllowed';
+  if (text.includes('crm_field_value_empty')) return 'crm.errors.fieldValueEmpty';
+  if (text.includes('crm_field_entity_mismatch')) return 'crm.errors.fieldEntityMismatch';
+  if (text.includes('crm_field_archived')) return 'crm.errors.fieldArchived';
+  if (text.includes('crm_field_unknown')) return 'crm.errors.fieldUnknown';
+  if (text.includes('crm_field_options_duplicate')) return 'crm.errors.fieldOptionsDuplicate';
+  if (text.includes('crm_field_options_invalid')) return 'crm.errors.fieldOptionsInvalid';
   // Tutte le guardie cross-tenant finiscono con `_company_mismatch`: un solo
   // messaggio, perché per chi legge la causa è la stessa — «queste due cose non
   // appartengono alla stessa azienda» — e distinguerle non cambierebbe nulla.
@@ -262,6 +277,59 @@ export interface CrmOrganizationPage {
 }
 
 // ---------------------------------------------------------------------------
+// Campi personalizzati (0047) — mappatura delle righe
+// ---------------------------------------------------------------------------
+interface FieldDefRow {
+  id: string; company_id: string;
+  entity: CrmFieldEntity; name: string; field_type: CrmFieldType;
+  options: unknown; is_required: boolean; position: number;
+  archived_at: string | null; created_at: string; updated_at: string;
+}
+
+interface FieldValueRow {
+  id: string; field_id: string;
+  organization_id: string | null; opportunity_id: string | null;
+  value_text: string | null; value_number: number | string | null;
+  value_date: string | null; updated_at: string;
+}
+
+function toFieldDefinition(row: FieldDefRow): CrmFieldDefinition {
+  return {
+    id: row.id,
+    companyId: row.company_id,
+    entity: row.entity,
+    name: row.name,
+    fieldType: row.field_type,
+    // Le opzioni arrivano come jsonb: il guardiano garantisce un array di
+    // stringhe, ma il tipo della colonna è `Json` e la forma si verifica qui.
+    options: Array.isArray(row.options) ? row.options.map(String) : [],
+    isRequired: row.is_required,
+    position: row.position,
+    archivedAt: row.archived_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toFieldValue(row: FieldValueRow, defs: CrmFieldDefinition[]): CrmFieldValue {
+  // Delle tre colonne se ne legge UNA, quella del tipo della definizione: le
+  // altre due sono NULL per costruzione, e leggerle «per sicurezza»
+  // confonderebbe un refuso del database con un dato.
+  const def = defs.find((d) => d.id === row.field_id);
+  const value = def?.fieldType === 'number' ? num(row.value_number)
+    : def?.fieldType === 'date' ? row.value_date
+    : row.value_text;
+  return {
+    id: row.id,
+    fieldId: row.field_id,
+    organizationId: row.organization_id,
+    opportunityId: row.opportunity_id,
+    value,
+    updatedAt: row.updated_at,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Scritture
 // ---------------------------------------------------------------------------
 type OrgInsert = Database['public']['Tables']['crm_organizations']['Insert'];
@@ -270,6 +338,10 @@ type ContactInsert = Database['public']['Tables']['crm_contacts']['Insert'];
 type ContactUpdate = Database['public']['Tables']['crm_contacts']['Update'];
 type OppInsert = Database['public']['Tables']['crm_opportunities']['Insert'];
 type OppUpdate = Database['public']['Tables']['crm_opportunities']['Update'];
+type FieldDefInsert = Database['public']['Tables']['crm_field_definitions']['Insert'];
+type FieldDefUpdate = Database['public']['Tables']['crm_field_definitions']['Update'];
+type FieldValueInsert = Database['public']['Tables']['crm_field_values']['Insert'];
+type FieldValueUpdate = Database['public']['Tables']['crm_field_values']['Update'];
 
 export interface CreateOrganizationInput {
   displayName: string;
@@ -1352,5 +1424,177 @@ export const crmService = {
       throw new Error('crm.errors.suggestionSourceUnsupported');
     }
     await crmService.resolveSuggestion(suggestion.id, 'accepted');
+  },
+
+  // -------------------------------------------------------------------------
+  // Campi personalizzati (0047)
+  //
+  // Le DEFINIZIONI le scrivono titolare e amministratori (policy
+  // `crm_field_defs_*`): cambiano la forma dei dati di tutta l'azienda. I
+  // VALORI li scrive ogni membro: sono attributi della scheda, non la sua
+  // identità. Qui non si controlla nulla di tutto questo — come per la
+  // fusione, il cancello è il database e il servizio dichiara l'intenzione.
+  // -------------------------------------------------------------------------
+
+  /** Le definizioni di un'entità, nell'ordine di comparsa. Di default solo le
+   *  ATTIVE: quelle archiviate servono alle impostazioni (ripristino), non
+   *  alla scheda. */
+  async fieldDefinitions(
+    companyId: string, entity: CrmFieldEntity, includeArchived = false,
+  ): Promise<CrmFieldDefinition[]> {
+    let q = requireSupabase().from('crm_field_definitions')
+      .select('id, company_id, entity, name, field_type, options, is_required, position, archived_at, created_at, updated_at')
+      .eq('company_id', companyId).eq('entity', entity);
+    if (!includeArchived) q = q.is('archived_at', null);
+    const { data, error } = await q;
+    if (error) fail(error);
+    return sortFieldDefinitions(((data ?? []) as unknown as FieldDefRow[]).map(toFieldDefinition));
+  },
+
+  /** La posizione la decide il servizio (in fondo agli altri): non è un dato
+   *  che il modulo debba conoscere. */
+  async createFieldDefinition(companyId: string, input: {
+    entity: CrmFieldEntity; name: string; fieldType: CrmFieldType;
+    options?: string[]; isRequired?: boolean;
+  }): Promise<string> {
+    const sb = requireSupabase();
+    const existing = await crmService.fieldDefinitions(companyId, input.entity);
+    const row: FieldDefInsert = {
+      company_id: companyId,
+      entity: input.entity,
+      name: input.name.trim(),
+      field_type: input.fieldType,
+      // Le opzioni esistono se e solo se il tipo è una lista: il vincolo della
+      // 0047 lo pretende, e qui non arriva mai il caso contrario.
+      options: input.fieldType === 'select' ? (input.options ?? []) : null,
+      is_required: input.isRequired ?? false,
+      position: nextFieldPosition(existing),
+    };
+    const { data, error } = await sb.from('crm_field_definitions').insert(row).select('id').single();
+    if (error) fail(error);
+    return (data as { id: string }).id;
+  },
+
+  /** Si cambiano nome, opzioni e obbligatorietà. Tipo ed entità non ci sono
+   *  tra gli argomenti perché non si possono cambiare: un campo diverso è un
+   *  campo nuovo, e i grant della 0047 non concedono quelle colonne. */
+  async updateFieldDefinition(fieldId: string, patch: {
+    name?: string; options?: string[]; isRequired?: boolean;
+  }): Promise<void> {
+    const row: FieldDefUpdate = {};
+    if (patch.name !== undefined) row.name = patch.name.trim();
+    if (patch.options !== undefined) row.options = patch.options;
+    if (patch.isRequired !== undefined) row.is_required = patch.isRequired;
+    const { error } = await requireSupabase().from('crm_field_definitions')
+      .update(row).eq('id', fieldId);
+    if (error) fail(error);
+  },
+
+  /** Archiviare NASCONDE, non cancella (§123): i valori restano scritti e
+   *  tornano visibili al ripristino. Il timbro vero lo scrive il guardiano. */
+  async archiveFieldDefinition(fieldId: string): Promise<void> {
+    const { error } = await requireSupabase().from('crm_field_definitions')
+      .update({ archived_at: new Date().toISOString() }).eq('id', fieldId);
+    if (error) fail(error);
+  },
+
+  async restoreFieldDefinition(fieldId: string): Promise<void> {
+    const { error } = await requireSupabase().from('crm_field_definitions')
+      .update({ archived_at: null }).eq('id', fieldId);
+    if (error) fail(error);
+  },
+
+  /** Su e giù fra i campi dell'entità. Le posizioni si RISCRIVONO come
+   *  l'ordine visto (solo le righe che cambiano): i pareggi di `position` —
+   *  due campi nati nello stesso secondo — si sciolgono una volta per tutte
+   *  invece di rendere lo spostamento successivo un terno al lotto. */
+  async moveFieldDefinition(
+    companyId: string, entity: CrmFieldEntity, fieldId: string, direction: 'up' | 'down',
+  ): Promise<void> {
+    const defs = await crmService.fieldDefinitions(companyId, entity);
+    const idx = defs.findIndex((d) => d.id === fieldId);
+    const other = direction === 'up' ? idx - 1 : idx + 1;
+    if (idx < 0 || other < 0 || other >= defs.length) return;
+    const order = [...defs];
+    [order[idx], order[other]] = [order[other]!, order[idx]!];
+    const sb = requireSupabase();
+    for (let i = 0; i < order.length; i++) {
+      if (order[i]!.position === i) continue;
+      const { error } = await sb.from('crm_field_definitions')
+        .update({ position: i }).eq('id', order[i]!.id);
+      if (error) fail(error);
+    }
+  },
+
+  /** Definizioni attive e valori INSIEME: la forma in cui la scheda li
+   *  consuma. Un campo senza valore c'è lo stesso, con `value: null` — la sua
+   *  casella esiste ed è vuota. */
+  async fieldEntries(
+    companyId: string, entity: CrmFieldEntity, entityId: string,
+  ): Promise<CrmFieldEntry[]> {
+    const defs = await crmService.fieldDefinitions(companyId, entity);
+    if (defs.length === 0) return [];
+    const column = entity === 'organization' ? 'organization_id' : 'opportunity_id';
+    const { data, error } = await requireSupabase().from('crm_field_values')
+      .select('id, field_id, organization_id, opportunity_id, value_text, value_number, value_date, updated_at')
+      .eq('company_id', companyId).eq(column, entityId);
+    if (error) fail(error);
+    const byField = new Map(
+      ((data ?? []) as unknown as FieldValueRow[]).map((r) => [r.field_id, toFieldValue(r, defs)]),
+    );
+    return defs.map((definition) => ({ definition, value: byField.get(definition.id) ?? null }));
+  },
+
+  /**
+   * Salva i valori CAMBIATI. Per ciascuno: `null` cancella la riga (la riga
+   * esiste solo se porta un valore), altrimenti si aggiorna se c'è e si
+   * inserisce se manca — la scelta si fa rileggendo gli id, e l'indice unico
+   * della 0047 para la corsa fra due salvataggi contemporanei.
+   *
+   * ⚠️ NON È UNA TRANSAZIONE: PostgREST non ne offre una fra righe. Se un
+   * valore viene rifiutato (tipo sbagliato, opzione fuori lista) i precedenti
+   * restano salvati e l'errore si dichiara: meglio metà lavoro fatto e detto
+   * che un «tutto salvo» falso.
+   */
+  async saveFieldValues(
+    companyId: string,
+    entity: CrmFieldEntity,
+    entityId: string,
+    changes: Array<{ definition: CrmFieldDefinition; value: string | number | null }>,
+  ): Promise<void> {
+    if (changes.length === 0) return;
+    const column = entity === 'organization' ? 'organization_id' : 'opportunity_id';
+    const sb = requireSupabase();
+    const { data, error } = await sb.from('crm_field_values')
+      .select('id, field_id').eq('company_id', companyId).eq(column, entityId);
+    if (error) fail(error);
+    const existing = new Map(
+      ((data ?? []) as Array<{ id: string; field_id: string }>).map((r) => [r.field_id, r.id]),
+    );
+    for (const { definition, value } of changes) {
+      const currentId = existing.get(definition.id);
+      if (value === null) {
+        if (!currentId) continue;
+        const { error: delError } = await sb.from('crm_field_values').delete().eq('id', currentId);
+        if (delError) fail(delError);
+        continue;
+      }
+      const cols = valueColumns(definition, value);
+      if (currentId) {
+        const { error: updError } = await sb.from('crm_field_values')
+          .update(cols as FieldValueUpdate).eq('id', currentId);
+        if (updError) fail(updError);
+      } else {
+        const row: FieldValueInsert = {
+          company_id: companyId,
+          field_id: definition.id,
+          organization_id: entity === 'organization' ? entityId : null,
+          opportunity_id: entity === 'opportunity' ? entityId : null,
+          ...cols,
+        };
+        const { error: insError } = await sb.from('crm_field_values').insert(row);
+        if (insError) fail(insError);
+      }
+    }
   },
 };

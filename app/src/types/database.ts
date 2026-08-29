@@ -269,6 +269,16 @@ export type CrmEventKind =
 export type CrmLinkedEntity =
   | 'document' | 'email_message' | 'task' | 'contract' | 'finance_item' | 'opportunity';
 
+// ---- Campi personalizzati del CRM (0047) ------------------------------------
+/** Su quale entità il campo è definito. Due sole: persone e recapiti restano fuori. */
+export type CrmFieldEntity = 'organization' | 'opportunity';
+/**
+ * Il tipo del valore, preteso dal database e non dalla schermata. Quattro e non
+ * cinque: niente «sì/no» (è una lista a due voci), niente multi-selezione.
+ * Sono ATTRIBUTI: non entrano in deduplicazione né abbinamento.
+ */
+export type CrmFieldType = 'text' | 'number' | 'date' | 'select';
+
 /** L'in-app non è un canale: l'in-app È la notifica. Vedi 0018. */
 export type NotificationChannel = 'email';
 
@@ -1815,6 +1825,56 @@ export interface Database {
         };
         Insert: never;
         Update: { status?: CrmLinkStatus };
+        Relationships: [];
+      };
+      // ---- Campi personalizzati (0047) --------------------------------------
+      crm_field_definitions: {
+        Row: {
+          id: string; company_id: string;
+          entity: CrmFieldEntity; name: string; field_type: CrmFieldType;
+          // Le opzioni della lista, solo per `select`: string[] in JSON.
+          options: Json | null;
+          is_required: boolean; position: number;
+          archived_at: string | null; archived_by: string | null;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        // La scrittura è da amministratore (policy `crm_field_defs_*`): le
+        // definizioni cambiano la forma dei dati di tutta l'azienda.
+        Insert: {
+          company_id: string; entity: CrmFieldEntity; name: string;
+          field_type: CrmFieldType; options?: Json | null;
+          is_required?: boolean; position?: number;
+        };
+        // Tipo ed entità sono congelati alla nascita: un campo diverso è un
+        // campo nuovo. Si archivia, non si cancella.
+        Update: {
+          name?: string; options?: Json | null;
+          is_required?: boolean; position?: number; archived_at?: string | null;
+        };
+        Relationships: [];
+      };
+      crm_field_values: {
+        Row: {
+          id: string; company_id: string; field_id: string;
+          organization_id: string | null; opportunity_id: string | null;
+          // ESATTAMENTE una delle tre è piena — quale, lo pretende il guardiano
+          // dal tipo della definizione. La riga esiste solo se porta un valore:
+          // svuotare il campo la cancella.
+          value_text: string | null; value_number: number | string | null;
+          value_date: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: {
+          company_id: string; field_id: string;
+          organization_id?: string | null; opportunity_id?: string | null;
+          value_text?: string | null; value_number?: number | null;
+          value_date?: string | null;
+        };
+        // Solo il valore si riscrive: campo ed entità sono la sua identità.
+        Update: {
+          value_text?: string | null; value_number?: number | null;
+          value_date?: string | null;
+        };
         Relationships: [];
       };
       // ---- Company Assistant (0027) ----------------------------------------
