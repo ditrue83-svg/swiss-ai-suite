@@ -1,12 +1,11 @@
 # CRM Light — Clienti e controparti
 
 Stato: **in esercizio dal 2026-07-30**, interfaccia compresa.
-Migrazioni: **0026** (il modulo), **0028** (la correzione della cascata) e
-**0030** (il candidato automatico), applicate; **0047** (i campi personalizzati)
-è scritta, in attesa di applicazione.
-Test: `npm run test:crm-unit` **244/244** · `npm run test:crm` **139 asserzioni
-in 16 sezioni** — la sezione 15 diventa eseguibile con la 0047 applicata (la
-controprova senza migrazione, eseguita il 2026-08-29, dà rosso esattamente lì).
+Migrazioni: **0026** (il modulo), **0028** (la correzione della cascata),
+**0030** (il candidato automatico) e **0047** (i campi personalizzati), tutte
+applicate.
+Test: `npm run test:crm-unit` **244/244** · `npm run test:crm` **139/139 in 16
+sezioni, eseguite** il 2026-08-29, sezione 15 (campi personalizzati) compresa.
 
 ---
 
@@ -513,7 +512,8 @@ nessun messaggio traduce.
 ```bash
 npm run test:crm-unit   # 244 casi, offline, senza database e senza crediti
 npm run test:crm        # 139 asserzioni in 16 sezioni, sul database reale —
-                        # la sezione 15 (campi personalizzati) richiede la 0047
+                        # eseguite il 2026-08-29, sezione 15 (campi
+                        # personalizzati) compresa
 ```
 
 `test:crm-unit` — diciannove sezioni. La più importante **legge la migrazione 0026** ed
@@ -535,7 +535,7 @@ dichiarazione, non sul suo nome —, nessuna delete-policy sulle definizioni, og
 sentinella tradotto da `crmErrorMessage`), la 19 prova parsing delle opzioni e
 dei valori, formattazione e ordinamento su fixture tipizzate.
 
-`test:crm` — sedici sezioni, 139 asserzioni:
+`test:crm` — sedici sezioni **eseguite il 2026-08-29, 139 asserzioni verdi**:
 isolamento (anche chiamando la RPC col
 `p_company_id` altrui), cross-tenant (nemmeno il service role), responsabili,
 referente, permessi verificati **rileggendo** e non guardando l'esito dell'update,
@@ -544,14 +544,14 @@ il nome estratto che sopravvive, fusione, entità ammesse dal motore, candidato
 automatico, cascata. La quattordicesima — import CSV — prova sul database reale:
 percorso della riga con provenienza dichiarata, doppione duro e email
 duplicata fermati dal vincolo, IDI errato che non collide, confine fra tenant.
-La quindicesima — campi personalizzati — prova: definizioni scritte solo da chi
-amministra, nome unico fra gli attivi, tipo ed entità congelati, ogni sentinella
-del guardiano (tipo sbagliato, valore vuoto, voce fuori lista, entità sbagliata,
-campo sconosciuto, campo archiviato), cross-tenant anche col service role,
-membro che scrive e cancella valori, rinomina che non stacca, fusione che
-trasferisce col principale che vince. **Richiede la 0047**: senza di essa la
-sezione va in rosso con «relazione mancante» — è la controprova, eseguita il
-2026-08-29 (39 rossi, tutti e soli lì e nella cascata delle due tabelle nuove).
+La quindicesima — campi personalizzati, 43 asserzioni — prova: definizioni
+scritte solo da chi amministra, nome unico fra gli attivi, tipo ed entità
+congelati, ogni sentinella del guardiano (tipo sbagliato, valore vuoto, voce
+fuori lista, entità sbagliata, campo sconosciuto, campo archiviato),
+cross-tenant anche col service role, membro che scrive e cancella valori,
+rinomina che non stacca, fusione che trasferisce col principale che vince. La
+sua controprova è stata eseguita prima dell'applicazione della 0047: 39 rossi,
+tutti e soli nelle garanzie nuove con «relazione mancante».
 
 **Regressioni (2026-07-30): 18 suite verdi, 1578 asserzioni.** Offline 1037,
 su database reale 541. Nessun modulo rotto dal CRM. Dopo nove suite su database:
@@ -860,13 +860,23 @@ stesso aspetto — nessun «recinto» visivo di serie B. Il numero in un campo
 numero si formatta con i separatori delle migliaia della lingua dell'interfaccia
 e in modifica si rilegge il valore grezzo, mai quello formattato.
 
-✅ **Stato della verifica.** Le sezioni 18 e 19 di `test:crm-unit` (offline)
-leggono la migrazione — revoke prima dei grant, grant di colonna, nessuna
-delete-policy, sentinella tutti coperti da `crmErrorMessage`, tetto delle
-opzioni coerente col client — e provano parsing, formattazione e ordinamento su
-casi tipizzati. La sezione 15 di `test:crm` (43 asserzioni) è scritta e la sua
-controprova è eseguita: senza la 0047 applicata va in rosso su ogni garanzia
-nuova, con «relazione mancante»; l'esecuzione verde segue l'applicazione.
+✅ **Stato della verifica (misurato il 2026-08-29).** Le sezioni 18 e 19 di
+`test:crm-unit` (offline) leggono la migrazione — revoke prima dei grant, grant
+di colonna, nessuna delete-policy, sentinella tutti coperti da
+`crmErrorMessage`, tetto delle opzioni coerente col client — e provano parsing,
+formattazione e ordinamento su casi tipizzati. La sezione 15 di `test:crm` (43
+asserzioni) è **eseguita verde** sul database reale: 139/139 in 16 sezioni, e la
+controprova senza la 0047 era rossa esattamente lì (39 fallimenti, «relazione
+mancante»). La prova a schermo è stata fatta lo stesso giorno su un tenant
+usa-e-getta poi rimosso (rimozione verificata dal client di servizio), su
+un'istanza Chrome separata pilotata via CDP: pannello Impostazioni e pagina
+`/campi-personalizzati` in italiano, tedesco e francese (in francese i due punti
+portano U+202F, misurato nel DOM); scheda della controparte con salvataggio e
+numero formattato («12'500» in italiano, «12 500» in francese); scheda della
+trattativa con l'errore «obbligatorio» a schermo e la data «31.03.2027»; tema
+scuro su pannello e scheda; 375px senza scroll orizzontale (`scrollWidth` 360,
+`scrollX` 0, override di viewport CDP: le interazioni touch reali non sono state
+provate).
 
 ---
 
@@ -890,10 +900,9 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
    il codice finisce nel rapporto e in una riga di log, e la coda degli altri
    moduli continua. Un modulo non installato non deve spegnere le automazioni di
    Documenti, Finanze e Contratti.
-5. Applicare **0047_crm_custom_fields.sql** per i campi personalizzati: un
-   incollaggio dal SQL editor, si autoverifica e fallisce in modo esplicito se
-   qualcosa non torna. Nessun rideploy: il CRM vive dietro
-   `VITE_LEGACY_MODULES`, lato client.
+5. ✅ **FATTO il 2026-08-29**: **0047_crm_custom_fields.sql** applicata dal SQL
+   editor in un incollaggio, autoverifica superata. Nessun rideploy: il CRM vive
+   dietro `VITE_LEGACY_MODULES`, lato client.
 
 ---
 
