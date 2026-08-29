@@ -1,9 +1,12 @@
 # CRM Light — Clienti e controparti
 
 Stato: **in esercizio dal 2026-07-30**, interfaccia compresa.
-Migrazioni: **0026** (il modulo) e **0028** (la correzione della cascata), entrambe applicate.
-Test: `npm run test:crm-unit` **218/218** · `npm run test:crm` **94/94 in 14
-sezioni, eseguite** il 2026-08-28, sezione 14 (import CSV) compresa.
+Migrazioni: **0026** (il modulo), **0028** (la correzione della cascata) e
+**0030** (il candidato automatico), applicate; **0047** (i campi personalizzati)
+è scritta, in attesa di applicazione.
+Test: `npm run test:crm-unit` **244/244** · `npm run test:crm` **139 asserzioni
+in 16 sezioni** — la sezione 15 diventa eseguibile con la 0047 applicata (la
+controprova senza migrazione, eseguita il 2026-08-29, dà rosso esattamente lì).
 
 ---
 
@@ -55,7 +58,10 @@ riferimento CRM. `test:crm` §10 sorveglia la stessa garanzia sui documenti.
 ## 2. Il modello dei dati
 
 **13 tabelle, 11 tipi nuovi, 45 funzioni, 31 trigger, 40 policy, 39 indici**
-(0026, 4242 righe), più 6 colonne su tabelle esistenti.
+(0026, 4242 righe), più 6 colonne su tabelle esistenti. La 0047 aggiunge
+`crm_field_definitions` e `crm_field_values` (2 tabelle, 2 tipi, 5 funzioni,
+2 trigger, 7 policy, 7 indici — §15-quater): il modello oggi conta **15
+tabelle**.
 
 | Tabella | Che cosa contiene |
 |---|---|
@@ -69,6 +75,8 @@ riferimento CRM. `test:crm` §10 sorveglia la stessa garanzia sui documenti.
 | `crm_events` | lo storico, append-only, scritto solo dai trigger |
 | `crm_organization_documents` · `crm_organization_emails` · `crm_contact_emails` · `crm_opportunity_documents` | i quattro ponti |
 | `crm_link_suggestions` | ciò che il sistema sospetta e una persona conferma |
+| `crm_field_definitions` | i campi personalizzati decisi **dall'azienda** (0047) |
+| `crm_field_values` | i loro valori, uno per riga, in colonne tipate (0047) |
 
 ### Due entità distinte, mai una stringa sola
 
@@ -413,8 +421,10 @@ soglia non si applica a ciò che non è mai cominciato.
 
 ## 9. Sicurezza
 
-- **RLS su tutte e 13 le tabelle**: `is_company_member(company_id)` per la lettura e
-  la scrittura ordinaria; `is_company_admin` per la fusione.
+- **RLS su tutte e 15 le tabelle**: `is_company_member(company_id)` per la lettura e
+  la scrittura ordinaria; `is_company_admin` per la fusione e per le definizioni
+  dei campi personalizzati (cambiano la forma dei dati di tutta l'azienda; i loro
+  valori restano scrivibili da ogni membro, come ogni altro dato del modulo).
 - **`revoke all … from anon, authenticated, public` PRIMA di ogni grant.** Su
   `public` un permesso di colonna scritto senza revoke non restringe niente:
   Supabase concede per default i privilegi di tabella pieni a ogni tabella nuova. È
@@ -501,12 +511,12 @@ nessun messaggio traduce.
 ## 12. Test
 
 ```bash
-npm run test:crm-unit   # 218 casi, offline, senza database e senza crediti
-npm run test:crm        # 94 asserzioni in 14 sezioni, sul database reale —
-                        # eseguite il 2026-08-28, sezione 14 (import CSV) compresa
+npm run test:crm-unit   # 244 casi, offline, senza database e senza crediti
+npm run test:crm        # 139 asserzioni in 16 sezioni, sul database reale —
+                        # la sezione 15 (campi personalizzati) richiede la 0047
 ```
 
-`test:crm-unit` — diciassette sezioni. La più importante **legge la migrazione 0026** ed
+`test:crm-unit` — diciannove sezioni. La più importante **legge la migrazione 0026** ed
 estrae l'array di `crm_is_public_domain`, i valori dei quattro enum e il blocco di
 autoverifica, confrontandoli con le costanti TypeScript. Sorveglia anche che il file
 **non contraddica se stesso**: nessuna colonna può essere insieme «timbrata dal
@@ -516,20 +526,32 @@ IDI veri e inventati), il filtro anti-rumore sul campione reale, i pareggi
 dell'abbinamento, l'ordine delle priorità di stato, nessuna somma fra valute, giorni
 di calendario alle 23:30, filtri in URL, ordinamenti stabili, la chiave del
 candidato scritta due volte, il sito web come link che può essere codice. Le
-ultime cinque sono dell'import CSV: parser (virgolette, separatori, codifiche),
+cinque dell'import CSV: parser (virgolette, separatori, codifiche),
 auto-mappatura in quattro lingue senza indovinare, validazione di riga in codici,
-duplicati dentro e fuori il file, instradamento dei recapiti.
+duplicati dentro e fuori il file, instradamento dei recapiti. Le ultime due sono
+dei campi personalizzati: la 18 **legge la migrazione 0047** (enum TS contro
+enum SQL, revoke prima dei grant, grant di colonna — provati sul contenuto della
+dichiarazione, non sul suo nome —, nessuna delete-policy sulle definizioni, ogni
+sentinella tradotto da `crmErrorMessage`), la 19 prova parsing delle opzioni e
+dei valori, formattazione e ordinamento su fixture tipizzate.
 
-`test:crm` — quattordici sezioni eseguite il 2026-08-28, 94 asserzioni verdi:
+`test:crm` — sedici sezioni, 139 asserzioni:
 isolamento (anche chiamando la RPC col
 `p_company_id` altrui), cross-tenant (nemmeno il service role), responsabili,
 referente, permessi verificati **rileggendo** e non guardando l'esito dell'update,
 storico non falsificabile, identità dell'IDI, timbri delle fasi, ultimo contatto,
 il nome estratto che sopravvive, fusione, entità ammesse dal motore, candidato
-automatico, cascata. La quattordicesima — import CSV, aggiunta con questa
-funzione — prova sul database reale: percorso della riga con provenienza
-dichiarata, doppione duro e email
+automatico, cascata. La quattordicesima — import CSV — prova sul database reale:
+percorso della riga con provenienza dichiarata, doppione duro e email
 duplicata fermati dal vincolo, IDI errato che non collide, confine fra tenant.
+La quindicesima — campi personalizzati — prova: definizioni scritte solo da chi
+amministra, nome unico fra gli attivi, tipo ed entità congelati, ogni sentinella
+del guardiano (tipo sbagliato, valore vuoto, voce fuori lista, entità sbagliata,
+campo sconosciuto, campo archiviato), cross-tenant anche col service role,
+membro che scrive e cancella valori, rinomina che non stacca, fusione che
+trasferisce col principale che vince. **Richiede la 0047**: senza di essa la
+sezione va in rosso con «relazione mancante» — è la controprova, eseguita il
+2026-08-29 (39 rossi, tutti e soli lì e nella cascata delle due tabelle nuove).
 
 **Regressioni (2026-07-30): 18 suite verdi, 1578 asserzioni.** Offline 1037,
 su database reale 541. Nessun modulo rotto dal CRM. Dopo nove suite su database:
@@ -774,6 +796,80 @@ due asserzioni nella sezione 17 di `test:crm-unit` lo sorvegliano.
 
 ---
 
+## 15-quater. I campi personalizzati (0047)
+
+Il perimetro fisso della 0026 copre l'identità e la relazione; non copre ciò che
+ogni azienda conta per conto proprio — il numero cliente nel gestionale
+precedente, la data del prossimo rinnovo, la fascia di fatturato. I campi
+personalizzati rispondono a quello, su **organizzazioni e opportunità** e
+nient'altro: persone e contatti restano fuori, per scelta.
+
+**Il modello, in tre affermazioni** (le stesse scritte nella migrazione):
+
+1. **La definizione è dell'azienda.** `crm_field_definitions` porta nome, tipo
+   (`text`, `number`, `date`, `select`), opzioni della lista, obbligatorietà e
+   ordine di comparsa. Il nome è unico per scheda fra i campi attivi,
+   insensibile alle maiuscole; archiviato il campo, il nome si libera.
+2. **Un valore è una riga, e il tipo è un fatto del database.** Niente
+   `value jsonb` da interpretare a schermo: `value_text`, `value_number` e
+   `value_date` sono tre colonne, e il guardiano pretende che sia piena
+   esattamente quella del tipo dichiarato — lo stesso rifiuto per il browser,
+   per uno script e per il service role. La riga esiste **solo se porta un
+   valore**: svuotare un campo la cancella.
+3. **Sono attributi, non identità.** Non entrano in `crm_duplicate_candidates`,
+   non entrano in `crm_match_email` né in `crm_scan_link_suggestions`, non
+   entrano nella normalizzazione: un «numero cliente» identico su due schede NON
+   le rende doppioni, perché l'identità restano l'IDI e l'email (§25). La
+   fusione invece li trasferisce sul record principale — dove il principale ha
+   già un valore per lo stesso campo vince il principale, come per ruoli e
+   recapiti — e li trasferisce anche da un campo archiviato, perché sposta la
+   storia senza riscriverla.
+
+**Le definizioni le scrive chi amministra, i valori ogni membro.** Un campo
+cambia la forma dei dati di tutta l'azienda, come la fusione (§118); un valore è
+un dato come gli altri. Il pannello delle impostazioni lo dice al membro invece
+di offrirgli campi che al salvataggio verrebbero rifiutati.
+
+**Tipo ed entità sono congelati alla nascita.** Cambiare «numero» in «testo» con
+i valori già scritti renderebbe quelle righe false, e spostare un campo dalle
+organizzazioni alle opportunità lo staccherebbe dai suoi valori: un campo
+diverso è un campo nuovo. La difesa è doppia — il grant di colonna non concede
+l'update e il guardiano ripristinerebbe il valore — perché una difesa che vale
+in un posto solo si dimentica. Rinominare invece non stacca niente: i valori
+puntano all'`id`, non al nome.
+
+**Si archiviano, mai si cancellano** (`archived_at`, §123/§125): sulle
+definizioni non esiste una policy di DELETE. Un campo archiviato è
+**congelato**: i valori esistenti restano leggibili e si possono cancellare, ma
+nessuno se ne aggiunge e nessuno si riscrive. Restringere le opzioni di una
+lista non cancella i valori già scritti; però un valore fuori lista non si può
+più riscrivere tale e quale, perché il guardiano lo misura contro l'elenco
+corrente.
+
+**L'obbligatorietà (`is_required`) è una promessa della schermata, non un
+vincolo del database.** Il database non può pretendere una riga che non esiste
+su un'entità che nasce senza valori; ciò che garantisce è che nessun valore
+salvato sia vuoto o del tipo sbagliato. Nessuno storico in `crm_events`: un
+campo personalizzato è un attributo corrente, non un passaggio di relazione.
+
+**La schermata.** Le definizioni si gestiscono in Impostazioni → «Campi
+personalizzati» (e come pagina, `/campi-personalizzati`), dentro il modulo
+legacy flaggato come il resto del CRM in sviluppo; i valori compaiono nella
+scheda dell'organizzazione e della trattativa, in fondo ai campi nativi e con lo
+stesso aspetto — nessun «recinto» visivo di serie B. Il numero in un campo
+numero si formatta con i separatori delle migliaia della lingua dell'interfaccia
+e in modifica si rilegge il valore grezzo, mai quello formattato.
+
+✅ **Stato della verifica.** Le sezioni 18 e 19 di `test:crm-unit` (offline)
+leggono la migrazione — revoke prima dei grant, grant di colonna, nessuna
+delete-policy, sentinella tutti coperti da `crmErrorMessage`, tetto delle
+opzioni coerente col client — e provano parsing, formattazione e ordinamento su
+casi tipizzati. La sezione 15 di `test:crm` (43 asserzioni) è scritta e la sua
+controprova è eseguita: senza la 0047 applicata va in rosso su ogni garanzia
+nuova, con «relazione mancante»; l'esecuzione verde segue l'applicazione.
+
+---
+
 ## 16. Configurazione
 
 Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
@@ -794,6 +890,10 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
    il codice finisce nel rapporto e in una riga di log, e la coda degli altri
    moduli continua. Un modulo non installato non deve spegnere le automazioni di
    Documenti, Finanze e Contratti.
+5. Applicare **0047_crm_custom_fields.sql** per i campi personalizzati: un
+   incollaggio dal SQL editor, si autoverifica e fallisce in modo esplicito se
+   qualcosa non torna. Nessun rideploy: il CRM vive dietro
+   `VITE_LEGACY_MODULES`, lato client.
 
 ---
 
@@ -810,7 +910,9 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   incasso.
 - Nessuna sincronizzazione rubriche, nessun OCR di biglietti da
   visita, nessun help desk, nessun portale clienti.
-- Nessun campo personalizzato.
+- I campi personalizzati esistono dal 0047 (§15-quater), solo su organizzazioni
+  e opportunità: niente campi su persone e contatti, niente multi-selezione,
+  niente «sì/no» dedicato, niente campo «collegamento».
 
 **Non implementato, e non per dimenticanza**
 
