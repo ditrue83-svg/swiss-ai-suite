@@ -10,27 +10,29 @@ type Template = { id: string; name: string; archived_at: string | null; subject:
 /** Impostazioni locali al CRM: i template sono dell'azienda, la firma è dell'utente. */
 export function CrmEmailSettingsPanel() {
   const t = useT(); const { locale } = useI18n(); const { activeCompanyId, isAdmin } = useCompany(); const { user } = useAuth();
+  const userId = user?.id;
+  const settingsLoadFailed = t('crm.email.settingsLoadFailed');
   const [templates, setTemplates] = useState<Template[]>([]); const [signature, setSignature] = useState('');
   const [senderName, setSenderName] = useState(''); const [senderAddress, setSenderAddress] = useState('');
   const [name, setName] = useState(''); const [subject, setSubject] = useState(''); const [body, setBody] = useState('');
   const [editing, setEditing] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    if (!activeCompanyId || !user) return;
+    if (!activeCompanyId || !userId) return;
     const sb = requireSupabase() as any;
     const [{ data: raw, error: templatesError }, { data: sig, error: signatureError }, { data: sender, error: senderError }] = await Promise.all([
       sb.from('crm_email_templates').select('id, name, archived_at, crm_email_template_translations!inner(subject, body_text, locale)').eq('company_id', activeCompanyId).eq('crm_email_template_translations.locale', locale).order('created_at', { ascending: false }),
-      sb.from('crm_user_email_signatures').select('body_text').eq('company_id', activeCompanyId).eq('user_id', user.id).eq('locale', locale).maybeSingle(),
+      sb.from('crm_user_email_signatures').select('body_text').eq('company_id', activeCompanyId).eq('user_id', userId).eq('locale', locale).maybeSingle(),
       sb.from('crm_email_senders').select('display_name, from_address').eq('company_id', activeCompanyId).maybeSingle(),
     ]);
-    if (templatesError || signatureError || senderError) { setError(t('crm.email.settingsLoadFailed')); return; }
+    if (templatesError || signatureError || senderError) { setError(settingsLoadFailed); return; }
     setTemplates(((raw ?? []) as Array<Record<string, unknown>>).map((row) => {
       const translation = (row.crm_email_template_translations as Array<Record<string, unknown>>)[0]!;
       return { id: row.id as string, name: row.name as string, archived_at: row.archived_at as string | null, subject: translation.subject as string, body_text: translation.body_text as string };
     }));
     setSignature((sig?.body_text as string | null) ?? ''); setError('');
     setSenderName((sender?.display_name as string | null) ?? ''); setSenderAddress((sender?.from_address as string | null) ?? '');
-  }, [activeCompanyId, locale, t, user]);
+  }, [activeCompanyId, locale, settingsLoadFailed, userId]);
   useEffect(() => { void load(); }, [load]);
 
   async function saveSignature(event: FormEvent) { event.preventDefault(); if (!activeCompanyId || !user || busy) return; setBusy(true); setError('');

@@ -445,6 +445,16 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   const rami = [...dialogSrc.matchAll(/attivo === '([a-z]+)'/g)].map((m) => m[1]!);
   const orfani = rami.filter((r) => !NAV_SETTINGS.some((s) => s.id === r && s.apre === 'pannello'));
   check('nessun pannello montato per una voce che non c\'è', orfani.length === 0, orfani.join(', '));
+  // `useT()` e l'oggetto `user` non garantiscono identità stabile. Se entrano
+  // nelle dipendenze di `load`, ogni battuta nei campi causa un render, ricrea
+  // il callback e rilegge il database: il testo appena digitato sparisce.
+  const emailSettingsSrc = readFileSync(join(root, 'src/features/crm/CrmEmailSettingsPanel.tsx'), 'utf8');
+  const loadDeps = emailSettingsSrc.match(/const load = useCallback[\s\S]*?\}, \[([^\]]+)\]\);/)?.[1] ?? '';
+  check(
+    'le impostazioni email non ricaricano il database mentre si digita',
+    loadDeps.includes('userId') && !/(^|,\s*)(t|user)(\s*,|$)/.test(loadDeps),
+    `dipendenze trovate: ${loadDeps}`,
+  );
   check(
     'il Registro attività è l\'UNICA voce riservata',
     NAV_SETTINGS.filter((s) => s.adminOnly).map((s) => s.id).join() === 'audit'
