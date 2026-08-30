@@ -279,3 +279,8 @@ verify_jwt = false
 
 [functions.subsidy-worker]
 verify_jwt = false
+
+# Gesto esplicito di una persona dal CRM: il gate JWT della piattaforma e
+# `authenticate()` nel codice devono entrambi restare accesi.
+[functions.send-crm-email]
+verify_jwt = true

@@ -581,6 +581,7 @@ che oggi lo ferma davvero.
 | Microsoft Graph (posta) | implementato, non configurato | credenziali Entra. L'app lo **dichiara** invece di fallire |
 | Google/Microsoft Calendar | implementato, **mai provato contro le API vive** | `GOOGLE_CALENDAR_CLIENT_ID`/`SECRET` espliciti |
 | Provider email (Resend) | implementato, **non configurato** — riverificato il 2026-08-03 | `NOTIFICATION_EMAIL_API_KEY` e `NOTIFICATION_EMAIL_FROM`: **assenti** dai 21 secret del progetto, controllati per NOME (il valore non è leggibile: la Management API restituisce lo SHA-256). Finché mancano, `deliverEmails` esce subito e **nessuna email può partire**: è una garanzia, non una svista. ✅ E la schermata lo **dichiara davvero** — non c'è nessun interruttore da accendere (§sotto). ⚠️⚠️ **Fino al 2026-08-03 impostarli non sarebbe bastato**: vedi «Le email di notifica» qui sotto. Ora il percorso è eseguito da `test:calendar-unit` §12 e da `npm run test:notification-email`, che **esce 3** finché i due valori mancano |
+| Email CRM (0048, Fase 1.1) | in sviluppo sul branch `improve/crm-send-email`, non deployata | l'Inbox resta Gmail/Microsoft readonly; l'invio umano CRM passa dal provider Resend configurato, non dalla Gmail API. Finché il provider non e' configurato, `send-crm-email` restituisce `EMAIL_NOT_CONFIGURED`. |
 
 ## ⚠️ `calendar-sync` era deployata con `verify_jwt=true`, e lo scheduler non poteva funzionare
 

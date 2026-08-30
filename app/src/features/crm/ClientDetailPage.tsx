@@ -42,6 +42,7 @@ import type {
 import type { CrmInteractionType, CrmOrganizationRole } from '@/types/database';
 import { AskAbout } from '@/features/assistant/AskAbout';
 import { CrmFieldsCard } from './CrmFieldsCard';
+import { CrmEmailComposer } from './CrmEmailComposer';
 import {
   CRM_TIMELINE_PAGE_SIZE, DEFAULT_STALE_DAYS, daysSince,
   organizationState, organizationStateKey, opportunityState, opportunityStateKey,
@@ -207,6 +208,7 @@ export function ClientDetailPage() {
           </div>
         </div>
         <div className="row-wrap">
+          {!org.archivedAt && <CrmEmailComposer companyId={company.id} organizationId={org.id} onSent={() => void load()} />}
           {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
           <AskAbout type="crm_organization" id={org.id} label={org.displayName} />
           <Link className="btn btn-primary" to={`/clienti/${org.id}/opportunita/nuova`}>

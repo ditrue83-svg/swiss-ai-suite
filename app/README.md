@@ -79,6 +79,9 @@ supabase/
                                          definizioni per azienda (nome, tipo,
                                          opzioni, obbligatorietà, ordine) e
                                          valori a colonne tipate, uno per riga.
+                0048_crm_send_email — email CRM: direzione in/out, consegna,
+                                         recapito CRM obbligatorio, collegamenti
+                                         a cliente/trattativa e modelli/firme.
                                          Attributi, non identità: fuori da
                                          deduplicazione e abbinamento. Si
                                          archiviano, non si cancellano.
@@ -109,6 +112,8 @@ supabase/
     calendar-sync         coda di sincronizzazione, «Sincronizza ora», riconciliazione
     calendar-disconnect   scollegamento, con scelta esplicita sugli eventi già scritti
     notifications-worker  promemoria e consegna delle email
+    send-crm-email        invio umano dal CRM via provider transazionale;
+                          non usa né modifica Gmail/Microsoft
     finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
     contract-worker       legge la coda dei documenti contrattuali e apre le finestre
                           di attenzione delle date verificate (scheduler)

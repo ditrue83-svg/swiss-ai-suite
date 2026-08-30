@@ -2537,6 +2537,7 @@ export const fr: Dictionary = {
     addPerson: 'Ajouter un contact',
     addOpportunity: 'Nouvelle opportunité',
     addInteraction: 'Enregistrer un contact',
+    email: { compose: 'Écrire un e-mail', to: 'Destinataire', noRecipient: 'Aucune adresse e-mail enregistrée', subject: 'Objet', body: 'Message', send: 'Envoyer l’e-mail', sendFailed: 'L’e-mail n’a pas été envoyé.' },
     searchPlaceholder: 'Rechercher par nom, IDE, adresse, personne…',
     searchHint: 'La recherche porte sur le nom, la raison sociale, l’IDE, le numéro TVA, le domaine, les personnes de contact, les coordonnées et les titres des opportunités.',
     clearFilters: 'Retirer les filtres',

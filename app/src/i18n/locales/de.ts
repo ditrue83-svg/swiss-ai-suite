@@ -2539,6 +2539,7 @@ export const de: Dictionary = {
     addPerson: 'Kontakt hinzufügen',
     addOpportunity: 'Neue Verkaufschance',
     addInteraction: 'Kontakt erfassen',
+    email: { compose: 'E-Mail schreiben', to: 'Empfänger', noRecipient: 'Keine registrierte E-Mail-Adresse', subject: 'Betreff', body: 'Nachricht', send: 'E-Mail senden', sendFailed: 'Die E-Mail wurde nicht gesendet.' },
     searchPlaceholder: 'Nach Name, UID, Adresse, Person suchen…',
     searchHint: 'Die Suche berücksichtigt Name, Firma, UID, MWST-Nummer, Domain, Kontaktpersonen, Kontaktangaben und Titel der Verkaufschancen.',
     clearFilters: 'Filter entfernen',

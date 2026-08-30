@@ -2662,6 +2662,7 @@ export const it = {
     addPerson: 'Aggiungi contatto',
     addOpportunity: 'Nuova opportunità',
     addInteraction: 'Registra contatto',
+    email: { compose: 'Scrivi email', to: 'Destinatario', noRecipient: 'Nessun recapito email registrato', subject: 'Oggetto', body: 'Messaggio', send: 'Invia email', sendFailed: 'L’email non è stata inviata.' },
     searchPlaceholder: 'Cerca per nome, IDI, indirizzo, persona…',
     searchHint: 'La ricerca guarda nome, ragione sociale, IDI, numero IVA, dominio, persone di contatto, recapiti e titoli delle opportunità.',
     clearFilters: 'Togli i filtri',

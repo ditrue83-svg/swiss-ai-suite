@@ -6,6 +6,12 @@ di posta**: non invia, non risponde, non archivia, non modifica nulla nella
 casella. È il punto d'ingresso da cui una comunicazione amministrativa diventa
 un documento AI-Swisse e passa dalla pipeline Admin AI già esistente.
 
+Dal CRM esiste un invio separato (0048): non cambia questo contratto. Gmail e
+Microsoft restano con scope `readonly`/`Mail.Read`; il CRM usa il provider
+transazionale configurato per l'installazione (Resend), mai Gmail API. Se il
+provider non è configurato la funzione risponde esplicitamente **non
+disponibile**, senza tentare un invio.
+
 > **Stato al 2026-07-27.** **Attiva con Google**: le Edge Function sono
 > deployate, una casella Gmail reale è collegata e la posta viene importata,
 > classificata e analizzata. Microsoft non è configurato e l'applicazione lo
