@@ -42,6 +42,7 @@ import type {
 import type { CrmInteractionType, CrmOrganizationRole } from '@/types/database';
 import { AskAbout } from '@/features/assistant/AskAbout';
 import { CrmFieldsCard } from './CrmFieldsCard';
+import { CrmEmailComposer } from './CrmEmailComposer';
 import {
   CRM_TIMELINE_PAGE_SIZE, DEFAULT_STALE_DAYS, daysSince,
   organizationState, organizationStateKey, opportunityState, opportunityStateKey,
@@ -207,6 +208,7 @@ export function ClientDetailPage() {
           </div>
         </div>
         <div className="row-wrap">
+          {!org.archivedAt && <CrmEmailComposer companyId={company.id} organizationId={org.id} onSent={() => void load()} />}
           {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
           <AskAbout type="crm_organization" id={org.id} label={org.displayName} />
           <Link className="btn btn-primary" to={`/clienti/${org.id}/opportunita/nuova`}>
@@ -679,6 +681,12 @@ function TasksTab(props: {
 
 // ---------------------------------------------------------------------------
 /** ⚠️ SOLO METADATI. Il corpo di una email non passa da questa pagina (§61). */
+function deliveryReason(raw: string, t: TFunction): string {
+  return raw.includes('destinatario')
+    ? t('crm.emailReason.recipientRejected')
+    : t('crm.emailReason.providerFailed');
+}
+
 function CommunicationsTab(props: {
   emails: CrmEmailLink[]; t: TFunction; L: ReturnType<typeof useLabels>;
 }) {
@@ -687,21 +695,31 @@ function CommunicationsTab(props: {
   return (
     <>
       <ul className="crm-list">
-        {props.emails.map((m) => (
-          <li className="list-row" key={m.id}>
+        {props.emails.map((m) => {
+          const statusTone = m.deliveryStatus === 'delivered' ? 'ok'
+            : m.deliveryStatus === 'failed' ? 'alert' : 'neutral';
+          return <li className="list-row" key={m.id}>
             <div className="list-main">
-              <span className="list-title">{m.subject ?? <em>—</em>}</span>
+              <span className="list-title">
+                {m.subject ?? <em>—</em>}
+                {m.direction === 'out' && m.deliveryStatus && (
+                  <> <Tag tone={statusTone}>{t(`crm.emailStatus.${m.deliveryStatus}` as TKey)}</Tag></>
+                )}
+              </span>
               <div className="list-sub">
                 {m.senderName ?? m.senderEmail ?? '—'}
-                {m.receivedAt && <> · {formatDate(m.receivedAt)}</>}
+                {(m.sentAt ?? m.receivedAt) && <> · {formatDate(m.sentAt ?? m.receivedAt)}</>}
                 {' · '}{L.crmReason(m.matchReason)}
               </div>
+              {m.deliveryStatus === 'failed' && m.deliveryErrorSafe && (
+                <div className="list-sub">{deliveryReason(m.deliveryErrorSafe, t)}</div>
+              )}
             </div>
-            <Link className="btn btn-sm btn-ghost" to="/inbox">
+            {m.direction === 'in' && <Link className="btn btn-sm btn-ghost" to="/inbox">
               <Icon name="inbox" className="ic-sm" /> {t('nav.inbox')}
-            </Link>
+            </Link>}
           </li>
-        ))}
+        })}
       </ul>
     </>
   );
@@ -888,7 +906,8 @@ function HistoryTab(props: {
               <li key={e.id}>
                 <div className="crm-tl-when">{formatDate(e.occurredAt)}</div>
                 <div className="crm-tl-what">
-                  {t(KIND_KEY[e.kind])}
+                  {t(e.kind === 'email' && e.detail.direction === 'out'
+                    ? 'crm.timeline.emailSent' : KIND_KEY[e.kind])}
                   {e.title ? <> — {e.title}</> : null}
                 </div>
                 <div className={styles.crmTlSub}>
@@ -897,6 +916,14 @@ function HistoryTab(props: {
                     : null}
                   {e.kind === 'event' && typeof e.detail.kind === 'string' && (
                     <> · {String(e.detail.kind)}</>
+                  )}
+                  {e.kind === 'email' && e.detail.direction === 'out' && typeof e.detail.deliveryStatus === 'string' && (
+                    <> · <Tag tone={e.detail.deliveryStatus === 'delivered' ? 'ok' : e.detail.deliveryStatus === 'failed' ? 'alert' : 'neutral'}>
+                      {t(`crm.emailStatus.${e.detail.deliveryStatus}` as TKey)}
+                    </Tag></>
+                  )}
+                  {e.kind === 'email' && e.detail.deliveryStatus === 'failed' && typeof e.detail.deliveryErrorSafe === 'string' && (
+                    <> · {deliveryReason(e.detail.deliveryErrorSafe, t)}</>
                   )}
                 </div>
               </li>

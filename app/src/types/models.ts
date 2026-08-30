@@ -2145,6 +2145,10 @@ export interface CrmEmailLink {
   senderName: string | null;
   senderEmail: string | null;
   receivedAt: string | null;
+  sentAt: string | null;
+  direction: 'in' | 'out';
+  deliveryStatus: 'sent' | 'delivered' | 'failed' | null;
+  deliveryErrorSafe: string | null;
   threadKey: string | null;
   matchReason: CrmMatchReason;
 }

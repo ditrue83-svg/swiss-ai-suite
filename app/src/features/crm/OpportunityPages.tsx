@@ -33,6 +33,7 @@ import type { AssignableMember, CrmOpportunity, CrmOrganization, CrmPerson } fro
 import type { CrmOpportunityStage } from '@/types/database';
 import { ALL_STAGES, isOpen, opportunityState, opportunityStateKey } from './crmModel';
 import { CrmFieldsCard } from './CrmFieldsCard';
+import { CrmEmailComposer } from './CrmEmailComposer';
 import { cx } from '@/lib/cx';
 import styles from './crm.module.css';
 
@@ -300,6 +301,7 @@ export function OpportunityDetailPage() {
           </div>
         </div>
         <div className="row-wrap">
+          <CrmEmailComposer companyId={company.id} organizationId={deal.organizationId} opportunityId={deal.id} onSent={() => void load()} />
           {/* §54 — il cambio di fase da una TENDINA, non da un trascinamento:
               è accessibile da tastiera senza alcuna libreria. */}
           <div className="field ct-inline">

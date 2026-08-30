@@ -389,6 +389,7 @@ const GROUPS = {
       { script: 'test:finance-unit' },
       { script: 'test:contracts-unit' },
       { script: 'test:crm-unit' },
+      { script: 'test:crm-email-unit' },
       { script: 'test:assistant-unit' },
       { script: 'test:subsidy-unit' },
       { script: 'test:audit-unit' },

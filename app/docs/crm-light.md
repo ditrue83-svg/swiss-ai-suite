@@ -299,7 +299,9 @@ anche i messaggi che nessuno ha ancora ricevuto.
 
 `crm_organizations.last_contact_at` è una **copia denormalizzata dichiarata**, sul
 modello di `email_messages.analysis_deadline`: la scrive `crm_refresh_last_contact`
-dal massimo fra le email collegate e le interazioni di tipo `call`/`meeting`.
+dal massimo fra le email ricevute, le email CRM **consegnate** e le interazioni
+di tipo `call`/`meeting`. Una email solo `inviata` al provider non e' ancora un
+contatto; una `fallita` non lo diventa mai.
 
 **Una nota non è un contatto**: annotare qualcosa su un cliente non significa
 avergli parlato (`test:crm` §9). Il client non può scriverla — il guardiano la
@@ -349,10 +351,10 @@ Sei inneschi, e **tutti hanno una sorgente vera**: `crm_organization_created`,
 Due entità nuove (`crm_organization`, `crm_opportunity`), 23 campi nel registro,
 `create_task` e `create_notification` allargate al CRM.
 
-⚠️ **Nessuna azione di contatto.** Un'automazione CRM può creare lavoro e avvisare
+⚠️ **Nessuna azione di contatto automatica.** Un'automazione CRM può creare lavoro e avvisare
 persone dell'azienda. Non può inviare follow-up, iscrivere a newsletter, creare
-campagne o telefonare: quelle azioni non esistono nel motore, e l'Inbox è di sola
-lettura per contratto.
+campagne o telefonare. Dal 0048 una persona può inviare una singola email dal
+CRM, ma non esistono sequenze o invii automatici; l'Inbox resta di sola lettura.
 
 `crm_follow_up_due` **riusa lo scheduler esistente**: la scansione
 `crm_emit_follow_up_due` gira nel worker delle automazioni già acceso, accanto ad
@@ -910,7 +912,17 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
 
 **Fuori perimetro per scelta**
 
-- Nessun invio di comunicazioni: né singole, né sequenze, né campagne.
+- Nessuna sequenza, campagna o invio automatico. Il 0048 introduce soltanto un
+  gesto umano: una email singola dal CRM, via Resend/provider transazionale e
+  non via Gmail API. Il mittente usa un dominio verificato configurato per
+  l'azienda; se il provider manca la funzione e l'interfaccia lo dichiarano non
+  disponibile. Il destinatario è un **solo recapito email già registrato** nel
+  CRM: niente indirizzi digitati a mano e nessuna creazione implicita di persone.
+  L'accettazione di Resend produce `sent`; il webhook firmato produce
+  `delivered` oppure `failed` e conserva una ragione non tecnica. La firma usa
+  `RESEND_WEBHOOK_SECRET` e gli header `svix-id`, `svix-timestamp`,
+  `svix-signature`; duplicati e ordine di arrivo non possono applicare due volte
+  lo stesso esito. Solo `delivered` conta come ultimo contatto.
 - Nessuna probabilità di chiusura, nessun punteggio, nessun forecast, nessun
   sentiment.
 - Nessun modulo preventivi: `proposal` è uno stato, non un PDF.
@@ -939,9 +951,14 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   `list_tasks`, quindi `drop function` con la firma a 9 argomenti e i grant
   rifatti. È una migrazione a sé. Nel frattempo le attività di ogni controparte si
   vedono dalla sua scheda.
-- **Nessuna direzione inviata/ricevuta nelle email**: `email_messages` non ha una
-  colonna di direzione e la sincronizzazione legge **solo** la posta in arrivo. «Ultima
-  comunicazione inviata» non è calcolabile e non viene mostrata.
+- Dal **0048_crm_send_email.sql** `email_messages.direction` distingue `in` e
+  `out`: tutte le righe preesistenti sono `in`. Le uscenti sono registrate con
+  stato `sent` / `delivered` / `failed`; il contenuto resta fuori da
+  `crm_events`, che conserva solo riferimenti.
+- Gli esiti si vedono sia in Comunicazioni sia nella timeline della scheda. Un
+  bounce o un fallimento mostra una ragione umana; aperture e click non sono
+  raccolti. `crm_email_webhook_events` non ha accesso browser e la funzione SQL
+  che applica un evento è concessa soltanto al `service_role`.
 - **La data del documento** nell'elenco dei documenti collegati è quella del
   **caricamento**: `documents` non ha una colonna di data, e la data del documento è
   un valore effettivo che vive nell'analisi. Chiamare `created_at` «data del

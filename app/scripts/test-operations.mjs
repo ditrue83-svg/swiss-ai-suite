@@ -140,6 +140,8 @@ export const CRON_SOLO_A_MANO = {
 export const INVOCANTI_ESTERNI = {
   'email-webhook': 'la chiama il provider (Google Pub/Sub o Microsoft Graph), '
     + 'non un nostro codice: è un endpoint pubblico autenticato nel corpo',
+  'crm-email-webhook': 'la chiama Resend, non un nostro codice: è un endpoint '
+    + 'pubblico autenticato dalla firma Svix sul corpo grezzo',
 };
 
 /** Le cartelle di `supabase/functions/` che non sono funzioni deployabili. */

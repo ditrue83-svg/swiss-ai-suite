@@ -228,7 +228,9 @@ export const inboxService = {
         ? sb.from('email_messages').select('id', { count: 'exact', head: true })
             .eq('company_id', row.company_id).eq('provider_thread_id', row.provider_thread_id)
         : Promise.resolve({ count: 1 }),
-      sb.from('email_connections').select('email_address, provider').eq('id', row.connection_id).maybeSingle(),
+      row.connection_id
+        ? sb.from('email_connections').select('email_address, provider').eq('id', row.connection_id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
 
     const documentByAttachment = new Map<string, string>();

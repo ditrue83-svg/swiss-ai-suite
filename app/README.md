@@ -79,6 +79,9 @@ supabase/
                                          definizioni per azienda (nome, tipo,
                                          opzioni, obbligatorietà, ordine) e
                                          valori a colonne tipate, uno per riga.
+                0048_crm_send_email — email CRM: direzione in/out, consegna,
+                                         recapito CRM obbligatorio, collegamenti
+                                         a cliente/trattativa e modelli/firme.
                                          Attributi, non identità: fuori da
                                          deduplicazione e abbinamento. Si
                                          archiviano, non si cancellano.
@@ -109,6 +112,9 @@ supabase/
     calendar-sync         coda di sincronizzazione, «Sincronizza ora», riconciliazione
     calendar-disconnect   scollegamento, con scelta esplicita sugli eventi già scritti
     notifications-worker  promemoria e consegna delle email
+    send-crm-email        invio umano dal CRM via provider transazionale;
+                          non usa né modifica Gmail/Microsoft
+    crm-email-webhook     esiti Resend firmati: consegna, bounce e fallimento
     finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
     contract-worker       legge la coda dei documenti contrattuali e apre le finestre
                           di attenzione delle date verificate (scheduler)
@@ -997,6 +1003,7 @@ npm run test:contracts-unit  # Contratti offline: periodi nelle quattro lingue, 
 npm run test:contracts       # Contratti su DB: isolamento, cross-tenant su documenti e attività,
                              # immutabilità della versione verificata, correzioni append-only,
 npm run test:crm-unit        # CRM offline: la copia SQL↔TypeScript dei domini pubblici, la cifra
+npm run test:crm-email-unit  # invio CRM + firma webhook Resend contro fetch e payload finti; nessuna rete
                              #   di controllo dell'IDI, il filtro anti-rumore dei mittenti, i
                              #   pareggi dell'abbinamento, la chiave di idempotenza del
                              #   candidato scritta due volte, nessuna somma fra valute, il
