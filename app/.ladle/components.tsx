@@ -20,9 +20,7 @@ export const Provider: GlobalProvider = ({ children }) => (
     <ToastProvider>
       {/* Superficie e respiro dell'app: senza, le storie starebbero attaccate
           al bordo della finestra su un fondo che non è quello del prodotto. */}
-      <div style={{ background: 'var(--bg)', minHeight: '100vh', padding: 24 }}>
-        {children}
-      </div>
+      <div style={{ background: 'var(--bg)', minHeight: '100vh', padding: 24 }}>{children}</div>
     </ToastProvider>
   </I18nProvider>
 );
