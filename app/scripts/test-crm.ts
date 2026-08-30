@@ -1071,7 +1071,7 @@ async function main() {
   check('il service role registra una uscente senza connessione OAuth', !outgoing.error, msg(outgoing.error));
   const orgEmail = await admin.from('crm_organization_emails').insert({
     company_id: A.companyId, organization_id: orgDelivery,
-    email_message_id: outgoingId, match_reason: 'manual', linked_by: A.userId,
+    email_message_id: outgoingId, match_reason: 'manual', confirmed_by: A.userId,
   });
   check('l’email uscente si collega alla scheda senza copiare il contenuto', !orgEmail.error, msg(orgEmail.error));
 
