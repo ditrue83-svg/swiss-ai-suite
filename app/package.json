@@ -76,6 +76,7 @@
     "test:contracts": "node --env-file=.env.test --import tsx scripts/test-contracts.ts",
     "test:finance": "node --env-file=.env.test --import tsx scripts/test-finance.ts",
     "test:crm-unit": "node --import tsx scripts/test-crm-unit.ts",
+    "test:crm-email-unit": "node --import tsx scripts/test-crm-email-unit.ts",
     "test:assistant-unit": "node --import tsx scripts/test-assistant-unit.ts",
     "test:assistant": "node --env-file=.env.test --import tsx scripts/test-assistant.ts",
     "eval:assistant": "node --env-file=.env.test --import tsx scripts/eval-assistant.ts",

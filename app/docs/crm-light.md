@@ -918,6 +918,11 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   l'azienda; se il provider manca la funzione e l'interfaccia lo dichiarano non
   disponibile. Il destinatario è un **solo recapito email già registrato** nel
   CRM: niente indirizzi digitati a mano e nessuna creazione implicita di persone.
+  L'accettazione di Resend produce `sent`; il webhook firmato produce
+  `delivered` oppure `failed` e conserva una ragione non tecnica. La firma usa
+  `RESEND_WEBHOOK_SECRET` e gli header `svix-id`, `svix-timestamp`,
+  `svix-signature`; duplicati e ordine di arrivo non possono applicare due volte
+  lo stesso esito. Solo `delivered` conta come ultimo contatto.
 - Nessuna probabilità di chiusura, nessun punteggio, nessun forecast, nessun
   sentiment.
 - Nessun modulo preventivi: `proposal` è uno stato, non un PDF.
@@ -950,6 +955,10 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   `out`: tutte le righe preesistenti sono `in`. Le uscenti sono registrate con
   stato `sent` / `delivered` / `failed`; il contenuto resta fuori da
   `crm_events`, che conserva solo riferimenti.
+- Gli esiti si vedono sia in Comunicazioni sia nella timeline della scheda. Un
+  bounce o un fallimento mostra una ragione umana; aperture e click non sono
+  raccolti. `crm_email_webhook_events` non ha accesso browser e la funzione SQL
+  che applica un evento è concessa soltanto al `service_role`.
 - **La data del documento** nell'elenco dei documenti collegati è quella del
   **caricamento**: `documents` non ha una colonna di data, e la data del documento è
   un valore effettivo che vive nell'analisi. Chiamare `created_at` «data del

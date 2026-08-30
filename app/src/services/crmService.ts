@@ -919,20 +919,39 @@ export const crmService = {
     });
     if (error) fail(error);
     const rows = (data ?? []) as Array<Record<string, unknown>>;
+    const emailIds = rows.filter((r) => r.kind === 'email').map((r) => r.entity_id as string);
+    const deliveryById = new Map<string, Record<string, unknown>>();
+    if (emailIds.length) {
+      const { data: messages, error: messageError } = await requireSupabase().from('email_messages')
+        .select('id, direction, delivery_status, delivery_error_safe').in('id', emailIds);
+      if (messageError) fail(messageError);
+      for (const message of (messages ?? []) as Array<Record<string, unknown>>) {
+        deliveryById.set(message.id as string, message);
+      }
+    }
     return {
-      entries: rows.map((r) => ({
-        id: r.id as string,
-        kind: r.kind as CrmTimelineEntry['kind'],
-        occurredAt: r.occurred_at as string,
-        title: (r.title as string | null) ?? null,
-        detail: (r.detail as Record<string, unknown> | null) ?? {},
-        entityType: r.entity_type as string,
-        entityId: r.entity_id as string,
-        actorUserId: (r.actor_user_id as string | null) ?? null,
-        contactId: (r.contact_id as string | null) ?? null,
-        opportunityId: (r.opportunity_id as string | null) ?? null,
-        threadKey: (r.thread_key as string | null) ?? null,
-      })),
+      entries: rows.map((r) => {
+        const delivery = deliveryById.get(r.entity_id as string);
+        const baseDetail = (r.detail as Record<string, unknown> | null) ?? {};
+        return {
+          id: r.id as string,
+          kind: r.kind as CrmTimelineEntry['kind'],
+          occurredAt: r.occurred_at as string,
+          title: (r.title as string | null) ?? null,
+          detail: delivery ? {
+            ...baseDetail,
+            direction: delivery.direction,
+            deliveryStatus: delivery.delivery_status,
+            deliveryErrorSafe: delivery.delivery_error_safe,
+          } : baseDetail,
+          entityType: r.entity_type as string,
+          entityId: r.entity_id as string,
+          actorUserId: (r.actor_user_id as string | null) ?? null,
+          contactId: (r.contact_id as string | null) ?? null,
+          opportunityId: (r.opportunity_id as string | null) ?? null,
+          threadKey: (r.thread_key as string | null) ?? null,
+        };
+      }),
       total: rows.length ? int(rows[0]!.total_count) : 0,
     };
   },
@@ -1204,7 +1223,7 @@ export const crmService = {
 
     const ids = rows.map((r) => r.email_message_id as string);
     const { data: msgs, error: mErr } = await sb.from('email_messages')
-      .select('id, subject, sender_name, sender_email, received_at, provider_thread_id')
+      .select('id, subject, sender_name, sender_email, received_at, sent_at, provider_thread_id, direction, delivery_status, delivery_error_safe')
       .in('id', ids).order('received_at', { ascending: false });
     if (mErr) fail(mErr);
     const byLink = new Map(rows.map((r) => [r.email_message_id as string, r]));
@@ -1217,6 +1236,10 @@ export const crmService = {
         senderName: (m.sender_name as string | null) ?? null,
         senderEmail: (m.sender_email as string | null) ?? null,
         receivedAt: (m.received_at as string | null) ?? null,
+        sentAt: (m.sent_at as string | null) ?? null,
+        direction: (m.direction as 'in' | 'out') ?? 'in',
+        deliveryStatus: (m.delivery_status as CrmEmailLink['deliveryStatus']) ?? null,
+        deliveryErrorSafe: (m.delivery_error_safe as string | null) ?? null,
         threadKey: (m.provider_thread_id as string | null) ?? null,
         matchReason: l.match_reason as CrmMatchReason,
       };

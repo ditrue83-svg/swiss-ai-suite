@@ -12,6 +12,7 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { OnboardingPage } from '@/features/companies/OnboardingPage';
 import { CompanySettingsPage } from '@/features/companies/CompanySettingsPage';
 import { CrmFieldsPage } from '@/features/crm/CrmFieldsPanel';
+import { CrmEmailSettingsPanel } from '@/features/crm/CrmEmailSettingsPanel';
 import { HomePage } from '@/features/dashboard/HomePage';
 import { AssistantPage } from '@/features/assistant/AssistantPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
@@ -205,6 +206,9 @@ export default function App() {
                 ogni voce delle impostazioni, flag o no — una rotta nascosta
                 non è un permesso, il cancello è la RLS. */}
             <Route path="/campi-personalizzati" element={<CrmFieldsPage />} />
+            {/* Configurazione dell'invio CRM (0048): la rotta resta viva anche
+                se la voce è presentata nel pannello Impostazioni. */}
+            <Route path="/email-crm" element={<CrmEmailSettingsPanel />} />
           </Route>
         </Route>
       </Route>

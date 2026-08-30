@@ -2664,6 +2664,8 @@ export const it = {
     addOpportunity: 'Nuova opportunità',
     addInteraction: 'Registra contatto',
     email: { compose: 'Scrivi email', to: 'Destinatario', noRecipient: 'Nessun recapito email registrato', template: 'Modello', noTemplate: 'Nessun modello', subject: 'Oggetto', body: 'Messaggio', attachments: 'Allegati dai Documenti', attachmentsHint: 'Scegli fino a cinque documenti già collegati a questa scheda.', send: 'Invia email', sendFailed: 'L’email non è stata inviata.', unavailable: 'L’invio email non è configurato per questa azienda.', settingsHint: 'I modelli appartengono all’azienda; la firma appartiene a chi invia.', senderName: 'Nome del mittente', senderAddress: 'Indirizzo mittente', senderHint: 'Deve usare il dominio verificato nel provider email.', signature: 'La mia firma', signatureHint: 'Viene aggiunta al messaggio quando scrivi nella lingua corrente.', save: 'Salva', templates: 'Modelli email', templatesReadOnly: 'Solo titolare e amministratori possono gestire i modelli.', templateName: 'Nome del modello', createTemplate: 'Crea modello', updateTemplate: 'Aggiorna modello', edit: 'Modifica', archive: 'Archivia', settingsLoadFailed: 'Non è stato possibile leggere le impostazioni email.', settingsSaveFailed: 'Non è stato possibile salvare le impostazioni email.' },
+    emailStatus: { sent: 'Inviata', delivered: 'Consegnata', failed: 'Fallita' },
+    emailReason: { recipientRejected: 'Il server del destinatario ha rifiutato il messaggio.', providerFailed: 'Il provider email non è riuscito a consegnare il messaggio.' },
     searchPlaceholder: 'Cerca per nome, IDI, indirizzo, persona…',
     searchHint: 'La ricerca guarda nome, ragione sociale, IDI, numero IVA, dominio, persone di contatto, recapiti e titoli delle opportunità.',
     clearFilters: 'Togli i filtri',
@@ -2739,7 +2741,7 @@ export const it = {
     timeline: {
       title: 'Storico della relazione', more: 'Mostra altro',
       // §73 — il raggruppamento avviene in lettura, non nel dato.
-      email: 'Email ricevuta', interaction: 'Contatto registrato',
+      email: 'Email ricevuta', emailSent: 'Email inviata', interaction: 'Contatto registrato',
       taskCreated: 'Attività creata', taskCompleted: 'Attività completata',
       contract: 'Contratto collegato', someone: 'Qualcuno',
     },

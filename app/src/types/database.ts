@@ -177,6 +177,8 @@ export type EmailAttentionStatus =
   'needs_attention' | 'to_verify' | 'informational' | 'ignored' | 'dismissed' | 'handled';
 export type EmailRelevance = 'likely_actionable' | 'possibly_actionable' | 'informational' | 'clearly_irrelevant';
 export type EmailDocumentRelation = 'body' | 'attachment';
+export type EmailDirection = 'in' | 'out';
+export type CrmEmailDeliveryStatus = 'sent' | 'delivered' | 'failed';
 export type EmailAttachmentImportStatus =
   | 'pending' | 'imported' | 'skipped_inline' | 'skipped_unsupported' | 'skipped_too_large' | 'failed';
 
@@ -1168,11 +1170,14 @@ export interface Database {
       };
       email_messages: {
         Row: {
-          id: string; company_id: string; connection_id: string;
+          id: string; company_id: string; connection_id: string | null;
           provider_message_id: string; provider_thread_id: string | null; internet_message_id: string | null;
           subject: string | null; sender_name: string | null; sender_email: string | null;
           to_recipients: Json; cc_recipients: Json;
           received_at: string; sent_at: string | null;
+          direction: EmailDirection; delivery_status: CrmEmailDeliveryStatus | null;
+          delivery_error_safe: string | null; delivery_provider_id: string | null;
+          delivery_event_at: string | null; send_idempotency_key: string | null; sent_by: string | null;
           body_text: string | null; body_preview: string | null; body_links: Json; body_char_count: number | null;
           body_clean: string | null; quoted_removed: boolean;
           has_attachments: boolean; attachment_count: number; importance: string | null; is_bulk: boolean;

@@ -12,6 +12,13 @@ transazionale configurato per l'installazione (Resend), mai Gmail API. Se il
 provider non è configurato la funzione risponde esplicitamente **non
 disponibile**, senza tentare un invio.
 
+L'esito dell'invio torna da un secondo endpoint separato,
+`crm-email-webhook`: verifica la firma Svix/Resend sul corpo grezzo con
+`RESEND_WEBHOOK_SECRET` e applica `sent`, `delivered` o `failed`. Le
+riconsegne sono idempotenti tramite `svix-id`; l'istante del provider impedisce
+a eventi fuori ordine di regredire lo stato. Soltanto `delivered` aggiorna
+`last_contact_at`. Aperture, click e altri tracciamenti restano fuori perimetro.
+
 > **Stato al 2026-07-27.** **Attiva con Google**: le Edge Function sono
 > deployate, una casella Gmail reale è collegata e la posta viene importata,
 > classificata e analizzata. Microsoft non è configurato e l'applicazione lo
@@ -107,6 +114,8 @@ I primi tredici sono **portabili**: nessuna API Deno, testabili in Node.
 | `email-webhook/google` · `/microsoft` | Google Pub/Sub, Microsoft Graph | no — autenticati nel codice |
 | `email-disconnect` | utente amministratore | sì |
 | `email-maintenance` | scheduler | no — segreto dedicato |
+| `send-crm-email` | applicazione, gesto umano autenticato | sì |
+| `crm-email-webhook` | Resend | no — firma Svix verificata nel codice |
 
 ---
 
@@ -123,6 +132,7 @@ I primi tredici sono **portabili**: nessuna API Deno, testabili in Node.
 | `email_sync_runs` | audit tecnico della sincronizzazione | `select` solo owner/admin |
 | `email_webhook_events` | impronte per l'idempotenza | **nessuno** |
 | `email_audit_log` | chi ha collegato/scollegato | `select` solo owner/admin |
+| `crm_email_webhook_events` | `svix-id` degli esiti CRM già applicati | **nessuno** |
 
 > ⚠️ **I permessi restrittivi arrivano dalla 0014, non dalla 0013.** La 0013 concedeva
 > `grant select (colonne…)` credendo di restringere: un GRANT però *aggiunge* privilegi, e su

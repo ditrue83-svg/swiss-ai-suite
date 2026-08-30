@@ -284,3 +284,8 @@ verify_jwt = false
 # `authenticate()` nel codice devono entrambi restare accesi.
 [functions.send-crm-email]
 verify_jwt = true
+
+# Resend chiama questo endpoint senza JWT Supabase. L'autenticazione è la firma
+# HMAC Svix verificata sul corpo grezzo con RESEND_WEBHOOK_SECRET.
+[functions.crm-email-webhook]
+verify_jwt = false

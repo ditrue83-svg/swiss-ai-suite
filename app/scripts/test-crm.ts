@@ -2,7 +2,7 @@
 // AI-Swisse — CRM Light: test d'integrazione sul DATABASE REALE.
 //   npm run test:crm
 //
-// Richiede le migrazioni 0026, 0028, 0030 e 0047 applicate, e `.env.test`
+// Richiede le migrazioni 0026, 0028, 0030, 0047 e 0048 applicate, e `.env.test`
 // valorizzato.
 // ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 16 FALLISCE, perché
 // lo storico del CRM impedisce la cancellazione di un'azienda. È il difetto
@@ -39,7 +39,8 @@
 //   15. CAMPI PERSONALIZZATI — le definizioni le scrive chi amministra, i
 //       valori ogni membro; il tipo lo pretende il database, un campo
 //       archiviato è congelato, la fusione trasferisce i valori.
-//   16. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
+//   16. EMAIL CRM — esiti idempotenti e fuori ordine; solo delivered è contatto.
+//   17. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
 //
 // ⚠️ LA PULIZIA CONTROLLA IL PROPRIO ESITO, e l'ORDINE non è indifferente:
 // PRIMA l'azienda, POI l'utente. Al contrario, cancellare l'utente porta via a
@@ -1054,7 +1055,75 @@ async function main() {
   await A.client.from('crm_field_definitions').update({ archived_at: null }).eq('id', defNumId);
 
   // -------------------------------------------------------------------------
-  section('16. Cascata — cancellata l’azienda non resta niente');
+  section('16. Email CRM — esiti firmati applicati una volta e contatto solo alla consegna');
+
+  const orgDelivery = await makeOrg(A.client, A.companyId, `Consegna ${stamp} SA`);
+  const outgoing = await admin.from('email_messages').insert({
+    company_id: A.companyId, connection_id: null, provider_message_id: `crm:${stamp}`,
+    provider_thread_id: `crm:${stamp}`, subject: 'Offerta', sender_name: 'AI-Swisse',
+    sender_email: 'crm@example.ch', to_recipients: [{ email: `cliente-${stamp}@example.ch` }],
+    received_at: '2026-08-30T10:00:00.000Z', sent_at: '2026-08-30T10:00:00.000Z',
+    body_text: 'contenuto che non deve entrare negli eventi', body_preview: 'contenuto',
+    direction: 'out', delivery_status: 'sent', delivery_provider_id: `resend-${stamp}`,
+    send_idempotency_key: crypto.randomUUID(), sent_by: A.userId,
+  }).select('id').single();
+  const outgoingId = (outgoing.data as { id?: string } | null)?.id ?? NIL;
+  check('il service role registra una uscente senza connessione OAuth', !outgoing.error, msg(outgoing.error));
+  const orgEmail = await admin.from('crm_organization_emails').insert({
+    company_id: A.companyId, organization_id: orgDelivery,
+    email_message_id: outgoingId, match_reason: 'manual', linked_by: A.userId,
+  });
+  check('l’email uscente si collega alla scheda senza copiare il contenuto', !orgEmail.error, msg(orgEmail.error));
+
+  const browserStatus = await A.client.from('email_messages')
+    .update({ delivery_status: 'delivered' } as never).eq('id', outgoingId);
+  check('il browser non può falsificare lo stato di consegna', Boolean(browserStatus.error), msg(browserStatus.error));
+  const browserRpc = await A.client.rpc('crm_apply_email_delivery_event' as never, {
+    p_event_id: `browser-${stamp}`, p_provider_email_id: `resend-${stamp}`,
+    p_event_type: 'email.delivered', p_occurred_at: '2026-08-30T10:02:00.000Z', p_error_safe: null,
+  } as never);
+  check('il browser non può chiamare la funzione che applica il webhook', Boolean(browserRpc.error), msg(browserRpc.error));
+
+  const sentEvent = await admin.rpc('crm_apply_email_delivery_event', {
+    p_event_id: `sent-${stamp}`, p_provider_email_id: `resend-${stamp}`,
+    p_event_type: 'email.sent', p_occurred_at: '2026-08-30T10:01:00.000Z', p_error_safe: null,
+  });
+  const { data: beforeDelivery } = await admin.from('crm_organizations')
+    .select('last_contact_at').eq('id', orgDelivery).single();
+  check('accettata dal provider non è ancora un contatto', !sentEvent.error
+    && (beforeDelivery as { last_contact_at: string | null } | null)?.last_contact_at === null, msg(sentEvent.error));
+
+  const deliveredEvent = await admin.rpc('crm_apply_email_delivery_event', {
+    p_event_id: `delivered-${stamp}`, p_provider_email_id: `resend-${stamp}`,
+    p_event_type: 'email.delivered', p_occurred_at: '2026-08-30T10:02:00.000Z', p_error_safe: null,
+  });
+  const duplicateEvent = await admin.rpc('crm_apply_email_delivery_event', {
+    p_event_id: `delivered-${stamp}`, p_provider_email_id: `resend-${stamp}`,
+    p_event_type: 'email.delivered', p_occurred_at: '2026-08-30T10:02:00.000Z', p_error_safe: null,
+  });
+  const { data: afterDelivery } = await admin.from('crm_organizations')
+    .select('last_contact_at').eq('id', orgDelivery).single();
+  check('la consegna riuscita aggiorna l’ultimo contatto', !deliveredEvent.error
+    && Boolean((afterDelivery as { last_contact_at: string | null } | null)?.last_contact_at), msg(deliveredEvent.error));
+  check('lo stesso svix-id viene applicato una volta sola', duplicateEvent.data === false, msg(duplicateEvent.error));
+
+  await admin.rpc('crm_apply_email_delivery_event', {
+    p_event_id: `old-failure-${stamp}`, p_provider_email_id: `resend-${stamp}`,
+    p_event_type: 'email.bounced', p_occurred_at: '2026-08-30T10:01:30.000Z',
+    p_error_safe: 'Il server del destinatario ha rifiutato il messaggio.',
+  });
+  const { data: afterOldEvent } = await admin.from('email_messages')
+    .select('delivery_status').eq('id', outgoingId).single();
+  check('un evento più vecchio arrivato dopo non regredisce la consegna',
+    (afterOldEvent as { delivery_status: string } | null)?.delivery_status === 'delivered');
+
+  const { data: contentEvents } = await admin.from('crm_events')
+    .select('detail').eq('organization_id', orgDelivery);
+  check('il corpo inviato non entra in crm_events',
+    !JSON.stringify(contentEvents ?? []).includes('contenuto che non deve entrare'));
+
+  // -------------------------------------------------------------------------
+  section('17. Cascata — cancellata l’azienda non resta niente');
 
   const tables: Array<[string, string]> = [
     ['crm_organizations', 'company_id'],
@@ -1072,6 +1141,12 @@ async function main() {
     ['crm_link_suggestions', 'company_id'],
     ['crm_field_definitions', 'company_id'],
     ['crm_field_values', 'company_id'],
+    ['crm_opportunity_emails', 'company_id'],
+    ['crm_outgoing_email_recipients', 'company_id'],
+    ['crm_outgoing_email_attachments', 'company_id'],
+    ['crm_email_templates', 'company_id'],
+    ['crm_email_template_translations', 'company_id'],
+    ['crm_user_email_signatures', 'company_id'],
   ];
 
   await cleanup();

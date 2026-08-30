@@ -27186,6 +27186,7 @@ alter table public.email_messages
   add column if not exists delivery_status public.crm_email_delivery_status,
   add column if not exists delivery_error_safe text,
   add column if not exists delivery_provider_id text,
+  add column if not exists delivery_event_at timestamptz,
   add column if not exists send_idempotency_key uuid,
   add column if not exists sent_by uuid references auth.users(id) on delete set null;
 
@@ -27203,11 +27204,88 @@ create unique index if not exists uq_email_messages_outgoing_idempotency
 create index if not exists idx_email_messages_outgoing_delivery
   on public.email_messages (company_id, delivery_status, sent_at desc, id desc)
   where direction = 'out';
+create unique index if not exists uq_email_messages_outgoing_provider_id
+  on public.email_messages (delivery_provider_id)
+  where direction = 'out' and delivery_provider_id is not null;
 
 comment on column public.email_messages.direction is
   'in = importata dalla casella OAuth readonly; out = inviata dal CRM via provider transazionale, mai Gmail API.';
 comment on column public.email_messages.delivery_status is
   'Solo email CRM uscenti: sent (accettata dal provider), delivered (webhook provider), failed. last_contact_at usa solo delivered.';
+comment on column public.email_messages.delivery_event_at is
+  'Istante dichiarato dal provider per l’ultimo evento di consegna applicato; impedisce a webhook fuori ordine di regredire lo stato.';
+
+-- Resend consegna i webhook almeno una volta, non esattamente una volta. Il
+-- relativo svix-id viene conservato separatamente dal messaggio: un retry deve
+-- ricevere 200 senza applicare una seconda transizione o un secondo contatto.
+create table if not exists public.crm_email_webhook_events (
+  event_id text primary key,
+  event_type text not null,
+  provider_email_id text not null,
+  occurred_at timestamptz not null,
+  received_at timestamptz not null default now()
+);
+
+alter table public.crm_email_webhook_events enable row level security;
+revoke all on public.crm_email_webhook_events from anon, authenticated, public;
+
+-- Un solo punto atomico applica idempotenza, ordinamento e transizione. Il
+-- browser non può chiamarlo: è riservato al service role della Edge Function.
+create or replace function public.crm_apply_email_delivery_event(
+  p_event_id text,
+  p_provider_email_id text,
+  p_event_type text,
+  p_occurred_at timestamptz,
+  p_error_safe text default null
+) returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_inserted integer;
+  v_status public.crm_email_delivery_status;
+begin
+  if p_event_id is null or btrim(p_event_id) = ''
+     or p_provider_email_id is null or btrim(p_provider_email_id) = ''
+     or p_occurred_at is null then
+    raise exception 'crm_email_webhook_invalid_event' using errcode = '22023';
+  end if;
+
+  insert into public.crm_email_webhook_events(event_id, event_type, provider_email_id, occurred_at)
+  values (p_event_id, p_event_type, p_provider_email_id, p_occurred_at)
+  on conflict (event_id) do nothing;
+  get diagnostics v_inserted = row_count;
+  if v_inserted = 0 then return false; end if;
+
+  v_status := case p_event_type
+    when 'email.sent' then 'sent'::public.crm_email_delivery_status
+    when 'email.delivered' then 'delivered'::public.crm_email_delivery_status
+    when 'email.failed' then 'failed'::public.crm_email_delivery_status
+    when 'email.bounced' then 'failed'::public.crm_email_delivery_status
+    else null
+  end;
+
+  if v_status is not null then
+    update public.email_messages
+       set delivery_status = v_status,
+           delivery_error_safe = case when v_status = 'failed' then p_error_safe else null end,
+           delivery_event_at = p_occurred_at
+     where direction = 'out'
+       and delivery_provider_id = p_provider_email_id
+       and (
+         delivery_event_at is null or delivery_event_at < p_occurred_at
+         or (delivery_event_at = p_occurred_at and
+           case v_status when 'failed' then 3 when 'delivered' then 2 else 1 end
+           > case delivery_status when 'failed' then 3 when 'delivered' then 2 else 1 end)
+       );
+  end if;
+
+  return true;
+end $$;
+
+revoke all on function public.crm_apply_email_delivery_event(text, text, text, timestamptz, text) from public, anon, authenticated;
+grant execute on function public.crm_apply_email_delivery_event(text, text, text, timestamptz, text) to service_role;
 
 -- Una trattativa ha il suo collegamento, distinto dai documenti: una email non
 -- e' un documento e non va forzata nel ponte crm_opportunity_documents.
