@@ -49,10 +49,10 @@ Deno.serve(async (req: Request) => {
   // La lettura passa dalla RLS dell'utente: anche il service role non deve
   // trasformare un id che il browser non puo' vedere in un destinatario.
   const sbUser = userClient(auth.authHeader) as any;
-  const { data: method, error: methodError } = await sbUser.from('crm_contact_methods')
+  const { data: method, error } = await sbUser.from('crm_contact_methods')
     .select('id, company_id, type, value, contact_id, organization_id')
     .eq('id', recipientMethodId).eq('company_id', companyId).eq('type', 'email').maybeSingle();
-  if (methodError) return failure('BAD_REQUEST', 400);
+  if (error) return failure('RECIPIENT_LOOKUP_FAILED', 500);
   if (!method) return failure('RECIPIENT_NOT_REGISTERED', 422);
 
   const sb = adminClient() as any;
@@ -86,19 +86,27 @@ Deno.serve(async (req: Request) => {
   if (text(body?.contactId, 64)) links.push({ table: 'crm_contact_emails', values: { company_id: companyId, contact_id: body!.contactId, email_message_id: messageId, match_reason: 'manual', confirmed_by: auth.userId } });
   if (text(body?.opportunityId, 64)) links.push({ table: 'crm_opportunity_emails', values: { company_id: companyId, opportunity_id: body!.opportunityId, email_message_id: messageId } });
   for (const link of links) {
-    const { error } = await sb.from(link.table).insert(link.values);
-    if (error) { await sb.from('email_messages').delete().eq('id', messageId); return failure('LINK_MISMATCH', 422); }
+    const { error: linkError } = await sb.from(link.table).insert(link.values);
+    if (linkError) {
+      const { error: cleanupError } = await sb.from('email_messages').delete().eq('id', messageId);
+      if (cleanupError) return failure('STORE_FAILED', 500);
+      return failure('LINK_MISMATCH', 422);
+    }
   }
 
   try {
     const result = await provider.send({ to: method.value, subject, text: bodyText, idempotencyKey });
-    await sb.from('email_messages').update({ delivery_status: 'sent', delivery_provider_id: result.providerMessageId }).eq('id', messageId);
+    const { error: recordedError } = await sb.from('email_messages')
+      .update({ delivery_status: 'sent', delivery_provider_id: result.providerMessageId }).eq('id', messageId);
+    if (recordedError) return failure('STORE_FAILED', 500);
     return json({ available: true, emailId: messageId, status: 'sent', providerMessageId: result.providerMessageId });
   } catch (error) {
     // Il motivo e' volutamente umano: nessuna risposta/chiave/provider payload
     // entra nella timeline o nel browser come dettaglio tecnico.
     const reason = 'Il servizio di invio non ha accettato il messaggio.';
-    await sb.from('email_messages').update({ delivery_status: 'failed', delivery_error_safe: reason }).eq('id', messageId);
+    const { error: recordedError } = await sb.from('email_messages')
+      .update({ delivery_status: 'failed', delivery_error_safe: reason }).eq('id', messageId);
+    if (recordedError) return failure('STORE_FAILED', 500);
     return json({ available: true, emailId: messageId, status: 'failed', reason }, 502);
   }
 });
