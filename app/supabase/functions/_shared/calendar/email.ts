@@ -46,6 +46,8 @@ export interface EmailMessage {
    * due canali della stessa notifica sono due invii diversi.
    */
   idempotencyKey: string;
+  /** Allegati scelti esplicitamente nei Documenti; il browser non passa mai byte o percorsi Storage. */
+  attachments?: Array<{ filename: string; content: string; contentType: string }>;
 }
 
 export interface EmailSendResult {
@@ -99,6 +101,7 @@ export function createResendProvider(config: EmailProviderConfig): NotificationE
             to: [message.to],
             subject: message.subject,
             text: message.text,
+            ...(message.attachments?.length ? { attachments: message.attachments } : {}),
           }),
           fetchImpl: config.fetchImpl,
           // Due tentativi qui dentro; il terzo e il quarto li fa il worker con

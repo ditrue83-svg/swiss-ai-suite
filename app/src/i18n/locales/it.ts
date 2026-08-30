@@ -122,6 +122,7 @@ export const it = {
     preferences: 'Preferenze',
     company: 'Azienda',
     crmFields: 'Campi personalizzati',
+    crmEmail: 'Email CRM',
     auditLog: 'Registro attività',
     // Dentro l'app non si vende, si gestisce: «Piani e prezzi» è il nome
     // della vetrina, non di una pagina di lavoro.
@@ -2662,7 +2663,7 @@ export const it = {
     addPerson: 'Aggiungi contatto',
     addOpportunity: 'Nuova opportunità',
     addInteraction: 'Registra contatto',
-    email: { compose: 'Scrivi email', to: 'Destinatario', noRecipient: 'Nessun recapito email registrato', subject: 'Oggetto', body: 'Messaggio', send: 'Invia email', sendFailed: 'L’email non è stata inviata.' },
+    email: { compose: 'Scrivi email', to: 'Destinatario', noRecipient: 'Nessun recapito email registrato', template: 'Modello', noTemplate: 'Nessun modello', subject: 'Oggetto', body: 'Messaggio', attachments: 'Allegati dai Documenti', attachmentsHint: 'Scegli fino a cinque documenti già collegati a questa scheda.', send: 'Invia email', sendFailed: 'L’email non è stata inviata.', unavailable: 'L’invio email non è configurato per questa azienda.', settingsHint: 'I modelli appartengono all’azienda; la firma appartiene a chi invia.', senderName: 'Nome del mittente', senderAddress: 'Indirizzo mittente', senderHint: 'Deve usare il dominio verificato nel provider email.', signature: 'La mia firma', signatureHint: 'Viene aggiunta al messaggio quando scrivi nella lingua corrente.', save: 'Salva', templates: 'Modelli email', templatesReadOnly: 'Solo titolare e amministratori possono gestire i modelli.', templateName: 'Nome del modello', createTemplate: 'Crea modello', updateTemplate: 'Aggiorna modello', edit: 'Modifica', archive: 'Archivia', settingsLoadFailed: 'Non è stato possibile leggere le impostazioni email.', settingsSaveFailed: 'Non è stato possibile salvare le impostazioni email.' },
     searchPlaceholder: 'Cerca per nome, IDI, indirizzo, persona…',
     searchHint: 'La ricerca guarda nome, ragione sociale, IDI, numero IVA, dominio, persone di contatto, recapiti e titoli delle opportunità.',
     clearFilters: 'Togli i filtri',

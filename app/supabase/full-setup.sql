@@ -27276,6 +27276,16 @@ create table if not exists public.crm_user_email_signatures (
   constraint uq_crm_user_email_signature unique(company_id, user_id, locale)
 );
 
+-- Il mittente è scelto per azienda, ma il dominio è verificato dal provider e
+-- dichiarato nel secret del runtime. Una riga non basta a far partire un invio.
+create table if not exists public.crm_email_senders (
+  company_id uuid primary key references public.companies(id) on delete cascade,
+  display_name text not null check (btrim(display_name) <> ''),
+  from_address text not null check (position('@' in from_address) > 1),
+  updated_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
 -- Ogni ponte dichiara i tre tenant coinvolti: la RLS protegge il browser, il
 -- guardiano protegge anche l'Edge Function e il service role da un id errato.
 create or replace function public.crm_guard_outgoing_email_link()
@@ -27346,6 +27356,7 @@ alter table public.crm_outgoing_email_attachments enable row level security;
 alter table public.crm_email_templates enable row level security;
 alter table public.crm_email_template_translations enable row level security;
 alter table public.crm_user_email_signatures enable row level security;
+alter table public.crm_email_senders enable row level security;
 
 drop policy if exists crm_opp_emails_select on public.crm_opportunity_emails;
 create policy crm_opp_emails_select on public.crm_opportunity_emails for select using (public.is_company_member(company_id));
@@ -27363,13 +27374,18 @@ drop policy if exists crm_email_signatures_write on public.crm_user_email_signat
 create policy crm_email_signatures_write on public.crm_user_email_signatures for all using (user_id = auth.uid() and public.is_company_member(company_id)) with check (user_id = auth.uid() and public.is_company_member(company_id));
 drop policy if exists crm_email_templates_admin on public.crm_email_templates;
 create policy crm_email_templates_admin on public.crm_email_templates for all using (public.is_company_admin(company_id)) with check (public.is_company_admin(company_id));
+drop policy if exists crm_email_senders_select on public.crm_email_senders;
+create policy crm_email_senders_select on public.crm_email_senders for select using (public.is_company_member(company_id));
+drop policy if exists crm_email_senders_admin on public.crm_email_senders;
+create policy crm_email_senders_admin on public.crm_email_senders for all using (public.is_company_admin(company_id)) with check (public.is_company_admin(company_id));
 drop policy if exists crm_email_template_translations_admin on public.crm_email_template_translations;
 create policy crm_email_template_translations_admin on public.crm_email_template_translations for all using (public.is_company_admin(company_id)) with check (public.is_company_admin(company_id));
 
-revoke all on public.crm_opportunity_emails, public.crm_outgoing_email_recipients, public.crm_outgoing_email_attachments, public.crm_email_templates, public.crm_email_template_translations, public.crm_user_email_signatures from anon, authenticated, public;
-grant select on public.crm_opportunity_emails, public.crm_outgoing_email_recipients, public.crm_outgoing_email_attachments, public.crm_email_templates, public.crm_email_template_translations, public.crm_user_email_signatures to authenticated;
+revoke all on public.crm_opportunity_emails, public.crm_outgoing_email_recipients, public.crm_outgoing_email_attachments, public.crm_email_templates, public.crm_email_template_translations, public.crm_user_email_signatures, public.crm_email_senders from anon, authenticated, public;
+grant select on public.crm_opportunity_emails, public.crm_outgoing_email_recipients, public.crm_outgoing_email_attachments, public.crm_email_templates, public.crm_email_template_translations, public.crm_user_email_signatures, public.crm_email_senders to authenticated;
 grant insert, update on public.crm_user_email_signatures to authenticated;
 grant insert, update on public.crm_email_templates, public.crm_email_template_translations to authenticated;
+grant insert, update on public.crm_email_senders to authenticated;
 
 -- Il client non puo' creare un'uscente o manipolarne l'esito: passa sempre per
 -- send-crm-email, che autorizza l'utente e possiede la chiave del provider.
