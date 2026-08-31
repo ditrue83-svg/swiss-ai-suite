@@ -390,6 +390,7 @@ const GROUPS = {
       { script: 'test:contracts-unit' },
       { script: 'test:crm-unit' },
       { script: 'test:crm-email-unit' },
+      { script: 'test:crm-quotes-unit' },
       { script: 'test:assistant-unit' },
       { script: 'test:subsidy-unit' },
       { script: 'test:audit-unit' },
