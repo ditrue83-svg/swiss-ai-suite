@@ -144,6 +144,13 @@ ok(migration.includes('crm_quote_cross_tenant') && migration.includes('crm_quote
   && migration.includes('crm_quote_item_cross_tenant'), 'le guardie ricontrollano i legami cross-tenant');
 ok(migration.includes('crm_quote_version_immutable') && migration.includes('crm_quote_item_version_immutable'),
   'una versione inviata e le sue voci sono immutabili');
+ok(migration.includes('before insert or update on public.crm_quote_items')
+  && !migration.includes('before insert or update or delete on public.crm_quote_items'),
+  'l’immutabilità non impedisce la cancellazione a cascata dell’azienda');
+ok(migration.includes('from public.crm_quote_versions qv')
+  && migration.includes('into v_version')
+  && !migration.includes('select v.quote_id, v.opportunity_id, v.organization_id, v.status'),
+  'la registrazione PDF non confonde la variabile PL/pgSQL con l’alias della tabella');
 ok(migration.includes("status <> 'draft'") && migration.includes('crm_new_quote_version'),
   'la modifica successiva passa da una nuova versione in bozza');
 ok(migration.includes('crm_mark_attached_quotes_sent') && migration.includes("delivery_status = 'sent'"),

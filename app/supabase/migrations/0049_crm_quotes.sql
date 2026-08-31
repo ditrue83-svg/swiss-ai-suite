@@ -370,7 +370,7 @@ declare
   v_version record;
 begin
   select v.company_id, v.quote_id, v.status into v_version
-    from public.crm_quote_versions v where v.id = coalesce(new.quote_version_id, old.quote_version_id);
+    from public.crm_quote_versions v where v.id = new.quote_version_id;
   if v_version.company_id is null or v_version.status <> 'draft' then
     raise exception 'crm_quote_item_version_immutable' using errcode = '42501';
   end if;
@@ -380,12 +380,14 @@ begin
   ) then
     raise exception 'crm_quote_item_cross_tenant' using errcode = '23514';
   end if;
-  return coalesce(new, old);
+  return new;
 end $$;
 
 drop trigger if exists trg_crm_quote_items_guard on public.crm_quote_items;
 create trigger trg_crm_quote_items_guard
-  before insert or update or delete on public.crm_quote_items
+  -- DELETE resta protetta dai privilegi (authenticated ha solo SELECT) e deve
+  -- poter avvenire per cascata quando si elimina l'azienda o il preventivo.
+  before insert or update on public.crm_quote_items
   for each row execute function public.crm_quote_items_guard();
 
 create or replace function public.crm_quote_documents_guard()
@@ -721,21 +723,21 @@ security definer
 set search_path = ''
 as $$
 declare
-  v record;
+  v_version record;
 begin
-  select v.quote_id, v.opportunity_id, v.organization_id, v.status,
+  select qv.quote_id, qv.opportunity_id, qv.organization_id, qv.status,
          d.company_id as document_company, d.source_type::text as source_type
-    into v
-    from public.crm_quote_versions v
+    into v_version
+    from public.crm_quote_versions qv
     join public.documents d on d.id = p_document_id
-   where v.id = p_quote_version_id and v.company_id = p_company_id;
-  if v.quote_id is null or v.document_company is distinct from p_company_id
-     or v.source_type <> 'generated' or v.status <> 'draft' then
+   where qv.id = p_quote_version_id and qv.company_id = p_company_id;
+  if v_version.quote_id is null or v_version.document_company is distinct from p_company_id
+     or v_version.source_type <> 'generated' or v_version.status <> 'draft' then
     raise exception 'crm_quote_document_cross_tenant' using errcode = '23514';
   end if;
   insert into public.crm_quote_documents (
     company_id, quote_id, quote_version_id, document_id
-  ) values (p_company_id, v.quote_id, p_quote_version_id, p_document_id)
+  ) values (p_company_id, v_version.quote_id, p_quote_version_id, p_document_id)
   on conflict (quote_version_id) do nothing;
   if not exists (
     select 1 from public.crm_quote_documents qd
@@ -745,11 +747,11 @@ begin
   end if;
   insert into public.crm_organization_documents (
     company_id, organization_id, document_id, relation, match_reason
-  ) values (p_company_id, v.organization_id, p_document_id, 'customer', 'manual')
+  ) values (p_company_id, v_version.organization_id, p_document_id, 'customer', 'manual')
   on conflict (organization_id, document_id) do nothing;
   insert into public.crm_opportunity_documents (
     company_id, opportunity_id, document_id
-  ) values (p_company_id, v.opportunity_id, p_document_id)
+  ) values (p_company_id, v_version.opportunity_id, p_document_id)
   on conflict (opportunity_id, document_id) do nothing;
   perform set_config('ai_swisse.quote_write', 'pdf', true);
   update public.crm_quote_versions set document_id = p_document_id, pdf_generated_at = now()
