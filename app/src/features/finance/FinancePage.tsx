@@ -68,6 +68,7 @@ const SOURCE_KEY: Record<DocumentSourceType, TKey> = {
   upload: 'documents.sources.upload',
   email: 'documents.sources.email',
   pasted_text: 'documents.sources.pasted_text',
+  generated: 'documents.sources.generated',
 };
 
 /** Il nome della sezione nell'indirizzo. Vedi `writeParams` per il perché. */

@@ -2,7 +2,7 @@
 // AI-Swisse — CRM Light: test d'integrazione sul DATABASE REALE.
 //   npm run test:crm
 //
-// Richiede le migrazioni 0026, 0028, 0030, 0047 e 0048 applicate, e `.env.test`
+// Richiede le migrazioni 0026, 0028, 0030, 0047, 0048 e 0049 applicate, e `.env.test`
 // valorizzato.
 // ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 16 FALLISCE, perché
 // lo storico del CRM impedisce la cancellazione di un'azienda. È il difetto
@@ -40,7 +40,8 @@
 //       valori ogni membro; il tipo lo pretende il database, un campo
 //       archiviato è congelato, la fusione trasferisce i valori.
 //   16. EMAIL CRM — esiti idempotenti e fuori ordine; solo delivered è contatto.
-//   17. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
+//   17. PREVENTIVI — decimali, sequenze, RLS, invio e versioni immutabili.
+//   18. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
 //
 // ⚠️ LA PULIZIA CONTROLLA IL PROPRIO ESITO, e l'ORDINE non è indifferente:
 // PRIMA l'azienda, POI l'utente. Al contrario, cancellare l'utente porta via a
@@ -1123,7 +1124,190 @@ async function main() {
     !JSON.stringify(contentEvents ?? []).includes('contenuto che non deve entrare'));
 
   // -------------------------------------------------------------------------
-  section('17. Cascata — cancellata l’azienda non resta niente');
+  section('17. Preventivi — decimali, sequenze, RLS, invio e versioni immutabili (0049)');
+
+  const validUntil = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  const { data: rates, error: ratesError } = await admin.from('finance_vat_rates')
+    .select('id, kind, rate').eq('country_code', 'CH').is('valid_to', null);
+  const rateRows = (rates ?? []) as Array<{ id: string; kind: string; rate: string | number }>;
+  const standardRate = rateRows.find((rate) => rate.kind === 'standard');
+  const reducedRate = rateRows.find((rate) => rate.kind === 'reduced');
+  check('le aliquote svizzere con fonte sono disponibili come dati', !ratesError
+    && Number(standardRate?.rate) === 8.1 && Number(reducedRate?.rate) === 2.6, msg(ratesError));
+
+  const quoteItems = [
+    { description: 'Consulenza', quantity: '2.000', unitPrice: '100.00', vatRateId: standardRate?.id },
+    { description: 'Materiale', quantity: '1.000', unitPrice: '50.00', vatRateId: reducedRate?.id },
+  ];
+  const savedA = await A.client.rpc('crm_save_quote_draft', {
+    p_company_id: A.companyId, p_opportunity_id: oppAId, p_quote_id: null,
+    p_language: 'it', p_valid_until: validUntil, p_currency: 'CHF',
+    p_title: 'Preventivo impianto', p_introduction: 'Introduzione', p_notes: 'Note',
+    p_items: quoteItems,
+  });
+  const quoteVersionA = savedA.data as string | null;
+  check('un membro crea una bozza collegata alla trattativa', !savedA.error && Boolean(quoteVersionA), msg(savedA.error));
+
+  const { data: versionA } = await admin.from('crm_quote_versions')
+    .select('id, quote_id, currency, subtotal_amount, vat_amount, total_amount, status')
+    .eq('id', quoteVersionA ?? NIL).single();
+  const quoteIdA = (versionA as { quote_id?: string } | null)?.quote_id ?? NIL;
+  const { data: rootA } = await admin.from('crm_quotes')
+    .select('quote_number, sequence_number').eq('id', quoteIdA).single();
+  check('il primo numero dell’azienda è P-000001',
+    (rootA as { quote_number?: string } | null)?.quote_number === 'P-000001'
+    && Number((rootA as { sequence_number?: number } | null)?.sequence_number) === 1,
+    JSON.stringify(rootA));
+  check('PostgreSQL calcola CHF 250.00 + IVA 17.50 = CHF 267.50',
+    Number((versionA as { subtotal_amount?: number } | null)?.subtotal_amount) === 250
+    && Number((versionA as { vat_amount?: number } | null)?.vat_amount) === 17.5
+    && Number((versionA as { total_amount?: number } | null)?.total_amount) === 267.5
+    && (versionA as { currency?: string } | null)?.currency === 'CHF', JSON.stringify(versionA));
+
+  const directWrite = await A.client.from('crm_quote_versions')
+    .update({ title: 'Tentativo diretto' } as never).eq('id', quoteVersionA ?? NIL);
+  check('il browser non scrive direttamente le tabelle preventivi', Boolean(directWrite.error), msg(directWrite.error));
+  const { data: quoteLeak } = await Bt.client.from('crm_quote_versions')
+    .select('id').eq('id', quoteVersionA ?? NIL);
+  check('B non vede la versione di A', ((quoteLeak ?? []) as unknown[]).length === 0);
+
+  const crossRoot = await admin.from('crm_quotes').insert({
+    company_id: A.companyId, opportunity_id: NIL, organization_id: orgB,
+    sequence_number: 999, quote_number: 'P-000999',
+  });
+  check('nemmeno il service role può creare un preventivo cross-tenant', Boolean(crossRoot.error), msg(crossRoot.error));
+
+  const invalidVat = await A.client.rpc('crm_save_quote_draft', {
+    p_company_id: A.companyId, p_opportunity_id: oppAId, p_quote_id: null,
+    p_language: 'it', p_valid_until: validUntil, p_currency: 'CHF', p_title: 'IVA non valida',
+    p_introduction: null, p_notes: null,
+    p_items: [{ description: 'Voce', quantity: '1', unitPrice: '1', vatRateId: NIL }],
+  });
+  check('una aliquota non presente nel catalogo verificato viene rifiutata', Boolean(invalidVat.error), msg(invalidVat.error));
+
+  const secondA = await A.client.rpc('crm_save_quote_draft', {
+    p_company_id: A.companyId, p_opportunity_id: oppAId, p_quote_id: null,
+    p_language: 'de', p_valid_until: validUntil, p_currency: 'EUR', p_title: 'Zweite Offerte',
+    p_introduction: null, p_notes: null, p_items: [quoteItems[0]],
+  });
+  const { data: secondRoot } = await admin.from('crm_quote_versions')
+    .select('crm_quotes(quote_number, sequence_number)').eq('id', (secondA.data as string | null) ?? NIL).single();
+  const secondRootValue = (secondRoot as { crm_quotes?: { quote_number?: string; sequence_number?: number } | Array<{ quote_number?: string; sequence_number?: number }> } | null)?.crm_quotes;
+  const secondRootRow = Array.isArray(secondRootValue) ? secondRootValue[0] : secondRootValue;
+  check('la sequenza di A prosegue senza dipendere dalla valuta', !secondA.error
+    && secondRootRow?.quote_number === 'P-000002' && Number(secondRootRow.sequence_number) === 2,
+    msg(secondA.error) || JSON.stringify(secondRoot));
+
+  const oppB = await Bt.client.from('crm_opportunities').insert({
+    company_id: Bt.companyId, organization_id: orgB, title: 'Trattativa B', stage: 'proposal',
+  }).select('id').single();
+  const quoteB = await Bt.client.rpc('crm_save_quote_draft', {
+    p_company_id: Bt.companyId,
+    p_opportunity_id: (oppB.data as { id?: string } | null)?.id ?? NIL,
+    p_quote_id: null, p_language: 'fr', p_valid_until: validUntil, p_currency: 'CHF',
+    p_title: 'Devis B', p_introduction: null, p_notes: null, p_items: [quoteItems[0]],
+  });
+  const { data: rootB } = await admin.from('crm_quote_versions')
+    .select('crm_quotes(quote_number)').eq('id', (quoteB.data as string | null) ?? NIL).single();
+  const rootBValue = (rootB as { crm_quotes?: { quote_number?: string } | Array<{ quote_number?: string }> } | null)?.crm_quotes;
+  const rootBRow = Array.isArray(rootBValue) ? rootBValue[0] : rootBValue;
+  check('la numerazione riparte da P-000001 nell’azienda B', !oppB.error && !quoteB.error
+    && rootBRow?.quote_number === 'P-000001', msg(oppB.error) || msg(quoteB.error) || JSON.stringify(rootB));
+
+  const generatedDocument = await admin.from('documents').insert({
+    company_id: A.companyId, uploaded_by: A.userId, title: 'Preventivo P-000001 · v1',
+    original_filename: 'P-000001-v1.pdf', mime_type: 'application/pdf', file_size: 5000,
+    storage_path: `${A.companyId}/${crypto.randomUUID()}/P-000001-v1.pdf`,
+    source_type: 'generated', status: 'uploaded',
+  }).select('id').single();
+  const generatedDocumentId = (generatedDocument.data as { id?: string } | null)?.id ?? NIL;
+  const registered = await admin.rpc('crm_register_quote_pdf', {
+    p_company_id: A.companyId, p_quote_version_id: quoteVersionA ?? NIL,
+    p_document_id: generatedDocumentId,
+  });
+  check('il PDF generato entra nei Documenti con provenienza e legami CRM',
+    !generatedDocument.error && !registered.error, msg(generatedDocument.error) || msg(registered.error));
+
+  const quoteEmail = await admin.from('email_messages').insert({
+    company_id: A.companyId, connection_id: null, provider_message_id: `crm:quote-${stamp}`,
+    provider_thread_id: `crm:quote-${stamp}`, subject: 'Preventivo P-000001',
+    sender_name: 'Ai-Swisse', sender_email: 'crm@example.ch',
+    to_recipients: [{ email: `preventivo-${stamp}@example.ch` }],
+    received_at: new Date().toISOString(), sent_at: new Date().toISOString(), body_text: 'In allegato.',
+    body_preview: 'In allegato.', direction: 'out', delivery_status: null,
+    send_idempotency_key: crypto.randomUUID(), sent_by: A.userId,
+  }).select('id').single();
+  const quoteEmailId = (quoteEmail.data as { id?: string } | null)?.id ?? NIL;
+  const quoteAttachment = await admin.from('crm_outgoing_email_attachments').insert({
+    company_id: A.companyId, email_message_id: quoteEmailId, document_id: generatedDocumentId,
+  });
+  const prematureSend = await admin.rpc('crm_mark_attached_quotes_sent', {
+    p_company_id: A.companyId, p_email_message_id: quoteEmailId,
+  });
+  const { data: stillDraft } = await admin.from('crm_quote_versions')
+    .select('status').eq('id', quoteVersionA ?? NIL).single();
+  check('un tentativo senza risposta del provider non marca il preventivo inviato',
+    !quoteEmail.error && !quoteAttachment.error && Boolean(prematureSend.error)
+    && (stillDraft as { status?: string } | null)?.status === 'draft',
+    msg(quoteEmail.error) || msg(quoteAttachment.error) || msg(prematureSend.error));
+
+  const providerAccepted = await admin.from('email_messages')
+    .update({ delivery_status: 'sent', delivery_provider_id: `resend-quote-${stamp}` })
+    .eq('id', quoteEmailId);
+  const markedSent = await admin.rpc('crm_mark_attached_quotes_sent', {
+    p_company_id: A.companyId, p_email_message_id: quoteEmailId,
+  });
+  const { data: sentVersion } = await admin.from('crm_quote_versions')
+    .select('status, sent_at, sent_email_id').eq('id', quoteVersionA ?? NIL).single();
+  check('solo la risposta positiva del provider porta il preventivo a inviato',
+    !providerAccepted.error && !markedSent.error && markedSent.data === 1
+    && (sentVersion as { status?: string } | null)?.status === 'sent'
+    && (sentVersion as { sent_email_id?: string } | null)?.sent_email_id === quoteEmailId,
+    msg(providerAccepted.error) || msg(markedSent.error) || JSON.stringify(sentVersion));
+
+  const mutateSent = await admin.from('crm_quote_versions')
+    .update({ title: 'Non deve cambiare' }).eq('id', quoteVersionA ?? NIL);
+  const { data: firstItem } = await admin.from('crm_quote_items')
+    .select('id').eq('quote_version_id', quoteVersionA ?? NIL).limit(1).single();
+  const mutateSentItem = await admin.from('crm_quote_items')
+    .update({ description: 'Non deve cambiare' }).eq('id', (firstItem as { id?: string } | null)?.id ?? NIL);
+  check('dopo l’invio né la versione né le voci si sovrascrivono',
+    Boolean(mutateSent.error) && Boolean(mutateSentItem.error),
+    `${msg(mutateSent.error)} · ${msg(mutateSentItem.error)}`);
+
+  const overwriteSent = await A.client.rpc('crm_save_quote_draft', {
+    p_company_id: A.companyId, p_opportunity_id: oppAId, p_quote_id: quoteIdA,
+    p_language: 'it', p_valid_until: validUntil, p_currency: 'CHF', p_title: 'Riscrittura',
+    p_introduction: null, p_notes: null, p_items: quoteItems,
+  });
+  check('la RPC rifiuta la sovrascrittura di un preventivo inviato', Boolean(overwriteSent.error), msg(overwriteSent.error));
+
+  const accepted = await A.client.rpc('crm_set_quote_status', {
+    p_company_id: A.companyId, p_quote_version_id: quoteVersionA ?? NIL, p_status: 'accepted',
+  });
+  const { data: opportunityAfterAccept } = await admin.from('crm_opportunities')
+    .select('stage').eq('id', oppAId).single();
+  check('accettare il preventivo non vince automaticamente la trattativa', !accepted.error
+    && (opportunityAfterAccept as { stage?: string } | null)?.stage !== 'won', msg(accepted.error));
+  const explicitWon = await A.client.from('crm_opportunities').update({ stage: 'won' }).eq('id', oppAId);
+  check('la trattativa passa a vinta soltanto con la conferma esplicita', !explicitWon.error, msg(explicitWon.error));
+
+  const newVersion = await A.client.rpc('crm_new_quote_version', {
+    p_company_id: A.companyId, p_quote_id: quoteIdA,
+  });
+  const { data: versionsAfterCopy } = await admin.from('crm_quote_versions')
+    .select('id, version, status, based_on_version_id').eq('quote_id', quoteIdA).order('version');
+  const versionRows = (versionsAfterCopy ?? []) as Array<{ id: string; version: number; status: string; based_on_version_id: string | null }>;
+  const { count: copiedItems } = await admin.from('crm_quote_items')
+    .select('id', { count: 'exact', head: true }).eq('quote_version_id', (newVersion.data as string | null) ?? NIL);
+  check('una modifica successiva crea v2 in bozza e conserva v1 accettata', !newVersion.error
+    && versionRows.length === 2 && versionRows[0]?.status === 'accepted'
+    && versionRows[1]?.version === 2 && versionRows[1]?.status === 'draft'
+    && versionRows[1]?.based_on_version_id === quoteVersionA && copiedItems === 2,
+    msg(newVersion.error) || JSON.stringify({ versionRows, copiedItems }));
+
+  // -------------------------------------------------------------------------
+  section('18. Cascata — cancellata l’azienda non resta niente');
 
   const tables: Array<[string, string]> = [
     ['crm_organizations', 'company_id'],
@@ -1147,6 +1331,10 @@ async function main() {
     ['crm_email_templates', 'company_id'],
     ['crm_email_template_translations', 'company_id'],
     ['crm_user_email_signatures', 'company_id'],
+    ['crm_quotes', 'company_id'],
+    ['crm_quote_versions', 'company_id'],
+    ['crm_quote_items', 'company_id'],
+    ['crm_quote_documents', 'company_id'],
   ];
 
   await cleanup();

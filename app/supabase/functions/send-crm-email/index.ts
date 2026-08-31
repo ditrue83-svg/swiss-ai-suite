@@ -77,11 +77,35 @@ Deno.serve(async (req: Request) => {
   // Idempotenza PRIMA dell'invio: una doppia pressione o un timeout riusa la
   // stessa riga e la stessa chiave Resend, invece di creare una seconda email.
   const { data: existing, error: existingError } = await sb.from('email_messages')
-    .select('id, delivery_status, delivery_error_safe, delivery_provider_id')
+    .select('id, subject, body_text, to_recipients, delivery_status, delivery_error_safe, delivery_provider_id')
     .eq('company_id', companyId).eq('send_idempotency_key', idempotencyKey).maybeSingle();
   if (existingError) return failure('STORE_FAILED', 500);
-  if (existing) return json({ available: true, emailId: existing.id, status: existing.delivery_status,
-    reason: existing.delivery_error_safe, providerMessageId: existing.delivery_provider_id });
+  let pendingMessageId: string | null = null;
+  if (existing) {
+    // Un ritentativo dopo che Resend ha risposto ma prima che la funzione abbia
+    // marcato il preventivo completa la parte locale senza reinviare niente.
+    if ((existing.delivery_status === 'sent' || existing.delivery_status === 'delivered')
+        && existing.delivery_provider_id) {
+      const { error: quoteError } = await sb.rpc('crm_mark_attached_quotes_sent', {
+        p_company_id: companyId, p_email_message_id: existing.id,
+      });
+      if (quoteError) return failure('STORE_FAILED', 500);
+      return json({ available: true, emailId: existing.id, status: existing.delivery_status,
+        reason: existing.delivery_error_safe, providerMessageId: existing.delivery_provider_id });
+    }
+    if (existing.delivery_status === 'failed') {
+      return json({ available: true, emailId: existing.id, status: 'failed',
+        reason: existing.delivery_error_safe, providerMessageId: existing.delivery_provider_id });
+    }
+    const storedRecipient = Array.isArray(existing.to_recipients)
+      ? existing.to_recipients[0]?.email : null;
+    if (existing.subject !== subject || existing.body_text !== bodyText || storedRecipient !== method.value) {
+      return failure('IDEMPOTENCY_MISMATCH', 409);
+    }
+    // Una esecuzione interrotta prima/dopo la chiamata al provider riparte
+    // dalla stessa riga. Resend riceve la STESSA chiave e deduplica il retry.
+    pendingMessageId = existing.id;
+  }
 
   const { data: documents, error: documentsError } = documentIds.length
     ? await sb.from('documents').select('id, storage_path, original_filename, title, mime_type, file_size')
@@ -93,6 +117,30 @@ Deno.serve(async (req: Request) => {
       || documentRows.reduce((total, d) => total + (d.file_size ?? 0), 0) > MAX_ATTACHMENT_BYTES) {
     return failure('ATTACHMENT_NOT_AVAILABLE', 422);
   }
+  // Un PDF di preventivo modificato dopo l'ultima generazione resta nello
+  // Storage per poter essere sovrascritto, ma non puo' uscire dall'azienda.
+  // La provenienza si legge dal legame server-side, non dal nome del file.
+  if (documentIds.length) {
+    const { data: quoteDocuments, error: quoteDocumentError } = await sb
+      .from('crm_quote_documents')
+      .select('document_id, quote_version_id')
+      .eq('company_id', companyId).in('document_id', documentIds);
+    if (quoteDocumentError) return failure('ATTACHMENT_LOOKUP_FAILED', 500);
+    const quoteLinks = (quoteDocuments ?? []) as Array<{ document_id: string; quote_version_id: string }>;
+    const { data: quoteVersions, error: quoteVersionError } = quoteLinks.length
+      ? await sb.from('crm_quote_versions').select('id, status, document_id, pdf_generated_at')
+        .eq('company_id', companyId).in('id', quoteLinks.map((link) => link.quote_version_id))
+      : { data: [], error: null };
+    if (quoteVersionError) return failure('ATTACHMENT_LOOKUP_FAILED', 500);
+    const versionById = new Map(((quoteVersions ?? []) as Array<Record<string, any>>)
+      .map((version) => [version.id, version]));
+    const stale = quoteLinks.some((link) => {
+      const version = versionById.get(link.quote_version_id);
+      return version?.status === 'draft'
+        && (!version.pdf_generated_at || version.document_id !== link.document_id);
+    });
+    if (stale) return failure('QUOTE_PDF_STALE', 422);
+  }
   const attachments: Array<{ filename: string; content: string; contentType: string }> = [];
   for (const document of documentRows) {
     const { data: file, error: downloadError } = await sb.storage.from('company-documents').download(document.storage_path!);
@@ -103,19 +151,21 @@ Deno.serve(async (req: Request) => {
     attachments.push({ filename: document.original_filename || document.title, content: btoa(binary), contentType: document.mime_type || 'application/octet-stream' });
   }
 
-  const messageId = crypto.randomUUID();
+  const messageId = pendingMessageId ?? crypto.randomUUID();
   const now = new Date().toISOString();
   const recipients = [{ name: null, email: method.value }];
-  const { error: insertError } = await sb.from('email_messages').insert({
-    id: messageId, company_id: companyId, connection_id: null,
-    provider_message_id: `crm:${idempotencyKey}`, subject,
-    sender_name: sender.display_name, sender_email: senderAddress, to_recipients: recipients, cc_recipients: [],
-    received_at: now, sent_at: now, body_text: bodyText, body_preview: bodyText.slice(0, 500),
-    body_clean: bodyText, body_char_count: bodyText.length, body_links: [],
-    processing_status: 'done', attention_status: 'handled', direction: 'out', delivery_status: 'sent',
-    send_idempotency_key: idempotencyKey, sent_by: auth.userId,
-  });
-  if (insertError) return failure('STORE_FAILED', 500);
+  if (!pendingMessageId) {
+    const { error: insertError } = await sb.from('email_messages').insert({
+      id: messageId, company_id: companyId, connection_id: null,
+      provider_message_id: `crm:${idempotencyKey}`, subject,
+      sender_name: sender.display_name, sender_email: senderAddress, to_recipients: recipients, cc_recipients: [],
+      received_at: now, sent_at: now, body_text: bodyText, body_preview: bodyText.slice(0, 500),
+      body_clean: bodyText, body_char_count: bodyText.length, body_links: [],
+      processing_status: 'done', attention_status: 'handled', direction: 'out', delivery_status: null,
+      send_idempotency_key: idempotencyKey, sent_by: auth.userId,
+    });
+    if (insertError) return failure('STORE_FAILED', 500);
+  }
 
   const links: Array<{ table: string; values: Record<string, unknown> }> = [
     { table: 'crm_outgoing_email_recipients', values: { company_id: companyId, email_message_id: messageId, contact_method_id: method.id, email_address: method.value } },
@@ -126,9 +176,11 @@ Deno.serve(async (req: Request) => {
   if (text(body?.opportunityId, 64)) links.push({ table: 'crm_opportunity_emails', values: { company_id: companyId, opportunity_id: body!.opportunityId, email_message_id: messageId } });
   for (const link of links) {
     const { error: linkError } = await sb.from(link.table).insert(link.values);
-    if (linkError) {
-      const { error: cleanupError } = await sb.from('email_messages').delete().eq('id', messageId);
-      if (cleanupError) return failure('STORE_FAILED', 500);
+    if (linkError && linkError.code !== '23505') {
+      if (!pendingMessageId) {
+        const { error: cleanupError } = await sb.from('email_messages').delete().eq('id', messageId);
+        if (cleanupError) return failure('STORE_FAILED', 500);
+      }
       return failure('LINK_MISMATCH', 422);
     }
   }
@@ -138,6 +190,10 @@ Deno.serve(async (req: Request) => {
     const { error: recordedError } = await sb.from('email_messages')
       .update({ delivery_status: 'sent', delivery_provider_id: result.providerMessageId }).eq('id', messageId);
     if (recordedError) return failure('STORE_FAILED', 500);
+    const { error: quoteError } = await sb.rpc('crm_mark_attached_quotes_sent', {
+      p_company_id: companyId, p_email_message_id: messageId,
+    });
+    if (quoteError) return failure('STORE_FAILED', 500);
     return json({ available: true, emailId: messageId, status: 'sent', providerMessageId: result.providerMessageId });
   } catch (error) {
     // Il motivo e' volutamente umano: nessuna risposta/chiave/provider payload

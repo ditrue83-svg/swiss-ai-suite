@@ -85,6 +85,9 @@ supabase/
                                          Attributi, non identità: fuori da
                                          deduplicazione e abbinamento. Si
                                          archiviano, non si cancellano.
+                0049_crm_quotes — preventivi CRM versionati, importi/IVA
+                                         decimali con fonte, PDF nei Documenti
+                                         e stato inviato dopo Resend.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -115,6 +118,8 @@ supabase/
     send-crm-email        invio umano dal CRM via provider transazionale;
                           non usa né modifica Gmail/Microsoft
     crm-email-webhook     esiti Resend firmati: consegna, bounce e fallimento
+    generate-crm-quote    PDF preventivo A4 it/de/fr con logo e provenienza
+                          dichiarata nei Documenti
     finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
     contract-worker       legge la coda dei documenti contrattuali e apre le finestre
                           di attenzione delle date verificate (scheduler)
@@ -1004,6 +1009,8 @@ npm run test:contracts       # Contratti su DB: isolamento, cross-tenant su docu
                              # immutabilità della versione verificata, correzioni append-only,
 npm run test:crm-unit        # CRM offline: la copia SQL↔TypeScript dei domini pubblici, la cifra
 npm run test:crm-email-unit  # invio CRM + firma webhook Resend contro fetch e payload finti; nessuna rete
+npm run test:crm-quotes-unit # PDF preventivi it/de/fr aperti con pdfjs, importi, A4 multipagina,
+                             # fonte IVA e contratto SQL/invio; nessuna rete né email vera
                              #   di controllo dell'IDI, il filtro anti-rumore dei mittenti, i
                              #   pareggi dell'abbinamento, la chiave di idempotenza del
                              #   candidato scritta due volte, nessuna somma fra valute, il

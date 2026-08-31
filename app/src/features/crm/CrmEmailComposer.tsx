@@ -26,7 +26,10 @@ export function CrmEmailComposer({ companyId, organizationId, opportunityId, onS
   const disabled = !to || !subject.trim() || !body.trim() || busy;
   async function submit(e: React.FormEvent) { e.preventDefault(); if (disabled) return; setBusy(true); setError('');
     const { data, error: invokeError } = await requireSupabase().functions.invoke<{ status?: string; reason?: string; code?: string }>('send-crm-email', { body: { companyId, organizationId, opportunityId: opportunityId ?? null, recipientMethodId: to, subject, bodyText: body, documentIds, idempotencyKey: crypto.randomUUID() } });
-    setBusy(false); if (invokeError || data?.status === 'failed' || data?.code === 'EMAIL_NOT_CONFIGURED') { setError(data?.code === 'EMAIL_NOT_CONFIGURED' ? t('crm.email.unavailable') : t('crm.email.sendFailed')); return; }
+    setBusy(false); if (invokeError || data?.status === 'failed' || data?.code === 'EMAIL_NOT_CONFIGURED' || data?.code === 'QUOTE_PDF_STALE') {
+      setError(data?.code === 'EMAIL_NOT_CONFIGURED' ? t('crm.email.unavailable')
+        : data?.code === 'QUOTE_PDF_STALE' ? t('crm.email.quoteStale') : t('crm.email.sendFailed')); return;
+    }
     setOpen(false); setSubject(''); setBody(''); setDocumentIds([]); onSent();
   }
   return <><button type="button" className="btn btn-sm btn-primary" onClick={() => setOpen(true)}>{t('crm.email.compose')}</button>

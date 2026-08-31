@@ -95,6 +95,27 @@
 /* Il dettaglio */
 .crm-narrow { max-width: 660px; }
 
+/* Preventivi (0049): righe elastiche sul desktop, impilate senza overflow sui
+   375px. Gli stessi token funzionano nei due temi. */
+.quote-lines { display: grid; gap: var(--sp-3); }
+.quote-line {
+  display: grid;
+  grid-template-columns: minmax(12rem, 2fr) minmax(5rem, .55fr) minmax(7rem, .8fr) minmax(6rem, .65fr) auto;
+  gap: var(--sp-2);
+  align-items: end;
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--fill-subtle);
+}
+.quote-cards { display: grid; gap: var(--sp-3); margin-top: var(--sp-3); }
+.quote-card {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--card);
+}
+.quote-card-main { min-width: 0; display: grid; gap: var(--sp-2); }
+
 /* La voce secondaria della timeline: la sola della famiglia `.crm-tl` che
    `features/incentives/` NON usa — il resto della famiglia resta globale. */
 .crm-tl-sub { font-size: var(--fs-meta); color: var(--muted); }
@@ -112,6 +133,9 @@
    venuta solo `.crm-board`. */
 @media (max-width: 720px) {
   .crm-board { grid-template-columns: repeat(5, minmax(70vw, 1fr)); }
+  .quote-line { grid-template-columns: 1fr 1fr; }
+  .quote-line > :first-child { grid-column: 1 / -1; }
+  .quote-card { align-items: flex-start; flex-direction: column; }
 }
 
 /* ---- Ritrovamenti del lotto 6 (ricognizione finale, 2026-08-28) -----------

@@ -12,7 +12,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type MemberRole = 'owner' | 'admin' | 'member';
-export type DocumentSourceType = 'upload' | 'pasted_text' | 'email';
+export type DocumentSourceType = 'upload' | 'pasted_text' | 'email' | 'generated';
 // §25 — nuovi stati della pipeline. I legacy 'processing'/'analyzed' restano validi.
 export type DocumentStatus =
   | 'uploaded' | 'extracting' | 'analyzing' | 'completed' | 'needs_review' | 'failed'
@@ -242,6 +242,8 @@ export type CrmContactMethodType = 'email' | 'phone' | 'mobile' | 'website' | 'o
 /** La fase di una TRATTATIVA, non il ruolo della controparte. */
 export type CrmOpportunityStage =
   | 'lead' | 'contacted' | 'proposal' | 'negotiation' | 'won' | 'lost';
+export type CrmQuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+export type CrmQuoteLanguage = 'it' | 'de' | 'fr';
 /** Le email non sono interazioni manuali: restano in `email_messages` e si collegano. */
 export type CrmInteractionType = 'note' | 'call' | 'meeting' | 'other';
 export type CrmDocumentRelation =
@@ -482,9 +484,9 @@ export interface Database {
         Relationships: [];
       };
       companies: {
-        Row: { id: string; legal_name: string; uid_che: string | null; canton: string | null; municipality: string | null; legal_form: string | null; created_at: string; updated_at: string };
-        Insert: { id?: string; legal_name: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null };
-        Update: { legal_name?: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null };
+        Row: { id: string; legal_name: string; uid_che: string | null; canton: string | null; municipality: string | null; legal_form: string | null; street: string | null; postal_code: string | null; city: string | null; country_code: string | null; logo_storage_path: string | null; logo_mime_type: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; legal_name: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null };
+        Update: { legal_name?: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null };
         Relationships: [];
       };
       company_members: {
@@ -1815,6 +1817,56 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      // ---- Preventivi CRM (0049) ------------------------------------------
+      crm_quotes: {
+        Row: {
+          id: string; company_id: string; opportunity_id: string; organization_id: string;
+          sequence_number: number; quote_number: string; created_by: string | null; created_at: string;
+        };
+        Insert: never; Update: never; Relationships: [];
+      };
+      crm_quote_versions: {
+        Row: {
+          id: string; company_id: string; quote_id: string; opportunity_id: string; organization_id: string;
+          version: number; status: CrmQuoteStatus; language: CrmQuoteLanguage;
+          issued_on: string; valid_until: string; currency: string; title: string;
+          introduction: string | null; notes: string | null;
+          subtotal_amount: number; vat_amount: number; total_amount: number;
+          document_id: string | null; pdf_generated_at: string | null;
+          sent_at: string | null; sent_by: string | null; sent_email_id: string | null;
+          accepted_at: string | null; accepted_by: string | null;
+          rejected_at: string | null; rejected_by: string | null;
+          expired_at: string | null; expired_by: string | null;
+          based_on_version_id: string | null; created_by: string | null;
+          created_at: string; updated_at: string;
+          company_legal_name: string; company_uid_che: string | null;
+          company_street: string | null; company_postal_code: string | null;
+          company_city: string | null; company_country_code: string | null;
+          company_logo_storage_path: string | null; company_logo_mime_type: string | null;
+          customer_display_name: string; customer_legal_name: string | null;
+          customer_vat_number: string | null; customer_street: string | null;
+          customer_postal_code: string | null; customer_city: string | null;
+          customer_country_code: string | null;
+        };
+        Insert: never; Update: never; Relationships: [];
+      };
+      crm_quote_items: {
+        Row: {
+          id: string; company_id: string; quote_id: string; quote_version_id: string;
+          line_number: number; description: string; quantity: number; unit_price: number;
+          vat_rate_id: string; vat_rate: number; vat_source_url: string;
+          vat_source_title: string | null; vat_checked_at: string;
+          net_amount: number; vat_amount: number; total_amount: number; created_at: string;
+        };
+        Insert: never; Update: never; Relationships: [];
+      };
+      crm_quote_documents: {
+        Row: {
+          id: string; company_id: string; quote_id: string; quote_version_id: string;
+          document_id: string; created_at: string;
+        };
+        Insert: never; Update: never; Relationships: [];
+      };
       // Un suggerimento si LEGGE e si RISOLVE. Il contenuto lo produce il
       // codice server-side: dal client non si inserisce.
       crm_link_suggestions: {
@@ -2068,6 +2120,23 @@ export interface Database {
       crm_norm_uid: { Args: { p_value: string | null }; Returns: string | null };
       crm_norm_email: { Args: { p_value: string | null }; Returns: string | null };
       crm_norm_domain: { Args: { p_value: string | null }; Returns: string | null };
+      crm_save_quote_draft: {
+        Args: {
+          p_company_id: string; p_opportunity_id: string; p_quote_id: string | null;
+          p_language: CrmQuoteLanguage; p_valid_until: string; p_currency: string;
+          p_title: string; p_introduction: string | null; p_notes: string | null; p_items: Json;
+        };
+        Returns: string;
+      };
+      crm_new_quote_version: { Args: { p_company_id: string; p_quote_id: string }; Returns: string };
+      crm_set_quote_status: {
+        Args: { p_company_id: string; p_quote_version_id: string; p_status: CrmQuoteStatus };
+        Returns: undefined;
+      };
+      crm_quote_pdf_payload: {
+        Args: { p_company_id: string; p_quote_version_id: string };
+        Returns: Json;
+      };
       crm_norm_phone: { Args: { p_value: string | null }; Returns: string | null };
       crm_is_public_domain: { Args: { p_domain: string | null }; Returns: boolean };
       is_company_member: { Args: { p_company_id: string }; Returns: boolean };
@@ -2460,6 +2529,8 @@ export interface Database {
       crm_link_status: CrmLinkStatus;
       crm_event_kind: CrmEventKind;
       crm_linked_entity: CrmLinkedEntity;
+      crm_quote_status: CrmQuoteStatus;
+      crm_quote_language: CrmQuoteLanguage;
       assistant_thread_status: AssistantThreadStatus;
       assistant_message_role: AssistantMessageRole;
       assistant_run_status: AssistantRunStatus;

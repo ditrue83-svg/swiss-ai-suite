@@ -133,6 +133,11 @@ verify_jwt = false
 [functions.email-sync]
 verify_jwt = true
 
+# Preventivi CRM: parte da un gesto umano nel browser e legge il payload con
+# la RLS dell'utente. Il gate JWT deve quindi restare acceso esplicitamente.
+[functions.generate-crm-quote]
+verify_jwt = true
+
 # ---------------------------------------------------------------------------
 # Calendario e notifiche (0018). Stessa logica, stessi chiamanti anomali:
 #

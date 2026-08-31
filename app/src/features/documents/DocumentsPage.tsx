@@ -224,6 +224,7 @@ const SOURCE_KEY: Record<DocumentSourceType, TKey> = {
   upload: 'documents.sources.upload',
   email: 'documents.sources.email',
   pasted_text: 'documents.sources.pasted_text',
+  generated: 'documents.sources.generated',
 };
 
 /** La pastiglia piena di stato: rossa solo per il guasto (vedi `rowMarks`). */

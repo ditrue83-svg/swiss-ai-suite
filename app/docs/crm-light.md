@@ -273,6 +273,44 @@ prossimo passo + data, motivo della perdita, timbri `won_at`/`lost_at`.
 Lo storico dei passaggi conserva **da dove** e **verso dove**: senza il «da», la
 domanda «questa trattativa è tornata indietro?» non ha risposta.
 
+### Preventivi PDF versionati (0049, Fase 1.2)
+
+`proposal` resta la **fase commerciale della trattativa**; non diventa un file e
+non inventa una probabilità. Il documento vive invece in un modello esplicito:
+
+| Tabella | Responsabilità |
+|---|---|
+| `crm_quotes` | identità del preventivo, trattativa e numero `P-000001` progressivo per azienda |
+| `crm_quote_versions` | lingua, validità, unica valuta, snapshot di emittente/destinatario, stato e PDF |
+| `crm_quote_items` | descrizione, quantità, prezzo, aliquota IVA e importi calcolati in `numeric` |
+| `crm_quote_documents` | provenienza del PDF generato dentro Documenti |
+
+Una versione usa **una sola valuta**: la valuta sta sulla versione e non sulle
+voci, quindi non esiste una somma mista. Imponibile, IVA e totale li calcola
+PostgreSQL in decimali. Le aliquote sono le righe svizzere correnti di
+`finance_vat_rates` — ordinaria 8,1 %, ridotta 2,6 %, speciale 3,8 % — e ogni
+voce ne conserva aliquota, titolo della fonte AFC, URL e data di verifica. La
+fonte primaria è [Amministrazione federale delle contribuzioni — aliquote IVA](https://www.estv.admin.ch/estv/de/home/mehrwertsteuer/mwst-steuersaetze.html),
+verificata nel catalogo Finanze il 2026-07-27.
+
+Gli stati sono `draft`, `sent`, `accepted`, `rejected`, `expired`. Solo una
+bozza si modifica. Dopo l'invio il documento e le voci sono immutabili: per
+cambiare qualcosa si crea una versione nuova, con `based_on_version_id`, senza
+sovrascrivere quella consegnata al cliente. Accettare un preventivo **propone**
+di portare la trattativa a `won`; la schermata chiede conferma e il database non
+lo fa automaticamente.
+
+Il PDF usa logo e dati dell'azienda, conserva lo snapshot delle due parti e ha
+una lingua propria (`it`/`de`/`fr`), indipendente dalla lingua dell'interfaccia.
+Entra in `documents` con `source_type = generated` e viene collegato a
+organizzazione e opportunità. Una modifica alla bozza rende obsoleto il PDF:
+`send-crm-email` lo rifiuta finché non viene rigenerato.
+
+L'invio riusa il composer CRM e Resend della 0048. Una riga email può restare
+temporaneamente senza `delivery_status` durante il tentativo idempotente; il
+preventivo passa a `sent` **solo dopo** che il provider ha accettato il
+messaggio. `delivered` resta l'unico esito che aggiorna `last_contact_at`.
+
 ---
 
 ## 6. Timeline
@@ -905,6 +943,12 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
 5. ✅ **FATTO il 2026-08-29**: **0047_crm_custom_fields.sql** applicata dal SQL
    editor in un incollaggio, autoverifica superata. Nessun rideploy: il CRM vive
    dietro `VITE_LEGACY_MODULES`, lato client.
+6. ✅ **FATTO il 2026-08-30**: **0048_crm_send_email.sql** applicata e
+   `send-crm-email` / `crm-email-webhook` pubblicate.
+7. ⛔ **NON ANCORA APPLICATO/PUBBLICATO**: **0049_crm_quotes.sql**,
+   `generate-crm-quote` e le modifiche a `send-crm-email` sono nel branch
+   `improve/crm-quotes`. Finché migrazione e funzioni non vengono distribuite,
+   i preventivi PDF non esistono sul sito online.
 
 ---
 
@@ -925,7 +969,6 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   lo stesso esito. Solo `delivered` conta come ultimo contatto.
 - Nessuna probabilità di chiusura, nessun punteggio, nessun forecast, nessun
   sentiment.
-- Nessun modulo preventivi: `proposal` è uno stato, non un PDF.
 - Nessuna fattura cliente, quindi **nessun ricavo**: Finanze gestisce fatture
   fornitore e spese. Un valore di opportunità è una stima e un contratto non è un
   incasso.
