@@ -30,7 +30,7 @@ export const CATEGORIES: DocumentCategory[] = [
 
 export const SORTS: DocumentSort[] = ['recent', 'oldest', 'document_date', 'title', 'deadline'];
 export const STATES: DocumentState[] = ['to_verify', 'analyzed', 'processing', 'failed', 'none'];
-export const SOURCES: DocumentSourceType[] = ['upload', 'email', 'pasted_text'];
+export const SOURCES: DocumentSourceType[] = ['upload', 'email', 'pasted_text', 'generated'];
 
 export const DOCUMENTS_PAGE_SIZE = 25;
 /** §77 — una ricerca è una manciata di parole. Oltre, si taglia invece di rifiutare. */

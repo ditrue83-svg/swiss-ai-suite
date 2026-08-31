@@ -6,8 +6,8 @@
 // niente; sommato su venti trattative produce un numero che qualcuno userebbe
 // per decidere. Qui non c'è, e la sua assenza è una scelta.
 //
-// ⚠️ §91 — lo stage `proposal` si chiama «Offerta» e NON implica un modulo
-// preventivi: nessun PDF, nessun listino, nessuna firma. È uno stato.
+// Dalla 0049 lo stage `proposal` può accompagnare un preventivo PDF, ma resta
+// una scelta umana: creare il documento propone il passaggio, non lo esegue.
 //
 // ⚠️ §50 — IL PROSSIMO PASSO NON È UN'ATTIVITÀ. È la sintesi commerciale; il
 // lavoro assegnabile e tracciabile è un'attività, e il pulsante le collega
@@ -34,6 +34,7 @@ import type { CrmOpportunityStage } from '@/types/database';
 import { ALL_STAGES, isOpen, opportunityState, opportunityStateKey } from './crmModel';
 import { CrmFieldsCard } from './CrmFieldsCard';
 import { CrmEmailComposer } from './CrmEmailComposer';
+import { CrmQuotesPanel } from './CrmQuotesPanel';
 import { cx } from '@/lib/cx';
 import styles from './crm.module.css';
 
@@ -227,6 +228,7 @@ export function OpportunityDetailPage() {
   const [busy, setBusy] = useState(false);
   const [lostReason, setLostReason] = useState('');
   const [askLost, setAskLost] = useState(false);
+  const [quoteRefresh, setQuoteRefresh] = useState(0);
 
   // ⚠️ Quale risposta sta guardando la pagina: cambiando opportunità la
   // richiesta di prima resta in volo, e se risolve dopo mostra la trattativa
@@ -301,7 +303,8 @@ export function OpportunityDetailPage() {
           </div>
         </div>
         <div className="row-wrap">
-          <CrmEmailComposer companyId={company.id} organizationId={deal.organizationId} opportunityId={deal.id} onSent={() => void load()} />
+          <CrmEmailComposer companyId={company.id} organizationId={deal.organizationId} opportunityId={deal.id}
+            onSent={() => { setQuoteRefresh((value) => value + 1); void load(); }} />
           {/* §54 — il cambio di fase da una TENDINA, non da un trascinamento:
               è accessibile da tastiera senza alcuna libreria. */}
           <div className="field ct-inline">
@@ -418,6 +421,10 @@ export function OpportunityDetailPage() {
           )}
         </div>
       </div>
+
+      <CrmQuotesPanel companyId={company.id} opportunityId={deal.id}
+        opportunityStage={deal.stage} refreshToken={quoteRefresh}
+        onMoveStage={(stage) => run(() => crmService.setStage(deal.id, stage), 'crm.form.stageChanged')} />
 
       {/* 0047 — i campi decisi dall'azienda, IN FONDO ai campi nativi e con lo
           stesso aspetto. Non rendono nulla se non ne esiste nessuno. */}
