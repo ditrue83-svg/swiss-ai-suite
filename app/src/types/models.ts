@@ -18,6 +18,7 @@ import type {
   CrmOrganizationRole, CrmRelationshipStatus, CrmSource, CrmContactMethodType,
   CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
   CrmLinkStatus, CrmEventKind, CrmLinkedEntity, CrmFieldEntity, CrmFieldType,
+  CrmQuoteStatus, CrmQuoteLanguage,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
   ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
@@ -47,6 +48,7 @@ export type {
   CrmOrganizationRole, CrmRelationshipStatus, CrmSource, CrmContactMethodType,
   CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
   CrmLinkStatus, CrmEventKind, CrmLinkedEntity, CrmFieldEntity, CrmFieldType,
+  CrmQuoteStatus, CrmQuoteLanguage,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
   ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
@@ -77,6 +79,12 @@ export interface Company {
   canton: string | null;
   municipality: string | null;
   legalForm: string | null;
+  street: string | null;
+  postalCode: string | null;
+  city: string | null;
+  countryCode: string | null;
+  logoStoragePath: string | null;
+  logoMimeType: string | null;
   createdAt?: string;
 }
 

@@ -19,6 +19,12 @@ function toCompany(row: CompanyRow): Company {
     canton: row.canton,
     municipality: row.municipality,
     legalForm: row.legal_form,
+    street: row.street,
+    postalCode: row.postal_code,
+    city: row.city,
+    countryCode: row.country_code,
+    logoStoragePath: row.logo_storage_path,
+    logoMimeType: row.logo_mime_type,
     createdAt: row.created_at,
   };
 }
@@ -42,6 +48,10 @@ export interface CreateCompanyInput {
   canton?: string | null;
   municipality?: string | null;
   legalForm?: string | null;
+  street?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  countryCode?: string | null;
   sector?: string | null;
   employeeCount?: number | null;
   revenueBand?: string | null;
@@ -94,9 +104,40 @@ export const companyService = {
         canton: patch.canton,
         municipality: patch.municipality,
         legal_form: patch.legalForm,
+        street: patch.street,
+        postal_code: patch.postalCode,
+        city: patch.city,
+        country_code: patch.countryCode,
       })
       .eq('id', companyId);
     if (error) throw new AppError(toUserMessage(error), error);
+  },
+
+  /** Logo del documento commerciale: PNG/JPEG, 2 MB, percorso stabile per azienda. */
+  async uploadQuoteLogo(companyId: string, file: File): Promise<void> {
+    if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      throw new AppError(tr('companySettings.logoInvalid'));
+    }
+    const path = `${companyId}/company/logo`;
+    const sb = requireSupabase();
+    const { error: uploadError } = await sb.storage.from('company-documents')
+      .upload(path, file, { contentType: file.type, upsert: true });
+    if (uploadError) throw new AppError(toUserMessage(uploadError), uploadError);
+    const { error } = await sb.from('companies').update({
+      logo_storage_path: path, logo_mime_type: file.type,
+    }).eq('id', companyId);
+    if (error) throw new AppError(toUserMessage(error), error);
+  },
+
+  async removeQuoteLogo(companyId: string): Promise<void> {
+    const sb = requireSupabase();
+    const { error } = await sb.from('companies').update({
+      logo_storage_path: null, logo_mime_type: null,
+    }).eq('id', companyId);
+    if (error) throw new AppError(toUserMessage(error), error);
+    // Il metadato viene tolto prima: se Storage fallisce non resta un logo
+    // visibile che punti a un file mancante, soltanto un file orfano invisibile.
+    await sb.storage.from('company-documents').remove([`${companyId}/company/logo`]);
   },
 
   async getCompanyProfile(companyId: string): Promise<CompanyProfile | null> {

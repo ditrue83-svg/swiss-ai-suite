@@ -73,12 +73,17 @@ export function CompanySettings({ sede }: { sede: Sede }) {
   const [canton, setCanton] = useState('');
   const [municipality, setMunicipality] = useState('');
   const [legalForm, setLegalForm] = useState('');
+  const [street, setStreet] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
+  const [countryCode, setCountryCode] = useState('CH');
   const [sector, setSector] = useState('');
   const [employeeCount, setEmployeeCount] = useState('');
   const [revenueBand, setRevenueBand] = useState(NO_REVENUE);
 
   const [savingCompany, setSavingCompany] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingLogo, setSavingLogo] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
 
@@ -97,6 +102,10 @@ export function CompanySettings({ sede }: { sede: Sede }) {
     setCanton(activeCompany.canton ?? CANTONI[0]);
     setMunicipality(activeCompany.municipality ?? '');
     setLegalForm(activeCompany.legalForm ?? FORME_GIURIDICHE[0]);
+    setStreet(activeCompany.street ?? '');
+    setPostalCode(activeCompany.postalCode ?? '');
+    setCity(activeCompany.city ?? activeCompany.municipality ?? '');
+    setCountryCode(activeCompany.countryCode ?? 'CH');
   }, [activeCompany]);
 
   const syncedProfile = useRef<string | null>(null);
@@ -130,6 +139,10 @@ export function CompanySettings({ sede }: { sede: Sede }) {
         canton,
         municipality: municipality.trim() || null,
         legalForm,
+        street: street.trim() || null,
+        postalCode: postalCode.trim() || null,
+        city: city.trim() || null,
+        countryCode: countryCode.trim().toUpperCase() || null,
       });
       await refresh();
       showToast(t('companySettings.savedCompany'));
@@ -241,6 +254,49 @@ export function CompanySettings({ sede }: { sede: Sede }) {
           <Select id="cs-form" label={t('onboarding.legalForm')} disabled={!isAdmin} value={legalForm} onChange={(e) => setLegalForm(e.target.value)}>
             {FORME_GIURIDICHE.map((f) => <option key={f} value={f}>{f}</option>)}
           </Select>
+          <Input id="cs-street" label={t('companySettings.street')} disabled={!isAdmin} value={street}
+            onChange={(e) => setStreet(e.target.value)} />
+          <Input id="cs-postal" label={t('companySettings.postalCode')} disabled={!isAdmin} value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value)} />
+          <Input id="cs-city" label={t('companySettings.city')} disabled={!isAdmin} value={city}
+            onChange={(e) => setCity(e.target.value)} />
+          <Input id="cs-country" label={t('companySettings.countryCode')} disabled={!isAdmin} value={countryCode}
+            maxLength={2} onChange={(e) => setCountryCode(e.target.value.toUpperCase())} />
+        </div>
+
+        <div className="card-title mt-8">{t('companySettings.logoTitle')}</div>
+        <div className="muted-sm mb-3">{t('companySettings.logoHint')}</div>
+        <div className="row-wrap">
+          {activeCompany?.logoStoragePath && <span className="muted-sm">{t('companySettings.logoConfigured')}</span>}
+          {isAdmin && (
+            <>
+              <label className="btn btn-sm" htmlFor="cs-logo">{t('companySettings.logoChoose')}</label>
+              <input id="cs-logo" className="sr-only" type="file" accept="image/png,image/jpeg"
+                disabled={savingLogo} onChange={(e) => {
+                  const file = e.currentTarget.files?.[0];
+                  e.currentTarget.value = '';
+                  if (!file || !activeCompanyId) return;
+                  setSavingLogo(true);
+                  void companyService.uploadQuoteLogo(activeCompanyId, file)
+                    .then(async () => { await refresh(); showToast(t('companySettings.logoSaved')); })
+                    .catch((err) => setCompanyError(toUserMessage(err)))
+                    .finally(() => setSavingLogo(false));
+                }} />
+              {activeCompany?.logoStoragePath && (
+                <button type="button" className="btn btn-sm btn-ghost" disabled={savingLogo}
+                  onClick={() => {
+                    if (!activeCompanyId) return;
+                    setSavingLogo(true);
+                    void companyService.removeQuoteLogo(activeCompanyId)
+                      .then(async () => { await refresh(); showToast(t('companySettings.logoRemoved')); })
+                      .catch((err) => setCompanyError(toUserMessage(err)))
+                      .finally(() => setSavingLogo(false));
+                  }}>
+                  {t('companySettings.logoRemove')}
+                </button>
+              )}
+            </>
+          )}
         </div>
 
         {companyError && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{companyError}</span></div>}
