@@ -110,6 +110,9 @@ export const OVERDUE_LOOKBACK_DAYS = 3;
  */
 export const CRM_FOLLOW_UP_LOOKBACK_DAYS = 3;
 
+/** Scadenze di sequenza CRM emesse per giro; il resto aspetta il giro dopo. */
+export const CRM_FOLLOW_UP_SEQUENCE_SCAN_LIMIT = 200;
+
 /**
  * Quante righe guarda per volta il candidato automatico dei suggerimenti (0030).
  *

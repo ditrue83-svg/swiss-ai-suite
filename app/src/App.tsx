@@ -12,6 +12,7 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
 import { OnboardingPage } from '@/features/companies/OnboardingPage';
 import { CompanySettingsPage } from '@/features/companies/CompanySettingsPage';
 import { CrmFieldsPage } from '@/features/crm/CrmFieldsPanel';
+import { CrmFollowUpPage } from '@/features/crm/CrmFollowUpPanel';
 import { CrmEmailSettingsPanel } from '@/features/crm/CrmEmailSettingsPanel';
 import { HomePage } from '@/features/dashboard/HomePage';
 import { AssistantPage } from '@/features/assistant/AssistantPage';
@@ -209,6 +210,7 @@ export default function App() {
             {/* Configurazione dell'invio CRM (0048): la rotta resta viva anche
                 se la voce è presentata nel pannello Impostazioni. */}
             <Route path="/email-crm" element={<CrmEmailSettingsPanel />} />
+            <Route path="/follow-up-crm" element={<CrmFollowUpPage />} />
           </Route>
         </Route>
       </Route>

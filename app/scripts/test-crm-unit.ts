@@ -79,6 +79,8 @@ const section = (title: string) => console.log(`\n${B}${title}${X}`);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MIGRATION = readFileSync(
   join(HERE, '..', 'supabase', 'migrations', '0026_crm_light.sql'), 'utf8');
+const FOLLOW_UP_MIGRATION = readFileSync(
+  join(HERE, '..', 'supabase', 'migrations', '0050_crm_follow_up_sequences.sql'), 'utf8');
 
 // ---------------------------------------------------------------------------
 section('1. Coerenza TS ↔ SQL — gli elenchi scritti due volte');
@@ -131,10 +133,11 @@ check('il blocco di autoverifica non nomina i valori enum aggiunti (55P04)',
 
 // I sei inneschi CRM esistono nel registro E nella migrazione.
 const crmEvents = AUTOMATION_EVENT_TYPES.filter((e) => e.startsWith('crm_'));
-check('sei inneschi CRM nel registro', crmEvents.length === 6, crmEvents.join(', '));
-check('ogni innesco CRM del registro è aggiunto anche dalla migrazione',
-  crmEvents.every((e) => addedEnumValues.includes(e)),
-  crmEvents.filter((e) => !addedEnumValues.includes(e)).join(', '));
+check('sette inneschi CRM nel registro: i sei della 0026 e la sequenza della 0050',
+  crmEvents.length === 7 && crmEvents.includes('crm_follow_up_sequence_due'), crmEvents.join(', '));
+check('i sei inneschi CRM originari restano nella 0026 e la sequenza sta nella 0050',
+  crmEvents.filter((e) => e !== 'crm_follow_up_sequence_due').every((e) => addedEnumValues.includes(e))
+    && FOLLOW_UP_MIGRATION.includes("add value if not exists 'crm_follow_up_sequence_due'"));
 check('ogni innesco CRM ha una voce in TRIGGERS con campi ed entità',
   crmEvents.every((e) => {
     const t = TRIGGERS.find((x) => x.key === e);
@@ -1103,6 +1106,47 @@ check('l’ordine è position, e a parità createdAt e id: stabile, mai un terno
 check('il prossimo campo nasce in fondo agli altri',
   nextFieldPosition([]) === 0
   && nextFieldPosition([defAt(3, 't', 'a'), defAt(1, 't', 'b')]) === 4);
+
+// ---------------------------------------------------------------------------
+section('20. Sequenze di follow-up (0050) — dati, stop e nessun invio');
+
+const followUpTables = ['crm_follow_up_sequences', 'crm_follow_up_steps', 'crm_follow_up_emissions'];
+check('la configurazione è in tabelle, non in condizioni scritte nel codice',
+  followUpTables.every((table) => FOLLOW_UP_MIGRATION.includes(`create table if not exists public.${table}`)));
+check('revoke all precede ogni grant sulle tre tabelle della 0050',
+  followUpTables.every((table) => {
+    const revoke = FOLLOW_UP_MIGRATION.indexOf(`revoke all on public.${table}`);
+    const grant = FOLLOW_UP_MIGRATION.indexOf(`grant select on public.${table}`);
+    return revoke >= 0 && (grant < 0 || revoke < grant);
+  }));
+check('la stessa regola non può emettere due volte per trattativa nello stesso giorno',
+  FOLLOW_UP_MIGRATION.includes('unique (sequence_id, step_id, opportunity_id, emitted_on)'));
+check('un secondo giro dello stesso ciclo è fermato anche indipendentemente dal giorno',
+  FOLLOW_UP_MIGRATION.includes('unique (sequence_id, step_id, opportunity_id, outbound_email_id)'));
+check('la misura del silenzio cerca una email in successiva alla email out',
+  FOLLOW_UP_MIGRATION.includes("incoming.direction = 'in'")
+  && FOLLOW_UP_MIGRATION.includes("e.direction = 'out'"));
+check('una interazione successiva ferma la sequenza',
+  FOLLOW_UP_MIGRATION.includes('from public.crm_interactions i')
+  && FOLLOW_UP_MIGRATION.includes('i.occurred_at >')
+  && FOLLOW_UP_MIGRATION.includes('(i.opportunity_id = o.id or i.opportunity_id is null)'));
+check('una risposta è confrontata con tutti i destinatari della email uscente',
+  FOLLOW_UP_MIGRATION.includes('recipient.email_message_id = outmail.email_id')
+  && FOLLOW_UP_MIGRATION.includes('ice.contact_id = method.contact_id')
+  && !FOLLOW_UP_MIGRATION.includes('x.contact_id'));
+check('won, lost, archiviata e cambio fase non producono lavoro',
+  FOLLOW_UP_MIGRATION.includes("o.stage not in ('won', 'lost')")
+  && FOLLOW_UP_MIGRATION.includes('o.archived_at is null')
+  && FOLLOW_UP_MIGRATION.includes("ev.kind = 'opportunity_stage_changed'"));
+const managedActions = FOLLOW_UP_MIGRATION.slice(
+  FOLLOW_UP_MIGRATION.indexOf("'[{\"key\":\"create_task\""),
+  FOLLOW_UP_MIGRATION.indexOf("'[{\"key\":\"create_task\"") + 600,
+);
+check('il workflow gestito usa solo attività e notifica: nessuna azione di contatto',
+  managedActions.includes('create_task') && managedActions.includes('create_notification')
+  && !managedActions.includes('send_email') && !managedActions.includes('reply_email'));
+check('il template email è un suggerimento e non un comando di invio',
+  FOLLOW_UP_MIGRATION.includes('Suggerimento per il composer umano'));
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);

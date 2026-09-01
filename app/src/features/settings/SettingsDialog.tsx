@@ -34,6 +34,7 @@ import { PreferencesPanel } from '@/features/settings/PreferencesPanel';
 import { CompanySettings } from '@/features/companies/CompanySettingsPage';
 import { CrmFieldsPanel } from '@/features/crm/CrmFieldsPanel';
 import { CrmEmailSettingsPanel } from '@/features/crm/CrmEmailSettingsPanel';
+import { CrmFollowUpPanel } from '@/features/crm/CrmFollowUpPanel';
 import { Pricing } from '@/features/pricing/PricingPage';
 import styles from './settings.module.css';
 
@@ -94,6 +95,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           {attivo === 'company' && <CompanySettings sede="pannello" />}
           {attivo === 'crmFields' && <CrmFieldsPanel sede="pannello" />}
           {attivo === 'crmEmail' && <CrmEmailSettingsPanel />}
+          {attivo === 'crmFollowUp' && <CrmFollowUpPanel sede="pannello" />}
           {attivo === 'pricing' && <Pricing sede="pannello" />}
         </div>
       </div>

@@ -182,7 +182,7 @@ export const automationService = {
   /** Le regole dell'azienda. Le archiviate solo se richieste esplicitamente. */
   async list(companyId: string, includeArchived = false): Promise<Workflow[]> {
     let query = requireSupabase().from('workflow_definitions')
-      .select(WORKFLOW_COLUMNS).eq('company_id', companyId);
+      .select(WORKFLOW_COLUMNS).eq('company_id', companyId).is('managed_source', null);
     if (!includeArchived) query = query.neq('status', 'archived');
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw new AppError(toUserMessage(error), error);

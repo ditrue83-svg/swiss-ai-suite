@@ -22,7 +22,7 @@
 // ============================================================================
 import { timingSafeEqual } from '../_shared/email/crypto.ts';
 import {
-  CRM_FOLLOW_UP_LOOKBACK_DAYS, CRM_SUGGESTION_SCAN_LIMIT,
+  CRM_FOLLOW_UP_LOOKBACK_DAYS, CRM_FOLLOW_UP_SEQUENCE_SCAN_LIMIT, CRM_SUGGESTION_SCAN_LIMIT,
   EDGE_TIME_BUDGET_MS, EVENT_BATCH, EVENT_LOCK_SECONDS, MAX_EVENT_ATTEMPTS,
   MAX_RUNS_PER_COMPANY_PER_PASS, OVERDUE_LOOKBACK_DAYS, eventBackoffSeconds,
 } from '../_shared/automation/contract.ts';
@@ -55,6 +55,9 @@ Deno.serve(async (req: Request) => {
     // `scripts`, e nessuno importa i punti d'ingresso), quindi qui un errore di
     // tipo lo troverebbe soltanto il deploy.
     crmFollowUpError: null as string | null,
+    // 0050 — passi delle sequenze dovuti per silenzio dopo una email uscente.
+    crmFollowUpSequenceEmitted: 0,
+    crmFollowUpSequenceError: null as string | null,
     // 0030 — quanti suggerimenti di collegamento sono stati CREATI in questo
     // giro. Zero è la risposta normale: le righe già proposte non si ripropongono.
     crmSuggestionsCreated: 0,
@@ -109,7 +112,25 @@ Deno.serve(async (req: Request) => {
       logEvent('automation-worker', { code: report.crmFollowUpError, phase: 'crm_follow_up' });
     }
 
-    // (1-ter) Il candidato automatico (0030): legge le controparti dei
+    // (1-ter) Le sequenze CRM riusano lo stesso giro. La funzione SQL misura
+    // il silenzio, emette un evento idempotente e non invia alcuna email.
+    try {
+      const { data: sequenceEmitted, error: sequenceError } = await sb.rpc(
+        'crm_emit_follow_up_sequences', { p_limit: CRM_FOLLOW_UP_SEQUENCE_SCAN_LIMIT },
+      );
+      if (sequenceError) {
+        throw new Error(`crm_follow_up_sequence: ${(sequenceError as { message?: string }).message ?? 'errore'}`);
+      }
+      report.crmFollowUpSequenceEmitted = typeof sequenceEmitted === 'number'
+        ? sequenceEmitted : 0;
+    } catch (error) {
+      report.crmFollowUpSequenceError = codeOf(error);
+      logEvent('automation-worker', {
+        code: report.crmFollowUpSequenceError, phase: 'crm_follow_up_sequence',
+      });
+    }
+
+    // (1-quater) Il candidato automatico (0030): legge le controparti dei
     //     contratti e i fornitori di Finanze e PROPONE. Non crea anagrafiche e
     //     non collega niente — scrive righe `crm_link_suggestions` in attesa
     //     di un sì (§21).

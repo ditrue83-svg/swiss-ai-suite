@@ -2,7 +2,7 @@
 // AI-Swisse — CRM Light: test d'integrazione sul DATABASE REALE.
 //   npm run test:crm
 //
-// Richiede le migrazioni 0026, 0028, 0030, 0047, 0048 e 0049 applicate, e `.env.test`
+// Richiede le migrazioni 0026, 0028, 0030, 0047, 0048, 0049 e 0050 applicate, e `.env.test`
 // valorizzato.
 // ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 16 FALLISCE, perché
 // lo storico del CRM impedisce la cancellazione di un'azienda. È il difetto
@@ -14,7 +14,7 @@
 // relazione manca.
 //
 // Non prova che il codice sia scritto bene: prova che le GARANZIE siano in
-// vigore. Sono sedici, e stanno tutte nel DATABASE, perché un servizio ben
+// vigore. Sono diciannove sezioni, e stanno tutte nel DATABASE, perché un servizio ben
 // educato non è una garanzia — è la lezione della 0014, dove i permessi di
 // colonna dichiarati nei commenti non restringevano nulla e il difetto è emerso
 // solo ESEGUENDO.
@@ -41,7 +41,8 @@
 //       archiviato è congelato, la fusione trasferisce i valori.
 //   16. EMAIL CRM — esiti idempotenti e fuori ordine; solo delivered è contatto.
 //   17. PREVENTIVI — decimali, sequenze, RLS, invio e versioni immutabili.
-//   18. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
+//   18. SEQUENZE FOLLOW-UP — silenzio, stop, idempotenza e confini tenant.
+//   19. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
 //
 // ⚠️ LA PULIZIA CONTROLLA IL PROPRIO ESITO, e l'ORDINE non è indifferente:
 // PRIMA l'azienda, POI l'utente. Al contrario, cancellare l'utente porta via a
@@ -1307,7 +1308,186 @@ async function main() {
     msg(newVersion.error) || JSON.stringify({ versionRows, copiedItems }));
 
   // -------------------------------------------------------------------------
-  section('18. Cascata — cancellata l’azienda non resta niente');
+  section('18. Sequenze follow-up — idempotenza e quattro stop (0050)');
+
+  const oldCreatedAt = new Date(Date.now() - 12 * 86_400_000).toISOString();
+  const oldSentAt = new Date(Date.now() - 10 * 86_400_000).toISOString();
+  const afterSentAt = new Date(Date.now() - 9 * 86_400_000).toISOString();
+  const dueSentAt = new Date(Date.now() - 8 * 86_400_000).toISOString();
+  const followUpOrg = await makeOrg(A.client, A.companyId, `Follow-up ${stamp} SA`, {
+    account_owner_user_id: A.userId,
+  });
+  const followUpContact = await A.client.from('crm_contacts').insert({
+    company_id: A.companyId, display_name: 'Contatto Follow-up',
+  }).select('id').single();
+  const followUpContactId = (followUpContact.data as { id?: string } | null)?.id ?? NIL;
+  await A.client.from('crm_contact_organizations').insert({
+    company_id: A.companyId, contact_id: followUpContactId,
+    organization_id: followUpOrg, is_primary: true,
+  });
+  const method = await A.client.from('crm_contact_methods').insert({
+    company_id: A.companyId, contact_id: followUpContactId, type: 'email',
+    value: `follow-up-${stamp}@example.ch`, is_primary: true,
+  }).select('id').single();
+  const methodId = (method.data as { id?: string } | null)?.id ?? NIL;
+
+  const createFollowUpOpp = async (title: string) => {
+    const result = await admin.from('crm_opportunities').insert({
+      company_id: A.companyId, organization_id: followUpOrg, primary_contact_id: followUpContactId,
+      title, stage: 'contacted', owner_user_id: A.userId,
+      created_by: A.userId, created_at: oldCreatedAt, updated_at: oldCreatedAt,
+    }).select('id').single();
+    if (result.error) throw new Error(`opportunita follow-up: ${msg(result.error)}`);
+    return (result.data as { id: string }).id;
+  };
+  const connectOutgoing = async (opportunityId: string, label: string, sentAt = oldSentAt) => {
+    const result = await admin.from('email_messages').insert({
+      company_id: A.companyId, connection_id: null,
+      provider_message_id: `crm:follow-up:${label}:${stamp}`,
+      provider_thread_id: `crm:follow-up:${label}:${stamp}`, subject: label,
+      sender_name: 'AI-Swisse', sender_email: 'crm@example.ch',
+      to_recipients: [{ email: `follow-up-${stamp}@example.ch` }],
+      received_at: sentAt, sent_at: sentAt, body_text: label, body_preview: label,
+      direction: 'out', delivery_status: 'delivered',
+      delivery_provider_id: `resend-follow-up-${label}-${stamp}`,
+      send_idempotency_key: crypto.randomUUID(), sent_by: A.userId,
+    }).select('id').single();
+    if (result.error) throw new Error(`email follow-up: ${msg(result.error)}`);
+    const emailId = (result.data as { id: string }).id;
+    const [oppLink, orgLink, recipient] = await Promise.all([
+      admin.from('crm_opportunity_emails').insert({
+        company_id: A.companyId, opportunity_id: opportunityId, email_message_id: emailId,
+      }),
+      admin.from('crm_organization_emails').insert({
+        company_id: A.companyId, organization_id: followUpOrg, email_message_id: emailId,
+        match_reason: 'manual', confirmed_by: A.userId,
+      }),
+      admin.from('crm_outgoing_email_recipients').insert({
+        company_id: A.companyId, email_message_id: emailId,
+        contact_method_id: methodId, email_address: `follow-up-${stamp}@example.ch`,
+      }),
+    ]);
+    if (oppLink.error || orgLink.error || recipient.error) {
+      throw new Error(`legami follow-up: ${msg(oppLink.error) || msg(orgLink.error) || msg(recipient.error)}`);
+    }
+    return emailId;
+  };
+
+  const dueOpp = await createFollowUpOpp('Follow-up dovuto');
+  await connectOutgoing(dueOpp, 'due', dueSentAt);
+  const replyOpp = await createFollowUpOpp('Follow-up fermato da risposta');
+  const replyOutgoing = await connectOutgoing(replyOpp, 'reply');
+  const interactionOpp = await createFollowUpOpp('Follow-up fermato da interazione');
+  await connectOutgoing(interactionOpp, 'interaction');
+  const movedOpp = await createFollowUpOpp('Follow-up fermato da fase');
+  await connectOutgoing(movedOpp, 'moved');
+  const closedOpp = await createFollowUpOpp('Follow-up chiuso');
+  await connectOutgoing(closedOpp, 'closed');
+
+  // Il guardiano delle opportunità riscrive `created_at` a now() anche per il
+  // service role. Per costruire una fase davvero iniziata nel passato, senza
+  // indebolire quel guardiano, la fixture registra esplicitamente la
+  // transizione storica che in esercizio avrebbe prodotto il trigger.
+  const historicalStages = await admin.from('crm_events').insert(
+    [dueOpp, replyOpp, interactionOpp, movedOpp, closedOpp].map((opportunityId) => ({
+      company_id: A.companyId,
+      organization_id: followUpOrg,
+      opportunity_id: opportunityId,
+      kind: 'opportunity_stage_changed',
+      detail: { from: 'lead', to: 'contacted' },
+      actor_user_id: A.userId,
+      occurred_at: oldCreatedAt,
+    })),
+  );
+  if (historicalStages.error) {
+    throw new Error(`fasi storiche follow-up: ${msg(historicalStages.error)}`);
+  }
+
+  const connection = await admin.from('email_connections').insert({
+    company_id: A.companyId, connected_by: A.userId, provider: 'google',
+    provider_account_id: `follow-up-${stamp}`, email_address: `inbox-${stamp}@example.ch`,
+  }).select('id').single();
+  const connectionId = (connection.data as { id?: string } | null)?.id ?? NIL;
+  const incoming = await admin.from('email_messages').insert({
+    company_id: A.companyId, connection_id: connectionId,
+    provider_message_id: `in:follow-up:${stamp}`, provider_thread_id: `crm:follow-up:reply:${stamp}`,
+    subject: 'Re: reply', sender_name: 'Laura Bianchi',
+    sender_email: `follow-up-${stamp}@example.ch`, received_at: afterSentAt,
+    body_text: 'Risposta', body_preview: 'Risposta', direction: 'in',
+  }).select('id').single();
+  const incomingId = (incoming.data as { id?: string } | null)?.id ?? NIL;
+  await admin.from('crm_contact_emails').insert({
+    company_id: A.companyId, contact_id: followUpContactId, email_message_id: incomingId,
+    match_reason: 'manual', confirmed_by: A.userId,
+  });
+  await admin.from('crm_interactions').insert({
+    company_id: A.companyId, organization_id: followUpOrg, opportunity_id: interactionOpp,
+    contact_id: followUpContactId, type: 'call', occurred_at: afterSentAt,
+    subject: 'Telefonata registrata', created_by: A.userId,
+  });
+  await admin.from('crm_opportunities').update({ stage: 'proposal' }).eq('id', movedOpp);
+  await admin.from('crm_opportunities').update({ stage: 'won' }).eq('id', closedOpp);
+
+  const savedSequence = await A.client.rpc('crm_save_follow_up_sequence' as never, {
+    p_company_id: A.companyId, p_sequence_id: null, p_name: 'Trattative contattate',
+    p_stage: 'contacted', p_is_active: true,
+    p_steps: [{ silenceDays: 1, taskTitle: 'Contattare il cliente', emailTemplateId: null }],
+  } as never);
+  const sequenceId = savedSequence.data as string | null;
+  check('un amministratore salva la sequenza come dato e attiva il workflow gestito',
+    !savedSequence.error && Boolean(sequenceId), msg(savedSequence.error));
+  const noBackfill = await admin.rpc('crm_emit_follow_up_sequences' as never, { p_limit: 200 } as never);
+  check('attivare una sequenza non recupera email uscite prima dell’attivazione',
+    noBackfill.data === 0, msg(noBackfill.error) || `emessi: ${String(noBackfill.data)}`);
+  // Per le controprove che seguono si porta indietro SOLO l'orologio della
+  // sequenza del tenant usa-e-getta: il test deve poter costruire dieci giorni
+  // di silenzio senza aspettare dieci giorni reali.
+  await admin.from('crm_follow_up_sequences').update({ activated_at: oldCreatedAt })
+    .eq('id', sequenceId ?? NIL);
+
+  const crossTenantTemplate = await Bt.client.from('crm_email_templates').insert({
+    company_id: Bt.companyId, name: `Template B ${stamp}`, created_by: Bt.userId,
+  }).select('id').single();
+  const crossTenantSequence = await A.client.rpc('crm_save_follow_up_sequence' as never, {
+    p_company_id: A.companyId, p_sequence_id: sequenceId, p_name: 'Trattative contattate',
+    p_stage: 'contacted', p_is_active: true,
+    p_steps: [{ silenceDays: 1, taskTitle: 'Contattare il cliente',
+      emailTemplateId: (crossTenantTemplate.data as { id?: string } | null)?.id ?? NIL }],
+  } as never);
+  check('un template di un altro tenant viene rifiutato dal guardiano',
+    Boolean(crossTenantSequence.error), msg(crossTenantSequence.error));
+
+  const firstScan = await admin.rpc('crm_emit_follow_up_sequences' as never, { p_limit: 200 } as never);
+  const secondScan = await admin.rpc('crm_emit_follow_up_sequences' as never, { p_limit: 200 } as never);
+  check('il primo giro emette solo la trattativa davvero silenziosa',
+    firstScan.data === 1, msg(firstScan.error) || `emessi: ${String(firstScan.data)}`);
+  check('idempotenza: il secondo giro emette zero duplicati',
+    secondScan.data === 0, msg(secondScan.error) || `emessi: ${String(secondScan.data)}`);
+
+  const { data: followUpEvents } = await admin.from('automation_events')
+    .select('entity_id, event_type').eq('company_id', A.companyId)
+    .eq('event_type', 'crm_follow_up_sequence_due');
+  const emittedOpps = new Set(((followUpEvents ?? []) as Array<{ entity_id: string }>).map((row) => row.entity_id));
+  check('la risposta ferma la sequenza', !emittedOpps.has(replyOpp));
+  check('l’interazione registrata ferma la sequenza', !emittedOpps.has(interactionOpp));
+  check('il cambio di fase ferma la sequenza', !emittedOpps.has(movedOpp));
+  check('una trattativa won non genera attività né eventi', !emittedOpps.has(closedOpp));
+  check('la sola trattativa silenziosa ha un evento', emittedOpps.has(dueOpp) && emittedOpps.size === 1);
+
+  const { data: managedWorkflow } = await admin.from('workflow_definitions')
+    .select('status, conditions, actions').eq('company_id', A.companyId)
+    .eq('managed_source', 'crm_follow_up_sequences').single();
+  const managed = managedWorkflow as { status?: string; actions?: Array<{ key?: string }> } | null;
+  check('il workflow gestito è attivo e usa soltanto attività + notifica',
+    managed?.status === 'active'
+    && JSON.stringify(managed.actions?.map((action) => action.key)) === JSON.stringify(['create_task', 'create_notification']),
+    JSON.stringify(managedWorkflow));
+  check('il browser non può leggere il verbale interno delle emissioni',
+    Boolean((await A.client.from('crm_follow_up_emissions').select('id')).error));
+  void replyOutgoing;
+
+  // -------------------------------------------------------------------------
+  section('19. Cascata — cancellata l’azienda non resta niente');
 
   const tables: Array<[string, string]> = [
     ['crm_organizations', 'company_id'],
@@ -1335,6 +1515,9 @@ async function main() {
     ['crm_quote_versions', 'company_id'],
     ['crm_quote_items', 'company_id'],
     ['crm_quote_documents', 'company_id'],
+    ['crm_follow_up_sequences', 'company_id'],
+    ['crm_follow_up_steps', 'company_id'],
+    ['crm_follow_up_emissions', 'company_id'],
   ];
 
   await cleanup();

@@ -569,6 +569,45 @@ async function crmOpportunityFacts(
   const amount = p.value_amount === null || p.value_amount === undefined
     ? null : Number(p.value_amount);
   const previous = (event.payload as Record<string, unknown> | null)?.from;
+  const payload = event.payload as Record<string, unknown> | null;
+  let followUpFacts: Facts = {};
+  if (event.event_type === 'crm_follow_up_sequence_due') {
+    const sequenceId = typeof payload?.sequenceId === 'string' ? payload.sequenceId : null;
+    const stepId = typeof payload?.stepId === 'string' ? payload.stepId : null;
+    const outboundEmailId = typeof payload?.outboundEmailId === 'string'
+      ? payload.outboundEmailId : null;
+    if (sequenceId && stepId && outboundEmailId) {
+      const rows = letto(await sb.rpc('crm_follow_up_event_facts', {
+        p_company_id: event.company_id,
+        p_opportunity_id: event.entity_id,
+        p_sequence_id: sequenceId,
+        p_step_id: stepId,
+        p_outbound_email_id: outboundEmailId,
+      }), 'facts_crm_follow_up_sequence') as Record<string, unknown>[] | null;
+      const row = rows?.[0] ?? null;
+      followUpFacts = {
+        'follow_up.sequence_id': row ? known(String(row.sequence_id)) : missing(),
+        'follow_up.step_id': row ? known(String(row.step_id)) : missing(),
+        'follow_up.silence_days': row ? known(Number(row.silence_days)) : missing(),
+        'follow_up.task_title': row ? known(String(row.task_title)) : missing(),
+        'follow_up.email_template_id': optional(
+          row?.email_template_id ? String(row.email_template_id) : null,
+        ),
+        // Un riferimento scomparso o incoerente deve FERMARE, non lasciare un
+        // fatto ignoto che potrebbe essere interpretato diversamente domani.
+        'follow_up.still_silent': known(row?.still_silent === true),
+      };
+    } else {
+      followUpFacts = {
+        'follow_up.sequence_id': missing(),
+        'follow_up.step_id': missing(),
+        'follow_up.silence_days': missing(),
+        'follow_up.task_title': missing(),
+        'follow_up.email_template_id': missing(),
+        'follow_up.still_silent': known(false),
+      };
+    }
+  }
 
   return {
     facts: {
@@ -584,6 +623,7 @@ async function crmOpportunityFacts(
       'opportunity.next_step': optional(p.next_step as string | null),
       'opportunity.next_step_due_date': optional(p.next_step_due_date as string | null),
       'opportunity.previous_stage': typeof previous === 'string' ? known(previous) : missing(),
+      ...followUpFacts,
     },
     documentId: null,
     emailMessageId: null,

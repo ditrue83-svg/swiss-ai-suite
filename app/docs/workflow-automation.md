@@ -11,6 +11,11 @@ fra deployment e dominio, con i marcatori del codice nuovo verificati DENTRO il
 bundle servito da `app.ai-swisse.com` nelle tre lingue. `typecheck` / `build` /
 `i18n:coverage` verdi, `npm run test:workflows-unit` **103/103**.
 
+✅ **Estensione CRM 0050 in esercizio dal 2026-09-01.** La migrazione è
+applicata, `automation-worker` è stato ridistribuito con `verify_jwt=false` e
+la scansione delle sequenze è stata provata sul database reale dentro
+`test:crm` **191/191**. Crea soltanto attività e notifiche.
+
 ✅ **Migrazione 0020 APPLICATA dall'utente e verificata**: `npm run test:workflows`
 **61/61 sul database reale**, alla prima esecuzione. Verdi dopo l'applicazione
 anche `test:tasks` 30, `test:documents` 81, `test:calendar` 58, `test:inbox` 50,
@@ -87,7 +92,8 @@ Decidere questioni legali: **no**.
         │  automation-worker  (Edge Function, chiamata da pg_cron)               │
         │  1. automation_emit_overdue()   «questa attività è scaduta»            │
         │  1-bis. crm_emit_follow_up_due()  «questo follow-up è scaduto» (0026)  │
-        │  1-ter. crm_scan_link_suggestions()  propone collegamenti CRM (0030)   │
+        │  1-ter. crm_emit_follow_up_sequences()  silenzio CRM (0050)             │
+        │  1-quater. crm_scan_link_suggestions()  propone collegamenti CRM (0030) │
         │  2. automation_events_claim()   lotto con lease, tetto per azienda     │
         │  3. per ogni evento: processEvent()                                    │
         └───────────────────────────────────────────────────────────────────────┘
@@ -142,6 +148,7 @@ scatterebbe mai: sarebbe una funzione finta.
 | `task_created` | nasce un'attività | attività |
 | `task_status_changed` | un'attività cambia stato | attività |
 | `task_became_overdue` | un'attività supera la scadenza | attività |
+| `crm_follow_up_sequence_due` | un passo CRM raggiunge la soglia di silenzio configurata | trattativa |
 
 **NON implementati, e non per dimenticanza**: `invoice_received`,
 `contract_expiring`, `client_created`, `subsidy_match_found`. Non esistono le
@@ -164,9 +171,9 @@ Due limiti dichiarati:
 - emette **una volta sola per attività** (chiave di deduplicazione). Se
   un'attività viene completata e riaperta oltre la scadenza, non riparte.
 
-### Le altre due scansioni del giro (0026 e 0030)
+### Le altre tre scansioni del giro (0026, 0030 e 0050)
 
-Il worker ne esegue altre due, per la stessa ragione per cui esegue la prima —
+Il worker ne esegue altre tre, per la stessa ragione per cui esegue la prima —
 sono fatti che nessun UPDATE produce — e nello stesso giro, senza cron nuovi:
 
 - **`crm_emit_follow_up_due()`**: «il prossimo passo di questa trattativa è
@@ -178,6 +185,12 @@ sono fatti che nessun UPDATE produce — e nello stesso giro, senza cron nuovi:
   eventi e non alimenta la coda — un suggerimento non è un fatto dell'azienda, è
   un'ipotesi del prodotto, e far scattare una regola su un'ipotesi
   significherebbe creare lavoro a partire da un sospetto.
+- **`crm_emit_follow_up_sequences()`** (0050): emette il passo successivo di
+  una sequenza quando l'ultima email uscente della trattativa è rimasta senza
+  una email in o un'interazione successiva. Fase cambiata, risposta,
+  interazione, `won`/`lost` e archiviazione fermano. La configurazione è nelle
+  tabelle CRM; il workflow gestito usa solo `create_task` e
+  `create_notification`, mai un'azione di contatto.
 
 ⚠️ **Nessuna delle due è terminale.** `automation_emit_overdue` appartiene alla
 0020, cioè alla migrazione che crea la coda che questo worker consuma: se
@@ -189,8 +202,8 @@ compare nel rapporto (`crmFollowUpError`, `crmSuggestionsError`) e in una riga d
 log propria. Un rapporto con quei campi valorizzati è un'affermazione, non
 un'assenza.
 
-Il rapporto del worker conta le tre cose **separatamente** — `overdueEmitted`,
-`crmFollowUpEmitted`, `crmSuggestionsCreated` — perché un numero solo non
+Il rapporto del worker conta le quattro cose **separatamente** — `overdueEmitted`,
+`crmFollowUpEmitted`, `crmFollowUpSequenceEmitted`, `crmSuggestionsCreated` — perché un numero solo non
 direbbe quale scansione ha prodotto lavoro.
 
 ---
@@ -375,6 +388,12 @@ semplicemente omesso.
    una;
 3. **Azione** — `workflow_action_runs.idempotency_key` unico
    (`evento:regola:posizione`): un'azione già riuscita non si rifà.
+
+Le sequenze CRM aggiungono un vincolo di dominio prima dell'outbox:
+`crm_follow_up_emissions` è unico per sequenza, passo, trattativa e ultima email
+uscente, e anche per la stessa combinazione nello stesso giorno. Il doppio giro
+non arriva quindi nemmeno a creare un secondo evento; i due livelli successivi
+restano comunque in vigore.
 
 **Il vincolo è nel database, non nel codice.** «Guarda se esiste, poi inserisci»
 non è una garanzia: fra il guardare e l'inserire ci sta un'altra esecuzione del

@@ -88,6 +88,9 @@ supabase/
                 0049_crm_quotes — preventivi CRM versionati, importi/IVA
                                          decimali con fonte, PDF nei Documenti
                                          e stato inviato dopo Resend.
+                0050_crm_follow_up_sequences — sequenze CRM configurate come
+                                         dati: fase, giorni di silenzio, attività,
+                                         notifica e template solo suggerito.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -139,7 +142,7 @@ src/
   types/          database.ts (schema) · models.ts (dominio)
   services/       auth · company · document · documentHub · analysis · task · subsidy · reply
                   correction · program · interpret · companyLookup · emailConnection · inbox
-                  calendar · calendarConnection · notification · assistant
+                  calendar · calendarConnection · notification · assistant · crmFollowUp
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
   features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing
                   inbox · calendar · notifications · automations · finance · contracts · crm
@@ -1331,7 +1334,7 @@ GIRA è eseguirla.
   amministrativo NON viene fermata); prompt injection nel corpo che non altera l'esito; adapter Google e
   Microsoft che da payload diversi producono lo **stesso** modello; cifratura dei token con AAD, IV
   irripetuto e rilevamento delle manomissioni.
-- **`test:crm-unit` (218)** — le decisioni del CRM che si sbagliano in silenzio. La più
+- **`test:crm-unit` (254)** — le decisioni del CRM che si sbagliano in silenzio. La più
   importante: legge la migrazione 0026 ed estrae l'elenco dei domini pubblici di
   `crm_is_public_domain`, confrontandolo con la costante TypeScript — due copie della stessa
   regola divergono, e il typecheck non guarda dentro l'SQL. Sorveglia anche che il file non

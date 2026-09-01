@@ -194,7 +194,8 @@ function planCreateTask(ctx: ActionContext, config: CreateTaskConfig): ActionPla
       description,
       priority,
       dueDate,
-      assigneeUserId: config.assigneeUserId ?? null,
+      assigneeUserId: config.assigneeMode === 'owner'
+        ? ctx.assigneeUserId : config.assigneeUserId ?? null,
       documentId: linkEntity ? ctx.documentId : null,
       // §53 — l'anteprima dice ciò che accadrebbe: se il collegamento al
       // cliente c'è, si vede prima di attivare la regola e non dopo.
@@ -212,7 +213,8 @@ function planCreateTask(ctx: ActionContext, config: CreateTaskConfig): ActionPla
         status: 'open',
         // §41 — la provenienza è un DATO, non una frase nella descrizione.
         source: 'workflow',
-        assignee_user_id: config.assigneeUserId ?? null,
+        assignee_user_id: config.assigneeMode === 'owner'
+          ? ctx.assigneeUserId : config.assigneeUserId ?? null,
         document_id: linkEntity ? ctx.documentId : null,
         // §88 — il contratto è una CHIAVE ESTERNA, mai un identificativo scritto
         // nella descrizione: un riferimento deve reggere una rinomina e una
