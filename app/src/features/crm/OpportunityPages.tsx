@@ -35,6 +35,8 @@ import { ALL_STAGES, isOpen, opportunityState, opportunityStateKey } from './crm
 import { CrmFieldsCard } from './CrmFieldsCard';
 import { CrmEmailComposer } from './CrmEmailComposer';
 import { CrmQuotesPanel } from './CrmQuotesPanel';
+import { crmFollowUpService } from '@/services/crmFollowUpService';
+import type { CrmOpportunityFollowUpStatus } from '@/types/models';
 import { cx } from '@/lib/cx';
 import styles from './crm.module.css';
 
@@ -229,6 +231,7 @@ export function OpportunityDetailPage() {
   const [lostReason, setLostReason] = useState('');
   const [askLost, setAskLost] = useState(false);
   const [quoteRefresh, setQuoteRefresh] = useState(0);
+  const [followUp, setFollowUp] = useState<CrmOpportunityFollowUpStatus | null>(null);
 
   // ⚠️ Quale risposta sta guardando la pagina: cambiando opportunità la
   // richiesta di prima resta in volo, e se risolve dopo mostra la trattativa
@@ -246,13 +249,15 @@ export function OpportunityDetailPage() {
       if (mia !== richiesta.current) return;
       if (!found) { setNotFound(true); return; }
       setDeal(found);
-      const [tk, dir] = await Promise.all([
+      const [tk, dir, followUpStatus] = await Promise.all([
         crmService.linkedTasks(company.id, found.organizationId),
         memberService.listAssignable(company.id).catch(() => [] as AssignableMember[]),
+        crmFollowUpService.status(company.id, opportunityId).catch(() => null),
       ]);
       if (mia !== richiesta.current) return;
       setTasks(tk.filter((k) => k.opportunityId === opportunityId));
       setMembers(dir);
+      setFollowUp(followUpStatus);
     } finally {
       if (mia === richiesta.current) setLoading(false);
     }
@@ -304,6 +309,7 @@ export function OpportunityDetailPage() {
         </div>
         <div className="row-wrap">
           <CrmEmailComposer companyId={company.id} organizationId={deal.organizationId} opportunityId={deal.id}
+            suggestedTemplateId={followUp?.state === 'active' ? followUp.emailTemplateId : null}
             onSent={() => { setQuoteRefresh((value) => value + 1); void load(); }} />
           {/* §54 — il cambio di fase da una TENDINA, non da un trascinamento:
               è accessibile da tastiera senza alcuna libreria. */}
@@ -420,6 +426,18 @@ export function OpportunityDetailPage() {
             <p><em>{t('crm.opp.noNextStep')}</em></p>
           )}
         </div>
+      </div>
+
+      <div className="card mt-6">
+        <div className="card-title">{t('crmFollowUp.dealTitle')}</div>
+        {followUp ? <>
+          <div className="row-wrap"><Tag tone={followUp.state === 'active' ? 'ok' : 'neutral'}>{t(`crmFollowUp.states.${followUp.state}` as TKey)}</Tag><strong>{followUp.sequenceName}</strong></div>
+          {followUp.state === 'active' && followUp.taskTitle && <>
+            <p>{t('crmFollowUp.nextStepLabel', { number: followUp.stepPosition ?? 1 })}: {followUp.taskTitle}</p>
+            {followUp.dueAt && <p className="muted-sm">{t('crmFollowUp.dueOn')}: {formatDate(followUp.dueAt)}</p>}
+            {followUp.emailTemplateName && <p className="muted-sm">{t('crmFollowUp.suggestedTemplate')}: {followUp.emailTemplateName}</p>}
+          </>}
+        </> : <p className="muted-sm">{t('crmFollowUp.noneForDeal')}</p>}
       </div>
 
       <CrmQuotesPanel companyId={company.id} opportunityId={deal.id}

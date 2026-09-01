@@ -2031,6 +2031,42 @@ export interface CrmInteraction {
   updatedAt: string;
 }
 
+export interface CrmFollowUpStep {
+  id: string;
+  position: number;
+  silenceDays: number;
+  taskTitle: string;
+  emailTemplateId: string | null;
+  emailTemplateName: string | null;
+}
+
+export interface CrmFollowUpSequence {
+  id: string;
+  companyId: string;
+  name: string;
+  stage: CrmOpportunityStage;
+  isActive: boolean;
+  archivedAt: string | null;
+  steps: CrmFollowUpStep[];
+}
+
+export type CrmFollowUpState = 'active' | 'waiting_outbound' | 'stopped' | 'completed';
+
+export interface CrmOpportunityFollowUpStatus {
+  sequenceId: string;
+  sequenceName: string;
+  sequenceActive: boolean;
+  stepId: string | null;
+  stepPosition: number | null;
+  silenceDays: number | null;
+  taskTitle: string | null;
+  emailTemplateId: string | null;
+  emailTemplateName: string | null;
+  dueAt: string | null;
+  outboundAt: string | null;
+  state: CrmFollowUpState;
+}
+
 export interface CrmEvent {
   id: string;
   organizationId: string | null;

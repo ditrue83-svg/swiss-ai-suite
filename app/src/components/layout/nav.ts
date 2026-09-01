@@ -132,6 +132,7 @@ export const NAV_SETTINGS: NavSubItem[] = [
   // l'azienda descrive le proprie controparti, non una preferenza di chi guarda.
   { id: 'crmFields', labelKey: 'nav.crmFields', path: '/campi-personalizzati', apre: 'pannello', legacyOnly: true },
   { id: 'crmEmail', labelKey: 'nav.crmEmail', path: '/email-crm', apre: 'pannello', legacyOnly: true },
+  { id: 'crmFollowUp', labelKey: 'nav.crmFollowUp', path: '/follow-up-crm', apre: 'pannello', legacyOnly: true },
   { id: 'pricing', labelKey: 'nav.subscription', path: '/prezzi', apre: 'pannello' },
   { id: 'automations', labelKey: 'nav.automations', path: '/automazioni', apre: 'pagina' },
   { id: 'audit', labelKey: 'nav.auditLog', path: '/registro', adminOnly: true, apre: 'pagina' },
