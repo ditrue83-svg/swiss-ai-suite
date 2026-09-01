@@ -419,8 +419,8 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   // luoghi in cui si lavora invece di configurare.
   const settingsShape = NAV_SETTINGS.map((s) => s.id);
   check(
-    'Impostazioni raccoglie preferenze · azienda · campi personalizzati · email CRM · abbonamento · automazioni · registro',
-    JSON.stringify(settingsShape) === JSON.stringify(['preferences', 'company', 'crmFields', 'crmEmail', 'pricing', 'automations', 'audit']),
+    'Impostazioni raccoglie preferenze · azienda · campi personalizzati · email CRM · follow-up · abbonamento · automazioni · registro',
+    JSON.stringify(settingsShape) === JSON.stringify(['preferences', 'company', 'crmFields', 'crmEmail', 'crmFollowUp', 'pricing', 'automations', 'audit']),
     `trovato ${settingsShape.join(' · ')}`,
   );
   // I pannelli PRIMA, le pagine DOPO: una colonnina che alterna «si apre qui» e
