@@ -1,10 +1,10 @@
 # CRM Light — Clienti e controparti
 
 Stato: **in esercizio dal 2026-07-30**, interfaccia compresa.
-Migrazioni fino alla **0049** applicate. La **0050** (sequenze di follow-up) è
-implementata nel branch `improve/crm-follow-up`, non ancora applicata.
-Test: `npm run test:crm-unit` **253/253** offline sul branch · ultimo database
-reale prima della 0050: `npm run test:crm` **176/176**, eseguito dopo la 0049.
+Migrazioni fino alla **0050** applicate. Le sequenze di follow-up sono nel
+database reale e `automation-worker` è stato ridistribuito il 2026-09-01.
+Test: `npm run test:crm-unit` **254/254** offline · `npm run test:crm`
+**191/191** sul database reale dopo la 0050, con pulizia verificata.
 
 ---
 
@@ -620,10 +620,10 @@ delle opzioni e dei valori, formattazione e ordinamento su fixture tipizzate.
 La 20 legge la 0050 e verifica configurazione come dato, revoke prima dei
 grant, doppia idempotenza, stop e assenza di azioni email. `test:crm` aggiunge
 la sezione 18 con le controprove sul database reale: doppio giro, risposta,
-interazione, cambio fase, chiusura e guardia cross-tenant. Questa sezione non è
-eseguibile finché la 0050 non viene applicata.
+interazione, cambio fase, chiusura e guardia cross-tenant. Dopo l'applicazione
+della 0050 la suite è verde **191/191**.
 
-L'ultima misura reale prima della 0050 è **176/176**, eseguita dopo la 0049.
+La misura reale corrente è **191/191**, eseguita dopo la 0050.
 Il runner sul branch contiene ora diciannove sezioni; la 18 è quella nuova e la
 19 verifica la cascata. Le sezioni storiche coprono:
 isolamento (anche chiamando la RPC col
@@ -997,9 +997,9 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
    `send-crm-email` / `crm-email-webhook` pubblicate.
 7. ✅ **FATTO il 2026-09-01**: **0049_crm_quotes.sql** applicata,
    `generate-crm-quote` e `send-crm-email` pubblicate; `test:crm` 176/176.
-8. ⛔ **NON ANCORA APPLICATO/PUBBLICATO**: **0050_crm_follow_up_sequences.sql**.
-   Dopo l'applicazione va ridistribuito `automation-worker`, perché il nuovo
-   scanner e i fatti del registro vivono nello shared code della funzione.
+8. ✅ **FATTO il 2026-09-01**: **0050_crm_follow_up_sequences.sql** applicata e
+   `automation-worker` ridistribuito con `verify_jwt=false`; `test:crm`
+   **191/191** sul database reale, inclusa la pulizia senza residui.
 
 ---
 

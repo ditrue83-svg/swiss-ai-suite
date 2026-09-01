@@ -1384,6 +1384,25 @@ async function main() {
   const closedOpp = await createFollowUpOpp('Follow-up chiuso');
   await connectOutgoing(closedOpp, 'closed');
 
+  // Il guardiano delle opportunità riscrive `created_at` a now() anche per il
+  // service role. Per costruire una fase davvero iniziata nel passato, senza
+  // indebolire quel guardiano, la fixture registra esplicitamente la
+  // transizione storica che in esercizio avrebbe prodotto il trigger.
+  const historicalStages = await admin.from('crm_events').insert(
+    [dueOpp, replyOpp, interactionOpp, movedOpp, closedOpp].map((opportunityId) => ({
+      company_id: A.companyId,
+      organization_id: followUpOrg,
+      opportunity_id: opportunityId,
+      kind: 'opportunity_stage_changed',
+      detail: { from: 'lead', to: 'contacted' },
+      actor_user_id: A.userId,
+      occurred_at: oldCreatedAt,
+    })),
+  );
+  if (historicalStages.error) {
+    throw new Error(`fasi storiche follow-up: ${msg(historicalStages.error)}`);
+  }
+
   const connection = await admin.from('email_connections').insert({
     company_id: A.companyId, connected_by: A.userId, provider: 'google',
     provider_account_id: `follow-up-${stamp}`, email_address: `inbox-${stamp}@example.ch`,

@@ -1334,7 +1334,7 @@ GIRA è eseguirla.
   amministrativo NON viene fermata); prompt injection nel corpo che non altera l'esito; adapter Google e
   Microsoft che da payload diversi producono lo **stesso** modello; cifratura dei token con AAD, IV
   irripetuto e rilevamento delle manomissioni.
-- **`test:crm-unit` (218)** — le decisioni del CRM che si sbagliano in silenzio. La più
+- **`test:crm-unit` (254)** — le decisioni del CRM che si sbagliano in silenzio. La più
   importante: legge la migrazione 0026 ed estrae l'elenco dei domini pubblici di
   `crm_is_public_domain`, confrontandolo con la costante TypeScript — due copie della stessa
   regola divergono, e il typecheck non guarda dentro l'SQL. Sorveglia anche che il file non

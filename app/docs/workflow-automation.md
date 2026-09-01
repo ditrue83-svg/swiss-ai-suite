@@ -11,6 +11,11 @@ fra deployment e dominio, con i marcatori del codice nuovo verificati DENTRO il
 bundle servito da `app.ai-swisse.com` nelle tre lingue. `typecheck` / `build` /
 `i18n:coverage` verdi, `npm run test:workflows-unit` **103/103**.
 
+✅ **Estensione CRM 0050 in esercizio dal 2026-09-01.** La migrazione è
+applicata, `automation-worker` è stato ridistribuito con `verify_jwt=false` e
+la scansione delle sequenze è stata provata sul database reale dentro
+`test:crm` **191/191**. Crea soltanto attività e notifiche.
+
 ✅ **Migrazione 0020 APPLICATA dall'utente e verificata**: `npm run test:workflows`
 **61/61 sul database reale**, alla prima esecuzione. Verdi dopo l'applicazione
 anche `test:tasks` 30, `test:documents` 81, `test:calendar` 58, `test:inbox` 50,
