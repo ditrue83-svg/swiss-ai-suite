@@ -1132,7 +1132,8 @@ check('una interazione successiva ferma la sequenza',
   && FOLLOW_UP_MIGRATION.includes('(i.opportunity_id = o.id or i.opportunity_id is null)'));
 check('una risposta è confrontata con tutti i destinatari della email uscente',
   FOLLOW_UP_MIGRATION.includes('recipient.email_message_id = outmail.email_id')
-  && FOLLOW_UP_MIGRATION.includes('ice.contact_id = method.contact_id'));
+  && FOLLOW_UP_MIGRATION.includes('ice.contact_id = method.contact_id')
+  && !FOLLOW_UP_MIGRATION.includes('x.contact_id'));
 check('won, lost, archiviata e cambio fase non producono lavoro',
   FOLLOW_UP_MIGRATION.includes("o.stage not in ('won', 'lost')")
   && FOLLOW_UP_MIGRATION.includes('o.archived_at is null')

@@ -509,7 +509,7 @@ returns table (
        and o.archived_at is null and o.stage not in ('won', 'lost')
        and public.is_company_member(p_company_id)
   ), outbound as (
-    select b.*, x.email_id, x.sent_at, x.contact_id
+    select b.*, x.email_id, x.sent_at
       from base b
       left join lateral (
         select e.id as email_id, coalesce(e.sent_at, e.created_at) as sent_at
