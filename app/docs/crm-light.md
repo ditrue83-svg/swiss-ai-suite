@@ -1,11 +1,10 @@
 # CRM Light — Clienti e controparti
 
 Stato: **in esercizio dal 2026-07-30**, interfaccia compresa.
-Migrazioni: **0026** (il modulo), **0028** (la correzione della cascata),
-**0030** (il candidato automatico) e **0047** (i campi personalizzati), tutte
-applicate.
-Test: `npm run test:crm-unit` **244/244** · `npm run test:crm` **139/139 in 16
-sezioni, eseguite** il 2026-08-29, sezione 15 (campi personalizzati) compresa.
+Migrazioni fino alla **0049** applicate. La **0050** (sequenze di follow-up) è
+implementata nel branch `improve/crm-follow-up`, non ancora applicata.
+Test: `npm run test:crm-unit` **253/253** offline sul branch · ultimo database
+reale prima della 0050: `npm run test:crm` **176/176**, eseguito dopo la 0049.
 
 ---
 
@@ -75,6 +74,8 @@ tabelle**.
 | `crm_organization_documents` · `crm_organization_emails` · `crm_contact_emails` · `crm_opportunity_documents` | i quattro ponti |
 | `crm_link_suggestions` | ciò che il sistema sospetta e una persona conferma |
 | `crm_field_definitions` | i campi personalizzati decisi **dall'azienda** (0047) |
+| `crm_follow_up_sequences` · `crm_follow_up_steps` | le sequenze per fase e i loro passi, configurazione aziendale (0050) |
+| `crm_follow_up_emissions` | il verbale idempotente di quale passo è stato emesso per trattativa e ciclo di email uscente |
 | `crm_field_values` | i loro valori, uno per riga, in colonne tipate (0047) |
 
 ### Due entità distinte, mai una stringa sola
@@ -273,6 +274,44 @@ prossimo passo + data, motivo della perdita, timbri `won_at`/`lost_at`.
 Lo storico dei passaggi conserva **da dove** e **verso dove**: senza il «da», la
 domanda «questa trattativa è tornata indietro?» non ha risposta.
 
+### Sequenze di follow-up (0050, Fase 1.3)
+
+Una sequenza è configurazione dell'azienda, non codice: nome, fase aperta
+(`lead`, `contacted`, `proposal`, `negotiation`) e da uno a dieci passi. Ogni
+passo dichiara dopo quanti giorni di silenzio creare un'attività, il suo titolo
+e, facoltativamente, un template email. Per una fase può esistere una sola
+sequenza attiva: la scheda della trattativa deve poter rispondere in modo unico
+alla domanda «qual è il prossimo passo?».
+
+**«Senza risposta» ha una definizione stretta.** Si prende l'ultima email CRM
+`direction = 'out'`, accettata o consegnata dal provider e collegata alla
+trattativa. La sequenza prosegue solo se, dopo quell'istante, non esistono:
+
+- una email `direction = 'in'` collegata alla trattativa o allo stesso contatto;
+- un'interazione registrata sulla trattativa, oppure sullo stesso contatto
+  senza una trattativa specifica.
+
+Una risposta arrivata per telefono **non ferma da sola** la sequenza: qualcuno
+deve registrare la telefonata fra le interazioni. È un limite deliberato della
+misura, non un tentativo di indovinare ciò che è successo fuori dal prodotto.
+
+La fase è parte del fatto. L'email uscente deve essere successiva all'ingresso
+nella fase configurata; un cambio di fase ferma il ciclo, e tornare più tardi
+alla fase richiede una nuova email uscente. `won`, `lost` e opportunità
+archiviate non entrano mai nella scansione. Risposta, interazione e fase vengono
+rilette anche dal worker dopo il claim: se lo stop arriva fra emissione ed
+esecuzione, il workflow non agisce.
+
+L'attivazione non recupera il passato: `activated_at` pretende una email
+uscente successiva. Ogni passo viene emesso una sola volta per sequenza,
+trattativa e ultima email uscente; un secondo vincolo impedisce due emissioni
+dello stesso passo nello stesso giorno. Una nuova email uscente apre un nuovo
+ciclo.
+
+Il template collegato è **solo un suggerimento**: compare nella scheda e viene
+preselezionato nel composer. L'invio resta il pulsante premuto da una persona.
+Nessuna funzione della 0050 chiama il provider email.
+
 ### Preventivi PDF versionati (0049, Fase 1.2)
 
 `proposal` resta la **fase commerciale della trattativa**; non diventa un file e
@@ -382,9 +421,9 @@ nessuno script, nessuna occorrenza della parola. Non è stato simulato.
 
 ## 8. Automazioni
 
-Sei inneschi, e **tutti hanno una sorgente vera**: `crm_organization_created`,
+Sette inneschi, e **tutti hanno una sorgente vera**: `crm_organization_created`,
 `crm_role_added`, `crm_opportunity_created`, `crm_opportunity_stage_changed`,
-`crm_opportunity_won`, `crm_follow_up_due`.
+`crm_opportunity_won`, `crm_follow_up_due`, `crm_follow_up_sequence_due`.
 
 Due entità nuove (`crm_organization`, `crm_opportunity`), 23 campi nel registro,
 `create_task` e `create_notification` allargate al CRM.
@@ -399,6 +438,12 @@ CRM, ma non esistono sequenze o invii automatici; l'Inbox resta di sola lettura.
 `automation_emit_overdue`. Nessun cron nuovo. ✅ **La chiamata esiste dal
 2026-07-30**: fino a quel giorno l'innesco era dichiarato e non scattava mai,
 perché la funzione c'era nel database e non la chiamava nessuno.
+
+Dal 0050 anche `crm_emit_follow_up_sequences` gira nello stesso worker. Scrive
+un evento `crm_follow_up_sequence_due`; un solo workflow tecnico per azienda,
+nascosto dal costruttore generico e governato dalle Impostazioni CRM, usa
+esclusivamente `create_task` e `create_notification`. La configurazione resta
+nelle tabelle delle sequenze; il workflow non contiene soglie né fasi.
 
 ### I tre modelli offerti nel generatore (§136–§138)
 
@@ -550,13 +595,11 @@ nessun messaggio traduce.
 ## 12. Test
 
 ```bash
-npm run test:crm-unit   # 244 casi, offline, senza database e senza crediti
-npm run test:crm        # 139 asserzioni in 16 sezioni, sul database reale —
-                        # eseguite il 2026-08-29, sezione 15 (campi
-                        # personalizzati) compresa
+npm run test:crm-unit   # 253 casi, offline, senza database e senza crediti
+npm run test:crm        # database reale; la sezione 18 richiede la 0050
 ```
 
-`test:crm-unit` — diciannove sezioni. La più importante **legge la migrazione 0026** ed
+`test:crm-unit` — venti sezioni. La più importante **legge la migrazione 0026** ed
 estrae l'array di `crm_is_public_domain`, i valori dei quattro enum e il blocco di
 autoverifica, confrontandoli con le costanti TypeScript. Sorveglia anche che il file
 **non contraddica se stesso**: nessuna colonna può essere insieme «timbrata dal
@@ -568,14 +611,21 @@ di calendario alle 23:30, filtri in URL, ordinamenti stabili, la chiave del
 candidato scritta due volte, il sito web come link che può essere codice. Le
 cinque dell'import CSV: parser (virgolette, separatori, codifiche),
 auto-mappatura in quattro lingue senza indovinare, validazione di riga in codici,
-duplicati dentro e fuori il file, instradamento dei recapiti. Le ultime due sono
-dei campi personalizzati: la 18 **legge la migrazione 0047** (enum TS contro
-enum SQL, revoke prima dei grant, grant di colonna — provati sul contenuto della
-dichiarazione, non sul suo nome —, nessuna delete-policy sulle definizioni, ogni
-sentinella tradotto da `crmErrorMessage`), la 19 prova parsing delle opzioni e
-dei valori, formattazione e ordinamento su fixture tipizzate.
+duplicati dentro e fuori il file, instradamento dei recapiti. Le sezioni 18 e 19
+coprono i campi personalizzati: la 18 **legge la migrazione 0047** (enum TS
+contro enum SQL, revoke prima dei grant, grant di colonna — provati sul
+contenuto della dichiarazione, non sul suo nome —, nessuna delete-policy sulle
+definizioni, ogni sentinella tradotta da `crmErrorMessage`), la 19 prova parsing
+delle opzioni e dei valori, formattazione e ordinamento su fixture tipizzate.
+La 20 legge la 0050 e verifica configurazione come dato, revoke prima dei
+grant, doppia idempotenza, stop e assenza di azioni email. `test:crm` aggiunge
+la sezione 18 con le controprove sul database reale: doppio giro, risposta,
+interazione, cambio fase, chiusura e guardia cross-tenant. Questa sezione non è
+eseguibile finché la 0050 non viene applicata.
 
-`test:crm` — sedici sezioni **eseguite il 2026-08-29, 139 asserzioni verdi**:
+L'ultima misura reale prima della 0050 è **176/176**, eseguita dopo la 0049.
+Il runner sul branch contiene ora diciannove sezioni; la 18 è quella nuova e la
+19 verifica la cascata. Le sezioni storiche coprono:
 isolamento (anche chiamando la RPC col
 `p_company_id` altrui), cross-tenant (nemmeno il service role), responsabili,
 referente, permessi verificati **rileggendo** e non guardando l'esito dell'update,
@@ -682,7 +732,7 @@ ramo. Sono diventate due funzioni.
 
 Il pezzo che fa passare il CRM da «si riempie a mano» a «si riempie
 confermando». Una funzione sola, `crm_scan_link_suggestions`, chiamata dal worker
-delle automazioni nello stesso giro delle altre due scansioni: nessuna Edge
+delle automazioni nello stesso giro delle altre scansioni: nessuna Edge
 Function nuova, nessun cron nuovo, nessuna tabella nuova.
 
 **Che cosa legge**: le controparti dei **contratti** (`counterparty_name` dove
@@ -935,8 +985,8 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
    scaduto» sono due fatti diversi.
 4. Applicare **0030_crm_link_candidate.sql** per il candidato automatico, e
    rideployare `automation-worker`: la scansione `crm_scan_link_suggestions` gira
-   nello stesso giro delle altre due (`crmSuggestionsCreated` nel rapporto).
-   ⚠️ Nessuna delle due scansioni del CRM è terminale per il worker: se falliscono,
+   nello stesso giro delle altre scansioni (`crmSuggestionsCreated` nel rapporto).
+   ⚠️ Nessuna scansione del CRM è terminale per il worker: se fallisce,
    il codice finisce nel rapporto e in una riga di log, e la coda degli altri
    moduli continua. Un modulo non installato non deve spegnere le automazioni di
    Documenti, Finanze e Contratti.
@@ -945,10 +995,11 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
    dietro `VITE_LEGACY_MODULES`, lato client.
 6. ✅ **FATTO il 2026-08-30**: **0048_crm_send_email.sql** applicata e
    `send-crm-email` / `crm-email-webhook` pubblicate.
-7. ⛔ **NON ANCORA APPLICATO/PUBBLICATO**: **0049_crm_quotes.sql**,
-   `generate-crm-quote` e le modifiche a `send-crm-email` sono nel branch
-   `improve/crm-quotes`. Finché migrazione e funzioni non vengono distribuite,
-   i preventivi PDF non esistono sul sito online.
+7. ✅ **FATTO il 2026-09-01**: **0049_crm_quotes.sql** applicata,
+   `generate-crm-quote` e `send-crm-email` pubblicate; `test:crm` 176/176.
+8. ⛔ **NON ANCORA APPLICATO/PUBBLICATO**: **0050_crm_follow_up_sequences.sql**.
+   Dopo l'applicazione va ridistribuito `automation-worker`, perché il nuovo
+   scanner e i fatti del registro vivono nello shared code della funzione.
 
 ---
 
@@ -956,7 +1007,8 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
 
 **Fuori perimetro per scelta**
 
-- Nessuna sequenza, campagna o invio automatico. Il 0048 introduce soltanto un
+- Nessuna campagna o invio automatico. Le sequenze della 0050 creano attività
+  e notifiche e possono proporre un template; l'invio resta soltanto un
   gesto umano: una email singola dal CRM, via Resend/provider transazionale e
   non via Gmail API. Il mittente usa un dominio verificato configurato per
   l'azienda; se il provider manca la funzione e l'interfaccia lo dichiarano non
