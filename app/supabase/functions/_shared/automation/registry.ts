@@ -59,6 +59,9 @@ export const AUTOMATION_EVENT_TYPES = [
   'crm_opportunity_stage_changed',
   'crm_opportunity_won',
   'crm_follow_up_due',
+  // 0050 — silenzio dopo una email uscente. Il worker rilegge risposta,
+  // interazioni e fase prima di agire: lo stop resta efficace dopo l'emissione.
+  'crm_follow_up_sequence_due',
   // 0032 — i SETTE inneschi degli incentivi. Ognuno ha un produttore vero in
   // quella migrazione: cinque sono trigger sulle tabelle
   // (`subsidy_emit_opportunity` ne emette due, `subsidy_emit_case_status`,
@@ -451,6 +454,18 @@ const CRM_OPP_TEMPLATES = [
   '{{opportunity.value_amount}}', '{{opportunity.next_step}}',
 ] as const;
 
+const FOLLOW_UP_SEQUENCE_FIELDS: readonly TriggerField[] = [
+  { path: 'follow_up.sequence_id', type: 'string', labelKey: 'automations.fields.followUpSequence' },
+  { path: 'follow_up.step_id', type: 'string', labelKey: 'automations.fields.followUpStep' },
+  { path: 'follow_up.silence_days', type: 'number', labelKey: 'automations.fields.followUpSilenceDays' },
+  { path: 'follow_up.still_silent', type: 'boolean', labelKey: 'automations.fields.followUpStillSilent' },
+  { path: 'follow_up.email_template_id', type: 'string', labelKey: 'automations.fields.followUpEmailTemplate' },
+];
+
+const FOLLOW_UP_SEQUENCE_TEMPLATES = [
+  ...CRM_OPP_TEMPLATES, '{{follow_up.task_title}}',
+] as const;
+
 // ---------------------------------------------------------------------------
 // I campi degli incentivi (0032)
 //
@@ -728,6 +743,15 @@ export const TRIGGERS: readonly TriggerDef[] = [
     descriptionKey: 'automations.triggers.crmFollowUpDueDesc',
     fields: [...ORGANIZATION_FIELDS, ...OPPORTUNITY_FIELDS],
     templates: CRM_OPP_TEMPLATES,
+  },
+  {
+    key: 'crm_follow_up_sequence_due',
+    entityType: 'crm_opportunity',
+    version: 1,
+    labelKey: 'automations.triggers.crmFollowUpSequenceDue',
+    descriptionKey: 'automations.triggers.crmFollowUpSequenceDueDesc',
+    fields: [...ORGANIZATION_FIELDS, ...OPPORTUNITY_FIELDS, ...FOLLOW_UP_SEQUENCE_FIELDS],
+    templates: FOLLOW_UP_SEQUENCE_TEMPLATES,
   },
   // ---- Incentivi (0032) ----
   {
@@ -1038,6 +1062,8 @@ export interface CreateTaskConfig {
   descriptionTemplate?: string | null;
   priority: PriorityMode;
   assigneeUserId?: string | null;
+  /** Per i workflow gestiti: assegna al responsabile riletto dall'entità. */
+  assigneeMode?: 'owner' | null;
   dueDate: DueDateMode;
   /** Giorni: prima della scadenza (`before_deadline`) o da oggi (`in_days`). */
   dueDateDays?: number | null;

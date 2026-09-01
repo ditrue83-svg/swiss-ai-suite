@@ -328,6 +328,12 @@ function validateCreateTask(
   if (c.assigneeUserId !== undefined && c.assigneeUserId !== null && !isUuid(c.assigneeUserId)) {
     out.push(issue('assigneeInvalid', undefined, where));
   }
+  if (c.assigneeMode !== undefined && c.assigneeMode !== null && c.assigneeMode !== 'owner') {
+    out.push(issue('assigneeInvalid', undefined, where));
+  }
+  if (c.assigneeMode === 'owner' && !triggerHasOwner(trigger)) {
+    out.push(issue('assigneeNotAvailable', { trigger: trigger.key }, where));
+  }
   return out;
 }
 

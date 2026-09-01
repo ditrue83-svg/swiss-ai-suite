@@ -306,7 +306,7 @@ export type AutomationEventType =
   // gira dentro il worker delle automazioni già acceso. Nessun cron nuovo.
   | 'crm_organization_created' | 'crm_role_added'
   | 'crm_opportunity_created' | 'crm_opportunity_stage_changed'
-  | 'crm_opportunity_won' | 'crm_follow_up_due'
+  | 'crm_opportunity_won' | 'crm_follow_up_due' | 'crm_follow_up_sequence_due'
   // 0032 — i sette inneschi degli incentivi. ⚠️ Stanno qui perché il database
   // li ammette: l'unione TypeScript deve SEGUIRE l'enum SQL, non inseguirlo.
   // Il registro condiviso li dichiara e un test confronta i due elenchi.
@@ -1261,6 +1261,7 @@ export interface Database {
           attention_code: string | null; attention_at: string | null;
           consecutive_failures: number;
           last_run_at: string | null; last_run_status: WorkflowRunStatus | null;
+          managed_source: 'crm_follow_up_sequences' | null; managed_entity_id: string | null;
           created_by: string | null; updated_by: string | null;
           created_at: string; updated_at: string;
           archived_at: string | null; archived_by: string | null;
