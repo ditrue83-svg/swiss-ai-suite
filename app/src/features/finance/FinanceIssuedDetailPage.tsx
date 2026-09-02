@@ -29,6 +29,7 @@ import { AppError, toUserMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { useI18n, useT, type TFunction, type TKey } from '@/i18n';
 import { formatDecimal } from './financeModel';
+import { FinanceIssuedInvoiceEditor, initialFromDetail } from './FinanceIssuedInvoiceEditor';
 import { cx } from '@/lib/cx';
 import styles from './finance.module.css';
 import type { FinanceIssuedInvoiceStatus, IssuedInvoiceDocument } from '@/types/models';
@@ -83,6 +84,7 @@ export function FinanceIssuedDetailPage() {
   const [paidOn, setPaidOn] = useState(() => new Date().toISOString().slice(0, 10));
   const [voiding, setVoiding] = useState(false);
   const [voidReason, setVoidReason] = useState('');
+  const [editing, setEditing] = useState(false);
   // L'IBAN mancante non è un errore come gli altri: ha una CURA, e la cura sta
   // nelle impostazioni dell'azienda. Il messaggio e il collegamento arrivano
   // insieme, nella stessa frase.
@@ -152,6 +154,9 @@ export function FinanceIssuedDetailPage() {
       <div className="row-wrap mt-12">
         {invoice.status === 'draft' && (
           <>
+            <button className="btn" disabled={busy} onClick={() => setEditing(true)}>
+              <Icon name="fileSignature" className="ic-sm" /> {t('finance.issued.edit')}
+            </button>
             <button className="btn" disabled={busy}
               onClick={() => void run(() => financeIssuedService.generatePdf(companyId, invoice.id).then(() => undefined), 'finance.issued.pdfToast')}>
               <Icon name="document" className="ic-sm" />
@@ -388,6 +393,15 @@ export function FinanceIssuedDetailPage() {
           </div>
         </form>
       </Dialog>
+
+      {/* ---- La modifica della bozza: la stessa finestra della creazione ----- */}
+      <FinanceIssuedInvoiceEditor
+        open={editing}
+        companyId={companyId}
+        initial={editing ? initialFromDetail(data) : null}
+        onClose={() => setEditing(false)}
+        onSaved={() => { setEditing(false); reload(); }}
+      />
     </>
   );
 }

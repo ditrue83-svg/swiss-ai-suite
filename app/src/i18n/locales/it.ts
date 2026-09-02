@@ -1877,6 +1877,19 @@ export const it = {
       // qui non c'è un pulsante per dirlo, e la frase spiega perché.
       emailHint: '«Inviata» la scrive l’invio dell’email dal CRM, non un pulsante qui.',
       ibanMissingLink: 'Apri le impostazioni dell’azienda',
+      // L'editor della bozza: creazione dal pannello, dal dettaglio, o
+      // pre-compilata dal preventivo accettato (`?dal-preventivo=`).
+      create: 'Nuova fattura',
+      edit: 'Modifica la bozza',
+      customer: 'Cliente',
+      opportunity: 'Opportunità',
+      issuedOnLabel: 'Data di emissione',
+      dueDateLabel: 'Scadenza',
+      currencyHint: 'La polizza QR esiste solo in franchi (CHF) o in euro (EUR).',
+      lockedPartiesHint: 'Su una bozza esistente cliente e trattativa non si cambiano: se servono altri, la bozza si ricrea.',
+      saveDraft: 'Salva la bozza',
+      savedToast: 'Bozza salvata.',
+      prefillFailed: 'Il preventivo non si è potuto leggere: la bozza riparte vuota.',
       errors: {
         ibanMissing: 'Manca l’IBAN aziendale: inseriscilo nelle impostazioni dell’azienda, poi riprova.',
         pdfRequired: 'Genera il PDF prima di emettere la fattura.',
@@ -2106,7 +2119,7 @@ export const it = {
     subtitle: 'Clienti, fornitori e controparti, con tutto il lavoro collegato.',
     // §77 — la frase che impedisce di leggere il valore di pipeline come un
     // fatturato. Non è cautela legale: è la differenza fra una speranza e un incasso.
-    disclaimer: 'Il valore di un’opportunità è una stima, non un ricavo: AI-Swisse non gestisce le fatture emesse.',
+    disclaimer: 'Il valore di un’opportunità è una stima, non un ricavo: lo diventa con la fattura emessa e il suo pagamento.',
     add: 'Nuovo cliente',
     addPerson: 'Aggiungi contatto',
     addOpportunity: 'Nuova opportunità',
@@ -2131,6 +2144,9 @@ export const it = {
       moveProposal: 'Porta a Offerta', keepStage: 'Mantieni la fase',
       acceptTitle: 'Preventivo accettato', acceptQuestion: 'Registrare l’accettazione e proporre la trattativa come vinta? La scelta resta tua.',
       acceptAndWon: 'Accetta e segna vinta', acceptOnly: 'Accetta soltanto', acceptedAndWon: 'Preventivo accettato e trattativa segnata come vinta.',
+      // 0053 — dal preventivo accettato nasce la fattura: il gesto porta alla
+      // scheda «Emesse» con la bozza pre-compilata da questa versione.
+      createInvoice: 'Crea fattura',
     },
     searchPlaceholder: 'Cerca per nome, IDI, indirizzo, persona…',
     searchHint: 'La ricerca guarda nome, ragione sociale, IDI, numero IVA, dominio, persone di contatto, recapiti e titoli delle opportunità.',
@@ -2194,7 +2210,7 @@ export const it = {
       openMerged: 'Apri la scheda principale',
       // §78 — nessun totale d’acquisto: i dati non sono completi.
       financeHint: 'Documenti finanziari collegati. Non è un totale d’acquisto: Finanze conosce solo le fatture caricate.',
-      noRevenue: 'AI-Swisse non gestisce le fatture emesse, quindi non mostra ricavi.',
+      noRevenue: 'Queste sono le fatture RICEVUTE dalla controparte: quelle emesse verso di lei stanno in Finanze, scheda «Emesse».',
       emptyPeople: 'Nessuna persona di contatto.',
       emptyOpportunities: 'Nessuna opportunità.',
       emptyTasks: 'Nessuna attività collegata.',

@@ -13,15 +13,21 @@
 // che si mostra, mai un'azione.
 // ============================================================================
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Icon } from '@/components/ui/Icon';
 import { Tag, type TagTone } from '@/components/ui/Tag';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { ErrorState, EmptyCta, SkeletonLine } from '@/components/ui/states';
+import { useToast } from '@/components/ui/Toast';
 import { financeIssuedService } from '@/services/financeIssuedService';
+import { crmQuoteService } from '@/services/crmQuoteService';
 import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT, type TFunction, type TKey } from '@/i18n';
 import { formatDecimal } from './financeModel';
+import {
+  FinanceIssuedInvoiceEditor, initialFromQuote, type IssuedInvoiceEditorInitial,
+} from './FinanceIssuedInvoiceEditor';
 import styles from './finance.module.css';
 import type { FinanceIssuedInvoiceStatus, IssuedInvoice } from '@/types/models';
 
@@ -63,10 +69,14 @@ function hasDueDate(invoice: IssuedInvoice): boolean {
 export function FinanceIssuedPanel({ companyId }: { companyId: string }) {
   const t = useT();
   const { localeTag } = useI18n();
+  const { showToast } = useToast();
   const [items, setItems] = useState<IssuedInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  // L'editor è del pannello: «Nuova fattura» qui, «Crea fattura» dal
+  // preventivo accettato (che arriva come `?dal-preventivo=` nell'indirizzo).
+  const [editor, setEditor] = useState<{ initial: IssuedInvoiceEditorInitial | null } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -82,6 +92,32 @@ export function FinanceIssuedPanel({ companyId }: { companyId: string }) {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [companyId, tick]);
+
+  // ---- «Crea fattura» da un preventivo accettato ---------------------------
+  // Il gesto nasce nel CRM e atterra qui come parametro dell'indirizzo: la
+  // bozza si pre-compila dalla versione del preventivo, poi il parametro si
+  // toglie — ricaricando la pagina la finestra non si riapre da sola.
+  const [params, setParams] = useSearchParams();
+  const fromQuote = params.get('dal-preventivo');
+  useEffect(() => {
+    if (!fromQuote) return;
+    let active = true;
+    crmQuoteService.getVersion(companyId, fromQuote)
+      .then((quote) => {
+        if (!active) return;
+        if (quote) setEditor({ initial: initialFromQuote(quote) });
+        else showToast(t('finance.issued.prefillFailed'));
+      })
+      .catch((e) => { if (active) showToast(toUserMessage(e)); })
+      .finally(() => {
+        if (!active) return;
+        const next = new URLSearchParams(params);
+        next.delete('dal-preventivo');
+        setParams(next, { replace: true });
+      });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromQuote, companyId]);
 
   // Il totale dell'elenco, UNA RIGA PER VALUTA (§22/§113: due valute non si
   // sommano mai). Le STORNATE non contano: la nota di credito le ha già
@@ -103,6 +139,17 @@ export function FinanceIssuedPanel({ companyId }: { companyId: string }) {
 
   return (
     <div className="card mt-16" id="fin-list" role="tabpanel" aria-labelledby="fin-tab-issued">
+      {/* ⚠️ NON SI OFFRE UN'AZIONE CHE NON PUÒ RIUSCIRE: quando l'elenco non si
+          è potuto leggere, anche salvare una bozza fallirebbe — il guasto è
+          dichiarato sotto, qui non si aggiunge una promessa. */}
+      {!error && (
+        <div className="row-wrap mb-12">
+          <button className="btn btn-sm" onClick={() => setEditor({ initial: null })}>
+            <Icon name="plus" className="ic-sm" /> {t('finance.issued.create')}
+          </button>
+        </div>
+      )}
+
       {loading && (
         <><SkeletonLine width="80%" /><SkeletonLine width="65%" /><SkeletonLine width="72%" /></>
       )}
@@ -118,6 +165,11 @@ export function FinanceIssuedPanel({ companyId }: { companyId: string }) {
           icon="document"
           title={t('finance.issued.empty')}
           subtitle={t('finance.issued.emptyHint')}
+          action={(
+            <button className="btn btn-primary" onClick={() => setEditor({ initial: null })}>
+              <Icon name="plus" className="ic-sm" /> {t('finance.issued.create')}
+            </button>
+          )}
         />
       )}
 
@@ -133,6 +185,14 @@ export function FinanceIssuedPanel({ companyId }: { companyId: string }) {
           {totals.length > 1 && ` — ${t('finance.kpi.multiCurrencyHint')}`}
         </div>
       )}
+
+      <FinanceIssuedInvoiceEditor
+        open={editor !== null}
+        companyId={companyId}
+        initial={editor?.initial ?? null}
+        onClose={() => setEditor(null)}
+        onSaved={() => { setEditor(null); setTick((n) => n + 1); }}
+      />
     </div>
   );
 }

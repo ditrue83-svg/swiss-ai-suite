@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog } from '@/components/ui/Dialog';
 import { Input, Select, Textarea } from '@/components/ui/forms';
 import { Tag } from '@/components/ui/Tag';
@@ -118,6 +119,7 @@ export function CrmQuotesPanel(props: {
   onMoveStage: (stage: 'proposal' | 'won') => Promise<void>;
 }) {
   const t = useT(); const { showToast } = useToast();
+  const navigate = useNavigate();
   const [quotes, setQuotes] = useState<CrmQuoteVersion[]>([]); const [rates, setRates] = useState<CrmVatRate[]>([]);
   const [editor, setEditor] = useState<CrmQuoteVersion | 'new' | null>(null); const [busy, setBusy] = useState(false);
   const [accepted, setAccepted] = useState<CrmQuoteVersion | null>(null); const [suggestProposal, setSuggestProposal] = useState(false);
@@ -151,6 +153,14 @@ export function CrmQuotesPanel(props: {
           {quote.status === 'sent' && <><button type="button" className="btn btn-sm" disabled={busy} onClick={() => setAccepted(quote)}>{t('crm.quotes.accept')}</button>
             <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void run(() => crmQuoteService.setStatus(props.companyId, quote.id, 'rejected'), 'crm.quotes.statusSaved')}>{t('crm.quotes.reject')}</button>
             <button type="button" className="btn btn-sm btn-ghost" disabled={busy} onClick={() => void run(() => crmQuoteService.setStatus(props.companyId, quote.id, 'expired'), 'crm.quotes.statusSaved')}>{t('crm.quotes.expire')}</button></>}
+          {/* 0053 — dal preventivo accettato alla fattura: il gesto porta alla
+              scheda «Emesse» con la bozza già pre-compilata da QUESTA versione. */}
+          {quote.status === 'accepted' && (
+            <button type="button" className="btn btn-sm"
+              onClick={() => navigate(`/finanze?sezione=emesse&dal-preventivo=${quote.id}`)}>
+              {t('crm.quotes.createInvoice')}
+            </button>
+          )}
           {quote.status !== 'draft' && <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void run(async () => {
             await crmQuoteService.newVersion(props.companyId, quote.quoteId);
             const next = (await crmQuoteService.list(props.companyId, props.opportunityId)).find((candidate) => candidate.quoteId === quote.quoteId && candidate.status === 'draft');
