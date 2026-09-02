@@ -1214,6 +1214,8 @@ export const de: Dictionary = {
     logoConfigured: 'Logo eingerichtet', logoChoose: 'Logo wählen', logoRemove: 'Logo entfernen',
     logoSaved: 'Logo gespeichert.', logoRemoved: 'Logo entfernt.', logoInvalid: 'Das Logo muss PNG oder JPEG sein und darf 2 MB nicht überschreiten.',
     ibanInvalid: 'Die IBAN besteht die eigene Prüfziffer nicht.',
+    iban: 'Unternehmens-IBAN',
+    ibanHint: 'Dient dem QR-Zahlteil der ausgestellten Rechnungen. Gespeichert wird nur, wenn die Prüfziffer stimmt: eine arithmetische Prüfung, kein Versprechen, dass das Konto existiert.',
   },
   // Eigene Felder des CRM (0047) — die DEFINITIONEN. Die Werte werden im
   // Eintrag der Gegenpartei oder Verkaufschance erfasst (Schlüssel `crm.fields`).

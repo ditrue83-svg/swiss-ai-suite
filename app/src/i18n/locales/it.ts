@@ -1294,6 +1294,8 @@ export const it = {
     logoConfigured: 'Logo configurato', logoChoose: 'Scegli logo', logoRemove: 'Rimuovi logo',
     logoSaved: 'Logo salvato.', logoRemoved: 'Logo rimosso.', logoInvalid: 'Il logo deve essere PNG o JPEG e non superare 2 MB.',
     ibanInvalid: 'L’IBAN non supera la propria cifra di controllo.',
+    iban: 'IBAN aziendale',
+    ibanHint: 'Serve alla polizza QR delle fatture emesse. Si salva solo se la cifra di controllo torna: è una verifica aritmetica, non una promessa che il conto esista.',
   },
   // Campi personalizzati del CRM (0047) — le DEFINIZIONI. I valori si scrivono
   // nella scheda della controparte o dell’opportunità (chiavi `crm.fields`).

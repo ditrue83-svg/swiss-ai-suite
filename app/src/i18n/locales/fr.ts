@@ -1205,6 +1205,8 @@ export const fr: Dictionary = {
     logoConfigured: 'Logo configuré', logoChoose: 'Choisir le logo', logoRemove: 'Retirer le logo',
     logoSaved: 'Logo enregistré.', logoRemoved: 'Logo retiré.', logoInvalid: 'Le logo doit être au format PNG ou JPEG et ne pas dépasser 2 Mo.',
     ibanInvalid: 'L’IBAN échoue à son propre chiffre de contrôle.',
+    iban: 'IBAN de l’entreprise',
+    ibanHint: 'Sert au bulletin de versement QR des factures émises. Il n’est enregistré que si le chiffre de contrôle tombe juste : une vérification arithmétique, pas une promesse que le compte existe.',
   },
   // Champs personnalisés du CRM (0047) — les DÉFINITIONS. Les valeurs se
   // saisissent dans la fiche de la contrepartie ou de l’opportunité
