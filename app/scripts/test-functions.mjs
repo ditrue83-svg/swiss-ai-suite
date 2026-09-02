@@ -1,6 +1,5 @@
 // ============================================================================
-// Sicurezza e validazione delle Edge Function `generate-reply` e
-// `interpret-project` — le uniche due che non avevano alcun test riproducibile.
+// Sicurezza e validazione della Edge Function `generate-reply`.
 //   npm run test:functions
 //
 // NON consuma crediti AI: tutti i casi coperti vengono rifiutati PRIMA della
@@ -66,7 +65,7 @@ async function raw(name, { token, body, method = 'POST' }) {
 }
 
 async function main() {
-  console.log(`\n${DIM}SwissAI Suite — sicurezza di generate-reply e interpret-project${X}\n`);
+  console.log(`\n${DIM}SwissAI Suite — sicurezza di generate-reply${X}\n`);
 
   const A = await makeUser('A');
   const { data: companyA } = await A.client.rpc('create_company_with_owner', {
@@ -113,34 +112,10 @@ async function main() {
   }
 
   // =========================================================================
-  console.log(`\n${B}interpret-project${X}`);
-  {
-    const r = await raw('interpret-project', { token: A.token, method: 'GET' });
-    check('metodo GET → 405', r.status === 405, `status=${r.status}`);
-  }
-  {
-    const r = await raw('interpret-project', { token: null, body: { companyId: companyA, description: 'x'.repeat(50) } });
-    check('senza Authorization → 401', r.status === 401, `status=${r.status}`);
-  }
-  {
-    const r = await raw('interpret-project', { token: A.token, body: { description: 'x'.repeat(50) } });
-    check('companyId mancante → 400', r.status === 400, `status=${r.status}`);
-  }
-  {
-    const r = await raw('interpret-project', { token: A.token, body: { companyId: companyA, description: 'corta' } });
-    check('descrizione troppo corta → 422', r.status === 422, `status=${r.status}, code=${r.body?.code ?? '—'}`);
-  }
-  {
-    // §49 — A non deve poter interpretare per conto dell'azienda B.
-    const r = await raw('interpret-project', { token: A.token, body: { companyId: companyB, description: 'Vogliamo installare un impianto fotovoltaico sul tetto del capannone aziendale.' } });
-    check('§49 · azienda altrui → 403', r.status === 403, `status=${r.status}`);
-  }
-
-  // =========================================================================
   console.log(`\n${B}Rate limit per azienda (§50)${X}`);
   {
     // Si satura la finestra con il service_role (bypassa RLS), poi si verifica
-    // che entrambe le funzioni rifiutino PRIMA di spendere crediti.
+    // che la funzione rifiuti PRIMA di spendere crediti.
     const now = Date.now();
     const burst = Array.from({ length: 13 }, (_, i) => ({
       company_id: companyA, user_id: A.id, document_id: null, kind: 'analysis',
@@ -151,10 +126,8 @@ async function main() {
     if (seedErr) {
       skip('rate limit', `impossibile pre-popolare il log: ${seedErr.message.slice(0, 60)}`);
     } else {
-      const r1 = await raw('interpret-project', { token: A.token, body: { companyId: companyA, description: 'Vogliamo digitalizzare la gestione degli ordini con un nuovo software gestionale.' } });
-      check('interpret-project oltre il limite → 429', r1.status === 429, `status=${r1.status}`);
-      const r2 = await raw('generate-reply', { token: A.token, body: { documentId: docA.id, language: 'it', tone: 'formale' } });
-      check('generate-reply oltre il limite → 429', r2.status === 429, `status=${r2.status}`);
+      const r = await raw('generate-reply', { token: A.token, body: { documentId: docA.id, language: 'it', tone: 'formale' } });
+      check('generate-reply oltre il limite → 429', r.status === 429, `status=${r.status}`);
       await admin.from('ai_request_log').delete().eq('company_id', companyA);
     }
   }
@@ -163,9 +136,8 @@ async function main() {
   // ⚠️ UN CONTROLLO SALTATO NON È UN CONTROLLO PASSATO, e qui valeva la stessa
   // trappola del runner delle suite: `process.exit(fail ? 1 : 0)` ignorava
   // `skipped`, quindi se la pre-popolazione del log fosse fallita le due
-  // asserzioni sul 429 sarebbero sparite e questa suite avrebbe stampato
-  // «10 passati, 0 falliti, 1 saltati» uscendo ZERO. In `product-status.md`
-  // sarebbe finito «test:functions 12/12» per una misura da 10.
+  // asserzioni sul 429 sarebbero sparite e questa suite avrebbe stampato un
+  // verde incompleto. In `product-status.md` sarebbe finita una misura falsa.
   if (skipped) {
     console.error(`${R}Non eseguito:${X} ${skipped} controlli sono stati saltati.`);
     console.error(`${DIM}  Le asserzioni saltate non sono passate: non sono state provate.${X}\n`);

@@ -935,7 +935,7 @@ npm run format          # la riformattazione vera: riscrive i file. Da eseguire 
 npm run test:phase1     # integrazione Fase 1 su DB reale (26 test)
 npm run test:phase2     # immutabilità snapshot + sicurezza + analisi reale (36 test)
 npm run test:async      # processing asincrono reale, non simulato (17 test)
-npm run test:functions  # sicurezza di generate-reply e interpret-project (12 test)
+npm run test:functions  # sicurezza di generate-reply (6 test, nessun credito AI)
 npm run test:pipeline   # end-to-end analisi → persistenza → task → bozza (18 test)
 npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
 npm run eval:contracts             # estrazione contrattuale su TRE CONTRATTI VERI (it/de/fr):
@@ -1275,8 +1275,8 @@ GIRA è eseguirla.
 - **`eval:admin` (35)** — qualità su documenti reali (AVS tedesco, AFC francese, Comune italiano) e **casi difficili**:
   nessuna scadenza → `null`; scadenza relativa → nessuna data inventata; due importi → array corretto;
   ente ambiguo → `null` + incertezza; rischio esplicito vs assente; **prompt injection ignorata**; documento quasi vuoto.
-- **`test:functions` (12)** — le due Edge Function che non avevano test: metodo, autenticazione, input,
-  **cross-tenant 403** e **rate limit 429** su `generate-reply` e `interpret-project`. Non consuma crediti:
+- **`test:functions` (6)** — sicurezza di `generate-reply`: metodo, autenticazione, input,
+  **cross-tenant 403** e **rate limit 429**. Non consuma crediti:
   tutti i casi vengono rifiutati prima della chiamata al modello.
 - **`test:validate` (28)** — le regole di governance provate **senza rete e senza crediti**, con output di modello
   costruiti ad arte: scadenza con citazione falsa → marcata da verificare; azione senza citazione → declassata a

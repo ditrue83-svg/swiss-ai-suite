@@ -165,14 +165,14 @@ riprovare appartiene a chi chiama, e resta dov'era:
 ## 7. Portabilità
 
 `parse.ts` non importa niente: né moduli Node, né API del browser. È importato
-da Deno (nove Edge Function) e da Node/tsx (test ed evaluation) senza
+da Deno (otto Edge Function) e da Node/tsx (test ed evaluation) senza
 adattatori. Aggiungerci una dipendenza romperebbe uno dei due lati.
 
 ---
 
 ## 8. Le Edge Function che lo incorporano
 
-Nove su diciannove, calcolate seguendo il grafo degli import e non a memoria:
+Otto su venti, calcolate seguendo il grafo degli import e non a memoria:
 
 | Funzione | Catena |
 |---|---|
@@ -184,9 +184,8 @@ Nove su diciannove, calcolate seguendo il grafo degli import e non a memoria:
 | `email-sync` | `_shared/email/sync.ts` |
 | `email-webhook` | `_shared/email/runtime.ts` → `pipeline.ts` |
 | `finance-worker` | `_shared/finance/process.ts` → `finance/validate.ts` |
-| `interpret-project` | diretto |
 
-Le altre dieci non lo incorporano e **non vanno rideployate** per un cambiamento
+Le altre dodici non lo incorporano e **non vanno rideployate** per un cambiamento
 che le riguarda.
 
 ---
