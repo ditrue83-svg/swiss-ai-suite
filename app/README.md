@@ -85,6 +85,8 @@ supabase/
                                          notifica e template solo suggerito.
                 0051 — rimozione definitiva di schema, permessi e dati del modulo dismesso.
                        Applicare in produzione solo dopo l'esportazione archivistica concordata.
+                0052_remove_retired_module_scheduler — elimina e autoverifica il job pg_cron
+                                         rimasto orfano dopo la rimozione del modulo.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

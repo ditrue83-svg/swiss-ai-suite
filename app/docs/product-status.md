@@ -11,6 +11,15 @@
 > tabella è dedotta dal codice: dove non ho potuto verificare, la colonna dice
 > **no**, non «probabilmente».
 >
+> **Rimisurato il 2026-09-02 dopo la rimozione D-13.** Il catalogo di sette
+> programmi è stato esportato fuori dal repository e verificato con SHA-256
+> `58b89253322ec39e5a9e44037d0d40be982d52c6466fd8902fc3bc7d3dbb15f0`.
+> La migrazione 0051 è applicata; le due Edge Function del modulo non esistono
+> più. Il controllo del deployment ha poi individuato un job pg_cron orfano:
+> la migrazione 0052 lo rimuove e si autoverifica. La PR #100 ha superato
+> qualità e unità (12 + 34 passi), database effimero da zero (13 suite) e
+> preview Cloudflare; applicazione e vetrina sono pubblicate da `main`.
+>
 > **Rimisurato di nuovo la notte del 2026-08-01/02** su quattro punti: il
 > credito Anthropic, i messaggi dell'Inbox fermi, la coda di revisione del
 > catalogo, e che cosa vede davvero chi accende i promemoria via email. Le

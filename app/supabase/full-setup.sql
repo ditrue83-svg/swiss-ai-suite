@@ -87,6 +87,7 @@
 --   0049_crm_quotes
 --   0050_crm_follow_up_sequences
 --   0051_remove_subsidy
+--   0052_remove_retired_module_scheduler
 --
 -- SERVE A INSTALLARE DA ZERO. Su un database già in esercizio si applica UNA
 -- MIGRAZIONE ALLA VOLTA: questo file non aggiunge niente e in caso di errore
@@ -29662,6 +29663,39 @@ begin
     raise exception '0051: categoria documentale residua';
   end if;
 end $verify$;
+
+commit;
+
+-- >>>>>>>>>>>>>>>>>>>>  0052_remove_retired_module_scheduler  <<<<<<<<<<<<<<<<<<<<
+
+-- 0052 — chiude il residuo operativo del modulo rimosso dalla 0051.
+--
+-- La Edge Function non esiste più, ma il job pg_cron vive nel database e non
+-- dipende dal suo bersaglio: senza questa migrazione continuerebbe ad accodare
+-- una richiesta destinata a fallire ogni quindici minuti.
+
+begin;
+
+do $remove_retired_scheduler$
+declare
+  v_job record;
+begin
+  -- Si usa il jobid per rimuovere anche eventuali duplicati omonimi. La forma
+  -- per nome ne eliminerebbe uno solo e lascerebbe il difetto invisibile nella
+  -- mappa usata dai controlli operativi.
+  for v_job in
+    select jobid from cron.job where jobname = 'subsidy-worker'
+  loop
+    perform cron.unschedule(v_job.jobid);
+  end loop;
+end $remove_retired_scheduler$;
+
+do $verify_retired_scheduler_removed$
+begin
+  if exists (select 1 from cron.job where jobname = 'subsidy-worker') then
+    raise exception '0052: lo scheduler del modulo rimosso esiste ancora';
+  end if;
+end $verify_retired_scheduler_removed$;
 
 commit;
 
