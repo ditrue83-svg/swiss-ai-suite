@@ -87,6 +87,12 @@ supabase/
                        Applicare in produzione solo dopo l'esportazione archivistica concordata.
                 0052_remove_retired_module_scheduler — elimina e autoverifica il job pg_cron
                                          rimasto orfano dopo la rimozione del modulo.
+                0053_finance_issued_invoices — fatture emesse verso clienti CRM:
+                                         totali decimali solo in SQL, PDF con polizza
+                                         QR svizzera nei Documenti, immutabilità dopo
+                                         l'emissione (correzioni per annullo + nota di
+                                         credito numerata a parte), stato «inviata»
+                                         dopo l'accettazione del provider.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -118,6 +124,8 @@ supabase/
     crm-email-webhook     esiti Resend firmati: consegna, bounce e fallimento
     generate-crm-quote    PDF preventivo A4 it/de/fr con logo e provenienza
                           dichiarata nei Documenti
+    generate-finance-invoice  PDF fattura emessa con polizza QR svizzera, nota di
+                              credito e sollecito; provenienza dichiarata nei Documenti
     finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
     contract-worker       legge la coda dei documenti contrattuali e apre le finestre
                           di attenzione delle date verificate (scheduler)

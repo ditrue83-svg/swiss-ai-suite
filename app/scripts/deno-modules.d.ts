@@ -46,3 +46,7 @@ declare module 'npm:@anthropic-ai/sdk' {
 declare module 'npm:pdf-lib@1.17.1' {
   export * from 'pdf-lib';
 }
+
+declare module 'npm:qrcode@1.5.4' {
+  export * from 'qrcode';
+}
