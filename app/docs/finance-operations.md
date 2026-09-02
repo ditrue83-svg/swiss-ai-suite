@@ -1,10 +1,13 @@
-# Finance Operations — fatture, ricevute, note di credito (0021)
+# Finance Operations — fatture, ricevute, note di credito (0021) e fatture emesse (0053)
 
 > Comprendere e preparare il denaro. **Non muoverlo.**
 
 Questo documento descrive il modulo **Finanze** (`/finanze`, dettaglio
-`/finanze/:id`): che cosa fa, che cosa deliberatamente non fa, come è costruito,
-e quali sono i limiti che si dichiarano invece di attenuarli.
+`/finanze/:id` per i documenti in entrata, `/finanze/emesse/:id` per le fatture
+verso i clienti): che cosa fa, che cosa deliberatamente non fa, come è costruito,
+e quali sono i limiti che si dichiarano invece di attenuarli. Il modulo lavora
+nelle **due direzioni del denaro**: ciò che l'azienda deve pagare (la 0021) e ciò
+che deve incassare (la 0053, §12). In entrambe: non muoverlo.
 
 **Stato**: la migrazione `supabase/migrations/0021_finance_operations.sql` è
 scritta ed è entrata nel bundle `supabase/full-setup.sql`. La sua applicazione al
@@ -13,6 +16,17 @@ verificate in questa sessione**: finché quel test non gira sul database vero,
 tutto ciò che questo documento dice sul comportamento del database descrive il
 CODICE della migrazione, non un'installazione osservata. `npm run test:finance-unit`
 invece è stato eseguito: **202 asserzioni superate**, offline.
+
+**Stato della direzione in uscita** (misurato il 2026-09-02): le migrazioni
+`supabase/migrations/0053_finance_issued_invoices.sql` e
+`0054_issued_invoice_entity_type.sql` sono scritte ed entrate nel bundle, e
+**non risultano applicate alla produzione al momento di questa riga**. La
+sezione 15 di `npm run test:finance` è scritta e **non è mai stata eseguita**:
+finché non gira sul database vero, ciò che §12 dice sul comportamento del
+database descrive il CODICE delle due migrazioni, non un'installazione
+osservata. La suite offline `npm run test:finance-invoices-unit` invece è stata
+eseguita il 2026-09-02: **117 asserzioni superate** — il QR è stato decodificato
+dai pixel e il testo dei PDF estratto, non dedotto.
 
 ---
 
@@ -30,6 +44,10 @@ entra in Finanze e diventa una riga con:
 Attorno: ricerca e filtri, quattro numeri di cruscotto **per valuta**, il
 sospetto di duplicato con il confronto affiancato, lo storico di ogni cambiamento,
 e gli agganci verso attività, automazioni, calendario e notifiche.
+
+E nella direzione opposta: l'azienda **emette** fatture verso i propri clienti —
+numerate, con l'IVA per riga e la polizza QR svizzera — e ne tiene il registro
+delle scadenze e dei pagamenti dichiarati. È la 0053, e sta in §12.
 
 ## 2. Che cosa NON fa — l'elenco fa parte del modulo
 
@@ -73,6 +91,28 @@ segue **non è implementato**, e in nessun caso per mancanza di tempo.
 - nessuno **spezzamento** di un PDF che contenga più fatture: in V1 un documento
   produce al più un elemento finanziario, ed è un vincolo unico nel database
   (`uq_finance_items_document`), non una convenzione.
+
+**Emissione (0053).**
+
+- nessuna **riconciliazione automatica** e nessuna lettura bancaria, nemmeno
+  sulle fatture emesse: «pagata» esiste, ma è la dichiarazione di una persona
+  con la data effettiva del versamento — il prodotto la registra, non la
+  verifica;
+- nessun **invio automatico dei solleciti**: un sollecito è un documento
+  generato (fino a tre livelli); spedirlo resta un gesto umano, come per la
+  fattura;
+- nessuna **polizza QR fuori da CHF/EUR**: lo standard SIX non ammette altre
+  valute, e una fattura in un'altra valuta non si emette — il gesto si ferma,
+  non esce un documento senza polizza;
+- nessuna **determinazione IVA**, nemmeno in emissione: le aliquote arrivano da
+  `finance_vat_rates` con la loro fonte, e quale si applica lo decide la
+  persona, riga per riga — il prodotto congela sul documento la scelta e la sua
+  fonte, non la prende;
+- nessun **riutilizzo dei numeri** e nessuna chiusura dei buchi: la numerazione
+  è `max + 1` sotto lock per azienda, dal prodotto una fattura non si cancella
+  (§12.1) e nessun percorso va a riempire i numeri mancanti;
+- nessuna **nota di credito senza annullo**: il numero NC- esiste solo su una
+  fattura stornata, e il PDF della nota si genera solo lì.
 
 Il giorno in cui una di queste cose servirà davvero, servirà prima ciò che oggi
 manca: approvazioni, permessi granulari, riconciliazione, tracciamento dei
@@ -561,14 +601,15 @@ Che cosa il prodotto fa davvero sull'IVA:
 - **non deduce e non decide**: non dice quale aliquota si sarebbe dovuta
   applicare, non calcola un'IVA mancante, non prepara un rendiconto.
 
-### ⚠️ Limite dichiarato: la tabella è seminata ma non ancora consumata
+### ⚠️ Limite dichiarato: sul lato fornitori la tabella resta seminata e non consumata
 
-Alla data di questo documento, `finance_vat_rates` è creata, seminata, leggibile
-da chiunque sia autenticato — e **nessun codice dell'applicazione la legge**.
-Compare in `src/types/database.ts` come tipo e in nessun altro punto di `src/` né
-di `supabase/functions/`. Il suggerimento delle aliquote in fase di correzione
-manuale, che è la ragione per cui la tabella esiste, **non è stato collegato
-all'interfaccia**. È un lavoro rimasto aperto, non una funzione presente.
+Questo limite era «nessun codice dell'applicazione la legge», ed era vero fino
+alla 0049. Dal 2026-09-01 i preventivi la leggono (`crmQuoteService.vatRates`)
+e dal 2026-09-02 le fatture emesse la consumano riga per riga, con la fonte
+congelata sul documento (§12.1). Ciò che resta vero è il caso per cui la
+tabella era nata: il **suggerimento delle aliquote in fase di correzione
+manuale** di una fattura fornitore **non è stato collegato all'interfaccia**. È
+un lavoro rimasto aperto, non una funzione presente.
 
 ---
 
@@ -911,8 +952,9 @@ elemento trattato, più il rapporto finale.
 ## 11. Test
 
 ```bash
-npm run test:finance-unit   # 202 · offline, senza rete, senza credenziali, senza crediti AI
-npm run test:finance        # su DB reale (richiede la 0021 applicata)
+npm run test:finance-unit            # 202 · offline, senza rete, senza credenziali, senza crediti AI
+npm run test:finance-invoices-unit   # 117 · offline, stesse regole (0053: payload QR, PDF, contratto sorgente)
+npm run test:finance                 # su DB reale (richiede la 0021 applicata; la sezione 15 richiede 0053/0054)
 ```
 
 `test:finance-unit` **si esegue senza `--env-file`, e non è una dimenticanza**:
@@ -932,7 +974,7 @@ Due controlli meritano di essere nominati:
   (pagina 51) e prova che si legge senza violazioni, che ogni regola **può**
   fallire, e che una fattura con indirizzo combinato resta leggibile.
 
-`test:finance` contiene **95 asserzioni** (conteggio delle chiamate a `check(...)`
+`test:finance` contiene **138 asserzioni** (conteggio delle chiamate a `check(...)`
 nel file: `scripts/test-finance.ts`; **il test non è stato eseguito in questa
 sessione**, quindi il numero è misurato sul sorgente e non su un'esecuzione).
 Quattordici sezioni provano le **garanzie**, non il codice: i due valori nuovi
@@ -942,7 +984,11 @@ falsifica, la proiezione che si ricalcola, il duplicato che si calcola e non si
 memorizza, due valute che non si sommano, le note di credito che non gonfiano il
 «da pagare», l'ingestione che si ferma dove non sa, l'outbox, la cancellazione a
 cascata, il **doppione dichiarato** dell'IBAN fra SQL e TypeScript, e il codice
-condiviso **eseguito** contro il database vero.
+condiviso **eseguito** contro il database vero. La **quindicesima** prova le
+fatture emesse — numerazione, guardiani, ciclo di vita, isolamento fra aziende —
+e la pulizia rilegge anche le tre tabelle della 0053 e i PDF generati: 43
+asserzioni in tutto (41 nella sezione, 2 nella pulizia). La sezione 15 richiede
+la 0053 e la 0054 applicate e **non è mai stata eseguita** (2026-09-02).
 
 ⚠️ Il doppione dell'IBAN esiste per una ragione scritta: quando una persona
 corregge a mano un IBAN, la bandiera `invalid_iban` va **ricalcolata**, e farlo
@@ -953,7 +999,178 @@ implementazioni su una matrice, divergenza compresa.
 
 ---
 
-## 12. Limiti e rischi residui
+## 12. Fatture emesse — il registro di ciò che va incassato (0053, 0054)
+
+La 0021 legge i documenti che arrivano; la 0053 scrive i documenti che escono.
+Una fattura verso un cliente è una riga di `finance_issued_invoices`, le righe
+stanno in `finance_issued_invoice_items`, i PDF in
+`finance_issued_invoice_documents`: il registro delle emissioni, delle scadenze
+e dello stato dei pagamenti. Il confine non si sposta: **il modulo non muove
+denaro**, e l'elenco di §2 vale intero anche in questa direzione — «pagata» è
+una dichiarazione registrata, non un movimento.
+
+### 12.1 Il modello: numerazione, riferimenti, snapshot
+
+- **La numerazione è per azienda e non torna indietro.** Fatture `F-000001`,
+  note di credito `NC-000001` con una serie propria, assegnate come `max + 1`
+  sotto lock per azienda (`pg_advisory_xact_lock`): due salvataggi
+  contemporanei non si dividono un numero. Dal prodotto una fattura non si
+  cancella — RLS in sola lettura, nessuna RPC di cancellazione — quindi un
+  numero assegnato resta con la sua riga, e nessun codice va a riempire i
+  buchi.
+- **Il cliente è un riferimento CRM, non una copia.** `organization_id` è
+  obbligatorio, `opportunity_id` e `quote_version_id` facoltativi, ricontrollati
+  cross-tenant a ogni scrittura. E però sul documento vanno gli **snapshot**:
+  emittente e destinatario si fotografano sulla riga a ogni salvataggio della
+  bozza, IBAN compreso, perché un trasloco non deve cambiare retroattivamente
+  un PDF già emesso. Collegare, non copiare — e ciò che finisce sulla carta si
+  congela.
+- **L'IVA è per riga, con la fonte congelata.** Ogni riga salva aliquota, URL e
+  titolo della fonte e data di verifica, copiati da `finance_vat_rates` — che
+  qui è finalmente **consumata** (§6): un'aliquota non valida alla data di
+  emissione fa rifiutare il salvataggio. Quale aliquota si applica lo decide la
+  persona; il database congela la scelta e la sua provenienza.
+- **I totali li scrive solo il database.** `finance_issued_invoice_refresh_totals()`
+  in SQL decimale, mai il browser; gli importi di riga sono colonne generate.
+  La valuta vive sulla testata e due valute non entrano nello stesso totale:
+  l'elenco mostra un totale **per valuta**, e le stornate non contano —
+  sommarle dipingerebbe un incasso che la nota di credito ha già annullato.
+- **`due_date >= issued_on`** è un vincolo, non una convenzione. Fino a 100
+  righe per fattura.
+
+### 12.2 I sei stati, e chi scrive ogni timbro
+
+`draft` · `issued` · `sent` · `paid` · `overdue` · `voided`. Ogni transizione
+ha un solo autore, e il guardiano della tabella l'ammette solo se la scrittura
+dichiara la sua modalità nel GUC `ai_swisse.invoice_write` (`totals` · `pdf` ·
+`issue` · `send` · `lifecycle` · `overdue`):
+
+| stato | chi lo scrive | che cosa esige |
+|---|---|---|
+| `draft` | la creazione stessa | nessun timbro, mai: il vincolo è una doppia implicazione |
+| `issued` | `finance_issue_invoice` | PDF generato, almeno una riga, IBAN aziendale, valuta CHF/EUR |
+| `sent` | **solo** `finance_mark_attached_invoices_sent`, chiamata da `send-crm-email` dopo che il provider ha accettato il messaggio | il PDF della fattura fra gli allegati dell'email registrata; dal browser non si scrive |
+| `paid` | il gesto «pagata» di una persona | la data effettiva del versamento: l'interfaccia propone oggi, la decide la persona |
+| `overdue` | la scansione `finance_emit_issued_invoice_overdue`, dentro il worker delle automazioni | scadenza superata e stato ancora aperto |
+| `voided` | il gesto «storna» di una persona | motivo obbligatorio; assegna il numero NC-; irreversibile |
+
+Tre cose contano.
+
+**«Scaduta» è uno stato MEMORIZZATO, e lo scrive la scansione.** Sul lato
+fornitori la scadenza superata si calcola a lettura; qui no: «scaduta» è una
+conseguenza del calendario, non la scrittura di nessuno, quindi la scrive il
+giro del worker — una volta sola per fattura e scadenza, con l'evento di
+automazione reso idempotente dalla chiave di deduplicazione. Chi paga in
+ritardo passa da `overdue` a `paid` senza rientrare nella scansione. Il
+rovescio è dichiarato (§13): se il worker non gira, una fattura oltre scadenza
+resta «emessa».
+
+**Fuori da bozza niente si tocca.** Dopo `issued` la fattura è immutabile: le
+correzioni passano per annullo + nota di credito, non per modifica. Lo dice il
+guardiano, non l'interfaccia.
+
+**Qualunque modifica commerciale alla bozza invalida il PDF.** Il guardiano
+riporta `pdf_generated_at` a null a ogni salvataggio, e `send-crm-email`
+rifiuta un allegato diventato obsoleto con `INVOICE_PDF_STALE`: un PDF che non
+rispecchia più la bozza non esce dall'azienda.
+
+### 12.3 Il PDF e la polizza QR
+
+La Edge Function `generate-finance-invoice` produce tre documenti: **fattura**
+(solo in bozza), **nota di credito** (solo su stornata), **sollecito** (solo su
+emessa/inviata/scaduta, livello da 1 a 3). Le regole di tipo stanno nella RPC
+del payload, letta con il JWT della persona; il service role serve solo a
+scrivere il file nello Storage, e i guardiani ricontrollano azienda, fattura e
+documento.
+
+Il documento è un A4 nella lingua della fattura (it/de/fr), con gli importi che
+arrivano come stringhe decimali già calcolate da PostgreSQL: il PDF
+**formatta**, non ricalcola. Sulla fattura la polizza di pagamento segue le
+Implementation Guidelines di SIX — ricevuta a sinistra, parte di pagamento a
+destra, Swiss QR Code di 46 mm con la croce svizzera di 7 mm sovrapposta al
+centro — e non è un optional:
+
+- il **riferimento** lo decide il conto: QRR a 27 cifre su QR-IBAN, altrimenti
+  SCOR con riferimento creditore RF (ISO 11649) derivato dal numero di fattura;
+- il **payload** lo compone `qrbill.ts` — lo stesso modulo che li legge (§5) —
+  e prima di uscire **rilegge ciò che ha scritto**: un payload che non supera
+  la propria verifica non diventa un'immagine;
+- senza **IBAN aziendale** la fattura non si genera e non si emette; l'IBAN sta
+  nelle impostazioni `/azienda` e lo verifica la stessa cifra di controllo
+  della 0021: il numero è trascritto bene, non detto vero;
+- su **nota di credito e sollecito la polizza non c'è**: sono documenti
+  contabili, non richieste di pagamento — e l'assenza è asserita dai test, non
+  supposta.
+
+Ogni PDF è un Documento con `source_type = 'generated'` e il ponte
+`finance_issued_invoice_documents` ne dichiara la provenienza: una fattura, una
+nota di credito, un sollecito per livello — e un documento non si sposta mai di
+fattura. Lo stesso PDF compare nella scheda CRM del cliente e, se c'è, della
+trattativa, come i preventivi della 0049.
+
+### 12.4 Invio, pagamento, solleciti
+
+- **L'invio è un'email CRM** con il PDF allegato, dal compositore già usato per
+  i preventivi. «Inviata» arriva **dopo** l'accettazione del provider, scritta
+  da `finance_mark_attached_invoices_sent` sugli allegati dell'email registrata
+  — non dal body del browser, sul modello di `crm_mark_attached_quotes_sent`
+  (0049). I codici di errore della funzione arrivano al compositore dal corpo
+  della risposta, non indovinati.
+- **«Pagata» è un gesto umano** con la data effettiva del versamento. Il
+  prodotto non sa se il denaro è arrivato: registra la dichiarazione.
+- **I solleciti si generano, non si inviano.** Fino a tre livelli, ciascuno il
+  suo PDF; spedirli resta un gesto umano.
+
+### 12.5 L'innesco di automazione
+
+`finance_issued_invoice_overdue` entra nel registro degli eventi con entità
+`finance_issued_invoice` — e la 0054 la ammette nei tre vincoli condivisi
+`entity_type` (eventi, esecuzioni, notifiche), con autoverifica letta dal
+catalogo: finché nessuna regola ascoltava l'innesco il buco sarebbe restato
+invisibile, e alla prima regola attiva l'INSERT sarebbe fallito. Il template
+pronto crea **un'attività** — con la scadenza a oggi, non alla data già
+passata: chi sollecita lo fa oggi — e **una notifica** al responsabile della
+relazione col cliente; se la relazione non ha un responsabile, l'azione si
+ferma con `no_recipient` invece di avvisare tutta l'azienda. La visibilità in
+Calendario arriva attraverso le attività: nessuna nuova fonte di calendario.
+
+### 12.6 L'interfaccia
+
+La terza scheda di `/finanze` è «Emesse» (l'indirizzo porta `?sezione=issued`),
+il dettaglio sta su `/finanze/emesse/:id`, la bozza si scrive in una finestra
+con righe e aliquote, e l'elenco segna «obsoleto» il PDF di una bozza
+modificata dopo l'ultima generazione. Dal preventivo **accettato** il gesto
+«Crea fattura» apre la finestra precompilata da quella versione — righe,
+lingua, riferimenti; una valuta fuori CHF/EUR ripiega su CHF, visibile — e si
+ferma lì: è una proposta da rivedere e salvare, mai una copia automatica.
+
+⚠️ **Difetto noto, scoperto il 2026-09-02 e dichiarato qui perché la
+documentazione non racconta un gesto che non riesce**: i tre indirizzi scritti
+a mano — il «Crea fattura» di `CrmQuotesPanel` e i due ritorni dalla pagina di
+dettaglio — portano `sezione=emesse`, mentre l'identificativo della scheda è
+`issued`. Il lettore dei parametri ripiega sulla scheda principale, quindi il
+gesto dal preventivo atterra sulla scheda sbagliata e la precompilazione non si
+apre, e «indietro» dal dettaglio non torna all'elenco delle emesse. La
+correzione è meccanica e appartiene al codice, non a questo documento.
+
+### 12.7 Prove
+
+- **Offline**: `npm run test:finance-invoices-unit` — **117 asserzioni superate
+  il 2026-09-02**, senza rete e senza credenziali, sul codice vero condiviso
+  con la Edge Function. Il QR non è «un'immagine presente»: viene
+  **decodificato dai pixel** (pngjs + jsQR), in partenza e dentro il PDF
+  finale, e il testo dei documenti è **estratto** con pdfjs nelle tre lingue;
+  il contratto delle migrazioni e delle funzioni è riletto dal sorgente, e ogni
+  sezione ha almeno una controprova.
+- **Sul database reale**: la sezione 15 di `npm run test:finance` (§11) è
+  **scritta e non eseguita** — le 0053/0054 non risultano applicate alla
+  produzione al momento della scrittura (2026-09-02). Finché non gira, ciò che
+  questa sezione dice sul comportamento del database descrive il codice, non
+  un'installazione osservata.
+
+---
+
+## 13. Limiti e rischi residui
 
 1. **La 0021 non risulta applicata e provata sul database in questa sessione.**
    Finché `npm run test:finance` non gira, quanto detto qui sul comportamento del
@@ -966,8 +1183,10 @@ implementazioni su una matrice, divergenza compresa.
    ordinarie i dati di pagamento vengono dal testo, con provenienza
    `deterministic`, e `qr_not_read` dichiara quando c'è un codice che non è stato
    letto.
-3. **`finance_vat_rates` non è consumata da nessun codice** (§6): il suggerimento
-   delle aliquote in correzione manuale non è collegato all'interfaccia.
+3. **Sul lato fornitori `finance_vat_rates` resta non consumata** (§6): il
+   suggerimento delle aliquote in correzione manuale non è collegato
+   all'interfaccia. La tabella la leggono i preventivi (0049) e le fatture
+   emesse (0053).
 4. **Le aliquote storiche non ci sono**, perché non verificate su fonte primaria.
 5. **Un documento produce al più un elemento finanziario.** Un PDF con dieci
    fatture dentro non viene spezzato.
@@ -1006,3 +1225,20 @@ implementazioni su una matrice, divergenza compresa.
     appartenga al fornitore indicato. Dice che il numero è stato **trascritto**
     bene. È la sola cosa che il prodotto può affermare su un IBAN, ed è la sola che
     afferma.
+14. **Le 0053/0054 non risultano applicate alla produzione** (2026-09-02), e la
+    sezione 15 di `test:finance` non è mai stata eseguita: ciò che §12 dice sul
+    comportamento del database descrive il codice delle due migrazioni, non
+    un'installazione osservata. La 0054 va applicata **insieme** alla 0053:
+    senza, il primo evento `finance_issued_invoice_overdue` con una regola
+    attiva fallirebbe sui vincoli `entity_type` — il buco descritto in testa
+    alla migrazione.
+15. **«Scaduta» la scrive la scansione, non il calendario.** Se il worker delle
+    automazioni non gira, una fattura oltre scadenza resta `issued` o `sent`:
+    lo stato è memorizzato proprio perché nessun trigger di tabella può
+    scriverlo (§12.2), e il prezzo è che dipende dal giro del worker.
+16. **Il gesto «Crea fattura» dal preventivo ha un difetto di indirizzo**
+    (`sezione=emesse` contro l'identificativo `issued`, §12.6), scoperto il
+    2026-09-02: la navigazione dal preventivo accettato non apre la
+    precompilazione, e i ritorni dal dettaglio non riportano alla scheda
+    «Emesse». Le tre righe sono nel frontend; la correzione è meccanica e non è
+    di questo documento.
