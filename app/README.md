@@ -96,6 +96,10 @@ supabase/
                 0054_issued_invoice_entity_type — l'entità finance_issued_invoice entra
                                          nei tre vincoli condivisi entity_type
                                          (automation_events, workflow_runs, notifications).
+                0055_issued_invoice_documents_cascade — il ponte documenti va a cascata:
+                                         RESTRICT bloccava l'eliminazione dell'azienda
+                                         (la classe della 0023, trovata dal primo giro
+                                         di test:finance).
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
