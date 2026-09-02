@@ -415,9 +415,6 @@ b, strong { font-weight: 600; }
 a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; }
 .nav-btn:hover, .btn:hover, .brand:hover, .company-switch:hover { text-decoration: none; }
-/* `.demo-banner a` è migrata il 2026-08-28 in
-   `src/features/subsidy-ai/subsidy-ai.module.css` (CSS Modules, issue #83),
-   insieme a `.demo-banner`. */
 p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-note a {
   text-decoration: underline;
 }
@@ -655,9 +652,6 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    è nato. Il sottotitolo di OGNI pagina è testo corrente, ed era l'unico rimasto
    con una misura propria decisa a occhio. */
 .page-desc { color: var(--muted); margin-top: var(--sp-1); max-width: var(--measure); font-size: var(--fs-body); }
-/* `.demo-banner` (con il suo `a` sottolineato) è migrata il 2026-08-28 in
-   `src/features/subsidy-ai/subsidy-ai.module.css` (CSS Modules, issue #83):
-   la usa solo la feature `subsidy-ai`. */
 
 /* ---- I tre livelli di superficie (token in :root) --------------------------
    `.card` È il livello 1: lo stesso selettore, non una copia. Due regole con
@@ -853,7 +847,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 
 /* -- PRIORITÀ: la direzione del tratto. -------------------------------------
    ⚠️ NIENTE ROSSO. `badge-alta` (rosso degli errori) marcava la priorità alta
-   in Attività, Calendario e Subsidy: un lavoro importante non è un guasto, e
+   in Attività e Calendario: un lavoro importante non è un guasto, e
    con quel colore una lista di attività normali sembrava una lista di
    problemi. Il grado lo porta la direzione del glifo; il rinforzo è il PESO
    dell'inchiostro, che è una scala e non un allarme. */
@@ -872,19 +866,12 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    `badge-alta` e `badge-media`, cioè la scala degli errori. */
 .decl-flag { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-meta); font-weight: 600; color: var(--amber); }
 .decl-flag .ic { color: var(--amber); }
-/* `.decl-flag.df-muted` (la variante spenta della segnalazione, che usa solo
-   `features/incentives/`) è migrata il 2026-08-28 in
-   `src/features/incentives/incentives.module.css` (CSS Modules, issue #83):
-   là dentro nomina `.decl-flag` con `:global`, perché la classe base resta
-   condivisa con `subsidy-ai`. */
 
 /* Un segno con il NOME DELLA SUA FAMIGLIA davanti, per i posti in cui non c'è
    già un'etichetta di colonna o di riga: nelle tabelle («Idoneità: …») il nome
    ce l'ha la cella, in una scheda no, e un chevron con scritto «alta» accanto
    al tipo di sostegno non dice di che cosa sia alta.
-   `.mark-field` è migrata il 2026-08-28 in
-   `src/features/subsidy-ai/subsidy-ai.module.css` (CSS Modules, issue #83):
-   la usa solo la feature `subsidy-ai`. */
+   `.mark-field` non ha più chiamanti. */
 
 /* -- FINESTRA DI CANDIDATURA: la parentesi. ---------------------------------
    Le parentesi arrivano da `content` e non dal testo tradotto: sono la FORMA
@@ -1038,9 +1025,6 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .result-row { display: grid; grid-template-columns: 170px 1fr; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
 .result-row:first-child { border-top: none; }
 .result-label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); }
-/* `.checklist-item` (con `.done`) è migrata il 2026-08-28 in
-   `src/features/incentives/incentives.module.css` (CSS Modules, issue #83):
-   la usa solo la checklist delle pratiche di `features/incentives/`. */
 /* `.draft-box` è stata CANCELLATA il 2026-08-28 (censimento regole morte,
    issue #83): zero usi in src/, scripts/, index.html e site/. La bozza oggi
    è `.draft-editor`, nel modulo di `admin-ai`. */
@@ -1059,7 +1043,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    capo la pastiglia si incastrava nella parola.
    Stessa famiglia del separatore di `.list-sub`, e stesso motivo per cui sta
    qui e non nei chiamanti: `.list-main` è la riga di una decina di schermate
-   (contratti, clienti, documenti, incentivi) e ognuna ci mette accanto al
+   (contratti, clienti, documenti) e ognuna ci mette accanto al
    titolo un segno diverso — una `Tag`, un `ProvenanceMark`, una `badge`. */
 .list-main > .list-title + * { margin-left: var(--sp-2); }
 .list-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
@@ -1139,9 +1123,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    destra, non alla scatola. La percentuale si risolve sulla larghezza del
    contenitore, quindi il contenuto misura esattamente `--measure` e il bordo
    resta al 100%. `max(0px, …)` per gli schermi più stretti della misura, dove
-   la differenza sarebbe negativa. Vale per tutti e cinque i piè di pagina
-   dell'app: la nota legale della Panoramica, quelle degli Incentivi (due), del
-   modulo 1.0 e dell'Abbonamento. */
+   la differenza sarebbe negativa. Vale per tutti i piè di pagina dell'app. */
 .footnote { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-6); border-top: 1px solid var(--line); padding-top: var(--sp-4); line-height: 1.6; padding-inline-end: max(0px, calc(100% - var(--measure))); }
 
 .tabs { display: flex; gap: var(--sp-1); border-bottom: 1px solid var(--line); margin-bottom: var(--sp-4); overflow-x: auto; scrollbar-width: none; }
@@ -1170,7 +1152,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    il blocco `.risk-*`, `.draft-editor`/`.draft-controls`/`.dc-field` e la
    `@media (max-width: 600px)` di `.ax-doc-view`/`.draft-controls`, con le
    `@media (max-width: 900px)` di `.ax-grid`/`.ax-doc`. Commenti compresi.
-   RESTANO qui le classi legate anche ad altre feature (subsidy-ai in testa):
+   RESTANO qui le classi legate anche ad altre feature:
    `.ax-head-top`, `.ax-title`, `.ax-badges`, `.ax-meta`, `.ax-chip`,
    `.ev-quote`, `.ax-progress` con `.pg-label` e `.meter-track`,
    `.action-item` con `.ai-main`/`.ai-text`, `.mini-btn`, `.draft-actions`. */
@@ -1189,7 +1171,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .ev-quote.show { display: block; }
 
 /* checklist dominante — `.ax-progress`, `.action-item` e `.mini-btn` RESTANO:
-   li usa anche `subsidy-ai` (e `.mini-btn` molte altre feature).
+   `.mini-btn` serve a molte altre feature.
    `.ax-actions-card` e `.action-item .ai-meta` sono nel modulo di `admin-ai`. */
 .ax-progress { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .ax-progress .pg-label { font-size: var(--fs-meta); font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
@@ -1207,7 +1189,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .mini-btn:hover { border-color: var(--accent); color: var(--accent-text); }
 .mini-btn .ic { width: 13px; height: 13px; }
 
-/* editor bozza — `.draft-actions` RESTA: la usa anche `subsidy-ai`.
+/* editor bozza — `.draft-actions` RESTA condivisa.
    `.draft-editor`, `.draft-controls` e `.dc-field` sono nel modulo di
    `admin-ai`. */
 .draft-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
@@ -1333,7 +1315,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .bar-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 
 /* meter completamento: RESTANO `.meter-track` e `.meter-fill`, vive (le
-   scrivono `admin-ai`, `subsidy-ai` e `incentives` come stringhe globali).
+   scrive `admin-ai` come stringhe globali).
    `.meter` (il contenitore flex) e `.meter-num` (la percentuale grande, con il
    suo commento sul perché di `--fs-h2`) sono state CANCELLATE il 2026-08-28
    (censimento regole morte, issue #83): zero usi in src/, scripts/, index.html
@@ -1374,7 +1356,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    stringhe `p-${task.priority}` che compone `features/calendar/` non le
    toccano: nessuna regola le vestiva nemmeno prima — `.action-ico.p-*`
    richiedeva anche `.action-ico`, che il calendario non usa. NON confondere
-   con `.action-item` (checklist di admin-ai/subsidy-ai), che è viva e resta. */
+   con `.action-item` (checklist di Admin AI), che è viva e resta. */
 
 /* utility per ridurre inline style */
 .mt-10 { margin-top: var(--sp-3); } .mt-12 { margin-top: var(--sp-3); } .mt-14 { margin-top: var(--sp-4); } .mt-16 { margin-top: var(--sp-4); }
@@ -1397,30 +1379,6 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .hint-accent { font-size: var(--fs-meta); color: var(--accent-text); }
 .stack-sm > * + * { margin-top: var(--sp-2); }
 .select-inline { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--sp-2); font-size: var(--fs-body); background: var(--card); }
-
-/* ---------- Subsidy AI ----------
-   La sezione è migrata il 2026-08-28 in
-   `src/features/subsidy-ai/subsidy-ai.module.css` (CSS Modules, issue #83),
-   commenti compresi — compresa la `@media (max-width: 600px)` di
-   `.source-grid`, e con `.demo-banner` e `.mark-field`, che stavano più
-   sopra. RESTA qui:
-   · `.state-list` con `st-ok`/`st-warn`/`st-bad` e `.st-note`, perché la usa
-     anche `features/incentives/CatalogTab.tsx`.
-   ⚠️ `design-lint.mjs` dichiara un'eccezione su `.dash-inc-stats` in QUESTO
-   file: la regola è migrata nel modulo, quindi l'eccezione è morta e va
-   riallineata nella fase finale della migrazione (lo script non è stato
-   toccato, come da consegna). */
-/* lista requisiti con stato per-elemento (esito verifica) */
-.state-list { list-style: none; }
-.state-list li { position: relative; padding: var(--sp-2) 0 var(--sp-2) var(--sp-6); font-size: var(--fs-body); border-top: 1px solid var(--line); }
-.state-list li:first-child { border-top: none; }
-.state-list li::before { position: absolute; left: 3px; top: 8px; width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
-.state-list li.st-ok::before { content: '✓'; color: var(--green); background: var(--green-soft); }
-.state-list li.st-bad::before { content: '✕'; color: var(--red-dark); background: var(--red-soft); }
-.state-list li.st-warn::before { content: '?'; color: var(--amber); background: var(--amber-soft); }
-.state-list .st-note { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin-left: var(--sp-1); }
-.state-list li.st-bad .st-note { color: var(--red-dark); }
-.state-list li.st-ok .st-note { color: var(--green); }
 
 .toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: var(--on-ink); padding: var(--sp-3) var(--sp-4); border-radius: var(--radius-sm); font-size: var(--fs-body); box-shadow: var(--shadow-md); z-index: 80; opacity: 0; transform: translateY(8px); transition: opacity var(--dur), transform var(--dur); pointer-events: none; max-width: min(90vw, 360px); }
 .toast.show { opacity: 1; transform: none; }
@@ -1523,8 +1481,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    chiudeva. RESTANO qui:
    · `.doc-filters`, perché la usano anche `features/contracts/` e
      `features/crm/`;
-   · `.detail-list`, più sotto, perché la usano anche `features/finance/`,
-     `features/incentives/` e `features/subsidy-ai/`.
+   · `.detail-list`, più sotto, perché la usa anche `features/finance/`.
    ============================================================================ */
 
 .doc-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
@@ -1545,8 +1502,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    `.ct-list` con `.ct-pick`, `.ct-docs` e `.ct-ms` con le loro righe,
    `.ct-clauses`, `.ct-add`, `.result-value`, `.info-box-card` e `.ct-sr`.
    Qui restano le condivise: `.ct-head`, `.ct-toolbar`, `.ct-inline`,
-   `.ct-narrow`, `.ct-kpi` e `.ct-cmp` (le usano anche `features/crm/`,
-   `features/incentives/` e `features/audit/`).
+   `.ct-narrow`, `.ct-kpi` e `.ct-cmp`.
    ⚠️ `design-lint.mjs` dichiara un'eccezione su `.ct-sr` («margin: -1px») in
    QUESTO file: la regola è migrata nel modulo, quindi l'eccezione è morta e
    va riallineata nella fase finale della migrazione (lo script non è stato

@@ -3,7 +3,7 @@
 //
 // Il censimento del 2026-08-19 ha misurato la produzione vera: 19 documenti su
 // 19 archiviati, 16 analisi non conclusive, zero termini dichiarati in tutto il
-// database, una valutazione incentivi mai eseguita. Una Home disegnata per
+// database. Una Home disegnata per
 // l'abbondanza sarebbe una griglia di zeri; questa risponde a tre domande:
 // cosa il sistema sa, cosa non ha potuto concludere, cosa non ha mai provato
 // a fare.
@@ -287,49 +287,6 @@ export interface ContoDocumenti {
 
 export const totaleConto = (c: ContoDocumenti): number => c.attivi + c.archiviati;
 
-/**
- * Lo stato del blocco Opportunità, deciso da ciò che si è potuto misurare.
- *
- *   `mai-eseguita`   0 valutazioni per l'azienda: il matching non è mai girato.
- *                    Lo zero delle opportunità NON significa «niente per te».
- *   `eseguita`       esiste almeno una valutazione: i numeri hanno senso.
- *   `non-misurabile` la lettura è fallita: non si inventa né l'uno né l'altro.
- *
- * ⚠️ NESSUN PULSANTE «Avvia la verifica»: `subsidy-worker` è invocabile solo da
- * uno scheduler con un segreto, e il matching parte dai PROGETTI. L'azione che
- * esiste davvero nel prodotto è descrivere un progetto, e il blocco porta lì.
- * Un pulsante che chiama una funzione non chiamabile è una funzione finta.
- */
-/**
- * Che cosa dice la PRIMA riga del blocco Opportunità, sul catalogo condiviso.
- *
- * ⚠️⚠️ IL CASO VUOTO VIENE PRIMA DELL'UGUAGLIANZA. `verified === programs` è
- * vero anche con entrambi a zero, e il blocco si accende pure a catalogo vuoto
- * — basta una pratica aperta o un progetto attivo. Ne usciva «0 programmi in
- * banca dati, verificati»: un vanto su un insieme che non esiste, cioè la
- * stessa confusione fra «niente da segnalare» e «non ho niente» che questa
- * pagina combatte dappertutto.
- *
- * `nonLeggibile` (catalogo `null`) resta distinto da `vuoto`: «non ho potuto
- * guardare» e «ho guardato e non c'era niente» sono due frasi diverse.
- */
-export type FraseCatalogo = 'nonLeggibile' | 'vuoto' | 'tuttiVerificati' | 'inParte';
-
-export function fraseCatalogo(
-  catalogo: { programs: number; verified: number } | null,
-): FraseCatalogo {
-  if (catalogo === null) return 'nonLeggibile';
-  if (catalogo.programs === 0) return 'vuoto';
-  return catalogo.verified === catalogo.programs ? 'tuttiVerificati' : 'inParte';
-}
-
-export type StatoValutazione = 'mai-eseguita' | 'eseguita' | 'non-misurabile';
-
-export function statoValutazione(assessments: number | null): StatoValutazione {
-  if (assessments === null) return 'non-misurabile';
-  return assessments === 0 ? 'mai-eseguita' : 'eseguita';
-}
-
 /** Tutto ciò che decide la visibilità dei blocchi, in un posto solo. */
 export interface BlocchiInput {
   /** Documenti con appartenenza da confermare (null = lettura fallita). */
@@ -347,28 +304,17 @@ export interface BlocchiInput {
   daVerificare: number;
   fallite: number;
   maiAnalizzati: number;
-  /**
-   * `null` = il catalogo NON si è potuto leggere, che non è un catalogo vuoto:
-   * il blocco compare e dichiara il guasto. Collassare il null sullo zero
-   * farebbe sparire il blocco proprio quando c'è qualcosa da dire — la stessa
-   * confusione «non ho guardato = niente da fare» che questa pagina combatte.
-   */
-  programmiInCatalogo: number | null;
-  /** Pratiche e progetti già esistenti: se ci sono, il blocco ha numeri veri. */
-  openCases: number;
-  activeProjects: number;
 }
 
 export interface Blocchi {
   decisioni: boolean;
   daFare: boolean;
   sistema: boolean;
-  opportunita: boolean;
   /**
    * L'appartenenza NON si è potuta leggere. Il blocco Decisioni COMPARE lo
    * stesso e lo dichiara: dentro non c'è nessun conteggio inventato, c'è la
    * frase che dice che il controllo non è stato eseguito. Stesso mestiere di
-   * `home.catalogUnreadable` e `home.assessUnknown` nel blocco Opportunità.
+   * una frase esplicita nel blocco Decisioni.
    */
   ownershipIgnota: boolean;
   /** Il riquadro «cosa è stato controllato»: quando il lavoro operativo è a
@@ -379,8 +325,7 @@ export interface Blocchi {
 export function decidiBlocchi(i: BlocchiInput): Blocchi {
   const ownershipIgnota = i.ownership === null;
   // ⚠️⚠️ UN BLOCCO CHE NON HA POTUTO LEGGERE I SUOI DATI RESTA A SCHERMO. Il
-  // catalogo non leggibile accendeva il blocco Opportunità e lo diceva; la
-  // stessa lettura fallita sull'appartenenza faceva SPARIRE il blocco
+  // una lettura fallita sull'appartenenza faceva SPARIRE il blocco
   // Decisioni. Due risposte opposte allo stesso guasto sulla stessa pagina, e
   // quella che sparisce è indistinguibile da un blocco vuoto perché non c'è
   // niente da fare. Ora il blocco compare e dichiara il guasto: il conteggio
@@ -389,16 +334,10 @@ export function decidiBlocchi(i: BlocchiInput): Blocchi {
   const daFare = i.aperte > 0 || i.terminiNeiDocumenti > 0;
   const sistema = i.daVerificare > 0 || i.fallite > 0 || i.maiAnalizzati > 0
     || i.dateNonRegistrate > 0;
-  // Il catalogo è condiviso: finché contiene programmi, lo stato della
-  // valutazione aziendale è un'informazione che esiste per OGNI azienda.
-  // E un catalogo NON LEGGIBILE (null) è un'informazione anche lui.
-  const opportunita = i.programmiInCatalogo === null || i.programmiInCatalogo > 0
-    || i.openCases > 0 || i.activeProjects > 0;
   return {
     decisioni,
     daFare,
     sistema,
-    opportunita,
     ownershipIgnota,
     vuotoOperativo: !decisioni && !daFare && !sistema && !ownershipIgnota,
   };

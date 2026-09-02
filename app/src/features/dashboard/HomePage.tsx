@@ -14,11 +14,11 @@
 //
 // LA STRUTTURA:
 //   · testata (`home-head`): saluto + «aggiornata alle», pastiglia attenzione,
-//     «Carica documento» (→ /admin) e «Cerca incentivi» (→ /incentivi);
+//     «Carica documento» (→ /admin);
 //   · striscia KPI (`KpiStrip`);
 //   · colonna principale: documento in evidenza (`DocumentoInEvidenza`) poi i
-//     quattro blocchi storici — decisioni, lavoro, limiti del sistema,
-//     opportunità — la cui LOGICA è intatta e vive in `overviewBlocks.ts`;
+//     tre blocchi storici — decisioni, lavoro e limiti del sistema — la cui
+//     logica vive in `overviewBlocks.ts`;
 //   · colonna laterale: «Richiede attenzione» (`AttenzioneColumn`).
 //
 // COSA NON C'È, DI PROPOSITO (rispetto al modello):
@@ -35,7 +35,7 @@ import { Icon } from '@/components/ui/Icon';
 import { ErrorState, SkeletonCard } from '@/components/ui/states';
 import { useOverview, type OverviewData } from './useOverview';
 import {
-  chiaviTaskSplit, decidiBlocchi, fraseCatalogo, rigaNature, statoValutazione, termini,
+  chiaviTaskSplit, decidiBlocchi, rigaNature, termini,
 } from './overviewBlocks';
 import { KpiStrip } from './KpiStrip';
 import { AttenzioneColumn } from './AttenzioneColumn';
@@ -43,7 +43,6 @@ import { DocumentoInEvidenza } from './DocumentoInEvidenza';
 import { formatDate, formatDateTime, formatTime } from '@/lib/format';
 import { documentLabelText } from '@/i18n/documentLabel';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/contexts/CompanyContext';
 import { useT, useTn, type PluralBase, type TKey } from '@/i18n';
 import type { DataDocumentoRiga } from '@/services/documentHubService';
 import type { DocumentHubItem } from '@/types/models';
@@ -321,59 +320,7 @@ function BloccoSistema({ data }: { data: OverviewData }) {
   );
 }
 
-function BloccoOpportunita({ data, companyName }: { data: OverviewData; companyName: string }) {
-  const t = useT();
-  const tn = useTn();
-  const { catalogo, assessments, summary } = data.incentivi;
-  const stato = statoValutazione(assessments);
-  // ⚠️ Il caso VUOTO prima dell'uguaglianza: `verified === programs` è vero
-  // anche con entrambi a zero, e il blocco si accende pure a catalogo vuoto.
-  // La scelta sta in `fraseCatalogo`, che è puro e provato.
-  const frase = fraseCatalogo(catalogo);
-  return (
-    <section className="card mt-16 ov-block" aria-labelledby="ov-opportunita">
-      <h2 className="card-title" id="ov-opportunita">{t('home.blockOpportunities')}</h2>
-      <div className="ov-line">
-        {frase === 'nonLeggibile' && t('home.catalogUnreadable')}
-        {frase === 'vuoto' && t('home.catalogEmpty')}
-        {frase === 'tuttiVerificati' && catalogo
-          && tn('home.catalogAllVerified', catalogo.programs)}
-        {frase === 'inParte' && catalogo
-          && t('home.catalogSomeVerified', { n: catalogo.programs, v: catalogo.verified })}
-      </div>
-      {stato === 'mai-eseguita' && (
-        <>
-          <div className="ov-line">{t('home.assessNever', { company: companyName })}</div>
-          <Link className="btn btn-sm mt-10" to="/incentivi?scheda=progetti">
-            {t('home.describeProject')} <Icon name="arrowRight" className="ic-sm" />
-          </Link>
-        </>
-      )}
-      {stato === 'non-misurabile' && (
-        <div className="muted-sm">{t('home.assessUnknown')}</div>
-      )}
-      {stato === 'eseguita' && (
-        <>
-          {summary === null
-            ? <div className="muted-sm">{t('home.summaryUnknown')}</div>
-            : (
-              <div className="ov-line">
-                {t('home.assessStats', {
-                  relevant: summary.highRelevance, fresh: summary.newOpportunities,
-                  cases: summary.openCases, projects: summary.activeProjects,
-                })}
-              </div>
-            )}
-          <Link className="btn btn-sm mt-10" to="/incentivi">
-            {t('home.ctaSubsidies')} <Icon name="arrowRight" className="ic-sm" />
-          </Link>
-        </>
-      )}
-    </section>
-  );
-}
-
-function OverviewBody({ data, companyName }: { data: OverviewData; companyName: string }) {
+function OverviewBody({ data }: { data: OverviewData }) {
   const t = useT();
   const tn = useTn();
   const conteggioTermini = termini(data.date.attivi, data.date.archiviati);
@@ -399,11 +346,6 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
     daVerificare: data.daVerificare.attivi + data.daVerificare.archiviati,
     fallite: data.fallite.attivi + data.fallite.archiviati,
     maiAnalizzati: data.maiAnalizzati.attivi + data.maiAnalizzati.archiviati,
-    // `null` = lettura fallita, e NON si collassa sullo zero: il blocco deve
-    // comparire per dire «non leggibile», non sparire come se non esistesse.
-    programmiInCatalogo: data.incentivi.catalogo === null ? null : data.incentivi.catalogo.programs,
-    openCases: data.incentivi.summary?.openCases ?? 0,
-    activeProjects: data.incentivi.summary?.activeProjects ?? 0,
   });
 
   // Il documento in evidenza è il PRIMO della colonna «Richiede attenzione»:
@@ -444,7 +386,6 @@ function OverviewBody({ data, companyName }: { data: OverviewData; companyName: 
             </section>
           )}
 
-          {blocchi.opportunita && <BloccoOpportunita data={data} companyName={companyName} />}
         </div>
 
         <div className={styles.homeSide}>
@@ -483,7 +424,6 @@ export function HomePage() {
   const t = useT();
   const tn = useTn();
   const { profile } = useAuth();
-  const { activeCompany } = useCompany();
   const { loading, error, data, reload } = useOverview();
 
   const slot = GREETING[greetingSlot()];
@@ -515,7 +455,6 @@ export function HomePage() {
             </Link>
           )}
           <Link className="btn btn-primary" to="/admin"><Icon name="upload" className="ic-sm" /> {t('home.uploadDoc')}</Link>
-          <Link className="btn" to="/incentivi"><Icon name="banknote" className="ic-sm" /> {t('home.findSubsidies')}</Link>
         </div>
       </div>
 
@@ -528,7 +467,7 @@ export function HomePage() {
             panoramica senza niente da fare. */}
         {error && <ErrorState message={error} onRetry={reload} />}
         {!loading && !error && data && (
-          <OverviewBody data={data} companyName={activeCompany?.legalName ?? ''} />
+          <OverviewBody data={data} />
         )}
       </div>
 

@@ -829,7 +829,7 @@ section('10 · Dal messaggio al documento, e ritorno');
 // Il documento — dove quel foglio si organizza, si archivia e diventa lavoro —
 // non era raggiungibile dalla posta. E `/inbox?msg=abc` faceva arrivare a
 // schermo un errore di PostgREST in inglese, la stessa apertura già chiusa su
-// `/incentivi?progetto=abc`.
+// una rotta con query.
 {
   const allegato = (over: Partial<EmailAttachment> = {}): EmailAttachment => ({
     id: 'att-1', emailMessageId: 'msg-1', providerAttachmentId: 'p-1',

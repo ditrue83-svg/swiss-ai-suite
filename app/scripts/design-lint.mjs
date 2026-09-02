@@ -133,7 +133,6 @@ const EXCEPTIONS = [
   // un SVG non c'è nessun line-height da recuperare, quindi il sottotitolo
   // torna sulla scala (`--sp-1`). L'ha fatto notare questo stesso controllo,
   // uscendo rosso per «eccezione morta»: è il suo mestiere.
-  { file: 'src/features/subsidy-ai/subsidy-ai.module.css', contesto: '.dash-inc-stats', frammento: 'margin: -2px 0 var(--sp-3)', motivo: 'compensa il line-height del titolo sopra: valore negativo, la scala non parla in negativo' },
   { file: 'src/features/dashboard/dashboard.module.css', contesto: '.dash-sorted', frammento: 'margin: -6px 0 var(--sp-2)', motivo: 'risale sotto il titolo che il card-title ha già distanziato: negativo, fuori dal ritmo' },
   { file: 'src/styles/app.css', contesto: '.segmented .btn + .btn', frammento: 'margin-left: -1px', motivo: 'i due estremi di un interruttore condividono UN bordo: risale esattamente 1px, cioè lo spessore del bordo che sta sovrapponendo — negativo, e la scala non parla in negativo' },
   { file: 'src/features/contracts/contracts.module.css', contesto: '.ct-sr', frammento: 'margin: -1px', motivo: 'idioma sr-only: la scatola da 1px esce dal flusso per i soli lettori di schermo' },
@@ -143,7 +142,6 @@ const EXCEPTIONS = [
   { file: 'src/features/print/print.module.css', contesto: '.print-kv dt', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
   { file: 'src/features/print/print.module.css', contesto: '.print-url', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
   { file: 'src/features/print/print.module.css', contesto: '.print-foot', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
-  { file: 'src/styles/app.css', contesto: '.state-list li::before', frammento: 'font-size: 11px', motivo: 'la spunta segue il cerchio che la contiene, non la gerarchia del testo (documentato nella scala tipografica)' },
   // `.verify-box li::before` non è più qui: il blocco «da verificare» è la
   // `.verify-note` delle marcature (2026-08-12), e il «?» è un glifo SVG, non
   // un carattere da dimensionare a mano.

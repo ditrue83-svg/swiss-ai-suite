@@ -13,14 +13,14 @@
 // lezione ricorrente di questo progetto.
 //
 // IL DIFETTO CHE QUESTE ASSERZIONI BLOCCANO, riprodotto il 2026-07-30 su
-// `app.ai-swisse.com/incentivi`: aprendo un indirizzo profondo a freddo si
+// una rotta profonda: aprendo un indirizzo a freddo si
 // finiva sulla Panoramica. Non era lo strumento — la nota in memoria che lo
 // sosteneva era sbagliata, e la prova sta in due numeri che non si possono
 // interpretare in due modi:
-//     performance.getEntriesByType('navigation')[0].name → ".../incentivi"
+//     performance.getEntriesByType('navigation')[0].name → ".../attivita"
 //     location.pathname                                  → "/"
 // Il documento profondo era stato caricato davvero, ed è l'applicazione ad
-// averlo abbandonato. La catena era `/incentivi` → `/onboarding` → `/`.
+// averlo abbandonato. La catena era `/attivita` → `/onboarding` → `/`.
 //
 // LA CAUSA, che è la forma di difetto più cara di questo repository:
 // `loading: false` NON significa «ho guardato», significa «non sto guardando

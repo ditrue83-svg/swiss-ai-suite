@@ -349,7 +349,6 @@ async function main() {
     daVerificare: rpcToVerify.attivi + rpcToVerify.archiviati,
     fallite: rpcFailed.attivi + rpcFailed.archiviati,
     maiAnalizzati: rpcNone.attivi + rpcNone.archiviati,
-    programmiInCatalogo: 7, openCases: 0, activeProjects: 0,
   });
   check('col termine vero il blocco «Da fare» è visibile', blocchi.daFare === true);
   check('e il blocco dei limiti anche, per la data senza natura', blocchi.sistema === true);

@@ -23,7 +23,7 @@
 //
 // Non stampa MAI una chiave: dell'ambiente verifica che i nomi esistano.
 // ============================================================================
-import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
+import { writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -205,8 +205,6 @@ const TABELLE = [
   ['contratti', 'contracts'],
   ['letture di contratto', 'contract_extractions'],
   ['organizzazioni CRM', 'crm_organizations'],
-  ['progetti incentivi', 'subsidy_projects'],
-  ['pratiche incentivi', 'subsidy_cases'],
   ['conversazioni assistente', 'assistant_threads'],
   ['regole di automazione', 'workflow_definitions'],
   ['voci finanziarie', 'finance_items'],

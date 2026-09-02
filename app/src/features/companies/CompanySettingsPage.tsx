@@ -7,19 +7,11 @@
 // IDI — appena accesa — sarebbe stata una funzione utilizzabile una volta e mai
 // più.
 //
-// Due permessi diversi, dichiarati invece che scoperti al salvataggio:
-//   · i DATI ANAGRAFICI (companies) li modificano solo titolare e
+// I DATI ANAGRAFICI (companies) li modificano solo titolare e
 //     amministratori — è la policy `companies_update_admin` della 0001. Chi non
 //     può, li vede in sola lettura e la schermata dice perché: offrire campi
 //     che al salvataggio verranno rifiutati è la stessa trappola del pulsante
-//     «Collega calendario» senza credenziali;
-//   · il PROFILO OPERATIVO (company_profiles) lo modifica ogni membro: sono i
-//     dati che alimentano il matching incentivi, non l'identità dell'impresa.
-//
-// ⚠️ Il profilo si salva LEGGENDO PRIMA quello esistente: `upsertCompanyProfile`
-// scrive la riga intera, quindi mandare solo i tre campi di questa schermata
-// azzererebbe immobili, veicoli e progetti — che nessuno ha toccato e che
-// servono a Subsidy AI.
+//     «Collega calendario» senza credenziali.
 // ============================================================================
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icon } from '@/components/ui/Icon';
@@ -32,9 +24,7 @@ import { toUserMessage } from '@/lib/errors';
 import { formatUid, isValidUid } from '@/lib/uid';
 import { companyService } from '@/services/companyService';
 import { RegistryLookup, type RegistryFields } from '@/features/companies/RegistryLookup';
-import {
-  CANTONI, FASCE_FATTURATO, FORME_GIURIDICHE, NO_REVENUE, SETTORI,
-} from '@/features/subsidy-ai/programs';
+import { CANTONI, FORME_GIURIDICHE } from './companyOptions';
 
 /** Dove sta questo modulo. Cambia SOLO l'intestazione, mai i campi.
  *  · `pagina`   la rotta `/azienda`: titolo e sottotitolo, come ogni schermata.
@@ -64,8 +54,7 @@ export function CompanySettings({ sede }: { sede: Sede }) {
   const t = useT();
   const { showToast } = useToast();
   const {
-    activeCompany, activeCompanyId, companyProfile, isAdmin, loading, error,
-    refresh, refreshProfile,
+    activeCompany, activeCompanyId, isAdmin, loading, error, refresh,
   } = useCompany();
 
   const [legalName, setLegalName] = useState('');
@@ -77,15 +66,10 @@ export function CompanySettings({ sede }: { sede: Sede }) {
   const [postalCode, setPostalCode] = useState('');
   const [city, setCity] = useState('');
   const [countryCode, setCountryCode] = useState('CH');
-  const [sector, setSector] = useState('');
-  const [employeeCount, setEmployeeCount] = useState('');
-  const [revenueBand, setRevenueBand] = useState(NO_REVENUE);
 
   const [savingCompany, setSavingCompany] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
   const [savingLogo, setSavingLogo] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
-  const [profileError, setProfileError] = useState<string | null>(null);
 
   // ⚠️ I campi si riempiono UNA VOLTA per azienda, non a ogni cambio dell'oggetto.
   // `refresh()` del contesto costruisce un `activeCompany` nuovo a ogni giro:
@@ -107,16 +91,6 @@ export function CompanySettings({ sede }: { sede: Sede }) {
     setCity(activeCompany.city ?? activeCompany.municipality ?? '');
     setCountryCode(activeCompany.countryCode ?? 'CH');
   }, [activeCompany]);
-
-  const syncedProfile = useRef<string | null>(null);
-  useEffect(() => {
-    if (!activeCompanyId || syncedProfile.current === activeCompanyId) return;
-    if (loading) return; // il profilo può arrivare dopo l'azienda: non fissare un vuoto
-    syncedProfile.current = activeCompanyId;
-    setSector(companyProfile?.sector ?? '');
-    setEmployeeCount(companyProfile?.employeeCount != null ? String(companyProfile.employeeCount) : '');
-    setRevenueBand(companyProfile?.revenueBand ?? NO_REVENUE);
-  }, [companyProfile, activeCompanyId, loading]);
 
   function applyRegistryFields(f: RegistryFields) {
     setLegalName(f.legalName);
@@ -150,36 +124,6 @@ export function CompanySettings({ sede }: { sede: Sede }) {
       setCompanyError(toUserMessage(err));
     } finally {
       setSavingCompany(false);
-    }
-  }
-
-  async function saveProfile(e: FormEvent) {
-    e.preventDefault();
-    if (!activeCompanyId || savingProfile) return;
-    setSavingProfile(true); setProfileError(null);
-    try {
-      const employees = employeeCount.trim() === '' ? null : Number(employeeCount);
-      await companyService.upsertCompanyProfile(activeCompanyId, {
-        sector: sector || null,
-        employeeCount: Number.isFinite(employees) ? employees : null,
-        // ⚠️ `NO_REVENUE` è l'etichetta della SCELTA «non indico», non un dato:
-        // nel database «non indicato» si scrive `null`, come fa l'onboarding.
-        // Salvarlo alla lettera metteva la stringa italiana in una colonna che
-        // le altre schermate leggono — trovato confrontando il DB dopo un
-        // salvataggio, non guardando lo schermo, dove sembrava tutto giusto.
-        revenueBand: revenueBand === NO_REVENUE ? null : revenueBand,
-        // ⚠️ Non sono campi di questa schermata: si riportano com'erano, perché
-        // l'upsert riscrive la riga intera e ometterli li azzererebbe.
-        ownsProperty: companyProfile?.ownsProperty ?? false,
-        vehicleCount: companyProfile?.vehicleCount ?? 0,
-        currentProjects: companyProfile?.currentProjects ?? [],
-      });
-      await refreshProfile();
-      showToast(t('companySettings.savedProfile'));
-    } catch (err) {
-      setProfileError(toUserMessage(err));
-    } finally {
-      setSavingProfile(false);
     }
   }
 
@@ -310,32 +254,6 @@ export function CompanySettings({ sede }: { sede: Sede }) {
         )}
       </form>
 
-      <form className="card" onSubmit={saveProfile}>
-        <div className="card-title">{t('companySettings.profileTitle')}</div>
-        <div className="muted-sm mb-3">{t('companySettings.profileDesc')}</div>
-
-        <div className="grid-2">
-          <Select id="cs-sector" label={t('onboarding.sector')} value={sector} onChange={(e) => setSector(e.target.value)}>
-            <option value="">{t('onboarding.sectorPlaceholder')}</option>
-            {SETTORI.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </Select>
-          <Input id="cs-emp" label={t('onboarding.employees')} type="number" min={0} value={employeeCount}
-            onChange={(e) => setEmployeeCount(e.target.value)} placeholder={t('onboarding.employeesPlaceholder')} />
-          <Select id="cs-rev" label={t('onboarding.revenue')} value={revenueBand} onChange={(e) => setRevenueBand(e.target.value)}>
-            {FASCE_FATTURATO.map((f) => (
-              <option key={f} value={f}>{f === NO_REVENUE ? t('onboarding.noPreference') : f}</option>
-            ))}
-          </Select>
-        </div>
-
-        {profileError && <div className="form-error"><Icon name="alert" className="ic-sm" /><span>{profileError}</span></div>}
-
-        <div className="row-wrap mt-8">
-          <button className="btn btn-primary" type="submit" disabled={savingProfile} aria-busy={savingProfile || undefined}>
-            {savingProfile ? <span className="spinner" aria-hidden="true" /> : null} {t('common.save')}
-          </button>
-        </div>
-      </form>
     </>
   );
 }

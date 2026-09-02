@@ -18,8 +18,8 @@
      `features/assistant/` (e il suo avviso su `.list` dei Contratti resta
      con lei);
    · `.crm-kv`, `.crm-sec`, `.crm-sec-head` e la famiglia `.crm-tl`
-     (`.crm-tl`, `crm-tl-when`, `crm-tl-what`) RESTANO globali: le usa anche
-     `features/incentives/` — compresa la `@media (max-width: 720px)` di
+     (`.crm-tl`, `crm-tl-when`, `crm-tl-what`) RESTANO globali perché le usano
+     anche altri moduli — compresa la `@media (max-width: 720px)` di
      `.crm-kv`, che per questo è stata DIVISA (qui è venuta solo la riga di
      `.crm-board`);
    · `.ct-head`, `.ct-toolbar`, `.ct-inline`, `.ct-kpi`, `.fin-pager`,
@@ -117,7 +117,7 @@
 .quote-card-main { min-width: 0; display: grid; gap: var(--sp-2); }
 
 /* La voce secondaria della timeline: la sola della famiglia `.crm-tl` che
-   `features/incentives/` NON usa — il resto della famiglia resta globale. */
+   il resto della famiglia resta globale. */
 .crm-tl-sub { font-size: var(--fs-meta); color: var(--muted); }
 
 /* Suggerimenti e duplicati: due riquadri che chiedono una decisione. */
@@ -129,7 +129,7 @@
 .crm-ask-main { flex: 1 1 220px; min-width: 0; }
 
 /* ⚠️ DIVISA dalla `@media (max-width: 720px)` di `extra.css`: là restano le
-   righe di `.crm-kv`, che è condivisa con `features/incentives/`; qui è
+   righe di `.crm-kv`, che resta condivisa; qui è
    venuta solo `.crm-board`. */
 @media (max-width: 720px) {
   .crm-board { grid-template-columns: repeat(5, minmax(70vw, 1fr)); }

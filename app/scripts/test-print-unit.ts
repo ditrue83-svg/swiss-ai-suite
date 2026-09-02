@@ -60,7 +60,6 @@ const EXTRA = readCss('extra.css');
 const PRINT_MOD = readMod('print/print.module.css');
 const ADMIN_AI = readMod('admin-ai/admin-ai.module.css');
 const CONTRACTS = readMod('contracts/contracts.module.css');
-const INCENTIVES = readMod('incentives/incentives.module.css');
 
 /**
  * Il corpo di un blocco `@media …`, contando le graffe.
@@ -91,7 +90,6 @@ const printExtra = mediaBlock(EXTRA, 'print');
 const printPrintMod = mediaBlock(PRINT_MOD, 'print');
 const printAdminAi = mediaBlock(ADMIN_AI, 'print');
 const printContracts = mediaBlock(CONTRACTS, 'print');
-const printIncentives = mediaBlock(INCENTIVES, 'print');
 
 /**
  * Il blocco del TEMA SCURO.
@@ -122,7 +120,6 @@ check('extra.css ha un blocco @media print', printExtra !== null);
 check('print.module.css ha un blocco @media print', printPrintMod !== null);
 check('admin-ai.module.css ha un blocco @media print', printAdminAi !== null);
 check('contracts.module.css ha un blocco @media print', printContracts !== null);
-check('incentives.module.css ha un blocco @media print', printIncentives !== null);
 check('app.css ha ancora il blocco del tema scuro', darkApp !== null);
 // ⚠️ Se l'estrattore prendesse tre righe invece del blocco intero, tutte le
 // asserzioni qui sotto passerebbero o fallirebbero per la ragione sbagliata.
@@ -237,13 +234,10 @@ check('il visualizzatore del documento non va su carta (`.ax-doc`, admin-ai.modu
 check('le righe documento/scadenza del contratto non si spezzano (contracts.module.css)',
   /\.ct-doc-row[\s\S]{0,140}break-inside:\s*avoid/.test(printContracts?.body ?? '')
     && /\.ct-ms-row/.test(printContracts?.body ?? ''));
-check('la scheda del criterio non si spezza (incentives.module.css)',
-  /\.inc-criterion\s*\{[^}]*break-inside:\s*avoid/.test(printIncentives?.body ?? ''),
-  'il selettore storico era `.inc-crit`: mai esistito, la classe è `.inc-criterion` dal 2026-07-30');
 // La controprova della migrazione: il blocco GLOBALE non deve più nominare le
 // classi scopate — se tornasse, tornerebbe il selettore che non aggancia.
 check('il blocco globale non nomina più classi scopate nei moduli',
-  !/\.ax-header|\.ax-actions-card|\.ax-doc|\.ct-doc-row|\.ct-ms-row|\.inc-crit|\.doc-viewer|\.pdf-viewer/.test(PX));
+  !/\.ax-header|\.ax-actions-card|\.ax-doc|\.ct-doc-row|\.ct-ms-row|\.doc-viewer|\.pdf-viewer/.test(PX));
 
 // ---------------------------------------------------------------------------
 section('4. Le citazioni finiscono nel foglio, per esteso');
@@ -348,7 +342,7 @@ const usedKeys = new Set<string>([
   'print.button.label', 'print.button.hint', 'print.facts.authority',
   'print.footer.company', 'print.footer.companyUnknown', 'print.footer.printedAt',
   'print.footer.model', 'print.footer.modelUnknown', 'print.footer.version',
-  'print.footer.catalogEngine', 'print.footer.disclaimer',
+  'print.footer.disclaimer',
 ]);
 for (const [lang, d] of Object.entries(dicts)) {
   const missing = [...usedKeys].filter((k) => typeof label(d, k) !== 'string');

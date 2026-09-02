@@ -51,15 +51,13 @@ const SKIP_DIRS = new Set(['src/i18n']);      // i dizionari SONO testo, per def
 const SKIP_FILES = new Set([
   'src/components/ui/Icon.tsx',        // tracciati SVG, non testo
   'src/features/admin-ai/engine.ts',   // motore locale: nomi di enti e chiavi di riconoscimento
-  'src/features/subsidy-ai/engine.ts', // idem, per gli incentivi 1.0
-  'src/features/subsidy-ai/programs.ts', // dataset dei programmi di incentivo
 ]);
 
 // Testi uguali in italiano, tedesco e francese: sigle, unità, simboli, segni.
 // Tutto ciò che non è in questa lista deve passare dai dizionari.
 const SAME_IN_EVERY_LANGUAGE = new Set([
   'PDF', 'IMG', 'EMAIL', 'TXT', 'CHF', 'AI', 'OCR', 'IDI', 'UID', 'CHE', 'IVA', 'AVS', 'AI-Swisse',
-  'Admin AI', 'Subsidy AI', 'Inbox', 'Zefix', 'Email', 'E-Mail', 'Password', 'Google', 'Microsoft',
+  'Admin AI', 'Inbox', 'Zefix', 'Email', 'E-Mail', 'Password', 'Google', 'Microsoft',
   '—', '·', '×', '→', '←', '%', ':', '/', '(', ')', '«', '»', '&nbsp;', '&amp;', '&middot;',
   '?', '!', '.', ',', '-', '+', '{', '}', '…',
 ]);

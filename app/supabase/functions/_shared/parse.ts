@@ -1,7 +1,7 @@
 // Estrazione SINTATTICA del JSON prodotto da un modello. Questo modulo non sa
 // nulla del dominio: non conosce schemi, non conosce campi obbligatori, non
 // decide se una risposta sia buona. Isola il primo oggetto JSON completo e lo
-// consegna a `JSON.parse`. Chi lo chiama valida (Admin AI, Inbox, Incentivi,
+// consegna a `JSON.parse`. Chi lo chiama valida (Admin AI, Inbox,
 // Contratti, Finanze hanno ciascuno il proprio validatore, e restano separati).
 //
 // ⚠️⚠️ IL COMMENTO DI QUESTO FILE HA DICHIARATO IL FALSO PER DUE MESI. Diceva

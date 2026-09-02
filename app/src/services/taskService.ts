@@ -53,7 +53,6 @@ function toTask(row: TaskRow): Task {
     companyId: row.company_id,
     createdBy: row.created_by,
     documentId: row.document_id,
-    subsidyCaseId: row.subsidy_case_id,
     title: row.title,
     description: row.description,
     authority: row.authority,
@@ -95,7 +94,6 @@ export interface CreateTaskInput {
   priority?: TaskPriority;
   source?: TaskSource;
   documentId?: string | null;
-  subsidyCaseId?: string | null;
   assigneeUserId?: string | null;
   /**
    * 0026 — la controparte e la trattativa a cui l'attività si riferisce.
@@ -213,7 +211,6 @@ export const taskService = {
       status: 'open',
       source: input.source ?? 'manual',
       document_id: input.documentId ?? null,
-      subsidy_case_id: input.subsidyCaseId ?? null,
       assignee_user_id: input.assigneeUserId ?? null,
       crm_organization_id: input.crmOrganizationId ?? null,
       crm_opportunity_id: input.crmOpportunityId ?? null,

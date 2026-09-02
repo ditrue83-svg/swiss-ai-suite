@@ -27,7 +27,7 @@ import { toUserMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import { useMembers } from './useMembers';
-import { dueLabel, eventLabelKey, sourceLabelKey, statusLabelKey } from './taskFormat';
+import { dueLabel, eventLabelKey, sourceLabelKey } from './taskFormat';
 import { DeadlineMark } from '@/components/ui/DeadlineMark';
 import { AppointmentMark } from '@/components/ui/AppointmentMark';
 import { MarkLegend } from '@/components/ui/MarkLegend';
@@ -294,7 +294,7 @@ export function TaskDetailPage() {
         {/* ---- Collegamenti: da dove nasce e cosa tocca ---- */}
         <div className="card">
           <div className="card-title">{t('tasks.links')}</div>
-          {!task.documentId && !task.subsidyCaseId && (
+          {!task.documentId && (
             <div className="muted-sm">{t('tasks.linksEmpty')}</div>
           )}
           {task.documentId && (
@@ -303,16 +303,6 @@ export function TaskDetailPage() {
                 <div className="list-title">{t('tasks.linkedDocument')}</div>
               </div>
               <Link className="btn btn-sm" to={`/admin?doc=${task.documentId}`}>{t('tasks.openDocument')}</Link>
-            </div>
-          )}
-          {task.subsidyCaseId && (
-            <div className="list-row">
-              <div className="list-main">
-                <div className="list-title">{t('tasks.linkedCase')}</div>
-              </div>
-              {/* Subsidy AI non ha un indirizzo per la singola pratica: si apre
-                  la sezione, che è quanto il prodotto consente oggi. */}
-              <Link className="btn btn-sm" to="/subsidy">{t('tasks.openCase')}</Link>
             </div>
           )}
         </div>

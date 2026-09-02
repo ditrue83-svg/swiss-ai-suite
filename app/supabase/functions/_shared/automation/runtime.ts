@@ -46,9 +46,7 @@ export function requireEnv(name: string): string {
  * contrario: `… as unknown as ServerClient` costruiva il client completo e poi
  * ne buttava via il tipo. Restringere la forma di un oggetto che si è appena
  * costruiti non protegge nessuno — chi riceve `ServerClient` continua a
- * riceverlo, perché il client vero lo soddisfa — e costava: `subsidy-worker`
- * passa questo client a `runMatching`, che chiede il `SupabaseClient` concreto,
- * e il typecheck lo rifiutava pur essendo a runtime esattamente quell'oggetto.
+ * riceverlo, perché il client vero lo soddisfa.
  * Un cast che nasconde la verità si paga dove la verità serviva.
  */
 export function adminClient() {

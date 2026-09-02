@@ -15,14 +15,12 @@
    NON sono qui, e perché:
    · `.doc-filters` RESTA globale in `app.css`: la usano anche
      `features/contracts/` e `features/crm/`;
-   · `.detail-list` RESTA globale: la usano anche `features/finance/`,
-     `features/incentives/` e `features/subsidy-ai/`;
+   · `.detail-list` RESTA globale: la usa anche `features/finance/`;
    · `.surface-3` è la classe condivisa del livello 3: qui dentro i suoi figli
      `.sf-k`/`.sf-v` (che lega solo questa feature) la nominano con `:global`,
      come `.btn-primary`/`.btn` nelle composte della `@media (max-width:
      600px)`;
-   · `verify-note`, `vn-title`, `ev-hl` restano globali: le condividono altre
-     feature (`admin-ai`, `subsidy-ai`, `incentives`).
+   · `verify-note`, `vn-title`, `ev-hl` restano globali: le condivide Admin AI.
 
    ⚠️ `test:shell-unit` legge `.prose` e `.doc-row-date` in `app.css`:
    spostandole qui quei due controlli vanno riallineati (fase finale della

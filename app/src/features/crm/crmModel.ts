@@ -28,9 +28,7 @@ import { safeHttpUrl } from '../../../supabase/functions/_shared/email/html.ts';
  * Le sigle dei ventisei cantoni, più il Liechtenstein — che non è un cantone ma
  * è la controparte estera più frequente per un'impresa della Svizzera orientale.
  *
- * ⚠️ NON È l'elenco a sei valori di `programs.ts`: quello è il perimetro del
- * catalogo incentivi, e un cliente di Lucerna registrato come «Altro» sarebbe un
- * dato perso. Qui servono le sigle vere, perché il database ha
+ * Qui servono le sigle vere, perché il database ha
  * `check (length(canton) = 2)` e un campo di testo libero può violarlo: un
  * `23514` che `toUserMessage` non mappa arriverebbe a schermo come stringa
  * tecnica. Un elenco rende quel valore impossibile.

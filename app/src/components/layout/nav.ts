@@ -60,7 +60,7 @@ export const NAV: NavEntry[] = [
 
   // LAVORO — il flusso in entrata, nell'ordine in cui il lavoro arriva:
   // prima ciò che entra (posta), poi ciò che si porta ad analizzare, poi ciò
-  // che ne deriva (scadenze), poi ciò che si va a cercare (incentivi).
+  // che ne deriva (scadenze).
   { sectionKey: 'nav.sectionWork' },
   { id: 'inbox', labelKey: 'nav.inbox', icon: 'inbox', path: '/inbox' },
   // «Analizza documento» è un'AZIONE, non un luogo: il nome del modulo
@@ -75,14 +75,6 @@ export const NAV: NavEntry[] = [
   // in testa alle due pagine porta dall'una all'altra; `alsoMatches` tiene
   // accesa questa voce anche di là.
   { id: 'deadlines', labelKey: 'nav.tasks', icon: 'checkCircle', path: '/attivita', alsoMatches: ['/calendario'] },
-  // Gli Incentivi puntano al modulo 2.0 (`/incentivi`, 0032). La schermata
-  // 1.0 resta raggiungibile da `/subsidy` finché il profilo incentivi e
-  // l'interpretazione AI non hanno una casa nel 2.0, ma non ha una voce
-  // propria: due voci per due versioni dello stesso modulo obbligherebbero a
-  // scegliere ogni volta quale aprire — l'errore già pagato con «Panoramica»
-  // e «Dashboard».
-  { id: 'subsidy', labelKey: 'nav.incentives', icon: 'banknote', path: '/incentivi' },
-
   // ARCHIVIO — dove si RITROVA ciò che è stato capito. Oggi solo la memoria
   // intera (Documenti): le letture per genere — Contratti, Clienti, Finanze —
   // sono moduli fuori perimetro (D-10, Blocco C), nascosti da `legacyOnly`.

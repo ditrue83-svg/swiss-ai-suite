@@ -47,15 +47,13 @@ const REGISTRY_MESSAGES: RegistryMessages = {
 
 /**
  * ⚠️ IL CANTONE CHE ARRIVA DAL REGISTRO È UN'ETICHETTA, NON UNA SIGLA.
- * `lookup-company` appiattisce il cantone a SEI valori più «Altro»: è il
- * perimetro del catalogo incentivi, non della Svizzera. Un cliente di Lucerna
- * arriva quindi come «Altro».
+ * `lookup-company` può restituire «Altro». Un cliente di Lucerna
+ * arriva quindi con un valore da confermare.
  *
  * ⚠️ E in quel caso il campo resta VUOTO invece di ricevere una sigla inventata.
  * Scrivere `TI` perché è il default del modulo è esattamente il difetto già
  * pagato nell'onboarding — «Comune Zug, Cantone Ticino» sotto un avviso che
- * diceva «dati importati dal registro» — e là non era cosmetico: il cantone
- * alimenta il matching degli incentivi.
+ * diceva «dati importati dal registro» — e là non era cosmetico.
  */
 const CANTON_CODE: Record<string, string> = {
   Ticino: 'TI', Zurigo: 'ZH', Berna: 'BE', Ginevra: 'GE', Vaud: 'VD', Grigioni: 'GR',

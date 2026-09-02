@@ -3,13 +3,9 @@ import { useT } from '../../i18n';
 import { MarkGlyph } from './MarkGlyph';
 import { ActionOriginMark, PROVENANCE_KINDS, type ProvenanceKind } from './ProvenanceMark';
 import { CONFIDENCE_LEVELS } from './ConfidenceBadge';
-import { ELIGIBILITY_STATES, type EligibilityValue } from './EligibilityMark';
-import { SOURCE_STATES, type SourceState } from './SourceStamp';
 import { TASK_STATES } from './StatusMark';
 import { PRIORITY_LEVELS } from './PriorityMark';
-import { WINDOW_STATES } from './WindowMark';
 import type { Confidence, TaskPriority, TaskStatus } from '../../types/models';
-import type { SubsidyCallStatus } from '../../types/database';
 
 /**
  * LEGENDA DEI SEGNI — compatta e apribile: l'utente impara il sistema una
@@ -21,10 +17,9 @@ import type { SubsidyCallStatus } from '../../types/database';
  * famiglie, non solo quelle della pagina che si sta guardando: un vocabolario
  * che cambia da una schermata all'altra non è un vocabolario, è un elenco di
  * abitudini locali. Chi la apre in Attività impara anche il timbro della fonte,
- * e quando arriverà agli Incentivi lo riconoscerà.
  *
  * ⚠️⚠️ MA SOLO DOVE C'È ALMENO UN SEGNO DA SPIEGARE. Su una schermata vuota —
- * Incentivi senza progetti, Documenti senza documenti — la legenda era l'unica
+ * Documenti senza documenti — la legenda era l'unica
  * cosa in pagina: un glossario di nove famiglie sotto un elenco che non ne usa
  * nessuna. Una legenda senza mappa non insegna niente, occupa e basta.
  *
@@ -41,8 +36,6 @@ import type { SubsidyCallStatus } from '../../types/database';
  * Il termine non ha mappa iterabile (i suoi stati portano numeri): i quattro
  * esempi sono resi con le stesse classi e gli stessi glifi di DeadlineMark.
  */
-const ELIGIBILITY_IN_LEGEND: EligibilityValue[] = ['unknown', 'likely', 'unlikely', 'ineligible'];
-const SOURCE_IN_LEGEND: SourceState[] = ['fresh', 'aging', 'stale', 'unverified', 'demo'];
 // La priorità ha due scale di dominio con gli STESSI tre segni: la legenda ne
 // elenca una sola, altrimenti mostrerebbe «alta» due volte identica.
 const PRIORITY_IN_LEGEND: TaskPriority[] = ['high', 'medium', 'low'];
@@ -51,8 +44,8 @@ const PRIORITY_IN_LEGEND: TaskPriority[] = ['high', 'medium', 'low'];
  * Quanti segni sono renderizzati nella pagina, esclusi quelli della legenda.
  *
  * ⚠️ `.mark` è la classe che TUTTE e nove le famiglie mettono sul proprio
- * `<span>` (ProvenanceMark, ConfidenceBadge, EligibilityMark, SourceStamp,
- * DeadlineMark, StatusMark, PriorityMark, WindowMark e le due forme
+ * `<span>` (ProvenanceMark, ConfidenceBadge, DeadlineMark, StatusMark,
+ * PriorityMark e le due forme
  * dell'origine): un segno nuovo la porta con sé e questo conteggio lo vede
  * senza una seconda modifica. `.mark-legend` NON corrisponde a `.mark` — sono
  * due token di classe diversi — ma i segni DENTRO la legenda sì, ed è per
@@ -115,28 +108,6 @@ export function MarkLegend() {
             ))}
           </div>
           <div>
-            <div className="ml-fam-title">{t('marks.legend.eligibility')}</div>
-            {ELIGIBILITY_IN_LEGEND.map((k) => (
-              <div className="ml-item" key={k}>
-                <span className={`mark mark-elig ${ELIGIBILITY_STATES[k].cls}`}>
-                  <MarkGlyph name={ELIGIBILITY_STATES[k].glyph} />
-                  {t(ELIGIBILITY_STATES[k].labelKey)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div>
-            <div className="ml-fam-title">{t('marks.legend.source')}</div>
-            {SOURCE_IN_LEGEND.map((k) => (
-              <div className="ml-item" key={k}>
-                <span className={`mark mark-src ${SOURCE_STATES[k].cls}`}>
-                  <MarkGlyph name={SOURCE_STATES[k].glyph} />
-                  {t(SOURCE_STATES[k].labelKey)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div>
             <div className="ml-fam-title">{t('marks.legend.deadline')}</div>
             <div className="ml-item">
               <span className="mark mark-due md-days"><MarkGlyph name="arrow" />{t('marks.deadline.inDays', { n: 12 })}</span>
@@ -187,17 +158,6 @@ export function MarkLegend() {
                 <span className={`mark mark-prio ${PRIORITY_LEVELS[k].cls}`}>
                   <MarkGlyph name={PRIORITY_LEVELS[k].glyph} />
                   {t(PRIORITY_LEVELS[k].labelKey)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div>
-            <div className="ml-fam-title">{t('marks.legend.window')}</div>
-            {(Object.keys(WINDOW_STATES) as SubsidyCallStatus[]).map((k) => (
-              <div className="ml-item" key={k}>
-                <span className={`mark mark-win ${WINDOW_STATES[k].cls}`}>
-                  <MarkGlyph name={WINDOW_STATES[k].glyph} />
-                  {t(WINDOW_STATES[k].labelKey)}
                 </span>
               </div>
             ))}

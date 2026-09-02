@@ -25,7 +25,7 @@
    · `.sr-only` RESTA globale in `extra.css`: la usano anche `features/crm/`
      e `features/assistant/`;
    · `.fin-pager` e `.fin-page-n` RESTANO globali: le usano anche
-     `features/contracts/`, `features/crm/` e `features/incentives/`
+     `features/contracts/` e `features/crm/`
      (compresa la riga `.fin-pager` della `@media (max-width: 720px)`,
      che per questo è stata DIVISA);
    · `.kpi-*` (cruscotto), `.filter-group`, `.field`, `.select-inline`,

@@ -4,8 +4,7 @@ import { taskService } from '@/services/taskService';
 import { documentHubService } from '@/services/documentHubService';
 import { memberService } from '@/services/memberService';
 import { cognomiDaRubrica } from '@/features/documents/analysisTrust';
-import { incentivesService } from '@/services/incentivesService';
-import { todayISO } from '@/features/incentives/incentivesModel';
+import { todayISO } from '@/features/calendar/calendarModel';
 import {
   contoDate, splitOpenTasks, type ContoDate, type ContoDocumenti, type TaskSplit,
 } from './overviewBlocks';
@@ -14,7 +13,7 @@ import {
 } from './overviewKpi';
 import { analysisService } from '@/services/analysisService';
 import type { DataDocumentoRiga } from '@/services/documentHubService';
-import type { DocumentHubItem, IncentiveSummary } from '@/types/models';
+import type { DocumentHubItem } from '@/types/models';
 
 /**
  * Quante attività si LEGGONO per dividerle in termini e appuntamenti. Non è la
@@ -31,14 +30,6 @@ import type { DocumentHubItem, IncentiveSummary } from '@/types/models';
  * più alto qui sarebbe una promessa che la RPC non mantiene.
  */
 const TASKS_SPLIT_MAX = 100;
-
-/**
- * La finestra dei numeri degli incentivi, in giorni. Dichiarata qui e usata
- * sia dalla funzione SQL sia dall'etichetta: un riquadro che dice «entro 30
- * giorni» mentre il database ne conta 60 è la classe di bugia che questo
- * progetto insegue da mesi.
- */
-export const INCENTIVE_DAYS = 30;
 
 export interface OverviewData {
   /** Le attività aperte, divise: termini ≠ appuntamenti (0041). */
@@ -81,17 +72,6 @@ export interface OverviewData {
    * incompleto.
    */
   ownership: { count: number; latest: DocumentHubItem | null; parziale: boolean } | null;
-  /**
-   * Il blocco Opportunità: catalogo condiviso + lo stato della valutazione.
-   * `assessments` distingue «valutato: niente per te» da «mai valutato» —
-   * `subsidy_home_summary` da sola restituisce gli stessi zeri in entrambi i
-   * casi. `null` = lettura fallita, e il blocco lo dice invece di scegliere.
-   */
-  incentivi: {
-    catalogo: { programs: number; verified: number } | null;
-    assessments: number | null;
-    summary: IncentiveSummary | null;
-  };
   /** Oggi in `YYYY-MM-DD`, ora locale: le funzioni pure lo ricevono. */
   today: string;
   /** L'istante della lettura, per il piè di pagina: una pagina di conteggi
@@ -109,7 +89,7 @@ export interface OverviewData {
    * Le analisi degli ultimi 60 giorni come serie settimanale (8 contenitori,
    * per la sparkline) più il conteggio degli ultimi 30. `null` = lettura
    * fallita: la card lo dichiara invece di mostrare uno zero finto — lo
-   * stesso contratto delle tre sorelle degli incentivi qui sopra.
+   * stesso contratto delle altre letture facoltative qui sopra.
    */
   analisi: { ultimi30: number; settimane: number[]; trend: number | null } | null;
   /**
@@ -133,7 +113,7 @@ export function useOverview() {
     const today = todayISO();
     const [
       aperte, contiAttivi, contiArchiviati, daVerificare, fallite, maiAnalizzati,
-      date, ownership, catalogo, assessments, summary, timestampAnalisi, attenzione,
+      date, ownership, timestampAnalisi, attenzione,
     ] = await Promise.all([
       taskService.list(companyId, { view: 'todo', limit: TASKS_SPLIT_MAX }),
       documentHubService.counts(companyId, false),
@@ -152,18 +132,8 @@ export function useOverview() {
           legalName, memberSurnames: cognomiDaRubrica(members.map((m) => m.name)),
         });
       })().catch(() => null),
-      incentivesService.catalogState(),
-      incentivesService.assessmentCount(companyId),
-      // ⚠️ LO STESSO CONTRATTO DELLE SUE DUE SORELLE. `catalogState` e
-      // `assessmentCount` tornano `null` sul guasto — è dichiarato nel tipo qui
-      // sopra e il blocco lo dice a schermo — mentre `summary` LANCIA. Senza
-      // questo `.catch`, un guasto di `subsidy_home_summary` faceva cadere in
-      // ErrorState l'INTERA Panoramica: attività, documenti, appartenenza,
-      // catalogo, tutto. E teneva irraggiungibile `home.summaryUnknown`, il
-      // ramo scritto e tradotto apposta per questo caso.
-      incentivesService.summary(companyId, INCENTIVE_DAYS).catch(() => null),
-      // Le due letture della striscia KPI (2026-08-26). Stesso contratto del
-      // ramo incentivi: il guasto di una card non deve spegnere la pagina,
+      // Le due letture della striscia KPI (2026-08-26). Il guasto di una card
+      // non deve spegnere la pagina,
       // quindi `null` e non un lancio — la card dichiara il proprio limite.
       // 60 giorni: 8 settimane piene per la sparkline, e gli ultimi 30 si
       // contano dagli stessi timestamp — una sola interrogazione, due numeri.
@@ -200,7 +170,6 @@ export function useOverview() {
       // coprono lo stesso insieme.
       date: dateContate,
       ownership,
-      incentivi: { catalogo, assessments, summary },
       today,
       loadedAt: new Date().toISOString(),
       // La somma è un calcolo puro sulle righe già lette (le DUE popolazioni:

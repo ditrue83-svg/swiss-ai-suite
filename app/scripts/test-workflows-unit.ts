@@ -34,9 +34,8 @@ import {
   eventBackoffSeconds,
 } from '../supabase/functions/_shared/automation/contract.ts';
 import {
-  ACTIONS, AUTOMATION_EVENT_TYPES, OPERATORS, OPERATORS_BY_TYPE, TRIGGERS, actionsForTrigger, findAction,
-  triggerHasOwner,
-  findField, findTrigger, isAutoExecutable,
+  ACTIONS, AUTOMATION_EVENT_TYPES, OPERATORS_BY_TYPE, TRIGGERS, actionsForTrigger, findAction,
+  findTrigger, isAutoExecutable,
   type AutomationEventType, type WorkflowAction, type WorkflowCondition,
 } from '../supabase/functions/_shared/automation/registry.ts';
 import { validateWorkflow } from '../supabase/functions/_shared/automation/validate.ts';
@@ -130,18 +129,20 @@ section('1 · Il registro: nessun innesco e nessuna azione dichiarati a vuoto');
   //    I due elenchi confrontati sopra vivono NELLO STESSO FILE TypeScript:
   //    coincidono per costruzione, e il commento che parla dell'«enum che il
   //    database accetta» non era vero. Il 2026-07-30 l'SQL dichiarava sette
-  //    inneschi degli incentivi (0032) che il registro non conosceva: la
+  //    inneschi storici (0032) che il registro non conosceva: la
   //    schermata non li offriva, e nessun test se n'era accorto. Ora si legge
   //    l'SQL.
   const MIGRAZIONI = readdirSync(join(HERE, '..', 'supabase', 'migrations'))
     .filter((f) => f.endsWith('.sql')).sort()
     .map((f) => readFileSync(join(HERE, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
   const sqlEventi = new Set<string>();
-  const creato = MIGRAZIONI.match(/create type public\.automation_event_type as enum \(([\s\S]*?)\)/i);
+  const creazioni = [...MIGRAZIONI.matchAll(/create type public\.automation_event_type as enum \(([\s\S]*?)\)/gi)];
+  const creato = creazioni.at(-1);
   if (creato) {
     for (const m of creato[1].replace(/--[^\n]*/g, '').matchAll(/'([^']+)'/g)) sqlEventi.add(m[1]);
   }
-  for (const m of MIGRAZIONI.matchAll(
+  const dopoCreazione = creato ? MIGRAZIONI.slice(creato.index! + creato[0].length) : MIGRAZIONI;
+  for (const m of dopoCreazione.matchAll(
     /alter type public\.automation_event_type add value if not exists '([^']+)'/gi)) {
     sqlEventi.add(m[1]);
   }
@@ -166,17 +167,6 @@ section('1 · Il registro: nessun innesco e nessuna azione dichiarati a vuoto');
     'ogni entit\u00e0 nominata da un innesco ha un caricatore di fatti in store.ts',
     entitaSenzaFatti.join(', '));
 
-  // ⚠️ E ogni campo dichiarato deve essere PRODOTTO da quel caricatore: un
-  //    campo che nessuno riempie è una condizione che risponde sempre «manca il
-  //    dato», cioè un menu che promette un confronto impossibile.
-  const campiSenzaFatto = TRIGGERS
-    .filter((t) => t.entityType === 'subsidy_opportunity' || t.entityType === 'subsidy_case')
-    .flatMap((t) => t.fields.map((f) => f.path))
-    .filter((path, i, all) => all.indexOf(path) === i)
-    .filter((path) => !STORE.includes(`'${path}':`));
-  ok(campiSenzaFatto.length === 0,
-    'ogni campo degli incentivi \u00e8 davvero prodotto dal caricatore',
-    campiSenzaFatto.join(', '));
   ok(ACTIONS.length === 6, 'sei azioni dichiarate', String(ACTIONS.length));
 
   let allFieldsSane = true, allOperatorsSane = true;
@@ -203,7 +193,7 @@ section('1 · Il registro: nessun innesco e nessuna azione dichiarati a vuoto');
     '«assegna attività» è offerta su un innesco di attività');
 
   // ⚠️⚠️ OGNI INNESCO DEVE AVERE ALMENO UN'AZIONE OFFERIBILE, e questo controllo
-  //    nasce da un difetto vissuto: i sette inneschi degli incentivi si
+  //    nasce da un difetto vissuto: alcuni inneschi storici si
   //    sceglievano dal menu, le condizioni si componevano, e la sezione
   //    «Allora» restava VUOTA — nessuna azione dichiarava le due entità nuove.
   //    Si arrivava fino in fondo per leggere «aggiungi almeno un'azione» senza
@@ -219,11 +209,6 @@ section('1 · Il registro: nessun innesco e nessuna azione dichiarati a vuoto');
   //    riempie in `assigneeUserId`. Un'opportunità non ha nessuno che l'abbia
   //    presa in carico — è ciò che la distingue da una pratica — e offrirlo
   //    farebbe comporre una regola che non avvisa mai nessuno.
-  ok(triggerHasOwner(findTrigger('subsidy_deadline_approaching')!),
-    'una pratica ha un responsabile che una notifica pu\u00f2 raggiungere');
-  ok(!triggerHasOwner(findTrigger('subsidy_opportunity_created')!),
-    'un\u2019opportunit\u00e0 no: nessuno l\u2019ha ancora presa in carico');
-
   ok(ACTIONS.every(isAutoExecutable), 'tutte le azioni della versione 1 sono a basso rischio (§19)');
   ok(ACTIONS.every((a) => lookup(a.labelKey) !== undefined),
     'ogni azione ha un’etichetta che esiste nei dizionari');
@@ -771,7 +756,7 @@ section('13 · Il CRM dentro le automazioni (0026 — §136–§139)');
     'solo i due modelli sulle trattative portano la marcatura legacy (D-10)');
   ok(isLegacyTrigger('crm_follow_up_due') && isLegacyTrigger('finance_item_ready')
     && isLegacyTrigger('contract_verified') && !isLegacyTrigger('document_analysis_completed')
-    && !isLegacyTrigger('subsidy_call_opened') && !isLegacyTrigger('task_created'),
+    && !isLegacyTrigger('task_created'),
     'isLegacyTrigger riconosce gli inneschi dei tre moduli fuori perimetro');
   ok(triggersOffered(false).length > 0 && triggersOffered(false).every((t) => !isLegacyTrigger(t.key)),
     'con i moduli nascosti il costruttore non offre inneschi legacy');

@@ -19,11 +19,10 @@
    NON sono qui, e perché:
    · `.ct-head`, `.ct-toolbar`, `.ct-inline`, `.ct-narrow` e `.ct-kpi`
      (con `.is-active`) RESTANO globali in `app.css`: le usano anche
-     `features/crm/`, `features/incentives/` e `features/audit/` — compresa
+     `features/crm/` e `features/audit/` — compresa
      la riga `.ct-toolbar` della `@media (max-width: 640px)`, che per questo
      è stata DIVISA;
-   · `.ct-cmp` RESTA globale: la usa anche
-     `features/incentives/CatalogReviewPage.tsx`;
+   · `.ct-cmp` RESTA globale perché è condivisa;
    · `.doc-filters`, `.fin-pager`, `.fin-page-n`, `.result-row`,
      `.result-label`, `.kpi-*`, `.badge`, `.info-box` sono classi condivise
      e restano globali.
@@ -65,7 +64,7 @@
 .ct-add { margin-top: var(--sp-4); display: grid; gap: var(--sp-3); }
 
 /* Il valore della riga-chiave del dettaglio: fratello di `.result-row` e
-   `.result-label`, che restano globali perché le usa anche `subsidy-ai`. */
+   `.result-label`, che restano globali per uniformità. */
 .result-value { font-size: var(--fs-body); }
 
 /* La scheda che porta un avviso: stesso bordo dell'accento, senza gridare. */
@@ -75,7 +74,7 @@
 .ct-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* ⚠️ DIVISA dalla `@media (max-width: 640px)` di `app.css`: là resta la riga
-   di `.ct-toolbar`, condivisa con `features/crm/` e `features/incentives/`.
+   di `.ct-toolbar`, condivisa con `features/crm/`.
    §122 — il dettaglio resta leggibile: una colonna sola, date in cima. */
 @media (max-width: 640px) {
   .ct-doc-row, .ct-ms-row { display: grid; gap: var(--sp-2); }

@@ -4,12 +4,11 @@
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
-import type { Company, CompanyMembership, CompanyProfile, MemberRole } from '@/types/models';
+import type { Company, CompanyMembership, MemberRole } from '@/types/models';
 import type { Database } from '@/types/database';
 import { translate as tr } from '@/i18n';
 
 type CompanyRow = Database['public']['Tables']['companies']['Row'];
-type CompanyProfileRow = Database['public']['Tables']['company_profiles']['Row'];
 
 function toCompany(row: CompanyRow): Company {
   return {
@@ -29,19 +28,6 @@ function toCompany(row: CompanyRow): Company {
   };
 }
 
-function toCompanyProfile(row: CompanyProfileRow): CompanyProfile {
-  const projects = Array.isArray(row.current_projects) ? (row.current_projects as unknown[]).map(String) : [];
-  return {
-    companyId: row.company_id,
-    sector: row.sector,
-    employeeCount: row.employee_count,
-    revenueBand: row.revenue_band,
-    ownsProperty: row.owns_property,
-    vehicleCount: row.vehicle_count,
-    currentProjects: projects,
-  };
-}
-
 export interface CreateCompanyInput {
   legalName: string;
   uidChe?: string | null;
@@ -52,9 +38,6 @@ export interface CreateCompanyInput {
   postalCode?: string | null;
   city?: string | null;
   countryCode?: string | null;
-  sector?: string | null;
-  employeeCount?: number | null;
-  revenueBand?: string | null;
 }
 
 export const companyService = {
@@ -78,7 +61,7 @@ export const companyService = {
     return data ? toCompany(data) : null;
   },
 
-  /** Onboarding: crea azienda + membership owner + profilo (RPC atomica). */
+  /** Onboarding: crea azienda + membership owner in una RPC atomica. */
   async createCompanyWithOwner(input: CreateCompanyInput): Promise<string> {
     const { data, error } = await requireSupabase().rpc('create_company_with_owner', {
       p_legal_name: input.legalName,
@@ -86,9 +69,6 @@ export const companyService = {
       p_canton: input.canton ?? null,
       p_municipality: input.municipality ?? null,
       p_legal_form: input.legalForm ?? null,
-      p_sector: input.sector ?? null,
-      p_employee_count: input.employeeCount ?? null,
-      p_revenue_band: input.revenueBand ?? null,
     });
     if (error) throw new AppError(toUserMessage(error), error);
     if (!data) throw new AppError(tr('errors.companyCreateFailed'));
@@ -140,31 +120,4 @@ export const companyService = {
     await sb.storage.from('company-documents').remove([`${companyId}/company/logo`]);
   },
 
-  async getCompanyProfile(companyId: string): Promise<CompanyProfile | null> {
-    const { data, error } = await requireSupabase()
-      .from('company_profiles')
-      .select('*')
-      .eq('company_id', companyId)
-      .maybeSingle();
-    if (error) throw new AppError(toUserMessage(error), error);
-    return data ? toCompanyProfile(data) : null;
-  },
-
-  /** Aggiorna/crea il profilo operativo (settore, progetti, immobili, veicoli…). */
-  async upsertCompanyProfile(
-    companyId: string,
-    patch: Partial<Omit<CompanyProfile, 'companyId'>>,
-  ): Promise<void> {
-    const payload = {
-      company_id: companyId,
-      sector: patch.sector ?? null,
-      employee_count: patch.employeeCount ?? null,
-      revenue_band: patch.revenueBand ?? null,
-      owns_property: patch.ownsProperty ?? false,
-      vehicle_count: patch.vehicleCount ?? 0,
-      current_projects: (patch.currentProjects ?? []) as unknown as Database['public']['Tables']['company_profiles']['Insert']['current_projects'],
-    };
-    const { error } = await requireSupabase().from('company_profiles').upsert(payload, { onConflict: 'company_id' });
-    if (error) throw new AppError(toUserMessage(error), error);
-  },
 };

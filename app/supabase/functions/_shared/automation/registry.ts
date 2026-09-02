@@ -62,25 +62,6 @@ export const AUTOMATION_EVENT_TYPES = [
   // 0050 — silenzio dopo una email uscente. Il worker rilegge risposta,
   // interazioni e fase prima di agire: lo stop resta efficace dopo l'emissione.
   'crm_follow_up_sequence_due',
-  // 0032 — i SETTE inneschi degli incentivi. Ognuno ha un produttore vero in
-  // quella migrazione: cinque sono trigger sulle tabelle
-  // (`subsidy_emit_opportunity` ne emette due, `subsidy_emit_case_status`,
-  // `subsidy_emit_call_opened`) e due sono scansioni che girano dentro QUESTO
-  // worker (`subsidy_emit_deadline_approaching`,
-  // `subsidy_emit_stale_assessments`, `subsidy_emit_source_critical_change`).
-  // Nessun cron nuovo, come per il CRM.
-  //
-  // ⚠️ NESSUN INNESCO SU «un programma sembra rilevante»: la rilevanza la
-  //    ricalcola il motore a ogni giro e cambierebbe continuamente. Si scatta
-  //    su `subsidy_opportunity_high_relevance`, che è un SUPERAMENTO DI SOGLIA
-  //    deduplicato per opportunità — un fatto che accade una volta.
-  'subsidy_opportunity_created',
-  'subsidy_opportunity_high_relevance',
-  'subsidy_call_opened',
-  'subsidy_deadline_approaching',
-  'subsidy_assessment_became_stale',
-  'subsidy_case_status_changed',
-  'subsidy_source_critical_change',
 ] as const;
 export type AutomationEventType = (typeof AUTOMATION_EVENT_TYPES)[number];
 
@@ -99,13 +80,7 @@ export type AutomationEntityType =
   // una singola trattativa con quella controparte. Agganciare l'evento di una
   // trattativa all'organizzazione renderebbe impossibile ritrovare DI QUALE
   // trattativa si parla — e sono spesso più di una.
-  | 'crm_organization' | 'crm_opportunity'
-  // 0032 — DUE entità nuove, e la distinzione è di merito: un'opportunità è
-  // l'incontro fra un progetto e una versione di programma e vive e muore con
-  // la rivalutazione; una pratica è il lavoro di candidatura e SOPRAVVIVE al
-  // cambiamento del catalogo. Agganciare gli eventi della pratica
-  // all'opportunità li renderebbe irrecuperabili al primo ricalcolo.
-  | 'subsidy_opportunity' | 'subsidy_case';
+  | 'crm_organization' | 'crm_opportunity';
 
 export type FieldType = 'string' | 'number' | 'enum' | 'date' | 'boolean' | 'user';
 
@@ -153,7 +128,7 @@ export const OPERATORS_BY_TYPE: Record<FieldType, readonly Operator[]> = {
 
 export const DOCUMENT_CATEGORIES = [
   'administration', 'taxes', 'social_insurance', 'invoices', 'contracts',
-  'insurance', 'banking', 'employees', 'clients', 'suppliers', 'subsidies', 'other',
+  'insurance', 'banking', 'employees', 'clients', 'suppliers', 'other',
 ] as const;
 
 export const DOCUMENT_TYPES = [
@@ -170,7 +145,7 @@ export const AUTHORITY_TYPES = [
 export const URGENCY_VALUES = ['alta', 'media', 'bassa'] as const;
 export const TASK_PRIORITIES = ['high', 'medium', 'low'] as const;
 export const TASK_STATUSES = ['open', 'in_progress', 'waiting', 'completed'] as const;
-export const TASK_SOURCES = ['admin_ai', 'subsidy_ai', 'manual'] as const;
+export const TASK_SOURCES = ['admin_ai', 'manual'] as const;
 export const DOCUMENT_SOURCE_TYPES = ['upload', 'pasted_text', 'email'] as const;
 export const EMAIL_RELEVANCE = [
   'likely_actionable', 'possibly_actionable', 'informational', 'clearly_irrelevant',
@@ -466,116 +441,6 @@ const FOLLOW_UP_SEQUENCE_TEMPLATES = [
   ...CRM_OPP_TEMPLATES, '{{follow_up.task_title}}',
 ] as const;
 
-// ---------------------------------------------------------------------------
-// I campi degli incentivi (0032)
-//
-// ⚠️⚠️ `relevance_score` NON È QUI, E NON PER DIMENTICANZA. Il punteggio è
-//    INTERNO e serve solo a ordinare l'elenco: renderlo confrontabile in una
-//    regola («quando la rilevanza supera 80») lo trasformerebbe in una soglia
-//    di prodotto, cioè esattamente nella percentuale che tutto il modulo
-//    esiste per non mostrare. Si confronta la FASCIA, che è un fatto.
-//
-// ⚠️ E non c'è alcun campo «probabilità», «punteggio di idoneità» o «importo
-//    ottenibile»: non esistono nello schema, e non devono esistere qui.
-// ---------------------------------------------------------------------------
-
-// Gli stadi del progetto: gli stessi cinque di `_shared/subsidy/contract.ts`.
-// ⚠️ Ricopiati e NON importati: questo file non ha e non deve avere import
-//    (lo leggono tre runtime diversi). Un test li confronta con l'originale.
-export const PROJECT_STAGE_VALUES = ['idea', 'planned', 'started', 'completed', 'cancelled'] as const;
-
-export const SUBSIDY_RELEVANCE_LEVELS = ['high', 'medium', 'low'] as const;
-export const SUBSIDY_ELIGIBILITY = [
-  'not_assessed', 'insufficient_information', 'potentially_eligible',
-  'likely_ineligible', 'ineligible',
-] as const;
-export const SUBSIDY_COMPLETENESS = ['complete', 'minor_gaps', 'major_gaps'] as const;
-export const SUBSIDY_TIMING = ['open', 'upcoming', 'closed', 'continuous', 'unknown'] as const;
-export const SUBSIDY_FRESHNESS = ['fresh', 'aging', 'stale', 'unverified'] as const;
-export const SUBSIDY_READINESS = ['not_started', 'in_preparation', 'ready', 'submitted'] as const;
-export const SUBSIDY_CASE_STATUSES = [
-  'draft', 'assessing', 'collecting_documents', 'ready', 'submitted',
-  'under_review', 'approved', 'rejected', 'withdrawn', 'closed',
-] as const;
-export const SUBSIDY_CASE_OUTCOMES = ['approved', 'rejected', 'withdrawn', 'unknown'] as const;
-export const SUBSIDY_OPPORTUNITY_KINDS = ['project', 'general'] as const;
-export const SUBSIDY_PROGRAM_AVAILABILITY = ['available', 'suspended'] as const;
-
-/** Il programma, condiviso da opportunità e pratica: un elenco solo. */
-const SUBSIDY_PROGRAM_FIELDS: readonly TriggerField[] = [
-  { path: 'program.id', type: 'string', labelKey: 'automations.fields.subsidyProgramId' },
-  { path: 'program.name', type: 'string', labelKey: 'automations.fields.subsidyProgramName' },
-  { path: 'program.authority', type: 'string', labelKey: 'automations.fields.subsidyAuthority' },
-  { path: 'program.support_type', type: 'string', labelKey: 'automations.fields.subsidySupportType' },
-  // 0011 — «concedibile oggi» è una domanda diversa da «esiste ancora».
-  { path: 'program.availability', type: 'enum', labelKey: 'automations.fields.subsidyAvailability',
-    options: SUBSIDY_PROGRAM_AVAILABILITY, optionsLabelPath: 'automations.values.subsidyAvailability' },
-];
-
-const SUBSIDY_PROJECT_FIELDS: readonly TriggerField[] = [
-  { path: 'project.title', type: 'string', labelKey: 'automations.fields.subsidyProjectTitle' },
-  { path: 'project.stage', type: 'enum', labelKey: 'automations.fields.subsidyProjectStage',
-    options: PROJECT_STAGE_VALUES, optionsLabelPath: 'automations.values.subsidyProjectStage' },
-  { path: 'project.canton', type: 'string', labelKey: 'automations.fields.subsidyProjectCanton' },
-];
-
-const SUBSIDY_OPPORTUNITY_FIELDS: readonly TriggerField[] = [
-  ...SUBSIDY_PROGRAM_FIELDS,
-  ...SUBSIDY_PROJECT_FIELDS,
-  { path: 'opportunity.kind', type: 'enum', labelKey: 'automations.fields.subsidyKind',
-    options: SUBSIDY_OPPORTUNITY_KINDS, optionsLabelPath: 'automations.values.subsidyKind' },
-  { path: 'opportunity.relevance', type: 'enum', labelKey: 'automations.fields.subsidyRelevance',
-    options: SUBSIDY_RELEVANCE_LEVELS, optionsLabelPath: 'automations.values.subsidyRelevance' },
-  { path: 'opportunity.eligibility', type: 'enum', labelKey: 'automations.fields.subsidyEligibility',
-    options: SUBSIDY_ELIGIBILITY, optionsLabelPath: 'automations.values.subsidyEligibility' },
-  { path: 'opportunity.completeness', type: 'enum', labelKey: 'automations.fields.subsidyCompleteness',
-    options: SUBSIDY_COMPLETENESS, optionsLabelPath: 'automations.values.subsidyCompleteness' },
-  { path: 'opportunity.timing', type: 'enum', labelKey: 'automations.fields.subsidyTiming',
-    options: SUBSIDY_TIMING, optionsLabelPath: 'automations.values.subsidyTiming' },
-  // §26 — con una fonte vecchia non si crea urgenza: una regola può volerlo
-  // sapere prima di far partire un'attività.
-  { path: 'opportunity.source_freshness', type: 'enum', labelKey: 'automations.fields.subsidyFreshness',
-    options: SUBSIDY_FRESHNESS, optionsLabelPath: 'automations.values.subsidyFreshness' },
-  { path: 'opportunity.readiness', type: 'enum', labelKey: 'automations.fields.subsidyReadiness',
-    options: SUBSIDY_READINESS, optionsLabelPath: 'automations.values.subsidyReadiness' },
-  { path: 'opportunity.open_criteria', type: 'number', labelKey: 'automations.fields.subsidyOpenCriteria' },
-  { path: 'opportunity.missing_facts', type: 'number', labelKey: 'automations.fields.subsidyMissingFacts' },
-  { path: 'opportunity.assessment_stale', type: 'boolean', labelKey: 'automations.fields.subsidyStale' },
-  // ⚠️ `within_days` su questa data è il modo giusto di dire «scade presto»:
-  //    un confronto con una data assoluta sarebbe giusto per due mesi.
-  { path: 'call.deadline', type: 'date', labelKey: 'automations.fields.subsidyCallDeadline' },
-];
-
-const SUBSIDY_CASE_FIELDS: readonly TriggerField[] = [
-  ...SUBSIDY_PROGRAM_FIELDS,
-  ...SUBSIDY_PROJECT_FIELDS,
-  { path: 'case.status', type: 'enum', labelKey: 'automations.fields.subsidyCaseStatus',
-    options: SUBSIDY_CASE_STATUSES, optionsLabelPath: 'automations.values.subsidyCaseStatus' },
-  { path: 'case.outcome', type: 'enum', labelKey: 'automations.fields.subsidyCaseOutcome',
-    options: SUBSIDY_CASE_OUTCOMES, optionsLabelPath: 'automations.values.subsidyCaseOutcome' },
-  // §118 — DUE scadenze, e restano due: quella dell'ente non si tocca, quella
-  // interna la sceglie l'impresa. Una regola può parlare dell'una o dell'altra.
-  { path: 'case.official_deadline', type: 'date', labelKey: 'automations.fields.subsidyOfficialDeadline' },
-  { path: 'case.internal_deadline', type: 'date', labelKey: 'automations.fields.subsidyInternalDeadline' },
-  { path: 'case.amount_requested', type: 'number', labelKey: 'automations.fields.subsidyAmountRequested',
-    hasCurrency: true },
-  { path: 'case.currency', type: 'string', labelKey: 'automations.fields.subsidyCurrency' },
-  { path: 'case.required_steps_open', type: 'number', labelKey: 'automations.fields.subsidyStepsOpen' },
-  // §166 — una pratica nata prima del catalogo versionato non ha istantanea, e
-  // una regola che confronta con la fonte deve poterlo sapere.
-  { path: 'case.legacy_snapshot', type: 'boolean', labelKey: 'automations.fields.subsidyLegacy' },
-  { path: 'case.source_changed', type: 'boolean', labelKey: 'automations.fields.subsidySourceChanged' },
-];
-
-const SUBSIDY_OPP_TEMPLATES = [
-  '{{program.name}}', '{{program.authority}}', '{{project.title}}',
-  '{{opportunity.relevance}}', '{{call.deadline}}',
-] as const;
-const SUBSIDY_CASE_TEMPLATES = [
-  '{{program.name}}', '{{program.authority}}', '{{project.title}}',
-  '{{case.status}}', '{{case.official_deadline}}',
-] as const;
-
 export const TRIGGERS: readonly TriggerDef[] = [
   {
     key: 'document_analysis_completed',
@@ -753,76 +618,6 @@ export const TRIGGERS: readonly TriggerDef[] = [
     fields: [...ORGANIZATION_FIELDS, ...OPPORTUNITY_FIELDS, ...FOLLOW_UP_SEQUENCE_FIELDS],
     templates: FOLLOW_UP_SEQUENCE_TEMPLATES,
   },
-  // ---- Incentivi (0032) ----
-  {
-    key: 'subsidy_opportunity_created',
-    entityType: 'subsidy_opportunity',
-    version: 1,
-    labelKey: 'automations.triggers.subsidyOppCreated',
-    descriptionKey: 'automations.triggers.subsidyOppCreatedDesc',
-    fields: SUBSIDY_OPPORTUNITY_FIELDS,
-    templates: SUBSIDY_OPP_TEMPLATES,
-  },
-  {
-    key: 'subsidy_opportunity_high_relevance',
-    entityType: 'subsidy_opportunity',
-    version: 1,
-    labelKey: 'automations.triggers.subsidyOppHigh',
-    descriptionKey: 'automations.triggers.subsidyOppHighDesc',
-    fields: SUBSIDY_OPPORTUNITY_FIELDS,
-    templates: SUBSIDY_OPP_TEMPLATES,
-  },
-  {
-    key: 'subsidy_call_opened',
-    entityType: 'subsidy_opportunity',
-    version: 1,
-    labelKey: 'automations.triggers.subsidyCallOpened',
-    descriptionKey: 'automations.triggers.subsidyCallOpenedDesc',
-    fields: SUBSIDY_OPPORTUNITY_FIELDS,
-    templates: SUBSIDY_OPP_TEMPLATES,
-  },
-  {
-    key: 'subsidy_assessment_became_stale',
-    entityType: 'subsidy_opportunity',
-    version: 1,
-    labelKey: 'automations.triggers.subsidyStale',
-    descriptionKey: 'automations.triggers.subsidyStaleDesc',
-    fields: SUBSIDY_OPPORTUNITY_FIELDS,
-    templates: SUBSIDY_OPP_TEMPLATES,
-  },
-  {
-    key: 'subsidy_deadline_approaching',
-    entityType: 'subsidy_case',
-    version: 1,
-    labelKey: 'automations.triggers.subsidyDeadline',
-    descriptionKey: 'automations.triggers.subsidyDeadlineDesc',
-    fields: SUBSIDY_CASE_FIELDS,
-    templates: SUBSIDY_CASE_TEMPLATES,
-  },
-  {
-    key: 'subsidy_case_status_changed',
-    entityType: 'subsidy_case',
-    version: 1,
-    labelKey: 'automations.triggers.subsidyCaseStatus',
-    descriptionKey: 'automations.triggers.subsidyCaseStatusDesc',
-    fields: [
-      ...SUBSIDY_CASE_FIELDS,
-      // Lo stato PRECEDENTE non esiste più adesso: viene dal payload, come per
-      // la categoria di un documento e la fase di una trattativa.
-      { path: 'case.previous_status', type: 'enum', labelKey: 'automations.fields.subsidyPreviousStatus',
-        options: SUBSIDY_CASE_STATUSES, optionsLabelPath: 'automations.values.subsidyCaseStatus' },
-    ],
-    templates: SUBSIDY_CASE_TEMPLATES,
-  },
-  {
-    key: 'subsidy_source_critical_change',
-    entityType: 'subsidy_case',
-    version: 1,
-    labelKey: 'automations.triggers.subsidySourceChange',
-    descriptionKey: 'automations.triggers.subsidySourceChangeDesc',
-    fields: SUBSIDY_CASE_FIELDS,
-    templates: SUBSIDY_CASE_TEMPLATES,
-  },
   {
     key: 'task_created',
     entityType: 'task',
@@ -912,14 +707,8 @@ export const ACTIONS: readonly ActionDef[] = [
     // 0026 — vale anche sul CRM: è il modo in cui un «prossimo passo» diventa
     // lavoro assegnabile e tracciabile (§50). ⚠️ NON esiste, e non deve
     // esistere, un'azione che scriva a un cliente (§135).
-    // 0032 — vale anche sugli incentivi: è il modo in cui «rispondi ai criteri
-    // aperti» o «la scadenza si avvicina» diventa lavoro con un responsabile e
-    // una data. ⚠️ NON esiste, e non deve esistere, un'azione che invii la
-    // domanda, compili un formulario o dichiari qualcosa a un ente: il modulo
-    // comprende e prepara, non candida.
     entityTypes: ['document', 'email_message', 'task', 'contract',
-                  'crm_organization', 'crm_opportunity',
-                  'subsidy_opportunity', 'subsidy_case'],
+                  'crm_organization', 'crm_opportunity'],
     outputEntityType: 'task',
   },
   {
@@ -967,8 +756,7 @@ export const ACTIONS: readonly ActionDef[] = [
     // il motore non ha alcun modo di scrivere a un indirizzo esterno, e questa
     // assenza è il vincolo (§135).
     entityTypes: ['document', 'email_message', 'task', 'contract',
-                  'crm_organization', 'crm_opportunity',
-                  'subsidy_opportunity', 'subsidy_case'],
+                  'crm_organization', 'crm_opportunity'],
     outputEntityType: 'notification',
   },
 ];
@@ -1002,12 +790,6 @@ export function actionsForTrigger(trigger: TriggerDef): readonly ActionDef[] {
  */
 const ENTITIES_WITH_OWNER: readonly AutomationEntityType[] = [
   'task', 'contract', 'crm_organization', 'crm_opportunity',
-  // 0032 — la PRATICA ha un responsabile e `store.ts` lo calcola. ⚠️
-  // L'OPPORTUNITÀ NO, e la sua assenza è il punto: nessuno l'ha ancora presa in
-  // carico, ed è ciò che la distingue da una pratica. Offrire «avvisa il
-  // responsabile» su un'opportunità farebbe comporre una regola che non
-  // avviserebbe mai nessuno.
-  'subsidy_case',
 ];
 
 export function triggerHasOwner(trigger: TriggerDef): boolean {

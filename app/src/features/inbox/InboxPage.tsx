@@ -108,7 +108,7 @@ export function InboxPage() {
   // ⚠️ Un identificativo MALFORMATO non è una selezione. Passato al servizio,
   // PostgREST risponde «invalid input syntax for type uuid: "abc"» e quella
   // stringa tecnica, in inglese, finisce a schermo dentro un'interfaccia che
-  // può essere tedesca. È il difetto già chiuso su `/incentivi?progetto=abc`:
+  // può essere tedesca. È il difetto già chiuso sulle rotte con query:
   // l'Inbox aveva la stessa apertura, e `/inbox?msg=abc` la mostrava.
   // Uno BEN FORMATO che non esiste RESTA una selezione, perché «non trovato»
   // è la risposta vera e va detta.

@@ -6,7 +6,7 @@
 // di lettura) e le Edge Function (il motore delle Automazioni, che dall'urgenza
 // di una scadenza fa scattare una regola). `src/lib/` da Deno non si importa;
 // `_shared/` da tutti e tre — browser, Deno, Node — sì, ed è già il modo in cui
-// `deadlineNature.ts` e `subsidy/contract.ts` vivono.
+// `deadlineNature.ts` vive.
 //
 // ⚠️ MA LA COLLOCAZIONE NON DICE CHI CONSUMA. `deadlineNature.ts` sta qui ed è
 // consumato SOLO dal frontend: chiunque debba stabilire se una modifica a

@@ -266,7 +266,7 @@ export function TasksPage() {
           </div>
         )}
 
-        {/* La legenda dei segni: la stessa di Documenti e Incentivi, richiusa.
+        {/* La legenda dei segni: la stessa di Documenti, richiusa.
             Qui compaiono tre famiglie in ogni riga — stato, priorità, termine —
             e il posto dove si impara che cosa vogliono dire è uno solo. */}
         <MarkLegend />
@@ -297,7 +297,7 @@ function TaskRow({ task, assigneeName }: { task: TaskWithPeople; assigneeName: s
           <span>{assigneeName}</span>
           {task.authority ? <span>{task.authority}</span> : null}
           {/* ⚠️ DA DOVE VIENE L'ATTIVITÀ RESTA TESTO, e non è una svista.
-              `task.source` dice quale MODULO l'ha creata (Admin AI, Subsidy AI,
+              `task.source` dice quale MODULO l'ha creata (Admin AI,
               una regola, una persona): non dice se il documento chiedesse quella
               cosa o se gliela stiamo proponendo noi. Dargli il filetto della
               provenienza lo farebbe leggere come «suggerimento AI-Swisse» anche
