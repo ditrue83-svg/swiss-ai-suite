@@ -113,7 +113,7 @@ export function FinanceIssuedDetailPage() {
   if (!data) {
     return (
       <div className="page-head">
-        <Link className="btn btn-sm btn-ghost mb-8" to="/finanze?sezione=emesse">
+        <Link className="btn btn-sm btn-ghost mb-8" to="/finanze?sezione=issued">
           <Icon name="arrowLeft" className="ic-sm" /> {t('finance.issued.back')}
         </Link>
         <div className="page-title">{t('finance.errors.notFound')}</div>
@@ -130,7 +130,7 @@ export function FinanceIssuedDetailPage() {
   return (
     <>
       <div className="page-head">
-        <Link className="btn btn-sm btn-ghost mb-8" to="/finanze?sezione=emesse">
+        <Link className="btn btn-sm btn-ghost mb-8" to="/finanze?sezione=issued">
           <Icon name="arrowLeft" className="ic-sm" /> {t('finance.issued.back')}
         </Link>
         <div className="page-title">

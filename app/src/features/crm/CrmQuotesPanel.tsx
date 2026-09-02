@@ -157,7 +157,7 @@ export function CrmQuotesPanel(props: {
               scheda «Emesse» con la bozza già pre-compilata da QUESTA versione. */}
           {quote.status === 'accepted' && (
             <button type="button" className="btn btn-sm"
-              onClick={() => navigate(`/finanze?sezione=emesse&dal-preventivo=${quote.id}`)}>
+              onClick={() => navigate(`/finanze?sezione=issued&dal-preventivo=${quote.id}`)}>
               {t('crm.quotes.createInvoice')}
             </button>
           )}

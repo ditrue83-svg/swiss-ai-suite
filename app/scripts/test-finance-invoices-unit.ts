@@ -37,7 +37,7 @@
 // ⚠️ OGNI SEZIONE CONTIENE ALMENO UNA CONTROPROVA: un caso che DEVE fallire.
 // Un test che non sa fallire non è un test, è una rassicurazione.
 // ============================================================================
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -52,6 +52,7 @@ import {
 import {
   checkCreditorReference, checkQrReference,
 } from '../supabase/functions/_shared/finance/checksums.ts';
+import { TABS } from '../src/features/finance/financeModel.ts';
 import {
   createInvoicePdf, invoiceDocumentWord,
   type InvoiceLanguage, type InvoicePdfInput,
@@ -565,6 +566,27 @@ console.log('\n6 · Il contratto sorgente: migrazioni 0053/0054 e Edge Function'
   ok(sendFunction.indexOf('provider.send(') < sendFunction.lastIndexOf('finance_mark_attached_invoices_sent')
     && sendFunction.indexOf("delivery_status: 'sent'") < sendFunction.lastIndexOf('finance_mark_attached_invoices_sent'),
     'la fattura diventa «inviata» solo DOPO l’accettazione del provider');
+
+  // Il parametro ?sezione= deve nominare un identificativo di TABS. Il
+  // 2026-09-02 tre collegamenti scritti a mano dicevano «emesse»: tabFromParams
+  // ricadeva su «invoices» e il pannello «Emesse» non si apriva mai.
+  {
+    const sorgenti: string[] = [];
+    const raccogli = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const percorso = join(dir, entry.name);
+        if (entry.isDirectory()) raccogli(percorso);
+        else if (/\.(ts|tsx)$/.test(entry.name)) sorgenti.push(readFileSync(percorso, 'utf8'));
+      }
+    };
+    raccogli(join(ROOT, 'src'));
+    const usati = new Set<string>();
+    for (const sorgente of sorgenti) {
+      for (const m of sorgente.matchAll(/sezione=([a-z]+)/g)) usati.add(m[1]);
+    }
+    ok([...usati].every((v) => (TABS as readonly string[]).includes(v)),
+      'ogni ?sezione= scritto a mano nomina una scheda esistente', [...usati].join(', '));
+  }
 }
 
 // ============================================================================
