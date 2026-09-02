@@ -333,11 +333,8 @@ export function entityLink(
   // indovinata sarebbe un collegamento rotto travestito da collegamento.
   if (entityType === 'crm_organization') return `/clienti/${entityId}`;
   if (entityType === 'crm_opportunity') return '/clienti?vista=pipeline';
-  // 0053 — la fattura emessa. ⚠️ La pagina `/finanze/emesse/:id` NON esiste
-  // ancora: arriva con l'interfaccia delle fatture emesse. Il percorso è
-  // dichiarato qui così il giorno in cui la pagina nasce i collegamenti già
-  // portano al posto giusto; fino ad allora apre una rotta senza pagina, ed è
-  // scritto qui invece di lasciarlo scoprire a chi clicca.
+  // 0053 — la fattura emessa ha la sua pagina: `/finanze/emesse/:id` è la rotta
+  // del dettaglio, arrivata con l'interfaccia delle fatture emesse.
   if (entityType === 'finance_issued_invoice') return `/finanze/emesse/${entityId}`;
   // ⚠️ `contract` manca ancora, ed è un difetto di questo file annotato e non
   // corretto qui: cambiare il comportamento dei Contratti mentre si costruisce

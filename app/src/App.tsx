@@ -27,6 +27,7 @@ import { DocumentsPage } from '@/features/documents/DocumentsPage';
 import { DocumentDetailPage } from '@/features/documents/DocumentDetailPage';
 import { FinancePage } from '@/features/finance/FinancePage';
 import { FinanceDetailPage } from '@/features/finance/FinanceDetailPage';
+import { FinanceIssuedDetailPage } from '@/features/finance/FinanceIssuedDetailPage';
 import { ContractsPage } from '@/features/contracts/ContractsPage';
 import { ClientsPage } from '@/features/crm/ClientsPage';
 import { ClientCreatePage } from '@/features/crm/ClientCreatePage';
@@ -135,6 +136,11 @@ export default function App() {
                 sezione (fatture / spese) viaggia in `?sezione=`, non nel
                 percorso: `/finanze/spese` colliderebbe con `/finanze/:id`. */}
             <Route path="/finanze" element={<FinancePage />} />
+            {/* 0053 — le fatture EMESSE. `emesse/:invoiceId` PRIMA di `:id`:
+                react-router capirebbe comunque (il segmento statico vince), ma
+                la casa dichiara l'ordine dove lo si legge, come per
+                `/contratti/nuovo`. */}
+            <Route path="/finanze/emesse/:invoiceId" element={<FinanceIssuedDetailPage />} />
             <Route path="/finanze/:id" element={<FinanceDetailPage />} />
             {/* I Contratti stanno dopo le Finanze perché ne condividono la
                 natura: leggono documenti che il Document Hub custodisce già.
