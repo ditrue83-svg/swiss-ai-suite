@@ -14,11 +14,11 @@
 > **Rimisurato il 2026-09-02 dopo la rimozione D-13.** Il catalogo di sette
 > programmi è stato esportato fuori dal repository e verificato con SHA-256
 > `58b89253322ec39e5a9e44037d0d40be982d52c6466fd8902fc3bc7d3dbb15f0`.
-> La migrazione 0051 è applicata; le due Edge Function del modulo non esistono
-> più. Il controllo del deployment ha poi individuato un job pg_cron orfano:
-> la migrazione 0052 lo rimuove e si autoverifica. La PR #100 ha superato
-> qualità e unità (12 + 34 passi), database effimero da zero (13 suite) e
-> preview Cloudflare; applicazione e vetrina sono pubblicate da `main`.
+> Le migrazioni 0051 e 0052 sono applicate; le due Edge Function e il job
+> pg_cron del modulo non esistono più. Il controllo post-deploy è verde con 7
+> scheduler e 20 Edge Function, tutti inventariati. Le PR #100 e #101 hanno
+> superato qualità e unità (12 + 34 passi), database effimero da zero (13
+> suite) e preview Cloudflare; applicazione e vetrina sono pubblicate da `main`.
 >
 > **Rimisurato di nuovo la notte del 2026-08-01/02** su quattro punti: il
 > credito Anthropic, i messaggi dell'Inbox fermi, la coda di revisione del
@@ -2350,7 +2350,7 @@ Trovati altri tre, tutti corretti:
 
 | Comando | Come usciva 0 senza provare niente | Adesso |
 |---|---|---|
-| `test:functions` | `process.exit(fail ? 1 : 0)` **ignorava `skipped`**: se la pre-popolazione del log fosse fallita, le due asserzioni sul 429 sparivano e la suite stampava «10 passati, 0 falliti, 1 saltati» uscendo 0. In questa tabella sarebbe finito «12/12» per una misura da 10 | exit **3** se qualcosa è stato saltato |
+| `test:functions` | `process.exit(fail ? 1 : 0)` **ignorava `skipped`**: se la pre-popolazione del log fosse fallita, l'asserzione sul 429 sarebbe sparita e la suite sarebbe uscita 0 con una misura incompleta | exit **3** se qualcosa è stato saltato |
 
 Passati e trovati **sani**: `verify:deploy` (senza token esce 1 dicendo «un'assenza
 di risposta non è un verde»), `db:bundle --check`, `i18n:coverage`,
