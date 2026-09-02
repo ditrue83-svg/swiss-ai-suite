@@ -1024,14 +1024,16 @@ const elemento = (over: Partial<ItemLike> = {}): ItemLike => ({
 }
 
 // ===========================================================================
-section('8 · Il registro delle automazioni: i due inneschi Finance');
+section('8 · Il registro delle automazioni: gli inneschi Finance');
 // ===========================================================================
 {
   const inneschi = TRIGGERS.filter((t) => t.key.startsWith('finance_'));
-  ok(inneschi.length === 2, 'due inneschi Finance dichiarati', inneschi.map((t) => t.key).join(', '));
+  ok(inneschi.length === 3, 'tre inneschi Finance dichiarati', inneschi.map((t) => t.key).join(', '));
   ok(inneschi.some((t) => t.key === 'finance_item_needs_review')
     && inneschi.some((t) => t.key === 'finance_item_ready'),
     'sono «richiede attenzione» e «pronta»: i due momenti in cui una persona vuole essere avvisata');
+  ok(inneschi.some((t) => t.key === 'finance_issued_invoice_overdue'),
+    'e «fattura emessa scaduta»: il terzo momento, aggiunto con le fatture emesse (0053)');
 
   // «finance» e «.» separati: i percorsi dei campi sono un ALTRO spazio di
   // nomi, ma il letterale unito finisce in punto e per `i18n:orphans` copre
