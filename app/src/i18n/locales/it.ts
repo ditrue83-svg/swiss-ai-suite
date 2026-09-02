@@ -1583,6 +1583,7 @@ export const it = {
     subtitle: 'Fatture e spese che richiedono attenzione.',
     tabs: {
       invoices: 'Fatture',
+      issued: 'Emesse',
       expenses: 'Spese',
     },
     kpi: {
@@ -1803,6 +1804,23 @@ export const it = {
     // 0053 — le fatture EMESSE verso i clienti. Il blocco cresce insieme
     // all'interfaccia: qui ci sono gli errori che il servizio produce già.
     issued: {
+      empty: 'Le fatture emesse appariranno qui.',
+      emptyHint: 'Una fattura emessa nasce da una bozza: la prepari da qui o da un preventivo accettato, poi la emetti con il suo PDF.',
+      // Il totale dell'elenco visibile: le stornate non contano perché la nota
+      // di credito le ha già annullate — e l'etichetta lo dice, non lo nasconde.
+      listTotal: 'Totale in elenco (senza le stornate)',
+      // Su una bozza modificata dopo l'ultima generazione il PDF è obsoleto:
+      // la 0053 lo invalida, e qui lo si dice prima del rifiuto del guardiano.
+      pdfStale: 'PDF da rigenerare',
+      creditNoteNumber: 'Nota di credito n. {value}',
+      status: {
+        draft: 'Bozza',
+        issued: 'Emessa',
+        sent: 'Inviata',
+        overdue: 'Scaduta',
+        paid: 'Pagata',
+        voided: 'Stornata',
+      },
       errors: {
         ibanMissing: 'Manca l’IBAN aziendale: inseriscilo nelle impostazioni dell’azienda, poi riprova.',
         pdfRequired: 'Genera il PDF prima di emettere la fattura.',

@@ -1502,6 +1502,7 @@ export const fr: Dictionary = {
     subtitle: 'Factures et dépenses qui demandent votre attention.',
     tabs: {
       invoices: 'Factures',
+      issued: 'Émises',
       expenses: 'Dépenses',
     },
     kpi: {
@@ -1696,6 +1697,19 @@ export const fr: Dictionary = {
     // 0053 — les factures ÉMISES vers les clients. Le bloc grandit avec
     // l’interface : ici se trouvent les erreurs que le service produit déjà.
     issued: {
+      empty: 'Les factures émises apparaîtront ici.',
+      emptyHint: 'Une facture émise naît d’un brouillon : préparez-la ici ou depuis un devis accepté, puis émettez-la avec son PDF.',
+      listTotal: 'Total de la liste (les annulées ne comptent pas)',
+      pdfStale: 'PDF à régénérer',
+      creditNoteNumber: 'Note de crédit n° {value}',
+      status: {
+        draft: 'Brouillon',
+        issued: 'Émise',
+        sent: 'Envoyée',
+        overdue: 'Échue',
+        paid: 'Payée',
+        voided: 'Annulée',
+      },
       errors: {
         ibanMissing: 'L’IBAN de l’entreprise manque : saisissez-le dans les réglages de l’entreprise, puis réessayez.',
         pdfRequired: 'Générez le PDF avant d’émettre la facture.',

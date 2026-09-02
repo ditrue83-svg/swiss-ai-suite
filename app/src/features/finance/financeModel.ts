@@ -54,8 +54,8 @@ export type { FinanceCorrectableField } from '../../../supabase/functions/_share
 // arriva dall'indirizzo e non è previsto.
 // ---------------------------------------------------------------------------
 
-/** Le due sezioni della schermata: fatture (e note di credito) oppure spese. */
-export const TABS = ['invoices', 'expenses'] as const;
+/** Le tre sezioni della schermata: fatture in arrivo, fatture EMESSE (0053), spese. */
+export const TABS = ['invoices', 'issued', 'expenses'] as const;
 export type FinanceTab = (typeof TABS)[number];
 
 export const SORTS: FinanceSort[] = ['default', 'due_date', 'amount', 'recent', 'supplier'];

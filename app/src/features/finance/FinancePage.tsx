@@ -27,6 +27,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ErrorState, EmptyCta, SkeletonLine, SkeletonKpiGrid } from '@/components/ui/states';
 import { financeService } from '@/services/financeService';
 import { documentHubService } from '@/services/documentHubService';
+import { FinanceIssuedPanel } from './FinanceIssuedPanel';
 import { formatDate } from '@/lib/format';
 import { causaDelGuasto } from '@/lib/errorCause';
 import { toUserMessage } from '@/lib/errors';
@@ -62,6 +63,7 @@ const SORT_KEY: Record<FinanceSort, TKey> = {
 };
 const TAB_KEY: Record<FinanceTab, TKey> = {
   invoices: 'finance.tabs.invoices',
+  issued: 'finance.tabs.issued',
   expenses: 'finance.tabs.expenses',
 };
 const SOURCE_KEY: Record<DocumentSourceType, TKey> = {
@@ -132,6 +134,10 @@ function useFinanceList(companyId: string, filters: FinanceFilters, tab: Finance
   useEffect(() => { setPage(0); }, [key]);
 
   useEffect(() => {
+    // La scheda «Emesse» ha il proprio elenco (FinanceIssuedPanel) e la propria
+    // sorgente: `list_finance_items` parla di documenti in arrivo, e chiamarla
+    // per le fatture emesse tornerebbe una pagina vuota che sembra un guasto.
+    if (tab === 'issued') { setLoading(false); return; }
     let active = true;
     setLoading(true);
     setError(null);
@@ -291,6 +297,13 @@ export function FinancePage() {
         ))}
       </div>
 
+      {/* Le fatture EMESSE hanno elenco, sorgente e gesti propri: ricerca e
+          filtri qui sotto parlano dei documenti in arrivo e su di loro non
+          avrebbero senso. */}
+      {tab === 'issued' ? (
+        <FinanceIssuedPanel companyId={companyId} />
+      ) : (
+      <>
       <div className="row-wrap">
         <div className={cx('field', styles.finSearch)}>
           <label htmlFor="fin-search">{t('finance.filters.search')}</label>
@@ -568,6 +581,8 @@ export function FinancePage() {
           )}
         </div>
       </div>
+      </>
+      )}
     </>
   );
 }

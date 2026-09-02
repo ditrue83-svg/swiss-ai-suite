@@ -1503,6 +1503,7 @@ export const de: Dictionary = {
     subtitle: 'Rechnungen und Ausgaben, die Aufmerksamkeit brauchen.',
     tabs: {
       invoices: 'Rechnungen',
+      issued: 'Ausgestellte',
       expenses: 'Ausgaben',
     },
     kpi: {
@@ -1697,6 +1698,19 @@ export const de: Dictionary = {
     // 0053 — die AUSGESTELLTEN Rechnungen an Kunden. Der Block wächst mit der
     // Oberfläche: hier stehen die Fehler, die der Service bereits produziert.
     issued: {
+      empty: 'Die ausgestellten Rechnungen erscheinen hier.',
+      emptyHint: 'Eine ausgestellte Rechnung entsteht aus einem Entwurf: hier oder aus einem angenommenen Angebot vorbereiten und dann mit ihrem PDF ausstellen.',
+      listTotal: 'Summe der Liste (Stornos zählen nicht)',
+      pdfStale: 'PDF neu erzeugen',
+      creditNoteNumber: 'Gutschrift Nr. {value}',
+      status: {
+        draft: 'Entwurf',
+        issued: 'Ausgestellt',
+        sent: 'Versendet',
+        overdue: 'Überfällig',
+        paid: 'Bezahlt',
+        voided: 'Storniert',
+      },
       errors: {
         ibanMissing: 'Es fehlt der Unternehmens-IBAN: Tragen Sie ihn in den Unternehmenseinstellungen ein und versuchen Sie es erneut.',
         pdfRequired: 'Erzeugen Sie das PDF, bevor Sie die Rechnung ausstellen.',
