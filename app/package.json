@@ -69,6 +69,7 @@
     "test:contracts-unit": "node --import tsx scripts/test-contracts-unit.ts",
     "test:contracts": "node --env-file=.env.test --import tsx scripts/test-contracts.ts",
     "test:finance": "node --env-file=.env.test --import tsx scripts/test-finance.ts",
+    "test:finance-invoices-unit": "node --import ./scripts/npm-scheme-loader-register.mjs --import tsx scripts/test-finance-invoices-unit.ts",
     "test:crm-unit": "node --import tsx scripts/test-crm-unit.ts",
     "test:crm-email-unit": "node --import tsx scripts/test-crm-email-unit.ts",
     "test:crm-quotes-unit": "node --import ./scripts/npm-scheme-loader-register.mjs --import tsx scripts/test-crm-quotes-unit.ts",

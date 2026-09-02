@@ -997,7 +997,12 @@ npm run test:workflows       # Automazioni su DB: esegue il MOTORE VERO — outb
 npm run test:finance-unit    # Finanze offline: importi esatti, date ambigue, cifre di controllo,
                              # QR-fattura, validazione dell'estrazione, contratto (202 test)
 npm run test:finance         # Finanze su DB: immutabilità del verbale, correzioni, proiezione,
-                             # duplicati, valute mai sommate (95 test — richiede la 0021)
+                             # duplicati, valute mai sommate, fatture emesse (sezione 15:
+                             # numerazione, guardiani, ciclo di vita, scansione scadute).
+                             # Richiede la 0021 e, dalla sezione 15, anche la 0053 e la 0054
+npm run test:finance-invoices-unit # Fatture emesse offline: payload QR SIX decodificato dai pixel
+                             # (anche dentro il PDF finale), PDF trilingue con polizza, nota di
+                             # credito e sollecito SENZA polizza, contratto delle migrazioni 0053/0054
 npm run test:contracts-unit  # Contratti offline: periodi nelle quattro lingue, ancoraggi del
                              # preavviso, derivabilità, date ambigue, citazioni, prompt injection,
                              # coerenza fra gli elenchi dichiarati in TypeScript e in SQL (89 test)

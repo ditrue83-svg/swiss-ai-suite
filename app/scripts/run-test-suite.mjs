@@ -384,6 +384,9 @@ const GROUPS = {
       { script: 'test:calendar-sync-unit' },
       { script: 'test:workflows-unit' },
       { script: 'test:finance-unit' },
+      // Le fatture EMESSE: payload QR SIX decodificato dai pixel (anche dentro
+      // il PDF), PDF trilingue con polizza, contratto delle migrazioni 0053/0054.
+      { script: 'test:finance-invoices-unit' },
       { script: 'test:contracts-unit' },
       { script: 'test:crm-unit' },
       { script: 'test:crm-email-unit' },
