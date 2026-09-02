@@ -138,6 +138,11 @@ verify_jwt = true
 [functions.generate-crm-quote]
 verify_jwt = true
 
+# Fatture emesse (0053): stessa identica forma del preventivo — gesto umano dal
+# browser, payload letto con la RLS dell'utente. Gate acceso, dichiarato.
+[functions.generate-finance-invoice]
+verify_jwt = true
+
 # ---------------------------------------------------------------------------
 # Calendario e notifiche (0018). Stessa logica, stessi chiamanti anomali:
 #
