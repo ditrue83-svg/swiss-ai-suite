@@ -1213,6 +1213,7 @@ export const de: Dictionary = {
     logoHint: 'PNG oder JPEG, höchstens 2 MB. Es erscheint auf PDF-Offerten; ohne Logo wird der Firmenname verwendet.',
     logoConfigured: 'Logo eingerichtet', logoChoose: 'Logo wählen', logoRemove: 'Logo entfernen',
     logoSaved: 'Logo gespeichert.', logoRemoved: 'Logo entfernt.', logoInvalid: 'Das Logo muss PNG oder JPEG sein und darf 2 MB nicht überschreiten.',
+    ibanInvalid: 'Die IBAN besteht die eigene Prüfziffer nicht.',
   },
   // Eigene Felder des CRM (0047) — die DEFINITIONEN. Die Werte werden im
   // Eintrag der Gegenpartei oder Verkaufschance erfasst (Schlüssel `crm.fields`).
@@ -1692,6 +1693,18 @@ export const de: Dictionary = {
       confirm: 'Hinzufügen',
       added: 'Zu den Finanzen hinzugefügt.',
       alreadyPresent: 'Dieses Dokument ist bereits in den Finanzen.',
+    },
+    // 0053 — die AUSGESTELLTEN Rechnungen an Kunden. Der Block wächst mit der
+    // Oberfläche: hier stehen die Fehler, die der Service bereits produziert.
+    issued: {
+      errors: {
+        ibanMissing: 'Es fehlt der Unternehmens-IBAN: Tragen Sie ihn in den Unternehmenseinstellungen ein und versuchen Sie es erneut.',
+        pdfRequired: 'Erzeugen Sie das PDF, bevor Sie die Rechnung ausstellen.',
+        transition: 'Der Status der Rechnung hat sich inzwischen geändert: Aktualisieren Sie die Ansicht und versuchen Sie es erneut.',
+        notAvailable: 'Dieses Dokument kann im aktuellen Status der Rechnung nicht erzeugt werden.',
+        qrFailed: 'Der QR-Zahlteil konnte nicht erzeugt werden: Prüfen Sie IBAN und Währung (nur CHF oder EUR).',
+        generic: 'Der Vorgang auf der Rechnung ist fehlgeschlagen. Versuchen Sie es erneut.',
+      },
     },
   },
 

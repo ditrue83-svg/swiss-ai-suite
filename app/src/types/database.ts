@@ -152,6 +152,15 @@ export type CrmOpportunityStage =
   | 'lead' | 'contacted' | 'proposal' | 'negotiation' | 'won' | 'lost';
 export type CrmQuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
 export type CrmQuoteLanguage = 'it' | 'de' | 'fr';
+// 0053 — le fatture EMESSE verso i clienti. La bozza si modifica, dopo
+// l'emissione niente si tocca: le correzioni passano per annullo (`voided`)
+// più nota di credito, numerata a parte. `overdue` non è uno stato che una
+// persona imposta: lo scrive la scansione `finance_emit_issued_invoice_overdue`.
+export type FinanceIssuedInvoiceStatus =
+  | 'draft' | 'issued' | 'sent' | 'paid' | 'overdue' | 'voided';
+/** Il tipo di PDF collegato: una fattura, una nota di credito, fino a tre solleciti. */
+export type FinanceIssuedInvoiceDocKind = 'invoice' | 'credit_note' | 'reminder';
+export type FinanceIssuedInvoiceLanguage = 'it' | 'de' | 'fr';
 /** Le email non sono interazioni manuali: restano in `email_messages` e si collegano. */
 export type CrmInteractionType = 'note' | 'call' | 'meeting' | 'other';
 export type CrmDocumentRelation =
@@ -389,9 +398,9 @@ export interface Database {
         Relationships: [];
       };
       companies: {
-        Row: { id: string; legal_name: string; uid_che: string | null; canton: string | null; municipality: string | null; legal_form: string | null; street: string | null; postal_code: string | null; city: string | null; country_code: string | null; logo_storage_path: string | null; logo_mime_type: string | null; created_at: string; updated_at: string };
-        Insert: { id?: string; legal_name: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null };
-        Update: { legal_name?: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null };
+        Row: { id: string; legal_name: string; uid_che: string | null; canton: string | null; municipality: string | null; legal_form: string | null; street: string | null; postal_code: string | null; city: string | null; country_code: string | null; logo_storage_path: string | null; logo_mime_type: string | null; bank_iban: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; legal_name: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null; bank_iban?: string | null };
+        Update: { legal_name?: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null; bank_iban?: string | null };
         Relationships: [];
       };
       company_members: {
@@ -1386,6 +1395,58 @@ export interface Database {
         };
         Insert: never; Update: never; Relationships: [];
       };
+      // ---- Fatture emesse (0053) ---------------------------------------------
+      // Scritture SOLO via RPC (i guardiani della 0053 rifiutano il resto):
+      // dal client si legge e basta, per questo `Insert` e `Update` sono `never`,
+      // come per i preventivi qui sopra.
+      finance_issued_invoices: {
+        Row: {
+          id: string; company_id: string; organization_id: string;
+          opportunity_id: string | null; quote_version_id: string | null;
+          created_by: string; created_at: string;
+          sequence_number: number; invoice_number: string;
+          credit_note_sequence_number: number | null; credit_note_number: string | null;
+          status: FinanceIssuedInvoiceStatus; language: FinanceIssuedInvoiceLanguage;
+          currency: string; title: string; notes: string | null;
+          issued_on: string; due_date: string;
+          subtotal_amount: number; vat_amount: number; total_amount: number;
+          company_legal_name: string; company_uid_che: string | null;
+          company_street: string | null; company_postal_code: string | null;
+          company_city: string | null; company_country_code: string | null;
+          company_logo_storage_path: string | null; company_logo_mime_type: string | null;
+          company_bank_iban: string | null;
+          customer_display_name: string; customer_street: string | null;
+          customer_postal_code: string | null; customer_city: string | null;
+          customer_country_code: string | null;
+          payment_reference_type: string | null; payment_reference: string | null;
+          document_id: string | null; pdf_generated_at: string | null;
+          issued_at: string | null; issued_by: string | null;
+          sent_at: string | null; sent_by: string | null; sent_email_id: string | null;
+          paid_at: string | null; paid_by: string | null; paid_on: string | null;
+          overdue_at: string | null;
+          voided_at: string | null; voided_by: string | null; void_reason: string | null;
+        };
+        Insert: never; Update: never; Relationships: [];
+      };
+      finance_issued_invoice_items: {
+        Row: {
+          id: string; company_id: string; invoice_id: string;
+          line_number: number; description: string; quantity: number; unit_price: number;
+          vat_rate_id: string; vat_rate: number; vat_source_url: string;
+          vat_source_title: string | null; vat_checked_at: string;
+          net_amount: number; vat_amount: number; total_amount: number; created_at: string;
+        };
+        Insert: never; Update: never; Relationships: [];
+      };
+      // Il ponte di provenienza dei PDF NON ha company_id: il tenant si legge
+      // dalla fattura padre — è la sua policy RLS a dirlo (0053).
+      finance_issued_invoice_documents: {
+        Row: {
+          id: string; invoice_id: string; kind: FinanceIssuedInvoiceDocKind;
+          level: number | null; document_id: string; created_by: string; created_at: string;
+        };
+        Insert: never; Update: never; Relationships: [];
+      };
       // Un suggerimento si LEGGE e si RISOLVE. Il contenuto lo produce il
       // codice server-side: dal client non si inserisce.
       crm_link_suggestions: {
@@ -1848,6 +1909,40 @@ export interface Database {
           review_status: FinanceReviewStatus; created_at: string;
         }[];
       };
+      // ---- Fatture emesse (0053) ---------------------------------------------
+      // Gli UNICI percorsi di scrittura sulle tre tabelle. Le righe si leggono
+      // dalle tabelle con la SELECT del membro; qui si crea la bozza, la si
+      // emette e la si marca pagata o stornata.
+      finance_save_issued_invoice_draft: {
+        Args: {
+          p_company_id: string; p_invoice_id?: string | null; p_organization_id: string;
+          p_opportunity_id?: string | null; p_quote_version_id?: string | null;
+          p_language: FinanceIssuedInvoiceLanguage; p_currency: string; p_title: string;
+          p_notes?: string | null; p_issued_on: string; p_due_date: string; p_items: Json;
+        };
+        Returns: string;
+      };
+      /** Bozza → emessa. Il guardiano pretende PDF generato, IBAN e CHF/EUR. */
+      finance_issue_invoice: {
+        Args: { p_company_id: string; p_invoice_id: string };
+        Returns: undefined;
+      };
+      /** Solo `paid` o `voided`, e solo da emessa/inviata/scaduta (0053). */
+      finance_set_issued_invoice_status: {
+        Args: {
+          p_company_id: string; p_invoice_id: string; p_status: string;
+          p_paid_on?: string | null; p_void_reason?: string | null;
+        };
+        Returns: undefined;
+      };
+      /** Il payload del PDF: lo interroga la Edge Function col JWT della persona. */
+      finance_issued_invoice_pdf_payload: {
+        Args: {
+          p_company_id: string; p_invoice_id: string;
+          p_kind?: string; p_level?: number | null;
+        };
+        Returns: Json;
+      };
       // ---- Contract Manager (0024) ----------------------------------------
       list_contracts: {
         Args: {
@@ -1977,6 +2072,9 @@ export interface Database {
       crm_linked_entity: CrmLinkedEntity;
       crm_quote_status: CrmQuoteStatus;
       crm_quote_language: CrmQuoteLanguage;
+      finance_issued_invoice_status: FinanceIssuedInvoiceStatus;
+      finance_issued_invoice_doc_kind: FinanceIssuedInvoiceDocKind;
+      finance_issued_invoice_language: FinanceIssuedInvoiceLanguage;
       assistant_thread_status: AssistantThreadStatus;
       assistant_message_role: AssistantMessageRole;
       assistant_run_status: AssistantRunStatus;

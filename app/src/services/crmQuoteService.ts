@@ -11,6 +11,9 @@ export interface CrmQuoteItem {
 
 export interface CrmQuoteVersion {
   id: string; quoteId: string; quoteNumber: string; version: number;
+  /** La controparte e la trattativa della versione: servono a chi la riusa
+   *  come proposta — la fattura emessa dal preventivo accettato (0053). */
+  organizationId: string; opportunityId: string;
   status: CrmQuoteStatus; language: CrmQuoteLanguage; issuedOn: string;
   validUntil: string; currency: string; title: string;
   introduction: string | null; notes: string | null;
@@ -45,7 +48,7 @@ export const crmQuoteService = {
     if (!roots.length) return [];
     const rootById = new Map(roots.map((quote) => [quote.id, quote.quote_number]));
     const { data: versions, error: versionError } = await sb.from('crm_quote_versions')
-      .select('id, quote_id, version, status, language, issued_on, valid_until, currency, title, introduction, notes, subtotal_amount, vat_amount, total_amount, document_id, pdf_generated_at, sent_at')
+      .select('id, quote_id, organization_id, opportunity_id, version, status, language, issued_on, valid_until, currency, title, introduction, notes, subtotal_amount, vat_amount, total_amount, document_id, pdf_generated_at, sent_at')
       .eq('company_id', companyId).in('quote_id', roots.map((quote) => quote.id))
       .order('version', { ascending: false });
     if (versionError) fail(versionError);
@@ -70,6 +73,7 @@ export const crmQuoteService = {
     return versionRows.map((row) => ({
       id: row.id as string, quoteId: row.quote_id as string,
       quoteNumber: rootById.get(row.quote_id as string) ?? '', version: n(row.version),
+      organizationId: row.organization_id as string, opportunityId: row.opportunity_id as string,
       status: row.status as CrmQuoteStatus, language: row.language as CrmQuoteLanguage,
       issuedOn: row.issued_on as string, validUntil: row.valid_until as string,
       currency: row.currency as string, title: row.title as string,
@@ -95,6 +99,41 @@ export const crmQuoteService = {
       sourceUrl: row.source_url as string, sourceTitle: (row.source_title as string | null) ?? null,
       checkedAt: row.checked_at as string,
     }));
+  },
+
+  /** UNA versione, con le righe: serve a proporre la fattura dal preventivo
+   *  accettato (0053). `null` se non esiste o non è dell'azienda attiva. */
+  async getVersion(companyId: string, quoteVersionId: string): Promise<CrmQuoteVersion | null> {
+    const sb = requireSupabase();
+    const { data, error } = await sb.from('crm_quote_versions')
+      .select('id, quote_id, organization_id, opportunity_id, version, status, language, issued_on, valid_until, currency, title, introduction, notes, subtotal_amount, vat_amount, total_amount, document_id, pdf_generated_at, sent_at, quote:crm_quotes(quote_number)')
+      .eq('company_id', companyId).eq('id', quoteVersionId).maybeSingle();
+    if (error) fail(error);
+    if (!data) return null;
+    const row = data as unknown as Record<string, unknown>;
+    const { data: items, error: itemError } = await sb.from('crm_quote_items')
+      .select('id, quote_version_id, line_number, description, quantity, unit_price, vat_rate_id, vat_rate, net_amount, vat_amount, total_amount')
+      .eq('quote_version_id', quoteVersionId).order('line_number');
+    if (itemError) fail(itemError);
+    return {
+      id: row.id as string, quoteId: row.quote_id as string,
+      quoteNumber: (row.quote as { quote_number?: string } | null)?.quote_number ?? '',
+      version: n(row.version),
+      organizationId: row.organization_id as string, opportunityId: row.opportunity_id as string,
+      status: row.status as CrmQuoteStatus, language: row.language as CrmQuoteLanguage,
+      issuedOn: row.issued_on as string, validUntil: row.valid_until as string,
+      currency: row.currency as string, title: row.title as string,
+      introduction: (row.introduction as string | null) ?? null, notes: (row.notes as string | null) ?? null,
+      subtotalAmount: n(row.subtotal_amount), vatAmount: n(row.vat_amount), totalAmount: n(row.total_amount),
+      documentId: (row.document_id as string | null) ?? null, documentStoragePath: null,
+      pdfGeneratedAt: (row.pdf_generated_at as string | null) ?? null,
+      sentAt: (row.sent_at as string | null) ?? null,
+      items: ((items ?? []) as Array<Record<string, unknown>>).map((item) => ({
+        id: item.id as string, lineNumber: n(item.line_number), description: item.description as string,
+        quantity: n(item.quantity), unitPrice: n(item.unit_price), vatRateId: item.vat_rate_id as string,
+        vatRate: n(item.vat_rate), netAmount: n(item.net_amount), vatAmount: n(item.vat_amount), totalAmount: n(item.total_amount),
+      })),
+    };
   },
 
   async saveDraft(companyId: string, opportunityId: string, input: CrmQuoteDraftInput): Promise<string> {

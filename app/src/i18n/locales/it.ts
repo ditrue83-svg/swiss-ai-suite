@@ -1293,6 +1293,7 @@ export const it = {
     logoHint: 'PNG o JPEG, massimo 2 MB. Compare sui preventivi PDF; se manca viene usata la ragione sociale.',
     logoConfigured: 'Logo configurato', logoChoose: 'Scegli logo', logoRemove: 'Rimuovi logo',
     logoSaved: 'Logo salvato.', logoRemoved: 'Logo rimosso.', logoInvalid: 'Il logo deve essere PNG o JPEG e non superare 2 MB.',
+    ibanInvalid: 'L’IBAN non supera la propria cifra di controllo.',
   },
   // Campi personalizzati del CRM (0047) — le DEFINIZIONI. I valori si scrivono
   // nella scheda della controparte o dell’opportunità (chiavi `crm.fields`).
@@ -1798,6 +1799,18 @@ export const it = {
       confirm: 'Aggiungi',
       added: 'Aggiunto alle finanze.',
       alreadyPresent: 'Questo documento è già nelle finanze.',
+    },
+    // 0053 — le fatture EMESSE verso i clienti. Il blocco cresce insieme
+    // all'interfaccia: qui ci sono gli errori che il servizio produce già.
+    issued: {
+      errors: {
+        ibanMissing: 'Manca l’IBAN aziendale: inseriscilo nelle impostazioni dell’azienda, poi riprova.',
+        pdfRequired: 'Genera il PDF prima di emettere la fattura.',
+        transition: 'Lo stato della fattura è cambiato nel frattempo: ricarica e riprova.',
+        notAvailable: 'Questo documento non si può generare nello stato attuale della fattura.',
+        qrFailed: 'La polizza QR non si è potuta generare: controlla IBAN e valuta (solo CHF o EUR).',
+        generic: 'L’operazione sulla fattura non è riuscita. Riprova.',
+      },
     },
   },
 

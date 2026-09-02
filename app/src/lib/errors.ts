@@ -7,10 +7,18 @@ import { translate as tr } from '@/i18n';
 
 export class AppError extends Error {
   cause?: unknown;
-  constructor(message: string, cause?: unknown) {
+  /**
+   * Il codice tecnico che ha prodotto l'errore (es. `INVOICE_IBAN_MISSING`),
+   * quando il chiamante deve reagire a QUEL motivo e non al messaggio tradotto:
+   * il messaggio è per chi legge, il codice è per chi decide che cosa mostrare
+   * accanto — per esempio il collegamento alle impostazioni dove si corregge.
+   */
+  code?: string | null;
+  constructor(message: string, cause?: unknown, code?: string | null) {
     super(message);
     this.name = 'AppError';
     this.cause = cause;
+    this.code = code;
   }
 }
 

@@ -1204,6 +1204,7 @@ export const fr: Dictionary = {
     logoHint: 'PNG ou JPEG, 2 Mo maximum. Il figure sur les devis PDF ; sans logo, la raison sociale est utilisée.',
     logoConfigured: 'Logo configuré', logoChoose: 'Choisir le logo', logoRemove: 'Retirer le logo',
     logoSaved: 'Logo enregistré.', logoRemoved: 'Logo retiré.', logoInvalid: 'Le logo doit être au format PNG ou JPEG et ne pas dépasser 2 Mo.',
+    ibanInvalid: 'L’IBAN échoue à son propre chiffre de contrôle.',
   },
   // Champs personnalisés du CRM (0047) — les DÉFINITIONS. Les valeurs se
   // saisissent dans la fiche de la contrepartie ou de l’opportunité
@@ -1691,6 +1692,18 @@ export const fr: Dictionary = {
       confirm: 'Ajouter',
       added: 'Ajouté aux finances.',
       alreadyPresent: 'Ce document est déjà dans les finances.',
+    },
+    // 0053 — les factures ÉMISES vers les clients. Le bloc grandit avec
+    // l’interface : ici se trouvent les erreurs que le service produit déjà.
+    issued: {
+      errors: {
+        ibanMissing: 'L’IBAN de l’entreprise manque : saisissez-le dans les réglages de l’entreprise, puis réessayez.',
+        pdfRequired: 'Générez le PDF avant d’émettre la facture.',
+        transition: 'Le statut de la facture a changé entre-temps : rechargez la page et réessayez.',
+        notAvailable: 'Ce document ne peut pas être généré dans le statut actuel de la facture.',
+        qrFailed: 'Le bulletin de versement QR n’a pas pu être généré : vérifiez l’IBAN et la monnaie (CHF ou EUR uniquement).',
+        generic: 'L’opération sur la facture a échoué. Réessayez.',
+      },
     },
   },
 

@@ -513,7 +513,9 @@ export function toListArgs(companyId: string, f: FinanceFilters = {}): ListFinan
   const supplier = (f.supplier ?? '').trim();
   return {
     p_company_id: companyId,
-    p_tab: f.tab ?? null,
+    // La scheda «emesse» non passa da qui (ha il proprio servizio): se ci
+    // arrivasse, per la RPC delle spese/ricevute non è un filtro, è nulla.
+    p_tab: f.tab && f.tab !== 'issued' ? f.tab : null,
     // Una ricerca vuota non è un errore e non è un filtro: è l'assenza di
     // filtro. Mandarla come stringa vuota farebbe cercare «niente».
     p_query: query || null,

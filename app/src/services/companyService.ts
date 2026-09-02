@@ -24,6 +24,7 @@ function toCompany(row: CompanyRow): Company {
     countryCode: row.country_code,
     logoStoragePath: row.logo_storage_path,
     logoMimeType: row.logo_mime_type,
+    bankIban: row.bank_iban,
     createdAt: row.created_at,
   };
 }
@@ -38,6 +39,10 @@ export interface CreateCompanyInput {
   postalCode?: string | null;
   city?: string | null;
   countryCode?: string | null;
+  /** 0053 — l'IBAN della polizza QR delle fatture emesse. La cifra di controllo
+   *  la verifica il database (`company_bank_iban_invalid`); la schermata la
+   *  controlla prima, con lo stesso algoritmo. */
+  bankIban?: string | null;
 }
 
 export const companyService = {
@@ -88,9 +93,17 @@ export const companyService = {
         postal_code: patch.postalCode,
         city: patch.city,
         country_code: patch.countryCode,
+        bank_iban: patch.bankIban,
       })
       .eq('id', companyId);
-    if (error) throw new AppError(toUserMessage(error), error);
+    if (error) {
+      // Il trigger della 0053 rifiuta un IBAN che non supera la cifra di
+      // controllo: la frase la scrive il dizionario, non il messaggio grezzo.
+      if (error.message.includes('company_bank_iban_invalid')) {
+        throw new AppError(tr('companySettings.ibanInvalid'), error, 'company_bank_iban_invalid');
+      }
+      throw new AppError(toUserMessage(error), error);
+    }
   },
 
   /** Logo del documento commerciale: PNG/JPEG, 2 MB, percorso stabile per azienda. */
