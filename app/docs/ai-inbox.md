@@ -736,7 +736,7 @@ pastiglia**. Un'etichetta plausibile e sbagliata è peggio di un'etichetta assen
 1. ⚠️ **Un identificativo malformato** (`/inbox?msg=abc`) faceva arrivare a
    schermo `invalid input syntax for type uuid: "abc"` — stringa tecnica, in
    inglese, dentro un'interfaccia che può essere tedesca. È la stessa apertura
-   già chiusa su `/incentivi?progetto=abc`. Ora un identificativo malformato non
+   già chiusa su altre rotte profonde. Ora un identificativo malformato non
    è una selezione e si ignora; uno **ben formato che non esiste resta** una
    selezione, perché «non trovato» è la risposta vera e va detta.
 2. ⚠️ **Aprire un messaggio sostituiva la voce di cronologia**: il tasto indietro

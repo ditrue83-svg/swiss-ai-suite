@@ -577,8 +577,7 @@ dipendenti») e su una scheda cliente non hanno senso. **I due disclaimer
 perché sono condizioni d'uso dell'API e devono dire la stessa cosa in ogni schermata.
 
 ⚠️ **Il cantone che arriva dal registro è un'etichetta, non una sigla.**
-`lookup-company` lo appiattisce a sei valori più «Altro» — è il perimetro del
-catalogo incentivi, non della Svizzera — quindi un cliente di Lucerna arriva come
+`lookup-company` può restituire «Altro», quindi un cliente di Lucerna arriva come
 «Altro». In quel caso il campo resta **vuoto** invece di ricevere una sigla
 inventata: scrivere `TI` perché è il default del modulo è il difetto già pagato
 nell'onboarding, dove «Comune Zug, Cantone Ticino» compariva sotto un avviso che

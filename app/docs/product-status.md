@@ -20,8 +20,7 @@
 > hanno toccato, eseguendo le suite e interrogando la produzione: migrazioni
 > **0001–0039, locale == remoto** (`supabase migration list --linked`);
 > `test:assistant` **45/45** — il rosso aperto della 0036 è chiuso (§sotto) —
-> `test:subsidy` **91/91**, `test:contracts` **69/69**, `test:audit` **41/41**,
-> `subsidy:health` **exit 0 «niente in sospeso»**; credito Anthropic **ancora
+> `test:contracts` **69/69**, `test:audit` **41/41**; credito Anthropic **ancora
 > esaurito** (HTTP 400, misurato con una chiamata vera); bundle servito ancora
 > `index-CkesEDA3.js`. In produzione: 148 messaggi Inbox tutti `done`,
 > `audit_logs` a 0 righe, `contract_extractions` a **0** (§Contratti).
@@ -29,7 +28,7 @@
 > **Rimisurato il 2026-08-09, dopo il PRIMO DEPLOY dal 2026-08-01.** In `main`
 > è entrata l'intera pila (merge `f433d1a`, PR #12–#20 tutte chiuse) e il push
 > ha pubblicato il frontend: bundle servito **`index-BSzz4AsB.js`** — verificato
-> che contenga `/registro`, `/incentivi/revisioni` e il blocco `@media print`.
+> che contenga `/registro` e il blocco `@media print`.
 > Ridistribuite **18 Edge Function su 19** (quelle il cui codice cambiava,
 > calcolato per chiusura degli import; `lookup-company` intatta a v25);
 > `verify_jwt` ora dichiarato in `config.toml` per TUTTE le 19 e confrontato
@@ -197,8 +196,8 @@ richiesta caduta per credito è delle **11:00:03 UTC del 2026-08-01**, e da
 allora ogni tentativo successivo ha lo stesso codice.
 
 **Sono quindi ferme, adesso**: analisi dei documenti (Admin AI), classificazione
-della posta in arrivo, estrazione delle Finanze, `contract-worker`,
-interpretazione di Subsidy AI, «Chiedi ad AI-Swisse». Le colonne «servizio
+della posta in arrivo, estrazione delle Finanze, `contract-worker` e
+«Chiedi ad AI-Swisse». Le colonne «servizio
 reale» della tabella restano **sì** dove lo erano — dicono che quel percorso *è
 stato* eseguito contro il servizio vero, che è un fatto storico — ma **oggi
 nessuno di quei percorsi arriva in fondo**.
@@ -227,9 +226,8 @@ dà sempre «diverse», e usarlo come chiave dà sempre 401. Il 2026-07-31 quest
 prodotto la diagnosi di un guasto che non esisteva, per due giri interi. Il
 confronto corretto è `sha256(chiave) === row.value`, ed è quello eseguito qui.
 
-✅ **Le tre valutazioni AI sono state rieseguite** la sera del 2026-07-31, tutte
-verdi: `eval:assistant` **16/16**, `eval:admin` **35/35**, `eval:subsidy`
-**14/14**. Dettaglio e limiti nella sezione dedicata più sotto. ⚠️ Quella misura
+✅ **Le valutazioni AI sono state rieseguite** la sera del 2026-07-31, tutte
+verdi: `eval:assistant` **16/16**, `eval:admin` **35/35**. Dettaglio e limiti nella sezione dedicata più sotto. ⚠️ Quella misura
 è del 31: **non è stata rifatta dopo il nuovo esaurimento**, e non può esserlo
 finché il credito non torna.
 
@@ -349,7 +347,6 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Modulo | Rotta | Implementato | Deployato | Configurato | Testato | Servizio reale | Clienti esterni | Dipendenza esterna | Limitazioni |
 |---|---|---|---|---|---|---|---|---|---|
 | Admin AI | `/admin` | sì | sì | sì | sì | sì | sì | Anthropic | in modalità `ai` il testo del documento va all'API; in `deterministic` lo snapshot non è probatorio |
-| Subsidy AI | `/subsidy` | sì | sì | sì | sì | sì | sì | Anthropic | catalogo 1.0: 7 programmi (Confederazione + Ticino), contenuti solo in italiano; `subsidy.footnote` stampa asterischi markdown non resi |
 | Inbox | `/inbox` | sì | sì | sì | sì | sì | **no** | Google Gmail API | scope riservato: fuori dalla modalità Test Google impone la verifica CASA, quindi **un cliente reale non può collegare la propria casella**. Microsoft implementato e non configurato. ✅ **148 messaggi, TUTTI `done`, zero in `failed`** — rimisurato il 2026-08-05 interrogando la produzione. ⚠️ Questa riga ha detto «3 su 141 in `failed`» fino al 2026-08-05: era vero il 2026-08-01 e ha smesso di esserlo da sé, perché il ritentativo ha ripescato quei tre quando il credito è tornato. **Il meccanismo ha funzionato senza che nessuno lo toccasse**, ed è la prova che quella riga aspettava. Il numero qui si RIMISURA prima di unire una PR: `docs:check` confronta i documenti con il codice, non con il database, quindi su questa colonna non può aiutare (§sotto) |
 | Attività | `/attivita` | sì | — | sì | sì | — | sì | — | nessuna |
 | Documenti | `/documenti` | sì | — | sì | sì | — | sì | — | nessuna politica di conservazione delle analisi |
@@ -359,7 +356,6 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ⛔ **Il tasso per campo è NON MISURABILE al 2026-08-15**: la rilettura è stata chiesta e **saltata**, perché `eval:contracts` spende credito e il credito è esaurito (rimisurato oggi). Storico, non sostituito: ✅ **letti tre contratti verosimili il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto — misura di PRIMA della correzione delle date. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ✅ **Le correzioni sono DEPLOYATE dal 2026-08-09** (`contract-worker` v19). ⚠️ **La rilettura dal capo alla coda resta non eseguibile** (credito esaurito, rimisurato il 2026-08-15). In produzione `contract_extractions` è a **0 righe**, rimisurato il 2026-08-15: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il **2026-08-15** le prove che non spendono credito, invariate: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo), Resend per email | L'abbinamento automatico propone e non collega mai da solo. Import CSV e campi personalizzati sono applicati e provati. ✅ **Preventivi PDF (0049, Fase 1.2)**: migrazione applicata, `generate-crm-quote` ACTIVE v1 e `send-crm-email` ACTIVE v4. ✅ **Sequenze follow-up (0050, Fase 1.3)**: migrazione applicata e `automation-worker` ridistribuito il 2026-09-01; configurazione per fase e passi, silenzio misurato da `direction`, attività + notifica e template solo proposto. Nessun invio automatico. Verifiche: `test:crm-unit` **254/254**, `test:workflows-unit` **151/151**, `test:crm` **191/191** sul database reale con pulizia verificata. La UI autenticata delle sequenze a 375 px e nei temi chiaro/scuro resta da verificare sul frontend pubblicato. |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
-| Incentivi | `/incentivi` | sì | sì | sì | sì | sì | sì | fonti ufficiali (7 siti) | dal 2026-07-31 `test:subsidy` copre su **database reale** le garanzie della 0032/0033/0034 **e il motore**: la sezione 11 esegue `runMatching`, la stessa funzione che chiama `subsidy-worker`. ⚠️ Restano scoperti l'**involucro HTTP** della Edge Function (segreto, budget di tempo) e il **percorso delle fonti** (`runSourceChecks`, che esce in rete). ⚠️ **Questa riga ha detto «7 revisioni del catalogo in attesa di una persona» fino al 2026-08-06, ed era vero fino al 2026-08-05**: rimisurato interrogando la produzione, la coda è a **ZERO in attesa — 7 `ignored`**, chiuse tutte alle 22:45:42 del 2026-08-05 **dal sistema e non da una persona** (`reviewed_by` nullo su tutte e sette). Non erano un cambiamento della fonte ma la **prima lettura riuscita**, e il difetto è corretto in `diff.ts` (commit `ac0c65e`). ⚠️⚠️ **Una coda vuota NON significa catalogo verificato**: `last_checked_at` è fermo al **2026-07-25** per tutti e sette i programmi — nessuno ha ancora confrontato il catalogo con la fonte, ed è la cosa che quella riga rischiava di far credere fatta. Rimisurato il 2026-08-07: `test:subsidy` **91/91** sul database vero, `subsidy:health` **exit 0 «niente in sospeso»**, `last_checked_at` ancora al 2026-07-25. ✅ **Rimisurato il 2026-08-14, ed erano DUE domande confuse in una**: la rilettura AUTOMATICA delle fonti è viva e nessuna fonte è in ritardo sulla propria cadenza; ciò che è fermo al 2026-07-25 è la verifica **umana**. Le sette fonti sono state confrontate in sola lettura con `npm run subsidy:sources`: **due sono cambiate** (`ti-linn`, `ti-lrilocc`). ⚠️ Il **percorso delle fonti non è più del tutto scoperto**: `fetchSource`+adapter+`detectChanges` sono stati eseguiti contro le sette fonti VERE — resta scoperto ciò che scrive (`runSourceChecks`) e l'involucro HTTP. Dettaglio nella sezione dedicata |
 
 ### Sequenze CRM 0050 — stato distinto al 2026-09-01
 
@@ -981,13 +977,11 @@ di sistema, **15 px con Inter** — lasciando 2 px dal bordo della barra invece 
 «Unternehmenseinstel-lungen»; la barra resta a 264 px.
 
 ⚠️⚠️ **Che cosa resta NON osservato, e va detto invece di essere sottinteso**: i
-due elementi a cui è stato aggiunto `tabular-nums` non compaiono nei dati di
-quell'azienda — `.rb-num` vuole incentivi corrispondenti (l'azienda ne ha
-**zero**) e `.dl-date` un documento con una scadenza estratta. La correzione è
+dati a cui è stato aggiunto `tabular-nums` non compaiono tutti nell'azienda di
+prova; `.dl-date` richiede un documento con una scadenza estratta. La correzione è
 quindi provata **sulla misura** — nell'app viva, `11.11.2026` e `30.09.2026`
 misurano 102,3 px e 122,3 px senza `tabular-nums` e **122,7 px identiche** con —
-ma **non su un elemento in pagina**. Servirebbe un'azienda con un progetto
-incentivi attivo.
+ma **non su un elemento in pagina**.
 
 ⚠️ Due osservazioni **preesistenti**, verificate con entrambi i caratteri e
 quindi non causate dal cambio: nella riga dei KPI il terzo numero sta 4 px più in
@@ -1110,13 +1104,12 @@ ogni modulo. Il come e il perché stanno in
 | Deployato | **sì** — PR #48 unita, marcatori verificati nel bundle servito |
 | Configurato | non richiede configurazione |
 | Testato | **sì** — `test:shell-unit` 116 casi: §9 (nessuna pastiglia a mano nei moduli) e §7 estesa ai toni di `Tag`. Entrambi provati sul rosso che devono dare |
-| Provato contro la cosa reale | **sì, e va detto COME**: con un'azienda usa-e-getta seminata in produzione (`scripts/seed-azienda-usa-e-getta.mjs`) e poi rimossa. CRM, Contratti, Automazioni e Incentivi guardati con dei dati, nelle tre lingue: nessuno sforo, nessuno scorrimento orizzontale, nessuna incoerenza di tono **dentro** una schermata. ⚠️ I dati erano **seminati, non di un'azienda che lavora**: le forme si sono viste, i casi che nascono dall'uso no |
+| Provato contro la cosa reale | **sì, e va detto COME**: con un'azienda usa-e-getta seminata in produzione (`scripts/seed-azienda-usa-e-getta.mjs`) e poi rimossa. CRM, Contratti e Automazioni guardati con dei dati, nelle tre lingue: nessuno sforo, nessuno scorrimento orizzontale, nessuna incoerenza di tono **dentro** una schermata. ⚠️ I dati erano **seminati, non di un'azienda che lavora**: le forme si sono viste, i casi che nascono dall'uso no |
 | Disponibile a clienti esterni | sì — è l'interfaccia che vedono tutti |
 
 ⚠️ **PERCHÉ È SERVITA UN'AZIENDA FINTA, e non è un dettaglio di metodo.**
 Il 2026-08-14, entrando in produzione con la sessione vera, **quattro moduli su
-cinque erano VUOTI**: Rossi SA non ha clienti, contratti, automazioni né
-progetti incentivi. Le etichette erano in esercizio e non le rendeva nulla — la
+alcuni erano VUOTI**: Rossi SA non ha clienti, contratti né automazioni. Le etichette erano in esercizio e non le rendeva nulla — la
 quinta parola non si poteva mettere a «sì» guardando meglio, perché non c'era
 niente da guardare. È il caso in cui il divario si chiude solo mettendo dei dati
 davanti agli occhi, e poi togliendoli.
@@ -1157,9 +1150,8 @@ sforino. Che DUE FAMIGLIE AFFIANCATE dicano due aggettivi nudi si vede solo
 guardando la schermata con dentro un documento vero. È la stessa lezione della
 riga qui sopra, in piccolo.
 
-⚠️ **Quattro cose restano senza famiglia**, dichiarate in `design-system.md`:
-lo stato di salute di una relazione, lo stato di una pratica incentivi, il
-punteggio di pertinenza, lo stato di un criterio. Nessuna delle nove famiglie
+⚠️ **Una cosa resta senza famiglia**, dichiarata in `design-system.md`:
+lo stato di salute di una relazione. Nessuna delle famiglie
 può ospitarle senza prestare il proprio segno a un'altra. Sono **decisioni di
 prodotto**, non lavoro rimasto indietro.
 
@@ -1421,7 +1413,7 @@ la mostra — le righe stanno bene). Si chiuderebbe con un `flex-wrap: wrap` su
 
 La barra laterale ha dieci voci in tre gruppi. A 1280×720 se ne vedevano
 **sei**: la colonna chiedeva 962px e ne aveva 720, e la navigazione — l'unica
-parte elastica — ne nascondeva 242. Sotto la piega finivano «Incentivi»,
+parte elastica — ne nascondeva 242. Sotto la piega finivano
 l'intestazione ARCHIVIO e le sue quattro voci: Documenti, Contratti, Clienti,
 Finanze. **Quattro moduli su nove esistevano solo dopo uno scroll**, e chi apre
 l'applicazione la prima volta non sa che ci sia qualcosa da scorrere.
@@ -1751,279 +1743,6 @@ effetto della migrazione a `Tag`. Non corretto qui perché una regola su
 `.list-sub span + span` toccherebbe ogni chiamante in una volta, compresi
 quelli che il separatore ce l'hanno già: va guardata schermata per schermata.
 
-## Le tre suite che provano IL PROGETTO — eseguite il 2026-07-31
-
-`npm run test:production -- --no-skip` → **VERDE**, 3 passi, 10,8 s. Non provano
-il prodotto: provano *questo* progetto Supabase, ed è per questo che restano
-manuali e si rifiutano di girare contro `127.0.0.1`.
-
-| Suite | Esito | Che cosa ha verificato |
-|---|---|---|
-| `check:auth` | **4/4** | i link inviati per email portano a `https://app.ai-swisse.com`, il redirect richiesto è rispettato, e un URL estraneo **non** viene accettato (niente open redirect) |
-| `subsidy:health` | **exit 0** | 7 programmi, tutti `verified` e attivi, contenuti tradotti de+fr 7/7, **0 errori di integrità**, **0 da ricontrollare** |
-| `test:functions` | **12/12** | `generate-reply` e `interpret-project` **deployate**: 405, 401, 400, **403 cross-tenant**, 422, e il **429** del limite per azienda — tutti respinti prima della chiamata al modello, quindi senza spendere credito |
-
-✅ **Tutte e tre rieseguite il 2026-08-07** (il gruppo `production` gira dentro
-`npm run test:all`, che oggi comprende anche lui): `check:auth` **4/4** contro
-`https://app.ai-swisse.com`, `subsidy:health` **exit 0** — ma la frase è
-cambiata, «niente in sospeso», e il perché sta nella sezione qui sotto —
-`test:functions` **12/12**, compresi i due 429 del limite per azienda.
-
-⚠️ **`check:auth` senza argomento verifica `http://localhost:5174`.** Il primo
-lancio è passato dicendo «i link porteranno a http://localhost:5174» — verde su
-una domanda diversa da quella che conta. Il risultato scritto qui sopra è della
-riesecuzione esplicita:
-
-```
-npm run check:auth -- https://app.ai-swisse.com
-```
-
-✅ **`subsidy:health` ADESSO NOMINA LA CODA DI REVISIONE** (dal 2026-08-01).
-Fino a ieri usciva 0 scrivendo «catalogo valido e aggiornato» mentre sette
-schede aspettavano il giudizio di una persona: non era un difetto della suite —
-faceva esattamente ciò che dichiarava, freschezza e integrità — era un difetto
-di **copertura**, che è peggio, perché chi legge l'esito non ha modo di sapere
-che cosa l'esito non guarda.
-
-Le sette erano tutte della stessa forma: `change_type = program_metadata`,
-`risk_level = low`, una per ciascuno dei 7 programmi, tutte del 2026-07-30,
-tutte con la stessa nota — *«Il contenuto della fonte è cambiato (1 campi
-normalizzati diversi)»*. Sembravano sette volte la stessa domanda, «la fonte
-ufficiale è cambiata: quel che diciamo è ancora vero?» — e **non lo erano**:
-`previousHash` nullo su tutte e sette, nessun termine di paragone. Non si era
-mossa la fonte, aveva cominciato a funzionare il nostro lettore. **Chiuse il
-2026-08-05 come `ignored` dal sistema** (`reviewed_by` nullo: nessuna persona ha
-deciso, e `accepted` avrebbe scritto il falso — «una persona ha confrontato»).
-Il difetto che le emetteva è corretto in `diff.ts` (dettaglio nella riga degli
-Incentivi).
-
-E dal 2026-08-05 **il codice d'uscita distingue tre stati** invece di lasciare
-la coda sotto lo zero: **0** = niente in sospeso · **1** = catalogo valido ma
-c'è lavoro per una persona · **2** = errori di integrità. Fino ad allora usciva
-0 anche con sette revisioni in attesa, e sono rimaste ferme sei giorni sotto la
-parola «verde»: nominare non basta, si legge il codice d'uscita.
-
-Che cosa stampa oggi (rieseguito il **2026-08-07**):
-
-```
-  Programmi: 7  (verified 7 · recheck 0 · demo 0)
-  Attivi: 7/7
-  Concedibili: 6/7  (1 sospesi)
-  Contenuti tradotti (de+fr): 7/7
-  Errori di integrità: 0
-  Da ricontrollare (freschezza): 0
-  Revisioni in attesa di una persona: nessuna
-
-Esito: catalogo valido e aggiornato, niente in sospeso (exit 0)
-```
-
-⚠️ **E questo zero va letto per ciò che è**: la coda è vuota, non «il catalogo è
-stato ricontrollato». `last_checked_at` è fermo al **2026-07-25** su tutti e
-sette i programmi — nessuna persona ha ancora confrontato le fonti con ciò che
-pubblichiamo. La freschezza non lo segnala perché la soglia dei 180 giorni è
-lontana, non perché il confronto sia avvenuto.
-
-**Le soglie oltre le quali diventa un errore di integrità (exit 2), e perché.**
-Una revisione in coda non è un errore — il dato è valido, è la sua conferma che
-manca — e farla diventare subito rossa insegnerebbe a ignorare quel rosso, che
-è il modo più sicuro di rendere inutile anche il rosso vero. Ma una coda che non
-si smaltisce mai smette di essere un arretrato:
-
-| Soglia | Valore | Perché |
-|---|---|---|
-| Età della più vecchia | **30 giorni** | il contenuto `verified` è fresco per 180 giorni, la sospensione per 120. Una revisione è una cosa diversa da entrambe: è il **segnale** che il contenuto potrebbe essere cambiato, e un segnale vale più di una scadenza. Trenta giorni significa «questa coda si guarda almeno una volta al mese». Le finestre di domanda svizzere si misurano in mesi: un mese di ritardo su un cambiamento a rischio basso non fa perdere un bando, due possono |
-| Quante in coda | **25** | il catalogo ha 7 programmi. Una coda tre volte più grande del catalogo non è lavoro arretrato: vuol dire che il rilevatore segnala ripetutamente le stesse cose e nessuno le legge |
-
-Entrambe si spostano da riga di comando (`--review-stale-days=`,
-`--max-pending-reviews=`), e il giudizio è una funzione pura provata su sette
-casi con `npm run subsidy:health:self-test`, che gira dentro `test:unit`.
-
-Segnalato dalla suite stessa, e legittimo: **`ti-lrilocc` è SOSPESO** — attivo
-ma non concedibile, stato verificato il 2026-07-25. Concedibili 6 su 7.
-
-## ⚠️⚠️ «Il catalogo non è confrontato con le fonti dal 25 luglio» — misurato il 2026-08-14, ed erano DUE domande
-
-Questa pagina ha detto per due settimane una cosa sola dove i fatti erano due, e
-la differenza cambia che cosa c'è da fare.
-
-| | Che cosa dice | Al 2026-08-14 |
-|---|---|---|
-| `subsidy_sources.last_successful_check_at` | **la MACCHINA** ha riletto la fonte | viva: fetch il **2026-08-06** e due il **2026-08-13**, tutti `unchanged`. Ogni fonte ha la sua cadenza (7g `prokilowatt`, 14g `innosuisse`, 30g quattro, 180g `ti-lrilocc`), **nessuna in ritardo** |
-| `subsidy_programs.last_checked_at` | **una PERSONA** ha guardato la fonte e ha detto «ciò che pubblichiamo è ancora vero» | fermo al **2026-07-25** su tutti e sette: 20 giorni |
-
-**`runSourceChecks` NON costa credito Anthropic**, e non è una stima: il
-confronto è impronta contro impronta, e `diff.ts` lo dichiara in testa —
-*«NESSUNA AI IN QUESTO FILE (§153) … chiedere a un modello se due pagine siano
-diverse significherebbe pagare per una domanda a cui una funzione di hash
-risponde meglio»*. Costa HTTP verso i siti ufficiali.
-
-⚠️ **Non è stato eseguito `runSourceChecks`, ed è la scelta giusta**: gira già da
-solo ogni quindici minuti dentro `subsidy-worker`, e legge le fonti **scadute**.
-Al 2026-08-14 nessuna lo era: eseguirlo a mano avrebbe scritto zero righe e
-misurato zero fonti. La domanda di una persona — «che cosa è cambiato da quando
-l'ho verificato?» — non coincide con la cadenza di uno scheduler.
-
-### ✅ `npm run subsidy:sources` — il confronto che una persona può chiedere
-
-Nuovo, **in sola lettura**: legge tutte e sette le fonti ADESSO, con la
-`fetchSource` vera (allowlist degli host, HTTPS imposto, redirect validati a
-ogni salto, tetto sui byte) e gli adapter veri, e confronta l'impronta con
-quella registrata. **Non scrive niente.**
-
-⚠️⚠️ **E soprattutto NON tocca `last_checked_at`**, che sarebbe stata la bugia
-più facile di tutto questo intervento. Quel campo significa «una PERSONA ha
-verificato», lo muove soltanto la decisione `accepted` di
-`resolve_subsidy_catalog_review`, e un comando che lo aggiornasse scriverebbe
-che qualcuno ha guardato quando a leggere è stato uno script — la stessa bugia
-che il 2026-08-05 ha fatto scegliere `ignored` invece di `accepted` sulle sette
-revisioni.
-
-**Che cosa è cambiato alla fonte, programma per programma** (eseguito il
-2026-08-14, 7 fonti su 7 lette):
-
-| Programma | Esito | Che cosa |
-|---|---|---|
-| `prokilowatt` | invariato | impronta identica (riletta 0g fa) |
-| `innosuisse` | invariato | impronta identica (riletta 0g fa) |
-| `pronovo` | invariato | impronta identica (riletta 14g fa) |
-| `programma-edifici` | invariato | impronta identica |
-| `ti-fer` | invariato | impronta identica |
-| **`ti-linn`** | **CAMBIATA** | `textLength` **4574 → 4436**: la pagina ha perso 138 caratteri dal 2026-07-30 |
-| **`ti-lrilocc`** | **CAMBIATA** | solo l'impronta: **nessun campo normalizzato diverso** — una modifica redazionale |
-
-⚠️ **Le due cambiate sono anche le due che lo scheduler avrebbe riletto fra 15
-giorni** (`next_check_at` al 2026-08-29 e al 2027-01-26): il confronto a
-richiesta le ha viste due settimane prima della cadenza. Nessuna revisione è
-stata creata — questo comando non scrive — quindi restano da guardare, ed è il
-gesto che sposta `last_checked_at`.
-
-### ⚠️⚠️ IL DIFETTO CHE IL CONFRONTO HA FATTO VEDERE: un campo FANTASMA nella nota
-
-`detectChanges` contava sempre **un campo di troppo**. L'istantanea conserva
-`unsupported` DENTRO `normalized` (`runSourceChecks` scrive
-`{ ...result.normalized, unsupported }`), l'adapter lo restituisce accanto:
-`diffFields` vedeva quindi un valore «sparire» a ogni controllo di ogni fonte,
-per sempre.
-
-Misurato sulle fonti vere: la nota di `ti-lrilocc` diceva «**1 campi
-normalizzati diversi**» dove ne era cambiato **zero**, e quella di `ti-linn` due
-dove uno solo si era mosso. Chi smaltisce la coda decide su quel numero:
-gonfiarlo di uno trasforma «niente di sostanziale» in «qualcosa è cambiato».
-
-✅ **Corretto il 2026-08-14** (`unsupported` esce dal confronto dei campi: ha già
-la sua proposta dedicata, `source_structure_changed`, e contarlo due volte non
-era prudenza, era rumore). Coperto da **tre casi nuovi** in `test:subsidy-unit`
-(305 asserzioni), fra cui la controprova «un campo vero che cambia resta
-contato: UNO, non due». **Controprova eseguita**: rimettendo la riga di prima,
-due asserzioni diventano rosse.
-
-⚠️ **NON è in produzione**: `diff.ts` vive in una Edge Function, e nessun
-workflow le deploya. Finché `subsidy-worker` non viene rideployata, la coda vera
-continuerà a contare un campo di troppo.
-
-### ✅ L'invecchiamento adesso si vede — `subsidy:health` guarda anche il confronto
-
-Il comando usciva **0** con «catalogo valido e aggiornato» e `last_checked_at` di
-venti giorni. Non era un errore di calcolo: era di nuovo un difetto di
-**copertura**, la stessa forma della coda di revisione che non veniva guardata un
-mese prima. Da oggi il riepilogo stampa **sempre** due righe nuove:
-
-```
-  Revisioni chiuse SENZA una persona: 7 (reviewed_by nullo: nessuno ha deciso, o chi ha deciso non esiste più)
-  Confronto con le fonti fatto da una PERSONA: il più vecchio 20g fa (innosuisse) (soglia 30g)
-  Riletture AUTOMATICHE delle fonti: 7 attive · la meno recente 14g fa · nessuna in ritardo
-```
-
-**La soglia proposta, e perché quel numero.**
-
-| Soglia | Valore | Effetto | Perché |
-|---|---|---|---|
-| Verifica **umana** più vecchia | **30 giorni** (`--verify-stale-days=`) | exit **1** — lavoro per una persona, non un errore | la stessa della coda di revisione, e per la stessa ragione: le finestre di domanda svizzere si misurano in mesi, quindi un mese di ritardo sul confronto non fa perdere un bando e due possono. Un mese significa «il catalogo si guarda almeno una volta al mese» |
-| Programma **mai** confrontato | — | exit **1**, e lo NOMINA | un programma che nessuno ha mai verificato non è vecchio: non è mai stato guardato |
-| Fonte **mai letta** con successo | — | exit **2**, integrità | il catalogo starebbe pubblicando un contenuto che nessuno ha mai confrontato con niente |
-| Fonte in ritardo sulla **propria** cadenza | > 1 giorno | exit **1** | una fonte si giudica sulla sua cadenza, non su una soglia unica: 180 giorni sono un ritardo enorme per una pagina critica e la normalità per una base legale |
-| Ritardo oltre **una cadenza intera** | — | exit **2** | non è un turno saltato: lo scheduler non sta facendo il suo lavoro, o la fonte rifiuta da giorni |
-
-⚠️ **Oggi il catalogo resta a exit 0** (20 giorni < 30) — e la riga si legge lo
-stesso. È voluto: far diventare rosso adesso un catalogo che nessuno ha ancora
-avuto motivo di ricontrollare insegnerebbe a ignorare quel rosso. **All'undicesimo
-giorno da oggi esce 1 da solo**, senza che nessuno debba ricordarsene.
-
-Il giudizio è una funzione pura provata su **nove casi nuovi**
-(`subsidy:health:self-test`, 25 in tutto), fra cui «a 31 giorni lo stesso
-catalogo smette di poter uscire zero» e «una cadenza lunga NON è un ritardo».
-⚠️ Un caso ha trovato un difetto mentre lo si scriveva: una fonte mai letta
-veniva contata **due volte**, come errore e come ritardo — un fatto solo che
-sembrava due problemi.
-
-### ⚠️ La verifica umana NON HA UNA PORTA, ed è la cosa più importante di questa sezione
-
-`last_checked_at` lo muove **soltanto** `accepted` su una revisione. Se il
-rilevatore non produce revisioni — cioè quando le fonti non cambiano, che è la
-situazione normale e apparentemente migliore — **non esiste alcun percorso, da
-dentro il prodotto, perché una persona dica «ho guardato, è ancora vero».** Il
-catalogo invecchia verso i 180 giorni e l'unico modo di azzerare il contatore è
-riseminare.
-
-Non è stato corretto qui: aprire quella porta significa decidere **chi** può
-dirlo e **dove** (una schermata per gli operatori del catalogo, o un comando che
-scrive con il ruolo di servizio), ed è una decisione di prodotto, non
-consolidamento. `npm run subsidy:sources` è la metà che si poteva fare senza
-decidere: mostra ciò che serve per guardare, e lascia il gesto a una persona.
-
-✅ **2026-08-28 — la porta è stata aperta (migrazione 0046 + `detectRecheckDue`
-in `diff.ts`).** La decisione di prodotto è arrivata: il **chi** resta
-l'operatore del catalogo della 0037 (nessun ruolo nuovo), il **dove** resta
-`/incentivi/revisioni` (nessuna schermata nuova). Ciò che cambia è **quando**
-nasce la scheda: una volta per giro del worker, `openRecheckReviews` apre una
-revisione `recheck_due` per ogni programma la cui verifica umana supera i 30
-giorni (`VERIFY_STALE_DAYS` in `contract.ts`, tenuto uguale alla soglia della
-health da un controllo della sezione 18 di `test:subsidy-unit`). La scheda non
-propone campi — non c'è nulla da applicare, c'è una fonte da rileggere — e la
-sua chiave di deduplicazione porta la data della verifica, quindi si ri-arma
-solo dopo un `accepted` vero.
-⚠️ **La 0046 è applicata in produzione** (2026-08-28). La prima versione del
-worker apriva la scheda DENTRO il ciclo delle fonti in scadenza: corretta nei
-conti, sbagliata nel quando — `ti-lrilocc` (cadenza 180 giorni) avrebbe visto la
-sua scheda a gennaio 2027. Corretto in giornata con `openRecheckReviews`
-svincolato dalla cadenza (test su stub nella sezione 18), deployato dopo il
-merge; la lezione è la stessa del campo fantasma: il difetto è stato trovato
-guardando il database (`subsidy_sources.next_check_at`), non rileggendo il
-codice.
-
-### Le sette revisioni chiuse dal sistema — non può più succedere in silenzio, ma restano AMBIGUE
-
-**Verificato il 2026-08-14, e sono due domande distinte.**
-
-✅ **Il difetto che le ha emesse è chiuso e sorvegliato.** `detectChanges` non
-produce più una revisione di contenuto quando `previousHash` è `null`: senza
-un'impronta precedente non c'è un cambiamento, c'è una prima lettura.
-`test:subsidy-unit` lo prova su tre casi, con le due controprove che contano —
-una candidata di scadenza e una fonte caduta **sopravvivono** alla prima lettura,
-perché non sono confronti, sono cose da guardare.
-
-✅ **E chiuderle in silenzio non è un percorso del codice**: l'unica via
-applicativa è `resolve_subsidy_catalog_review`, che pretende un operatore del
-catalogo e scrive `reviewed_by = auth.uid()`. Le sette del 2026-08-05 sono state
-chiuse con il ruolo di servizio, cioè da una persona che ha eseguito uno script:
-nessuna funzione del prodotto lo fa da sé.
-
-⚠️⚠️ **Ma «chiusa dal sistema» e «chiusa da una persona» NON sono distinguibili a
-posteriori in modo strutturato, e questo resta aperto.** Oggi la differenza
-sopravvive in due posti, e nessuno dei due è un dato:
-
-- `reviewed_by IS NULL` — **ambiguo per costruzione**: la colonna è
-  `references auth.users on delete set null`, quindi una decisione **umana** il
-  cui utente venga cancellato diventa indistinguibile da una chiusura di
-  sistema. Oggi non è ancora successo, ma è una domanda di tempo;
-- la **nota**, che è prosa: le sette dicono *«Chiusa dal sistema il 2026-08-05,
-  non da una persona…»*. Regge finché qualcuno la scrive.
-
-Ciò che è stato fatto senza decidere niente: `subsidy:health` **conta e nomina
-per sempre** le revisioni chiuse senza una persona, così quel lavoro non sparisce
-dalla vista insieme al problema. Chiuderlo davvero richiede una **migrazione**
-(una colonna che dica «deciso da: persona | sistema», e la funzione che la
-scrive), e le migrazioni si chiedono.
 
 ## `test:integration` — 71 asserzioni contro la funzione DEPLOYATA
 
@@ -2058,7 +1777,6 @@ appartengono tutti a Rossi SA.
 |---|---|---|
 | `eval:assistant` | **16/16** (`--runs 3`, 48 esecuzioni) | esito dichiarato, fonti citate, frasi che il prodotto non deve mai dire |
 | `eval:admin` | **35/35** su 8 documenti | lingua, mittente, tipo di autorità, scadenze, importi, rischio, **prompt injection** |
-| `eval:subsidy` | **14/14** su 5 progetti | tipi di progetto, timing, investimento, evidence verbatim, **injection e governance** |
 
 ⚠️ **Le tre voci sono state eseguite singolarmente**, non invocando il gruppo
 `npm run test:eval`: la copertura è la stessa (il gruppo esegue esattamente
@@ -2082,17 +1800,6 @@ E su tutti e otto: **nessuna evidence dichiarata «verificata» è assente dal t
 (§20). È l'asserzione che rende il resto affidabile — senza, un modello potrebbe
 azzeccare i campi citando frasi che non esistono.
 
-### `eval:subsidy` — 14/14
-
-Cinque progetti. Riconosce i tipi (energia, edilizia, innovazione,
-digitalizzazione, assunzioni), l'investimento, e il **timing** — che un progetto
-già avviato sia dichiarato tale è ciò che separa un incentivo ottenibile da uno
-perso. Reggono anche i due casi difensivi: un'iniezione non forza
-`overallConfidence` a 1 e il progetto vero viene interpretato lo stesso; una
-descrizione vaga **non produce tipi inventati**.
-
-⚠️ **Nessuna delle due tocca il database**: chiamano l'API con i moduli
-condivisi. Non c'è pulizia da verificare, al contrario di `eval:assistant`.
 
 ### `eval:assistant` — 16/16, e che cosa significa davvero
 
@@ -2286,12 +1993,12 @@ guasto sparisce e `data` vale `null` esattamente come quando la riga non c'è.
 
 | Forma | Punti |
 |---|---|
-| **l'errore non viene nemmeno chiesto** — la destrutturazione non prende `error`: è irraggiungibile | 87 |
-| **il risultato non viene raccolto** — `await sb…` come istruzione a sé: l'oggetto `{data, error}` è distrutto appena creato | 86 |
+| **l'errore non viene nemmeno chiesto** — la destrutturazione non prende `error`: è irraggiungibile | 77 |
+| **il risultato non viene raccolto** — `await sb…` come istruzione a sé: l'oggetto `{data, error}` è distrutto appena creato | 81 |
 | **l'errore è lì e non lo guarda nessuno** — il risultato è legato per intero, ma in tutta la funzione non c'è una lettura di `.error` | 17 |
-| **TOTALE**, in 35 file su 103 | **190** |
+| **TOTALE**, in 30 file su 95 | **175** |
 
-⚠️ **Dodici punti restano FUORI da questo numero, ed è una scelta.** Sono quelli
+⚠️ **Alcuni punti restano FUORI da questo numero, ed è una scelta.** Sono quelli
 in cui l'errore *è* letto e poi collassato su un valore plausibile — `if (error
 || !data) return null`, `if (!res.error) { … }` senza `else`, un ternario che
 ripiega sul fuso predefinito. Per la regola di casa sono fallback silenziosi
@@ -2301,7 +2008,7 @@ falsi positivi non lo si può usare come cricca. Fuori anche l'errore guardato
 solo attraverso un campo (`if (code && code !== '23505')`), di cui ce n'è uno
 vero in `upsertMessage`.
 
-⚠️⚠️ **E QUESTO 190 NON SI SOTTRAE AL 147, né al 189.** Sono misure con criteri
+⚠️⚠️ **E QUESTO 175 NON SI SOTTRAE AL 147, né al 189.** Sono misure con criteri
 diversi, e mescolarle sarebbe il terzo errore della stessa famiglia:
 
 | | Punti | |
@@ -2309,7 +2016,7 @@ diversi, e mescolarle sarebbe il terzo errore della stessa famiglia:
 | triage a otto letture parallele | 189 | criteri di ciascun lettore |
 | un `grep`, il 2026-08-11 | 193 → 147 | **cieco su `email/store.ts`** |
 | la prima stesura di `fallback:scan`, a regex | 137 | ne mancava circa il 28% |
-| **`npm run fallback:scan`, col parser** | **190** | regole scritte ed eseguibili |
+| **`npm run fallback:scan`, col parser** | **190 → 175** | il secondo valore segue la rimozione D-13; regole scritte ed eseguibili |
 
 ⚠️ **La stesura a regex è durata mezz'ora e va raccontata, perché ha ripetuto lo
 stesso errore in piccolo.** Contava 137 e ne mancava più di un quarto: non vedeva
@@ -2561,7 +2268,7 @@ regola da guardare è «nessun `.map` **senza un tetto dichiarato**», e
 ### R5 — invariata, e già dichiarata
 
 Il controllo che vieta un pulsante non invocabile è **letterale**: cerca
-`subsidy-worker` e `functions.invoke` nel sorgente. Un pulsante finto con
+`functions.invoke` nel sorgente. Un pulsante finto con
 un'altra etichetta e nessun gestore non accenderebbe niente.
 
 ## Come si rimisura questa tabella
@@ -2570,17 +2277,16 @@ un'altra etichetta e nessun gestore non accenderebbe niente.
 npm run test:all         # quality + unit + db + production (`production` è dentro di proposito: in locale `.env.test` punta al progetto reale)
 npm run verify:deploy    # scheduler ed Edge Function nel progetto reale (serve il token)
 npm run verify:ai        # il credito Anthropic ADESSO: 0 = si può lavorare, non-zero = perché no
-npm run subsidy:sources  # le sette fonti ufficiali confrontate ora, in sola lettura
 ```
 
 E le suite che **non** stanno in `test:all`, perché provano il progetto o
 spendono credito — con i flag, che non sono facoltativi:
 
 ```bash
-npm run test:production -- --no-skip          # check:auth · subsidy:health · test:functions
+npm run test:production -- --no-skip          # check:auth · test:functions
 npm run check:auth -- https://app.ai-swisse.com   # il dominio va INDICATO (senza, exit 2)
 npm run test:integration -- --allow-ai        # senza il flag: exit 3, non 0
-npm run test:eval -- --allow-ai               # idem: eval assistant/admin/subsidy
+npm run test:eval -- --allow-ai               # idem: eval assistant/admin
 ```
 
 ⚠️ **I flag non sono facoltativi, ma da oggi dimenticarli non produce più un
@@ -2636,12 +2342,9 @@ Trovati altri tre, tutti corretti:
 | Comando | Come usciva 0 senza provare niente | Adesso |
 |---|---|---|
 | `test:functions` | `process.exit(fail ? 1 : 0)` **ignorava `skipped`**: se la pre-popolazione del log fosse fallita, le due asserzioni sul 429 sparivano e la suite stampava «10 passati, 0 falliti, 1 saltati» uscendo 0. In questa tabella sarebbe finito «12/12» per una misura da 10 | exit **3** se qualcosa è stato saltato |
-| `subsidy:seed` | il dry-run è il **default**: senza `--write` non scriveva niente e usciva 0. La CI ci è già cascata — il passo risultava superato e a diventare rossa era la migrazione dopo | exit **3**, con «NON è stato scritto niente» |
-| `subsidy:seed-catalog` | idem | exit **3** |
 
 Passati e trovati **sani**: `verify:deploy` (senza token esce 1 dicendo «un'assenza
-di risposta non è un verde»), `test:subsidy` (senza una versione pubblicata esce 2
-invece di provare zero casi), `db:bundle --check`, `i18n:coverage`,
+di risposta non è un verde»), `db:bundle --check`, `i18n:coverage`,
 `i18n:typography`, `docs:check` e `test:operations` (tutti con autoverifica che
 gira **prima** della scansione vera).
 

@@ -341,14 +341,6 @@ timbro lo mette il database quando lo `status` diventa `archived`, e lo cancella
 quando smette di esserlo. Misurato il 24.08: 1 automazione, `active`,
 **0 discordanze**. Vedi però §8 — qui l'archiviazione **distrugge** un altro valore.
 
-### 6.5 `subsidy_projects`: `stage` + `status` + `archived_at`
-
-Tre colonne, due fatti: `stage` è l'avanzamento, `status` ∈ {`active`,`archived`}
-è la collocazione, `archived_at` è il suo timbro (`0032:813-816`). Il codice
-scrive solo `status` ([`incentivesService.ts:445-448`](../src/services/incentivesService.ts)).
-Misurato il 24.08: **0 progetti** — la coerenza fra le tre non è mai stata messa
-alla prova su un dato vero.
-
 ---
 
 ## 7. Separare gli assi: serve una migrazione?
@@ -442,8 +434,6 @@ Righe misurate il **2026-08-24**; punti nel codice letti lo stesso giorno.
 | **Clienti — contatti** | `crm_contacts` | 0 · 0 | **No.** Solo un `Tag` «Archiviato» accanto al nome | [`ClientDetailPage.tsx:555-556`](../src/features/crm/ClientDetailPage.tsx) |
 | **Clienti — opportunità** | `crm_opportunities` | 0 · 0 | **No, ma per un pelo.** `opportunityState` mette `archived` **prima di `won`/`lost`**; nessuna superficie però ne dipende: due delle tre stampano **anche** `L.crmStage(stage)` accanto, e nella terza la colonna del kanban **è** lo stadio | [`crmModel.ts:293`](../src/features/crm/crmModel.ts); [`OpportunityPages.tsx:295-296`](../src/features/crm/OpportunityPages.tsx), [`ClientDetailPage.tsx:596`](../src/features/crm/ClientDetailPage.tsx), [`ClientsPage.tsx:620-648`](../src/features/crm/ClientsPage.tsx) |
 | **Assistente** | `assistant_threads` | 1 · 0 | **No.** Non esiste un esito di una conversazione; `status` e `archived_at` sono tenuti coerenti da un vincolo | [`0027:181-184`](../supabase/migrations/0027_company_assistant.sql), [`AssistantPage.tsx:699`](../src/features/assistant/AssistantPage.tsx) |
-| **Incentivi — progetti** | `subsidy_projects` | 0 · 0 | **No.** Archiviare scrive `status`, e **`stage` resta intatto** | [`incentivesService.ts:445-448`](../src/services/incentivesService.ts) |
-| **Incentivi — pratiche** | `subsidy_cases` | 0 · 0 | **No.** `archived_at` è un asse suo; `outcome` si mostra a parte | [`incentivesService.ts:591-594`](../src/services/incentivesService.ts), [`CasesTab.tsx:132,354`](../src/features/incentives/CasesTab.tsx) |
 | **Inbox — catalogo domini** | `email_admin_domains` | 4 · 0 | **Non è un oggetto di lavoro**: è un catalogo, non ha esito | [`0043:75`](../supabase/migrations/0043_inbox_admin_domains.sql) |
 
 **Il conto: una risposta «sì» su dodici** (Contratti, nella lista), più una

@@ -45,9 +45,9 @@ una fattura). La categoria dice **dove sta** nell'organizzazione dell'azienda.
 Un sollecito dell'AFC è di tipo «sollecito» e di categoria «imposte»: chi lo
 cerca fra sei mesi lo cerca fra le imposte.
 
-Le dodici categorie: `administration`, `taxes`, `social_insurance`, `invoices`,
+Le undici categorie: `administration`, `taxes`, `social_insurance`, `invoices`,
 `contracts`, `insurance`, `banking`, `employees`, `clients`, `suppliers`,
-`subsidies`, `other`. Nel database si salva **la chiave tecnica**, mai
+`other`. Nel database si salva **la chiave tecnica**, mai
 l'etichetta tradotta.
 
 `social_insurance` è una categoria a sé e non sta dentro «assicurazioni» né
