@@ -751,9 +751,12 @@ section('13 · Il CRM dentro le automazioni (0026 — §136–§139)');
   //     inneschi dei moduli fuori perimetro restano nel codice ma si nascondono
   //     in UI dietro `VITE_LEGACY_MODULES`. Il flag non entra in questo file:
   //     le funzioni sono pure e lo ricevono come parametro.
+  //     0053 — anche «fattura emessa scaduta»: Finanze è fuori perimetro quanto
+  //     il CRM, e un modello che si offre per un modulo nascosto è una porta
+  //     che non porta da nessuna parte.
   ok(AUTOMATION_TEMPLATES.filter((x) => x.legacyOnly).map((x) => x.id).sort().join(',')
-      === 'crm_follow_up_overdue,crm_opportunity_unowned',
-    'solo i due modelli sulle trattative portano la marcatura legacy (D-10)');
+      === 'crm_follow_up_overdue,crm_opportunity_unowned,finance_issued_overdue',
+    'solo i modelli sulle trattative e la fattura emessa portano la marcatura legacy (D-10)');
   ok(isLegacyTrigger('crm_follow_up_due') && isLegacyTrigger('finance_item_ready')
     && isLegacyTrigger('contract_verified') && !isLegacyTrigger('document_analysis_completed')
     && !isLegacyTrigger('task_created'),
@@ -936,6 +939,8 @@ section('14 · I FATTI non nascono da un guasto: `loadFacts` solleva, non invent
       account_owner_user_id: 'u-1', relationship_status: 'active', canton: 'TI', city: 'Lugano',
       source: 'manual', last_contact_at: null }],
     crm_organization_roles: [], crm_opportunities: [],
+    finance_issued_invoices: [{ id: 'f-1', company_id: 'A', organization_id: 'o-1',
+      invoice_number: '2026-0014', due_date: '2026-08-20', total_amount: 1250.5, currency: 'CHF' }],
   };
 
   // --- 14.2 Ogni caricatore SOLLEVA sul proprio guasto ---------------------
@@ -953,6 +958,8 @@ section('14 · I FATTI non nascono da un guasto: `loadFacts` solleva, non invent
       evt: evento({ entity_type: 'crm_organization', entity_id: 'o-1', event_type: 'crm_organization_created' }) },
     { nome: 'i RUOLI del CRM', rotta: 'crm_organization_roles', codice: 'facts_crm_roles',
       evt: evento({ entity_type: 'crm_organization', entity_id: 'o-1', event_type: 'crm_organization_created' }) },
+    { nome: 'la FATTURA EMESSA', rotta: 'finance_issued_invoices', codice: 'facts_finance_issued_invoice',
+      evt: evento({ entity_type: 'finance_issued_invoice', entity_id: 'f-1', event_type: 'finance_issued_invoice_overdue' }) },
   ];
 
   for (const c of casi) {
@@ -975,6 +982,22 @@ section('14 · I FATTI non nascono da un guasto: `loadFacts` solleva, non invent
     const facts = await loadFacts(sbFinto(MONDO) as never, evento(), NOW);
     ok(facts !== null && facts.facts['task.priority']?.known === true,
       'e sul cammino normale i fatti si costruiscono come sempre', JSON.stringify(facts?.facts['task.priority']));
+  }
+  {
+    // 0053 — il caricatore della fattura emessa: fatti riletti dalla riga,
+    // importo con la sua valuta, e responsabile dalla RELAZIONE col cliente
+    // (la catena di §136 senza l'anello della trattativa).
+    const facts = await loadFacts(sbFinto(MONDO) as never, evento({
+      entity_type: 'finance_issued_invoice', entity_id: 'f-1',
+      event_type: 'finance_issued_invoice_overdue',
+    }), NOW);
+    ok(facts !== null
+      && facts.facts['issued_invoice.total_amount']?.known === true
+      && facts.facts['issued_invoice.total_amount']?.currency === 'CHF'
+      && facts.crmOrganizationId === 'o-1'
+      && facts.assigneeUserId === 'u-1',
+      '0053 — la fattura emessa: fatti dalla riga, valuta sull’importo, responsabile dalla relazione',
+      JSON.stringify(facts?.facts['issued_invoice.total_amount']));
   }
 
   // --- 14.4 Il codice è quello che il worker registra ----------------------

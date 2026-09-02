@@ -2955,6 +2955,9 @@ export const it = {
       crmFollowUpDueDesc: 'Scatta quando la data del prossimo passo di una trattativa è passata. La finestra guarda solo gli ultimi giorni: non recupera il passato.',
       crmFollowUpSequenceDue: 'Passo di follow-up per silenzio',
       crmFollowUpSequenceDueDesc: 'Scatta quando, dopo un’email uscente, non risultano risposte né interazioni e la trattativa è ancora nella fase configurata.',
+      // 0053 — la fattura emessa scaduta.
+      financeIssuedOverdue: 'una fattura emessa supera la scadenza',
+      financeIssuedOverdueDesc: 'Scatta una volta sola, quando la scadenza di una fattura emessa è passata e la fattura non risulta pagata. La finestra guarda solo gli ultimi giorni: non recupera il passato.',
       financeReadyDesc: 'Scatta quando una persona dichiara che i dati letti corrispondono al documento.',
     },
     fields: {
@@ -3000,6 +3003,13 @@ export const it = {
       financeReview: 'Stato della verifica',
       financeDuplicate: 'Possibile duplicato',
       financeFlagged: 'Ha segnalazioni',
+      // 0053 — i campi della fattura EMESSA: prefisso proprio, perché i
+      // `finance.*` sono le voci fornitore lette dall’analisi.
+      issuedInvoiceNumber: 'Numero della fattura emessa',
+      issuedInvoiceCustomer: 'Cliente',
+      issuedInvoiceDueDate: 'Scadenza della fattura emessa',
+      issuedInvoiceTotal: 'Importo totale',
+      issuedInvoiceCurrency: 'Valuta',
       contractType: 'Tipo di contratto',
       contractName: 'Nome del contratto',
       contractCounterparty: 'Controparte',
@@ -3098,6 +3108,8 @@ export const it = {
       crmUnownedDesc: 'Quando nasce una trattativa che non è di nessuno, avvisa chi amministra.',
       crmNewCustomerName: 'Nuovo cliente',
       crmNewCustomerDesc: 'Quando una controparte riceve il ruolo di cliente, crea un’attività di avvio collegata alla sua scheda.',
+      financeIssuedOverdueName: 'Fattura emessa scaduta',
+      financeIssuedOverdueDesc: 'Quando una fattura emessa supera la scadenza senza risultare pagata, crea un’attività di sollecito per oggi e avvisa il responsabile del cliente.',
       reviewTag: 'Da verificare',
     },
     validation: {

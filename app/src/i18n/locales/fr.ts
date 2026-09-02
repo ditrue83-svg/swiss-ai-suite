@@ -2805,6 +2805,9 @@ export const fr: Dictionary = {
       crmFollowUpDueDesc: 'Se déclenche lorsque la date de la prochaine étape est passée. La fenêtre ne regarde que les derniers jours : elle ne rattrape pas le passé.',
       crmFollowUpSequenceDue: 'Étape de relance en l’absence de réponse',
       crmFollowUpSequenceDueDesc: 'Se déclenche lorsqu’après un e-mail sortant aucune réponse ni interaction n’est enregistrée et que l’affaire est toujours dans la phase configurée.',
+      // 0053 — la facture émise échue.
+      financeIssuedOverdue: 'une facture émise dépasse son échéance',
+      financeIssuedOverdueDesc: 'Se déclenche une seule fois, lorsque l’échéance d’une facture émise est passée et que la facture n’est pas réglée. La fenêtre ne regarde que les derniers jours : elle ne rattrape pas le passé.',
       financeReadyDesc: 'Se déclenche lorsqu’une personne déclare que les données lues correspondent au document.',
     },
     fields: {
@@ -2850,6 +2853,13 @@ export const fr: Dictionary = {
       financeReview: 'Statut de la vérification',
       financeDuplicate: 'Doublon possible',
       financeFlagged: 'Comporte des signalements',
+      // 0053 — les champs de la facture ÉMISE : préfixe propre, car les champs
+      // `finance.*` sont les postes fournisseurs lus par l’analyse.
+      issuedInvoiceNumber: 'Numéro de la facture émise',
+      issuedInvoiceCustomer: 'Client',
+      issuedInvoiceDueDate: 'Échéance de la facture émise',
+      issuedInvoiceTotal: 'Montant total',
+      issuedInvoiceCurrency: 'Monnaie',
       contractType: 'Type de contrat',
       contractName: 'Nom du contrat',
       contractCounterparty: 'Contrepartie',
@@ -2947,6 +2957,8 @@ export const fr: Dictionary = {
       crmUnownedDesc: 'Quand une opportunité est créée sans responsable, l’administration est prévenue.',
       crmNewCustomerName: 'Nouveau client',
       crmNewCustomerDesc: 'Quand une contrepartie reçoit le rôle de client, une tâche de démarrage liée à sa fiche est créée.',
+      financeIssuedOverdueName: 'Facture émise échue',
+      financeIssuedOverdueDesc: 'Quand une facture émise dépasse son échéance sans être réglée, une tâche de relance est créée pour aujourd’hui et le responsable du client est prévenu.',
       reviewTag: 'À vérifier',
     },
     validation: {

@@ -214,7 +214,11 @@ export type AutomationEventType =
   // gira dentro il worker delle automazioni già acceso. Nessun cron nuovo.
   | 'crm_organization_created' | 'crm_role_added'
   | 'crm_opportunity_created' | 'crm_opportunity_stage_changed'
-  | 'crm_opportunity_won' | 'crm_follow_up_due' | 'crm_follow_up_sequence_due';
+  | 'crm_opportunity_won' | 'crm_follow_up_due' | 'crm_follow_up_sequence_due'
+  // 0053 — la fattura emessa scaduta: la emette la scansione
+  // `finance_emit_issued_invoice_overdue` dentro il worker delle automazioni,
+  // sul modello di `crm_follow_up_due`. Nessun cron nuovo.
+  | 'finance_issued_invoice_overdue';
 export type AutomationEventStatus = 'pending' | 'processing' | 'done' | 'failed' | 'dead_letter';
 /**
  * Stato di una regola. L'archiviazione è uno STATO — non una data come per le

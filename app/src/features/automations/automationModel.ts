@@ -333,6 +333,12 @@ export function entityLink(
   // indovinata sarebbe un collegamento rotto travestito da collegamento.
   if (entityType === 'crm_organization') return `/clienti/${entityId}`;
   if (entityType === 'crm_opportunity') return '/clienti?vista=pipeline';
+  // 0053 — la fattura emessa. ⚠️ La pagina `/finanze/emesse/:id` NON esiste
+  // ancora: arriva con l'interfaccia delle fatture emesse. Il percorso è
+  // dichiarato qui così il giorno in cui la pagina nasce i collegamenti già
+  // portano al posto giusto; fino ad allora apre una rotta senza pagina, ed è
+  // scritto qui invece di lasciarlo scoprire a chi clicca.
+  if (entityType === 'finance_issued_invoice') return `/finanze/emesse/${entityId}`;
   // ⚠️ `contract` manca ancora, ed è un difetto di questo file annotato e non
   // corretto qui: cambiare il comportamento dei Contratti mentre si costruisce
   // il CRM sarebbe una modifica di straforo a un altro modulo.
@@ -557,6 +563,52 @@ export const AUTOMATION_TEMPLATES: readonly AutomationTemplate[] = [
         messageTemplate: '{{task.title}}',
       } as CreateNotificationConfig,
     }],
+  },
+  // -------------------------------------------------------------------------
+  // 0053 — la fattura emessa scaduta.
+  //
+  // Nessuna condizione: l'innesco È già la condizione. La scansione
+  // `finance_emit_issued_invoice_overdue` emette una volta sola (la
+  // deduplicazione è nella funzione SQL) e solo per fatture scadute non
+  // pagate — ripetere qui un filtro sarebbe fingere di fare qualcosa, come per
+  // «follow-up scaduto».
+  // -------------------------------------------------------------------------
+  {
+    id: 'finance_issued_overdue',
+    legacyOnly: true,
+    nameKey: 'automations.templates.financeIssuedOverdueName',
+    descriptionKey: 'automations.templates.financeIssuedOverdueDesc',
+    triggerType: 'finance_issued_invoice_overdue',
+    conditionMatch: 'all',
+    conditions: [],
+    actions: [
+      {
+        key: 'create_task',
+        config: {
+          titleTemplate: '{{issued_invoice.invoice_number}} — {{issued_invoice.total_amount}}',
+          priority: 'medium',
+          // ⚠️ NON `from_finance_due_date`: quella modalità legge il fatto
+          // `finance.due_date`, che esiste solo per le voci fornitore (0021).
+          // Qui la data è `issued_invoice.due_date` ed è GIÀ PASSATA —
+          // scriverla sull'attività nuova la farebbe nascere scaduta. Come per
+          // «follow-up scaduto»: chi sollecita lo fa oggi.
+          dueDate: 'in_days',
+          dueDateDays: 0,
+          linkEntity: true,
+        } as CreateTaskConfig,
+      },
+      {
+        key: 'create_notification',
+        config: {
+          // §136 — al responsabile della RELAZIONE col cliente: lo decide
+          // `store.ts`, che lo legge dalla controparte della fattura. Se la
+          // relazione non ha un responsabile, l'azione si ferma con
+          // `no_recipient` invece di avvisare tutta l'azienda.
+          recipient: 'assignee',
+          messageTemplate: '{{issued_invoice.invoice_number}} — {{issued_invoice.total_amount}}',
+        } as CreateNotificationConfig,
+      },
+    ],
   },
 ];
 

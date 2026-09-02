@@ -2807,6 +2807,9 @@ export const de: Dictionary = {
       crmFollowUpDueDesc: 'Wird ausgelöst, wenn das Datum des nächsten Schritts verstrichen ist. Das Fenster umfasst nur die letzten Tage: Vergangenes wird nicht nachgeholt.',
       crmFollowUpSequenceDue: 'Follow-up-Schritt bei ausbleibender Antwort',
       crmFollowUpSequenceDueDesc: 'Wird ausgelöst, wenn nach einer ausgehenden E-Mail weder Antwort noch Interaktion erfasst wurde und das Geschäft noch in der konfigurierten Phase ist.',
+      // 0053 — die überfällige ausgestellte Rechnung.
+      financeIssuedOverdue: 'eine ausgestellte Rechnung die Frist überschreitet',
+      financeIssuedOverdueDesc: 'Löst genau einmal aus, wenn die Frist einer ausgestellten Rechnung verstrichen ist und die Rechnung nicht als bezahlt gilt. Das Fenster umfasst nur die letzten Tage: Vergangenes wird nicht nachgeholt.',
       financeReadyDesc: 'Löst aus, wenn eine Person bestätigt, dass die ausgelesenen Daten dem Dokument entsprechen.',
     },
     fields: {
@@ -2852,6 +2855,13 @@ export const de: Dictionary = {
       financeReview: 'Status der Prüfung',
       financeDuplicate: 'Mögliche Dublette',
       financeFlagged: 'Hat Hinweise',
+      // 0053 — die Felder der AUSGESTELLTEN Rechnung: eigener Präfix, denn die
+      // `finance.*`-Felder sind die per Analyse gelesenen Lieferantenposten.
+      issuedInvoiceNumber: 'Nummer der ausgestellten Rechnung',
+      issuedInvoiceCustomer: 'Kunde',
+      issuedInvoiceDueDate: 'Fälligkeit der ausgestellten Rechnung',
+      issuedInvoiceTotal: 'Gesamtbetrag',
+      issuedInvoiceCurrency: 'Währung',
       contractType: 'Vertragsart',
       contractName: 'Vertragsname',
       contractCounterparty: 'Gegenpartei',
@@ -2949,6 +2959,8 @@ export const de: Dictionary = {
       crmUnownedDesc: 'Wenn eine Verkaufschance ohne verantwortliche Person entsteht, wird die Administration benachrichtigt.',
       crmNewCustomerName: 'Neuer Kunde',
       crmNewCustomerDesc: 'Wenn eine Gegenpartei die Rolle Kunde erhält, entsteht eine Startaufgabe, die mit ihrem Datenblatt verknüpft ist.',
+      financeIssuedOverdueName: 'Überfällige ausgestellte Rechnung',
+      financeIssuedOverdueDesc: 'Wenn eine ausgestellte Rechnung die Frist überschreitet, ohne als bezahlt zu gelten, entsteht eine Mahnaufgabe für heute und die für den Kunden verantwortliche Person wird benachrichtigt.',
       reviewTag: 'Zu prüfen',
     },
     validation: {
