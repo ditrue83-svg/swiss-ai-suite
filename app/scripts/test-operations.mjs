@@ -246,6 +246,13 @@ export const FUNZIONI_SCOPERTE = {
   '_shared/finance/money.ts#decimal': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
   '_shared/finance/money.ts#negate': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
   '_shared/finance/money.ts#toNumber': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
+  // ⚠️ GENERAZIONE QR-FATTURA, 2026-09-02. Aggiunta nel branch
+  // `improve/finance-customer-invoices` e provata solo con un'esecuzione
+  // usa-e-getta: il test che la ESEGUE è un passaggio successivo dello stesso
+  // lavoro. Appena quel test importa queste due funzioni, questo elenco lo
+  // segnala da solo e le righe escono.
+  '_shared/finance/qrbill.ts#buildSwissQrPayload': 'la scrittrice del payload QR: nessun test la esegue ancora (sanity offline del 2026-09-02, prova dedicata in arrivo)',
+  '_shared/finance/qrbill.ts#generatePaymentReference': 'i riferimenti QRR/SCOR in emissione: nessun test la esegue ancora (sanity offline del 2026-09-02, prova dedicata in arrivo)',
   '_shared/finance/prompt.ts#clampDocumentText': 'la costruzione della richiesta AI: spende credito Anthropic, esaurito dal 2026-08-02',
   '_shared/contracts/periods.ts#normalizeUnit': 'helper della normalizzazione dei periodi: nessun test lo importa per nome',
   '_shared/contracts/validate.ts#normalizeCurrency': 'helper della validazione: nessun test lo importa per nome',

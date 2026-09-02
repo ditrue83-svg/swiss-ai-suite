@@ -32,8 +32,12 @@ export function compact(input: string | null | undefined): string {
  * Un IBAN convertito in cifre supera abbondantemente i numeri rappresentabili
  * esattamente da un `number`: si procede a blocchi, che è il metodo descritto
  * dallo standard stesso.
+ *
+ * Esportato per `qrbill.ts`: la stessa aritmetica serve sia a VERIFICARE un
+ * IBAN o un riferimento SCOR sia a CALCOLARE le cifre di controllo ISO 11649
+ * in generazione. Due implementazioni diverrebbero; una sola non può.
  */
-function mod97(digits: string): number {
+export function mod97(digits: string): number {
   let remainder = 0;
   for (let i = 0; i < digits.length; i += 7) {
     remainder = Number(String(remainder) + digits.slice(i, i + 7)) % 97;
