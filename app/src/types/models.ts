@@ -87,16 +87,6 @@ export interface CompanyMembership {
   role: MemberRole;
 }
 
-export interface CompanyProfile {
-  companyId: string;
-  sector: string | null;
-  employeeCount: number | null;
-  revenueBand: string | null;
-  ownsProperty: boolean;
-  vehicleCount: number;
-  currentProjects: string[];
-}
-
 // ---- Admin AI ---------------------------------------------------------------
 export interface Evidence {
   quote: string;

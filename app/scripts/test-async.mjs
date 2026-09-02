@@ -87,7 +87,7 @@ async function main() {
 
   const A = await makeUser('A');
   const { data: companyA } = await A.client.rpc('create_company_with_owner', {
-    p_legal_name: 'Async Test SA', p_canton: 'Zurigo', p_municipality: 'Zurigo', p_legal_form: 'SA', p_sector: 'servizi',
+    p_legal_name: 'Async Test SA', p_canton: 'Zurigo', p_municipality: 'Zurigo', p_legal_form: 'SA',
   });
   created.companies.push(companyA);
   const mkDoc = async (title) => (await A.client.from('documents').insert({
@@ -148,7 +148,7 @@ async function main() {
   console.log(`\n${B}Sicurezza: resta sincrona anche in modalità async${X}`);
   const Bu = await makeUser('B');
   const { data: companyB } = await Bu.client.rpc('create_company_with_owner', {
-    p_legal_name: 'Altra SA', p_canton: 'Ticino', p_municipality: 'Bellinzona', p_legal_form: 'SA', p_sector: 'servizi',
+    p_legal_name: 'Altra SA', p_canton: 'Ticino', p_municipality: 'Bellinzona', p_legal_form: 'SA',
   });
   created.companies.push(companyB);
   const cross = await invoke(Bu.client, { documentId: doc.id, extraction: EXTRACTION, async: true });

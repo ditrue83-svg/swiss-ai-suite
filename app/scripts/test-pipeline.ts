@@ -61,7 +61,7 @@ async function main() {
   console.log(`\n${DIM}Pipeline Admin AI end-to-end · API + DB reali${X}\n`);
 
   const A = await makeUser('A');
-  const { data: companyId } = await A.client.rpc('create_company_with_owner', { p_legal_name: CTX.legalName, p_canton: 'Ticino', p_municipality: 'Lugano', p_legal_form: 'Sagl', p_sector: 'costruzioni' });
+  const { data: companyId } = await A.client.rpc('create_company_with_owner', { p_legal_name: CTX.legalName, p_canton: 'Ticino', p_municipality: 'Lugano', p_legal_form: 'Sagl' });
   created.companies.push(companyId as string);
 
   const { data: doc } = await A.client.from('documents').insert({

@@ -56,7 +56,7 @@ async function main() {
   const A = await makeUser('A');
   const { data: companyIdA, error: rpcErr } = await A.client.rpc('create_company_with_owner', {
     p_legal_name: 'Azienda A SA', p_uid_che: 'CHE-111.111.111', p_canton: 'Ticino',
-    p_municipality: 'Lugano', p_legal_form: 'SA', p_sector: 'ict', p_employee_count: 10, p_revenue_band: null,
+    p_municipality: 'Lugano', p_legal_form: 'SA',
   });
   if (companyIdA) created.companies.push(companyIdA);
   check('TEST 1 · onboarding crea azienda (RPC)', !rpcErr && !!companyIdA, rpcErr?.message);
@@ -65,8 +65,8 @@ async function main() {
   check('TEST 1 · profilo utente creato al signup (trigger)', !!profileA && profileA.last_name === 'A');
   const { data: memberA } = await A.client.from('company_members').select('role').eq('company_id', companyIdA).eq('user_id', A.id).maybeSingle();
   check('TEST 1 · membership owner creata', memberA?.role === 'owner');
-  const { data: cprofA } = await A.client.from('company_profiles').select('*').eq('company_id', companyIdA).maybeSingle();
-  check('TEST 1 · company_profile creato', !!cprofA && cprofA.sector === 'ict');
+  const { data: companyA } = await A.client.from('companies').select('legal_name, canton, municipality, legal_form').eq('id', companyIdA).maybeSingle();
+  check('TEST 1 · identità aziendale salvata', companyA?.legal_name === 'Azienda A SA' && companyA.canton === 'Ticino' && companyA.municipality === 'Lugano' && companyA.legal_form === 'SA');
 
   // ----- TEST 2: documento → Storage + documents + analisi -----
   const { data: docA, error: docErr } = await A.client.from('documents').insert({

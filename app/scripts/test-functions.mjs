@@ -70,7 +70,7 @@ async function main() {
 
   const A = await makeUser('A');
   const { data: companyA } = await A.client.rpc('create_company_with_owner', {
-    p_legal_name: 'Funzioni A SA', p_canton: 'Ticino', p_municipality: 'Lugano', p_legal_form: 'SA', p_sector: 'servizi',
+    p_legal_name: 'Funzioni A SA', p_canton: 'Ticino', p_municipality: 'Lugano', p_legal_form: 'SA',
   });
   created.companies.push(companyA);
   const { data: docA } = await A.client.from('documents').insert({
@@ -80,7 +80,7 @@ async function main() {
 
   const Bu = await makeUser('B');
   const { data: companyB } = await Bu.client.rpc('create_company_with_owner', {
-    p_legal_name: 'Funzioni B SA', p_canton: 'Zurigo', p_municipality: 'Zurigo', p_legal_form: 'SA', p_sector: 'ict',
+    p_legal_name: 'Funzioni B SA', p_canton: 'Zurigo', p_municipality: 'Zurigo', p_legal_form: 'SA',
   });
   created.companies.push(companyB);
 

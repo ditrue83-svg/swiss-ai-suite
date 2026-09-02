@@ -53,7 +53,7 @@ const admin = createClient(URL, KEY, { auth: { persistSession: false } });
 
 /** Le tabelle che la cancellazione dell'azienda deve svuotare, riga per riga. */
 const TABELLE = [
-  'company_members', 'company_profiles', 'crm_organizations', 'crm_organization_roles',
+  'company_members', 'crm_organizations', 'crm_organization_roles',
   'crm_opportunities', 'contracts', 'workflow_definitions',
 ];
 
@@ -110,8 +110,6 @@ async function semina(email) {
   console.log(`\n${B}Azienda creata${X}: ${C}`);
 
   ok((await admin.from('company_members').insert({ company_id: C, user_id: u.id, role: 'owner' })).error, 'membro');
-  ok((await admin.from('company_profiles').insert({ company_id: C, sector: 'Costruzioni', employee_count: 24, revenue_band: '1-5M' })).error, 'profilo');
-
   // --- CRM. Ruoli e stati DIVERSI di proposito: è l'incoerenza di tono fra
   //     elenco e scheda che si vuole poter guardare.
   const ORG = [

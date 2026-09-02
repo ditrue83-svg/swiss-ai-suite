@@ -1659,7 +1659,7 @@ export interface Database {
       create_company_with_owner: {
         Args: {
           p_legal_name: string; p_uid_che?: string | null; p_canton?: string | null; p_municipality?: string | null;
-          p_legal_form?: string | null; p_sector?: string | null; p_employee_count?: number | null; p_revenue_band?: string | null;
+          p_legal_form?: string | null;
         };
         Returns: string;
       };
