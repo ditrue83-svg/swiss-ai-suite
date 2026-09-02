@@ -197,7 +197,7 @@ verify_jwt = false
 verify_jwt = false
 
 # ---------------------------------------------------------------------------
-# ⚠️⚠️ LE QUATTRO DICHIARAZIONI MANCANTI — 2026-08-01
+# ⚠️⚠️ LE TRE DICHIARAZIONI MANCANTI — 2026-08-01
 #
 # Questo blocco chiude, per le funzioni toccate dal parser condiviso, la
 # trappola che `email-sync` aveva pagato da sola: il file elencava SOLO le
@@ -206,11 +206,11 @@ verify_jwt = false
 # funzione dipende dalla memoria del progetto invece che dal repository, e un
 # flag di troppo in un deploy qualsiasi lo cambia per sempre in silenzio.
 #
-# I quattro valori qui sotto NON sono stati scelti a tavolino: sono quelli
+# I tre valori qui sotto NON sono stati scelti a tavolino: sono quelli
 # MISURATI sul progetto il 2026-08-01 con `npm run verify:deploy`
 # (analyze-document v38 true · contract-worker v16 false · email-disconnect v16
-# true · interpret-project v25 true). Dichiararli non cambia niente oggi e
-# rende il deploy ripetibile domani, senza `--no-verify-jwt` a mano.
+# true). Dichiararli non cambia niente oggi e rende il deploy ripetibile domani,
+# senza `--no-verify-jwt` a mano.
 #
 #   analyze-document   la chiama il browser con il JWT dell'utente.
 #   email-disconnect   idem: è un gesto di una persona nelle impostazioni.
@@ -226,9 +226,6 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.email-disconnect]
-verify_jwt = true
-
-[functions.interpret-project]
 verify_jwt = true
 
 [functions.contract-worker]
