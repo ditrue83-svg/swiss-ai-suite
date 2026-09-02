@@ -93,6 +93,9 @@ supabase/
                                          l'emissione (correzioni per annullo + nota di
                                          credito numerata a parte), stato «inviata»
                                          dopo l'accettazione del provider.
+                0054_issued_invoice_entity_type — l'entità finance_issued_invoice entra
+                                         nei tre vincoli condivisi entity_type
+                                         (automation_events, workflow_runs, notifications).
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
