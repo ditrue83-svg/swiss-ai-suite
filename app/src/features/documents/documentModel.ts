@@ -25,7 +25,7 @@ import type { AnalysisStatus } from '@/types/database';
 /** Le categorie nell'ordine in cui compaiono nella barra laterale. */
 export const CATEGORIES: DocumentCategory[] = [
   'administration', 'taxes', 'social_insurance', 'invoices', 'contracts',
-  'insurance', 'banking', 'employees', 'clients', 'suppliers', 'subsidies', 'other',
+  'insurance', 'banking', 'employees', 'clients', 'suppliers', 'other',
 ];
 
 export const SORTS: DocumentSort[] = ['recent', 'oldest', 'document_date', 'title', 'deadline'];

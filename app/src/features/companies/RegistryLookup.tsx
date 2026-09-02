@@ -28,7 +28,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useT, type TKey } from '@/i18n';
 import { toUserMessage } from '@/lib/errors';
 import { companyLookupService, LookupError, type CompanyCandidate } from '@/services/companyLookupService';
-import { CANTONI } from '@/features/subsidy-ai/programs';
+import { CANTONI } from './companyOptions';
 import { formatUid } from '@/lib/uid';
 import styles from './companies.module.css';
 
@@ -119,7 +119,7 @@ export function RegistryLookup({ current, onApply, idPrefix, disabled, messages 
     const fields: RegistryFields = {
       legalName: c.name ?? current.legalName,
       uidChe: c.uid ? (formatUid(c.uid) ?? c.uid) : current.uidChe,
-      canton: registryCanton ? (CANTONI.includes(registryCanton) ? registryCanton : 'Altro') : null,
+      canton: registryCanton ? (CANTONI.some((c) => c === registryCanton) ? registryCanton : 'Altro') : null,
       municipality: c.municipality ?? current.municipality,
     };
     setImported(fields);

@@ -4,7 +4,7 @@
 //   npm run db:bundle -- --check   verifica soltanto (exit 1 se disallineato)
 //
 // Esiste perché il file di setup completo era rimasto fermo alla 0006: chi
-// installava da zero otteneva un database senza il catalogo incentivi. Ora è
+// installava da zero otteneva un database incompleto. Ora è
 // un artefatto GENERATO, non un file da mantenere a mano.
 // ============================================================================
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';

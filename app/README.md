@@ -1,8 +1,7 @@
 # AI-Swisse — App SaaS
 
-SaaS per PMI svizzere con due moduli: **Admin AI** (analisi di documenti
-amministrativi IT/DE/FR) e **Subsidy AI** (matching incentivi Confederazione +
-Cantone Ticino). Costruito su **Supabase** (Auth + PostgreSQL + Storage privato + RLS).
+SaaS per PMI svizzere con un motore centrale, **Admin AI**, per l'analisi di
+documenti amministrativi IT/DE/FR. Costruito su **Supabase** (Auth + PostgreSQL + Storage privato + RLS).
 
 Principio guida: **correttezza, trasparenza e verificabilità prima della completezza.**
 L'AI interpreta e spiega, ma ogni conclusione importante è collegata a una **citazione
@@ -19,8 +18,10 @@ verificata** del documento; ciò che non è certo viene dichiarato come incertez
 
 ```
 supabase/
-  migrations/   0001_core · 0002_documents · 0003_subsidy · 0004_tasks · … · 0018_calendar_notifications
-                0005_storage · 0006_admin_ai_pipeline · 0007_subsidy_programs
+  migrations/   0001_core · 0002_documents · 0004_tasks · … · 0018_calendar_notifications
+                0005_storage · 0006_admin_ai_pipeline
+                0003 · 0007 · 0032 · 0033 · 0034 · 0037 · 0038 · 0046
+                              — storia applicata del modulo rimosso; non modificare
                 0008_analysis_truth · 0009_quota_and_upload_limits
                 0010_analysis_immutability · 0011_program_availability
                 0012_program_translations · 0013_inbox · 0014_inbox_grants
@@ -31,12 +32,9 @@ supabase/
                 0024_contract_manager · 0025_contract_fixes
                 0026_crm_light · 0027_company_assistant · 0028_crm_cascade_history
                 0029_assistant_purge_lockdown · 0030_crm_link_candidate
-                0031_assistant_purge_schedule · 0032_subsidy_ai_2
-                0033_subsidy_answers_cascade · 0034_subsidy_answers_project_cascade
+                0031_assistant_purge_schedule
                 0035_calendar_notification_schedulers
                 0036_assistant_empty_group_citation
-                0037_subsidy_catalog_review
-                0038_subsidy_review_source_url
                 0039_audit_logs
                 0040_deadline_nature   — che COSA è una data estratta: termine,
                                          evento (sopralluogo, udienza) o riferimento
@@ -69,12 +67,6 @@ supabase/
                                          idempotente per vincolo, non per `if`.
                                          «Ignora» diventa una decisione umana
                                          con chi e quando (`dismissed_by`).
-                0046_subsidy_recheck_review — il solo valore `recheck_due`
-                                         dell'enum: la scheda che il rilevatore
-                                         apre quando è la VERIFICA UMANA di un
-                                         programma a essere troppo vecchia, non
-                                         la fonte — il percorso che chiude il
-                                         rosso di `subsidy:health` a coda vuota.
                 0047_crm_custom_fields — i campi personalizzati del CRM:
                                          definizioni per azienda (nome, tipo,
                                          opzioni, obbligatorietà, ordine) e
@@ -91,6 +83,8 @@ supabase/
                 0050_crm_follow_up_sequences — sequenze CRM configurate come
                                          dati: fase, giorni di silenzio, attività,
                                          notifica e template solo suggerito.
+                0051 — rimozione definitiva di schema, permessi e dati del modulo dismesso.
+                       Applicare in produzione solo dopo l'esportazione archivistica concordata.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -105,7 +99,6 @@ supabase/
                        validazione delle citazioni e ancoraggio ai dati, ciclo con i suoi limiti)
     analyze-document   estrazione/OCR + analisi + persistenza server-side
     generate-reply     bozza di risposta on-demand
-    interpret-project  interpretazione progetto per il Subsidy AI
     lookup-company     proxy Registro IDI (Zefix)
     email-oauth        consenso e callback OAuth delle caselle di posta
     email-sync         sincronizzazione e analisi su richiesta
@@ -126,12 +119,6 @@ supabase/
     finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
     contract-worker       legge la coda dei documenti contrattuali e apre le finestre
                           di attenzione delle date verificate (scheduler)
-    subsidy-worker        Incentivi: rivaluta le opportunità dei progetti attivi contro le
-                          versioni PUBBLICATE del catalogo, controlla le fonti ufficiali
-                          scadute e apre le revisioni. ⚠️ NON aggiorna mai il catalogo da
-                          sé: un cambiamento critico diventa una voce da revisionare, e la
-                          versione pubblicata resta quella finché una persona non decide.
-                          Non presenta domande e non parla con nessuna autorità (scheduler)
     company-assistant     «Chiedi ad AI-Swisse»: una domanda, un ciclo LIMITATO di strumenti
                           tipizzati, una risposta con le sue fonti. Risponde IN FLUSSO
                           (text/event-stream) — l'unica del prodotto — perché §112 chiede di
@@ -140,18 +127,17 @@ supabase/
 src/
   lib/            supabase, env, errori, hash (SHA-256), uid (IDI), formattazione
   types/          database.ts (schema) · models.ts (dominio)
-  services/       auth · company · document · documentHub · analysis · task · subsidy · reply
-                  correction · program · interpret · companyLookup · emailConnection · inbox
+  services/       auth · company · document · documentHub · analysis · task · reply
+                  correction · companyLookup · emailConnection · inbox
                   calendar · calendarConnection · notification · assistant · crmFollowUp
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
-  features/       auth · companies · admin-ai · subsidy-ai · tasks · documents · dashboard · pricing
+  features/       auth · companies · admin-ai · tasks · documents · dashboard · pricing
                   inbox · calendar · notifications · automations · finance · contracts · crm
-                  assistant (Chiedi ad AI-Swisse) · incentives (Incentivi, Subsidy AI 2.0)
+                  assistant (Chiedi ad AI-Swisse)
                   audit (Registro attività: una schermata, non un modulo — 0039)
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
-                  eval-subsidy · test-validate · test-uid · seed-subsidy-programs · subsidy-catalog-health
-                  subsidy-translations (contenuti de/fr) · check-auth-config · bundle-migrations
+                  test-validate · test-uid · check-auth-config · bundle-migrations
                   test-workflows · test-finance · test-contracts · test-assistant
                   (+ le versioni -unit, offline) · eval-assistant
                   docs-check (la documentazione descrive il codice che c'è davvero?)
@@ -179,7 +165,6 @@ collegamento, e `docs:check` lo segnalava da tempo. Questo è l'indice vero.
 | [`finance-operations.md`](docs/finance-operations.md) | Finanze: fatture, spese, duplicati |
 | [`contract-manager.md`](docs/contract-manager.md) | Contratti: termini, rinnovi, preavvisi |
 | [`crm-light.md`](docs/crm-light.md) | Clienti: organizzazioni, opportunità, contatti |
-| [`incentivi.md`](docs/incentivi.md) | Incentivi (Subsidy AI 2.0): sei misure, quattro schede, scheduler, limiti |
 | [`company-assistant.md`](docs/company-assistant.md) | Chiedi ad AI-Swisse: ciclo, fonti, limiti |
 | [`company-assistant-search-eval.md`](docs/company-assistant-search-eval.md) | La prova di ricerca dell'assistente |
 | [`ai-output-parsing.md`](docs/ai-output-parsing.md) | Il contratto di lettura dell'output dei modelli: che cosa il parser condiviso tollera, che cosa non ripara, dove finisce la sintassi e comincia il dominio |
@@ -464,14 +449,14 @@ codice: testo dentro il JSX, attributi che l'utente legge (`placeholder`, `aria-
 `npm run i18n:orphans` guarda **dall'altra parte**: le chiavi dei dizionari che nessun codice
 chiama più. Sono i due lati della stessa moneta — là una frase che non passa dal dizionario, qui
 una voce del dizionario che non passa da nessun codice — e per mesi il secondo lato non l'ha
-guardato nessuno: dopo la PR #44 `subsidy.results.priority` e `L.eligibility` sono rimaste senza
+guardato nessuno: dopo la PR #44 alcune chiavi sono rimaste senza
 chiamanti, e le ha trovate un `grep` nel bundle **servito**, dopo il merge. Una frase orfana
 invecchia insieme al prodotto, e un giorno qualcuno la richiama credendola viva.
 
 Il rilevatore **importa** il dizionario invece di leggerlo con un'espressione regolare, e percorre
 i sorgenti con un tokenizzatore che distingue codice, commenti, stringhe, template e regex: una
 chiave citata solo in un commento **non** conta come usata, e una composta a runtime
-(`` `subsidy.cases.statuses.${k}` ``, `pick('subsidy.labels.eligibility', v)`) **sì** — il nodo
+(`` `tasks.statuses.${k}` ``, `pick('tasks.labels.priority', v)`) **sì** — il nodo
 nominato copre le sue foglie. Le eccezioni si dichiarano una per riga con il motivo, e
 un'eccezione senza più niente dietro fa fallire il controllo, come in `design:lint`.
 
@@ -514,9 +499,6 @@ Separazione netta, mai sovrascritta: **file originale** (Storage) / **testo estr
 | `workflow_runs` | un'esecuzione, con la **configurazione usata** e l'esito di ogni condizione. `unique (workflow_id, trigger_event_id)`: lo stesso evento due volte non produce due esecuzioni |
 | `workflow_action_runs` | ogni azione con la propria **chiave di idempotenza** — l'unicità la impone il database, non un controllo applicativo |
 | `workflow_events` | chi ha creato, attivato, messo in pausa, archiviato una regola. Solo amministratori |
-| `subsidy_projects`, `subsidy_opportunities`, `subsidy_assessments`, `subsidy_criterion_results` | **Incentivi** (0032): il progetto dell'impresa, il suo incontro con una versione di programma, e la storia append-only delle valutazioni criterio per criterio. Le sei misure — rilevanza, idoneità, completezza, tempistica, freschezza, prontezza — sono sei colonne separate e nessuna è una probabilità: il client può scrivere solo `saved_at`, `dismissed_reason` e `dismissed_note` |
-| `subsidy_answers` | risposte ai criteri, **append-only**: rispondere di nuovo scrive una riga nuova. ⚠️ Dalla **0033** (azienda) e dalla **0034** (progetto) la cancellazione diretta resta vietata ma la CASCATA di un genitore già cancellato passa — prima il guardiano sollevava anche lì, e una sola risposta rendeva l'azienda indistruttibile (stessa classe di 0023, 0025, 0028; riprodotto su un'azienda usa-e-getta prima di correggerlo) |
-| `subsidy_sources`, `subsidy_program_versions`, `subsidy_program_rules`, `subsidy_calls` | il catalogo **condiviso e in sola lettura** per il client: da dove viene ogni requisito, in quale versione, con quale finestra e quando la fonte è stata controllata con successo l'ultima volta |
 | `finance_items` | **Finanze** (0021): lo stato operativo di un documento finanziario — tipo, verifica, archiviazione, categoria di spesa. Le colonne `eff_*` sono una **proiezione** ricalcolata dal trigger, non una seconda verità; il client non ha alcun permesso di scrittura su di esse |
 | `finance_extractions` | il **verbale** della lettura finanziaria: **immutabile e versionato** come `document_analyses`. Un secondo tentativo produce la versione 2 e la 1 resta leggibile. Porta la provenienza **campo per campo** (`qr` · `deterministic` · `ai`), la fiducia, le citazioni e le incertezze |
 | `finance_corrections` | correzioni umane **append-only**, con un elenco **chiuso** di campi correggibili. Non riusa `analysis_corrections`: là il campo «amount» descrive l'analisi amministrativa, e scriverci un importo di fattura cambierebbe ciò che il Document Hub mostra |
@@ -563,7 +545,6 @@ copiarle già spuntate farebbe riscrivere data e autore con quelli di adesso,
 cancellando un fatto registrato con i suoi veri estremi.
 La regola è `stepsFromActions()` in `features/tasks/taskFormat.ts`, con i suoi
 casi nella sezione 6 di `npm run test:tasks-unit`.
-| `subsidy_programs`, `subsidy_matches`, `subsidy_cases` | catalogo incentivi + attività utente |
 | `ai_request_log` | osservabilità e rate limit — **senza contenuto del documento** |
 
 Stati documento: `uploaded → extracting → analyzing → completed | needs_review | failed`.
@@ -856,7 +837,7 @@ npm run test:production # le tre che provano QUEL progetto: configurazione auth,
 npm run test:all        # quality + unit + db + production (NON ciò che spende credito)
 npm run ci              # quality + unit: ciò che una CI può eseguire senza segreti
 npm run test:integration -- --allow-ai   # phase2, async, pipeline — SPENDONO credito
-npm run test:eval -- --allow-ai          # eval:subsidy, eval:admin, eval:assistant — SPENDONO
+npm run test:eval -- --allow-ai          # eval:admin, eval:assistant — SPENDONO
 npm run suite -- --list                  # i gruppi, i passi e ciò che ciascuno richiede
 ```
 
@@ -955,7 +936,6 @@ npm run test:async      # processing asincrono reale, non simulato (17 test)
 npm run test:functions  # sicurezza di generate-reply e interpret-project (12 test)
 npm run test:pipeline   # end-to-end analisi → persistenza → task → bozza (18 test)
 npm run eval:admin      # eval qualità analisi su documenti reali (35 test)
-npm run eval:subsidy    # eval interpretazione progetto (14 test)
 npm run eval:contracts             # estrazione contrattuale su TRE CONTRATTI VERI (it/de/fr):
                                    # tasso di esattezza per campo. Crea un'azienda tecnica,
                                    # la misura e la cancella verificando la cancellazione.
@@ -1020,14 +1000,12 @@ npm run test:crm-quotes-unit # PDF preventivi it/de/fr aperti con pdfjs, importi
                              #   parser e la validazione dell'import CSV (218 casi)
                              # aritmetica delle date sui casi limite, amendment che non sovrascrive
                              # (66 test — richiede la 0024 e la 0025)
-npm run test:subsidy-unit    # Incentivi offline: gli operatori dei criteri e soprattutto QUANDO
                              #   non rispondono (un confronto impossibile vale `null`, mai `false`:
                              #   `false` su un obbligatorio dichiara non idonea un'impresa che lo è),
                              #   l'esclusione non attivata che NON è un requisito fallito, il
                              #   progetto avviato che si segnala invece di sparire, l'urgenza che
                              #   non nasce da testo libero, la guardia SSRF sulle fonti, e gli
                              #   elenchi scritti due volte in TS e in SQL (176 casi)
-npm run test:subsidy         # Incentivi su DB: isolamento fra aziende anche chiamando le quattro
                              #   funzioni di lettura col p_company_id altrui, cross-tenant che
                              #   nemmeno il service role attraversa, catalogo in sola lettura,
                              #   risposte append-only firmate dal database, e soprattutto LA
@@ -1061,9 +1039,6 @@ npm run test:audit           # Registro attività su DB: ogni evento previsto pr
                              #   né chiave anon, né service role modificano o cancellano una riga.
                              #   Più la cascata: un'azienda con registro resta cancellabile
                              #   (richiede la 0039)
-npm run subsidy:seed-catalog # scrive il CATALOGO 2.0: fonti ufficiali, versioni immutabili,
-                             #   criteri tipizzati e call. Dry-run senza `-- --write`. ⚠️ Non
-                             #   sostituisce `subsidy:seed`, che scrive l'identità dei programmi
 npm run test:assistant-unit  # Chiedi ad AI-Swisse offline: il PERIMETRO degli strumenti (nessuna
                              #   query generica, nessun companyId accettato dal modello, nessun
                              #   segreto), l'aritmetica delle date con ora legale e mezzanotte
@@ -1075,19 +1050,6 @@ npm run test:assistant       # Chiedi ad AI-Swisse su DB: isolamento fra aziende
                              #   persona (richiede la 0027)
 npm run eval:assistant       # valutazione con VERITÀ DI RIFERIMENTO: 16 domande su dati noti,
                              #   esito atteso, fonti attese, frasi vietate. Costa denaro vero
-npm run subsidy:health  # integrità e freschezza del catalogo incentivi, E la CODA DI REVISIONE.
-                        #   ⚠️ VERDE VUOL DIRE «NIENTE IN SOSPESO», dal 2026-08-05:
-                        #     exit 0  niente in sospeso
-                        #     exit 1  c'è lavoro per una PERSONA — programmi da ricontrollare
-                        #             o revisioni in coda, a qualunque età
-                        #     exit 2  errori di integrità, o coda oltre 30 giorni / 25 schede
-                        #   Prima la coda veniva solo nominata e l'uscita restava 0: sette
-                        #   revisioni sono rimaste ferme sei giorni sotto la parola «verde».
-npm run subsidy:health:self-test   # verifica che il GIUDIZIO sulla coda e l'ESITO sappiano
-                        #   diventare rossi: 14 casi, compresa la regola vecchia come controprova
-npm run subsidy:seed    # popola/aggiorna il catalogo. ⚠️ Senza --write NON scrive ed esce 3
-                        #   («non eseguito»): un no-op che esce 0 è un fallback silenzioso, e la
-                        #   CI ci è già cascata una volta
 npm run db:bundle       # rigenera supabase/full-setup.sql dalle migrazioni (--check per verificare).
                         # Rifiuta di generare se una migrazione usa un valore enum appena aggiunto,
                         # o se crea un trigger/una policy senza «drop … if exists» che li preceda —
@@ -1211,12 +1173,6 @@ npm run verify:ai       # «i percorsi AI possono funzionare ADESSO?» Una richi
                         #   spendono (integration, eval), così una suite non muore a metà
 npm run verify:ai:self-test   # le sei diagnosi su risposte costruite, senza rete: 25 casi, fra
                         #   cui «un 400 che non parla di credito NON è credito esaurito»
-npm run subsidy:sources # confronta le SETTE fonti ufficiali con l'impronta registrata, ADESSO.
-                        #   ⚠️ SOLA LETTURA: non scrive nulla, e in particolare non tocca
-                        #   last_checked_at — quel campo dice «una PERSONA ha verificato», e a
-                        #   leggere qui è uno script. exit 0 nessuna differenza · 1 qualcosa è
-                        #   cambiato · 2 una fonte non si è potuta leggere, che non è «tutto ok»
-npm run subsidy:sources:self-test   # il giudizio dei tre esiti, senza uscire in rete
 npm run docs:check      # la documentazione descrive il codice che c'è davvero? Confronta i README
                         # con il filesystem: moduli, migrazioni, documenti, comandi, Edge Function.
                         # Esce 1 se divergono, e dice COSA manca e DOVE. ⚠️ Il controllo sui moduli
@@ -1317,7 +1273,6 @@ GIRA è eseguirla.
 - **`eval:admin` (35)** — qualità su documenti reali (AVS tedesco, AFC francese, Comune italiano) e **casi difficili**:
   nessuna scadenza → `null`; scadenza relativa → nessuna data inventata; due importi → array corretto;
   ente ambiguo → `null` + incertezza; rischio esplicito vs assente; **prompt injection ignorata**; documento quasi vuoto.
-- **`eval:subsidy` (14)** — interpretazione progetto, evidence verbatim, governance (mai dichiarare idoneità).
 - **`test:functions` (12)** — le due Edge Function che non avevano test: metodo, autenticazione, input,
   **cross-tenant 403** e **rate limit 429** su `generate-reply` e `interpret-project`. Non consuma crediti:
   tutti i casi vengono rifiutati prima della chiamata al modello.
@@ -1414,30 +1369,6 @@ contiene.
 Verificato da `npm run test:phase2`, che tenta davvero l'`update`, il `delete` e la scrittura del
 testo estratto come membro autenticato, e controlla che lo snapshot resti intatto.
 
-### Programmi sospesi: esistono ma non sono ottenibili (0011)
-
-Un incentivo può essere documentato, corretto in ogni dettaglio e ciononostante **non concedibile**,
-perché la legge lo subordina a una condizione che oggi non ricorre. È il caso dell'incentivo
-ticinese all'assunzione di disoccupati (L-rilocc, RL 857.100): l'art. 3 lo attiva solo se il tasso
-di disoccupazione medio dell'anno precedente raggiunge il riferimento fissato dal Consiglio di
-Stato, con massimale del 4%. Il tasso ticinese è sotto quella soglia.
-
-Il catalogo aveva solo `active` (mostrarlo o no) e `data_status` (quanto è affidabile il dato):
-nessuno dei due esprime «esiste ma non si ottiene». Spegnere `active` lo fa sparire — e l'utente non
-sa che esiste né che può tornare; lasciarlo attivo lo presenta come disponibile, che è falso. Da qui
-una terza informazione:
-
-| Campo | Domanda a cui risponde |
-|---|---|
-| `active` | lo mostriamo? |
-| `data_status` | quanto è affidabile il dato? |
-| `availability` | è concedibile **oggi**? |
-
-Un programma sospeso resta visibile con il motivo e la fonte che lo attesta, ma non compare fra le
-«Priorità di oggi», non è conteggiato fra le idoneità da verificare, ha priorità bassa e viene
-ordinato in fondo ai risultati. `npm run subsidy:health` tratta una sospensione **senza motivo o
-senza fonte** come errore di integrità, e ne richiede la riverifica ogni 120 giorni, perché dipende
-da una statistica annuale.
 
 ### Modalità `deterministic`: lo snapshot non è probatorio
 
@@ -1564,24 +1495,17 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
   cercando per nome il campo resta vuoto e lo compila la persona;
   l'UFRC **sconsiglia le interrogazioni di massa regolari** (la sola app web ne genera oltre 400'000
   al giorno, e chi disturba viene bloccato): la ricerca resta legata a un gesto in onboarding.
-  ⚠️ I cantoni fuori dai sei di `CANTONI` diventano «Altro» nel modulo: è il perimetro del catalogo
-  incentivi, non un dato che Zefix non abbia dato.
+  ⚠️ I cantoni non riconosciuti diventano «Altro» nel modulo: non è un dato che Zefix non abbia dato.
   ⚠️ **Zefix non è Regix**: quest'ultimo è il servizio dell'UFRC per verificare la disponibilità
   del NOME di una ditta nuova — altre credenziali, nessuna API pubblica, non utilizzabile qui.
-- **Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali (0 in stato `recheck`), di cui
-  **1 sospeso** — vedi sotto. Copertura Confederazione + Ticino, non 26 Cantoni.
-- **Contenuti del catalogo solo in italiano**: l'interfaccia è tradotta, ma i testi dei programmi
-  (requisiti, descrizione del contributo, finestra di domanda) sono mostrati in italiano anche in
-  tedesco e francese, perché vivono nel database e non nei dizionari. Si nota subito con un utente
-  germanofono o romando.
+
 - **Traduzioni riviste internamente, non da un madrelingua indipendente.** L'interfaccia è completa
   in italiano, tedesco e francese (`npm run i18n:coverage` → nessun testo scritto a mano) e i
   dizionari sono garantiti dal compilatore. Il 2026-07-26 il titolare ha deciso di non
   commissionare una rilettura esterna: i testi sono stati rivisti con i controlli che si possono
   verificare — «ss» al posto di «ß», terminologia federale, forma di cortesia costante, coerenza dei
   termini chiave, ricerca di calchi dall'italiano, confronto delle lunghezze per scovare omissioni —
-  e le correzioni trovate sono state applicate (fra cui «Incitation», calco dall'italiano
-  «incentivo», che in francese significa istigazione).
+  e le correzioni trovate sono state applicate.
   **Il limite resta e va detto**: chi ha riletto è lo stesso strumento che ha scritto, quindi un
   errore di registro o una formulazione innaturale che sia coerente con sé stessa non emerge da
   nessuno di questi controlli. Se un cliente germanofono o romando segnala che «suona straniero»,
@@ -1611,8 +1535,7 @@ immagine remota può essere caricata. Dettagli e modello di minaccia in `docs/ai
   completa, fine-tuning.
   ⚠️ Fino al 2026-07-27 questo elenco comprendeva anche le **notifiche push**, che invece sono
   implementate e solo non attivate (vedi il punto sull'Inbox qui sopra). «Non fatto» e «fatto, non
-  acceso per decisione» sono stati diversi, ed è lo stesso errore che il catalogo incentivi evita
-  con il campo `availability`: un programma sospeso non è né assente né disponibile. Confonderli
+  acceso per decisione» sono stati diversi. Confonderli
   fa sottovalutare ciò che manca davvero — qui, la verifica CASA di Google.
 
 ## Disclaimer

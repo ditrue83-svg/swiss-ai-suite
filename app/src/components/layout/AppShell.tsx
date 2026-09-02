@@ -3,7 +3,7 @@
 // selettore azienda (multi-tenant ready), box account con "Esci".
 // Riproduce fedelmente il layout/design del prototipo.
 // ============================================================================
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { BrandMark } from '@/components/ui/BrandMark';
@@ -157,7 +157,7 @@ function AccountBox() {
           impilate — due tendine a tutta larghezza e un pulsante — e il piede
           della colonna ne usciva alto 202px: misurato a 1280×720, la
           navigazione aveva 308px per 550 di voci e ne nascondeva 242, cioè
-          «Incentivi», tutto l'ARCHIVIO e le sue quattro voci. Tre comandi
+          tutto l'ARCHIVIO e le sue quattro voci. Tre comandi
           personali affiancati stanno in 28. La riduzione della colonna è
           questa, e la prova è la sezione 13 di test:shell-unit.
           L'uscita è la sola a perdere la propria etichetta: resta nel titolo

@@ -5,8 +5,7 @@ un modello ha scritto. Questo documento dice che cosa quel modulo garantisce,
 che cosa **non** garantisce, e dove finisce la sua responsabilità.
 
 Vale per tutti i percorsi AI del prodotto: Admin AI, trascrizione OCR,
-classificazione della posta, Finanze, Contratti, interpretazione progetto di
-Incentivi.
+classificazione della posta, Finanze e Contratti.
 
 ---
 
@@ -25,9 +24,8 @@ valida:
 - `_shared/email/classifyPrompt.ts` → `validateClassifierOutput` (Inbox)
 - `_shared/finance/validate.ts` → `validateFinanceOutput` (Finanze)
 - `_shared/contracts/validate.ts` → `validateContractReading` (Contratti)
-- `supabase/functions/interpret-project` → `validateInterpretation` (Incentivi)
 
-**Questi cinque validatori restano separati e non vanno unificati.** Le loro
+**Questi validatori restano separati e non vanno unificati.** Le loro
 regole non sono la stessa regola scritta cinque volte: su una fattura una
 citazione mancante toglie un importo, su un contratto blocca una data di
 disdetta, sull'Inbox non esiste affatto il concetto. Fonderli produrrebbe un
@@ -123,7 +121,7 @@ campo `failure` che distingue quattro cause:
 
 Sono un vocabolario **interno**. Ogni modulo traduce nel proprio codice
 operativo prima che qualcosa arrivi a schermo: `INVALID_RESPONSE` per l'Inbox,
-`AI_INVALID_OUTPUT` per Admin AI, Finanze e Incentivi, `AI_REFUSED` per i
+`AI_INVALID_OUTPUT` per Admin AI e Finanze, `AI_REFUSED` per i
 Contratti. Non sono stati creati codici nuovi per il prodotto.
 
 ### Che cosa si può distinguere in un log
@@ -161,7 +159,6 @@ riprovare appartiene a chi chiama, e resta dov'era:
   tetto di tentativi che il modulo aveva già.
 - **Admin AI** — un parsing fallito scrive `AI_INVALID_OUTPUT` e **non** produce
   alcuna analisi.
-- **Incentivi** — un parsing fallito non crea alcuna interpretazione.
 
 ---
 

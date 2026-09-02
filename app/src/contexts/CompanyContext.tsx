@@ -7,7 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { companyService } from '@/services/companyService';
 import { toUserMessage } from '@/lib/errors';
 import { useAuth } from './AuthContext';
-import type { Company, CompanyMembership, CompanyProfile, MemberRole } from '@/types/models';
+import type { Company, CompanyMembership, MemberRole } from '@/types/models';
 
 const ACTIVE_KEY = 'swissai.activeCompanyId'; // preferenza UI non sensibile
 
@@ -18,7 +18,6 @@ interface CompanyContextValue {
   activeCompany: Company | null;
   activeCompanyId: string | null;
   role: MemberRole | null;
-  companyProfile: CompanyProfile | null;
   hasCompany: boolean;
   /**
    * ⚠️ «Abbiamo letto le aziende di QUESTO utente», che NON è `!loading`:
@@ -30,7 +29,6 @@ interface CompanyContextValue {
   isAdmin: boolean;
   setActiveCompany: (id: string) => void;
   refresh: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
 }
 
 const CompanyContext = createContext<CompanyContextValue | undefined>(undefined);
@@ -48,7 +46,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<CompanyMembership[]>([]);
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(readStored());
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   /**
    * ⚠️ PER CHI abbiamo letto le aziende. È il campo che mancava, e la sua
    * assenza mandava all'onboarding — e da lì alla Panoramica — chiunque
@@ -91,7 +88,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setMemberships([]);
       setActiveCompanyId(null);
-      setCompanyProfile(null);
       // ⚠️ `loadedFor` torna a `null` e NON diventa «letto»: senza utente non
       //    abbiamo guardato niente, e dirlo è tutto il punto di questo campo.
       setLoadedFor(null);
@@ -111,19 +107,6 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     [memberships, activeCompanyId],
   );
 
-  const loadProfile = useCallback(async () => {
-    if (!activeCompanyId) { setCompanyProfile(null); return; }
-    try {
-      setCompanyProfile(await companyService.getCompanyProfile(activeCompanyId));
-    } catch {
-      setCompanyProfile(null);
-    }
-  }, [activeCompanyId]);
-
-  useEffect(() => {
-    void loadProfile();
-  }, [loadProfile]);
-
   const value = useMemo<CompanyContextValue>(
     () => ({
       loading,
@@ -132,16 +115,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       activeCompany: active?.company ?? null,
       activeCompanyId,
       role: active?.role ?? null,
-      companyProfile,
       hasCompany: memberships.length > 0,
       /** Le aziende sono state lette per l'utente ATTUALE. Vedi `routeGate`. */
       ready: user !== null && loadedFor === user.id,
       isAdmin: active?.role === 'owner' || active?.role === 'admin',
       setActiveCompany: (id: string) => setActiveCompanyId(id),
       refresh: loadMemberships,
-      refreshProfile: loadProfile,
     }),
-    [loading, error, memberships, active, activeCompanyId, companyProfile, loadMemberships, loadProfile, user, loadedFor],
+    [loading, error, memberships, active, activeCompanyId, loadMemberships, user, loadedFor],
   );
 
   return <CompanyContext.Provider value={value}>{children}</CompanyContext.Provider>;

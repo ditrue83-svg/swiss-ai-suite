@@ -7,7 +7,7 @@
 //
 // PERCHÉ ESISTE. Il 2026-08-14, entrando in produzione con la sessione vera per
 // verificare le pastiglie migrate a `Tag`, quattro moduli su cinque erano
-// VUOTI: CRM, Contratti, Automazioni e Incentivi non avevano una riga. Le
+// VUOTI: CRM, Contratti e Automazioni non avevano una riga. Le
 // etichette erano in esercizio e non le rendeva nulla. Una suite verde non
 // copre quel divario e nemmeno lo vede: si chiude solo mettendo dei dati
 // davanti agli occhi.
@@ -28,7 +28,7 @@
 // compare una seconda azienda finché non si esegue `--pulisci`.
 //
 // ⚠️ CHE COSA NON SEMINA, e non è una dimenticanza: le OPPORTUNITÀ degli
-// incentivi. Non sono dati che si scrivono — le produce il motore di
+// elaborazione. Non sono dati che si scrivono — le produce il motore di
 // abbinamento a partire da un progetto e dal catalogo. Qui si seminano i
 // progetti e una pratica; le opportunità e i punteggi di pertinenza restano da
 // generare, e finché non esistono la scheda con RILEVANZA non si può guardare.
@@ -53,8 +53,8 @@ const admin = createClient(URL, KEY, { auth: { persistSession: false } });
 
 /** Le tabelle che la cancellazione dell'azienda deve svuotare, riga per riga. */
 const TABELLE = [
-  'company_members', 'company_profiles', 'crm_organizations', 'crm_organization_roles',
-  'crm_opportunities', 'contracts', 'workflow_definitions', 'subsidy_projects', 'subsidy_cases',
+  'company_members', 'crm_organizations', 'crm_organization_roles',
+  'crm_opportunities', 'contracts', 'workflow_definitions',
 ];
 
 const ok = (e, dove) => { if (e) throw new Error(`${dove}: ${e.message}`); };
@@ -110,8 +110,6 @@ async function semina(email) {
   console.log(`\n${B}Azienda creata${X}: ${C}`);
 
   ok((await admin.from('company_members').insert({ company_id: C, user_id: u.id, role: 'owner' })).error, 'membro');
-  ok((await admin.from('company_profiles').insert({ company_id: C, sector: 'Costruzioni', employee_count: 24, revenue_band: '1-5M' })).error, 'profilo');
-
   // --- CRM. Ruoli e stati DIVERSI di proposito: è l'incoerenza di tono fra
   //     elenco e scheda che si vuole poter guardare.
   const ORG = [
@@ -178,32 +176,6 @@ async function semina(email) {
       created_by: u.id, updated_by: u.id,
       activated_at: stato === 'active' ? new Date().toISOString() : null,
     })).error, `automazione ${nome}`);
-  }
-
-  // --- Incentivi: i progetti si scrivono, le opportunità no (vedi testata).
-  // ⚠️ Le chiavi dei tipi di progetto sono ITALIANE (subsidy.labels.projectTypes):
-  // «energy_efficiency» non esiste e l'interfaccia mostrerebbe la chiave grezza.
-  // La colonna è string[] e non vincola nulla: l'errore arriva fino allo schermo.
-  const PRJ = [
-    ['Efficienza energetica capannone', 'planned', 180000, ['energia']],
-    ['Digitalizzazione cantieri', 'idea', 75000, ['digitalizzazione']],
-  ];
-  for (const [titolo, fase, budget, tipi] of PRJ) {
-    ok((await admin.from('subsidy_projects').insert({
-      company_id: C, title: titolo, stage: fase, budget_amount: budget, budget_currency: 'CHF',
-      project_types: tipi, location_canton: 'TI', location_country: 'CH', sector: 'Costruzioni',
-      owner_user_id: u.id, estimated_start_date: giorni(30), estimated_end_date: giorni(400),
-    })).error, `progetto ${titolo}`);
-  }
-  const { data: prog } = await admin.from('subsidy_programs').select('id, name, authority').limit(1);
-  if (prog?.length) {
-    ok((await admin.from('subsidy_cases').insert({
-      company_id: C, program_id: prog[0].id, program_name: prog[0].name, authority: prog[0].authority,
-      status: 'draft', owner_user_id: u.id, created_by: u.id,
-      official_deadline: giorni(38), amount_requested: 45000, currency: 'CHF',
-    })).error, 'pratica');
-  } else {
-    console.log(`  ${DIM}nessun programma nel catalogo: la pratica non è stata creata${X}`);
   }
 
   console.log(`\n  ${G}Seminato.${X} Ora l'azienda compare nel selettore dell'utente ${email}.`);

@@ -100,7 +100,6 @@ export const CRON_ATTESI = {
   'automation-worker':    { funzione: 'automation-worker',    cadenza: '*/5 * * * *' },
   'finance-worker':       { funzione: 'finance-worker',       cadenza: '*/5 * * * *' },
   'contract-worker':      { funzione: 'contract-worker',      cadenza: '*/5 * * * *' },
-  'subsidy-worker':       { funzione: 'subsidy-worker',       cadenza: '*/15 * * * *' },
   'assistant-purge':      { funzione: null,                   cadenza: '0 4 * * *' },
   'calendar-sync-drain':  { funzione: 'calendar-sync',        cadenza: '*/10 * * * *' },
   'notifications-worker': { funzione: 'notifications-worker', cadenza: '*/15 * * * *' },
@@ -129,7 +128,6 @@ export const CRON_SOLO_A_MANO = {
   'automation-worker': 'creato a mano il 2026-07-27 (docs/workflow-automation.md): non ancora in una migrazione',
   'finance-worker':    'creato a mano il 2026-07-28 (docs/finance-operations.md): non ancora in una migrazione',
   'contract-worker':   'creato a mano il 2026-07-28 (docs/contract-manager.md): non ancora in una migrazione',
-  'subsidy-worker':    'creato a mano il 2026-07-30 (docs/incentivi.md): non ancora in una migrazione',
 };
 
 /**
@@ -263,18 +261,12 @@ export const FUNZIONI_SCOPERTE = {
   '_shared/assistant/dates.ts#isNamedPeriod': 'interpretazione delle date parlate: nessun test la importa per nome',
   '_shared/assistant/dates.ts#asConcreteDate': 'interpretazione delle date parlate: nessun test la importa per nome',
 
-  // --- incentivi: il percorso delle FONTI, già dichiarato scoperto -----------
   // ⚠️ QUI STAVA `fetchGuard.ts#fetchSource`, e la riga è uscita il 2026-08-14:
-  // `npm run subsidy:sources` la ESEGUE contro le sette fonti vere. Non l'ha
   // tolta la memoria di nessuno — il controllo 9 ha detto «la riga è stantia» e
   // ha fatto rosso, esattamente come per i tre rami della coda eventi il
   // 2026-08-11. ⚠️ Ciò che resta scoperto è ciò che SCRIVE (`runSourceChecks`)
   // e l'involucro HTTP della Edge Function: leggere una fonte e registrarne
   // l'esito sono due cose, e adesso lo sono anche qui.
-  '_shared/subsidy/fetchGuard.ts#hostOf': 'il percorso delle fonti (`runSourceChecks`) esce in rete ed è dichiarato scoperto in docs/product-status.md',
-  '_shared/subsidy/adapters.ts#extractDeclaredDates': 'adattatore di una fonte ufficiale: vive nel percorso delle fonti, scoperto',
-  '_shared/subsidy/facts.ts#findFact': 'helper del motore di abbinamento: nessun test lo importa per nome',
-  '_shared/subsidy/hash.ts#sha256Bytes': 'variante binaria dell\'impronta: quella testuale (`normalizeForHash`) è coperta',
 };
 
 // ---------------------------------------------------------------------------

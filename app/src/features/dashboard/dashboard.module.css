@@ -60,7 +60,7 @@
    La testata, la striscia KPI, le due colonne, la scheda in evidenza e la
    colonna «Richiede attenzione». Le REGOLE dei numeri non stanno qui: qui c'è
    solo la forma. La striscia riusa la famiglia `.kpi` esistente (app.css) —
-   la stessa di Finanze e Incentivi: una card KPI è una card KPI.
+   la stessa di Finanze: una card KPI è una card KPI.
    =========================================================================== */
 
 /* La testata: saluto e istante della lettura a sinistra, i gesti a destra.

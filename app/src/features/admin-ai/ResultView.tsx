@@ -716,7 +716,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             {/* La legenda dei segni, qui dove il vocabolario è più fitto: ogni
                 azione porta la sua provenienza, e questa è la pagina in cui si
                 impara che cosa vuol dire un filetto pieno. È la STESSA legenda
-                di Documenti, Attività e Incentivi. */}
+                di Documenti e Attività. */}
             <MarkLegend />
           </div>
 

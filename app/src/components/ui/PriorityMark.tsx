@@ -21,10 +21,9 @@ import type { TaskPriority } from '../../types/models';
  * tendina dei filtri: un quarto testo scritto a mano sarebbe il primo a
  * restare indietro in tedesco.
  *
- * Copre ENTRAMBE le scale del dominio, come fa EligibilityMark con le due
- * scale dell'idoneità: `TaskPriority` (`low·medium·high`, la colonna del
- * database delle attività) e la terna `alta·media·bassa` che Subsidy AI 1.0
- * calcola per conto suo (`Priority.level` in engine.ts). Sono due tipi
+ * Copre entrambe le scale ancora vive: `TaskPriority` (`low·medium·high`, la
+ * colonna del database delle attività) e la terna `alta·media·bassa` che Admin
+ * AI calcola per le azioni estratte. Sono due tipi
  * distinti e restano distinti — unificarli in TypeScript farebbe passare il
  * compilatore su un assegnamento che il database rifiuta — ma il SEGNO è uno.
  */
@@ -34,7 +33,7 @@ export const PRIORITY_LEVELS: Record<PriorityValue, { cls: string; glyph: MarkGl
   high: { cls: 'mo-high', glyph: 'levelUp', labelKey: 'labels.urgency.alta' },
   medium: { cls: 'mo-medium', glyph: 'levelFlat', labelKey: 'labels.urgency.media' },
   low: { cls: 'mo-low', glyph: 'levelDown', labelKey: 'labels.urgency.bassa' },
-  // scala di Subsidy AI 1.0 (Priority.level)
+  // scala delle urgenze estratte da Admin AI
   alta: { cls: 'mo-high', glyph: 'levelUp', labelKey: 'labels.urgency.alta' },
   media: { cls: 'mo-medium', glyph: 'levelFlat', labelKey: 'labels.urgency.media' },
   bassa: { cls: 'mo-low', glyph: 'levelDown', labelKey: 'labels.urgency.bassa' },

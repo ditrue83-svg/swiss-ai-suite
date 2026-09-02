@@ -19,6 +19,6 @@
 
 /* ---- Ritrovamento del lotto 6 (ricognizione finale, 2026-08-28) -----------
    `.form-success` viene da `src/styles/extra.css`, dove stava accanto a
-   `.form-error`: quella RESTA globale (la usano anche incentives, crm e
+   `.form-error`: quella RESTA globale (la usano anche crm e
    companies), questa la usano solo le pagine di `features/auth/`. */
 .form-success { background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green); border-radius: var(--radius-sm); padding: var(--sp-3); font-size: var(--fs-body); margin-bottom: var(--sp-4); }

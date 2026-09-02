@@ -247,7 +247,6 @@ const GROUPS = {
       // Le chiavi che NESSUNO chiama più. È il difetto opposto a quello di
       // `i18n:coverage` — là una frase che non passa dal dizionario, qui una
       // voce del dizionario che non passa da nessun codice — e per mesi non
-      // l'ha guardato niente: `subsidy.results.priority` e `L.eligibility`
       // sono sopravvissute alla PR #44 e le ha trovate un grep nel bundle
       // SERVITO, dopo il merge. Una frase orfana invecchia insieme al prodotto
       // e un giorno qualcuno la richiama credendola viva.
@@ -324,7 +323,6 @@ const GROUPS = {
       // La coda di revisione del catalogo: il giudizio è una funzione pura, e
       // provarlo qui evita di dover invecchiare una riga vera per vederlo
       // reagire.
-      { script: 'subsidy:health:self-test' },
       // Le quattro diagnosi sul credito Anthropic — esaurito · chiave assente ·
       // chiave rifiutata · servizio irraggiungibile — provate su risposte
       // costruite, senza rete e senza spendere. ⚠️ Il caso che conta di più è
@@ -335,7 +333,6 @@ const GROUPS = {
       // Il giudizio del confronto con le fonti: «non ho potuto leggere» pesa
       // più di «è cambiata», e nessuna delle due è «va tutto bene». Provato
       // senza uscire in rete.
-      { script: 'subsidy:sources:self-test' },
       // I file del carattere, provati sul buco VERO che ha motivato il
       // controllo: il sottoinsieme «latin» senza U+202F. ⚠️ Era un decimo
       // script perso, sfuggito anche alla sonda del 2026-08-11: l'ha trovato
@@ -392,7 +389,6 @@ const GROUPS = {
       { script: 'test:crm-email-unit' },
       { script: 'test:crm-quotes-unit' },
       { script: 'test:assistant-unit' },
-      { script: 'test:subsidy-unit' },
       { script: 'test:audit-unit' },
       { script: 'test:print-unit' },
       // La testata: le forme delle icone (una forma, un nome — il marchio è
@@ -436,14 +432,12 @@ const GROUPS = {
       { script: 'test:crm' },
       { script: 'test:finance' },
       { script: 'test:workflows' },
-      { script: 'test:subsidy' },
       { script: 'test:audit' },
     ],
   },
   // ⚠️ NON SPOSTABILI NELL'EFFIMERO, e per tre ragioni diverse:
   //   · `check:auth`      legge la configurazione di autenticazione DI QUEL
   //                       progetto (indirizzi di ritorno dei link email);
-  //   · `subsidy:health`  giudica il CONTENUTO del catalogo vero — la sua
   //                       freschezza è una proprietà dei dati reali, e su un
   //                       catalogo appena seminato direbbe sempre di sì;
   //   · `test:functions`  prova la sicurezza delle Edge Function DEPLOYATE.
@@ -459,7 +453,6 @@ const GROUPS = {
       // usciva verde. Il valore arriva da `.env.test`, ed è un requisito
       // dichiarato del gruppo: se manca, il gruppo non parte e lo dice.
       { script: 'check:auth', argsFrom: () => [envValue('VITE_PUBLIC_SITE_URL')] },
-      { script: 'subsidy:health' },
       { script: 'test:functions' },
     ],
   },
@@ -476,7 +469,6 @@ const GROUPS = {
     title: 'Valutazioni AI — richiede .env.test · SPENDE credito AI',
     needs: ['env', 'ai', 'aiCredit'],
     steps: [
-      { script: 'eval:subsidy' },
       { script: 'eval:admin' },
       { script: 'eval:assistant' },
       // ⚠️ Esisteva dal 2026-08-03 e nessun gruppo lo eseguiva: uno dei nove
@@ -530,8 +522,6 @@ const FUORI_SUITE = {
   'typecheck:app': 'metà di `typecheck`, eseguito intero in quality',
   'typecheck:functions': "l'altra metà di `typecheck`, eseguito intero in quality",
   // Seminare non è verificare: scrivono nel database di proposito.
-  'subsidy:seed': 'semina il catalogo: scrive nel database, non prova un invariante',
-  'subsidy:seed-catalog': 'semina il catalogo dai sorgenti: scrive nel database, non prova un invariante',
   'inbox:diagnose': 'diagnostica manuale della posta: si lancia su un guasto in corso, non prova un invariante',
   // Misura i DATI di una casella, non il codice: il suo numero cambia quando
   // arriva posta, non quando cambia una regola. La regola che usa
@@ -554,7 +544,6 @@ const FUORI_SUITE = {
   // Esce in rete verso sette siti ufficiali e dice che cosa è cambiato: è un
   // rapporto per una persona, non un invariante. Metterlo in una suite
   // significherebbe interrogare sette amministrazioni a ogni `npm run ci`.
-  'subsidy:sources': 'legge le sette fonti ufficiali in rete: un rapporto per una persona, non un invariante; il suo giudizio lo prova subsidy:sources:self-test, in unit',
   // Gli alias di questo runner: eseguirli da qui sarebbe ricorsione.
   'test:quality': 'alias di `suite quality`: è questo runner',
   'test:unit': 'alias di `suite unit`: è questo runner',

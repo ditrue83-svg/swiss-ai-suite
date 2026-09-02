@@ -530,7 +530,7 @@ section('9 · Da documento ad attività: quello che viene scritto, e che cosa su
 
   // -- la scrittura: i tre esiti --------------------------------------------
   const taskFinta = (id: string): Task => ({
-    id, companyId: 'co-1', createdBy: 'u-1', documentId: 'doc-1', subsidyCaseId: null,
+    id, companyId: 'co-1', createdBy: 'u-1', documentId: 'doc-1',
     title: base.title, description: null, authority: null, dueDate: null, appointmentDate: null, priority: 'high',
     status: 'open', source: 'admin_ai', assigneeUserId: null,
     completedAt: null, completedBy: null, archivedAt: null, archivedBy: null, workflowRunId: null,
@@ -772,7 +772,7 @@ section('11 · I marcatori della riga');
 section('12 · Lo stato del termine (deadlineState)');
 // ===========================================================================
 // La funzione pura dietro DeadlineMark: decide che cosa dice la marcatura del
-// termine in TUTTA l'app (documenti, attività, contratti, fatture, incentivi).
+// termine in TUTTA l'app (documenti, attività, contratti e fatture).
 // Il caso che l'ha resa necessaria: i contratti CONTAVANO i giorni anche su
 // date «candidate» mai verificate da una persona — `toVerify` deve vincere
 // sul conteggio, sempre.

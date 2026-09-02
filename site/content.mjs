@@ -66,7 +66,7 @@ export const CONTENT = {
   it: {
     title: 'AI-Swisse — la posta amministrativa diventa cose da fare',
     description:
-      'AI-Swisse legge da solo la posta amministrativa della casella collegata — e i documenti che carichi: estrae ente, scadenze e importi citando il punto esatto del documento, prepara la checklist e una bozza di risposta. E trova gli incentivi per cui la tua impresa è pertinente.',
+      'AI-Swisse legge da solo la posta amministrativa della casella collegata — e i documenti che carichi: estrae ente, scadenze e importi citando il punto esatto del documento, prepara la checklist e una bozza di risposta.',
     tagline: 'per le PMI svizzere',
     mainNav: 'Navigazione principale',
     nav: { how: 'Come funziona', trust: 'Verificabilità', pricing: 'Prezzi', contact: 'Contatti' },
@@ -113,7 +113,7 @@ export const CONTENT = {
       verify: 'Il documento non indica l’importo dell’eventuale multa.',
     },
 
-    modulesTitle: 'Cosa arriva, cosa diventa, cosa trova',
+    modulesTitle: 'Cosa arriva e cosa diventa',
     modulesLead: 'Un unico posto: ogni parte legge ciò che le altre hanno già capito.',
     modules: [
       {
@@ -136,17 +136,6 @@ export const CONTENT = {
           'Il calendario è una proiezione delle attività: non un secondo elenco da tenere allineato a mano.',
           'File originale, testo estratto e analisi restano separati e mai sovrascritti: l’archivio è la memoria su cui tutto il resto lavora.',
           'Le Finanze leggono fatture e ricevute dall’archivio, i Contratti riportano date e condizioni: letture, non un altro posto dove scrivere.',
-        ],
-      },
-      {
-        kicker: 'Subsidy AI',
-        name: 'Quello che trova',
-        lead: 'Incentivi e contributi',
-        points: [
-          'Descrivi il progetto a parole tue: il sistema individua gli ambiti e cerca i programmi pertinenti.',
-          'Distingue due cose che vengono spesso confuse: la pertinenza del programma e la tua idoneità.',
-          'Verifica i requisiti uno per uno e dice quali restano da controllare, invece di dare un esito e basta.',
-          'Avvisa quando la domanda va presentata prima di iniziare i lavori: è l’errore che costa il contributo.',
         ],
       },
     ],
@@ -196,9 +185,7 @@ export const CONTENT = {
       'AI-Swisse è uno strumento di supporto amministrativo: non sostituisce la consulenza legale, fiscale o fiduciaria. Quando il sistema non è sicuro, lo dichiara e invita a una verifica.',
       'L’Inbox oggi legge caselle Google, in sola lettura: non invia, non risponde, non modifica nulla. Microsoft non è configurato, e il collegamento della casella si attiva insieme a noi.',
       'La sincronizzazione con calendari esterni non è ancora attiva: scadenziario e calendario vivono dentro AI-Swisse.',
-      'Il catalogo incentivi copre oggi i programmi della Confederazione e del Cantone Ticino. Gli altri cantoni non sono ancora coperti.',
       'I dati sono ospitati in Europa (Francoforte), non in Svizzera. Per analizzare un documento, il testo estratto viene trasmesso al fornitore del modello linguistico. È spiegato nell’informativa sulla privacy.',
-      'Le condizioni, gli importi e le scadenze dei programmi di incentivo vanno sempre verificati sulla fonte ufficiale prima di procedere: il prodotto indica la fonte e la data dell’ultimo controllo.',
     ],
 
     pricingTitle: 'Prezzi',
@@ -207,7 +194,6 @@ export const CONTENT = {
     pricingAxesTitle: 'Su cosa si differenzieranno i piani',
     pricingAxes: [
       { t: 'Quante analisi al mese', d: 'Un artigiano che riceve tre lettere al mese e uno studio che ne riceve trecento non possono pagare lo stesso.' },
-      { t: 'Quante verifiche di idoneità', d: 'La ricerca degli incentivi e la verifica requisito per requisito hanno un costo per verifica.' },
       { t: 'Quante persone in azienda', d: 'Scadenziario personale oppure condiviso, con le attività assegnate a chi le deve fare.' },
       { t: 'Uso in studio fiduciario', d: 'Più imprese clienti seguite dallo stesso studio: è la direzione di sviluppo, oggi non ancora disponibile.' },
     ],
@@ -254,7 +240,7 @@ export const CONTENT = {
         sections: [
           { h: 'Chi tratta i dati', p: ['AI-Swisse, ditta individuale di Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Svizzera', `Per qualunque questione sui vostri dati: ${CONTACT_EMAIL}`] },
           { h: 'Questo sito', p: ['La vetrina che state leggendo non usa cookie, non ha strumenti di analisi statistica e non carica risorse da altri siti: nessun carattere tipografico remoto, nessun tracciamento. Il server registra le richieste secondo la prassi ordinaria del fornitore di hosting.', 'Il sito è ospitato su GitHub Pages, servizio di GitHub, Inc. (Stati Uniti), che registra gli indirizzi IP delle richieste per il funzionamento e la sicurezza del servizio. Su questo sito non c’è nulla da accedere e nessun dato da inserire: per usare l’applicazione si passa da app.ai-swisse.com.'] },
-          { h: 'Quali dati raccoglie l’applicazione', p: ['Dati di account: nome, cognome, indirizzo email.', 'Dati dell’impresa: ragione sociale, cantone, settore, dimensione e le informazioni che inserite nel profilo per la ricerca di incentivi.', 'Documenti: i file che caricate, il testo estratto e l’analisi prodotta.', 'Dati tecnici necessari al funzionamento: registro degli accessi e delle richieste all’AI, con data, esito e consumo.'] },
+          { h: 'Quali dati raccoglie l’applicazione', p: ['Dati di account: nome, cognome, indirizzo email.', 'Dati dell’impresa: ragione sociale, cantone e le informazioni che inserite nel profilo.', 'Documenti: i file che caricate, il testo estratto e l’analisi prodotta.', 'Dati tecnici necessari al funzionamento: registro degli accessi e delle richieste all’AI, con data, esito e consumo.'] },
           { h: 'Dove stanno i dati', p: ['Account, documenti e analisi sono ospitati su Supabase, in un progetto situato a Francoforte, in Germania (Unione Europea). Non in Svizzera: è una differenza che per alcune imprese conta, quindi è scritta anche in home page.', 'I file caricati stanno in uno spazio privato: sono raggiungibili solo dagli utenti della vostra impresa, tramite collegamenti temporanei.'] },
           { h: 'Il testo dei documenti viene inviato a un fornitore esterno', p: [`Per analizzare un documento, il testo estratto viene trasmesso a ${AI_PROVIDER}, fornitore del modello linguistico ${AI_MODEL}, che elabora la richiesta e restituisce il risultato. Senza questa trasmissione l’analisi non può avvenire.`, 'Viene inviato il testo, non il file originale. Se il documento è una scansione o una foto, viene inviata l’immagine per il riconoscimento del testo.', 'Il fornitore ha sede negli Stati Uniti: il testo trasmesso per l’analisi esce quindi dalla Svizzera e dallo Spazio economico europeo. È la ragione per cui esiste anche la modalità locale descritta qui sotto.', 'Esiste anche una modalità di funzionamento locale, che non trasmette nulla all’esterno ed esegue l’analisi nel vostro browser: il risultato è più limitato ed è dichiarato come tale.'] },
           { h: 'Perché trattiamo questi dati', p: ['Per erogare il servizio che avete richiesto, cioè eseguire il contratto.', 'Per la sicurezza del servizio e per rispettare gli obblighi di legge.', 'Non usiamo i vostri documenti per addestrare modelli e non li cediamo a terzi per scopi commerciali.'] },
@@ -267,7 +253,7 @@ export const CONTENT = {
         title: 'Condizioni d’uso',
         intro: 'Le regole del rapporto fra chi usa AI-Swisse e chi lo gestisce.',
         sections: [
-          { h: 'Oggetto', p: ['AI-Swisse è un servizio in abbonamento che analizza documenti amministrativi e segnala programmi di incentivo pertinenti. Il servizio è rivolto a imprese e professionisti, non a consumatori privati.'] },
+          { h: 'Oggetto', p: ['AI-Swisse è un servizio in abbonamento che analizza documenti amministrativi e organizza le attività che ne derivano. Il servizio è rivolto a imprese e professionisti, non a consumatori privati.'] },
           { h: 'Che cosa il servizio NON è', p: ['Non è consulenza legale, fiscale, contabile o fiduciaria, e non la sostituisce.', 'Le analisi sono prodotte automaticamente e possono contenere errori. Ogni informazione va verificata sul documento originale, che resta sempre consultabile a fianco dell’analisi.', 'Le decisioni prese sulla base delle analisi restano vostre e sotto la vostra responsabilità.'] },
           { h: 'Account e uso corretto', p: ['Siete responsabili delle credenziali e di quello che viene fatto con il vostro account.', 'Caricate soltanto documenti che avete il diritto di trattare. Non caricate dati di terzi senza averne titolo.', 'Non è consentito usare il servizio per scopi illeciti, né tentare di aggirarne i limiti tecnici.'] },
           { h: 'Disponibilità', p: ['Ci impegniamo a mantenere il servizio disponibile, senza garantire un funzionamento ininterrotto. Interventi di manutenzione e guasti dei fornitori possono causare interruzioni. Non è previsto un livello di servizio garantito contrattualmente.'] },
@@ -282,7 +268,7 @@ export const CONTENT = {
   de: {
     title: 'AI-Swisse — Behördenpost wird zu konkreten Aufgaben',
     description:
-      'AI-Swisse liest die Behördenpost des verbundenen Postfachs von selbst — und die Dokumente, die Sie hochladen: erkennt Absender, Fristen und Beträge und belegt jede Angabe mit der Stelle im Dokument, erstellt die Checkliste und einen Antwortentwurf. Und findet die Fördermittel, für die Ihr Unternehmen relevant ist.',
+      'AI-Swisse liest die Behördenpost des verbundenen Postfachs von selbst — und die Dokumente, die Sie hochladen: erkennt Absender, Fristen und Beträge und belegt jede Angabe mit der Stelle im Dokument, erstellt die Checkliste und einen Antwortentwurf.',
     tagline: 'für Schweizer KMU',
     mainNav: 'Hauptnavigation',
     nav: { how: 'So funktioniert es', trust: 'Nachprüfbarkeit', pricing: 'Preise', contact: 'Kontakt' },
@@ -329,7 +315,7 @@ export const CONTENT = {
       verify: 'Das Dokument nennt die Höhe einer allfälligen Busse nicht.',
     },
 
-    modulesTitle: 'Was ankommt, was daraus wird, was es findet',
+    modulesTitle: 'Was ankommt und was daraus wird',
     modulesLead: 'Ein Ort: Jeder Teil liest, was die anderen schon verstanden haben.',
     modules: [
       {
@@ -352,17 +338,6 @@ export const CONTENT = {
           'Der Kalender ist eine Projektion der Aufgaben: keine zweite Liste, die man von Hand abgleicht.',
           'Originaldatei, extrahierter Text und Analyse bleiben getrennt und werden nie überschrieben: das Archiv ist das Gedächtnis, auf dem alles andere arbeitet.',
           'Die Finanzen lesen Rechnungen und Belege aus dem Archiv, die Verträge zeigen Daten und Konditionen: Lesarten, kein weiterer Ort zum Schreiben.',
-        ],
-      },
-      {
-        kicker: 'Subsidy AI',
-        name: 'Was es findet',
-        lead: 'Fördermittel und Beiträge',
-        points: [
-          'Beschreiben Sie das Vorhaben in eigenen Worten: das System erkennt die Bereiche und sucht die relevanten Programme.',
-          'Es unterscheidet zwei Dinge, die oft verwechselt werden: die Relevanz des Programms und Ihren Anspruch darauf.',
-          'Es prüft die Voraussetzungen einzeln und benennt die offenen Punkte, statt nur ein Ergebnis zu liefern.',
-          'Es warnt, wenn das Gesuch vor Beginn der Arbeiten einzureichen ist: der Fehler, der den Beitrag kostet.',
         ],
       },
     ],
@@ -412,9 +387,7 @@ export const CONTENT = {
       'AI-Swisse ist ein Hilfsmittel für administrative Aufgaben: es ersetzt keine rechtliche, steuerliche oder treuhänderische Beratung. Wenn das System unsicher ist, weist es darauf hin und empfiehlt eine Prüfung.',
       'Die Inbox liest heute Google-Postfächer, nur lesend: sie sendet nichts, antwortet nicht, verändert nichts. Microsoft ist nicht konfiguriert, und die Anbindung des Postfachs wird gemeinsam mit uns eingerichtet.',
       'Die Synchronisierung mit externen Kalendern ist noch nicht aktiv: Fristenkalender und Kalender leben in AI-Swisse.',
-      'Der Förderkatalog umfasst heute die Programme des Bundes und des Kantons Tessin. Weitere Kantone sind noch nicht abgedeckt.',
       'Die Daten liegen in Europa (Frankfurt), nicht in der Schweiz. Für die Analyse wird der extrahierte Text an den Anbieter des Sprachmodells übermittelt. Die Datenschutzerklärung erklärt es im Detail.',
-      'Bedingungen, Beträge und Fristen der Förderprogramme sind vor dem Weitergehen stets an der offiziellen Quelle zu prüfen: das Produkt nennt die Quelle und das Datum der letzten Kontrolle.',
     ],
 
     pricingTitle: 'Preise',
@@ -423,7 +396,6 @@ export const CONTENT = {
     pricingAxesTitle: 'Woran sich die Pläne unterscheiden werden',
     pricingAxes: [
       { t: 'Wie viele Analysen pro Monat', d: 'Ein Handwerksbetrieb mit drei Briefen im Monat und ein Büro mit dreihundert können nicht gleich viel bezahlen.' },
-      { t: 'Wie viele Anspruchsprüfungen', d: 'Die Fördermittelsuche und die Prüfung Voraussetzung für Voraussetzung verursachen Kosten pro Prüfung.' },
       { t: 'Wie viele Personen im Betrieb', d: 'Persönlicher oder gemeinsamer Fristenkalender, mit Aufgaben, die den zuständigen Personen zugewiesen sind.' },
       { t: 'Einsatz im Treuhandbüro', d: 'Mehrere Mandanten aus demselben Büro betreut: das ist die Entwicklungsrichtung, heute noch nicht verfügbar.' },
     ],
@@ -470,7 +442,7 @@ export const CONTENT = {
         sections: [
           { h: 'Wer die Daten bearbeitet', p: ['AI-Swisse, Einzelfirma von Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Schweiz', `Für alle Fragen zu Ihren Daten: ${CONTACT_EMAIL}`] },
           { h: 'Diese Website', p: ['Die Website, die Sie gerade lesen, verwendet keine Cookies, keine Analysewerkzeuge und lädt keine Ressourcen von anderen Servern: keine externen Schriften, kein Tracking. Der Server protokolliert die Zugriffe im üblichen Rahmen des Hosting-Anbieters.', 'Die Website wird über GitHub Pages betrieben, einen Dienst von GitHub, Inc. (Vereinigte Staaten), der die IP-Adressen der Zugriffe für Betrieb und Sicherheit protokolliert. Auf dieser Website gibt es keine Anmeldung und keine Eingabefelder: die Anwendung selbst läuft unter app.ai-swisse.com.'] },
-          { h: 'Welche Daten die Anwendung erhebt', p: ['Kontodaten: Vorname, Name, E-Mail-Adresse.', 'Unternehmensdaten: Firmenbezeichnung, Kanton, Branche, Grösse und die Angaben, die Sie im Profil für die Fördermittelsuche erfassen.', 'Dokumente: die hochgeladenen Dateien, der extrahierte Text und die erstellte Analyse.', 'Technische Daten für den Betrieb: Protokoll der Zugriffe und der KI-Anfragen mit Datum, Ergebnis und Verbrauch.'] },
+          { h: 'Welche Daten die Anwendung erhebt', p: ['Kontodaten: Vorname, Name, E-Mail-Adresse.', 'Unternehmensdaten: Firmenbezeichnung, Kanton und die Angaben, die Sie im Profil erfassen.', 'Dokumente: die hochgeladenen Dateien, der extrahierte Text und die erstellte Analyse.', 'Technische Daten für den Betrieb: Protokoll der Zugriffe und der KI-Anfragen mit Datum, Ergebnis und Verbrauch.'] },
           { h: 'Wo die Daten liegen', p: ['Konten, Dokumente und Analysen liegen bei Supabase, in einem Projekt in Frankfurt am Main, Deutschland (Europäische Union). Nicht in der Schweiz: für manche Unternehmen ist das ein Unterschied, deshalb steht es auch auf der Startseite.', 'Die hochgeladenen Dateien liegen in einem privaten Speicher: erreichbar nur für die Benutzer Ihres Unternehmens, über zeitlich begrenzte Links.'] },
           { h: 'Der Text der Dokumente geht an einen externen Anbieter', p: [`Für die Analyse wird der extrahierte Text an ${AI_PROVIDER} übermittelt, den Anbieter des Sprachmodells ${AI_MODEL}, der die Anfrage verarbeitet und das Ergebnis zurückgibt. Ohne diese Übermittlung ist keine Analyse möglich.`, 'Übermittelt wird der Text, nicht die Originaldatei. Bei einem Scan oder Foto wird das Bild für die Texterkennung übermittelt.', 'Der Anbieter hat seinen Sitz in den Vereinigten Staaten: der zur Analyse übermittelte Text verlässt somit die Schweiz und den Europäischen Wirtschaftsraum. Aus diesem Grund gibt es auch den lokalen Betriebsmodus, der weiter unten beschrieben ist.', 'Es gibt auch einen lokalen Betriebsmodus, der nichts nach aussen übermittelt und die Analyse im Browser ausführt: das Ergebnis ist eingeschränkter und wird als solches deklariert.'] },
           { h: 'Warum wir diese Daten bearbeiten', p: ['Um den von Ihnen bestellten Dienst zu erbringen, also zur Vertragserfüllung.', 'Für die Sicherheit des Dienstes und zur Erfüllung gesetzlicher Pflichten.', 'Wir verwenden Ihre Dokumente nicht zum Trainieren von Modellen und geben sie nicht zu Werbezwecken an Dritte weiter.'] },
@@ -483,7 +455,7 @@ export const CONTENT = {
         title: 'Nutzungsbedingungen',
         intro: 'Die Regeln zwischen denen, die AI-Swisse nutzen, und denen, die es betreiben.',
         sections: [
-          { h: 'Gegenstand', p: ['AI-Swisse ist ein Abonnementsdienst, der behördliche Dokumente analysiert und relevante Förderprogramme aufzeigt. Der Dienst richtet sich an Unternehmen und Fachpersonen, nicht an private Konsumentinnen und Konsumenten.'] },
+          { h: 'Gegenstand', p: ['AI-Swisse ist ein Abonnementsdienst, der behördliche Dokumente analysiert und die daraus entstehenden Aufgaben organisiert. Der Dienst richtet sich an Unternehmen und Fachpersonen, nicht an private Konsumentinnen und Konsumenten.'] },
           { h: 'Was der Dienst NICHT ist', p: ['Keine rechtliche, steuerliche, buchhalterische oder treuhänderische Beratung — und kein Ersatz dafür.', 'Die Analysen werden automatisch erstellt und können Fehler enthalten. Jede Angabe ist am Originaldokument zu prüfen, das stets neben der Analyse einsehbar bleibt.', 'Entscheide auf Grundlage der Analysen bleiben Ihre und liegen in Ihrer Verantwortung.'] },
           { h: 'Konto und ordnungsgemässe Nutzung', p: ['Sie sind für Ihre Zugangsdaten und für die Nutzung Ihres Kontos verantwortlich.', 'Laden Sie nur Dokumente hoch, die Sie bearbeiten dürfen. Keine Daten Dritter ohne Berechtigung.', 'Die Nutzung zu rechtswidrigen Zwecken sowie das Umgehen technischer Beschränkungen sind nicht gestattet.'] },
           { h: 'Verfügbarkeit', p: ['Wir bemühen uns um einen verfügbaren Dienst, ohne unterbruchsfreien Betrieb zu garantieren. Wartungsarbeiten und Ausfälle von Anbietern können zu Unterbrüchen führen. Ein vertraglich zugesichertes Service-Level besteht nicht.'] },
@@ -498,7 +470,7 @@ export const CONTENT = {
   fr: {
     title: 'AI-Swisse — le courrier administratif devient une liste de tâches',
     description:
-      'AI-Swisse lit de lui-même le courrier administratif de la boîte reliée — et les documents que vous chargez : il identifie l’expéditeur, les délais et les montants en citant le passage exact du document, prépare la checklist et un projet de réponse. Et trouve les subventions pertinentes pour votre entreprise.',
+      'AI-Swisse lit de lui-même le courrier administratif de la boîte reliée — et les documents que vous chargez : il identifie l’expéditeur, les délais et les montants en citant le passage exact du document, prépare la checklist et un projet de réponse.',
     tagline: 'pour les PME suisses',
     mainNav: 'Navigation principale',
     nav: { how: 'Fonctionnement', trust: 'Vérifiabilité', pricing: 'Tarifs', contact: 'Contact' },
@@ -545,7 +517,7 @@ export const CONTENT = {
       verify: 'Le document n’indique pas le montant d’une éventuelle amende.',
     },
 
-    modulesTitle: 'Ce qui arrive, ce que ça devient, ce qu’il trouve',
+    modulesTitle: 'Ce qui arrive et ce que ça devient',
     modulesLead: 'Un seul endroit : chaque partie lit ce que les autres ont déjà compris.',
     modules: [
       {
@@ -568,17 +540,6 @@ export const CONTENT = {
           'Le calendrier est une projection des tâches : pas une seconde liste à aligner à la main.',
           'Fichier original, texte extrait et analyse restent séparés, jamais écrasés : les archives sont la mémoire sur laquelle tout le reste travaille.',
           'Les Finances lisent factures et justificatifs depuis les archives, les Contrats en rapportent dates et conditions : des lectures, pas un autre endroit où écrire.',
-        ],
-      },
-      {
-        kicker: 'Subsidy AI',
-        name: 'Ce qu’il trouve',
-        lead: 'Subventions et contributions',
-        points: [
-          'Décrivez le projet avec vos mots : le système en dégage les domaines et cherche les programmes pertinents.',
-          'Il distingue deux choses souvent confondues : la pertinence du programme et votre éligibilité.',
-          'Il vérifie les conditions une par une et indique celles qui restent à contrôler, au lieu de livrer un simple verdict.',
-          'Il alerte quand la demande doit être déposée avant le début des travaux : l’erreur qui coûte la contribution.',
         ],
       },
     ],
@@ -628,7 +589,6 @@ export const CONTENT = {
       'AI-Swisse est un outil de soutien administratif : il ne remplace pas le conseil juridique, fiscal ou fiduciaire. Lorsque le système n’est pas sûr, il le signale et recommande une vérification.',
       'L’Inbox lit aujourd’hui les boîtes Google, en lecture seule : elle n’envoie rien, ne répond pas, ne modifie rien. Microsoft n’est pas configuré, et le raccordement de la boîte s’active avec nous.',
       'La synchronisation avec des calendriers externes n’est pas encore active : échéancier et calendrier vivent dans AI-Swisse.',
-      'Le catalogue des subventions couvre aujourd’hui les programmes de la Confédération et du canton du Tessin. Les autres cantons ne sont pas encore couverts.',
       'Les données sont hébergées en Europe (Francfort), pas en Suisse. Pour analyser un document, le texte extrait est transmis au fournisseur du modèle de langage. La politique de confidentialité l’explique en détail.',
       'Les conditions, montants et délais des programmes doivent toujours être vérifiés à la source officielle avant de poursuivre : le produit indique la source et la date du dernier contrôle.',
     ],
@@ -639,7 +599,6 @@ export const CONTENT = {
     pricingAxesTitle: 'Ce qui distinguera les formules',
     pricingAxes: [
       { t: 'Le nombre d’analyses par mois', d: 'Un artisan qui reçoit trois courriers par mois et un bureau qui en reçoit trois cents ne peuvent pas payer la même chose.' },
-      { t: 'Le nombre de vérifications d’éligibilité', d: 'La recherche de subventions et la vérification condition par condition ont un coût par vérification.' },
       { t: 'Le nombre de personnes dans l’entreprise', d: 'Échéancier personnel ou partagé, avec les tâches attribuées à qui doit les faire.' },
       { t: 'L’usage en fiduciaire', d: 'Plusieurs entreprises clientes suivies par le même bureau : c’est la direction de développement, pas encore disponible aujourd’hui.' },
     ],
@@ -686,7 +645,7 @@ export const CONTENT = {
         sections: [
           { h: 'Qui traite les données', p: ['AI-Swisse, raison individuelle d’Andrea Cavalieri', 'Via Rovello 32, 6942 Savosa, Suisse', `Pour toute question sur vos données : ${CONTACT_EMAIL}`] },
           { h: 'Ce site', p: ['Le site vitrine que vous lisez n’utilise pas de cookies, n’a pas d’outil de mesure d’audience et ne charge aucune ressource depuis un autre serveur : pas de police distante, pas de traçage. Le serveur journalise les requêtes selon la pratique ordinaire de l’hébergeur.', 'Le site est hébergé sur GitHub Pages, service de GitHub, Inc. (États-Unis), qui journalise les adresses IP des requêtes pour le fonctionnement et la sécurité du service. Ce site ne comporte ni connexion ni champ de saisie : l’application elle-même se trouve sur app.ai-swisse.com.'] },
-          { h: 'Quelles données l’application collecte', p: ['Données de compte : prénom, nom, adresse e-mail.', 'Données d’entreprise : raison sociale, canton, secteur, taille et les informations saisies dans le profil pour la recherche de subventions.', 'Documents : les fichiers chargés, le texte extrait et l’analyse produite.', 'Données techniques nécessaires au fonctionnement : journal des accès et des requêtes à l’IA, avec date, résultat et consommation.'] },
+          { h: 'Quelles données l’application collecte', p: ['Données de compte : prénom, nom, adresse e-mail.', 'Données d’entreprise : raison sociale, canton et les informations saisies dans le profil.', 'Documents : les fichiers chargés, le texte extrait et l’analyse produite.', 'Données techniques nécessaires au fonctionnement : journal des accès et des requêtes à l’IA, avec date, résultat et consommation.'] },
           { h: 'Où se trouvent les données', p: ['Comptes, documents et analyses sont hébergés chez Supabase, dans un projet situé à Francfort, en Allemagne (Union européenne). Pas en Suisse : pour certaines entreprises la différence compte, elle figure donc aussi en page d’accueil.', 'Les fichiers chargés résident dans un espace privé : accessibles uniquement aux utilisateurs de votre entreprise, par des liens à durée limitée.'] },
           { h: 'Le texte des documents est transmis à un fournisseur externe', p: [`Pour analyser un document, le texte extrait est transmis à ${AI_PROVIDER}, fournisseur du modèle de langage ${AI_MODEL}, qui traite la demande et renvoie le résultat. Sans cette transmission, l’analyse est impossible.`, 'C’est le texte qui est transmis, pas le fichier original. Si le document est un scan ou une photo, l’image est transmise pour la reconnaissance du texte.', 'Le fournisseur a son siège aux États-Unis : le texte transmis pour l’analyse quitte donc la Suisse et l’Espace économique européen. C’est la raison pour laquelle il existe aussi le mode local décrit ci-dessous.', 'Il existe aussi un mode de fonctionnement local, qui ne transmet rien à l’extérieur et exécute l’analyse dans votre navigateur : le résultat est plus limité et déclaré comme tel.'] },
           { h: 'Pourquoi nous traitons ces données', p: ['Pour fournir le service que vous avez demandé, c’est-à-dire exécuter le contrat.', 'Pour la sécurité du service et le respect des obligations légales.', 'Nous n’utilisons pas vos documents pour entraîner des modèles et ne les cédons pas à des tiers à des fins commerciales.'] },
@@ -699,7 +658,7 @@ export const CONTENT = {
         title: 'Conditions d’utilisation',
         intro: 'Les règles entre celles et ceux qui utilisent AI-Swisse et celui qui l’exploite.',
         sections: [
-          { h: 'Objet', p: ['AI-Swisse est un service par abonnement qui analyse des documents administratifs et signale les programmes de subvention pertinents. Le service s’adresse aux entreprises et aux professionnels, non aux consommateurs privés.'] },
+          { h: 'Objet', p: ['AI-Swisse est un service par abonnement qui analyse des documents administratifs et organise les tâches qui en découlent. Le service s’adresse aux entreprises et aux professionnels, non aux consommateurs privés.'] },
           { h: 'Ce que le service N’EST PAS', p: ['Ni conseil juridique, fiscal, comptable ou fiduciaire, ni un substitut à celui-ci.', 'Les analyses sont produites automatiquement et peuvent contenir des erreurs. Chaque information doit être vérifiée sur le document original, qui reste consultable à côté de l’analyse.', 'Les décisions prises sur la base des analyses restent les vôtres et relèvent de votre responsabilité.'] },
           { h: 'Compte et usage correct', p: ['Vous êtes responsable de vos identifiants et de ce qui est fait avec votre compte.', 'Ne chargez que des documents que vous avez le droit de traiter. Pas de données de tiers sans titre.', 'L’usage à des fins illicites et le contournement des limites techniques ne sont pas autorisés.'] },
           { h: 'Disponibilité', p: ['Nous nous efforçons de maintenir le service disponible, sans garantir un fonctionnement ininterrompu. Maintenances et pannes de fournisseurs peuvent provoquer des interruptions. Aucun niveau de service n’est garanti contractuellement.'] },

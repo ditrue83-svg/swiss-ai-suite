@@ -281,13 +281,13 @@ function tuttiIFile(dir) {
 //     189         triage a otto letture parallele, criteri di ciascun lettore
 //     193 → 147   un grep, ma CIECO su `email/store.ts` (il byte NUL)
 //     137         la prima stesura di questo file, a regex, che ne mancava ~28%
-//     190         questo, col parser TypeScript
+//     190 → 175   questo, col parser TypeScript; il secondo numero segue D-13
 // Vale l'ultimo, e vale perché lo si rifà.
 // ---------------------------------------------------------------------------
 export const ATTESI = {
-  totale: 190,
-  quando: '2026-08-11, col parser TypeScript, sul perimetro intero — compreso `email/store.ts`, '
-    + 'che fino a quel giorno nessuna scansione aveva letto',
+  totale: 175,
+  quando: '2026-09-01, col parser TypeScript, dopo la rimozione D-13 — compreso `email/store.ts`, '
+    + 'che resta nel perimetro misurato',
 };
 
 // ---------------------------------------------------------------------------

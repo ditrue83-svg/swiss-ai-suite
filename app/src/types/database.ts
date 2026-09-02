@@ -44,7 +44,7 @@ export type ExtractionMethod = 'native_pdf' | 'ocr' | 'text';
  */
 export type DocumentCategory =
   | 'administration' | 'taxes' | 'social_insurance' | 'invoices' | 'contracts'
-  | 'insurance' | 'banking' | 'employees' | 'clients' | 'suppliers' | 'subsidies' | 'other';
+  | 'insurance' | 'banking' | 'employees' | 'clients' | 'suppliers' | 'other';
 /** Chi ha deciso la categoria. Nessun valore `ai`: nessuna AI classifica. */
 /**
  * Chi ha deciso la categoria. Nessun valore `ai`: nessuna AI classifica.
@@ -75,90 +75,7 @@ export type TaskEventKind =
  * da una trattativa — il «prossimo passo» che diventa lavoro assegnabile.
  * Quale controparte lo dicono `tasks.crm_organization_id` e `crm_opportunity_id`.
  */
-export type TaskSource = 'admin_ai' | 'subsidy_ai' | 'manual' | 'workflow' | 'crm';
-/**
- * ⚠️ NON È `SubsidyEligibilityStatus`, e i due non vanno confusi.
- *
- * Questo è `public.eligibility_status` della 0003, che il modulo 1.0 usa e che
- * `subsidy_cases.eligibility_status_at_creation` continua a portare. Il 2.0 ha
- * un tipo Postgres DIVERSO (`public.subsidy_eligibility_status`, 0032) con
- * cinque valori e senza alcun `eligible`. Sono due colonne, due tipi, due
- * significati: unificarli in TypeScript farebbe passare il compilatore su un
- * assegnamento che il database rifiuta.
- */
-export type EligibilityStatus = 'unknown' | 'likely' | 'unlikely' | 'ineligible';
-/**
- * ⚠️ CINQUE VALORI NUOVI DALLA 0032, e non sono cosmetici: il modulo 1.0
- * descriveva solo la preparazione, e mancava tutto ciò che accade DOPO l'invio
- * — cioè il momento in cui una PMI ha davvero bisogno di sapere a che punto è.
- * `approved` e `rejected` NON sono dedotti da niente: li registra una persona.
- */
-export type SubsidyCaseStatus =
-  | 'draft' | 'assessing' | 'collecting_documents' | 'ready' | 'submitted'
-  | 'under_review' | 'approved' | 'rejected' | 'withdrawn' | 'closed';
-
-// ---- Incentivi / Subsidy AI 2.0 (0032) -------------------------------------
-// Gli enum del catalogo, dei dati d'impresa e della valutazione. Sono elencati
-// qui e non dedotti da nessuna parte: il compilatore deve poter fallire quando
-// una schermata dimentica un valore, che è precisamente ciò che i `Record`
-// completi di `incentivesModel.ts` sfruttano.
-
-export type SubsidySourceType =
-  | 'official_program_page' | 'official_call_page' | 'official_database'
-  | 'official_law' | 'official_regulation' | 'official_guideline'
-  | 'official_pdf' | 'manual_official_source';
-export type SubsidySourceCriticality = 'low' | 'normal' | 'high' | 'critical';
-export type SubsidyVersionStatus = 'draft' | 'published' | 'superseded' | 'withdrawn';
-/**
- * ⚠️ `unknown` NON è un ripiego: significa che la fonte non dice se la finestra
- * sia aperta, e presentarla come aperta o come chiusa sarebbe in entrambi i
- * casi un'invenzione. `continuous` è una finestra permanente, che è una cosa
- * diversa da «aperta fino a una data».
- */
-export type SubsidyCallStatus =
-  | 'upcoming' | 'open' | 'closed' | 'continuous' | 'suspended' | 'unknown';
-export type SubsidyRuleHardness = 'hard' | 'soft' | 'exclusion' | 'informative';
-export type SubsidyRuleEvaluability = 'auto' | 'question' | 'manual';
-export type SubsidyProjectStage = 'idea' | 'planned' | 'started' | 'completed' | 'cancelled';
-/** Da dove viene un fatto usato nella valutazione: è ciò che la rende verificabile. */
-export type SubsidyFactSource =
-  | 'company_profile' | 'company_registry' | 'project'
-  | 'user_answer' | 'document' | 'interpretation' | 'unknown';
-/**
- * ⚠️ NON ESISTE `eligible`, ed è la decisione più importante dello schema. Il
- * valore più alto è `potentially_eligible`: «i criteri che possiamo valutare
- * sembrano soddisfatti». Dichiarare un'impresa idonea sarebbe sostituirsi
- * all'autorità.
- */
-export type SubsidyEligibilityStatus =
-  | 'not_assessed' | 'insufficient_information' | 'potentially_eligible'
-  | 'likely_ineligible' | 'ineligible';
-/** Una FASCIA, non una percentuale: «82/100» letto da un imprenditore diventa «82%». */
-export type SubsidyRelevanceLevel = 'high' | 'medium' | 'low';
-export type SubsidyCriterionState =
-  | 'satisfied' | 'not_satisfied' | 'unknown' | 'conflicting' | 'not_evaluable';
-/** ⚠️ `unverified` non è «vecchio»: è «non l'abbiamo mai controllato». */
-export type SubsidyFreshness = 'fresh' | 'aging' | 'stale' | 'unverified';
-export type SubsidyCompleteness = 'complete' | 'minor_gaps' | 'major_gaps';
-export type SubsidyTiming = 'open' | 'upcoming' | 'closed' | 'continuous' | 'unknown';
-export type SubsidyReadiness = 'not_started' | 'in_preparation' | 'ready' | 'submitted';
-export type SubsidyDismissalReason =
-  | 'not_relevant' | 'already_applied' | 'not_now' | 'project_cancelled' | 'other';
-export type SubsidyOpportunityKind = 'project' | 'general';
-export type SubsidyCaseOutcome = 'approved' | 'rejected' | 'withdrawn' | 'unknown';
-export type SubsidyDocumentRelation =
-  | 'application_form' | 'business_plan' | 'budget' | 'financial_statement'
-  | 'quotation' | 'partner_letter' | 'proof' | 'decision' | 'correspondence' | 'other';
-export type SubsidyChecklistKind =
-  | 'document' | 'verification' | 'contact' | 'preparation' | 'submission' | 'other';
-export type SubsidyCaseEventKind =
-  | 'case_created' | 'owner_changed' | 'status_changed' | 'assessment_updated'
-  | 'document_linked' | 'document_unlinked' | 'checklist_completed'
-  | 'checklist_reopened' | 'submitted' | 'outcome_recorded'
-  | 'source_changed' | 'archived';
-export type SubsidyPartnerRole =
-  | 'research' | 'implementation' | 'supplier' | 'consortium' | 'other';
-
+export type TaskSource = 'admin_ai' | 'manual' | 'workflow' | 'crm';
 // ---- Inbox (0013) ----------------------------------------------------------
 // Enum separati per stati che descrivono cose diverse (§8 del capitolato):
 // dove è arrivata la macchina (`EmailProcessingStatus`), cosa deve fare una
@@ -199,16 +116,7 @@ export type NotificationType =
   // 0026 — la trattativa affidata a qualcuno. Non c'è una notifica «cliente
   // inattivo»: l'inattività è un giudizio con una soglia, e diventa lavoro
   // passando da una regola di automazione, non da una campanella automatica.
-  | 'crm_opportunity_assigned'
-  // 0032 — gli incentivi. QUATTRO e non dodici: si notifica ciò che cambia il
-  // lavoro di una persona, non ogni rivalutazione.
-  // ⚠️ Stanno qui perché il database li ammette: senza, lo `switch` di
-  //    `notificationTitleKey` resta esaustivo per il compilatore e una riga
-  //    reale gli passa accanto restituendo `undefined` — cioè la campanella va
-  //    in crash su `t(undefined)`. È la stessa forma del `NEXT_STEP_TEXT`
-  //    parziale della Panoramica: un elenco incompleto non sbaglia, rompe.
-  | 'subsidy_new_opportunity' | 'subsidy_call_opened'
-  | 'subsidy_deadline_approaching' | 'subsidy_program_changed';
+  | 'crm_opportunity_assigned';
 
 // ---- CRM Light (0026) ------------------------------------------------------
 // «Con chi stiamo lavorando». Il modulo COLLEGA le entità degli altri moduli
@@ -306,14 +214,7 @@ export type AutomationEventType =
   // gira dentro il worker delle automazioni già acceso. Nessun cron nuovo.
   | 'crm_organization_created' | 'crm_role_added'
   | 'crm_opportunity_created' | 'crm_opportunity_stage_changed'
-  | 'crm_opportunity_won' | 'crm_follow_up_due' | 'crm_follow_up_sequence_due'
-  // 0032 — i sette inneschi degli incentivi. ⚠️ Stanno qui perché il database
-  // li ammette: l'unione TypeScript deve SEGUIRE l'enum SQL, non inseguirlo.
-  // Il registro condiviso li dichiara e un test confronta i due elenchi.
-  | 'subsidy_opportunity_created' | 'subsidy_opportunity_high_relevance'
-  | 'subsidy_call_opened' | 'subsidy_deadline_approaching'
-  | 'subsidy_assessment_became_stale' | 'subsidy_case_status_changed'
-  | 'subsidy_source_critical_change';
+  | 'crm_opportunity_won' | 'crm_follow_up_due' | 'crm_follow_up_sequence_due';
 export type AutomationEventStatus = 'pending' | 'processing' | 'done' | 'failed' | 'dead_letter';
 /**
  * Stato di una regola. L'archiviazione è uno STATO — non una data come per le
@@ -495,12 +396,6 @@ export interface Database {
         Update: { role?: MemberRole };
         Relationships: [];
       };
-      company_profiles: {
-        Row: { company_id: string; sector: string | null; employee_count: number | null; revenue_band: string | null; owns_property: boolean; vehicle_count: number; current_projects: Json; created_at: string; updated_at: string };
-        Insert: { company_id: string; sector?: string | null; employee_count?: number | null; revenue_band?: string | null; owns_property?: boolean; vehicle_count?: number; current_projects?: Json };
-        Update: { sector?: string | null; employee_count?: number | null; revenue_band?: string | null; owns_property?: boolean; vehicle_count?: number; current_projects?: Json };
-        Relationships: [];
-      };
       documents: {
         Row: {
           id: string; company_id: string; uploaded_by: string | null; title: string;
@@ -678,8 +573,8 @@ export interface Database {
         Relationships: [];
       };
       tasks: {
-        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; subsidy_case_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; appointment_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null; contract_id: string | null; contract_milestone_id: string | null; crm_organization_id: string | null; crm_opportunity_id: string | null;};
-        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; subsidy_case_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; appointment_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null; contract_id?: string | null; contract_milestone_id?: string | null; crm_organization_id?: string | null; crm_opportunity_id?: string | null };
+        Row: { id: string; company_id: string; created_by: string | null; document_id: string | null; title: string; description: string | null; authority: string | null; due_date: string | null; appointment_date: string | null; priority: TaskPriority; status: TaskStatus; source: TaskSource; assignee_user_id: string | null; completed_at: string | null; completed_by: string | null; archived_at: string | null; archived_by: string | null; created_at: string; updated_at: string; workflow_run_id: string | null; contract_id: string | null; contract_milestone_id: string | null; crm_organization_id: string | null; crm_opportunity_id: string | null;};
+        Insert: { id?: string; company_id: string; created_by?: string | null; document_id?: string | null; title: string; description?: string | null; authority?: string | null; due_date?: string | null; appointment_date?: string | null; priority?: TaskPriority; status?: TaskStatus; source?: TaskSource; assignee_user_id?: string | null; contract_id?: string | null; contract_milestone_id?: string | null; crm_organization_id?: string | null; crm_opportunity_id?: string | null };
         // `completed_at`, `completed_by`, `archived_by` non compaiono in Update:
         // li scrive il trigger `tasks_guard`, e un client che li mandasse li
         // vedrebbe comunque sovrascritti. `archived_at` c'è perché è il modo in
@@ -767,387 +662,6 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
-      subsidy_matches: {
-        Row: { id: string; company_id: string; program_id: string; relevance_score: number | null; eligibility_status: EligibilityStatus; answers: Json; satisfied_requirements: Json; unknown_requirements: Json; failed_requirements: Json; source_last_checked_at: string | null; evaluated_at: string; created_at: string; updated_at: string };
-        Insert: { id?: string; company_id: string; program_id: string; relevance_score?: number | null; eligibility_status?: EligibilityStatus; answers?: Json; satisfied_requirements?: Json; unknown_requirements?: Json; failed_requirements?: Json; source_last_checked_at?: string | null; evaluated_at?: string };
-        Update: { relevance_score?: number | null; eligibility_status?: EligibilityStatus; answers?: Json; satisfied_requirements?: Json; unknown_requirements?: Json; failed_requirements?: Json; source_last_checked_at?: string | null; evaluated_at?: string };
-        Relationships: [];
-      };
-      // ⚠️ La 0032 ha rifatto i permessi di questa tabella: si è passati dai
-      // permessi di TABELLA della 0003 a permessi di COLONNA, perché adesso ci
-      // sono colonne che deve timbrare il database (`submitted_at`,
-      // `submitted_by`) e colonne che non si riscrivono mai (`program_snapshot`,
-      // `snapshot_hash`, `program_version_id`, `legacy_snapshot`). `Insert` e
-      // `Update` qui sotto rispecchiano ESATTAMENTE i grant: un campo in più
-      // prometterebbe una scrittura che il database rifiuta.
-      subsidy_cases: {
-        Row: {
-          id: string; company_id: string; created_by: string | null;
-          program_id: string; program_name: string | null; authority: string | null;
-          status: SubsidyCaseStatus; eligibility_status_at_creation: EligibilityStatus | null;
-          relevance_score: number | null; source_last_checked_at: string | null;
-          eligibility_snapshot: Json | null; created_at: string; updated_at: string;
-          // ---- 0032 ----
-          opportunity_id: string | null; project_id: string | null;
-          program_version_id: string | null; call_id: string | null;
-          owner_user_id: string | null;
-          official_deadline: string | null; official_deadline_at: string | null;
-          internal_deadline: string | null;
-          amount_requested: number | null; amount_awarded: number | null; currency: string | null;
-          submitted_at: string | null; submitted_by: string | null;
-          decision_at: string | null; outcome: SubsidyCaseOutcome;
-          outcome_document_id: string | null;
-          program_snapshot: Json | null; snapshot_hash: string | null;
-          legacy_snapshot: boolean; source_changed_at: string | null;
-          archived_at: string | null; archived_by: string | null;
-          workflow_run_id: string | null;
-        };
-        Insert: {
-          id?: string; company_id: string; created_by?: string | null;
-          opportunity_id?: string | null; project_id?: string | null;
-          program_id: string; program_name?: string | null; authority?: string | null;
-          program_version_id?: string | null; call_id?: string | null;
-          owner_user_id?: string | null; status?: SubsidyCaseStatus;
-          official_deadline?: string | null; official_deadline_at?: string | null;
-          internal_deadline?: string | null;
-          amount_requested?: number | null; currency?: string | null;
-          program_snapshot?: Json | null; snapshot_hash?: string | null;
-          eligibility_status_at_creation?: EligibilityStatus | null;
-          relevance_score?: number | null; source_last_checked_at?: string | null;
-          eligibility_snapshot?: Json | null;
-        };
-        // ⚠️ NIENTE `submitted_at`/`submitted_by`: li timbra il trigger quando
-        // lo stato passa a `submitted`. §107 — l'invio lo registra una persona,
-        // e la data non la sceglie il browser.
-        Update: {
-          status?: SubsidyCaseStatus; owner_user_id?: string | null;
-          internal_deadline?: string | null;
-          amount_requested?: number | null; amount_awarded?: number | null;
-          currency?: string | null; decision_at?: string | null;
-          outcome?: SubsidyCaseOutcome; outcome_document_id?: string | null;
-          archived_at?: string | null; archived_by?: string | null;
-          source_changed_at?: string | null;
-        };
-        Relationships: [];
-      };
-      subsidy_case_items: {
-        Row: {
-          id: string; subsidy_case_id: string; company_id: string | null;
-          title: string; completed: boolean; sort_order: number;
-          kind: SubsidyChecklistKind; document_id: string | null; task_id: string | null;
-          due_date: string | null; required: boolean; source_requirement_key: string | null;
-          completed_at: string | null; completed_by: string | null;
-          created_at: string; updated_at: string;
-        };
-        // `company_id` NON compare: lo scrive il guardiano leggendolo dalla
-        // pratica, e concederlo permetterebbe di dichiarare un'azienda diversa.
-        Insert: {
-          subsidy_case_id: string; title: string; completed?: boolean; sort_order?: number;
-          kind?: SubsidyChecklistKind; document_id?: string | null; task_id?: string | null;
-          due_date?: string | null; required?: boolean; source_requirement_key?: string | null;
-        };
-        Update: {
-          title?: string; completed?: boolean; sort_order?: number;
-          kind?: SubsidyChecklistKind; document_id?: string | null; task_id?: string | null;
-          due_date?: string | null; required?: boolean;
-        };
-        Relationships: [];
-      };
-      subsidy_projects: {
-        Row: {
-          id: string; company_id: string; title: string; description: string | null;
-          stage: SubsidyProjectStage; owner_user_id: string | null;
-          location_canton: string | null; location_country: string;
-          sector: string | null;
-          estimated_start_date: string | null; estimated_end_date: string | null;
-          budget_amount: number | null; budget_currency: string | null;
-          employee_impact: number | null;
-          // ⚠️ Tre valori: true/false/NULL. `null` è «non lo sappiamo» e NON
-          // deve diventare `false`: un criterio su un fatto ignoto resta
-          // `unknown`, non «non soddisfatto».
-          has_research_partner: boolean | null;
-          has_innovation_partner: boolean | null;
-          has_international_partners: boolean | null;
-          project_types: string[]; goals: string | null;
-          status: string; created_by: string | null;
-          archived_at: string | null; archived_by: string | null;
-          created_at: string; updated_at: string;
-        };
-        Insert: {
-          company_id: string; title: string; description?: string | null;
-          stage?: SubsidyProjectStage; owner_user_id?: string | null;
-          location_canton?: string | null; location_country?: string;
-          sector?: string | null;
-          estimated_start_date?: string | null; estimated_end_date?: string | null;
-          budget_amount?: number | null; budget_currency?: string | null;
-          employee_impact?: number | null;
-          has_research_partner?: boolean | null;
-          has_innovation_partner?: boolean | null;
-          has_international_partners?: boolean | null;
-          project_types?: string[]; goals?: string | null; status?: string;
-        };
-        // ⚠️ NESSUN `delete` esiste su questa tabella: un progetto si ARCHIVIA
-        // scrivendo `status`, e i timbri li mette il trigger. Cancellarlo
-        // porterebbe via opportunità, valutazioni e il legame delle pratiche.
-        Update: {
-          title?: string; description?: string | null; stage?: SubsidyProjectStage;
-          owner_user_id?: string | null; location_canton?: string | null;
-          location_country?: string; sector?: string | null;
-          estimated_start_date?: string | null; estimated_end_date?: string | null;
-          budget_amount?: number | null; budget_currency?: string | null;
-          employee_impact?: number | null;
-          has_research_partner?: boolean | null;
-          has_innovation_partner?: boolean | null;
-          has_international_partners?: boolean | null;
-          project_types?: string[]; goals?: string | null; status?: string;
-        };
-        Relationships: [];
-      };
-      subsidy_project_documents: {
-        Row: {
-          id: string; company_id: string; project_id: string; document_id: string;
-          relation: SubsidyDocumentRelation; added_by: string | null; created_at: string;
-        };
-        Insert: {
-          company_id: string; project_id: string; document_id: string;
-          relation?: SubsidyDocumentRelation;
-        };
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      subsidy_project_partners: {
-        Row: {
-          id: string; company_id: string; project_id: string; organization_id: string;
-          role: SubsidyPartnerRole; added_by: string | null; created_at: string;
-        };
-        Insert: {
-          company_id: string; project_id: string; organization_id: string;
-          role: SubsidyPartnerRole;
-        };
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      // Le scrive la Edge Function con il ruolo di servizio: un client che
-      // potesse inserirle scriverebbe un'interpretazione che nessun modello ha
-      // prodotto.
-      subsidy_project_interpretations: {
-        Row: {
-          id: string; company_id: string; project_id: string; version: number;
-          description_hash: string; model: string; prompt_version: string;
-          schema_version: string; content: Json; dropped_evidence: number;
-          overall_confidence: number | null; created_by: string | null; created_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      // ⚠️ APPEND-ONLY: rispondere di nuovo scrive una riga NUOVA, e la corrente
-      // è la più recente per (progetto, versione, criterio). Non esiste
-      // `Update`, e non è una dimenticanza — la risposta di marzo resta un
-      // fatto che riguarda una pratica aperta.
-      subsidy_answers: {
-        Row: {
-          id: string; company_id: string; project_id: string | null;
-          program_version_id: string; rule_key: string;
-          value: string; note: string | null;
-          answered_by: string | null; answered_at: string; created_at: string;
-        };
-        Insert: {
-          company_id: string; project_id?: string | null; program_version_id: string;
-          rule_key: string; value: 'yes' | 'no' | 'unknown'; note?: string | null;
-        };
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      // ⚠️ Il client può fare TRE cose: salvare, mettere da parte, riaprire. Le
-      // sei misure, i conteggi e la valutazione corrente le scrive il MOTORE —
-      // un'opportunità la cui rilevanza si cambia dal browser non è una
-      // valutazione, è un'opinione. `dismissed_at` e `dismissed_by` li timbra
-      // il trigger dalla presenza del motivo.
-      subsidy_opportunities: {
-        Row: {
-          id: string; company_id: string; project_id: string | null;
-          kind: SubsidyOpportunityKind; program_id: string;
-          program_version_id: string; call_id: string | null;
-          relevance_level: SubsidyRelevanceLevel; relevance_score: number;
-          eligibility_status: SubsidyEligibilityStatus;
-          completeness: SubsidyCompleteness; timing: SubsidyTiming;
-          source_freshness: SubsidyFreshness; readiness: SubsidyReadiness;
-          missing_fact_count: number; open_criteria_count: number;
-          current_assessment_id: string | null; assessment_version: number;
-          last_fingerprint: string | null; assessment_stale: boolean;
-          first_matched_at: string; last_assessed_at: string | null;
-          saved_at: string | null; dismissed_at: string | null;
-          dismissed_by: string | null; dismissed_reason: SubsidyDismissalReason | null;
-          dismissed_note: string | null; reopen_suggested_at: string | null;
-          workflow_run_id: string | null; created_at: string; updated_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: {
-          saved_at?: string | null;
-          dismissed_reason?: SubsidyDismissalReason | null;
-          dismissed_note?: string | null;
-        };
-        Relationships: [];
-      };
-      subsidy_assessments: {
-        Row: {
-          id: string; company_id: string; opportunity_id: string; version: number;
-          program_version_id: string; call_id: string | null;
-          interpretation_id: string | null;
-          relevance_level: SubsidyRelevanceLevel; relevance_score: number;
-          relevance_reasons: Json;
-          eligibility_status: SubsidyEligibilityStatus;
-          completeness: SubsidyCompleteness; timing: SubsidyTiming;
-          source_freshness: SubsidyFreshness;
-          facts_used: Json; missing_facts: Json; conflicts: Json;
-          fingerprint: string; engine_version: string; trigger_source: string;
-          created_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      subsidy_criterion_results: {
-        Row: {
-          id: string; company_id: string; assessment_id: string; rule_key: string;
-          hardness: SubsidyRuleHardness; state: SubsidyCriterionState;
-          observed_value: string | null; value_source: SubsidyFactSource | null;
-          reason_code: string | null; sort_order: number; created_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      subsidy_case_documents: {
-        Row: {
-          id: string; company_id: string; subsidy_case_id: string; document_id: string;
-          requirement_key: string | null; relation_type: SubsidyDocumentRelation;
-          status: string; added_by: string | null; created_at: string;
-        };
-        Insert: {
-          company_id: string; subsidy_case_id: string; document_id: string;
-          requirement_key?: string | null; relation_type?: SubsidyDocumentRelation;
-          status?: string;
-        };
-        Update: {
-          requirement_key?: string | null; relation_type?: SubsidyDocumentRelation;
-          status?: string;
-        };
-        Relationships: [];
-      };
-      // ⚠️ Lo scrivono i TRIGGER: il client non ha alcun permesso di scrittura,
-      // quindi nessuno può firmare un'azione a nome di un collega.
-      subsidy_case_events: {
-        Row: {
-          id: string; company_id: string; subsidy_case_id: string;
-          kind: SubsidyCaseEventKind; detail: Json;
-          actor_user_id: string | null; created_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      // ---- Il catalogo: SOLA LETTURA per il client (§28, §143) --------------
-      // Nessun editor di catalogo per il cliente, e il modo di garantirlo è che
-      // `Insert` e `Update` non ammettano alcun campo.
-      subsidy_sources: {
-        Row: {
-          id: string; authority: string; source_type: SubsidySourceType;
-          canonical_url: string; allowed_host: string; locale: string;
-          jurisdiction: string; adapter_key: string; check_frequency_days: number;
-          criticality: SubsidySourceCriticality; enabled: boolean;
-          // ⚠️ Aggiornata SOLO da un controllo RIUSCITO: un errore non la tocca.
-          // La freschezza non si deduce da un tentativo fallito.
-          last_successful_check_at: string | null;
-          last_error_at: string | null; last_error_code: string | null;
-          next_check_at: string; last_content_hash: string | null;
-          notes: string | null; created_at: string; updated_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      subsidy_program_versions: {
-        Row: {
-          id: string; program_id: string; version_number: number;
-          status: SubsidyVersionStatus;
-          effective_from: string | null; effective_until: string | null;
-          published_at: string | null; reviewed_at: string | null; reviewed_by: string | null;
-          source_snapshot_id: string | null; normalized_content: Json;
-          content_hash: string; created_by: string | null; notes: string | null;
-          created_at: string; updated_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      subsidy_program_rules: {
-        Row: {
-          id: string; program_version_id: string; rule_key: string; label: string;
-          fact_key: string | null; operator: string | null; expected_value: Json;
-          hardness: SubsidyRuleHardness; evaluability: SubsidyRuleEvaluability;
-          question: string | null; source_evidence: Json; notes: string | null;
-          sort_order: number; created_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      subsidy_calls: {
-        Row: {
-          id: string; program_id: string; program_version_id: string | null;
-          external_reference: string | null; title: string | null;
-          status: SubsidyCallStatus; opens_on: string | null;
-          deadline_on: string | null;
-          // ⚠️ Valorizzato SOLO se la fonte dichiara un'ora: nessun 23:59
-          // dedotto da una data. Un termine che scade alle 12:00 e che noi
-          // mostriamo alle 23:59 fa perdere la candidatura.
-          deadline_at: string | null; timezone: string | null;
-          continuous: boolean;
-          // Testo e non data: le autorità scrivono «autunno 2026», e
-          // trasformarlo in 01.09.2026 sarebbe inventare un giorno.
-          expected_next_call: string | null;
-          source_snapshot_id: string | null; checked_at: string | null;
-          published_at: string | null; closed_at: string | null;
-          notes: string | null; created_at: string; updated_at: string;
-        };
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-      subsidy_programs: {
-        Row: {
-          id: string; name: string; authority: string; support_type: string;
-          geography: string[]; target_sectors: string[]; company_size_min: number; company_size_max: number;
-          project_types: string[]; requirements: Json; exclusions: Json;
-          contribution_description: string | null; application_window: string | null;
-          must_apply_before_start: boolean; must_apply_before_start_text: string | null; documents_required: string[];
-          official_source_url: string; source_title: string | null; last_checked_at: string | null;
-          data_status: string; active: boolean; created_at: string; updated_at: string;
-          translations: Json;   // 0012 — contenuti tradotti per lingua
-          // 0011 — disponibilità: distinta da `active` (che nasconde il programma)
-          // e da `data_status` (che riguarda l'affidabilità del dato).
-          availability: string; availability_note: string | null;
-          availability_source_url: string | null; availability_checked_at: string | null;
-          // 0032 — il ciclo di vita del PROGRAMMA, che è la quarta domanda
-          // distinta: `active` dice se lo mostriamo, `availability` se oggi è
-          // concedibile, `data_status` quanto è affidabile il dato, e
-          // `lifecycle` se lo strumento esiste ancora. Quattro domande diverse.
-          lifecycle: string;
-          primary_source_id: string | null;
-          // ⚠️ COPIA DICHIARATA della versione pubblicata: la verità è l'indice
-          // unico parziale su `subsidy_program_versions`, e un trigger la tiene
-          // allineata. Si legge per non doverla cercare a ogni riga.
-          current_version_id: string | null;
-        };
-        // Catalogo condiviso: la 0007 concede al client la sola `select`. Lo
-        // scrive il seed con service_role (scripts/seed-subsidy-programs.mjs).
-        Insert: Record<string, never>;
-        Update: Record<string, never>;
-        Relationships: [];
-      };
-
       // ---- Inbox (0013) ----------------------------------------------------
       // Le Row rispecchiano SOLO le colonne che la 0013 concede al ruolo
       // `authenticated`. `sync_cursor`, `watch_resource_id`, `history_floor_at`
@@ -2142,11 +1656,10 @@ export interface Database {
       crm_is_public_domain: { Args: { p_domain: string | null }; Returns: boolean };
       is_company_member: { Args: { p_company_id: string }; Returns: boolean };
       is_company_admin: { Args: { p_company_id: string }; Returns: boolean };
-      is_case_member: { Args: { p_case_id: string }; Returns: boolean };
       create_company_with_owner: {
         Args: {
           p_legal_name: string; p_uid_che?: string | null; p_canton?: string | null; p_municipality?: string | null;
-          p_legal_form?: string | null; p_sector?: string | null; p_employee_count?: number | null; p_revenue_band?: string | null;
+          p_legal_form?: string | null;
         };
         Returns: string;
       };
@@ -2383,76 +1896,6 @@ export interface Database {
         Returns: string | null;
       };
 
-      // ---- Incentivi / Subsidy AI 2.0 (0032) -------------------------------
-      // ⚠️ `Returns: Record<string, unknown>[]` è la stessa scelta di
-      // `list_crm_organizations`, `list_contracts` e `list_documents`: queste
-      // funzioni tornano righe snake_case con colonne composte, e il tipo
-      // preciso vive nel service layer (`toOpportunity`, `toProject`, `toCase`).
-      // Dichiararlo qui a mano produrrebbe una seconda copia dell'elenco delle
-      // colonne, e il repository ha già pagato una dichiarazione FALSA di
-      // questo tipo su `list_tasks`.
-      //
-      // ⚠️ `p_view` accetta SETTE valori: all · new · high · to_verify ·
-      // deadline · saved · dismissed. Un valore diverso non è un errore per la
-      // funzione SQL: cade nel ramo `else`, cioè «tutte». L'elenco chiuso sta
-      // in `OPPORTUNITY_VIEWS` (incentivesModel.ts) e un test lo confronta con
-      // l'SQL — un elenco non filtrato presentato come filtrato sarebbe una
-      // bugia silenziosa.
-      list_subsidy_opportunities: {
-        Args: {
-          p_company_id: string; p_project_id?: string | null;
-          p_view?: string; p_limit?: number; p_offset?: number;
-        };
-        Returns: Record<string, unknown>[];
-      };
-      /** I criteri di UNA valutazione, con il requisito e la sua evidenza. */
-      subsidy_assessment_criteria: {
-        Args: { p_assessment_id: string };
-        Returns: Record<string, unknown>[];
-      };
-      list_subsidy_projects: {
-        Args: { p_company_id: string; p_include_archived?: boolean };
-        Returns: Record<string, unknown>[];
-      };
-      list_subsidy_cases: {
-        Args: { p_company_id: string; p_include_archived?: boolean };
-        Returns: Record<string, unknown>[];
-      };
-      /**
-       * ⚠️ LE TRE FUNZIONI DELLA REVISIONE DEL CATALOGO (0037) NON PRENDONO UN
-       * `p_company_id`, e l'assenza è il punto: **il catalogo è globale**, non
-       * appartiene a un'azienda. L'autorità non è `member_role` — che è per
-       * azienda — ma l'appartenenza a `subsidy_catalog_editors`, controllata
-       * DENTRO le funzioni, che sono `security definer`. Le due tabelle restano
-       * con `revoke all`: qui si concede solo l'esecuzione.
-       *
-       * ⚠️ A chi non è operatore rispondono con un ERRORE (42501), non con un
-       * elenco vuoto: un vuoto direbbe «non c'è niente da revisionare», che è
-       * un'altra affermazione, e falsa.
-       */
-      subsidy_is_catalog_editor: {
-        Args: Record<string, never>;
-        Returns: boolean;
-      };
-      list_subsidy_catalog_reviews: {
-        Args: { p_include_resolved?: boolean; p_limit?: number };
-        Returns: Record<string, unknown>[];
-      };
-      resolve_subsidy_catalog_review: {
-        Args: { p_id: string; p_decision: string; p_note?: string | null };
-        Returns: Record<string, unknown>[];
-      };
-      /**
-       * ⚠️ Torna un `jsonb`, non righe: è un oggetto solo. Come
-       * `crm_home_summary`, a chi non è membro non risponde con zeri per gentilezza
-       * — la RLS filtra le sottointerrogazioni e i conteggi risultano nulli. Il
-       * servizio deve distinguere «non ci sono opportunità» da «non hai accesso»:
-       * mostrare zeri al secondo sarebbe un guasto travestito da stato legittimo.
-       */
-      subsidy_home_summary: {
-        Args: { p_company_id: string; p_days?: number };
-        Returns: Json;
-      };
     };
     Enums: {
       member_role: MemberRole;
@@ -2466,8 +1909,6 @@ export interface Database {
       task_status: TaskStatus;
       task_source: TaskSource;
       task_event_kind: TaskEventKind;
-      eligibility_status: EligibilityStatus;
-      subsidy_case_status: SubsidyCaseStatus;
       email_provider: EmailProvider;
       email_connection_status: EmailConnectionStatus;
       email_sync_type: EmailSyncType;

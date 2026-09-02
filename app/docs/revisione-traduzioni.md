@@ -28,30 +28,6 @@ Le chiavi fra apici servono a ritrovare il testo nel codice (`src/i18n/locales/`
 
 **486 testi in totale.** Con poco tempo, i livelli 1 e 2 (55 testi) sono quelli che contano.
 
-> 🛑 **Questo documento non verrà consegnato a nessuno (deciso il 2026-07-26).**
-> Il titolare ha scelto di non commissionare una revisione madrelingua. I testi sono stati rivisti
-> internamente con i controlli verificabili elencati nel README, e le correzioni trovate sono state
-> applicate. Il documento resta come materiale di confronto fra le tre lingue, utile se un giorno la
-> revisione esterna si farà — per esempio perché un cliente germanofono o romando segnala che
-> qualcosa «suona straniero», che è l'unico modo in cui questo limite può emergere.
->
-> ⚠️ **Non è più completo (2026-07-26).** Circa cento etichette erano rimaste
-> scritte a mano nei componenti — la dashboard, lo scadenziario, buona parte della schermata di
-> analisi e le pratiche di Subsidy erano in italiano anche in tedesco e in francese — e sono state
-> portate nei dizionari in quella data. **Le loro traduzioni DE e FR non sono ancora elencate qui
-> sotto** e non sono passate da nessun controllo, nemmeno da quelli oggettivi della sezione
-> precedente. Vanno aggiunte prima di consegnare il documento a un revisore, altrimenti la revisione
-> coprirà l'interfaccia di ieri.
->
-> Le chiavi interessate stanno in `dashboard.*` (da `kpiOpenActions` a `horizonBeyond`),
-> `tasks.*` (da `titleField` a `deleteAria`), `adminAi.result.*` (da `correctionSaved` a
-> `correctAria`, più `quoteOnPage`, `quoteCited`, `pdfPageNote`), `adminAi.introReading`,
-> `adminAi.backToArchive`, `adminAi.fileImageOcr`, `adminAi.fileScanOcr`, `adminAi.progressGeneric`,
-> `subsidy.cases.*` (da `caseDeleted` a `statuses.*`), `subsidy.detail.demoData*`,
-> `archive.deleteAria`, `auth.passwordPlaceholder`, `auth.register.firstNamePlaceholder`,
-> `auth.register.lastNamePlaceholder`, `labels.tones.*`.
-
-
 ---
 
 ## Livello 1 — Responsabilità legale  (4 testi)
@@ -70,7 +46,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`legal.disclaimer`**
 
 | | |
@@ -82,7 +57,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.disclaimer`**
 
@@ -96,9 +70,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.interpretation.disclaimer`**
-
 | | |
 |---|---|
 | IT | Interpretazione automatica del testo che hai scritto: serve a trovare programmi pertinenti, non dichiara l’idoneità — che va verificata requisito per requisito e confermata dall’ente. |
@@ -108,8 +79,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
 
 ---
 
@@ -129,7 +98,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.aiUnavailable`**
 
 | | |
@@ -141,7 +109,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.analysisFailed`**
 
@@ -155,7 +122,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.analysisTooLong`**
 
 | | |
@@ -167,7 +133,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.analysisUnavailable`**
 
@@ -181,7 +146,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.applyBeforeStartSub`**
 
 | | |
@@ -193,7 +157,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.badCredentials`**
 
@@ -207,7 +170,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.companyCreateFailed`**
 
 | | |
@@ -219,7 +181,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.configMissing`**
 
@@ -233,7 +194,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.configRejected`**
 
 | | |
@@ -245,7 +205,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.deterministicNoImages`**
 
@@ -259,7 +218,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.duplicate`**
 
 | | |
@@ -271,7 +229,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.emailNotConfirmed`**
 
@@ -285,7 +242,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.emailNotSent`**
 
 | | |
@@ -297,7 +253,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.fileTooLarge`**
 
@@ -311,7 +266,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.forbidden`**
 
 | | |
@@ -323,7 +277,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.generic`**
 
@@ -337,7 +290,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.interpretUnavailable`**
 
 | | |
@@ -349,7 +301,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.invalidEmail`**
 
@@ -363,7 +314,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.lookupUnavailable`**
 
 | | |
@@ -375,7 +325,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.network`**
 
@@ -389,7 +338,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.notConnected`**
 
 | | |
@@ -401,7 +349,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.notDeterminable`**
 
@@ -415,7 +362,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.notFound`**
 
 | | |
@@ -427,7 +373,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.pdfPreviewUnavailable`**
 
@@ -441,7 +386,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.replyFailed`**
 
 | | |
@@ -453,7 +397,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.replyNotGenerated`**
 
@@ -467,7 +410,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.sessionExpired`**
 
 | | |
@@ -479,7 +421,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.sessionInvalid`**
 
@@ -493,7 +434,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.signInFailed`**
 
 | | |
@@ -505,7 +445,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.storageUnavailable`**
 
@@ -519,7 +458,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.tooManyAttempts`**
 
 | | |
@@ -531,7 +469,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`errors.userExists`**
 
@@ -545,7 +482,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`errors.weakPassword`**
 
 | | |
@@ -557,7 +493,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`states.configHint`**
 
@@ -571,7 +506,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`states.configNoData`**
 
 | | |
@@ -583,7 +517,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`states.configRejected`**
 
@@ -597,7 +530,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`states.configRejectedHint`**
 
 | | |
@@ -609,7 +541,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`states.configRequired`**
 
@@ -623,7 +554,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`states.configRequiredHint`**
 
 | | |
@@ -635,7 +565,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`states.errorTitle`**
 
@@ -649,7 +578,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`states.loading`**
 
 | | |
@@ -661,7 +589,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`states.loadingCompany`**
 
@@ -675,7 +602,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`states.retry`**
 
 | | |
@@ -687,7 +613,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`states.verifyingSession`**
 
@@ -701,9 +626,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.notTranslated`**
-
 | | |
 |---|---|
 | IT | I testi di questo programma non sono ancora disponibili nella tua lingua: quanto segue è in italiano, come pubblicato dall’ente. |
@@ -713,9 +635,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.suspendedChecked`**
 
 | | |
 |---|---|
@@ -727,9 +646,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.suspendedGeneric`**
-
 | | |
 |---|---|
 | IT | Il programma esiste ma al momento non viene concesso. |
@@ -739,9 +655,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.suspendedSource`**
 
 | | |
 |---|---|
@@ -753,21 +666,9 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.suspendedTitle`**
-
-| | |
-|---|---|
-| IT | Incentivo attualmente sospeso. |
-| DE | Förderung zurzeit ausgesetzt. |
-| FR | Incitation actuellement suspendue. |
-
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.results.suspended`**
 
 | | |
 |---|---|
@@ -778,8 +679,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
 
 ---
 
@@ -799,7 +698,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.amountTypes.due`**
 
 | | |
@@ -811,7 +709,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.authorityTypes.cantonal`**
 
@@ -825,7 +722,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.authorityTypes.federal`**
 
 | | |
@@ -837,7 +733,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.authorityTypes.insurance`**
 
@@ -851,7 +746,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.authorityTypes.municipal`**
 
 | | |
@@ -863,7 +757,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.authorityTypes.pension`**
 
@@ -877,7 +770,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.authorityTypes.private`**
 
 | | |
@@ -889,7 +781,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.authorityTypes.social_insurance`**
 
@@ -903,7 +794,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.authorityTypes.unknown`**
 
 | | |
@@ -915,7 +805,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.confidence.alta`**
 
@@ -929,7 +818,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.confidence.bassa`**
 
 | | |
@@ -941,7 +829,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.confidence.media`**
 
@@ -955,7 +842,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.deadlineLevels.nessuna`**
 
 | | |
@@ -967,7 +853,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.deadlineLevels.scaduta`**
 
@@ -981,7 +866,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.docTypes.contract_related`**
 
 | | |
@@ -993,7 +877,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.docTypes.declaration_request`**
 
@@ -1007,7 +890,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.docTypes.employment`**
 
 | | |
@@ -1019,7 +901,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.docTypes.information`**
 
@@ -1033,7 +914,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.docTypes.inspection_notice`**
 
 | | |
@@ -1045,7 +925,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.docTypes.invoice`**
 
@@ -1059,7 +938,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.docTypes.official_decision`**
 
 | | |
@@ -1071,7 +949,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.docTypes.other`**
 
@@ -1085,7 +962,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.docTypes.payment_request`**
 
 | | |
@@ -1097,7 +973,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.docTypes.permit`**
 
@@ -1111,7 +986,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.docTypes.reminder`**
 
 | | |
@@ -1123,7 +997,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.docTypes.request_for_documents`**
 
@@ -1137,7 +1010,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.docTypes.social_insurance`**
 
 | | |
@@ -1149,7 +1021,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.docTypes.tax_document`**
 
@@ -1163,7 +1034,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.languages.de`**
 
 | | |
@@ -1175,7 +1045,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.languages.fr`**
 
@@ -1189,7 +1058,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.languages.it`**
 
 | | |
@@ -1201,7 +1069,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.urgency.alta`**
 
@@ -1215,7 +1082,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`labels.urgency.bassa`**
 
 | | |
@@ -1227,7 +1093,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`labels.urgency.media`**
 
@@ -1241,9 +1106,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.cases.eligibility`**
-
 | | |
 |---|---|
 | IT | Idoneità: |
@@ -1253,9 +1115,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.eligibility`**
 
 | | |
 |---|---|
@@ -1267,9 +1126,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.eligibilityHint`**
-
 | | |
 |---|---|
 | IT | Rispondi alle domande: le hard rule (obbligatorie) determinano l’idoneità. La conferma finale spetta sempre all’ente. |
@@ -1279,9 +1135,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.labels.eligibility.unknown`**
 
 | | |
 |---|---|
@@ -1293,9 +1146,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.labels.eligibility.unlikely`**
-
 | | |
 |---|---|
 | IT | Probabilmente non idoneo |
@@ -1305,9 +1155,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.results.eligibilityToVerify`**
 
 | | |
 |---|---|
@@ -1319,9 +1166,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.results.priority`**
-
 | | |
 |---|---|
 | IT | Priorità {level} |
@@ -1331,7 +1175,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.priority.high`**
 
@@ -1345,7 +1188,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.priority.low`**
 
 | | |
@@ -1358,7 +1200,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.priority.medium`**
 
 | | |
@@ -1370,8 +1211,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
 
 ---
 
@@ -1391,7 +1230,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.analysisDone`**
 
 | | |
@@ -1403,7 +1241,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.analyzeAnother`**
 
@@ -1417,7 +1254,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.docNotFound`**
 
 | | |
@@ -1429,7 +1265,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.dropzone`**
 
@@ -1443,7 +1278,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.dropzoneAria`**
 
 | | |
@@ -1455,7 +1289,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.extracting`**
 
@@ -1469,7 +1302,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.fileUnreadable`**
 
 | | |
@@ -1481,7 +1313,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.intro`**
 
@@ -1495,7 +1326,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.loadingAnalysis`**
 
 | | |
@@ -1507,7 +1337,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.noAnalysisYet`**
 
@@ -1521,7 +1350,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.ocrNote`**
 
 | | |
@@ -1533,7 +1361,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.progressAnalyzing`**
 
@@ -1547,7 +1374,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.progressOcr`**
 
 | | |
@@ -1559,7 +1385,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.progressPreparing`**
 
@@ -1573,7 +1398,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.progressResuming`**
 
 | | |
@@ -1585,7 +1409,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.removeFile`**
 
@@ -1599,7 +1422,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.addToTasks`**
 
 | | |
@@ -1611,7 +1433,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.amount`**
 
@@ -1625,7 +1446,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.amountsFound`**
 
 | | |
@@ -1637,7 +1457,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.checklist`**
 
@@ -1651,7 +1470,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.correct`**
 
 | | |
@@ -1663,7 +1481,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.corrections`**
 
@@ -1677,7 +1494,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.correctionsHint`**
 
 | | |
@@ -1689,7 +1505,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.createTask`**
 
@@ -1703,7 +1518,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.deadline`**
 
 | | |
@@ -1715,7 +1529,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.deadlineIndicative`**
 
@@ -1729,7 +1542,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.deadlineNoneSub`**
 
 | | |
@@ -1741,7 +1553,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.deadlineNoneTitle`**
 
@@ -1755,7 +1566,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.deadlineRelative`**
 
 | | |
@@ -1767,7 +1577,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.documentDate`**
 
@@ -1781,7 +1590,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.documentType`**
 
 | | |
@@ -1793,7 +1601,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.failedGeneric`**
 
@@ -1807,7 +1614,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.failedKept`**
 
 | | |
@@ -1819,7 +1625,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.failedTitle`**
 
@@ -1833,7 +1638,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.fallbackAction`**
 
 | | |
@@ -1845,7 +1649,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.generateFirst`**
 
@@ -1859,7 +1662,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.generateReply`**
 
 | | |
@@ -1871,7 +1673,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.generatingReply`**
 
@@ -1885,7 +1686,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.lastAttemptFailed`**
 
 | | |
@@ -1897,7 +1697,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.legalReferences`**
 
@@ -1911,7 +1710,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.loadingDocument`**
 
 | | |
@@ -1923,7 +1721,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.noDeadlineFound`**
 
@@ -1937,7 +1734,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.noOriginalText`**
 
 | | |
@@ -1949,7 +1745,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.noReplyYet`**
 
@@ -1963,7 +1758,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.noRequestedDocuments`**
 
 | | |
@@ -1975,7 +1769,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.originBadgeExtracted`**
 
@@ -1989,7 +1782,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.originBadgeExtractedCallout`**
 
 | | |
@@ -2001,7 +1793,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.originBadgeSuggested`**
 
@@ -2015,7 +1806,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.originBadgeSuggestedCallout`**
 
 | | |
@@ -2027,7 +1817,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.originalDocument`**
 
@@ -2041,7 +1830,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.page`**
 
 | | |
@@ -2053,7 +1841,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.pdfUnavailable`**
 
@@ -2067,7 +1854,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.recipient`**
 
 | | |
@@ -2079,7 +1865,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.references`**
 
@@ -2093,7 +1878,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.regenerateReply`**
 
 | | |
@@ -2105,7 +1889,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.reply`**
 
@@ -2119,7 +1902,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.replyLanguage`**
 
 | | |
@@ -2131,7 +1913,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.replyTone`**
 
@@ -2145,7 +1926,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.requestedDocuments`**
 
 | | |
@@ -2157,7 +1937,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.retryAnalysis`**
 
@@ -2171,7 +1950,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.risk`**
 
 | | |
@@ -2183,7 +1961,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.riskExplicit`**
 
@@ -2197,7 +1974,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.riskInferred`**
 
 | | |
@@ -2209,7 +1985,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.riskUnknown`**
 
@@ -2223,7 +1998,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.sender`**
 
 | | |
@@ -2235,7 +2009,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.senderShowInDocument`**
 
@@ -2249,7 +2022,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.showInDocument`**
 
 | | |
@@ -2261,7 +2033,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.subject`**
 
@@ -2275,7 +2046,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.taskAdded`**
 
 | | |
@@ -2287,7 +2057,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.result.uncertainties`**
 
@@ -2301,7 +2070,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.result.whatToDoNow`**
 
 | | |
@@ -2313,7 +2081,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.savedNeedsReview`**
 
@@ -2327,7 +2094,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.savedOk`**
 
 | | |
@@ -2339,7 +2105,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.stepDoc`**
 
@@ -2353,7 +2118,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.title`**
 
 | | |
@@ -2365,7 +2129,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.titleField`**
 
@@ -2379,7 +2142,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`adminAi.titlePlaceholder`**
 
 | | |
@@ -2391,7 +2153,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`adminAi.trySample`**
 
@@ -2405,7 +2166,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.actionsProgress`**
 
 | | |
@@ -2417,7 +2177,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`archive.analysisFailed`**
 
@@ -2431,7 +2190,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.analysisFailedSub`**
 
 | | |
@@ -2443,7 +2201,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`archive.confirmDelete`**
 
@@ -2457,7 +2214,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.count`**
 
 | | |
@@ -2469,7 +2225,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`archive.deleted`**
 
@@ -2483,7 +2238,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.empty`**
 
 | | |
@@ -2495,7 +2249,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`archive.emptyCta`**
 
@@ -2509,7 +2262,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.emptySub`**
 
 | | |
@@ -2521,7 +2273,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`archive.fileUnavailable`**
 
@@ -2535,7 +2286,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.filterAll`**
 
 | | |
@@ -2547,7 +2297,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`archive.needsReview`**
 
@@ -2561,7 +2310,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.noneWithFilter`**
 
 | | |
@@ -2573,7 +2321,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`archive.openFileAria`**
 
@@ -2587,7 +2334,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.processing`**
 
 | | |
@@ -2599,7 +2345,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`archive.subtitle`**
 
@@ -2613,7 +2358,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`archive.title`**
 
 | | |
@@ -2625,7 +2369,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.confirmPassword`**
 
@@ -2639,7 +2382,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.emailLabel`**
 
 | | |
@@ -2651,7 +2393,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.emailPlaceholder`**
 
@@ -2665,7 +2406,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.errors.emailRequired`**
 
 | | |
@@ -2677,7 +2417,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.errors.nameRequired`**
 
@@ -2691,7 +2430,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.errors.passwordRequired`**
 
 | | |
@@ -2703,7 +2441,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.errors.passwordShort`**
 
@@ -2717,7 +2454,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.forgot.backToLogin`**
 
 | | |
@@ -2729,7 +2465,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.forgot.sent`**
 
@@ -2743,7 +2478,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.forgot.submit`**
 
 | | |
@@ -2755,7 +2489,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.forgot.subtitle`**
 
@@ -2769,7 +2502,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.forgot.title`**
 
 | | |
@@ -2781,7 +2513,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.login.createAccount`**
 
@@ -2795,7 +2526,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.login.forgot`**
 
 | | |
@@ -2807,7 +2537,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.login.noAccount`**
 
@@ -2821,7 +2550,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.login.submit`**
 
 | | |
@@ -2833,7 +2561,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.login.subtitle`**
 
@@ -2847,7 +2574,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.login.title`**
 
 | | |
@@ -2859,7 +2585,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.openFromLink`**
 
@@ -2873,7 +2598,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.passwordLabel`**
 
 | | |
@@ -2885,7 +2609,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.passwordsDiffer`**
 
@@ -2899,7 +2622,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.redirecting`**
 
 | | |
@@ -2911,7 +2633,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.register.checkEmail`**
 
@@ -2925,7 +2646,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.register.firstName`**
 
 | | |
@@ -2937,7 +2657,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.register.goToLogin`**
 
@@ -2951,7 +2670,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.register.haveAccount`**
 
 | | |
@@ -2963,7 +2681,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.register.lastName`**
 
@@ -2977,7 +2694,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.register.passwordHint`**
 
 | | |
@@ -2989,7 +2705,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.register.submit`**
 
@@ -3003,7 +2718,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.register.subtitle`**
 
 | | |
@@ -3015,7 +2729,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.register.title`**
 
@@ -3029,7 +2742,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.reset.done`**
 
 | | |
@@ -3041,7 +2753,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.reset.newPassword`**
 
@@ -3055,7 +2766,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.reset.submit`**
 
 | | |
@@ -3067,7 +2777,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`auth.reset.subtitle`**
 
@@ -3081,7 +2790,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`auth.reset.title`**
 
 | | |
@@ -3093,7 +2801,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`brand.name`**
 
@@ -3107,7 +2814,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`brand.tagline`**
 
 | | |
@@ -3119,7 +2825,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.back`**
 
@@ -3133,7 +2838,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.cancel`**
 
 | | |
@@ -3145,7 +2849,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.close`**
 
@@ -3159,7 +2862,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.confirm`**
 
 | | |
@@ -3171,7 +2873,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.copy`**
 
@@ -3185,7 +2886,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.delete`**
 
 | | |
@@ -3197,7 +2897,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.dontKnow`**
 
@@ -3211,7 +2910,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.edit`**
 
 | | |
@@ -3223,7 +2921,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.error`**
 
@@ -3237,7 +2934,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.loading`**
 
 | | |
@@ -3249,7 +2945,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.next`**
 
@@ -3263,7 +2958,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.no`**
 
 | | |
@@ -3275,7 +2969,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.open`**
 
@@ -3289,7 +2982,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.optional`**
 
 | | |
@@ -3301,7 +2993,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.required`**
 
@@ -3315,7 +3006,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.retry`**
 
 | | |
@@ -3327,7 +3017,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.save`**
 
@@ -3341,7 +3030,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.search`**
 
 | | |
@@ -3353,7 +3041,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`common.verify`**
 
@@ -3367,7 +3054,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`common.yes`**
 
 | | |
@@ -3375,24 +3061,6 @@ Correzione FR:
 | IT | Sì |
 | DE | Ja |
 | FR | Oui |
-
-Correzione DE:
-
-Correzione FR:
-
-
-**`dashboard.allSubsidies`**
-
-| | |
-|---|---|
-| IT | Vedi tutti gli incentivi |
-| DE | Alle Fördermittel ansehen |
-| FR | Voir toutes les subventions |
-
-Correzione DE:
-
-Correzione FR:
-
 
 **`dashboard.docLanguages`**
 
@@ -3406,7 +3074,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`dashboard.docsByType`**
 
 | | |
@@ -3418,7 +3085,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`dashboard.docsByUrgency`**
 
@@ -3432,7 +3098,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`dashboard.noChecklist`**
 
 | | |
@@ -3444,7 +3109,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`dashboard.noDatedDeadlines`**
 
@@ -3458,7 +3122,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`dashboard.noDocsAnalyzed`**
 
 | | |
@@ -3470,7 +3133,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`dashboard.sortedByPriority`**
 
@@ -3484,19 +3146,11 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`dashboard.subtitle`**
-
-| | |
-|---|---|
-| IT | Il quadro operativo della tua impresa: documenti, scadenze e incentivi in sintesi. |
-| DE | Der operative Überblick Ihres Unternehmens: Dokumente, Fristen und Fördermittel in Kürze. |
-| FR | La vue opérationnelle de votre entreprise : documents, échéances et subventions en résumé. |
 
 Correzione DE:
 
 Correzione FR:
-
 
 **`home.adminAiDesc`**
 
@@ -3510,7 +3164,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`home.analyzeDoc`**
 
 | | |
@@ -3523,7 +3176,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`home.ctaTasks`**
 
 | | |
@@ -3531,24 +3183,6 @@ Correzione FR:
 | IT | Vai allo scadenziario |
 | DE | Zu den Fristen |
 | FR | Voir les échéances |
-
-Correzione DE:
-
-Correzione FR:
-
-
-**`home.findSubsidies`**
-
-| | |
-|---|---|
-| IT | Trova incentivi |
-| DE | Fördermittel finden |
-| FR | Trouver des subventions |
-
-Correzione DE:
-
-Correzione FR:
-
 
 **`home.greetingMorning`**
 
@@ -3562,7 +3196,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`home.module`**
 
 | | |
@@ -3574,7 +3207,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`home.noPriorities`**
 
@@ -3588,7 +3220,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`home.openAdminAi`**
 
 | | |
@@ -3601,19 +3232,9 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`home.openSubsidyAi`**
-
-| | |
-|---|---|
-| IT | Apri Subsidy AI |
-| DE | Subsidy AI öffnen |
-| FR | Ouvrir Subsidy AI |
-
 Correzione DE:
 
 Correzione FR:
-
 
 **`home.prioActionsDone`**
 
@@ -3627,7 +3248,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`home.prioActivity`**
 
 | | |
@@ -3639,7 +3259,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`home.prioHighUrgency`**
 
@@ -3653,7 +3272,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`home.prioOverdue`**
 
 | | |
@@ -3665,7 +3283,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`home.priorities`**
 
@@ -3679,19 +3296,9 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`home.subsidyAiDesc`**
-
-| | |
-|---|---|
-| IT | Descrivi il progetto: il motore lo confronta con i programmi federali e cantonali e mostra solo gli incentivi compatibili, con verifica di idoneità. |
-| DE | Beschreiben Sie das Vorhaben: die Engine gleicht es mit den Programmen von Bund und Kantonen ab und zeigt nur die passenden Fördermittel, mit Prüfung der Anspruchsberechtigung. |
-| FR | Décrivez le projet : le moteur le compare aux programmes fédéraux et cantonaux et n’affiche que les subventions compatibles, avec vérification de l’éligibilité. |
-
 Correzione DE:
 
 Correzione FR:
-
 
 **`home.subtitle`**
 
@@ -3705,7 +3312,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.activeCompany`**
 
 | | |
@@ -3717,7 +3323,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.adminAi`**
 
@@ -3731,7 +3336,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.archive`**
 
 | | |
@@ -3743,7 +3347,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.closeMenu`**
 
@@ -3757,7 +3360,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.dashboard`**
 
 | | |
@@ -3769,7 +3371,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.home`**
 
@@ -3783,7 +3384,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.language`**
 
 | | |
@@ -3795,7 +3395,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.mainNav`**
 
@@ -3809,7 +3408,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.menu`**
 
 | | |
@@ -3821,7 +3419,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.openMenu`**
 
@@ -3835,7 +3432,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.pricing`**
 
 | | |
@@ -3847,7 +3443,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.sectionAccount`**
 
@@ -3861,7 +3456,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.sectionModules`**
 
 | | |
@@ -3873,7 +3467,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.sectionPlatform`**
 
@@ -3887,7 +3480,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.signOut`**
 
 | | |
@@ -3899,7 +3491,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.signOutAria`**
 
@@ -3913,19 +3504,9 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`nav.subsidyAi`**
-
-| | |
-|---|---|
-| IT | Subsidy AI — Incentivi |
-| DE | Subsidy AI — Fördermittel |
-| FR | Subsidy AI — Subventions |
-
 Correzione DE:
 
 Correzione FR:
-
 
 **`nav.switchCompany`**
 
@@ -3939,7 +3520,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`nav.tasks`**
 
 | | |
@@ -3951,7 +3531,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.canton`**
 
@@ -3965,7 +3544,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.employees`**
 
 | | |
@@ -3977,7 +3555,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.employeesPlaceholder`**
 
@@ -3991,7 +3568,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.errorName`**
 
 | | |
@@ -4003,7 +3579,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.legalForm`**
 
@@ -4017,7 +3592,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.legalName`**
 
 | | |
@@ -4029,7 +3603,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.legalNamePlaceholder`**
 
@@ -4043,7 +3616,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.municipality`**
 
 | | |
@@ -4055,7 +3627,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.municipalityPlaceholder`**
 
@@ -4069,7 +3640,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.noPreference`**
 
 | | |
@@ -4081,7 +3651,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.registryHint`**
 
@@ -4095,7 +3664,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.registryImported`**
 
 | | |
@@ -4107,7 +3675,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.registryImportedFrom`**
 
@@ -4121,7 +3688,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.registryNoResults`**
 
 | | |
@@ -4133,7 +3699,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.registryPlaceholder`**
 
@@ -4147,7 +3712,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.registryResultsAria`**
 
 | | |
@@ -4159,7 +3723,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.registrySearch`**
 
@@ -4173,7 +3736,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.registryUnavailable`**
 
 | | |
@@ -4185,7 +3747,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.revenue`**
 
@@ -4199,7 +3760,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.sector`**
 
 | | |
@@ -4211,7 +3771,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.sectorPlaceholder`**
 
@@ -4225,7 +3784,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.submit`**
 
 | | |
@@ -4238,19 +3796,11 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.subtitle`**
-
-| | |
-|---|---|
-| IT | Questi dati alimentano l’analisi documenti e il matching incentivi. Potrai modificarli in seguito. |
-| DE | Diese Angaben sind die Grundlage für die Dokumentenanalyse und das Fördermittel-Matching. Sie können sie später ändern. |
-| FR | Ces données alimentent l’analyse des documents et la recherche de subventions. Vous pourrez les modifier plus tard. |
 
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.title`**
 
@@ -4264,7 +3814,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.uid`**
 
 | | |
@@ -4276,7 +3825,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`onboarding.uidInvalid`**
 
@@ -4290,7 +3838,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`onboarding.uidPlaceholder`**
 
 | | |
@@ -4302,7 +3849,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.demoNote`**
 
@@ -4316,7 +3862,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.featInbox`**
 
 | | |
@@ -4328,7 +3873,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.featLimitedDocs`**
 
@@ -4342,19 +3886,11 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.featPortfolioReports`**
-
-| | |
-|---|---|
-| IT | Report incentivi per portafoglio clienti |
-| DE | Fördermittel-Reports für das Kundenportfolio |
-| FR | Rapports de subventions par portefeuille clients |
 
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.featTeamTasks`**
 
@@ -4368,7 +3904,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.featUnlimitedDocs`**
 
 | | |
@@ -4380,7 +3915,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.plans.basicTarget`**
 
@@ -4394,7 +3928,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.plans.f.aggregated`**
 
 | | |
@@ -4406,7 +3939,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.plans.f.checklist`**
 
@@ -4420,7 +3952,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.plans.f.dedicated`**
 
 | | |
@@ -4432,7 +3963,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.plans.f.docs20`**
 
@@ -4446,7 +3976,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.plans.f.teamTasks`**
 
 | | |
@@ -4458,7 +3987,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.plans.f.user1`**
 
@@ -4472,7 +4000,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.plans.f.users5`**
 
 | | |
@@ -4484,7 +4011,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.plans.f.usersUnlimited`**
 
@@ -4498,7 +4024,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.plans.f.workflows`**
 
 | | |
@@ -4510,7 +4035,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`pricing.plans.perMonth`**
 
@@ -4524,7 +4048,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.plans.proTarget`**
 
 | | |
@@ -4537,19 +4060,11 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`pricing.subtitle`**
-
-| | |
-|---|---|
-| IT | Prezzi indicativi per entrambi i moduli: Admin AI e Subsidy AI. Importi in CHF, IVA esclusa. |
-| DE | Richtpreise für beide Module: Admin AI und Subsidy AI. Beträge in CHF, exkl. MWST. |
-| FR | Prix indicatifs pour les deux modules : Admin AI et Subsidy AI. Montants en CHF, TVA non comprise. |
 
 Correzione DE:
 
 Correzione FR:
-
 
 **`roles.admin`**
 
@@ -4563,7 +4078,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`roles.member`**
 
 | | |
@@ -4575,7 +4089,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`roles.owner`**
 
@@ -4589,21 +4102,9 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.cases.casesEmptySub`**
-
-| | |
-|---|---|
-| IT | Verifica l’idoneità di un incentivo e, con esito positivo, crea la relativa pratica per raccogliere documenti e checklist. |
-| DE | Prüfen Sie den Anspruch auf ein Fördermittel und legen Sie bei positivem Ergebnis das zugehörige Dossier an, um Unterlagen und Checkliste zu sammeln. |
-| FR | Vérifiez l’éligibilité à une subvention et, en cas de résultat positif, créez le dossier correspondant pour rassembler documents et checklist. |
-
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.cases.deleteCase`**
 
 | | |
 |---|---|
@@ -4615,9 +4116,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.cases.savedForReference`**
-
 | | |
 |---|---|
 | IT | Salvata per riferimento |
@@ -4627,9 +4125,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.catalogEmpty`**
 
 | | |
 |---|---|
@@ -4641,34 +4136,13 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.catalogEmptySub`**
-
-| | |
-|---|---|
-| IT | Nessun incentivo è stato caricato nel sistema, quindi non è possibile dire se la tua impresa sia idonea a qualcosa. Contatta il supporto. |
-| DE | Es wurden keine Fördermittel ins System geladen; daher lässt sich nicht sagen, ob Ihr Unternehmen anspruchsberechtigt ist. Bitte kontaktieren Sie den Support. |
-| FR | Aucune subvention n’a été chargée dans le système ; il est donc impossible de dire si votre entreprise est éligible. Contactez le support. |
-
 Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.catalogUnavailable`**
-
-| | |
-|---|---|
-| IT | Catalogo incentivi non disponibile. |
-| DE | Förderkatalog nicht verfügbar. |
-| FR | Catalogue des subventions indisponible. |
-
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.catalogUnavailableSub`**
 
 | | |
 |---|---|
@@ -4680,9 +4154,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.addReminder`**
-
 | | |
 |---|---|
 | IT | Aggiungi promemoria |
@@ -4692,9 +4163,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.applicationWindow`**
 
 | | |
 |---|---|
@@ -4706,9 +4174,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.authority`**
-
 | | |
 |---|---|
 | IT | Ente |
@@ -4718,9 +4183,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.back`**
 
 | | |
 |---|---|
@@ -4732,9 +4194,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.blocksEligibility`**
-
 | | |
 |---|---|
 | IT | blocca l’idoneità |
@@ -4744,9 +4203,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.caseCreated`**
 
 | | |
 |---|---|
@@ -4758,9 +4214,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.casePreliminary`**
-
 | | |
 |---|---|
 | IT | Pratica preliminare salvata in «Le mie pratiche» |
@@ -4770,9 +4223,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.caseReference`**
 
 | | |
 |---|---|
@@ -4784,9 +4234,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.completeChecks`**
-
 | | |
 |---|---|
 | IT | Completa le verifiche |
@@ -4796,9 +4243,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.createCase`**
 
 | | |
 |---|---|
@@ -4810,9 +4254,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.currentEligibility`**
-
 | | |
 |---|---|
 | IT | Idoneità attuale: |
@@ -4822,9 +4263,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.dataStatus`**
 
 | | |
 |---|---|
@@ -4836,9 +4274,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.documents`**
-
 | | |
 |---|---|
 | IT | Documenti |
@@ -4848,9 +4283,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.exclCleared`**
 
 | | |
 |---|---|
@@ -4862,9 +4294,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.exclManual`**
-
 | | |
 |---|---|
 | IT | verifica manuale |
@@ -4874,9 +4303,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.exclToAnswer`**
 
 | | |
 |---|---|
@@ -4888,9 +4314,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.exclTriggered`**
-
 | | |
 |---|---|
 | IT | attivata — esclude |
@@ -4900,9 +4323,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.exclusionTriggered`**
 
 | | |
 |---|---|
@@ -4914,9 +4334,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.exclusionsChecked`**
-
 | | |
 |---|---|
 | IT | Esclusioni verificate |
@@ -4926,9 +4343,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.exclusionsEvaluated`**
 
 | | |
 |---|---|
@@ -4940,9 +4354,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.exclusionsManual`**
-
 | | |
 |---|---|
 | IT | Esclusioni da verificare manualmente |
@@ -4952,9 +4363,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.exclusionsManualHint`**
 
 | | |
 |---|---|
@@ -4966,9 +4374,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.exclusionsToCheck`**
-
 | | |
 |---|---|
 | IT | Esclusioni da verificare |
@@ -4978,9 +4383,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.hardRequirements`**
 
 | | |
 |---|---|
@@ -4992,9 +4394,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.lastChecked`**
-
 | | |
 |---|---|
 | IT | Ultima verifica |
@@ -5004,9 +4403,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.lastCheckedHint`**
 
 | | |
 |---|---|
@@ -5018,9 +4414,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.mustApplyBeforeStart`**
-
 | | |
 |---|---|
 | IT | La domanda va presentata prima di avviare il progetto/acquisto. |
@@ -5030,9 +4423,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.nextSteps`**
 
 | | |
 |---|---|
@@ -5044,9 +4434,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.noQuestions`**
-
 | | |
 |---|---|
 | IT | Nessuna domanda di verifica per questo programma. |
@@ -5056,9 +4443,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.noRequirements`**
 
 | | |
 |---|---|
@@ -5070,9 +4454,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.notAvailable`**
-
 | | |
 |---|---|
 | IT | non disponibile |
@@ -5082,9 +4463,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.prevails`**
 
 | | |
 |---|---|
@@ -5096,9 +4474,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.profileGaps`**
-
 | | |
 |---|---|
 | IT | Dati profilo da completare |
@@ -5108,9 +4483,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.questionOf`**
 
 | | |
 |---|---|
@@ -5122,9 +4494,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.reminderAdded`**
-
 | | |
 |---|---|
 | IT | Promemoria aggiunto allo scadenziario |
@@ -5134,9 +4503,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.reminderTitle`**
 
 | | |
 |---|---|
@@ -5148,9 +4514,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.requirementFailed`**
-
 | | |
 |---|---|
 | IT | Requisito obbligatorio non soddisfatto |
@@ -5160,9 +4523,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.requirements`**
 
 | | |
 |---|---|
@@ -5174,9 +4534,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.restart`**
-
 | | |
 |---|---|
 | IT | Ricomincia verifica |
@@ -5186,9 +4543,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.savePreliminary`**
 
 | | |
 |---|---|
@@ -5200,9 +4554,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.saveReference`**
-
 | | |
 |---|---|
 | IT | Salva per riferimento |
@@ -5212,9 +4563,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.softRequirements`**
 
 | | |
 |---|---|
@@ -5226,9 +4574,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.source`**
-
 | | |
 |---|---|
 | IT | Fonte |
@@ -5238,9 +4583,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.sourceTitle`**
 
 | | |
 |---|---|
@@ -5252,9 +4594,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.sourceUrl`**
-
 | | |
 |---|---|
 | IT | URL ufficiale |
@@ -5264,9 +4603,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.stateFailed`**
 
 | | |
 |---|---|
@@ -5278,9 +4614,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.stateSatisfied`**
-
 | | |
 |---|---|
 | IT | soddisfatto |
@@ -5290,9 +4623,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.stateToVerify`**
 
 | | |
 |---|---|
@@ -5304,9 +4634,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.supportType`**
-
 | | |
 |---|---|
 | IT | Tipo di sostegno |
@@ -5316,9 +4643,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.tagExclusion`**
 
 | | |
 |---|---|
@@ -5330,9 +4654,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.tagHard`**
-
 | | |
 |---|---|
 | IT | requisito obbligatorio |
@@ -5342,9 +4663,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.tagSoft`**
 
 | | |
 |---|---|
@@ -5356,9 +4674,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.verdict`**
-
 | | |
 |---|---|
 | IT | Esito della verifica |
@@ -5368,9 +4683,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.detail.whyRelevant`**
 
 | | |
 |---|---|
@@ -5382,9 +4694,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.detail.windowHint`**
-
 | | |
 |---|---|
 | IT | Descrizione della finestra, non una data certa: verifica sempre il termine sulla fonte ufficiale. |
@@ -5394,9 +4703,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.footnote`**
 
 | | |
 |---|---|
@@ -5408,21 +4714,9 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.interpretation.alreadyStartedWarning`**
-
-| | |
-|---|---|
-| IT | Dalla descrizione il progetto sembra già avviato: diversi programmi di incentivo richiedono la domanda prima di iniziare. Verifica sulla fonte ufficiale se sei ancora in tempo. |
-| DE | Der Beschreibung nach scheint das Vorhaben bereits begonnen zu haben: mehrere Förderprogramme verlangen das Gesuch vor Beginn. Prüfen Sie an der offiziellen Quelle, ob Sie noch rechtzeitig sind. |
-| FR | D’après la description, le projet semble déjà commencé : plusieurs programmes exigent que la demande soit déposée avant le début. Vérifiez à la source officielle si vous êtes encore dans les délais. |
-
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.interpretation.title`**
 
 | | |
 |---|---|
@@ -5434,9 +4728,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.interpretation.whyRelevant`**
-
 | | |
 |---|---|
 | IT | Perché è pertinente |
@@ -5446,9 +4737,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.intro`**
 
 | | |
 |---|---|
@@ -5460,9 +4748,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.labels.dataStatus.demo`**
-
 | | |
 |---|---|
 | IT | Dato demo |
@@ -5472,9 +4757,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.labels.dataStatus.recheck`**
 
 | | |
 |---|---|
@@ -5486,9 +4768,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.labels.dataStatus.verified`**
-
 | | |
 |---|---|
 | IT | Verificato |
@@ -5498,9 +4777,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.labels.projectTypes.digitalizzazione`**
 
 | | |
 |---|---|
@@ -5512,9 +4788,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.labels.projectTypes.export`**
-
 | | |
 |---|---|
 | IT | Export / internazionalizzazione |
@@ -5524,9 +4797,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.labels.projectTypes.innovazione`**
 
 | | |
 |---|---|
@@ -5538,9 +4808,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.labels.projectTypes.mobilita`**
-
 | | |
 |---|---|
 | IT | Mobilità / veicoli |
@@ -5550,9 +4817,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.labels.sectors.commercio`**
 
 | | |
 |---|---|
@@ -5564,9 +4828,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.labels.sectors.industria`**
-
 | | |
 |---|---|
 | IT | Industria / manifattura |
@@ -5576,9 +4837,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.labels.sectors.turismo`**
 
 | | |
 |---|---|
@@ -5590,9 +4848,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.labels.supportTypes.grant`**
-
 | | |
 |---|---|
 | IT | Contributo a fondo perso |
@@ -5602,9 +4857,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.labels.supportTypes.loan`**
 
 | | |
 |---|---|
@@ -5616,9 +4868,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.loadingPrograms`**
-
 | | |
 |---|---|
 | IT | Caricamento dei programmi… |
@@ -5628,9 +4877,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.alreadyStarted`**
 
 | | |
 |---|---|
@@ -5642,9 +4888,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.company`**
-
 | | |
 |---|---|
 | IT | Impresa: |
@@ -5654,9 +4897,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.description`**
 
 | | |
 |---|---|
@@ -5668,9 +4908,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.descriptionPlaceholder`**
-
 | | |
 |---|---|
 | IT | Es. Vogliamo installare un impianto fotovoltaico sul tetto del capannone, sostituire due furgoni diesel con veicoli elettrici e digitalizzare la gestione degli ordini. |
@@ -5680,9 +4917,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.droppedEvidence`**
 
 | | |
 |---|---|
@@ -5694,9 +4928,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.hasVehicles`**
-
 | | |
 |---|---|
 | IT | Ha veicoli aziendali |
@@ -5706,9 +4937,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.interpret`**
 
 | | |
 |---|---|
@@ -5720,9 +4948,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.interpretHint`**
-
 | | |
 |---|---|
 | IT | L’AI riconosce gli ambiti e spiega la pertinenza; l’idoneità resta da verificare. |
@@ -5732,9 +4957,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.intro`**
 
 | | |
 |---|---|
@@ -5746,9 +4968,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.noScope`**
-
 | | |
 |---|---|
 | IT | Indica almeno un ambito di progetto (interpreta la descrizione o selezionalo qui sotto). |
@@ -5758,9 +4977,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.noneRecognized`**
 
 | | |
 |---|---|
@@ -5772,9 +4988,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.ownsProperty`**
-
 | | |
 |---|---|
 | IT | Possiede o utilizza immobili |
@@ -5784,9 +4997,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.recognized`**
 
 | | |
 |---|---|
@@ -5798,21 +5008,9 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.saved`**
-
-| | |
-|---|---|
-| IT | Profilo incentivi salvato |
-| DE | Förderprofil gespeichert |
-| FR | Profil de subventions enregistré |
-
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.scopes`**
 
 | | |
 |---|---|
@@ -5824,9 +5022,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.scopesAria`**
-
 | | |
 |---|---|
 | IT | Ambiti del progetto |
@@ -5836,9 +5031,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.situation`**
 
 | | |
 |---|---|
@@ -5850,21 +5042,9 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.submit`**
-
-| | |
-|---|---|
-| IT | Trova incentivi rilevanti |
-| DE | Relevante Fördermittel finden |
-| FR | Trouver les subventions pertinentes |
-
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.title`**
 
 | | |
 |---|---|
@@ -5876,9 +5056,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.toVerify`**
-
 | | |
 |---|---|
 | IT | Da verificare: |
@@ -5888,9 +5065,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.tooShort`**
 
 | | |
 |---|---|
@@ -5902,9 +5076,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.profile.uncertainScopes`**
-
 | | |
 |---|---|
 | IT | Ambiti incerti, non aggiunti automaticamente: |
@@ -5914,9 +5085,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.profile.uncertainScopesHint`**
 
 | | |
 |---|---|
@@ -5928,9 +5096,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.results.applyBeforeStart`**
-
 | | |
 |---|---|
 | IT | Domanda prima di iniziare |
@@ -5940,9 +5105,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.results.checkEligibility`**
 
 | | |
 |---|---|
@@ -5954,9 +5116,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.results.editProfile`**
-
 | | |
 |---|---|
 | IT | Modifica profilo |
@@ -5967,34 +5126,13 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.results.editProfileFull`**
-
-| | |
-|---|---|
-| IT | Modifica profilo incentivi |
-| DE | Förderprofil bearbeiten |
-| FR | Modifier le profil de subventions |
-
 Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.results.emptySub`**
-
-| | |
-|---|---|
-| IT | Aggiungi ambiti di progetto o rivedi il settore nel profilo incentivi. |
-| DE | Fügen Sie Vorhabensbereiche hinzu oder überprüfen Sie die Branche im Förderprofil. |
-| FR | Ajoutez des domaines de projet ou revoyez le secteur dans le profil de subventions. |
-
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.results.emptyTitle`**
 
 | | |
 |---|---|
@@ -6006,9 +5144,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.results.relevance`**
-
 | | |
 |---|---|
 | IT | Rilevanza |
@@ -6018,9 +5153,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.results.relevanceNote`**
 
 | | |
 |---|---|
@@ -6032,9 +5164,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.results.requirementsToVerify`**
-
 | | |
 |---|---|
 | IT | {n} requisiti da verificare |
@@ -6044,9 +5173,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.results.summary`**
 
 | | |
 |---|---|
@@ -6058,9 +5184,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.results.yourCompany`**
-
 | | |
 |---|---|
 | IT | la tua impresa |
@@ -6070,9 +5193,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
-
-**`subsidy.tabCases`**
 
 | | |
 |---|---|
@@ -6084,9 +5204,6 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.tabProfile`**
-
 | | |
 |---|---|
 | IT | 1 · Profilo impresa |
@@ -6097,32 +5214,13 @@ Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.tabResults`**
-
-| | |
-|---|---|
-| IT | 2 · Incentivi rilevanti |
-| DE | 2 · Relevante Fördermittel |
-| FR | 2 · Subventions pertinentes |
-
 Correzione DE:
 
 Correzione FR:
 
-
-**`subsidy.title`**
-
-| | |
-|---|---|
-| IT | Subsidy AI |
-| DE | Subsidy AI |
-| FR | Subsidy AI |
-
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.addManual`**
 
@@ -6136,7 +5234,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.added`**
 
 | | |
@@ -6148,7 +5245,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.completed`**
 
@@ -6162,7 +5258,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.deleted`**
 
 | | |
@@ -6174,7 +5269,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.dueDate`**
 
@@ -6188,7 +5282,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.dueIn`**
 
 | | |
@@ -6200,7 +5293,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.dueOn`**
 
@@ -6214,7 +5306,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.dueToday`**
 
 | | |
@@ -6226,7 +5317,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.empty`**
 
@@ -6240,19 +5330,11 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.emptySub`**
-
-| | |
-|---|---|
-| IT | Le attività create dai documenti analizzati e dagli incentivi compaiono qui. |
-| DE | Aufgaben aus analysierten Dokumenten und Fördermitteln erscheinen hier. |
-| FR | Les tâches issues des documents analysés et des subventions apparaissent ici. |
 
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.markDone`**
 
@@ -6266,7 +5348,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.noDueDate`**
 
 | | |
@@ -6278,7 +5359,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.noneInView`**
 
@@ -6292,7 +5372,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.overdueBy`**
 
 | | |
@@ -6304,7 +5383,6 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-
 
 **`tasks.reopen`**
 
@@ -6318,7 +5396,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.subtitle`**
 
 | | |
@@ -6331,7 +5408,6 @@ Correzione DE:
 
 Correzione FR:
 
-
 **`tasks.title`**
 
 | | |
@@ -6343,4 +5419,3 @@ Correzione FR:
 Correzione DE:
 
 Correzione FR:
-

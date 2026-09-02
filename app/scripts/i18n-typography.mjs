@@ -93,7 +93,7 @@ export function violazioniDelTesto(testo) {
 // dovessero stare nel carattere tipografico, è saltato fuori che 17 righe dei
 // tre dizionari erano UTF-8 rilette come Latin-1: «TrÃ¨s pertinente» invece di
 // «Très pertinente», «SÃ¬» invece di «Sì», «MÃ¶glicherweise» invece di
-// «Möglicherweise». Tutte nella sezione degli incentivi, tutte visibili a
+// «Möglicherweise». Tutte nella stessa sezione, tutte visibili a
 // schermo, entrate con un commit di allineamento dello specchio (450de6b).
 //
 // Nessun controllo le vedeva: `i18n:coverage` salta i dizionari di proposito

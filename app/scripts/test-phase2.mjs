@@ -110,7 +110,7 @@ async function main() {
   // ---- Setup: tre aziende isolate -----------------------------------------
   const A = await makeUser('A');
   const { data: companyA } = await A.client.rpc('create_company_with_owner', {
-    p_legal_name: 'Azienda A SA', p_canton: 'Ticino', p_municipality: 'Lugano', p_legal_form: 'SA', p_sector: 'servizi',
+    p_legal_name: 'Azienda A SA', p_canton: 'Ticino', p_municipality: 'Lugano', p_legal_form: 'SA',
   });
   created.companies.push(companyA);
   const { data: docA } = await A.client.from('documents').insert({

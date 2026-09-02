@@ -143,11 +143,6 @@ troverebbe il campo per dirlo.
   contabile: nessuna colonna di esportazione su `finance_items`, nessuna
   tabella, nessun fornitore. Uno strumento `get_accounting_status` avrebbe
   risposto su qualcosa che non c'è.
-- **Incentivi.** Il modulo Subsidy esiste e i match sono persistiti, ma
-  `subsidy_matches.program_id` è testo **senza chiave esterna** verso
-  `subsidy_programs`, e un programma disattivato smette di risolvere la propria
-  fonte. Citare un match significherebbe presentare come verificabile ciò che
-  non lo è.
 - **Segreti.** Token OAuth, chiavi API, `email_connection_secrets`,
   `calendar_connection_secrets`, cursori di sincronizzazione: non c'è uno
   strumento che li legga, quindi non c'è una domanda che li faccia uscire.

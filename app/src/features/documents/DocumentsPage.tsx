@@ -584,7 +584,7 @@ export function DocumentsPage() {
           <div className="muted-sm mt-10">{t('documents.searchScope')}</div>
           {/* La legenda dei segni: le righe portano il termine e il «da
               verificare», e chi li incontra qui li ritroverà identici nel
-              dettaglio, in Attività e negli Incentivi. */}
+              dettaglio e in Attività. */}
           <MarkLegend />
           {/* ⚠️ SOTTO LA LISTA E CHIUSA: la pagina risponde a «dove ritrovo
               questo documento», e i conteggi sono una seconda domanda. Segue

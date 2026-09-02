@@ -11,18 +11,14 @@ import type { ReactNode } from 'react';
 import { AppointmentMark } from './AppointmentMark';
 import { ConfidenceBadge, CONFIDENCE_LEVELS } from './ConfidenceBadge';
 import { DeadlineMark } from './DeadlineMark';
-import { EligibilityMark, ELIGIBILITY_STATES, type EligibilityValue } from './EligibilityMark';
 import { EvidenceLink } from './EvidenceLink';
 import { MarkGlyph, GLYPH_NAMES } from './MarkGlyph';
 import { MarkLegend } from './MarkLegend';
 import { PriorityMark, PRIORITY_LEVELS, type PriorityValue } from './PriorityMark';
 import { ActionOriginMark, ProvenanceMark, PROVENANCE_KINDS, type ProvenanceKind } from './ProvenanceMark';
-import { SourceStamp, SOURCE_STATES, type SourceState } from './SourceStamp';
 import { StatusMark, TASK_STATES } from './StatusMark';
 import { Tag, type TagTone } from './Tag';
-import { WindowMark, WINDOW_STATES } from './WindowMark';
 import type { Confidence, TaskStatus } from '@/types/models';
-import type { SubsidyCallStatus } from '@/types/database';
 
 /* Ogni famiglia viene iterata sulla STESSA mappa che il componente esporta:
    uno stato aggiunto al componente compare da solo nella storia, come già
@@ -58,26 +54,6 @@ export const StatoDelLavoro = () => (
 export const Priorita = () => (
   <Famiglia titolo={'Priorità — la direzione è il segno (entrambe le scale di dominio)'}>
     {(Object.keys(PRIORITY_LEVELS) as PriorityValue[]).map((k) => <PriorityMark key={k} level={k} />)}
-  </Famiglia>
-);
-
-export const Idoneita = () => (
-  <Famiglia titolo={'Idoneità — glifo di giudizio + parola'}>
-    {(Object.keys(ELIGIBILITY_STATES) as EligibilityValue[]).map((k) => <EligibilityMark key={k} status={k} />)}
-  </Famiglia>
-);
-
-export const Fonte = () => (
-  <Famiglia titolo={'Fonte — il timbro d’archivio'}>
-    {(Object.keys(SOURCE_STATES) as SourceState[]).map((k) => (
-      <SourceStamp key={k} state={k} date={k === 'demo' ? null : '12.08.2026'} />
-    ))}
-  </Famiglia>
-);
-
-export const FinestraDiCandidatura = () => (
-  <Famiglia titolo={'Finestra di candidatura — la parentesi'}>
-    {(Object.keys(WINDOW_STATES) as SubsidyCallStatus[]).map((k) => <WindowMark key={k} status={k} />)}
   </Famiglia>
 );
 

@@ -14,12 +14,7 @@ import { useI18n, type TKey } from './index';
 export function useLabels() {
   const { t } = useI18n();
 
-  /**
-   * Risolve `percorso.valore`. Il percorso è completo (es. `labels.docTypes`
-   * oppure `subsidy.labels.supportTypes`): non si antepone nulla, altrimenti le
-   * etichette del Subsidy finirebbero sotto una chiave inesistente.
-   * Se la chiave non esiste si torna il valore GREZZO, non un'etichetta finta.
-   */
+  /** Risolve una chiave di etichetta e conserva il valore grezzo se manca. */
   const pick = (path: string, value: string | null | undefined): string => {
     if (!value) return '—';
     const key = `${path}.${value}` as TKey;
@@ -99,19 +94,5 @@ export function useLabels() {
     /** Che cosa è cambiato su una fattura, nello storico (§87). */
     financeEvent: (v: string | null | undefined) => pick('finance.eventKinds', v),
 
-    // ---- Subsidy AI ----------------------------------------------------
-    /** Tipo di sostegno: contributo a fondo perso, prestito, fideiussione… */
-    supportType: (v: string | null | undefined) => pick('subsidy.labels.supportTypes', v),
-    /* ⚠️ `eligibility` NON è più qui. Le sue chiavi (`subsidy.labels.eligibility`)
-       vivono: le legge `EligibilityMark`, che è il posto in cui l'idoneità ha
-       anche la sua forma. Questo aiutante restava una SECONDA strada alla stessa
-       etichetta, senza il glifo di giudizio che la accompagna — cioè il modo di
-       far ricomparire domani una parola d'idoneità nuda in una pastiglia. */
-    /** Affidabilità del dato di catalogo: verificato / da ricontrollare / demo. */
-    dataStatus: (v: string | null | undefined) => pick('subsidy.labels.dataStatus', v),
-    /** Settore economico dell'impresa. */
-    sector: (v: string | null | undefined) => pick('subsidy.labels.sectors', v),
-    /** Ambito del progetto (energia, digitalizzazione…). */
-    projectType: (v: string | null | undefined) => pick('subsidy.labels.projectTypes', v),
   };
 }

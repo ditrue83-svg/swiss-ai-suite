@@ -60,7 +60,6 @@ const G = '\x1b[32m', R = '\x1b[31m', Y = '\x1b[33m', DIM = '\x1b[2m', B = '\x1b
 // ---------------------------------------------------------------------------
 const FEATURES = {
   'admin-ai':    { moduleName: 'Admin AI' },
-  'subsidy-ai':  { moduleName: 'Subsidy AI' },
   'inbox':       { moduleName: 'Inbox' },
   'tasks':       { moduleName: 'Attività' },
   'documents':   { moduleName: 'Documenti' },
@@ -70,12 +69,6 @@ const FEATURES = {
   'contracts':   { moduleName: 'Contratti' },
   'crm':         { moduleName: 'Clienti' },
   'assistant':   { moduleName: 'Chiedi ad AI-Swisse' },
-  // ⚠️ «Incentivi» è il modulo 2.0 (0032) e `subsidy-ai` è il 1.0, ancora in
-  //    esercizio: due cartelle, due schermate, un modulo solo nel menu. Finché
-  //    la vecchia resta raggiungibile su `/subsidy` la mappa le dichiara
-  //    entrambe — toglierla qui renderebbe invisibile del codice vivo.
-  'incentives':  { moduleName: 'Incentivi' },
-
   // Non sono moduli: sono parti dell'impalcatura, e nessun cliente le sceglie.
   'auth':          { moduleName: null, why: 'accesso e registrazione, non un modulo' },
   'companies':     { moduleName: null, why: 'onboarding e impostazioni azienda' },
@@ -717,7 +710,7 @@ const CASES = [
   {
     name: 'una rotta dichiarata e assente dal router → problema',
     run: (r) => checkRoutes(r, {
-      rotte: ['/incentivi'], router: '<Route path="/clienti" element={<X/>} />',
+      rotte: ['/finanze'], router: '<Route path="/clienti" element={<X/>} />',
     }),
     expect: 1,
   },

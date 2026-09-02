@@ -10,10 +10,10 @@ import styles from './pricing.module.css';
 // (sono dati commerciali), ma target e caratteristiche si traducono al render.
 interface Plan { nome: string; prezzo: number | null; targetKey: TKey; featured?: boolean; featureKeys: TKey[] }
 const PLANS: Plan[] = [
-  { nome: 'Basic', prezzo: 49, targetKey: 'pricing.plans.basicTarget', featureKeys: ['pricing.plans.f.docs20', 'pricing.plans.f.multilang', 'pricing.plans.f.checklist', 'pricing.plans.f.subsidy5', 'pricing.plans.f.user1'] },
-  { nome: 'Business', prezzo: 149, targetKey: 'pricing.plans.businessTarget', featured: true, featureKeys: ['pricing.plans.f.docsUnlimited', 'pricing.plans.f.replies', 'pricing.plans.f.teamTasks', 'pricing.plans.f.subsidyUnlimited', 'pricing.plans.f.users5'] },
-  { nome: 'Pro', prezzo: 299, targetKey: 'pricing.plans.proTarget', featureKeys: ['pricing.plans.f.allBusiness', 'pricing.plans.f.inbox', 'pricing.plans.f.workflows', 'pricing.plans.f.monitoring', 'pricing.plans.f.usersUnlimited'] },
-  { nome: 'Fiduciarie', prezzo: null, targetKey: 'pricing.plans.fiduciaryTarget', featureKeys: ['pricing.plans.f.multiClient', 'pricing.plans.f.aggregated', 'pricing.plans.f.portfolioReports', 'pricing.plans.f.dedicated', 'pricing.plans.f.customPrice'] },
+  { nome: 'Basic', prezzo: 49, targetKey: 'pricing.plans.basicTarget', featureKeys: ['pricing.plans.f.docs20', 'pricing.plans.f.multilang', 'pricing.plans.f.checklist', 'pricing.plans.f.user1'] },
+  { nome: 'Business', prezzo: 149, targetKey: 'pricing.plans.businessTarget', featured: true, featureKeys: ['pricing.plans.f.docsUnlimited', 'pricing.plans.f.replies', 'pricing.plans.f.teamTasks', 'pricing.plans.f.users5'] },
+  { nome: 'Pro', prezzo: 299, targetKey: 'pricing.plans.proTarget', featureKeys: ['pricing.plans.f.allBusiness', 'pricing.plans.f.inbox', 'pricing.plans.f.workflows', 'pricing.plans.f.usersUnlimited'] },
+  { nome: 'Fiduciarie', prezzo: null, targetKey: 'pricing.plans.fiduciaryTarget', featureKeys: ['pricing.plans.f.multiClient', 'pricing.plans.f.aggregated', 'pricing.plans.f.dedicated', 'pricing.plans.f.customPrice'] },
 ];
 
 /** La rotta `/prezzi`: resta viva, e mostra ciò che mostra il pannello. */

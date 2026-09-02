@@ -30,7 +30,7 @@ const ok = (cond: boolean, label: string, detail = '') => {
 const section = (title: string) => console.log(`\n${B}${title}${X}`);
 
 const task = (over: Partial<Task> = {}): Task => ({
-  id: over.id ?? 'x', companyId: 'c', createdBy: null, documentId: null, subsidyCaseId: null,
+  id: over.id ?? 'x', companyId: 'c', createdBy: null, documentId: null,
   title: over.title ?? 'Attività', description: null, authority: null,
   dueDate: null, appointmentDate: null, priority: 'medium', status: 'open', source: 'manual',
   assigneeUserId: null, completedAt: null, completedBy: null,
@@ -171,7 +171,7 @@ section('5 · Ogni valore ha la sua etichetta');
   ok(new Set(statuses.map(statusLabelKey)).size === statuses.length,
     'due stati diversi non condividono la stessa etichetta');
 
-  const sources: TaskSource[] = ['manual', 'admin_ai', 'subsidy_ai'];
+  const sources: TaskSource[] = ['manual', 'admin_ai', 'workflow', 'crm'];
   ok(sources.every((s) => sourceLabelKey(s).startsWith('tasks.source')), 'ogni origine ha la sua etichetta');
 
   const kinds: TaskEventKind[] = [

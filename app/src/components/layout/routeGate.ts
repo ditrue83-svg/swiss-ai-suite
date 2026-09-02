@@ -2,10 +2,10 @@
 // LA DECISIONE DELLE GUARDIE, come funzione PURA.
 //
 // ⚠️ IL DIFETTO CHE QUESTO FILE ESISTE PER CHIUDERE, riprodotto il 2026-07-30:
-// aprendo `app.ai-swisse.com/incentivi` a freddo si finiva sulla Panoramica. Non
+// aprendo una rotta profonda a freddo si finiva sulla Panoramica. Non
 // era lo strumento — la nota in memoria che lo sosteneva era sbagliata, e la
 // prova è che `performance.getEntriesByType('navigation')[0].name` diceva
-// `/incentivi` mentre `location.pathname` diceva `/`: il documento profondo era
+// la rotta richiesta mentre `location.pathname` diceva `/`: il documento profondo era
 // stato caricato davvero, ed è l'applicazione ad averlo abbandonato.
 //
 // LA CORSA, in tre battute:

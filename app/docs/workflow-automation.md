@@ -151,10 +151,8 @@ scatterebbe mai: sarebbe una funzione finta.
 | `crm_follow_up_sequence_due` | un passo CRM raggiunge la soglia di silenzio configurata | trattativa |
 
 **NON implementati, e non per dimenticanza**: `invoice_received`,
-`contract_expiring`, `client_created`, `subsidy_match_found`. Non esistono le
-sorgenti — non c'è un modulo clienti, non c'è una scadenza contrattuale
-strutturata, il catalogo incentivi non produce eventi. Il registro è pronto ad
-accoglierli (§10), l'implementazione no.
+`contract_expiring`, `client_created`. Non esistono ancora tutte le sorgenti
+strutturate. Il registro è pronto ad accoglierle (§10), l'implementazione no.
 
 ### «È diventata scaduta» non ha un UPDATE
 

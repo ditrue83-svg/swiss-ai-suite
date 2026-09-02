@@ -87,8 +87,8 @@ dizionari:
 - **Inter è circa il 6 % più largo** dello stack di sistema («Ausgleichskasse»:
   111,7 px → 118,9 px a 15 px). A 1280, 768 e 375 px, in tutte e tre le lingue:
   **nessun elemento tagliato, nessuno scorrimento orizzontale**, e la barra
-  laterale, le pastiglie, le intestazioni di tabella, i pulsanti e la scheda
-  dell'incentivo restano dentro i propri riquadri. In colonne molto strette
+  laterale, le pastiglie, le intestazioni di tabella e i pulsanti
+  restano dentro i propri riquadri. In colonne molto strette
   qualche frase lunga prende una riga in più: è riflusso, non troncamento.
 - ⚠️ **`hyphens: auto` nelle CELLE DI TABELLA è stato provato e SCARTATO.** In
   una colonna da 66 px spezza «Aus-glei-chs-kas-se» una sillaba per riga e porta
@@ -111,7 +111,7 @@ dizionari:
   sistema incolonnava le cifre da sé: a 22 px «11 %», «92 %» e «88 %» misuravano
   tutte **45 px esatti**. Inter usa cifre **proporzionali** per default — il suo
   «1» è molto più stretto — e le stesse tre danno **39,2 · 48,4 · 48,8**. In una
-  pila di scadenze o di schede incentivo i numeri ballano da una riga all'altra.
+  pila di scadenze i numeri ballano da una riga all'altra.
   Aggiunto `font-variant-numeric: tabular-nums` a `.dl-date` (la scadenza) e a
   `.rb-num` (la percentuale di rilevanza): tornano identiche a **49,1**, e le
   date passano da uno scarto di 3,6 px a **zero**. Gli importi lo avevano già
@@ -124,7 +124,7 @@ dizionari:
   far correggere le scadenze. Le quattro schede piccole stanno in una griglia
   2×2, e sotto i 600 px in una colonna sola: i numeri si guardano uno sopra
   l'altro. Ora dichiarano le cifre tabulari `.kpi-value`, `.meter-num`,
-  `.bar-val` e `.crm-kv dd` (la colonna dei valori di CRM e Incentivi, dove
+  `.bar-val` e `.crm-kv dd` (la colonna dei valori di CRM, dove
   stanno gli importi e le scadenze fuori da Finanze). **La regola scritta non è
   bastata: ora c'è un controllo** — `test:shell-unit` §8 elenca le classi i cui
   numeri stanno in colonna e pretende la dichiarazione su ciascuna.
@@ -525,8 +525,8 @@ amministrativi, non il badge da dashboard.
 | **Finestra di candidatura** | la parentesi `[ ]`: l'etichetta sta dentro una finestra | aperta · aprirà · sempre aperta · chiusa · sospesa · non dichiarata |
 
 I componenti stanno in `src/components/ui/` (ProvenanceMark con
-ActionOriginMark, ConfidenceBadge, EligibilityMark, SourceStamp, DeadlineMark,
-StatusMark, PriorityMark, WindowMark, EvidenceLink, MarkLegend), le classi in
+ActionOriginMark, ConfidenceBadge, DeadlineMark, StatusMark, PriorityMark,
+EvidenceLink, MarkLegend), le classi in
 `app.css`, sezione «MARCATURE». **Aggiungere uno stato è una riga nella mappa
 del componente**: la legenda itera sulle stesse mappe e si aggiorna da sola.
 I glifi sono SVG interni, non caratteri: il sottoinsieme del font non c'entra e
@@ -556,21 +556,17 @@ Le regole che il sistema incorpora:
   verificata lo dichiara in maiuscoletto muto, non tace.
 - **La legenda è la stessa ovunque** e mostra **tutte** le famiglie, non solo
   quelle della schermata che si sta guardando: Attività, Scadenzario,
-  Documenti, dettaglio documento, foglio d'analisi, Incentivi, Catalogo,
-  Subsidy AI. Un vocabolario che cambia da una schermata all'altra non è un
+  Documenti, dettaglio documento e foglio d'analisi. Un vocabolario che cambia da una schermata all'altra non è un
   vocabolario, è un elenco di abitudini locali. Si impara una volta, si
   richiude.
 - **Ma solo dove c'è almeno un segno da spiegare, e mai come scheda.** Su una
-  schermata vuota — Incentivi senza progetti — la legenda era l'unica cosa in
-  pagina: un glossario di nove famiglie sotto un elenco che non ne usa nessuna.
+  schermata vuota la legenda non deve essere l'unica cosa in pagina.
   Dal 2026-08-14 conta i `.mark` renderizzati nella pagina (esclusi i propri) e
   se sono zero non compare. ⚠️ **Il conteggio guarda il DOM, non una prop**: una
   condizione passata dalle undici schermate che la usano sarebbe stata undici
   posti in cui ricordarsene, cioè lo stesso invecchiamento che l'iterazione
-  sulle mappe evita. E la forma è una **riga richiudibile a piè di pagina** con
-  il suo filetto: in Opportunità e in Subsidy AI 1.0 stava dentro un `.card`,
-  cioè una superficie elevata che dichiara «questo si legge» attorno a qualcosa
-  che si consulta una volta sola.
+  sulle mappe evita. La forma è una **riga richiudibile a piè di pagina** con
+  il suo filetto.
 - **Una famiglia non presta il suo segno a un'altra.** La priorità non usa la
   triade di punti (è la confidenza) e la sospensione di un programma non usa
   la parentesi (è la finestra di un bando): un fatto del dominio che non
@@ -580,10 +576,7 @@ Le regole che il sistema incorpora:
   idoneo» e «non idoneo» non sono guasti: erano `badge-alta` e il verdetto
   `vh-bad`. Il grado lo porta il peso dell'inchiostro, il giudizio il glifo.
 - **Le parole vietate restano vietate**: *approvato*, *garantito*,
-  *ufficialmente idoneo*. Dichiarare idonea un'impresa spetta all'autorità.
-  Il controllo guarda le etichette d'idoneità nelle tre lingue — non l'intero
-  dizionario: `subsidy.cases.statuses.approved` registra l'esito deciso da
-  un'autorità, ed è un fatto vero che si deve poter dire.
+  una certezza ufficiale. Dichiarare un esito amministrativo spetta all'autorità.
 
 ### L'etichetta non è una marcatura — `Tag`
 
@@ -626,9 +619,6 @@ proprio segno a un'altra — cosa che questo sistema vieta:
 | che cosa | dove |
 |---|---|
 | lo stato di salute di una **relazione** (otto valori) | `crm/ClientsPage`, `crm/ClientDetailPage` |
-| lo stato di una **pratica** incentivi | `incentives/CasesTab` |
-| il punteggio di **pertinenza** di un programma | `subsidy-ai/ResultsList`, `ProgramDetail` |
-| lo stato di un **criterio** nel verdetto | `incentives/OpportunityDetail` |
 
 Sono decisioni di prodotto — quante famiglie deve avere il vocabolario — non
 lavoro di consolidamento, e vanno prese guardando, non dedotte.
@@ -651,7 +641,7 @@ attività né nello scadenzario: quando le azioni diventano lavoro,
 `stepsFromActions` copia solo il testo e `task_checklist_items` non ha una
 colonna dove conservare la provenienza — il dato non esiste più, e mostrarlo
 richiederebbe una migrazione. Finché non c'è, il segno **non si inventa**: nella
-riga di un'attività `task.source` (Admin AI, Subsidy AI, una regola, una
+riga di un'attività `task.source` (Admin AI, una regola, una
 persona) resta testo, perché dice quale modulo l'ha creata e **non** se il
 documento chiedesse quella cosa.
 
@@ -669,19 +659,14 @@ documento chiedesse quella cosa.
 4. **Niente sottolineatura sulla navigazione**, sì sui collegamenti dentro un
    testo — lì è l'unico segnale che li distingue da una parola qualsiasi.
 5. **Nel rimappare la tipografia, non usare regex sui nomi di classe**: «tag»
-   cattura `.price-tag` (il prezzo, 29px) e «badge» cattura `.rel-badge .rb-num`
-   (la percentuale, 19px). Liste esplicite, e provare sempre a vuoto prima.
-6. **Nessuna larghezza fissa dove c'è testo tradotto**: l'etichetta della
-   rilevanza è RILEVANZA, RELEVANZ, PERTINENCE — a 66px usciva dal riquadro.
-   Vale anche in **altezza**: alle etichette dei KPI servono due righe riservate
+   cattura `.price-tag` (il prezzo, 29px). Liste esplicite, e provare sempre a vuoto prima.
+6. **Nessuna larghezza fissa dove c'è testo tradotto.** Vale anche in
+   **altezza**: alle etichette dei KPI servono due righe riservate
    (`min-height: 2.7em`), perché «Scadenze prossimi 7 giorni» in tedesco diventa
    «Fristen in den nächsten 7 Tagen» e, andando a capo, faceva scendere il suo
    numero di una riga disallineando tutta la fila.
-7. **Una pastiglia etichetta uno stato, non contiene un periodo.** Nelle schede
-   degli incentivi ce n'erano sei con quattro colori, e una conteneva una frase
-   di due righe (la finestra di candidatura). Restano pastiglia le due cose che
-   cambiano quello che fai — se il programma è concedibile, se la domanda va
-   presentata prima di iniziare; il resto è testo.
+7. **Una pastiglia etichetta uno stato, non contiene un periodo.** Le frasi
+   operative restano testo corrente, non vengono compresse dentro una pastiglia.
 8. **Un solo colore forte per riga.** Due avvisi rossi affiancati non dicono
    «due volte urgente», dicono «non guardare».
 
@@ -760,8 +745,7 @@ documento chiedesse quella cosa.
     contava le analisi con confidenza non alta, mentre la pagina filtrava su
     `needs_review`. Due definizioni della stessa parola sono due verità.
 
-    ⚠️ **Lo zero propone.** «Incentivi rilevanti 0 · crea un progetto per
-    cercare» è il modello: a zero la didascalia allarga la finestra («nessuna
+    ⚠️ **Lo zero propone.** A zero la didascalia allarga la finestra («nessuna
     scadenza questa settimana») o dice il gesto successivo, con tono quieto —
     non è un allarme, è un invito. Uno zero senza messaggio è spazio morto, e a
     zero le frasi dello stato normale diventano assurde: «nessuna scaduta»

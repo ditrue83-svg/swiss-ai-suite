@@ -9,10 +9,10 @@
 // niente da cliccare. La console diceva «Consider adding an error boundary».
 //
 // ⚠️ E NON È UN CASO DI LABORATORIO. Gli elenchi di valori arrivano dal
-// database, e alcuni vengono dal CATALOGO DEGLI INCENTIVI, che è GLOBALE e lo
+// database, e alcuni vengono da dati condivisi, che sono GLOBALI e il
 // scrivono gli operatori del catalogo (0032/0037) — non l'azienda che guarda la
 // schermata. Il giorno in cui una riga di catalogo porta un valore che questo
-// bundle non conosce, senza questa rete la pagina Incentivi diventa bianca per
+// bundle non conosce, senza questa rete la pagina diventa bianca per
 // ogni cliente, tutti insieme, e l'unico segno del guasto è in una console che
 // nessun imprenditore apre.
 //

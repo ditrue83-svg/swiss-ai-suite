@@ -5,9 +5,8 @@
 //   npm run i18n:orphans -- --self-test   (solo l'autoverifica del rilevatore)
 //
 // PERCHÉ ESISTE, con due casi veri e datati.
-// Il 2026-08-13, dopo la PR #44, `subsidy.results.priority` è rimasta in tre
-// dizionari senza un chiamante (le due schermate che la usavano erano passate a
-// `PriorityMark`) e `L.eligibility` senza nessuno che la invocasse. Nessun
+// Il 2026-08-13, dopo la PR #44, alcune chiavi sono rimaste in tre
+// dizionari senza un chiamante dopo una migrazione della UI. Nessun
 // guardiano se ne è accorto: `i18n:coverage` cerca il TESTO SCRITTO A MANO nei
 // componenti, cioè il difetto opposto — una frase che NON passa dal dizionario.
 // Una chiave che non passa più da nessun codice è invisibile a quel controllo,
@@ -29,10 +28,10 @@
 // Un tokenizzatore percorre ogni sorgente una volta sola distinguendo codice,
 // commenti, stringhe, template ed espressioni regolari, e raccoglie:
 //   · i letterali con dei punti          t('tasks.dueNone'), labelKey: 'a.b.c'
-//   · il prefisso statico dei template   `subsidy.cases.statuses.${k}` → nodo
-//   · i letterali che finiscono in punto 'incentives.reasons.' + r.key → nodo
+//   · il prefisso statico dei template   `tasks.statuses.${k}` → nodo
+//   · i letterali che finiscono in punto 'tasks.reasons.' + r.key → nodo
 // Un token che corrisponde a un NODO (non a una foglia) vale per tutto ciò che
-// gli sta sotto: è così che `pick('subsidy.labels.eligibility', v)` in
+// gli sta sotto: è così che `pick('tasks.labels.priority', v)` in
 // `labels.ts` copre i quattro stati senza che nessuno li nomini.
 //
 // ⚠️ I COMMENTI NON CONTANO COME USO, ed è il motivo del tokenizzatore.
@@ -57,8 +56,7 @@
 // I colpevoli erano di tre specie, tutti dentro `scripts/`: un check che
 // COMPONE la chiave da cercare (`home.${chiave}` in `test-shell-unit.ts`),
 // quattro `startsWith('tasks.')` e simili nei test unitari (nav, tasks,
-// notifications, finance), e le email usa-e-getta `subsidy.${label}.…@` di
-// cinque test d'integrazione (subsidy, assistant, contracts, crm, audit).
+// notifications, finance), e le email usa-e-getta di vari test d'integrazione.
 // Sotto quella coperta si erano accumulate 103 orfane vere. Da allora la
 // scansione pretende che in ogni sezione di primo livello una foglia
 // inesistente POSSA uscire orfana: se non può, il colpevole è un token da
@@ -220,8 +218,6 @@ export const ECCEZIONI: { chiave: string; motivo: string }[] = [
   { chiave: 'notifications.unreadOne', motivo: MOTIVO_RIVELATE },
   { chiave: 'notifications.unreadMany', motivo: MOTIVO_RIVELATE },
   { chiave: 'notifications.noDeadline', motivo: MOTIVO_RIVELATE },
-  // —   subsidy  (1)
-  { chiave: 'subsidy.results.eligibilityToVerify', motivo: MOTIVO_RIVELATE },
 ];
 
 // ---------------------------------------------------------------------------
@@ -411,7 +407,7 @@ export function foglie(dict: unknown, prefisso = ''): string[] {
  * Le foglie che nessun token nomina.
  *
  * Un token vale per sé E per tutto ciò che gli sta sotto: un NODO nominato
- * (`pick('subsidy.labels.eligibility', v)`) copre le sue foglie, ed è
+ * (`pick('tasks.labels.priority', v)`) copre le sue foglie, ed è
  * l'unico modo di non gridare su una chiave composta a runtime.
  *
  * Funzione PURA: si prova sui casi che devono farla fallire senza leggere un
@@ -452,7 +448,7 @@ export function orfane(tutteLeFoglie: string[], token: Iterable<string>): string
  * segue da sola.
  *
  * Un prefisso a DUE o più segmenti non è cecità: coprire un sotto-nodo è la
- * funzione disegnata per `pick('subsidy.labels.eligibility', v)`.
+ * funzione disegnata per `pick('tasks.labels.priority', v)`.
  */
 export function sezioniCieche(sezioni: string[], token: Iterable<string>): string[] {
   const t = [...token];

@@ -18,10 +18,9 @@ export const ICONS = {
   document: '<path d="M6.5 3h6.5l5 5v12.5a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5V3.5a.5.5 0 0 1 .5-.5Z"/><path d="M13 3v5h5"/>',
   banknote: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
   archive: '<rect x="3" y="4" width="18" height="4.5" rx="1.2"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 12h4"/>',
-  // Finanze (0021). Scartata `banknote`, che è già di Subsidy AI: due moduli
-  // con la stessa icona nel menu si confondono a colpo d'occhio. Scartata anche
-  // una moneta o un simbolo di valuta — il modulo NON muove denaro, e un'icona
-  // che promette pagamenti è la prima cosa che una persona legge (§41).
+  // Finanze (0021). Scartata una moneta o un simbolo di valuta:
+  // il modulo NON muove denaro, e un'icona che promette pagamenti è la prima
+  // cosa che una persona legge (§41).
   // Resta il documento con il bordo dentellato: una fattura, cioè un foglio.
   receipt: '<path d="M6 3.5h12v16.2l-2.4-1.4-2.4 1.4-2.4-1.4-2.4 1.4L6 19.7Z"/><path d="M9 8h6M9 11.5h6M9 15h3"/>',
   tag: '<path d="M3.6 11 11 3.6a2 2 0 0 1 1.4-.6H19a2 2 0 0 1 2 2v6.6a2 2 0 0 1-.6 1.4L13 20.4a2 2 0 0 1-2.8 0l-6.6-6.6a2 2 0 0 1 0-2.8Z"/><circle cx="16" cy="8" r="1.3"/>',

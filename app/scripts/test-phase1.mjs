@@ -56,7 +56,7 @@ async function main() {
   const A = await makeUser('A');
   const { data: companyIdA, error: rpcErr } = await A.client.rpc('create_company_with_owner', {
     p_legal_name: 'Azienda A SA', p_uid_che: 'CHE-111.111.111', p_canton: 'Ticino',
-    p_municipality: 'Lugano', p_legal_form: 'SA', p_sector: 'ict', p_employee_count: 10, p_revenue_band: null,
+    p_municipality: 'Lugano', p_legal_form: 'SA',
   });
   if (companyIdA) created.companies.push(companyIdA);
   check('TEST 1 · onboarding crea azienda (RPC)', !rpcErr && !!companyIdA, rpcErr?.message);
@@ -65,8 +65,8 @@ async function main() {
   check('TEST 1 · profilo utente creato al signup (trigger)', !!profileA && profileA.last_name === 'A');
   const { data: memberA } = await A.client.from('company_members').select('role').eq('company_id', companyIdA).eq('user_id', A.id).maybeSingle();
   check('TEST 1 · membership owner creata', memberA?.role === 'owner');
-  const { data: cprofA } = await A.client.from('company_profiles').select('*').eq('company_id', companyIdA).maybeSingle();
-  check('TEST 1 · company_profile creato', !!cprofA && cprofA.sector === 'ict');
+  const { data: companyA } = await A.client.from('companies').select('legal_name, canton, municipality, legal_form').eq('id', companyIdA).maybeSingle();
+  check('TEST 1 · identità aziendale salvata', companyA?.legal_name === 'Azienda A SA' && companyA.canton === 'Ticino' && companyA.municipality === 'Lugano' && companyA.legal_form === 'SA');
 
   // ----- TEST 2: documento → Storage + documents + analisi -----
   const { data: docA, error: docErr } = await A.client.from('documents').insert({
@@ -105,24 +105,10 @@ async function main() {
   const { data: tasksAfter } = await A2.from('tasks').select('id').eq('company_id', companyIdA);
   check('TEST 3 · attività ancora presente dopo re-login', (tasksAfter ?? []).some((t) => t.id === taskA.id));
 
-  // ----- TEST 4: pratica incentivo (+ items) persiste tra logout/login -----
-  const { data: caseA, error: cErr } = await A.client.from('subsidy_cases').insert({
-    company_id: companyIdA, created_by: A.id, program_id: 'innosuisse', program_name: 'Innosuisse',
-    authority: 'Confederazione', status: 'draft', eligibility_status_at_creation: 'likely', relevance_score: 80,
-  }).select('*').single();
-  check('TEST 4 · pratica creata', !cErr && !!caseA, cErr?.message);
-  const { error: itErr } = await A.client.from('subsidy_case_items').insert([
-    { subsidy_case_id: caseA.id, title: 'Preparare: Business plan', sort_order: 0 },
-    { subsidy_case_id: caseA.id, title: 'Preparare: Piano dei costi', sort_order: 1 },
-  ]);
-  check('TEST 4 · item pratica creati', !itErr, itErr?.message);
+  // ----- TEST 5: RLS cross-tenant (utente B non vede i dati di A) -----
   await A.client.auth.signOut();
   const A3 = anonClient();
   await A3.auth.signInWithPassword({ email: A.email, password: PW });
-  const { data: casesAfter } = await A3.from('subsidy_cases').select('id, subsidy_case_items(id)').eq('id', caseA.id);
-  check('TEST 4 · pratica + item presenti dopo logout/login', (casesAfter?.[0]?.subsidy_case_items ?? []).length === 2);
-
-  // ----- TEST 5: RLS cross-tenant (utente B non vede i dati di A) -----
   const B = await makeUser('B');
   const { data: companyIdB } = await B.client.rpc('create_company_with_owner', { p_legal_name: 'Azienda B Sagl', p_canton: 'Zurigo' });
   if (companyIdB) created.companies.push(companyIdB);
@@ -134,7 +120,6 @@ async function main() {
   check('TEST 5 · B NON legge il documento di A', await deniedRead('documents', docA.id));
   check('TEST 5 · B NON legge l’analisi di A', await deniedRead('document_analyses', analysisA.id));
   check('TEST 5 · B NON legge il task di A', await deniedRead('tasks', taskA.id));
-  check('TEST 5 · B NON legge la pratica di A', await deniedRead('subsidy_cases', caseA.id));
   check('TEST 5 · B NON legge la company di A', await deniedRead('companies', companyIdA));
   const { data: dlB, error: dlBerr } = await B.client.storage.from('company-documents').download(pathA);
   check('TEST 5 · B NON scarica il file di A (Storage RLS)', !dlB || !!dlBerr);

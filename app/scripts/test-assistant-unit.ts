@@ -111,9 +111,6 @@ check('nessuno strumento è di scrittura',
   TOOL_KEYS.filter((k) => /^(create|update|delete|send|archive|pay|export|run|execute)_/i.test(k)).join(', '));
 check('non c\'è uno strumento per la contabilità esterna, che nel repository non esiste',
   !TOOL_KEYS.some((k) => /accounting|contabil|bexio|abacus|datev/i.test(k)));
-check('non c\'è uno strumento per gli incentivi: i match non hanno fonti collegate in modo verificabile',
-  !TOOL_KEYS.some((k) => /subsid|incentiv/i.test(k)));
-
 check('ogni strumento ha uno schema chiuso (additionalProperties: false)',
   [...ASSISTANT_TOOLS, SUBMIT_ANSWER_TOOL].every((t) => t.inputSchema.additionalProperties === false));
 check('ogni campo obbligatorio esiste davvero fra le proprietà',

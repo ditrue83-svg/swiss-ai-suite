@@ -24,12 +24,8 @@
 // ⚠️ NIENTE STRUMENTI PER MODULI CHE NON ESISTONO. Nel repository non c'è
 // alcuna integrazione contabile — nessuna colonna di esportazione, nessuna
 // tabella, nessun fornitore — e quindi non c'è `get_accounting_status`. Il
-// modulo Incentivi esiste, ma i suoi match non hanno un vincolo verso il
-// catalogo delle fonti (`subsidy_matches.program_id` è testo senza chiave
-// esterna) e un programma disattivato smette di risolvere la propria fonte:
-// citarlo significherebbe presentare come verificabile ciò che non lo è (§85).
-// Registrare uno strumento per l'uno o per l'altro avrebbe prodotto la risposta
-// peggiore possibile — plausibile e non verificabile.
+// Registrare uno strumento per una fonte non verificabile produrrebbe la
+// risposta peggiore possibile — plausibile e non verificabile.
 //
 // Modulo PORTABILE: nessun import di runtime, nessun accesso al database. Qui
 // c'è la DICHIARAZIONE; l'esecuzione sta in `executors.ts`, e il collegamento
@@ -231,7 +227,7 @@ export const ASSISTANT_TOOLS: AssistantToolDefinition[] = [
       category: {
         type: 'string',
         enum: ['administration', 'taxes', 'social_insurance', 'invoices', 'contracts', 'insurance',
-               'banking', 'employees', 'clients', 'suppliers', 'subsidies', 'other'],
+               'banking', 'employees', 'clients', 'suppliers', 'other'],
       },
       state: {
         type: 'string', enum: ['to_verify', 'analyzed', 'failed', 'processing', 'none'],

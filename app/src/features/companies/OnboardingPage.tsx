@@ -13,7 +13,7 @@ import { formatUid, isValidUid } from '@/lib/uid';
 import { useT } from '@/i18n';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { cx } from '@/lib/cx';
-import { CANTONI, FORME_GIURIDICHE, SETTORI, FASCE_FATTURATO, NO_REVENUE } from '@/features/subsidy-ai/programs';
+import { CANTONI, FORME_GIURIDICHE } from './companyOptions';
 import styles from './companies.module.css';
 
 export function OnboardingPage() {
@@ -40,9 +40,6 @@ export function OnboardingPage() {
   const [canton, setCanton] = useState('Ticino');
   const [municipality, setMunicipality] = useState('');
   const [legalForm, setLegalForm] = useState('Sagl');
-  const [sector, setSector] = useState('');
-  const [employeeCount, setEmployeeCount] = useState('');
-  const [revenueBand, setRevenueBand] = useState(NO_REVENUE);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -65,16 +62,12 @@ export function OnboardingPage() {
     if (!legalName.trim()) { setError(t('onboarding.errorName')); return; }
     setSubmitting(true);
     try {
-      const empParsed = employeeCount.trim() === '' ? null : Number(employeeCount);
       const companyId = await companyService.createCompanyWithOwner({
         legalName,
         uidChe: uidChe.trim() || null,
         canton,
         municipality: municipality.trim() || null,
         legalForm,
-        sector: sector || null,
-        employeeCount: empParsed != null && Number.isFinite(empParsed) ? empParsed : null,
-        revenueBand: revenueBand === NO_REVENUE ? null : revenueBand,
       });
       await refresh();
       setActiveCompany(companyId);
@@ -136,14 +129,6 @@ export function OnboardingPage() {
             <Input id="ob-mun" label={t('onboarding.municipality')} value={municipality} onChange={(e) => setMunicipality(e.target.value)} placeholder={t('onboarding.municipalityPlaceholder')} />
             <Select id="ob-form" label={t('onboarding.legalForm')} value={legalForm} onChange={(e) => setLegalForm(e.target.value)}>
               {FORME_GIURIDICHE.map((f) => <option key={f} value={f}>{f}</option>)}
-            </Select>
-            <Select id="ob-sector" label={t('onboarding.sector')} value={sector} onChange={(e) => setSector(e.target.value)}>
-              <option value="">{t('onboarding.sectorPlaceholder')}</option>
-              {SETTORI.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </Select>
-            <Input id="ob-emp" label={t('onboarding.employees')} type="number" min={0} value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder={t('onboarding.employeesPlaceholder')} />
-            <Select id="ob-rev" label={t('onboarding.revenue')} value={revenueBand} onChange={(e) => setRevenueBand(e.target.value)}>
-              {FASCE_FATTURATO.map((f) => <option key={f} value={f}>{f === NO_REVENUE ? t('onboarding.noPreference') : f}</option>)}
             </Select>
           </div>
 

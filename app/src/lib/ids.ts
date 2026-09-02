@@ -2,8 +2,8 @@
 // La FORMA di un identificativo. Non la sua esistenza: quella la sa il database.
 //
 // PERCHÉ VIVE QUI E NON DENTRO UN MODULO
-// Era scritta in `features/incentives/incentivesModel.ts`, dove è nata per
-// chiudere un difetto preciso: `/incentivi?progetto=abc` faceva arrivare a
+// È nata in un modulo applicativo e ora vive qui per chiudere un difetto
+// preciso: una rotta con query faceva arrivare a
 // schermo «invalid input syntax for type uuid: "abc"» — una stringa tecnica,
 // in inglese, dentro un'interfaccia che può essere tedesca. Lo stesso indirizzo
 // malformato è possibile ovunque un identificativo viaggi nella query, e

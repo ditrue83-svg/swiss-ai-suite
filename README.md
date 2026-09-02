@@ -17,8 +17,6 @@ francese, ne ricava scadenze, importi e cose da fare, e tiene insieme documenti 
 | Modulo | Cosa fa |
 |---|---|
 | **Admin AI** | Analizza lettere, PDF ed email amministrative: ente mittente, tipo, importi, scadenze, azioni richieste, bozza di risposta. Ogni affermazione è legata a una citazione **verificata alla lettera** nel documento; ciò che non è certo viene dichiarato, non inventato. |
-| **Subsidy AI** | Confronta il progetto dell'impresa con un catalogo di programmi di incentivo (Confederazione + Ticino), tenendo distinte la **rilevanza** (pertinenza al progetto) e l'**idoneità** (requisiti verificabili). |
-| **Incentivi** | Subsidy AI 2.0: dal progetto dell'impresa alle opportunità pertinenti, criterio per criterio, fino alla pratica di candidatura. Sei misure separate — rilevanza, idoneità, completezza, tempistica, freschezza della fonte, prontezza — e nessuna è una probabilità di ottenere il contributo: non esiste lo stato «idoneo», il massimo è «potenzialmente idonea». **Comprende e prepara, non candida**: non invia domande, non accede ai portali, non compila formulari. Ogni criterio porta la citazione della fonte ufficiale e la data dell'ultimo controllo riuscito. |
 | **Inbox** | Collega la casella aziendale e individua le comunicazioni che richiedono attenzione. Non è un client di posta: non invia, non risponde, non modifica nulla nella casella. |
 | **Attività** | Il lavoro che nasce da un documento o da una comunicazione: responsabile, stato, scadenza, storico. |
 | **Documenti** | La memoria documentale: dove ritrovare ciò che l'azienda ha ricevuto, con categoria, etichette, ricerca nel testo e provenienza. |
@@ -63,7 +61,6 @@ che l'archivio custodisce già, non un secondo posto dove scrivere.
 | [`app/docs/crm-light.md`](app/docs/crm-light.md) | Clienti: identità di organizzazioni e persone, ruoli multipli, abbinamento prudente e perché l'abbinamento automatico è quasi sempre sbagliato, duplicati senza fusione automatica, opportunità, privacy. |
 | [`app/docs/product-status.md`](app/docs/product-status.md) | **Lo stato di ogni modulo, e l'unico posto dove è dichiarato.** Sei colonne distinte: implementato, deployato, configurato, testato, provato contro il servizio reale, disponibile a clienti esterni. |
 | [`app/CLAUDE.md`](app/CLAUDE.md) | Le regole di lavoro sul repository: branch, consolidamento, verità, sicurezza, interfaccia. Sta in `app/` perché è lì che si lavora. |
-| [`app/docs/incentivi.md`](app/docs/incentivi.md) | Incentivi (Subsidy AI 2.0): perché sei misure separate e non un punteggio, le quattro schede, la convivenza con Subsidy AI 1.0, lo scheduler, le due suite — e il limite che resta: il motore non è coperto da un test. |
 | [`app/docs/stati-documento.md`](app/docs/stati-documento.md) | **Il censimento degli stati di un documento, con la data accanto a ogni numero.** I quattro assi, i campi di stato e chi li scrive, gli stati morti nei due sensi, le etichette e che cosa leggono, i campi che dicono la stessa cosa, se separare gli assi richieda una migrazione — e l'archiviazione attraverso tutti i moduli. Si rimisura con `npm run stati:censimento`, che è sola lettura. |
 | [`app/docs/appartenenza-del-documento.md`](app/docs/appartenenza-del-documento.md) | Il cancello dell'appartenenza: dove viveva, quali schermate non lo ereditavano, dov'è adesso — e i due difetti che la fattura di prova del 21 agosto ha portato a galla (lo stesso PDF letto due volte, la riga di quota che non si chiudeva). |
 | [`app/docs/design-system.md`](app/docs/design-system.md) | Scala tipografica, colori, contrasti, tema scuro, aree cliccabili. |
@@ -82,8 +79,8 @@ diversi, e un modulo con 58 asserzioni verdi e **nessuno scheduler che lo invoca
 in esercizio come uno che funzionava davvero. `npm run docs:check` ora fallisce se un documento
 contraddice quella tabella.
 
-**In esercizio**: Admin AI, Subsidy AI, Attività, Documenti, Automazioni, Finanze, Contratti,
-Clienti, Chiedi ad AI-Swisse, Incentivi. L'**Inbox è attiva con Google** — una casella reale
+**In esercizio**: Admin AI, Attività, Documenti, Automazioni, Finanze, Contratti,
+Clienti e Chiedi ad AI-Swisse. L'**Inbox è attiva con Google** — una casella reale
 collegata, posta importata, classificata e analizzata, manutenzione periodica automatica.
 ⚠️ **«Calendario e notifiche» NON è in esercizio**: il codice c'è ed è deployato, ma i suoi due
 scheduler non esistono nel progetto e i suoi secret non sono impostati, quindi nessun promemoria
@@ -113,10 +110,6 @@ rilasciate dall'UFRC. Non più solo allineato alla specifica: la catena è stata
 risposte reali, e le misure che ne sono uscite — l'API non pagina, il cantone non torna nella
 ricerca per nome, `activeOnly` non esclude le società in cancellazione — sono nel commento in testa
 a `supabase/functions/lookup-company/index.ts`.
-
-**Catalogo incentivi**: 7 programmi verificati sulle fonti ufficiali, di cui 1 dichiarato
-sospeso. Copertura Confederazione + Ticino, non i 26 Cantoni. I contenuti delle schede sono
-mostrati in italiano anche in tedesco e francese: vivono nel database, non nei dizionari.
 
 **Automazioni** (migrazione 0020): **in esercizio dal 2026-07-27**. 61 controlli sul database
 reale, 103 offline, Edge Function deployate e scheduler ogni 5 minuti; la catena — analisi →

@@ -14,7 +14,7 @@
    ragione di ogni valore qui sotto. Al 2026-08-16, a 1280×720: la colonna
    chiedeva 962px e ne aveva 720 — marchio 89, azienda 83, navigazione 550, box
    account 202 — e la navigazione, unica parte elastica, ne nascondeva 242. Chi
-   apriva l'app vedeva sei voci su dieci: «Incentivi» e l'intero ARCHIVIO
+   apriva l'app vedeva solo una parte delle voci: l'intero ARCHIVIO
    (Documenti, Contratti, Clienti, Finanze) esistevano solo dopo uno scroll.
    Qui il box account passa da 202 a 88: due righe invece di quattro. */
 .account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -77,7 +77,7 @@
 /* `.form-success` è migrata il 2026-08-28 in
    `src/features/auth/auth.module.css` (CSS Modules, issue #83): la usano
    solo le pagine di `features/auth/` (`.form-error`, qui sopra, RESTA
-   globale: la usano anche incentives, crm e companies). Trovata nella
+   globale perché è condivisa fra più moduli). Trovata nella
    ricognizione finale del lotto 6. */
 .field-hint { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
 
@@ -226,7 +226,7 @@
    in `src/features/finance/finance.module.css` (CSS Modules, issue #83): le
    usa solo la feature `finance`. Con loro sono migrate le righe `.fin-*` della
    `@media (max-width: 720px)`: qui resta la sola riga di `.fin-pager`, perché
-   `.fin-pager` e `.fin-page-n` sono condivise con Contratti, CRM e Incentivi.
+   `.fin-pager` e `.fin-page-n` sono condivise con Contratti e CRM.
    Là dentro `.muted-sm`, `.btn`, `.field` e `.select-inline` sono nominati con
    `:global`, perché restano condivisi. */
 
@@ -265,7 +265,7 @@
    commento, che spiegavano con cura come disporre un layout superato — e un
    commento accurato su una cosa che non c'è è più caro di nessun commento,
    perché il prossimo lettore ci crede. `.kpi-grid` resta viva e giusta dove è
-   nata: Finanze, Incentivi, CRM, Contratti, Automazioni. */
+   nata: Finanze, CRM, Contratti, Automazioni. */
 
 /* ===========================================================================
    CRM Light (0026) — «Clienti»
@@ -278,7 +278,7 @@
    `src/features/crm/crm.module.css` (CSS Modules, issue #83), commenti
    compresi. Qui restano le condivise: `.crm-list` (la usa anche
    `features/assistant/`), `.crm-kv`, `.crm-sec`, `.crm-sec-head` e la
-   famiglia `.crm-tl` senza `crm-tl-sub` (le usa anche `features/incentives/`).
+   famiglia `.crm-tl` senza `crm-tl-sub`.
    =========================================================================== */
 .crm-list { list-style: none; margin: 0; padding: 0; }
 
@@ -333,8 +333,7 @@
 .crm-tl-when { font-size: var(--fs-label); color: var(--muted); }
 .crm-tl-what { font-size: var(--fs-body); }
 /* `.crm-tl-sub` è migrata il 2026-08-28 in `src/features/crm/crm.module.css`
-   (CSS Modules, issue #83): è la sola della famiglia che `features/incentives/`
-   NON usa. */
+   (CSS Modules, issue #83). */
 
 /* La famiglia `.crm-ask` (suggerimenti e duplicati, con il suo commento) è
    migrata il 2026-08-28 in `src/features/crm/crm.module.css` (CSS Modules,
@@ -342,8 +341,7 @@
 
 /* ⚠️ `@media` DIVISA il 2026-08-28: la riga di `.crm-board` è migrata in
    `src/features/crm/crm.module.css` (CSS Modules, issue #83), dentro una
-   `@media (max-width: 720px)` tutta sua; qui resta `.crm-kv`, condivisa con
-   `features/incentives/`. */
+   `@media (max-width: 720px)` tutta sua; qui resta `.crm-kv`, condivisa. */
 @media (max-width: 720px) {
   .crm-kv { grid-template-columns: minmax(0, 1fr); gap: var(--sp-05); }
   .crm-kv dd { margin-bottom: var(--sp-2); }
@@ -361,21 +359,6 @@
    `.as-main` e `.main:has(.as-page)`: quei controlli vanno riallineati nella
    fase finale della migrazione.
    ========================================================================== */
-
-/* ===========================================================================
-   INCENTIVI (Subsidy AI 2.0)
-   ---------------------------------------------------------------------------
-   La sezione è migrata il 2026-08-28 in
-   `src/features/incentives/incentives.module.css` (CSS Modules, issue #83),
-   commenti compresi: la usava solo la feature `incentives`. Con lei, da
-   `app.css`, sono migrate `.checklist-item` (con `.done`) e
-   `.decl-flag.df-muted` — che là dentro nomina `.decl-flag` con `:global`,
-   perché la classe base resta condivisa con `subsidy-ai`.
-   NON sono migrate: `.quiz-opts`/`.quiz-opt`/`sel-*` e `.state-list`, che
-   usa anche `features/subsidy-ai/`. La riga `.inc-crit` della `@media print`
-   qui sotto è stata riallineata il 2026-08-28 (sweep finale): vedi il blocco
-   di stampa.
-   =========================================================================== */
 
 /* ============================================================================
    STAMPA — il foglio dei moduli
@@ -401,11 +384,6 @@
    · `.ax-header` e `.ax-actions-card` (non si spezzano) e `.ax-doc` (non va
      su carta) → `src/features/admin-ai/admin-ai.module.css`, commenti compresi;
    · `.ct-doc-row` e `.ct-ms-row` → `src/features/contracts/contracts.module.css`;
-   · `.inc-crit` → `src/features/incentives/incentives.module.css`, come
-     `.inc-criterion`: il selettore `.inc-crit` non ha MAI agganciato niente —
-     la classe si chiama `.inc-criterion` dal 2026-07-30 (commit 04b625d) e
-     nessuna regola l'ha mai definita. Selettore nato morto, corretto nello
-     spostamento, non copiato.
    · `.doc-viewer` e `.pdf-viewer` → CANCELLATI: nessuna regola li definiva in
      nessun foglio e nessun componente li scrive (censimento regole morte del
      2026-08-28, grep su src/, scripts/, index.html e site/). Erano indizi

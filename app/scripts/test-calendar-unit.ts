@@ -53,7 +53,7 @@ import { badgeLabel, notificationLink, notificationTitleKey, relativeTime } from
 // Function non va importato dai test.
 import { DEFAULT_TIMEZONE as UI_TIMEZONE, defaultPreferences as uiDefaults } from '../src/features/calendar/preferencesDefaults';
 import type { CalendarTaskItem } from '../src/types/models';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -751,7 +751,7 @@ section('10 · Notifiche: etichette, collegamenti, badge');
   //
   // Fino al 2026-07-30 questo test enumerava SETTE tipi scritti qui dentro,
   // mentre il database ne ammetteva già undici: `workflow_alert` (0020),
-  // `crm_opportunity_assigned` (0026) e i quattro degli incentivi (0032) non
+  // `crm_opportunity_assigned` (0026) e altri tipi storici non
   // venivano provati da nessuno. Una lista a mano non fallisce quando l'enum
   // cresce — smette semplicemente di guardare, e resta verde. È la stessa
   // trappola di `crm_is_public_domain`, chiusa nello stesso modo: il test
@@ -760,21 +760,23 @@ section('10 · Notifiche: etichette, collegamenti, badge');
   // ⚠️ E il difetto non sarebbe stato cosmetico: `notificationTitleKey` è uno
   //    `switch` senza `default`, quindi un tipo non coperto torna `undefined` e
   //    la campanella va in crash su `t(undefined)`.
-  const SQL = ['0018_calendar_notifications', '0020_workflow_automation',
-    '0024_contract_manager', '0026_crm_light', '0032_subsidy_ai_2']
-    .map((f) => readFileSync(join(HERE, '..', 'supabase', 'migrations', `${f}.sql`), 'utf8'))
+  const SQL = readdirSync(join(HERE, '..', 'supabase', 'migrations'))
+    .filter((f) => f.endsWith('.sql')).sort()
+    .map((f) => readFileSync(join(HERE, '..', 'supabase', 'migrations', f), 'utf8'))
     .join('\n');
 
   const dichiarati = new Set<string>();
-  const creato = SQL.match(/create type public\.notification_type as enum \(([\s\S]*?)\)/i);
+  const creazioni = [...SQL.matchAll(/create type public\.notification_type as enum \(([\s\S]*?)\)/gi)];
+  const creato = creazioni.at(-1);
   if (creato) {
     for (const m of creato[1].replace(/--[^\n]*/g, '').matchAll(/'([^']+)'/g)) dichiarati.add(m[1]);
   }
-  for (const m of SQL.matchAll(/alter type public\.notification_type add value if not exists '([^']+)'/gi)) {
+  const dopoCreazione = creato ? SQL.slice(creato.index! + creato[0].length) : SQL;
+  for (const m of dopoCreazione.matchAll(/alter type public\.notification_type add value if not exists '([^']+)'/gi)) {
     dichiarati.add(m[1]);
   }
 
-  ok(dichiarati.size >= 11,
+  ok(dichiarati.size >= 9,
     `l'enum del database dichiara ${dichiarati.size} tipi di notifica`, [...dichiarati].join(', '));
   for (const type of dichiarati) {
     const key = notificationTitleKey({ type: type as never, payload: {} });
@@ -800,7 +802,7 @@ section('10 · Notifiche: etichette, collegamenti, badge');
   //    SCONOSCIUTI, ed è giusto; ma un valore che il database ammette e che
   //    finisce lì è una campanella che porta alla Panoramica invece che alla
   //    cosa di cui parla. Il 2026-07-30 ci finivano `contract` (ammesso dalla
-  //    0024 apposta per «il preavviso si avvicina») e i due degli incentivi.
+  //    0024 apposta per «il preavviso si avvicina»).
   // ⚠️ SI PRENDE L'ULTIMO, non il primo: il vincolo viene RIDEFINITO a ogni
   //    migrazione che allarga l'elenco (0020, 0024, 0026, 0032), e quello in
   //    vigore è l'ultimo applicato. La prima versione di questo controllo
@@ -813,7 +815,7 @@ section('10 · Notifiche: etichette, collegamenti, badge');
   const entita = ultimo
     ? [...ultimo[1].replace(/--[^\n]*/g, '').matchAll(/'([^']+)'/g)].map((m) => m[1])
     : [];
-  ok(entita.length >= 9, `il vincolo ammette ${entita.length} tipi di entità`, entita.join(', '));
+  ok(entita.length >= 7, `il vincolo ammette ${entita.length} tipi di entità`, entita.join(', '));
   for (const et of entita) {
     const link = notificationLink({ entityType: et as never, entityId: 'abc', payload: {} });
     ok(link !== '/',
@@ -822,18 +824,6 @@ section('10 · Notifiche: etichette, collegamenti, badge');
 
   ok(notificationLink({ entityType: 'contract', entityId: 'c1' }) === '/contratti/c1',
     'un avviso di contratto porta al contratto (0024)');
-  ok(notificationLink({ entityType: 'subsidy_case', entityId: 'k1' }) === '/incentivi?scheda=pratiche',
-    'una notifica di pratica porta alla scheda Pratiche');
-  // ⚠️ Non esiste una rotta per la singola opportunità: si porta all'elenco,
-  //    filtrato sul progetto quando il produttore lo dichiara. Inventare
-  //    `/incentivi/:id` darebbe un indirizzo che non risponde.
-  ok(notificationLink({ entityType: 'subsidy_opportunity', entityId: 'o1', payload: {} }) === '/incentivi',
-    'senza progetto dichiarato, una notifica di opportunità apre l’elenco');
-  ok(notificationLink({
-    entityType: 'subsidy_opportunity', entityId: 'o1', payload: { projectId: 'p 1' },
-  }) === '/incentivi?progetto=p%201',
-    'con il progetto dichiarato l’elenco arriva già filtrato, e l’identificativo è codificato');
-
   ok(badgeLabel(0) === '' && badgeLabel(3) === '3' && badgeLabel(147) === '9+',
     'il pallino non contiene mai più di due caratteri (§80)');
 

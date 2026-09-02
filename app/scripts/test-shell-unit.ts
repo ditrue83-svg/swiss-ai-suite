@@ -46,7 +46,7 @@ import { de } from '../src/i18n/locales/de.ts';
 import { fr } from '../src/i18n/locales/fr.ts';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches, type NavItem } from '../src/components/layout/nav.ts';
 import {
-  chiaviTaskSplit, contoDate, decidiBlocchi, fraseCatalogo, rigaNature, splitOpenTasks,
+  chiaviTaskSplit, contoDate, decidiBlocchi, rigaNature, splitOpenTasks,
   termini, TERMINI_IN_PANORAMICA, type DataDocumento,
 } from '../src/features/dashboard/overviewBlocks.ts';
 import {
@@ -55,19 +55,16 @@ import {
 import { GLYPH_NAMES, type MarkGlyphName } from '../src/components/ui/MarkGlyph.tsx';
 import { PROVENANCE_KINDS } from '../src/components/ui/ProvenanceMark.tsx';
 import { CONFIDENCE_LEVELS } from '../src/components/ui/ConfidenceBadge.tsx';
-import { ELIGIBILITY_STATES } from '../src/components/ui/EligibilityMark.tsx';
-import { SOURCE_STATES } from '../src/components/ui/SourceStamp.tsx';
 import { DEADLINE_STATES, deadlineState } from '../src/components/ui/DeadlineMark.tsx';
 import { APPOINTMENT_STATES, appointmentState } from '../src/components/ui/AppointmentMark.tsx';
 // ⚠️ DUE PORTE PER LA STESSA FUNZIONE, di proposito: quella del modulo
 // condiviso e quella da cui la prendono le Attività e la Panoramica. Se un
 // giorno la seconda smettesse di essere la prima, la sezione 17 lo dice.
-import { calendarDaysUntil, giornoLocale } from '../src/lib/calendarDays.ts';
+import { calendarDaysUntil } from '../src/lib/calendarDays.ts';
 import { formatDate, formatDateTime } from '../src/lib/format.ts';
 import { calendarDaysUntil as calendarDaysUntilTasks } from '../src/features/tasks/taskFormat.ts';
 import { TASK_STATES } from '../src/components/ui/StatusMark.tsx';
 import { PRIORITY_LEVELS } from '../src/components/ui/PriorityMark.tsx';
-import { WINDOW_STATES } from '../src/components/ui/WindowMark.tsx';
 import { contaSegni } from '../src/components/ui/MarkLegend.tsx';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
@@ -403,7 +400,7 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   const shape = NAV.map((e) => (isSection(e) ? `[${e.sectionKey}]` : e.id));
   const expected = [
     'home', 'assistant',
-    '[nav.sectionWork]', 'inbox', 'admin', 'deadlines', 'subsidy',
+    '[nav.sectionWork]', 'inbox', 'admin', 'deadlines',
     '[nav.sectionArchive]', 'documents', 'contracts', 'clients', 'finance',
   ];
   check(
@@ -809,16 +806,6 @@ section('6. Gerarchia e densità dentro le pagine');
         && (d.home as Record<string, string>).uploadDoc!.length > 0,
       'la chiave home.uploadDoc manca nel dizionario',
     );
-    // Per gli incentivi la scorciatoia è un'AZIONE e la voce un LUOGO: i due
-    // testi non possono coincidere alla lettera, ma il NOME DELLA COSA sì —
-    // ed era «Fördermittel» contro «Förderungen».
-    const parole = d.nav.incentives.split(/[^\p{L}]+/u).filter((w) => w.length >= 5).map((w) => w.toLowerCase());
-    const scorciatoia = d.home.findSubsidies.toLowerCase();
-    check(
-      `${lang}: la scorciatoia agli incentivi usa il sostantivo della barra`,
-      parole.some((w) => scorciatoia.includes(w)),
-      `barra «${d.nav.incentives}» · scorciatoia «${d.home.findSubsidies}»`,
-    );
   }
 }
 
@@ -847,13 +834,10 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
   const famiglie: { nome: string; mappa: Record<string, { cls: string; glyph?: MarkGlyphName; labelKey: string | null }> }[] = [
     { nome: 'PROVENANCE_KINDS', mappa: PROVENANCE_KINDS },
     { nome: 'CONFIDENCE_LEVELS', mappa: CONFIDENCE_LEVELS },
-    { nome: 'ELIGIBILITY_STATES', mappa: ELIGIBILITY_STATES },
-    { nome: 'SOURCE_STATES', mappa: SOURCE_STATES },
     { nome: 'DEADLINE_STATES', mappa: DEADLINE_STATES },
     { nome: 'APPOINTMENT_STATES', mappa: APPOINTMENT_STATES },
     { nome: 'TASK_STATES', mappa: TASK_STATES },
     { nome: 'PRIORITY_LEVELS', mappa: PRIORITY_LEVELS },
-    { nome: 'WINDOW_STATES', mappa: WINDOW_STATES },
   ];
 
   // (a) OGNI SEGNO CHIEDE UN GLIFO CHE ESISTE.
@@ -946,11 +930,6 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
     'src/features/documents/DocumentsPage.tsx',
     'src/features/documents/DocumentDetailPage.tsx',
     'src/features/admin-ai/ResultView.tsx',
-    'src/features/incentives/OpportunitiesTab.tsx',
-    'src/features/incentives/OpportunityDetail.tsx',
-    'src/features/incentives/CatalogTab.tsx',
-    'src/features/subsidy-ai/ResultsList.tsx',
-    'src/features/subsidy-ai/ProgramDetail.tsx',
   ];
   const senzaLegenda = pagineConSegni
     .filter((p) => !readFileSync(join(root, p), 'utf8').includes('<MarkLegend />'));
@@ -978,7 +957,7 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
       motivo: 'connessione in errore o da riautorizzare: il calendario non si sta sincronizzando',
     },
   ];
-  const perimetro = ['tasks', 'calendar', 'documents', 'subsidy-ai', 'incentives'];
+  const perimetro = ['tasks', 'calendar', 'documents'];
   const conPastiglie: string[] = [];
   const eccezioniUsate = new Set<string>();
   for (const dir of perimetro) {
@@ -1032,22 +1011,7 @@ section('7. Il vocabolario della fiducia — le famiglie di marcature');
     eccezioniMorte.join(', '),
   );
 
-  // (h) LE PAROLE VIETATE RESTANO VIETATE.
-  // ⚠️ Il perimetro sono le ETICHETTE D'IDONEITÀ, non l'intero dizionario:
-  // `subsidy.cases.statuses.approved` dice che una PERSONA ha registrato l'esito
-  // di un'autorità, ed è un fatto vero che va poter dire. Qui si vieta all'app
-  // di DEDURRE un'idoneità: dichiararla spetta all'autorità, non a noi.
-  const vietate = /approvat|garantit|ufficialmente|genehmigt|garantiert|offiziell|approuv|garanti|officiellement/i;
-  const promesse: string[] = [];
-  for (const [lang, d] of Object.entries(dizionari)) {
-    for (const v of Object.values(ELIGIBILITY_STATES)) {
-      const testo = risolvi(d, v.labelKey);
-      if (typeof testo === 'string' && vietate.test(testo)) promesse.push(`${lang}: «${testo}» (${v.labelKey})`);
-    }
-  }
-  check('nessuna etichetta d\'idoneità promette un esito', promesse.length === 0, promesse.join('\n     '));
-
-  // (i) L'INGOMBRO TEDESCO — DIECI CARATTERI, e il numero è misurato.
+  // (h) L'INGOMBRO TEDESCO — DIECI CARATTERI, e il numero è misurato.
   //
   // Stato, priorità e termine stanno sulla STESSA riga d'elenco, sotto il
   // titolo. Banco di prova del 2026-08-13, viewport 375, dizionario tedesco,
@@ -1117,7 +1081,7 @@ section('8. Cifre tabulari — dove i numeri stanno in colonna');
   // l'elenco di quelli che si guardano uno sotto l'altro.
   // ⚠️ DAL 2026-08-28 ogni riga punta al foglio dove la classe vive dopo la
   // migrazione a CSS Modules (issue #83): `.dl-date` è di `admin-ai`,
-  // `.rb-num` di `subsidy-ai`, `.doc-row-date` di `documents`, `.fin-num` di
+  // `.doc-row-date` di `documents`, `.fin-num` di
   // `finance`; le altre restano globali. `.meter-num` è USCITA dall'elenco il
   // 2026-08-28: classe cancellata col censimento delle regole morte (zero
   // usi).
@@ -1125,7 +1089,6 @@ section('8. Cifre tabulari — dove i numeri stanno in colonna');
     { selettore: '.kpi-value', file: 'src/styles/app.css', perche: 'griglia 2×2, e una colonna sola sotto i 600px' },
     { selettore: '.bar-val', file: 'src/styles/app.css', perche: 'colonna fissa da 42px allineata a destra' },
     { selettore: '.dl-date', file: 'src/features/admin-ai/admin-ai.module.css', perche: 'pila di scadenze' },
-    { selettore: '.rb-num', file: 'src/features/subsidy-ai/subsidy-ai.module.css', perche: 'percentuali di rilevanza, una scheda sotto l\'altra' },
     { selettore: '.doc-row-date', file: 'src/features/documents/documents.module.css', perche: 'colonna delle date nell\'elenco documenti' },
     { selettore: '.fin-num', file: 'src/features/finance/finance.module.css', perche: 'gli importi' },
     { selettore: '.crm-kv dd', file: 'src/styles/extra.css', perche: 'colonna dei valori: importi e scadenze fuori da Finanze' },
@@ -1200,7 +1163,7 @@ section('9. Le etichette — una sola implementazione, e il tono non si sceglie 
     righe.forEach((riga, i) => {
       // ⚠️ `(?<![\w-])badge` e non `\bbadge\b`: il trattino è un confine di
       // parola, quindi `\b` acchiappa anche `rel-badge` — che è la scheda di
-      // pertinenza degli incentivi, una classe sua con il suo CSS, non una
+      // pertinenza di una scheda, una classe sua con il suo CSS, non una
       // pastiglia scritta a mano. Trovato alla prima esecuzione: due rossi
       // falsi su codice a posto.
       if (!/className=(\{`|")[^"`]*(?<![\w-])badge(?![\w-])/.test(riga)) return;
@@ -1292,7 +1255,7 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
   // Le decisioni per prime perché sbloccano il resto: il gate delle attività
   // dipende letteralmente da loro.
   // ⚠️ SENZA COMMENTI, tutti e tre i tipi: il preambolo di questa pagina NOMINA
-  // `subsidy-worker` per spiegare perché il pulsante non c'è, e un lettore a
+  // un worker per spiegare perché il pulsante non c'è, e un lettore a
   // regex non distingue una riga che fa una cosa da una riga che la racconta —
   // è la guardia di `scope.ts` nata rossa da sola, la stessa lezione.
   const home = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8')
@@ -1300,9 +1263,9 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
   const corpo = home.slice(home.indexOf('function OverviewBody'));
-  const ordine = ['BloccoDecisioni', 'BloccoDaFare', 'BloccoSistema', 'BloccoOpportunita']
+  const ordine = ['BloccoDecisioni', 'BloccoDaFare', 'BloccoSistema']
     .map((b) => corpo.indexOf(`<${b} `));
-  check('i quattro blocchi ci sono, nell\'ordine deciso',
+  check('i tre blocchi ci sono, nell\'ordine deciso',
     ordine.every((i) => i >= 0) && ordine.every((i, k) => k === 0 || i > ordine[k - 1]!),
     `posizioni: ${ordine.join(', ')}`);
   // Le destinazioni, una per una: ogni numero porta alla pagina che rende LO
@@ -1314,16 +1277,14 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
     '/documenti?stato=to_verify', '/documenti?stato=to_verify&archiviati=1',
     '/documenti?stato=failed', '/documenti?stato=failed&archiviati=1',
     '/documenti?stato=none', '/documenti?stato=none&archiviati=1',
-    '/incentivi?scheda=progetti',
   ]) {
     check(`un blocco porta a ${to}`, home.includes(`"${to}"`) || home.includes(`'${to}'`));
   }
   // COSA NON C'È, DI PROPOSITO — e deve restare così:
   check('nessun grafico: non esiste una serie storica da mostrare',
     !home.includes('<Bars') && !/meter-fill/.test(home));
-  check('nessun pulsante che chiami una funzione non invocabile («Avvia la verifica»)',
-    !/subsidy-worker|functions\.invoke/.test(home),
-    'il worker è dello scheduler: l\'azione vera è descrivere un progetto');
+  check('nessun pulsante che invochi direttamente una funzione server',
+    !/functions\.invoke/.test(home));
   check('il piè di pagina dichiara l\'insieme UNA volta, per tutta la pagina',
     home.includes('home.footPopulation') && home.includes('home.footUpdated'));
   check('lo stato vuoto dice cosa è stato controllato, non «tutto a posto»',
@@ -1339,7 +1300,7 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
   for (const { lang, d } of dizionari) {
     for (const [chiave, testo] of Object.entries({
       tasksTermsNone: d.tasksTermsNone, tasksOverdueNone: d.tasksOverdueNone,
-      datesUnrecordedMany: d.datesUnrecordedMany, assessNever: d.assessNever,
+      datesUnrecordedMany: d.datesUnrecordedMany,
       emptyChecked: d.emptyChecked, footPopulation: d.footPopulation,
     })) {
       check(`${lang}: la frase di ${chiave} esiste`, typeof testo === 'string' && testo.trim().length > 0);
@@ -1362,7 +1323,7 @@ section('10. Rifiniture — la barra che scorre, la legenda, i numeri che portan
   const decisioni = readFileSync(join(root, 'src/features/dashboard/overviewBlocks.ts'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
-  for (const chiave of ['home.tasksTermsNone', 'home.tasksOverdueNone', 'home.assessNever', 'home.emptyChecked']) {
+  for (const chiave of ['home.tasksTermsNone', 'home.tasksOverdueNone', 'home.emptyChecked']) {
     check(`la Panoramica usa ${chiave}`,
       home.includes(chiave) || decisioni.includes(chiave));
   }
@@ -1688,7 +1649,7 @@ section('12. Il contrasto dei fondi pieni — misurato, in tutti e tre i temi');
   // Se il lettore delle REGOLE si rompesse, zero coppie darebbero zero
   // violazioni: anche questo va dichiarato, non dedotto.
   check('le regole con fondo e testo dai token sono state trovate',
-    coppie.length >= 80, `trovate ${coppie.length}`);
+    coppie.length >= 70, `trovate ${coppie.length}`);
 
   const sotto: string[] = [];
   for (const c of coppie) {
@@ -1816,7 +1777,7 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
 // ---------------------------------------------------------------------------
 // ⚠️ PERCHÉ ESISTE. Fino al 2026-08-16 la colonna chiedeva 962px e ne aveva
 // 720: la navigazione — unica parte elastica — ne nascondeva 242, cioè
-// «Incentivi», l'intestazione ARCHIVIO e le sue quattro voci. Chi apriva
+// l'intestazione ARCHIVIO e le sue quattro voci. Chi apriva
 // l'applicazione vedeva sei voci su dieci e doveva scorrere per sapere che le
 // altre esistevano. Nessun controllo lo vedeva: `design:lint` guarda che le
 // misure vengano dai token, non che le misure SOMMATE ci stiano nello schermo.
@@ -2732,15 +2693,13 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
   const zero = {
     ownership: 0, aperte: 0, terminiNeiDocumenti: 0, dateNonRegistrate: 0,
     daVerificare: 0, fallite: 0, maiAnalizzati: 0,
-    programmiInCatalogo: 0, openCases: 0, activeProjects: 0,
   };
   check('il blocco decisioni esiste solo con appartenenze da confermare',
     decidiBlocchi({ ...zero, ownership: 7 }).decisioni && !decidiBlocchi(zero).decisioni);
   check('16 non conclusive accendono il blocco del sistema anche a Home «vuota»',
     decidiBlocchi({ ...zero, daVerificare: 16 }).sistema);
-  check('lo stato vuoto operativo dichiara il controllato, anche col catalogo pieno',
-    (() => { const b = decidiBlocchi({ ...zero, programmiInCatalogo: 7 });
-      return b.vuotoOperativo && b.opportunita; })());
+  check('lo stato vuoto operativo dichiara il controllato',
+    decidiBlocchi(zero).vuotoOperativo);
   check('con una decisione aperta lo stato vuoto NON compare',
     !decidiBlocchi({ ...zero, ownership: 1 }).vuotoOperativo);
 
@@ -2765,13 +2724,10 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
   // ⚠️⚠️ (d) NESSUN BLOCCO SPARISCE IN SILENZIO. Ogni ingresso che può valere
   // `null` — cioè «non ho potuto leggere» — deve LASCIARE IL SUO BLOCCO A
   // SCHERMO. Un blocco che sparisce quando è rotto è indistinguibile da un
-  // blocco vuoto perché non c'è niente da fare, ed erano due risposte opposte
-  // allo stesso guasto sulla stessa pagina: il catalogo lo dichiarava, la
-  // lettura dell'appartenenza faceva sparire il blocco Decisioni.
+  // blocco vuoto perché non c'è niente da fare.
   {
     const guasti: { nome: string; input: typeof zero; blocco: keyof ReturnType<typeof decidiBlocchi> }[] = [
       { nome: 'appartenenza non leggibile', input: { ...zero, ownership: null as never }, blocco: 'decisioni' },
-      { nome: 'catalogo non leggibile', input: { ...zero, programmiInCatalogo: null as never }, blocco: 'opportunita' },
     ];
     for (const g of guasti) {
       check(`${g.nome}: il blocco RESTA a schermo per dichiararlo`,
@@ -3103,7 +3059,7 @@ section('19. I tetti dichiarati — il numero non lo sceglie il frontend');
     'un lettore che non trova niente NON deve uscire verde: se il nome cambia, questo passo è rosso');
 
   // Il tetto vero: vince l'ULTIMA migrazione che (ri)definisce `list_tasks`.
-  // Oggi è la 0041; una 0050 che lo alzasse sposterebbe questo controllo con sé.
+  // Una migrazione successiva che lo cambiasse sposterebbe questo controllo con sé.
   const migrazioni = readdirSync(join(root, 'supabase/migrations'))
     .filter((f) => f.endsWith('.sql')).sort();
   let concesso = NaN, dove = '';
@@ -3126,107 +3082,8 @@ section('19. I tetti dichiarati — il numero non lo sceglie il frontend');
 
   // CONTROPROVA del lettore delle migrazioni: il tetto letto è un numero vero e
   // non uno zero di ripiego che farebbe passare qualunque costante.
-  check('CONTROPROVA: il tetto letto è quello della 0041, cioè 100',
-    concesso === 100 && dove.startsWith('0041'), `${dove} → ${concesso}`);
-}
-
-// ---------------------------------------------------------------------------
-section('20. Il catalogo vuoto non è un catalogo verificato');
-// ⚠️⚠️ `verified === programs` è vero anche con entrambi a ZERO, e il blocco
-// Opportunità si accende pure a catalogo vuoto — basta una pratica aperta o un
-// progetto attivo. Ne usciva «0 programmi in banca dati, verificati».
-
-{
-  check('catalogo vuoto: la frase dice che è vuoto, non che è tutto verificato',
-    fraseCatalogo({ programs: 0, verified: 0 }) === 'vuoto',
-    fraseCatalogo({ programs: 0, verified: 0 }));
-  check('sette su sette resta «tutti verificati» — la correzione non ha spento il caso vero',
-    fraseCatalogo({ programs: 7, verified: 7 }) === 'tuttiVerificati');
-  check('sette su tre è «in parte»',
-    fraseCatalogo({ programs: 7, verified: 3 }) === 'inParte');
-  check('e «non ho potuto guardare» resta distinto da «ho guardato e non c\'era niente»',
-    fraseCatalogo(null) === 'nonLeggibile');
-  // Il caso limite che l'uguaglianza da sola non distingue: zero programmi ma
-  // un numero di verificati assurdo non deve comunque diventare un vanto.
-  check('zero programmi: la frase è «vuoto» qualunque cosa dica il verificato',
-    fraseCatalogo({ programs: 0, verified: 3 }) === 'vuoto');
-
-  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
-    check(`${lang}: home.catalogEmpty esiste`,
-      typeof d.catalogEmpty === 'string' && d.catalogEmpty.trim().length > 0);
-  }
-  {
-    const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
-    check('la Panoramica rende home.catalogEmpty e passa da fraseCatalogo',
-      pagina.includes('home.catalogEmpty') && /fraseCatalogo\(/.test(pagina));
-    check('e non decide più in linea con l\'uguaglianza fra i due conteggi',
-      !/catalogo\.verified === catalogo\.programs/.test(pagina));
-  }
-}
-
-// ---------------------------------------------------------------------------
-section('21. Un guasto di un riquadro non porta giù la Panoramica intera');
-// ⚠️⚠️ `catalogState` e `assessmentCount` tornano `null` sul guasto — è
-// dichiarato in `OverviewData` e il blocco lo dice a schermo — mentre `summary`
-// LANCIA (`fail(error)`), e non era avvolta da nessun `.catch`: una `Promise.all`
-// che rifiuta porta giù tutto, e la Panoramica finiva in ErrorState per un
-// guasto di `subsidy_home_summary`. Il ramo `home.summaryUnknown`, scritto e
-// tradotto apposta, era irraggiungibile.
-//
-// Il guardiano non guarda un solo nome: pretende che OGNI lettura degli
-// incentivi fatta dalla Panoramica o non possa rifiutare, o sia avvolta.
-
-{
-  const senzaCommenti = (x: string) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
-  const overview = senzaCommenti(readFileSync(join(root, 'src/features/dashboard/useOverview.ts'), 'utf8'));
-  const servizio = senzaCommenti(readFileSync(join(root, 'src/services/incentivesService.ts'), 'utf8'));
-
-  // Il corpo di un metodo del servizio, dalla firma alla chiusura del membro.
-  const corpoServizio = (nome: string) => {
-    const i = servizio.indexOf(`async ${nome}(`);
-    if (i < 0) return null;
-    const j = servizio.indexOf('\n  },', i);
-    return j < 0 ? servizio.slice(i) : servizio.slice(i, j);
-  };
-  // Può rifiutare? Non lo dice il TIPO — `summary` è dichiarata
-  // `Promise<IncentiveSummary | null>` e lancia lo stesso — lo dice il corpo.
-  const puoLanciare = (nome: string) => {
-    const c = corpoServizio(nome);
-    return c === null ? null : /\bfail\(|\bthrow\b/.test(c);
-  };
-
-  // Ogni lettura degli incentivi che la Panoramica fa, con o senza `.catch`.
-  const chiamate = [...overview.matchAll(/incentivesService\.(\w+)\([^\n]*/g)]
-    .map((m) => ({ nome: m[1], riga: m[0], avvolta: /\.catch\(/.test(m[0]) }));
-  check('le letture degli incentivi della Panoramica si trovano nel sorgente',
-    chiamate.length >= 3, `trovate: ${chiamate.map((c) => c.nome).join(', ') || 'nessuna'}`);
-
-  const scoperte = chiamate.filter((c) => puoLanciare(c.nome) === true && !c.avvolta);
-  check('nessuna lettura che può rifiutare è lasciata scoperta dentro la Promise.all',
-    scoperte.length === 0,
-    scoperte.map((c) => `${c.nome} lancia e non è avvolta`).join('; '));
-
-  const ignote = chiamate.filter((c) => puoLanciare(c.nome) === null);
-  check('e ogni metodo chiamato si è potuto ritrovare nel servizio',
-    ignote.length === 0, ignote.map((c) => c.nome).join(', '));
-
-  // CONTROPROVE: il lettore deve saper distinguere le due specie, o direbbe
-  // «tutto a posto» anche su un servizio che lancia dappertutto.
-  check('CONTROPROVA: il lettore vede che summary PUÒ lanciare',
-    puoLanciare('summary') === true);
-  check('CONTROPROVA: e che catalogState e assessmentCount NO',
-    puoLanciare('catalogState') === false && puoLanciare('assessmentCount') === false);
-  check('e summary è quella avvolta dal .catch nella Panoramica',
-    chiamate.some((c) => c.nome === 'summary' && c.avvolta));
-
-  // Il ramo che il lancio teneva irraggiungibile esiste, è tradotto, ed è reso.
-  const pagina = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
-  check('la Panoramica rende home.summaryUnknown quando i numeri non ci sono',
-    pagina.includes('home.summaryUnknown'));
-  for (const { lang, d } of [{ lang: 'it', d: it.home }, { lang: 'de', d: de.home }, { lang: 'fr', d: fr.home }]) {
-    check(`${lang}: home.summaryUnknown esiste`,
-      typeof d.summaryUnknown === 'string' && d.summaryUnknown.trim().length > 0);
-  }
+  check('CONTROPROVA: il tetto letto è quello corrente, cioè 100',
+    concesso === 100, `${dove} → ${concesso}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -3324,10 +3181,7 @@ section('23. Una sola aritmetica dei giorni — nessuna copia che divida istanti
 // sopravvissuta a ciò che esentava è una porta lasciata aperta.
 {
   /** Dove la domanda NON è di calendario, e dividere istanti è giusto. */
-  const ECCEZIONI: Record<string, string> = {
-    'src/features/incentives/reviewModel.ts': 
-      'waitingDays misura il tempo TRASCORSO da un `created_at` (timestamptz, un istante): «da quanto aspetta» è una durata, non un giorno di calendario',
-  };
+  const ECCEZIONI: Record<string, string> = {};
 
   /** Commenti sostituiti da spazi: le righe restano, il testo no. Una guardia
    *  che leggesse i commenti nascerebbe rossa per le spiegazioni qui sopra. */

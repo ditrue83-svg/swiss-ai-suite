@@ -5,7 +5,7 @@
    `src/styles/app.css` (blocco `.price-card` e compagni). La classe
    `.featured` qui è un valore del modulo (`styles.featured`), non più una
    stringa globale. Restano GLOBALI `.card`, `.card-title`, `.btn` e
-   `.footnote` (condivise: la usano anche dashboard, incentives e subsidy-ai).
+   `.footnote` (condivisa anche con la dashboard).
    ========================================================================== */
 
 .price-card { position: relative; display: flex; flex-direction: column; }

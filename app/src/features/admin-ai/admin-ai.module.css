@@ -16,13 +16,12 @@
      classe è costruita dinamicamente nel TSX (`card lvl-${lvl}`) e resta una
      stringa, quindi resta globale (regola della migrazione);
    · `.action-item .ai-meta` → `:global(.action-item) .ai-meta`: il genitore è
-     condiviso con `subsidy-ai`, il figlio è solo di questa feature.
+     globale, il figlio è solo di questa feature.
 
    NON sono qui, e perché:
    · `.ax-head-top`, `.ax-title`, `.ax-badges`, `.ax-meta`, `.ax-chip`,
      `.ax-progress`, `.pg-label`, `.action-item` (con `.ai-main`/`.ai-text`),
-     `.draft-actions` RESTANO globali in `app.css`: le usa anche
-     `features/subsidy-ai/`;
+     `.draft-actions` RESTANO globali in `app.css`;
    · `.mini-btn`, `.meter-track`/`.meter-fill`, `.ev-quote`, `.ev-hl`,
      `.verify-note`/`.vn-title`, `.select-inline`, `.hint-accent`,
      `.spinner`/`@keyframes spin`, `.mark`/`.mark-prov`/`.mp-*` restano
@@ -133,7 +132,7 @@
    sistema incolonnava le cifre da sé: misurate a 22px, «11%», «92%» e «88%»
    davano tutte 45px esatti. Inter di default usa cifre PROPORZIONALI — il suo
    «1» è molto più stretto — e le stesse tre misurano 39,2 · 48,4 · 48,8. In una
-   pila di scadenze o di schede incentivo i numeri ballano da una riga all'altra.
+   pila di scadenze i numeri ballano da una riga all'altra.
    Con `tabular-nums` tornano identiche (49,1), e le date passano da uno scarto
    di 3,6px a zero. È la stessa dichiarazione che gli importi usano già in
    `.fin-num`: qui mancava perché il carattere di prima non la richiedeva. */

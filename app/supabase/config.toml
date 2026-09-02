@@ -197,7 +197,7 @@ verify_jwt = false
 verify_jwt = false
 
 # ---------------------------------------------------------------------------
-# ⚠️⚠️ LE QUATTRO DICHIARAZIONI MANCANTI — 2026-08-01
+# ⚠️⚠️ LE TRE DICHIARAZIONI MANCANTI — 2026-08-01
 #
 # Questo blocco chiude, per le funzioni toccate dal parser condiviso, la
 # trappola che `email-sync` aveva pagato da sola: il file elencava SOLO le
@@ -206,15 +206,14 @@ verify_jwt = false
 # funzione dipende dalla memoria del progetto invece che dal repository, e un
 # flag di troppo in un deploy qualsiasi lo cambia per sempre in silenzio.
 #
-# I quattro valori qui sotto NON sono stati scelti a tavolino: sono quelli
+# I tre valori qui sotto NON sono stati scelti a tavolino: sono quelli
 # MISURATI sul progetto il 2026-08-01 con `npm run verify:deploy`
 # (analyze-document v38 true · contract-worker v16 false · email-disconnect v16
-# true · interpret-project v25 true). Dichiararli non cambia niente oggi e
-# rende il deploy ripetibile domani, senza `--no-verify-jwt` a mano.
+# true). Dichiararli non cambia niente oggi e rende il deploy ripetibile domani,
+# senza `--no-verify-jwt` a mano.
 #
 #   analyze-document   la chiama il browser con il JWT dell'utente.
 #   email-disconnect   idem: è un gesto di una persona nelle impostazioni.
-#   interpret-project  idem: parte dal modulo Incentivi.
 #   contract-worker    lo chiama uno scheduler, non una persona. Si autentica
 #                      NEL CODICE con `x-contract-worker-secret` confrontato a
 #                      tempo costante: senza segreto risponde 403. Se il gate
@@ -227,9 +226,6 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.email-disconnect]
-verify_jwt = true
-
-[functions.interpret-project]
 verify_jwt = true
 
 [functions.contract-worker]
@@ -251,7 +247,7 @@ verify_jwt = true
 # dalla memoria della piattaforma, la stessa trappola chiusa due volte qui
 # sopra. Valori MISURATI con `supabase functions list` prima di scriverli
 # (automation-admin v20 true · automation-worker v20 false ·
-# calendar-disconnect v12 true · generate-reply v24 true · subsidy-worker v9
+# calendar-disconnect v12 true · generate-reply v24 true
 # false · lookup-company v25 true). Da oggi OGNI funzione del repository è
 # dichiarata: una funzione nuova senza sezione qui è un difetto, non un
 # default.
@@ -265,7 +261,6 @@ verify_jwt = true
 #   automation-worker    scheduler, non una persona: si autentica NEL CODICE
 #                        con `x-automation-worker-secret` a tempo costante.
 #                        Gate acceso = 401 al cron per sempre, in silenzio.
-#   subsidy-worker       scheduler, `x-subsidy-worker-secret`, stessa regola.
 # ---------------------------------------------------------------------------
 [functions.automation-admin]
 verify_jwt = true
@@ -280,9 +275,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.automation-worker]
-verify_jwt = false
-
-[functions.subsidy-worker]
 verify_jwt = false
 
 # Gesto esplicito di una persona dal CRM: il gate JWT della piattaforma e
