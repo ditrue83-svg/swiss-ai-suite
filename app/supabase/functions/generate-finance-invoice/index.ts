@@ -169,7 +169,9 @@ Deno.serve(async (req: Request) => {
   // Rigenerare la fattura in bozza sovrascrive lo stesso Documento; nota di
   // credito e sollecito sono documenti nuovi a ogni generazione.
   const isExisting = kind === 'invoice' && Boolean(id(payload.documentId));
-  const documentId = id(payload.documentId) ?? crypto.randomUUID();
+  const documentId = kind === 'invoice'
+    ? (id(payload.documentId) ?? crypto.randomUUID())
+    : crypto.randomUUID();
   const cleanNumber = filename(String(payload.invoiceNumber)) || 'fattura';
   const originalFilename = kind === 'invoice' ? `${cleanNumber}.pdf`
     : kind === 'credit_note' ? `${cleanNumber}-NC.pdf`

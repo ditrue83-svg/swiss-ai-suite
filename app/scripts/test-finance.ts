@@ -1389,13 +1389,23 @@ async function main() {
       const rem1 = await registerPdf(companyFA, andrea.id, inv3, 'reminder', 1);
       const rem2 = await registerPdf(companyFA, andrea.id, inv3, 'reminder', 2);
       const { data: docRows } = await admin.from('finance_issued_invoice_documents')
-        .select('kind, level').eq('invoice_id', inv3 ?? NIL);
-      const bridge = (docRows ?? []) as Array<{ kind: string; level: number | null }>;
+        .select('kind, level, document_id').eq('invoice_id', inv3 ?? NIL);
+      const bridge = (docRows ?? []) as Array<{ kind: string; level: number | null; document_id: string }>;
       check('i solleciti di livello 1 e 2 si registrano come documenti di provenienza',
         !rem1.error && !rem2.error
         && bridge.filter((d) => d.kind === 'reminder').length === 2
         && bridge.some((d) => d.kind === 'invoice'),
         msg(rem1.error) || msg(rem2.error) || JSON.stringify(bridge));
+      // Il 2026-09-03 la Edge Function riusava il document_id della fattura per
+      // sollecito e nota di credito: l'insert in «documents» urtava la chiave
+      // primaria. L'invariante vale anche a riposo: ogni ponte non-«invoice»
+      // punta a un Documento diverso da quello della fattura.
+      const head3 = await readInvoice(inv3, 'document_id');
+      check('solleciti e note di credito NON riusano il Documento della fattura',
+        bridge.filter((d) => d.kind !== 'invoice')
+          .every((d) => d.document_id !== head3.document_id)
+        && bridge.find((d) => d.kind === 'invoice')?.document_id === head3.document_id,
+        JSON.stringify({ bridge, fattura: head3.document_id }));
       const dupLevel = await registerPdf(companyFA, andrea.id, inv3, 'reminder', 2);
       check('un PDF DIVERSO per lo stesso livello è un conflitto',
         !!dupLevel.error && /finance_issued_invoice_document_conflict/.test(msg(dupLevel.error)),

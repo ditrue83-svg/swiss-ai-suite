@@ -560,6 +560,14 @@ console.log('\n6 · Il contratto sorgente: migrazioni 0053/0054 e Edge Function'
   ok(invoiceFunction.includes("errorCorrectionLevel: 'M'") && invoiceFunction.includes('margin: 0')
     && invoiceFunction.includes('scale: 4'),
     'le opzioni del QR della funzione sono quelle replicate in questa suite');
+  // Il 2026-09-03 «Genera un sollecito» (e la nota di credito) falliva con
+  // INVOICE_DOCUMENT_STORE_FAILED: il documentId del payload — che per la
+  // fattura in bozza vale la rigenerazione sullo STESSO Documento — veniva
+  // riusato anche per sollecito e nota di credito, e l'insert in «documents»
+  // urtava la chiave primaria del Documento della fattura. Solo kind='invoice'
+  // può riusarlo: gli altri tipi sono documenti nuovi a ogni generazione.
+  ok(invoiceFunction.includes("const documentId = kind === 'invoice'"),
+    'sollecito e nota di credito ricevono un Documento NUOVO, non quello della fattura');
 
   ok(sendFunction.includes('INVOICE_PDF_STALE') && sendFunction.includes('pdf_generated_at'),
     'il composer blocca l’invio di un PDF di fattura diventato obsoleto');
