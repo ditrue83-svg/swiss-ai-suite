@@ -75,6 +75,9 @@ export function notificationLink(
   //    e chi ci cliccava doveva ritrovarselo a mano. Difetto trovato leggendo il
   //    vincolo del database accanto a questa funzione, non provando l'app.
   if (n.entityType === 'contract') return `/contratti/${n.entityId}`;
+  // 0053 — la fattura emessa: «fattura scaduta» porta al suo dettaglio, non
+  // all'elenco. La pagina esiste dall'interfaccia delle fatture emesse.
+  if (n.entityType === 'finance_issued_invoice') return `/finanze/emesse/${n.entityId}`;
   // Un tipo di entità che non conosciamo non diventa un collegamento inventato:
   // porta alla panoramica, che esiste sempre.
   return '/';

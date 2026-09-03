@@ -244,6 +244,10 @@ export async function loadFacts(
   // evento all'organizzazione renderebbe impossibile ritrovare quale.
   if (event.entity_type === 'crm_organization') return await crmOrganizationFacts(sb, event);
   if (event.entity_type === 'crm_opportunity') return await crmOpportunityFacts(sb, event);
+  // 0053 — la fattura emessa. La scansione che emette l'evento l'ha appena
+  // marcata scaduta, ma qui si RILEGGE: fra emissione e valutazione una
+  // persona può averla segnata pagata.
+  if (event.entity_type === 'finance_issued_invoice') return await financeIssuedInvoiceFacts(sb, event);
   return null;
 }
 
@@ -479,6 +483,69 @@ async function crmOpportunityFacts(
     // null, e l'azione «assegna» viene saltata dichiarandolo.
     assigneeUserId: (p.owner_user_id as string | null)
       ?? (o.account_owner_user_id as string | null) ?? null,
+  };
+}
+
+/**
+ * I fatti di una FATTURA EMESSA (0053).
+ *
+ * Si RILEGGE la riga e non il payload, come per ogni altra entità: fra
+ * l'emissione dell'evento e la valutazione una persona può aver segnato la
+ * fattura pagata, e un sollecito creato su una fattura pagata è il modo più
+ * rapido per perdere un cliente.
+ *
+ * ⚠️ LO STATO NON È UN FATTO, e non per dimenticanza: la scansione emette solo
+ * per fatture scadute e non pagate, quindi l'innesco È già la condizione. Il
+ * rischio residuo — pagamento registrato fra emissione e valutazione — è lo
+ * stesso accettato per `task_became_overdue`, e la finestra è di minuti.
+ *
+ * Il responsabile non sta sulla fattura: sta sulla RELAZIONE col cliente
+ * (§84/§136, la stessa catena del CRM senza l'anello della trattativa — una
+ * fattura non appartiene a una trattativa). Se la relazione non ha un
+ * responsabile resta `null`, e «avvisa il responsabile» si ferma dichiarando
+ * `no_recipient` invece di avvisare tutti.
+ */
+async function financeIssuedInvoiceFacts(
+  sb: ServerClient, event: ClaimedEvent,
+): Promise<EntityFacts | null> {
+  const inv = letto(await sb.from('finance_issued_invoices')
+    .select('id, organization_id, invoice_number, due_date, total_amount, currency')
+    .eq('id', event.entity_id).eq('company_id', event.company_id).maybeSingle(),
+  'facts_finance_issued_invoice');
+  if (!inv) return null;
+  const f = inv as Record<string, unknown>;
+
+  // Il responsabile della relazione: una lettura in più, filtrata per azienda
+  // come tutte le altre — qui la RLS non c'è (service role).
+  const org = letto(await sb.from('crm_organizations')
+    .select('id, account_owner_user_id')
+    .eq('id', f.organization_id as string).eq('company_id', event.company_id).maybeSingle(),
+  'facts_finance_issued_org');
+  const o = org as Record<string, unknown> | null;
+
+  const currency = (f.currency as string | null) ?? null;
+  const total = f.total_amount === null || f.total_amount === undefined
+    ? null : Number(f.total_amount);
+
+  return {
+    facts: {
+      'issued_invoice.invoice_number': optional(f.invoice_number as string | null),
+      'issued_invoice.organization_id': optional(f.organization_id as string | null),
+      'issued_invoice.due_date': optional(f.due_date as string | null),
+      'issued_invoice.total_amount': total === null ? missing() : known(total, currency),
+      'issued_invoice.currency': optional(currency),
+    },
+    documentId: null,
+    emailMessageId: null,
+    taskId: null,
+    contractId: null,
+    contractMilestoneId: null,
+    // La controparte c'è SEMPRE (la colonna è `not null`): l'attività di
+    // sollecito compare sulla scheda del cliente, che è il posto in cui il
+    // modulo esiste per farla comparire — la lezione dei campi CRM qui sopra.
+    crmOrganizationId: f.organization_id as string,
+    crmOpportunityId: null,
+    assigneeUserId: (o?.account_owner_user_id as string | null) ?? null,
   };
 }
 

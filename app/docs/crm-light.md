@@ -1020,9 +1020,18 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   lo stesso esito. Solo `delivered` conta come ultimo contatto.
 - Nessuna probabilità di chiusura, nessun punteggio, nessun forecast, nessun
   sentiment.
-- Nessuna fattura cliente, quindi **nessun ricavo**: Finanze gestisce fatture
-  fornitore e spese. Un valore di opportunità è una stima e un contratto non è un
-  incasso.
+- Le fatture cliente **esistono dal 2026-09-02** e stanno in Finanze (scheda
+  «Emesse», migrazione 0053 — scritta, non risulta applicata alla produzione a
+  questa data): questa riga diceva «nessuna fattura cliente, quindi nessun
+  ricavo», ed era vera finché la 0053 non c'era. Il CRM conserva i riferimenti
+  — organizzazione, trattativa, versione del preventivo — e la verità
+  commerciale resta qui; il registro del denaro sta là. Un valore di
+  opportunità resta una stima e un contratto non è un incasso, ma una
+  trattativa vinta può ora diventare una fattura emessa: «Crea fattura» dal
+  preventivo accettato precompila una bozza, mai una copia automatica. ⚠️ Al
+  2026-09-02 quel gesto ha un difetto di indirizzo (`sezione=emesse` contro
+  `issued`): atterra sulla scheda sbagliata e la precompilazione non si apre —
+  dichiarato in [finance-operations.md](finance-operations.md) §12.6.
 - Nessuna sincronizzazione rubriche, nessun OCR di biglietti da
   visita, nessun help desk, nessun portale clienti.
 - I campi personalizzati esistono dal 0047 (§15-quater), solo su organizzazioni

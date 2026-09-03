@@ -1293,6 +1293,9 @@ export const it = {
     logoHint: 'PNG o JPEG, massimo 2 MB. Compare sui preventivi PDF; se manca viene usata la ragione sociale.',
     logoConfigured: 'Logo configurato', logoChoose: 'Scegli logo', logoRemove: 'Rimuovi logo',
     logoSaved: 'Logo salvato.', logoRemoved: 'Logo rimosso.', logoInvalid: 'Il logo deve essere PNG o JPEG e non superare 2 MB.',
+    ibanInvalid: 'L’IBAN non supera la propria cifra di controllo.',
+    iban: 'IBAN aziendale',
+    ibanHint: 'Serve alla polizza QR delle fatture emesse. Si salva solo se la cifra di controllo torna: è una verifica aritmetica, non una promessa che il conto esista.',
   },
   // Campi personalizzati del CRM (0047) — le DEFINIZIONI. I valori si scrivono
   // nella scheda della controparte o dell’opportunità (chiavi `crm.fields`).
@@ -1582,6 +1585,7 @@ export const it = {
     subtitle: 'Fatture e spese che richiedono attenzione.',
     tabs: {
       invoices: 'Fatture',
+      issued: 'Emesse',
       expenses: 'Spese',
     },
     kpi: {
@@ -1798,6 +1802,104 @@ export const it = {
       confirm: 'Aggiungi',
       added: 'Aggiunto alle finanze.',
       alreadyPresent: 'Questo documento è già nelle finanze.',
+    },
+    // 0053 — le fatture EMESSE verso i clienti. Il blocco cresce insieme
+    // all'interfaccia: qui ci sono gli errori che il servizio produce già.
+    issued: {
+      empty: 'Le fatture emesse appariranno qui.',
+      emptyHint: 'Una fattura emessa nasce da una bozza: la prepari da qui o da un preventivo accettato, poi la emetti con il suo PDF.',
+      // Il totale dell'elenco visibile: le stornate non contano perché la nota
+      // di credito le ha già annullate — e l'etichetta lo dice, non lo nasconde.
+      listTotal: 'Totale in elenco (senza le stornate)',
+      // Su una bozza modificata dopo l'ultima generazione il PDF è obsoleto:
+      // la 0053 lo invalida, e qui lo si dice prima del rifiuto del guardiano.
+      pdfStale: 'PDF da rigenerare',
+      creditNoteNumber: 'Nota di credito n. {value}',
+      status: {
+        draft: 'Bozza',
+        issued: 'Emessa',
+        sent: 'Inviata',
+        overdue: 'Scaduta',
+        paid: 'Pagata',
+        voided: 'Stornata',
+      },
+      // Il dettaglio: importi, righe, pagamento, documenti, registro.
+      back: 'Torna alle fatture emesse',
+      issuedOn: 'Emessa il',
+      amounts: 'Importi',
+      subtotal: 'Imponibile',
+      vat: 'IVA',
+      total: 'Totale',
+      items: 'Righe della fattura',
+      description: 'Descrizione',
+      quantity: 'Quantità',
+      unitPrice: 'Prezzo unitario',
+      vatRate: 'IVA',
+      lineTotal: 'Totale',
+      payment: 'Dati di pagamento',
+      paymentHint: 'IBAN e riferimento sono testo da leggere o copiare: il pagamento non parte da qui.',
+      iban: 'IBAN',
+      reference: 'Riferimento di pagamento',
+      documents: 'Documenti',
+      docInvoice: 'Fattura',
+      docCreditNote: 'Nota di credito',
+      docReminder: 'Sollecito n. {level}',
+      openPdf: 'Apri il PDF',
+      stamps: 'Registro',
+      stampsCreated: 'Creata il',
+      stampsPdf: 'PDF generato il',
+      stampsIssued: 'Emessa il',
+      stampsSent: 'Inviata il',
+      stampsPaid: 'Pagata il',
+      stampsPaidRecorded: 'Pagamento registrato il',
+      stampsOverdue: 'Segnata scaduta il',
+      stampsVoided: 'Stornata il',
+      voidReason: 'Motivo dello storno',
+      // Le azioni.
+      generate: 'Genera il PDF',
+      regenerate: 'Rigenera il PDF',
+      issue: 'Emetti la fattura',
+      issueConfirm: 'Emettere la fattura? Da quel momento non si può più modificare: le correzioni passano per lo storno con nota di credito.',
+      issuedToast: 'Fattura emessa.',
+      pdfToast: 'PDF generato.',
+      markPaid: 'Marca come pagata',
+      paidOnLabel: 'Data effettiva del pagamento',
+      paidConfirm: 'Registra il pagamento',
+      paidToast: 'Pagamento registrato.',
+      void: 'Storna',
+      voidTitle: 'Stornare la fattura',
+      voidQuestion: 'Lo storno non si può annullare: la fattura resta agli atti come stornata e viene generata la nota di credito.',
+      voidReasonLabel: 'Motivo dello storno',
+      voidConfirm: 'Storna e genera la nota di credito',
+      voidedToast: 'Fattura stornata: la nota di credito è fra i documenti.',
+      reminder: 'Genera un sollecito',
+      reminderMax: 'Esistono già tre solleciti: oltre, la questione non è più una stampa.',
+      reminderToast: 'Sollecito generato.',
+      // «Inviata» la scrive send-crm-email dopo che il provider ha accettato:
+      // qui non c'è un pulsante per dirlo, e la frase spiega perché.
+      emailHint: '«Inviata» la scrive l’invio dell’email dal CRM, non un pulsante qui.',
+      ibanMissingLink: 'Apri le impostazioni dell’azienda',
+      // L'editor della bozza: creazione dal pannello, dal dettaglio, o
+      // pre-compilata dal preventivo accettato (`?dal-preventivo=`).
+      create: 'Nuova fattura',
+      edit: 'Modifica la bozza',
+      customer: 'Cliente',
+      opportunity: 'Opportunità',
+      issuedOnLabel: 'Data di emissione',
+      dueDateLabel: 'Scadenza',
+      currencyHint: 'La polizza QR esiste solo in franchi (CHF) o in euro (EUR).',
+      lockedPartiesHint: 'Su una bozza esistente cliente e trattativa non si cambiano: se servono altri, la bozza si ricrea.',
+      saveDraft: 'Salva la bozza',
+      savedToast: 'Bozza salvata.',
+      prefillFailed: 'Il preventivo non si è potuto leggere: la bozza riparte vuota.',
+      errors: {
+        ibanMissing: 'Manca l’IBAN aziendale: inseriscilo nelle impostazioni dell’azienda, poi riprova.',
+        pdfRequired: 'Genera il PDF prima di emettere la fattura.',
+        transition: 'Lo stato della fattura è cambiato nel frattempo: ricarica e riprova.',
+        notAvailable: 'Questo documento non si può generare nello stato attuale della fattura.',
+        qrFailed: 'La polizza QR non si è potuta generare: controlla IBAN e valuta (solo CHF o EUR).',
+        generic: 'L’operazione sulla fattura non è riuscita. Riprova.',
+      },
     },
   },
 
@@ -2019,12 +2121,12 @@ export const it = {
     subtitle: 'Clienti, fornitori e controparti, con tutto il lavoro collegato.',
     // §77 — la frase che impedisce di leggere il valore di pipeline come un
     // fatturato. Non è cautela legale: è la differenza fra una speranza e un incasso.
-    disclaimer: 'Il valore di un’opportunità è una stima, non un ricavo: AI-Swisse non gestisce le fatture emesse.',
+    disclaimer: 'Il valore di un’opportunità è una stima, non un ricavo: lo diventa con la fattura emessa e il suo pagamento.',
     add: 'Nuovo cliente',
     addPerson: 'Aggiungi contatto',
     addOpportunity: 'Nuova opportunità',
     addInteraction: 'Registra contatto',
-    email: { compose: 'Scrivi email', to: 'Destinatario', noRecipient: 'Nessun recapito email registrato', template: 'Modello', noTemplate: 'Nessun modello', subject: 'Oggetto', body: 'Messaggio', attachments: 'Allegati dai Documenti', attachmentsHint: 'Scegli fino a cinque documenti già collegati a questa scheda.', send: 'Invia email', sendFailed: 'L’email non è stata inviata.', unavailable: 'L’invio email non è configurato per questa azienda.', quoteStale: 'Il preventivo è stato modificato: rigenera il PDF prima di inviarlo.', settingsHint: 'I modelli appartengono all’azienda; la firma appartiene a chi invia.', senderName: 'Nome del mittente', senderAddress: 'Indirizzo mittente', senderHint: 'Deve usare il dominio verificato nel provider email.', signature: 'La mia firma', signatureHint: 'Viene aggiunta al messaggio quando scrivi nella lingua corrente.', save: 'Salva', templates: 'Modelli email', templatesReadOnly: 'Solo titolare e amministratori possono gestire i modelli.', templateName: 'Nome del modello', createTemplate: 'Crea modello', updateTemplate: 'Aggiorna modello', edit: 'Modifica', archive: 'Archivia', settingsLoadFailed: 'Non è stato possibile leggere le impostazioni email.', settingsSaveFailed: 'Non è stato possibile salvare le impostazioni email.' },
+    email: { compose: 'Scrivi email', to: 'Destinatario', noRecipient: 'Nessun recapito email registrato', template: 'Modello', noTemplate: 'Nessun modello', subject: 'Oggetto', body: 'Messaggio', attachments: 'Allegati dai Documenti', attachmentsHint: 'Scegli fino a cinque documenti già collegati a questa scheda.', send: 'Invia email', sendFailed: 'L’email non è stata inviata.', unavailable: 'L’invio email non è configurato per questa azienda.', quoteStale: 'Il preventivo è stato modificato: rigenera il PDF prima di inviarlo.', invoiceStale: 'La fattura è stata modificata: rigenera il PDF prima di inviarla.', settingsHint: 'I modelli appartengono all’azienda; la firma appartiene a chi invia.', senderName: 'Nome del mittente', senderAddress: 'Indirizzo mittente', senderHint: 'Deve usare il dominio verificato nel provider email.', signature: 'La mia firma', signatureHint: 'Viene aggiunta al messaggio quando scrivi nella lingua corrente.', save: 'Salva', templates: 'Modelli email', templatesReadOnly: 'Solo titolare e amministratori possono gestire i modelli.', templateName: 'Nome del modello', createTemplate: 'Crea modello', updateTemplate: 'Aggiorna modello', edit: 'Modifica', archive: 'Archivia', settingsLoadFailed: 'Non è stato possibile leggere le impostazioni email.', settingsSaveFailed: 'Non è stato possibile salvare le impostazioni email.' },
     emailStatus: { sent: 'Inviata', delivered: 'Consegnata', failed: 'Fallita' },
     emailReason: { recipientRejected: 'Il server del destinatario ha rifiutato il messaggio.', providerFailed: 'Il provider email non è riuscito a consegnare il messaggio.' },
     quotes: {
@@ -2044,6 +2146,9 @@ export const it = {
       moveProposal: 'Porta a Offerta', keepStage: 'Mantieni la fase',
       acceptTitle: 'Preventivo accettato', acceptQuestion: 'Registrare l’accettazione e proporre la trattativa come vinta? La scelta resta tua.',
       acceptAndWon: 'Accetta e segna vinta', acceptOnly: 'Accetta soltanto', acceptedAndWon: 'Preventivo accettato e trattativa segnata come vinta.',
+      // 0053 — dal preventivo accettato nasce la fattura: il gesto porta alla
+      // scheda «Emesse» con la bozza pre-compilata da questa versione.
+      createInvoice: 'Crea fattura',
     },
     searchPlaceholder: 'Cerca per nome, IDI, indirizzo, persona…',
     searchHint: 'La ricerca guarda nome, ragione sociale, IDI, numero IVA, dominio, persone di contatto, recapiti e titoli delle opportunità.',
@@ -2107,7 +2212,7 @@ export const it = {
       openMerged: 'Apri la scheda principale',
       // §78 — nessun totale d’acquisto: i dati non sono completi.
       financeHint: 'Documenti finanziari collegati. Non è un totale d’acquisto: Finanze conosce solo le fatture caricate.',
-      noRevenue: 'AI-Swisse non gestisce le fatture emesse, quindi non mostra ricavi.',
+      noRevenue: 'Queste sono le fatture RICEVUTE dalla controparte: quelle emesse verso di lei stanno in Finanze, scheda «Emesse».',
       emptyPeople: 'Nessuna persona di contatto.',
       emptyOpportunities: 'Nessuna opportunità.',
       emptyTasks: 'Nessuna attività collegata.',
@@ -2742,6 +2847,7 @@ export const it = {
     linkEntity: 'Collega il documento all’attività',
     linkEntityContract: 'Collega il contratto all’attività',
     linkEntityCrm: 'Collega la controparte all’attività',
+    linkEntityIssuedInvoice: 'Collega la fattura all’attività',
     dueDateHint: 'Se il documento non ha una scadenza, l’attività viene creata senza: non se ne inventa una.',
     categoryField: 'Categoria',
     categoryManualHint: 'Se qualcuno ha già scelto la categoria a mano, la regola non la cambia.',
@@ -2955,6 +3061,9 @@ export const it = {
       crmFollowUpDueDesc: 'Scatta quando la data del prossimo passo di una trattativa è passata. La finestra guarda solo gli ultimi giorni: non recupera il passato.',
       crmFollowUpSequenceDue: 'Passo di follow-up per silenzio',
       crmFollowUpSequenceDueDesc: 'Scatta quando, dopo un’email uscente, non risultano risposte né interazioni e la trattativa è ancora nella fase configurata.',
+      // 0053 — la fattura emessa scaduta.
+      financeIssuedOverdue: 'una fattura emessa supera la scadenza',
+      financeIssuedOverdueDesc: 'Scatta una volta sola, quando la scadenza di una fattura emessa è passata e la fattura non risulta pagata. La finestra guarda solo gli ultimi giorni: non recupera il passato.',
       financeReadyDesc: 'Scatta quando una persona dichiara che i dati letti corrispondono al documento.',
     },
     fields: {
@@ -3000,6 +3109,13 @@ export const it = {
       financeReview: 'Stato della verifica',
       financeDuplicate: 'Possibile duplicato',
       financeFlagged: 'Ha segnalazioni',
+      // 0053 — i campi della fattura EMESSA: prefisso proprio, perché i
+      // `finance.*` sono le voci fornitore lette dall’analisi.
+      issuedInvoiceNumber: 'Numero della fattura emessa',
+      issuedInvoiceCustomer: 'Cliente',
+      issuedInvoiceDueDate: 'Scadenza della fattura emessa',
+      issuedInvoiceTotal: 'Importo totale',
+      issuedInvoiceCurrency: 'Valuta',
       contractType: 'Tipo di contratto',
       contractName: 'Nome del contratto',
       contractCounterparty: 'Controparte',
@@ -3098,6 +3214,8 @@ export const it = {
       crmUnownedDesc: 'Quando nasce una trattativa che non è di nessuno, avvisa chi amministra.',
       crmNewCustomerName: 'Nuovo cliente',
       crmNewCustomerDesc: 'Quando una controparte riceve il ruolo di cliente, crea un’attività di avvio collegata alla sua scheda.',
+      financeIssuedOverdueName: 'Fattura emessa scaduta',
+      financeIssuedOverdueDesc: 'Quando una fattura emessa supera la scadenza senza risultare pagata, crea un’attività di sollecito per oggi e avvisa il responsabile del cliente.',
       reviewTag: 'Da verificare',
     },
     validation: {

@@ -875,6 +875,8 @@ function linkEntityKey(trigger: TriggerDef): TKey {
   if (trigger.entityType === 'crm_organization' || trigger.entityType === 'crm_opportunity') {
     return 'automations.linkEntityCrm';
   }
+  // 0053 — «fattura emessa scaduta» collega la fattura, non un documento.
+  if (trigger.entityType === 'finance_issued_invoice') return 'automations.linkEntityIssuedInvoice';
   return 'automations.linkEntity';
 }
 

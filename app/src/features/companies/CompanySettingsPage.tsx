@@ -22,6 +22,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { useT } from '@/i18n';
 import { toUserMessage } from '@/lib/errors';
 import { formatUid, isValidUid } from '@/lib/uid';
+import { checkIban } from '../../../supabase/functions/_shared/finance/checksums.ts';
 import { companyService } from '@/services/companyService';
 import { RegistryLookup, type RegistryFields } from '@/features/companies/RegistryLookup';
 import { CANTONI, FORME_GIURIDICHE } from './companyOptions';
@@ -66,6 +67,8 @@ export function CompanySettings({ sede }: { sede: Sede }) {
   const [postalCode, setPostalCode] = useState('');
   const [city, setCity] = useState('');
   const [countryCode, setCountryCode] = useState('CH');
+  // 0053 — l'IBAN che le fatture emesse fotografano sulla polizza QR.
+  const [bankIban, setBankIban] = useState('');
 
   const [savingCompany, setSavingCompany] = useState(false);
   const [savingLogo, setSavingLogo] = useState(false);
@@ -90,6 +93,7 @@ export function CompanySettings({ sede }: { sede: Sede }) {
     setPostalCode(activeCompany.postalCode ?? '');
     setCity(activeCompany.city ?? activeCompany.municipality ?? '');
     setCountryCode(activeCompany.countryCode ?? 'CH');
+    setBankIban(activeCompany.bankIban ?? '');
   }, [activeCompany]);
 
   function applyRegistryFields(f: RegistryFields) {
@@ -100,11 +104,17 @@ export function CompanySettings({ sede }: { sede: Sede }) {
   }
 
   const uidInvalid = uidChe.replace(/\D/g, '').length >= 9 && !isValidUid(uidChe);
+  // Un IBAN vuoto è lecito (la polizza QR semplicemente non si genera); un IBAN
+  // scritto male NO: la cifra di controllo è l'unica cosa che distingue una
+  // trascrizione giusta da una sbagliata, e un dato sbagliato non si salva.
+  const ibanCheck = bankIban.trim() ? checkIban(bankIban) : null;
+  const ibanInvalid = ibanCheck !== null && !ibanCheck.valid;
 
   async function saveCompany(e: FormEvent) {
     e.preventDefault();
     if (!activeCompanyId || savingCompany) return;
     if (!legalName.trim()) { setCompanyError(t('onboarding.errorName')); return; }
+    if (ibanInvalid) { setCompanyError(t('companySettings.ibanInvalid')); return; }
     setSavingCompany(true); setCompanyError(null);
     try {
       await companyService.updateCompany(activeCompanyId, {
@@ -117,6 +127,8 @@ export function CompanySettings({ sede }: { sede: Sede }) {
         postalCode: postalCode.trim() || null,
         city: city.trim() || null,
         countryCode: countryCode.trim().toUpperCase() || null,
+        // Si salva la forma compatta e maiuscola: quella che va sulla polizza.
+        bankIban: ibanCheck?.valid ? ibanCheck.normalized : null,
       });
       await refresh();
       showToast(t('companySettings.savedCompany'));
@@ -206,6 +218,26 @@ export function CompanySettings({ sede }: { sede: Sede }) {
             onChange={(e) => setCity(e.target.value)} />
           <Input id="cs-country" label={t('companySettings.countryCode')} disabled={!isAdmin} value={countryCode}
             maxLength={2} onChange={(e) => setCountryCode(e.target.value.toUpperCase())} />
+          <div className="field">
+            <label htmlFor="cs-iban">{t('companySettings.iban')}</label>
+            <input id="cs-iban" disabled={!isAdmin} value={bankIban}
+              onChange={(e) => setBankIban(e.target.value)}
+              // A campo lasciato, un IBAN che torna si riscrive a gruppi di
+              // quattro: è la forma in cui le persone lo leggono davvero.
+              onBlur={() => {
+                if (ibanCheck?.valid) setBankIban(ibanCheck.normalized.replace(/(.{4})/g, '$1 ').trim());
+              }}
+              aria-invalid={ibanInvalid || undefined}
+              aria-describedby={ibanInvalid ? 'cs-iban-hint' : 'cs-iban-desc'} />
+            {ibanInvalid && (
+              <div id="cs-iban-hint" className="hint-accent mt-1">
+                <Icon name="alert" className="ic-sm" /> {t('companySettings.ibanInvalid')}
+              </div>
+            )}
+            {!ibanInvalid && (
+              <div id="cs-iban-desc" className="muted-sm mt-1">{t('companySettings.ibanHint')}</div>
+            )}
+          </div>
         </div>
 
         <div className="card-title mt-8">{t('companySettings.logoTitle')}</div>

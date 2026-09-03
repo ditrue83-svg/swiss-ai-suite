@@ -61,6 +61,10 @@ const anonClient = () => createClient(URL, ANON, { auth: { persistSession: false
 const sb = admin as unknown as ServerClient;
 
 const created: { users: string[]; companies: string[] } = { users: [], companies: [] };
+// Le fatture emesse della sezione 15: la pulizia rilegge ANCHE le tre tabelle
+// della 0053, non solo aziende e utenti — una cascata mancata resterebbe muta.
+const createdInvoices: string[] = [];
+const createdInvoiceDocs: string[] = [];
 let pass = 0, fail = 0;
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 const check = (name: string, cond: boolean, detail = '') => {
@@ -311,6 +315,14 @@ async function main() {
   }
   if (probe) {
     console.error(`\n${R}finance_items non è leggibile:${X} ${msg(probe)}\n`);
+    process.exit(2);
+  }
+  // La sezione 15 prova le fatture emesse: senza la 0053/0054 fallirebbe con
+  // errori di funzione inesistente, che direbbero poco. Si dichiara subito.
+  const { error: probe53 } = await admin.from('finance_issued_invoices').select('id').limit(1);
+  if (probe53 && /does not exist|schema cache/i.test(msg(probe53))) {
+    console.error(`\n${R}La migrazione 0053 non risulta applicata.${X}`);
+    console.error(`${DIM}Applica supabase/migrations/0053_finance_issued_invoices.sql e 0054_issued_invoice_entity_type.sql dal SQL editor, poi riesegui.${X}\n`);
     process.exit(2);
   }
 
@@ -1053,6 +1065,407 @@ async function main() {
       check('l’elemento resta da verificare: «pronta» è un gesto umano',
         dopo?.review_status === 'needs_review', String(dopo?.review_status));
     }
+
+    // =======================================================================
+    section('15 · Fatture emesse (0053): numerazione, guardiani, ciclo di vita');
+    // =======================================================================
+    // Le fatture verso i CLIENTI: la bozza la scrive solo la RPC, l'emissione
+    // esige PDF e IBAN, «inviata» arriva dalla prova di invio, «scaduta» dalla
+    // scansione, e dopo l'emissione nulla si modifica — si annulla con nota di
+    // credito. I PDF si registrano come farebbe la Edge Function: riga
+    // `documents` con source_type 'generated' + RPC di servizio.
+    {
+      const NIL = '00000000-0000-0000-0000-000000000000';
+      const raraF = `Emessine${Date.now()}`;
+      const companyFA = await makeCompany('Prova Finance Fatture A', andrea.id);
+      const companyFB = await makeCompany('Prova Finance Fatture B', bruno.id);
+
+      // L'IBAN dell'azienda: lo scrive il titolare, lo normalizza e lo verifica
+      // il database (trigger della 0053, stessa cifra di controllo della 0021).
+      const ibanSet = await clientA.from('companies')
+        .update({ bank_iban: 'CH93 0076 2011 6238 5295 7' } as never).eq('id', companyFA);
+      const { data: ibanRow } = await admin.from('companies')
+        .select('bank_iban').eq('id', companyFA).single();
+      check('il titolare registra l’IBAN aziendale, normalizzato dal database',
+        !ibanSet.error
+        && (ibanRow as { bank_iban?: string } | null)?.bank_iban === 'CH9300762011623852957',
+        msg(ibanSet.error) || JSON.stringify(ibanRow));
+      const ibanStorto = await clientA.from('companies')
+        .update({ bank_iban: 'CH9300762011623852958' } as never).eq('id', companyFA);
+      const { data: ibanDopo } = await admin.from('companies')
+        .select('bank_iban').eq('id', companyFA).single();
+      check('un IBAN che non torna viene rifiutato e il valore resta intatto',
+        !!ibanStorto.error && /company_bank_iban_invalid/.test(msg(ibanStorto.error))
+        && (ibanDopo as { bank_iban?: string } | null)?.bank_iban === 'CH9300762011623852957',
+        `${msg(ibanStorto.error)} — ${JSON.stringify(ibanDopo)}`);
+
+      // I clienti CRM: collegamento, non copia — gli snapshot stanno in testata.
+      const { data: orgFaData, error: orgFaErr } = await clientA.from('crm_organizations').insert({
+        company_id: companyFA, display_name: `${raraF} Cliente SA`, legal_name: `${raraF} Cliente SA`,
+        street: 'Via Cliente 5', postal_code: '6900', city: 'Lugano', country_code: 'CH',
+      } as never).select('id').single();
+      const orgFA = (orgFaData as { id?: string } | null)?.id ?? NIL;
+      const { data: orgFbData, error: orgFbErr } = await clientB.from('crm_organizations').insert({
+        company_id: companyFB, display_name: 'Cliente di B SA',
+      } as never).select('id').single();
+      const orgFB = (orgFbData as { id?: string } | null)?.id ?? NIL;
+      check('i clienti CRM delle due aziende si creano',
+        !orgFaErr && !orgFbErr && orgFA !== NIL && orgFB !== NIL, msg(orgFaErr) || msg(orgFbErr));
+
+      const { data: rateRows } = await admin.from('finance_vat_rates')
+        .select('id, kind').eq('country_code', 'CH').is('valid_to', null);
+      const vatRates = (rateRows ?? []) as Array<{ id: string; kind: string }>;
+      const vatStandard = vatRates.find((r) => r.kind === 'standard')?.id ?? NIL;
+      const vatReduced = vatRates.find((r) => r.kind === 'reduced')?.id ?? NIL;
+      check('le aliquote svizzere verificate sono disponibili come dati',
+        vatStandard !== NIL && vatReduced !== NIL, JSON.stringify(vatRates));
+
+      const itemsA = [
+        { description: 'Consulenza', quantity: '2', unitPrice: '100.00', vatRateId: vatStandard },
+        { description: 'Materiale', quantity: '1', unitPrice: '50.00', vatRateId: vatReduced },
+      ];
+      const saveDraft = (client: Sb, companyId: string, orgId: string, title: string,
+        over: Record<string, unknown> = {}) =>
+        client.rpc('finance_save_issued_invoice_draft', {
+          p_company_id: companyId, p_invoice_id: null, p_organization_id: orgId,
+          p_opportunity_id: null, p_quote_version_id: null, p_language: 'it',
+          p_currency: 'CHF', p_title: title, p_notes: null,
+          p_issued_on: isoDay(-1), p_due_date: isoDay(29), p_items: itemsA, ...over,
+        } as never);
+      const readInvoice = async (id: string | null, columns: string) => {
+        const { data, error } = await admin.from('finance_issued_invoices')
+          .select(columns).eq('id', id ?? NIL).single();
+        if (error) throw new Error(`rilettura fattura: ${error.message}`);
+        return data as unknown as Record<string, unknown>;
+      };
+      // Il PDF registrato come lo registra la Edge Function: documento generato
+      // nello Storage logico, poi la RPC riservata al service role.
+      const registerPdf = async (companyId: string, uploaderId: string,
+        invoiceId: string | null, kind: string, level: number | null) => {
+        const { data: docRow, error: docErr } = await admin.from('documents').insert({
+          company_id: companyId, uploaded_by: uploaderId, title: `${kind} di prova`,
+          original_filename: `${kind}-${String(invoiceId).slice(0, 8)}.pdf`,
+          mime_type: 'application/pdf', file_size: 4000,
+          storage_path: `${companyId}/${crypto.randomUUID()}/${kind}.pdf`,
+          source_type: 'generated', status: 'uploaded',
+        } as never).select('id').single();
+        if (docErr) throw new Error(`documento ${kind}: ${docErr.message}`);
+        const documentId = (docRow as { id: string }).id;
+        createdInvoiceDocs.push(documentId);
+        const reg = await admin.rpc('finance_register_issued_invoice_pdf', {
+          p_company_id: companyId, p_invoice_id: invoiceId ?? NIL,
+          p_kind: kind, p_level: level, p_document_id: documentId,
+        } as never);
+        return { documentId, error: reg.error as { message?: string } | null };
+      };
+
+      const draft1 = await saveDraft(clientA, companyFA, orgFA, `${raraF} consulenza`);
+      const inv1 = (draft1.data as string | null) ?? null;
+      if (inv1) createdInvoices.push(inv1);
+      check('la prima bozza si salva via RPC', !draft1.error && !!inv1, msg(draft1.error));
+      const head1 = await readInvoice(inv1,
+        'invoice_number, sequence_number, status, subtotal_amount, vat_amount, total_amount, company_bank_iban, customer_display_name');
+      check('il primo numero dell’azienda è F-000001',
+        head1.invoice_number === 'F-000001' && Number(head1.sequence_number) === 1, JSON.stringify(head1));
+      check('PostgreSQL calcola CHF 250.00 + IVA 17.50 = CHF 267.50',
+        Number(head1.subtotal_amount) === 250 && Number(head1.vat_amount) === 17.5
+        && Number(head1.total_amount) === 267.5, JSON.stringify(head1));
+      check('gli snapshot portano IBAN aziendale e nome del cliente (niente riferimenti vivi)',
+        head1.company_bank_iban === 'CH9300762011623852957'
+        && head1.customer_display_name === `${raraF} Cliente SA`, JSON.stringify(head1));
+
+      const draft2 = await saveDraft(clientA, companyFA, orgFA, `${raraF} materiale`);
+      const inv2 = (draft2.data as string | null) ?? null;
+      if (inv2) createdInvoices.push(inv2);
+      const head2 = await readInvoice(inv2, 'invoice_number, sequence_number');
+      check('la seconda bozza prosegue la sequenza: F-000002',
+        !draft2.error && head2.invoice_number === 'F-000002', msg(draft2.error) || JSON.stringify(head2));
+
+      const draftB = await saveDraft(clientB, companyFB, orgFB, 'Fattura di B');
+      const invB = (draftB.data as string | null) ?? null;
+      if (invB) createdInvoices.push(invB);
+      const headB = await readInvoice(invB, 'invoice_number');
+      check('la numerazione di B riparte da F-000001: il numero è PER AZIENDA',
+        !draftB.error && headB.invoice_number === 'F-000001', msg(draftB.error) || JSON.stringify(headB));
+
+      const invalidVat = await saveDraft(clientA, companyFA, orgFA, 'IVA assente', {
+        p_items: [{ description: 'Voce', quantity: '1', unitPrice: '1', vatRateId: NIL }],
+      });
+      check('una aliquota assente dal catalogo verificato viene rifiutata',
+        !!invalidVat.error && /finance_issued_invoice_vat_rate_invalid/.test(msg(invalidVat.error)),
+        msg(invalidVat.error));
+
+      // ---- permessi e cross-tenant ----------------------------------------
+      const directInsert = await clientA.from('finance_issued_invoices').insert({
+        company_id: companyFA, organization_id: orgFA, sequence_number: 900,
+        invoice_number: 'F-000900', language: 'it', currency: 'CHF', title: 'Abusiva',
+        issued_on: isoDay(0), due_date: isoDay(30),
+        company_legal_name: 'X', customer_display_name: 'Y', created_by: andrea.id,
+      } as never);
+      const dopoDiretta = await countRows('finance_issued_invoices', 'invoice_number', 'F-000900');
+      check('il browser NON può inserire una fattura direttamente in tabella',
+        !!directInsert.error && dopoDiretta === 0, `${msg(directInsert.error)} — righe ${dopoDiretta}`);
+      const directUpdate = await clientA.from('finance_issued_invoices')
+        .update({ title: 'Tentativo diretto' } as never).eq('id', inv1 ?? NIL);
+      const head1dopo = await readInvoice(inv1, 'title');
+      check('né modificarla: solo le tre RPC scrivono',
+        !!directUpdate.error && head1dopo.title === `${raraF} consulenza`,
+        `${msg(directUpdate.error)} — ${JSON.stringify(head1dopo)}`);
+
+      const leak = await clientB.from('finance_issued_invoices')
+        .select('id, title').eq('company_id', companyFA);
+      check('B non vede le fatture di A',
+        !leak.error && (leak.data ?? []).length === 0, msg(leak.error) || `righe ${(leak.data ?? []).length}`);
+      const leakItems = await clientB.from('finance_issued_invoice_items')
+        .select('id').eq('company_id', companyFA);
+      check('né le righe delle fatture di A',
+        !leakItems.error && (leakItems.data ?? []).length === 0, msg(leakItems.error));
+      const writeOther = await saveDraft(clientB, companyFA, orgFA, 'Scrittura travestita');
+      check('la RPC non scrive nell’azienda di un altro',
+        !!writeOther.error && /finance_issued_invoice_forbidden/.test(msg(writeOther.error)),
+        msg(writeOther.error));
+      const crossGuard = await admin.from('finance_issued_invoices').insert({
+        company_id: companyFA, organization_id: orgFB, sequence_number: 901,
+        invoice_number: 'F-000901', language: 'it', currency: 'CHF', title: 'Cross',
+        issued_on: isoDay(0), due_date: isoDay(30),
+        company_legal_name: 'X', customer_display_name: 'Y', created_by: andrea.id,
+      } as never);
+      check('nemmeno il service role può creare una fattura cross-tenant',
+        !!crossGuard.error && /finance_issued_invoice_cross_tenant/.test(msg(crossGuard.error)),
+        msg(crossGuard.error));
+
+      // ---- emissione: prima il PDF, poi lo stato ---------------------------
+      const issueEarly = await clientA.rpc('finance_issue_invoice', {
+        p_company_id: companyFA, p_invoice_id: inv1 ?? NIL,
+      } as never);
+      check('senza PDF registrato l’emissione viene rifiutata',
+        !!issueEarly.error && /finance_issued_invoice_pdf_required/.test(msg(issueEarly.error)),
+        msg(issueEarly.error));
+
+      const registerAsUser = await clientA.rpc('finance_register_issued_invoice_pdf', {
+        p_company_id: companyFA, p_invoice_id: inv1 ?? NIL,
+        p_kind: 'invoice', p_level: null, p_document_id: NIL,
+      } as never);
+      check('la registrazione del PDF è riservata al service role',
+        !!registerAsUser.error, msg(registerAsUser.error) || 'chiamata passata dal browser');
+
+      const pdf1 = await registerPdf(companyFA, andrea.id, inv1, 'invoice', null);
+      const afterReg = await readInvoice(inv1, 'document_id, pdf_generated_at, status');
+      check('la registrazione aggancia il PDF alla bozza con il suo timbro',
+        !pdf1.error && afterReg.document_id === pdf1.documentId
+        && !!afterReg.pdf_generated_at && afterReg.status === 'draft',
+        msg(pdf1.error) || JSON.stringify(afterReg));
+
+      const issue1 = await clientA.rpc('finance_issue_invoice', {
+        p_company_id: companyFA, p_invoice_id: inv1 ?? NIL,
+      } as never);
+      const afterIssue = await readInvoice(inv1, 'status, issued_at, issued_by');
+      check('con il PDF la fattura si emette, con istante e persona',
+        !issue1.error && afterIssue.status === 'issued' && !!afterIssue.issued_at
+        && afterIssue.issued_by === andrea.id, msg(issue1.error) || JSON.stringify(afterIssue));
+
+      // ---- immutabilità ----------------------------------------------------
+      const rewriteIssued = await saveDraft(clientA, companyFA, orgFA, 'Riscrittura', { p_invoice_id: inv1 });
+      check('la RPC rifiuta la riscrittura di una fattura emessa',
+        !!rewriteIssued.error && /finance_issued_invoice_immutable/.test(msg(rewriteIssued.error)),
+        msg(rewriteIssued.error));
+      const mutateIssued = await admin.from('finance_issued_invoices')
+        .update({ title: 'Non deve cambiare' } as never).eq('id', inv1 ?? NIL);
+      const titleAfter = await readInvoice(inv1, 'title');
+      check('nemmeno il service role modifica i campi commerciali di un’emessa',
+        !!mutateIssued.error && /finance_issued_invoice_immutable/.test(msg(mutateIssued.error))
+        && titleAfter.title === `${raraF} consulenza`,
+        `${msg(mutateIssued.error)} — ${JSON.stringify(titleAfter)}`);
+      const { data: itemRow } = await admin.from('finance_issued_invoice_items')
+        .select('id').eq('invoice_id', inv1 ?? NIL).limit(1).single();
+      const mutateItem = await admin.from('finance_issued_invoice_items')
+        .update({ description: 'Non deve cambiare' } as never)
+        .eq('id', (itemRow as { id?: string } | null)?.id ?? NIL);
+      check('né si toccano le righe di una fattura emessa',
+        !!mutateItem.error && /finance_issued_invoice_item_immutable/.test(msg(mutateItem.error)),
+        msg(mutateItem.error));
+
+      // ---- B senza IBAN: la bozza si disegna, l'emissione no ----------------
+      const pdfB = await registerPdf(companyFB, bruno.id, invB, 'invoice', null);
+      const issueB = await clientB.rpc('finance_issue_invoice', {
+        p_company_id: companyFB, p_invoice_id: invB ?? NIL,
+      } as never);
+      check('senza IBAN aziendale la fattura NON si emette',
+        !pdfB.error && !!issueB.error && /finance_issued_invoice_iban_required/.test(msg(issueB.error)),
+        msg(pdfB.error) || msg(issueB.error));
+
+      // ---- pagata: la data effettiva la dichiara una persona ----------------
+      const paid = await clientA.rpc('finance_set_issued_invoice_status', {
+        p_company_id: companyFA, p_invoice_id: inv1 ?? NIL,
+        p_status: 'paid', p_paid_on: isoDay(-1), p_void_reason: null,
+      } as never);
+      const afterPaid = await readInvoice(inv1, 'status, paid_at, paid_by, paid_on');
+      check('«pagata» registra la data dichiarata, l’istante e la persona',
+        !paid.error && afterPaid.status === 'paid' && afterPaid.paid_on === isoDay(-1)
+        && !!afterPaid.paid_at && afterPaid.paid_by === andrea.id,
+        msg(paid.error) || JSON.stringify(afterPaid));
+      const paidToVoid = await clientA.rpc('finance_set_issued_invoice_status', {
+        p_company_id: companyFA, p_invoice_id: inv1 ?? NIL,
+        p_status: 'voided', p_void_reason: 'Tentativo tardivo',
+      } as never);
+      check('da «pagata» non si passa più ad altro stato',
+        !!paidToVoid.error && /finance_issued_invoice_status_transition_invalid/.test(msg(paidToVoid.error)),
+        msg(paidToVoid.error));
+
+      // ---- annullo: la nota di credito ha numerazione propria ----------------
+      const pdf2 = await registerPdf(companyFA, andrea.id, inv2, 'invoice', null);
+      const issue2 = await clientA.rpc('finance_issue_invoice', {
+        p_company_id: companyFA, p_invoice_id: inv2 ?? NIL,
+      } as never);
+      check('anche la seconda fattura si emette', !pdf2.error && !issue2.error,
+        msg(pdf2.error) || msg(issue2.error));
+      const voidNoReason = await clientA.rpc('finance_set_issued_invoice_status', {
+        p_company_id: companyFA, p_invoice_id: inv2 ?? NIL,
+        p_status: 'voided', p_void_reason: '   ',
+      } as never);
+      check('annullare senza motivo viene rifiutato',
+        !!voidNoReason.error && /finance_issued_invoice_void_reason_required/.test(msg(voidNoReason.error)),
+        msg(voidNoReason.error));
+      const voided = await clientA.rpc('finance_set_issued_invoice_status', {
+        p_company_id: companyFA, p_invoice_id: inv2 ?? NIL,
+        p_status: 'voided', p_void_reason: 'Importo errato sulle righe',
+      } as never);
+      const afterVoid = await readInvoice(inv2,
+        'status, voided_at, voided_by, void_reason, credit_note_number');
+      check('l’annullo produce «annullata» + nota di credito NC-000001, col motivo',
+        !voided.error && afterVoid.status === 'voided'
+        && afterVoid.credit_note_number === 'NC-000001' && !!afterVoid.voided_at
+        && afterVoid.voided_by === andrea.id && afterVoid.void_reason === 'Importo errato sulle righe',
+        msg(voided.error) || JSON.stringify(afterVoid));
+
+      // ---- «inviata»: la scrive la prova di invio, non un gesto --------------
+      const draft3 = await saveDraft(clientA, companyFA, orgFA, `${raraF} da inviare`);
+      const inv3 = (draft3.data as string | null) ?? null;
+      if (inv3) createdInvoices.push(inv3);
+      const pdf3 = await registerPdf(companyFA, andrea.id, inv3, 'invoice', null);
+      const issue3 = await clientA.rpc('finance_issue_invoice', {
+        p_company_id: companyFA, p_invoice_id: inv3 ?? NIL,
+      } as never);
+      check('la terza fattura si emette (F-000003)', !draft3.error && !pdf3.error && !issue3.error,
+        msg(draft3.error) || msg(pdf3.error) || msg(issue3.error));
+      const stampMail = Date.now();
+      const invEmail = await admin.from('email_messages').insert({
+        company_id: companyFA, connection_id: null, provider_message_id: `crm:invoice-${stampMail}`,
+        provider_thread_id: `crm:invoice-${stampMail}`, subject: 'Fattura F-000003',
+        sender_name: 'Ai-Swisse', sender_email: 'crm@example.ch',
+        to_recipients: [{ email: `fattura-${stampMail}@example.ch` }],
+        received_at: new Date().toISOString(), sent_at: new Date().toISOString(),
+        body_text: 'In allegato.', body_preview: 'In allegato.',
+        direction: 'out', delivery_status: null,
+        send_idempotency_key: crypto.randomUUID(), sent_by: andrea.id,
+      } as never).select('id').single();
+      const invEmailId = (invEmail.data as { id?: string } | null)?.id ?? NIL;
+      const attach = await admin.from('crm_outgoing_email_attachments').insert({
+        company_id: companyFA, email_message_id: invEmailId, document_id: pdf3.documentId,
+      } as never);
+      const premature = await admin.rpc('finance_mark_attached_invoices_sent', {
+        p_company_id: companyFA, p_email_message_id: invEmailId,
+      } as never);
+      const stillIssued = await readInvoice(inv3, 'status, sent_at');
+      check('senza l’accettazione del provider la fattura NON diventa inviata',
+        !invEmail.error && !attach.error && !!premature.error
+        && /finance_issued_invoice_email_not_sent/.test(msg(premature.error))
+        && stillIssued.status === 'issued' && stillIssued.sent_at === null,
+        msg(premature.error) || JSON.stringify(stillIssued));
+      const providerOk = await admin.from('email_messages')
+        .update({ delivery_status: 'sent', delivery_provider_id: `resend-invoice-${stampMail}` } as never)
+        .eq('id', invEmailId);
+      const marked = await admin.rpc('finance_mark_attached_invoices_sent', {
+        p_company_id: companyFA, p_email_message_id: invEmailId,
+      } as never);
+      const afterSent = await readInvoice(inv3, 'status, sent_at, sent_by, sent_email_id');
+      check('solo la risposta del provider porta la fattura a «inviata», col legame all’email',
+        !providerOk.error && !marked.error && (marked.data as number | null) === 1
+        && afterSent.status === 'sent' && !!afterSent.sent_at
+        && afterSent.sent_email_id === invEmailId,
+        msg(providerOk.error) || msg(marked.error) || JSON.stringify(afterSent));
+
+      // ---- solleciti: un documento per livello, il doppio è un conflitto ------
+      const rem1 = await registerPdf(companyFA, andrea.id, inv3, 'reminder', 1);
+      const rem2 = await registerPdf(companyFA, andrea.id, inv3, 'reminder', 2);
+      const { data: docRows } = await admin.from('finance_issued_invoice_documents')
+        .select('kind, level, document_id').eq('invoice_id', inv3 ?? NIL);
+      const bridge = (docRows ?? []) as Array<{ kind: string; level: number | null; document_id: string }>;
+      check('i solleciti di livello 1 e 2 si registrano come documenti di provenienza',
+        !rem1.error && !rem2.error
+        && bridge.filter((d) => d.kind === 'reminder').length === 2
+        && bridge.some((d) => d.kind === 'invoice'),
+        msg(rem1.error) || msg(rem2.error) || JSON.stringify(bridge));
+      // Il 2026-09-03 la Edge Function riusava il document_id della fattura per
+      // sollecito e nota di credito: l'insert in «documents» urtava la chiave
+      // primaria. L'invariante vale anche a riposo: ogni ponte non-«invoice»
+      // punta a un Documento diverso da quello della fattura.
+      const head3 = await readInvoice(inv3, 'document_id');
+      check('solleciti e note di credito NON riusano il Documento della fattura',
+        bridge.filter((d) => d.kind !== 'invoice')
+          .every((d) => d.document_id !== head3.document_id)
+        && bridge.find((d) => d.kind === 'invoice')?.document_id === head3.document_id,
+        JSON.stringify({ bridge, fattura: head3.document_id }));
+      const dupLevel = await registerPdf(companyFA, andrea.id, inv3, 'reminder', 2);
+      check('un PDF DIVERSO per lo stesso livello è un conflitto',
+        !!dupLevel.error && /finance_issued_invoice_document_conflict/.test(msg(dupLevel.error)),
+        msg(dupLevel.error));
+      const retrySame = await admin.rpc('finance_register_issued_invoice_pdf', {
+        p_company_id: companyFA, p_invoice_id: inv3 ?? NIL,
+        p_kind: 'reminder', p_level: 2, p_document_id: rem2.documentId,
+      } as never);
+      const { count: bridgeCount } = await admin.from('finance_issued_invoice_documents')
+        .select('id', { count: 'exact', head: true }).eq('invoice_id', inv3 ?? NIL);
+      check('ri-registrare LO STESSO documento è un retry idempotente, non un conflitto',
+        !retrySame.error && bridgeCount === 3, msg(retrySame.error) || `ponti ${bridgeCount}`);
+
+      // ---- scaduta: la scansione emette una volta, con la sua chiave -----------
+      const draft4 = await saveDraft(clientA, companyFA, orgFA, `${raraF} scaduta`, {
+        p_issued_on: isoDay(-32), p_due_date: isoDay(-2),
+      });
+      const inv4 = (draft4.data as string | null) ?? null;
+      if (inv4) createdInvoices.push(inv4);
+      const pdf4 = await registerPdf(companyFA, andrea.id, inv4, 'invoice', null);
+      const issue4 = await clientA.rpc('finance_issue_invoice', {
+        p_company_id: companyFA, p_invoice_id: inv4 ?? NIL,
+      } as never);
+      check('una fattura con scadenza passata si emette (la scansione è un passo a parte)',
+        !draft4.error && !pdf4.error && !issue4.error,
+        msg(draft4.error) || msg(pdf4.error) || msg(issue4.error));
+      const { error: wfErr } = await admin.from('workflow_definitions').insert({
+        company_id: companyFA, name: 'Quando una fattura emessa scade',
+        trigger_type: 'finance_issued_invoice_overdue', condition_match: 'all', conditions: [],
+        actions: [{ key: 'create_task', config: { titleTemplate: 'Sollecita la fattura', priority: 'high', dueDate: 'none' } }],
+        status: 'active', created_by: andrea.id, updated_by: andrea.id,
+      } as never);
+      check('una regola può ascoltare «finance_issued_invoice_overdue» (0053+0054)', !wfErr, msg(wfErr));
+
+      const scan1 = await admin.rpc('finance_emit_issued_invoice_overdue', {} as never);
+      const afterOverdue = await readInvoice(inv4, 'status, overdue_at, due_date');
+      const { data: overdueRows } = await admin.from('automation_events')
+        .select('event_type, entity_type, entity_id, dedupe_key, payload').eq('company_id', companyFA);
+      const events1 = (overdueRows ?? []) as Array<{
+        event_type: string; entity_type: string; entity_id: string;
+        dedupe_key: string | null; payload: { invoice_number?: string };
+      }>;
+      check('la scansione porta la fattura a «scaduta» con il suo timbro',
+        !scan1.error && (scan1.data as number | null) === 1
+        && afterOverdue.status === 'overdue' && !!afterOverdue.overdue_at,
+        msg(scan1.error) || JSON.stringify(afterOverdue));
+      check('e scrive UN evento sull’entità fattura, con la chiave di deduplicazione',
+        events1.length === 1 && events1[0].event_type === 'finance_issued_invoice_overdue'
+        && events1[0].entity_type === 'finance_issued_invoice' && events1[0].entity_id === inv4
+        && events1[0].dedupe_key === `fininv:${inv4}:overdue:${afterOverdue.due_date}`
+        && events1[0].payload?.invoice_number === 'F-000004',
+        JSON.stringify(events1));
+      const scan2 = await admin.rpc('finance_emit_issued_invoice_overdue', {} as never);
+      const { count: events2 } = await admin.from('automation_events')
+        .select('id', { count: 'exact', head: true }).eq('company_id', companyFA);
+      const overdueDopo = await readInvoice(inv4, 'status');
+      check('una seconda scansione non duplica né evento né transizione (idempotenza)',
+        !scan2.error && (scan2.data as number | null) === 0 && events2 === 1
+        && overdueDopo.status === 'overdue', msg(scan2.error) || `eventi ${events2}`);
+    }
   } catch (e) {
     fail++;
     console.error(`\n${R}Errore durante il test:${X}`, e);
@@ -1095,6 +1508,26 @@ async function cleanup() {
   check('tutte le aziende di prova sono sparite dal database',
     problemi.length === 0 && aziendeRimaste === 0,
     problemi.join(' | ') || `rimaste ${aziendeRimaste}`);
+
+  // ---- i residui della sezione 15: la cancellazione dell'azienda deve aver
+  //      portato via fatture, righe, ponti di provenienza e PDF generati.
+  if (createdInvoices.length) {
+    const { count: fatture } = await admin.from('finance_issued_invoices')
+      .select('id', { count: 'exact', head: true }).in('id', createdInvoices);
+    const { count: righe } = await admin.from('finance_issued_invoice_items')
+      .select('id', { count: 'exact', head: true }).in('invoice_id', createdInvoices);
+    const { count: ponti } = await admin.from('finance_issued_invoice_documents')
+      .select('id', { count: 'exact', head: true }).in('invoice_id', createdInvoices);
+    check('le tre tabelle delle fatture emesse non conservano nulla delle aziende di prova',
+      (fatture ?? 0) === 0 && (righe ?? 0) === 0 && (ponti ?? 0) === 0,
+      `fatture ${fatture} · righe ${righe} · ponti ${ponti}`);
+  }
+  if (createdInvoiceDocs.length) {
+    const { count: documenti } = await admin.from('documents')
+      .select('id', { count: 'exact', head: true }).in('id', createdInvoiceDocs);
+    check('né i documenti PDF generati per le prove',
+      (documenti ?? 0) === 0, `documenti ${documenti}`);
+  }
 
   const utentiRimasti: string[] = [];
   for (const id of created.users) {

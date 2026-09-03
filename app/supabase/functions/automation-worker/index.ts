@@ -62,6 +62,10 @@ Deno.serve(async (req: Request) => {
     // giro. Zero è la risposta normale: le righe già proposte non si ripropongono.
     crmSuggestionsCreated: 0,
     crmSuggestionsError: null as string | null,
+    // 0053 — le fatture emesse scadute: conteggio A PARTE, come per il CRM. Un
+    // numero solo non direbbe quale scansione ha prodotto lavoro.
+    financeIssuedOverdueEmitted: 0,
+    financeIssuedOverdueError: null as string | null,
     claimed: 0, processed: 0, retried: 0, failed: 0, deadLettered: 0,
     // ⚠️ Quante volte NON siamo riusciti a scrivere l'esito nella coda. Quegli
     // eventi restano `processing` e torneranno da soli alla scadenza del lease:
@@ -150,6 +154,32 @@ Deno.serve(async (req: Request) => {
     } catch (error) {
       report.crmSuggestionsError = codeOf(error);
       logEvent('automation-worker', { code: report.crmSuggestionsError, phase: 'crm_suggestions' });
+    }
+
+    // (1-quinquies) 0053 — «questa fattura emessa è scaduta e non pagata». La
+    //     funzione SQL cambia lo stato UNA volta (la chiave di deduplicazione
+    //     rende l'emissione idempotente) ed emette nella coda che questo stesso
+    //     giro consuma. Gli argomenti sono quelli della scansione delle
+    //     attività scadute: la finestra breve non è un backfill (§164).
+    //
+    //     Non terminale, per la stessa ragione delle scansioni CRM: la 0053 può
+    //     non essere applicata, e fermare l'intera coda per un modulo assente
+    //     spegnerebbe anche Documenti e Attività. Il guasto NON è silenzioso:
+    //     finisce nel rapporto e in una riga di log propria.
+    try {
+      const { data: issuedEmitted, error: issuedError } = await sb.rpc(
+        'finance_emit_issued_invoice_overdue',
+        { p_lookback_days: OVERDUE_LOOKBACK_DAYS, p_limit: 200 },
+      );
+      if (issuedError) {
+        throw new Error(`finance_issued_overdue: ${(issuedError as { message?: string }).message ?? 'errore'}`);
+      }
+      report.financeIssuedOverdueEmitted = typeof issuedEmitted === 'number' ? issuedEmitted : 0;
+    } catch (error) {
+      report.financeIssuedOverdueError = codeOf(error);
+      logEvent('automation-worker', {
+        code: report.financeIssuedOverdueError, phase: 'finance_issued_overdue',
+      });
     }
 
     // (2) La coda.

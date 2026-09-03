@@ -246,6 +246,14 @@ export const FUNZIONI_SCOPERTE = {
   '_shared/finance/money.ts#decimal': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
   '_shared/finance/money.ts#negate': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
   '_shared/finance/money.ts#toNumber': 'esportata per simmetria dell\'API del denaro; l\'aritmetica in uso è coperta da test:finance-unit',
+  // ⚠️ QUI STAVANO `qrbill.ts#buildSwissQrPayload` e `#generatePaymentReference`,
+  // entrate il 2026-09-02 perché la generazione QR-fattura era provata solo da
+  // un'esecuzione usa-e-getta. Sono uscite lo stesso giorno: le sezioni 1, 2 e 4
+  // di `test:finance-invoices-unit` le ESEGUNO — payload riletto, riferimenti
+  // ancorati a valori fissi, QR decodificato dai pixel anche dentro il PDF. Non
+  // le ha tolte la memoria di nessuno: il controllo 9 ha detto «la riga è
+  // stantia» e ha fatto rosso.
+
   '_shared/finance/prompt.ts#clampDocumentText': 'la costruzione della richiesta AI: spende credito Anthropic, esaurito dal 2026-08-02',
   '_shared/contracts/periods.ts#normalizeUnit': 'helper della normalizzazione dei periodi: nessun test lo importa per nome',
   '_shared/contracts/validate.ts#normalizeCurrency': 'helper della validazione: nessun test lo importa per nome',

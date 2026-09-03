@@ -62,6 +62,12 @@ export const AUTOMATION_EVENT_TYPES = [
   // 0050 — silenzio dopo una email uscente. Il worker rilegge risposta,
   // interazioni e fase prima di agire: lo stop resta efficace dopo l'emissione.
   'crm_follow_up_sequence_due',
+  // 0053 — la fattura EMESSA che supera la scadenza senza risultare pagata. La
+  // emette la scansione `finance_emit_issued_invoice_overdue`, che gira in
+  // QUESTO worker a ogni giro come `automation_emit_overdue`: nessun trigger di
+  // tabella, perché «scaduta» è una conseguenza del calendario e non una
+  // scrittura. La chiave di deduplicazione rende l'emissione idempotente.
+  'finance_issued_invoice_overdue',
 ] as const;
 export type AutomationEventType = (typeof AUTOMATION_EVENT_TYPES)[number];
 
@@ -80,7 +86,12 @@ export type AutomationEntityType =
   // una singola trattativa con quella controparte. Agganciare l'evento di una
   // trattativa all'organizzazione renderebbe impossibile ritrovare DI QUALE
   // trattativa si parla — e sono spesso più di una.
-  | 'crm_organization' | 'crm_opportunity';
+  | 'crm_organization' | 'crm_opportunity'
+  // 0053 — la fattura emessa è un'entità a sé, per la stessa ragione per cui lo
+  // è il contratto: non è la lettura di un documento (il PDF nasce DOPO, e può
+  // essere rigenerato) e la sua controparte è il cliente. Agganciarla al
+  // documento del PDF direbbe una cosa falsa nel campo che serve a ritrovarla.
+  | 'finance_issued_invoice';
 
 export type FieldType = 'string' | 'number' | 'enum' | 'date' | 'boolean' | 'user';
 
@@ -276,6 +287,39 @@ const FINANCE_FIELDS: readonly TriggerField[] = [
 const FINANCE_TEMPLATES = [
   '{{document.title}}', '{{finance.supplier}}', '{{finance.invoice_number}}',
   '{{finance.gross_amount}}', '{{finance.due_date}}',
+] as const;
+
+/**
+ * I campi di una FATTURA EMESSA (0053).
+ *
+ * ⚠️ NON sono i `finance.*` delle voci fornitore: quelli nascono dalla lettura
+ * AI di un documento (per questo portano `aiDerived`), questi sono dati che
+ * l'azienda stessa ha scritto emettendo la fattura — nessuna estrazione,
+ * nessuna incertezza. Il prefisso è proprio perché le due cose non si
+ * confondano: `finance.due_date` è ciò che si deve PAGARE,
+ * `issued_invoice.due_date` è ciò che si deve INCASSARE.
+ *
+ * Le CHIAVI sono esattamente quelle del payload di
+ * `finance_emit_issued_invoice_overdue`, e i valori li rilegge `store.ts`
+ * dalla riga — mai dal payload, come per ogni altra entità.
+ */
+const ISSUED_INVOICE_FIELDS: readonly TriggerField[] = [
+  { path: 'issued_invoice.invoice_number', type: 'string', labelKey: 'automations.fields.issuedInvoiceNumber' },
+  { path: 'issued_invoice.organization_id', type: 'string', labelKey: 'automations.fields.issuedInvoiceCustomer' },
+  { path: 'issued_invoice.due_date', type: 'date', labelKey: 'automations.fields.issuedInvoiceDueDate' },
+  { path: 'issued_invoice.total_amount', type: 'number', labelKey: 'automations.fields.issuedInvoiceTotal',
+    hasCurrency: true },
+  { path: 'issued_invoice.currency', type: 'string', labelKey: 'automations.fields.issuedInvoiceCurrency' },
+];
+
+/**
+ * ⚠️ SOLO VALORI CHE NON HANNO BISOGNO DI ESSERE TRADOTTI, come per documenti,
+ * voci fornitore e contratti. Il CLIENTE sarebbe un nome — ma il payload porta
+ * il suo identificativo, e un segnaposto che rende un uuid non lo offriamo.
+ */
+const ISSUED_INVOICE_TEMPLATES = [
+  '{{issued_invoice.invoice_number}}', '{{issued_invoice.due_date}}',
+  '{{issued_invoice.total_amount}}',
 ] as const;
 
 const TASK_FIELDS: readonly TriggerField[] = [
@@ -510,6 +554,17 @@ export const TRIGGERS: readonly TriggerDef[] = [
     templates: [...DOCUMENT_TEMPLATES, ...FINANCE_TEMPLATES],
   },
   {
+    // 0053 — l'unico innesco delle fatture EMESSE, e nasce da una scansione e
+    // non da un trigger di tabella: «scaduta» è una conseguenza del calendario.
+    key: 'finance_issued_invoice_overdue',
+    entityType: 'finance_issued_invoice',
+    version: 1,
+    labelKey: 'automations.triggers.financeIssuedOverdue',
+    descriptionKey: 'automations.triggers.financeIssuedOverdueDesc',
+    fields: ISSUED_INVOICE_FIELDS,
+    templates: ISSUED_INVOICE_TEMPLATES,
+  },
+  {
     key: 'contract_verified',
     entityType: 'contract',
     version: 1,
@@ -707,8 +762,10 @@ export const ACTIONS: readonly ActionDef[] = [
     // 0026 — vale anche sul CRM: è il modo in cui un «prossimo passo» diventa
     // lavoro assegnabile e tracciabile (§50). ⚠️ NON esiste, e non deve
     // esistere, un'azione che scriva a un cliente (§135).
+    // 0053 — e sulla fattura emessa scaduta: il sollecito è lavoro di una
+    // persona, mai una scrittura al cliente né un movimento di denaro.
     entityTypes: ['document', 'email_message', 'task', 'contract',
-                  'crm_organization', 'crm_opportunity'],
+                  'crm_organization', 'crm_opportunity', 'finance_issued_invoice'],
     outputEntityType: 'task',
   },
   {
@@ -754,9 +811,11 @@ export const ACTIONS: readonly ActionDef[] = [
     // 0026 — §137: «opportunità senza responsabile» avvisa gli amministratori.
     // ⚠️ La notifica arriva a una persona DELL'AZIENDA, mai alla controparte:
     // il motore non ha alcun modo di scrivere a un indirizzo esterno, e questa
-    // assenza è il vincolo (§135).
+    // assenza è il vincolo (§135). Vale identico per la fattura emessa (0053):
+    // «avvisa» significa la campanella di chi segue il cliente, non un
+    // sollecito spedito al cliente.
     entityTypes: ['document', 'email_message', 'task', 'contract',
-                  'crm_organization', 'crm_opportunity'],
+                  'crm_organization', 'crm_opportunity', 'finance_issued_invoice'],
     outputEntityType: 'notification',
   },
 ];
@@ -790,6 +849,10 @@ export function actionsForTrigger(trigger: TriggerDef): readonly ActionDef[] {
  */
 const ENTITIES_WITH_OWNER: readonly AutomationEntityType[] = [
   'task', 'contract', 'crm_organization', 'crm_opportunity',
+  // 0053 — una fattura emessa non ha un responsabile proprio: ha quello della
+  // RELAZIONE col cliente, che `store.ts` legge dalla controparte della
+  // fattura (la stessa catena di §136, senza l'anello della trattativa).
+  'finance_issued_invoice',
 ];
 
 export function triggerHasOwner(trigger: TriggerDef): boolean {

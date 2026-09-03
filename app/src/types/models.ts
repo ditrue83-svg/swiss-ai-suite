@@ -18,6 +18,7 @@ import type {
   CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
   CrmLinkStatus, CrmEventKind, CrmLinkedEntity, CrmFieldEntity, CrmFieldType,
   CrmQuoteStatus, CrmQuoteLanguage,
+  FinanceIssuedInvoiceStatus, FinanceIssuedInvoiceDocKind, FinanceIssuedInvoiceLanguage,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
   ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
@@ -41,6 +42,7 @@ export type {
   CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
   CrmLinkStatus, CrmEventKind, CrmLinkedEntity, CrmFieldEntity, CrmFieldType,
   CrmQuoteStatus, CrmQuoteLanguage,
+  FinanceIssuedInvoiceStatus, FinanceIssuedInvoiceDocKind, FinanceIssuedInvoiceLanguage,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
   ContractOrigin, ContractProcessingStatus, ContractExtractionStatus, ContractTermVersionStatus,
@@ -71,6 +73,8 @@ export interface Company {
   countryCode: string | null;
   logoStoragePath: string | null;
   logoMimeType: string | null;
+  /** 0053 — il conto che finisce nella polizza QR delle fatture emesse. */
+  bankIban: string | null;
   createdAt?: string;
 }
 
@@ -1050,7 +1054,10 @@ export interface FinancePage {
 
 /** I filtri della lista. Tipizzati, mai `Record<string, unknown>`. */
 export interface FinanceFilters {
-  tab?: 'invoices' | 'expenses' | null;
+  // 0053 — `issued` è la sezione delle fatture EMESSE: ha un servizio suo
+  // (financeIssuedService) e non passa MAI da `list_finance_items`. Il valore
+  // sta qui perché la sezione viaggia nell'indirizzo insieme ai filtri.
+  tab?: 'invoices' | 'expenses' | 'issued' | null;
   query?: string | null;
   review?: FinanceReviewStatus | null;
   processing?: FinanceProcessingStatus | null;
@@ -1197,6 +1204,83 @@ export interface FinanceDetail {
   document: DocumentRecord | null;
   emails: DocumentEmailSource[];
   tasks: DocumentLinkedTask[];
+}
+
+// ---------------------------------------------------------------------------
+// Fatture EMESSE (0053)
+//
+// La fattura che l'azienda manda a un cliente: PDF con polizza QR svizzera,
+// nessun movimento di denaro — «pagata» la dichiara una persona, a mano.
+// Dopo l'emissione la riga è immutabile: le correzioni passano per lo storno
+// (`voided`) con nota di credito numerata a parte.
+//
+// ⚠️ GLI SNAPSHOT RESTANO SUL PDF. `companyBankIban` e il nome del cliente
+// sono la fotografia del momento dell'emissione: si MOSTRANO come testo, mai
+// come collegamento o azione — è la stessa regola dell'IBAN fornitore (§41).
+// ---------------------------------------------------------------------------
+
+/** Una fattura emessa, in lista o in testa al dettaglio. */
+export interface IssuedInvoice {
+  id: string;
+  organizationId: string;
+  /** Il nome del cliente come sta sulla fattura: lo snapshot, non il CRM di oggi. */
+  customerName: string;
+  opportunityId: string | null;
+  quoteVersionId: string | null;
+  invoiceNumber: string;
+  /** Il numero della nota di credito: esiste solo dopo lo storno. */
+  creditNoteNumber: string | null;
+  status: FinanceIssuedInvoiceStatus;
+  language: FinanceIssuedInvoiceLanguage;
+  currency: string;
+  title: string;
+  notes: string | null;
+  issuedOn: string;
+  dueDate: string;
+  subtotalAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+  /** L'IBAN aziendale fotografato sulla fattura. Testo, mai un'azione. */
+  companyBankIban: string | null;
+  paymentReferenceType: string | null;
+  paymentReference: string | null;
+  documentId: string | null;
+  /** `null` su una bozza modificata dopo l'ultima generazione: PDF obsoleto. */
+  pdfGeneratedAt: string | null;
+  issuedAt: string | null;
+  sentAt: string | null;
+  /** Il pagamento lo dichiara una persona: `paidOn` è la data EFFETTIVA. */
+  paidAt: string | null;
+  paidOn: string | null;
+  overdueAt: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+  createdAt: string;
+}
+
+/** Una riga della fattura emessa: quantità × prezzo + aliquota, totale dal database. */
+export interface IssuedInvoiceItem {
+  id: string;
+  lineNumber: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  vatRateId: string;
+  vatRate: number;
+  netAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+}
+
+/** Un PDF collegato alla fattura: la fattura, la nota di credito o un sollecito. */
+export interface IssuedInvoiceDocument {
+  id: string;
+  kind: FinanceIssuedInvoiceDocKind;
+  /** Solo per i solleciti: 1, 2 o 3. */
+  level: number | null;
+  documentId: string;
+  storagePath: string | null;
+  createdAt: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -31,9 +31,24 @@ export function CrmEmailComposer({ companyId, organizationId, opportunityId, sug
   const disabled = !to || !subject.trim() || !body.trim() || busy;
   async function submit(e: React.FormEvent) { e.preventDefault(); if (disabled) return; setBusy(true); setError('');
     const { data, error: invokeError } = await requireSupabase().functions.invoke<{ status?: string; reason?: string; code?: string }>('send-crm-email', { body: { companyId, organizationId, opportunityId: opportunityId ?? null, recipientMethodId: to, subject, bodyText: body, documentIds, idempotencyKey: crypto.randomUUID() } });
-    setBusy(false); if (invokeError || data?.status === 'failed' || data?.code === 'EMAIL_NOT_CONFIGURED' || data?.code === 'QUOTE_PDF_STALE') {
-      setError(data?.code === 'EMAIL_NOT_CONFIGURED' ? t('crm.email.unavailable')
-        : data?.code === 'QUOTE_PDF_STALE' ? t('crm.email.quoteStale') : t('crm.email.sendFailed')); return;
+    // ⚠️ SU UN 4xx `data` È NULL: il codice dell'errore sta nel CORPO della
+    // risposta, che supabase-js consegna in `error.context` (una Response). I
+    // rami che lo leggevano da `data?.code` erano raggiungibili solo su un 200
+    // con esito fallito, e EMAIL_NOT_CONFIGURED / QUOTE_PDF_STALE / INVOICE_PDF_STALE
+    // arrivano invece con uno stato di errore: qui il codice si legge dal
+    // contesto, come già in calendarConnectionService.
+    let code = data?.code ?? null;
+    if (invokeError && !code) {
+      const context = (invokeError as { context?: Response } | null)?.context;
+      if (context && typeof context.json === 'function') {
+        code = await context.json().then((payload: { code?: string }) => payload?.code ?? null).catch(() => null);
+      }
+    }
+    setBusy(false); if (invokeError || data?.status === 'failed' || code) {
+      setError(code === 'EMAIL_NOT_CONFIGURED' ? t('crm.email.unavailable')
+        : code === 'QUOTE_PDF_STALE' ? t('crm.email.quoteStale')
+        : code === 'INVOICE_PDF_STALE' ? t('crm.email.invoiceStale')
+        : t('crm.email.sendFailed')); return;
     }
     setOpen(false); setSubject(''); setBody(''); setSelectedTemplate(''); setDocumentIds([]); onSent();
   }

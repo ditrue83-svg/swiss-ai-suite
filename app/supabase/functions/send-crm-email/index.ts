@@ -90,6 +90,10 @@ Deno.serve(async (req: Request) => {
         p_company_id: companyId, p_email_message_id: existing.id,
       });
       if (quoteError) return failure('STORE_FAILED', 500);
+      const { error: invoiceError } = await sb.rpc('finance_mark_attached_invoices_sent', {
+        p_company_id: companyId, p_email_message_id: existing.id,
+      });
+      if (invoiceError) return failure('STORE_FAILED', 500);
       return json({ available: true, emailId: existing.id, status: existing.delivery_status,
         reason: existing.delivery_error_safe, providerMessageId: existing.delivery_provider_id });
     }
@@ -141,6 +145,33 @@ Deno.serve(async (req: Request) => {
     });
     if (stale) return failure('QUOTE_PDF_STALE', 422);
   }
+  // La stessa regola per la fattura emessa (0053): una bozza modificata dopo
+  // l'ultima generazione ha gia' annullato pdf_generated_at, e il PDF restante
+  // non puo' uscire dall'azienda. Il ponte non porta company_id: il tenant si
+  // ricontrolla sulla fattura padre. Vale solo per il documento FATTURA: nota
+  // di credito e solleciti non cambiano lo stato di niente.
+  if (documentIds.length) {
+    const { data: invoiceDocuments, error: invoiceDocumentError } = await sb
+      .from('finance_issued_invoice_documents')
+      .select('document_id, invoice_id, kind')
+      .in('document_id', documentIds);
+    if (invoiceDocumentError) return failure('ATTACHMENT_LOOKUP_FAILED', 500);
+    const invoiceLinks = (invoiceDocuments ?? []) as Array<{ document_id: string; invoice_id: string; kind: string }>;
+    const invoiceOnly = invoiceLinks.filter((link) => link.kind === 'invoice');
+    const { data: invoices, error: invoiceError } = invoiceOnly.length
+      ? await sb.from('finance_issued_invoices').select('id, status, document_id, pdf_generated_at')
+        .eq('company_id', companyId).in('id', invoiceOnly.map((link) => link.invoice_id))
+      : { data: [], error: null };
+    if (invoiceError) return failure('ATTACHMENT_LOOKUP_FAILED', 500);
+    const invoiceById = new Map(((invoices ?? []) as Array<Record<string, any>>)
+      .map((invoice) => [invoice.id, invoice]));
+    const staleInvoice = invoiceOnly.some((link) => {
+      const invoice = invoiceById.get(link.invoice_id);
+      return (invoice?.status === 'draft' && !invoice.pdf_generated_at)
+        || invoice?.document_id !== link.document_id;
+    });
+    if (staleInvoice) return failure('INVOICE_PDF_STALE', 422);
+  }
   const attachments: Array<{ filename: string; content: string; contentType: string }> = [];
   for (const document of documentRows) {
     const { data: file, error: downloadError } = await sb.storage.from('company-documents').download(document.storage_path!);
@@ -190,11 +221,17 @@ Deno.serve(async (req: Request) => {
     const { error: recordedError } = await sb.from('email_messages')
       .update({ delivery_status: 'sent', delivery_provider_id: result.providerMessageId }).eq('id', messageId);
     if (recordedError) return failure('STORE_FAILED', 500);
-    const { error: quoteError } = await sb.rpc('crm_mark_attached_quotes_sent', {
+    const { data: quotesMarkedSent, error: quoteError } = await sb.rpc('crm_mark_attached_quotes_sent', {
       p_company_id: companyId, p_email_message_id: messageId,
     });
     if (quoteError) return failure('STORE_FAILED', 500);
-    return json({ available: true, emailId: messageId, status: 'sent', providerMessageId: result.providerMessageId });
+    const { data: invoicesMarkedSent, error: invoiceError } = await sb.rpc('finance_mark_attached_invoices_sent', {
+      p_company_id: companyId, p_email_message_id: messageId,
+    });
+    if (invoiceError) return failure('STORE_FAILED', 500);
+    return json({ available: true, emailId: messageId, status: 'sent',
+      providerMessageId: result.providerMessageId,
+      quotesMarkedSent: quotesMarkedSent ?? 0, invoicesMarkedSent: invoicesMarkedSent ?? 0 });
   } catch (error) {
     // Il motivo e' volutamente umano: nessuna risposta/chiave/provider payload
     // entra nella timeline o nel browser come dettaglio tecnico.

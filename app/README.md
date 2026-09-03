@@ -87,6 +87,19 @@ supabase/
                        Applicare in produzione solo dopo l'esportazione archivistica concordata.
                 0052_remove_retired_module_scheduler — elimina e autoverifica il job pg_cron
                                          rimasto orfano dopo la rimozione del modulo.
+                0053_finance_issued_invoices — fatture emesse verso clienti CRM:
+                                         totali decimali solo in SQL, PDF con polizza
+                                         QR svizzera nei Documenti, immutabilità dopo
+                                         l'emissione (correzioni per annullo + nota di
+                                         credito numerata a parte), stato «inviata»
+                                         dopo l'accettazione del provider.
+                0054_issued_invoice_entity_type — l'entità finance_issued_invoice entra
+                                         nei tre vincoli condivisi entity_type
+                                         (automation_events, workflow_runs, notifications).
+                0055_issued_invoice_documents_cascade — il ponte documenti va a cascata:
+                                         RESTRICT bloccava l'eliminazione dell'azienda
+                                         (la classe della 0023, trovata dal primo giro
+                                         di test:finance).
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -118,6 +131,8 @@ supabase/
     crm-email-webhook     esiti Resend firmati: consegna, bounce e fallimento
     generate-crm-quote    PDF preventivo A4 it/de/fr con logo e provenienza
                           dichiarata nei Documenti
+    generate-finance-invoice  PDF fattura emessa con polizza QR svizzera, nota di
+                              credito e sollecito; provenienza dichiarata nei Documenti
     finance-worker        legge la coda delle fatture (scheduler, segreto condiviso)
     contract-worker       legge la coda dei documenti contrattuali e apre le finestre
                           di attenzione delle date verificate (scheduler)
@@ -986,7 +1001,12 @@ npm run test:workflows       # Automazioni su DB: esegue il MOTORE VERO — outb
 npm run test:finance-unit    # Finanze offline: importi esatti, date ambigue, cifre di controllo,
                              # QR-fattura, validazione dell'estrazione, contratto (202 test)
 npm run test:finance         # Finanze su DB: immutabilità del verbale, correzioni, proiezione,
-                             # duplicati, valute mai sommate (95 test — richiede la 0021)
+                             # duplicati, valute mai sommate, fatture emesse (sezione 15:
+                             # numerazione, guardiani, ciclo di vita, scansione scadute).
+                             # Richiede la 0021 e, dalla sezione 15, anche la 0053 e la 0054
+npm run test:finance-invoices-unit # Fatture emesse offline: payload QR SIX decodificato dai pixel
+                             # (anche dentro il PDF finale), PDF trilingue con polizza, nota di
+                             # credito e sollecito SENZA polizza, contratto delle migrazioni 0053/0054
 npm run test:contracts-unit  # Contratti offline: periodi nelle quattro lingue, ancoraggi del
                              # preavviso, derivabilità, date ambigue, citazioni, prompt injection,
                              # coerenza fra gli elenchi dichiarati in TypeScript e in SQL (89 test)

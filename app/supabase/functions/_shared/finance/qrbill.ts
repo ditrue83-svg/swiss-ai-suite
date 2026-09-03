@@ -1,6 +1,6 @@
 // ============================================================================
-// SWISS QR CODE — lettura e verifica DETERMINISTICHE del contenuto di una
-// QR-fattura svizzera.
+// SWISS QR CODE — lettura, verifica e GENERAZIONE DETERMINISTICHE del
+// contenuto di una QR-fattura svizzera.
 //
 // ⚠️ FONTE. Questo modulo è scritto contro le «Swiss Implementation Guidelines
 // for the QR-bill» di SIX, documento ufficiale, non contro una descrizione di
@@ -42,6 +42,7 @@
 // ============================================================================
 import {
   checkCreditorReference, checkIban, checkQrReference, compact, isQrIban,
+  mod10Recursive, mod97,
 } from './checksums.ts';
 
 /**
@@ -443,4 +444,257 @@ export function formatQrAddress(a: QrAddress): string | null {
   const street = [a.streetOrLine1, a.buildingOrLine2].filter(Boolean).join(' ');
   const place = [a.postalCode, a.town].filter(Boolean).join(' ');
   return [street, place, a.country].filter(Boolean).join(', ') || null;
+}
+
+// ---------------------------------------------------------------------------
+// La scrittrice
+//
+// ⚠️ LA GARANZIA È LA RILETTURA. Qui non esce NULLA che il lettore di questo
+// stesso file non accetterebbe: ogni payload generato passa per
+// `parseSwissQrPayload` prima di essere restituito, e una segnalazione —
+// anche non bloccante — fa fallire la generazione. Chi chiama riceve un
+// testo che un lettore conforme legge, per costruzione.
+//
+// Le scelte di forma sono fisse, le decide lo standard e non chi chiama:
+//   · indirizzi SEMPRE strutturati ('S'): la variante combinata 'K' resta
+//     leggibile perché le fatture vecchie girano ancora, ma non va più EMESSA
+//     (fuori standard per le fatture nuove dalla 2.3);
+//   · il gruppo «creditore finale» resta vuoto: è riservato a un uso futuro;
+//   · nessuna «billing information» e nessuna procedura alternativa: il
+//     payload è di 31 righe esatte (`SPEC.minLines`) e chiude con «EPD»,
+//     SENZA riga vuota finale — il lettore la elimina per specifica, quindi
+//     in scrittura non la si mette;
+//   · separatore CR+LF: il lettore accetta anche LF per tolleranza, ma lo
+//     standard chiede CR+LF e in scrittura si segue lo standard.
+//
+// Le posizioni NON sono riscritte qui: la disposizione sta in `lineLayout()`,
+// unica fonte per chi legge e per chi scrive.
+// ---------------------------------------------------------------------------
+
+export interface SwissQrPartyInput {
+  name: string;
+  street?: string;
+  buildingNumber?: string;
+  postalCode: string;
+  city: string;
+  countryCode: string;
+}
+
+export interface SwissQrInput {
+  iban: string;
+  creditor: SwissQrPartyInput;
+  /**
+   * Stringa decimale con il punto, mai separatori delle migliaia.
+   * Omesso, l'importo resta vuoto: è un elemento facoltativo.
+   */
+  amount?: string;
+  currency: 'CHF' | 'EUR';
+  debtor?: SwissQrPartyInput;
+  referenceType: QrReferenceType;
+  reference?: string;
+  message?: string;
+}
+
+/**
+ * Un campo in scrittura: vuoto se facoltativo e assente, rifiutato se troppo
+ * lungo o se contiene caratteri di controllo — il lettore li rimuoverebbe in
+ * silenzio, e un dato che cambia fra la mano che scrive e quella che legge è
+ * un errore, non un dettaglio. Il nome del campo finisce nell'errore: è ciò
+ * che l'interfaccia deve poter indicare.
+ */
+function writeField(value: string | undefined, field: string, maxLength: number, required: boolean): string {
+  const text = (value ?? '').trim();
+  if (!text) {
+    if (required) throw new Error(`Campo obbligatorio mancante: ${field}`);
+    return '';
+  }
+  if (text.length > maxLength) {
+    throw new Error(`Campo troppo lungo: ${field} (max ${maxLength} caratteri)`);
+  }
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F]/.test(text)) {
+    throw new Error(`Campo con caratteri di controllo: ${field}`);
+  }
+  return text;
+}
+
+/** ISO 3166-1 alpha-2: due lettere maiuscole. Si normalizza, come l'IBAN. */
+function writeCountry(value: string, field: string): string {
+  const code = writeField(value, field, 2, true).toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) {
+    throw new Error(`Codice paese non valido: ${field} (servono 2 lettere)`);
+  }
+  return code;
+}
+
+/** Le sette righe di un indirizzo strutturato, nell'ordine dello standard. */
+function writeAddress(party: SwissQrPartyInput, who: string): string[] {
+  return [
+    'S',
+    writeField(party.name, `${who}.name`, 70, true),
+    writeField(party.street, `${who}.street`, 70, false),
+    // Al civico lo standard dà 16 caratteri; il lettore taglia a 70 perché
+    // quella posizione ospita anche la seconda riga degli indirizzi 'K'.
+    writeField(party.buildingNumber, `${who}.buildingNumber`, 16, false),
+    writeField(party.postalCode, `${who}.postalCode`, 16, true),
+    writeField(party.city, `${who}.city`, 35, true),
+    writeCountry(party.countryCode, `${who}.countryCode`),
+  ];
+}
+
+/**
+ * L'importo in scrittura è la stessa regola del lettore (`checkAmount`):
+ * cifre, punto decimale, al massimo due decimali, da 0.01 a 999'999'999.99.
+ */
+function writeAmount(raw: string | undefined): string {
+  if (raw === undefined || raw.trim() === '') return '';
+  const amount = raw.trim();
+  if (!/^\d{1,9}(\.\d{1,2})?$/.test(amount)) {
+    throw new Error(`Importo non valido: amount (decimale con il punto, senza separatori delle migliaia)`);
+  }
+  const value = Number(amount);
+  if (!(value >= 0.01 && value <= 999_999_999.99)) {
+    throw new Error(`Importo fuori intervallo: amount (da 0.01 a 999999999.99)`);
+  }
+  return amount;
+}
+
+/**
+ * Compone il contenuto testuale di uno Swiss QR Code e lo valida rileggendolo.
+ *
+ * Ogni violazione delle regole dello standard è un Error con il NOME del
+ * campo e della regola violata: una fattura sbagliata non si emette, perché
+ * il rifiuto arriverebbe comunque — dalla banca, dopo l'invio.
+ */
+export function buildSwissQrPayload(input: SwissQrInput): string {
+  const iban = compact(input.iban);
+  const ibanCheck = checkIban(iban);
+  if (!ibanCheck.valid) {
+    throw new Error(`IBAN non valido: iban (${ibanCheck.error})`);
+  }
+
+  const currency = input.currency;
+  if (!(SPEC.currencies as readonly string[]).includes(currency)) {
+    throw new Error(`Valuta non ammessa: currency (solo ${SPEC.currencies.join(' e ')})`);
+  }
+  const amount = writeAmount(input.amount);
+
+  // Conto e riferimento si decidono a vicenda: l'incrocio lo impone lo
+  // standard, e il lettore lo controlla — qui lo si impedisce in partenza.
+  const reference = compact(input.reference ?? '');
+  switch (input.referenceType) {
+    case 'QRR': {
+      if (!isQrIban(iban)) {
+        throw new Error('Un riferimento QRR richiede un QR-IBAN: reference (qrr_requires_qr_iban)');
+      }
+      // In lettura «QRR solo in CHF» è oggi una segnalazione non bloccante,
+      // perché la regola è della 2.4 e non ancora in vigore. In SCRITTURA si
+      // segue già la 2.4: una fattura nuova in euro con riferimento QR non
+      // va emessa.
+      if (currency !== 'CHF') {
+        throw new Error('Un riferimento QRR si emette solo in CHF: currency (qrr_only_chf)');
+      }
+      if (!checkQrReference(reference).valid) {
+        throw new Error('Riferimento QRR non valido: reference (27 cifre, l\u2019ultima di controllo)');
+      }
+      break;
+    }
+    case 'SCOR': {
+      if (!checkCreditorReference(reference).valid) {
+        throw new Error('Riferimento SCOR non valido: reference (ISO 11649, «RF» + controllo)');
+      }
+      break;
+    }
+    case 'NON': {
+      if (reference) {
+        throw new Error('Con riferimento «NON» il campo resta vuoto: reference (reference_present_with_non)');
+      }
+      break;
+    }
+    default:
+      throw new Error(`Tipo di riferimento non ammesso: referenceType («${String(input.referenceType)}»)`);
+  }
+
+  const message = writeField(input.message, 'message', 140, false);
+  const creditor = writeAddress(input.creditor, 'creditor');
+  const debtor = input.debtor
+    ? writeAddress(input.debtor, 'debtor')
+    : ['', '', '', '', '', '', ''];
+
+  const L = lineLayout();
+  const lines: string[] = new Array(L.trailer + 1).fill('');
+  lines[L.qrType] = SPEC.qrType;
+  lines[L.version] = SPEC.version;
+  lines[L.coding] = SPEC.coding;
+  lines[L.iban] = iban;
+  creditor.forEach((value, i) => { lines[L.creditor + i] = value; });
+  // L.ultimateCreditor..+6 restano vuote: il gruppo è riservato.
+  lines[L.amount] = amount;
+  lines[L.currency] = currency;
+  debtor.forEach((value, i) => { lines[L.ultimateDebtor + i] = value; });
+  lines[L.referenceType] = input.referenceType;
+  lines[L.reference] = reference;
+  lines[L.unstructuredMessage] = message;
+  lines[L.trailer] = SPEC.trailer;
+
+  const payload = lines.join('\r\n');
+  // Il tetto lo pone il codice, non il lettore: oltre, il QR non sarebbe
+  // generabile e si produrrebbe un testo che nessuno può stampare.
+  if (payload.length > SPEC.maxPayloadChars) {
+    throw new Error(`Payload troppo lungo: ${payload.length} caratteri oltre il tetto di ${SPEC.maxPayloadChars}`);
+  }
+
+  // La garanzia di cui sopra: ciò che il lettore di questo stesso modulo
+  // segnala — anche senza bloccare — non esce da qui.
+  const riletto = parseSwissQrPayload(payload);
+  if (!riletto.ok || riletto.issues.length > 0) {
+    const codici = riletto.issues.map((i) => i.code).join(', ');
+    throw new Error(`Il payload generato non supera la rilettura: ${codici}`);
+  }
+  return payload;
+}
+
+/**
+ * Il riferimento di pagamento di una fattura emessa, derivato dal suo numero.
+ *
+ * È il CONTO a decidere il tipo, mai chi chiama: su un QR-IBAN va il
+ * riferimento QR (27 cifre, controllo modulo 10 ricorsivo), sugli altri il
+ * riferimento creditore ISO 11649 («RF» + due cifre di controllo). Scegliere
+ * diversamente produrrebbe un documento che il lettore rifiuta.
+ */
+export function generatePaymentReference(
+  invoiceNumber: string,
+  iban: string,
+): { referenceType: 'QRR' | 'SCOR'; reference: string } {
+  const digits = String(invoiceNumber ?? '').replace(/\D/g, '');
+  if (!digits) {
+    throw new Error('Numero di fattura senza cifre: non se ne può derivare un riferimento');
+  }
+
+  if (isQrIban(iban)) {
+    // 26 cifre di corpo + una di controllo. Se il numero è più lungo si
+    // tengono le cifre FINALI: sono quelle che cambiano da fattura a fattura.
+    const body = digits.length > 26 ? digits.slice(-26) : digits.padStart(26, '0');
+    const check = mod10Recursive(body);
+    if (check === null) {
+      throw new Error('Corpo del riferimento QRR non numerico');
+    }
+    const reference = `${body}${check}`;
+    if (!checkQrReference(reference).valid) {
+      throw new Error('Il riferimento QRR generato non supera il proprio controllo');
+    }
+    return { referenceType: 'QRR', reference };
+  }
+
+  // ISO 11649: si porta «RF00» in coda, si convertono le lettere in cifre e
+  // il controllo è il complemento a 98 del resto modulo 97. L'aritmetica è
+  // quella di `checksums.ts`: la stessa che poi verifica.
+  const rearranged = `${digits}RF00`.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+  const check = String(98 - mod97(rearranged)).padStart(2, '0');
+  const reference = `RF${check}${digits}`;
+  const selfCheck = checkCreditorReference(reference);
+  if (!selfCheck.valid) {
+    throw new Error(`Il riferimento SCOR generato non supera il proprio controllo (${selfCheck.error})`);
+  }
+  return { referenceType: 'SCOR', reference };
 }
