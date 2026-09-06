@@ -29,10 +29,15 @@
      La sezione 12 di `test:shell-unit` pesa ogni coppia fondo/testo e non
      lascia rientrare la scrittura chiara su chiaro. */
   --accent: #37AEEF;                   /* = hsl(201, 85%, 58%) — riempimenti, filetti, stati attivi */
-  --accent-dark: hsl(201, 85%, 48%);   /* hover: qui l'accento è chiaro, quindi l'hover SCENDE.
-                                          ⚠️ NON lo «sky-deep» #0084C3 del riferimento: con il
-                                          testo scuro `--on-accent` farebbe 4,33:1, sotto AA —
-                                          questo è il valore più fondo che resta sopra (5,73:1). */
+  /* hover: qui l'accento è chiaro, quindi l'hover SCENDE. ⚠️ NON lo
+     «sky-deep» #0084C3 del riferimento: con il testo scuro `--on-accent`
+     farebbe 4,33:1, sotto AA — questo è il valore più fondo che resta sopra
+     (5,73:1). Il commento sta SOPRA la dichiarazione e non in coda alla
+     riga: un commento in coda che va a capo perde la chiusura nell'estrattore
+     della vetrina (`site/sync-tokens.mjs`), che della riga di dichiarazione
+     copia solo la prima riga — e il suo controllo di integrità ferma la
+     pubblicazione. */
+  --accent-dark: hsl(201, 85%, 48%);
   --accent-text: hsl(201, 85%, 27%);   /* testo e link: 7,92:1 su bianco                            */
   --accent-soft: #E8F6FE;              /* «sky-soft» del riferimento            */
   --accent-line: hsl(201, 58%, 82%);   /* bordo di ciò che sta su --accent-soft                     */
@@ -212,10 +217,13 @@
      di Inter (0,546em), quindi non c'è un guadagno di disegno a compensare —
      la controprova che 13,5px basti è la verifica a schermo, non una misura
      di font. */
-  --fs-eyebrow: 10.5px; /* etichette di gruppo maiuscole («eyebrow»): il
-                           gradino più piccolo — a questa misura il maiuscoletto
-                           spaziato (0,16em) si legge come segno di sezione,
-                           non come testo; dal riferimento 2026-09-06 */
+  /* etichette di gruppo maiuscole («eyebrow»): il gradino più piccolo — a
+     questa misura il maiuscoletto spaziato (0,16em) si legge come segno di
+     sezione, non come testo; dal riferimento 2026-09-06. In colonna e non in
+     coda alla riga, per la stessa ragione scritta sopra `--accent-dark`:
+     l'estrattore della vetrina non segue i commenti in coda che vanno a
+     capo. */
+  --fs-eyebrow: 10.5px;
   --fs-label: 12.5px;  /* etichette maiuscole, con letter-spacing */
   --fs-meta: 11.5px;   /* metadati e didascalie                   */
   --fs-body: 13.5px;   /* corpo del testo                          */
