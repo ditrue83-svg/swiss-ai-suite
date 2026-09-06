@@ -529,12 +529,10 @@
    ---------------------------------------------------------------------------
    La sezione è migrata il 2026-08-28 in
    `src/features/dashboard/dashboard.module.css` (CSS Modules, issue #83),
-   commenti compresi — la testata (`home-head`), la pastiglia (`att-pill`),
-   le due colonne (`home-grid`), il segno del trend (`kpi-trend`), la colonna
+   commenti compresi — le due colonne (`home-grid`), il segno del trend (`kpi-trend`), la colonna
    «Richiede attenzione» (`att-*`), la scheda in evidenza (`spot-*`) e
-   `.dash-sorted`, che stava più sopra. Con loro, da `app.css`, sono migrate
-   `.greeting` e `.greeting-sub`. Le classi figlie condivise (`.page-head`,
-   `.btn`, `.card`, `.card-title`) là dentro sono nominate con `:global`.
+   `.dash-sorted`, che stava più sopra. Le classi figlie condivise (`.card`,
+   `.card-title`) là dentro sono nominate con `:global`.
    RESTANO qui le tre regole della sparkline, perché il suo markup è di
    `components/ui/Sparkline.tsx`, fuori dalla feature.
    ⚠️ `design-lint.mjs` dichiara un'eccezione su `.dash-sorted` in QUESTO
@@ -548,6 +546,7 @@
    Il segno del trend (`.kpi-trend`, con `.down`) è migrato il 2026-08-28 in
    `src/features/dashboard/dashboard.module.css`; la sparkline RESTA qui. */
 .kpi .sparkline { margin-top: var(--sp-2); }
+.kpi .kpi-main .sparkline { margin: 0 0 var(--sp-05) auto; flex-shrink: 0; }
 /* La sparkline colora coi token, non coi numeri: il tema scuro la segue da sé. */
 .sparkline-line { fill: none; stroke: var(--accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .sparkline-area { fill: var(--accent-soft); }

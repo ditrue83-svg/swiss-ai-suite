@@ -574,7 +574,47 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   for (const [lang, d] of Object.entries({ it: it.nav, de: de.nav, fr: fr.nav })) {
     check(`${lang}: la riga di contesto esiste (nav.workspace)`,
       typeof d.workspace === 'string' && d.workspace.trim().length > 0);
+    check(`${lang}: le voci prima dei gruppi hanno una sezione (nav.sectionOverview)`,
+      typeof d.sectionOverview === 'string' && d.sectionOverview.trim().length > 0);
   }
+
+  // La testata del riferimento non è un breadcrumb solitario: sopra dichiara
+  // sezione › voce, sotto ripete la voce come titolo grande. «Panoramica» e
+  // «Chiedi» precedono la prima intestazione nel menu ma appartengono entrambe
+  // alla sezione operativa; iniziare da null farebbe sparire proprio quel ramo.
+  check('la topbar monta sempre percorso e titolo della voce corrente',
+    /function PageIdentity\(\)/.test(shellSrc)
+      && /className="topbar-page"/.test(shellSrc)
+      && /className="topbar-title"/.test(shellSrc));
+  check('prima della prima intestazione il percorso parte da nav.sectionOverview',
+    /let sezione: TKey = 'nav\.sectionOverview'/.test(shellSrc));
+
+  // I badge di navigazione sono ammessi soltanto se un servizio conta lo
+  // stesso insieme della pagina. I tre insiemi reali sono Inbox da gestire,
+  // documenti attivi e attività aperte; il resto resta senza numero.
+  const navCounts = readFileSync(join(root, 'src/components/layout/useNavCounts.ts'), 'utf8');
+  check('i badge leggono tre conteggi reali dai servizi delle rispettive pagine',
+    /inboxService\.count\([^)]*to_handle/.test(navCounts)
+      && /documentHubService\.counts\(activeCompanyId, false\)/.test(navCounts)
+      && /taskService\.list\(activeCompanyId, \{ view: 'todo', limit: 1 \}\)/.test(navCounts));
+  check('un conteggio non letto resta ignoto, mai uno zero inventato',
+    /number \| null/.test(navCounts) && /const UNKNOWN:[^\n]*null/.test(navCounts));
+
+  // Regressione produzione 2026-09-06: i sedici «da verificare» erano tutti
+  // archiviati. La pastiglia legge quindi entrambe le popolazioni e non
+  // interpreta un errore di lettura come zero.
+  const attention = readFileSync(join(root, 'src/components/layout/useAttentionCount.ts'), 'utf8');
+  check('la pastiglia somma i documenti da verificare attivi e archiviati',
+    /setCount\(attivi \+ archiviati\)/.test(attention));
+  check('la pastiglia non trasforma un guasto in zero',
+    /catch \{[\s\S]{0,180}?setCount\(null\)/.test(attention));
+
+  const corpo = Number(appCss.match(/--fs-body:\s*([\d.]+)px/)?.[1] ?? NaN);
+  const titolo = Number(appCss.match(/--fs-h1:\s*([\d.]+)px/)?.[1] ?? NaN);
+  const kpiSize = Number(appCss.match(/--fs-kpi:\s*([\d.]+)px/)?.[1] ?? NaN);
+  check('la scala del riferimento è corpo 14 · titolo pagina 30 · KPI 36',
+    corpo === 14 && titolo === 30 && kpiSize === 36,
+    `corpo ${corpo} · titolo ${titolo} · KPI ${kpiSize}`);
 
   // L'etichetta di gruppo è orientamento, non una voce. FINO AL 2026-09-05 la
   // distinzione la faceva il peso (400 contro 500); dal riferimento approvato
@@ -629,14 +669,16 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   check('l\'interruttore naviga alle due rotte vive',
     /to="\/attivita"/.test(head) && /to="\/calendario"/.test(head));
 
-  // LA SCORCIATOIA della Panoramica porta ESATTAMENTE dove porta la voce
-  // «Analizza documento» della barra — stessa destinazione, letta dai
-  // sorgenti di entrambe. Dal 2026-08-26 il pulsante si chiama «Carica
-  // documento» (modello Lovable): è il GESTO, la voce resta il LUOGO.
+  // IL GESTO della topbar porta ESATTAMENTE dove porta la voce «Analizza
+  // documento» della barra — stessa destinazione, letta dai sorgenti di
+  // entrambe. La Panoramica non lo ripete più dentro il contenuto.
   const home = readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8');
+  const shell = readFileSync(join(root, 'src/components/layout/AppShell.tsx'), 'utf8');
   const adminItem = NAV.find((e) => !isSection(e) && e.id === 'admin') as NavItem;
-  const shortcut = new RegExp(`to="${adminItem.path.replace('/', '\\/')}"[^\\n]*home\\.uploadDoc`);
-  check('«Carica documento» porta dove porta la voce della barra', shortcut.test(home));
+  const shortcut = new RegExp(`to="${adminItem.path.replace('/', '\\/')}\\?carica=1"[^\\n]*home\\.uploadDoc`);
+  check('«Carica documento» in topbar porta dove porta la voce della barra', shortcut.test(shell));
+  check('la Panoramica non ripete titolo, attenzione e caricamento sotto la topbar',
+    !/homeHead|attentionPill|home\.uploadDoc/.test(home));
 }
 
 // ---------------------------------------------------------------------------
@@ -720,8 +762,8 @@ section('6. Gerarchia e densità dentro le pagine');
   // Le classi qui sotto sono quelle che portano PROSA: chi ne aggiunge una
   // aggiunge una riga qui. ⚠️ DAL 2026-08-28 ogni riga dichiara il FOGLIO in
   // cui la classe vive dopo la migrazione a CSS Modules (issue #83): `.prose`
-  // è di `documents`, `.greeting-sub` di `dashboard`; le altre restano
-  // globali. `.hero p` è USCITA dall'elenco il 2026-08-28 con la famiglia
+  // è di `documents`; le altre restano globali. `.hero p` è USCITA
+  // dall'elenco il 2026-08-28 con la famiglia
   // `.hero*` (censimento regole morte: zero usi) — una riga qui per una classe
   // che non esiste più garantirebbe una misura che nessuno consumerà.
   // ⚠️ `.footnote` NON è in questo elenco dal 2026-08-14, ed è una promozione,
@@ -731,7 +773,6 @@ section('6. Gerarchia e densità dentro le pagine');
   const PROSA: { classe: string; foglio: string }[] = [
     { classe: '.prose', foglio: 'src/features/documents/documents.module.css' },
     { classe: '.page-desc', foglio: 'src/styles/app.css' },
-    { classe: '.greeting-sub', foglio: 'src/features/dashboard/dashboard.module.css' },
     { classe: '.legal-note', foglio: 'src/styles/app.css' },
   ];
   for (const { classe, foglio } of PROSA) {
@@ -3069,6 +3110,17 @@ section('18. La Panoramica dai numeri — i blocchi sono puri e provati');
         && /trendPercentuale\(/.test(sorgenteOverview));
     check('e l\'importo lo FORMATTA, non lo compone a mano',
       /formatCurrency\(/.test(kpi), 'una cifra scritta a mano è il mockup che rientra dalla finestra');
+    check('le etichette KPI sono testo, senza icone decorative',
+      /<div className="kpi-label">\{label\}<\/div>/.test(kpi));
+    check('solo la metrica con storia monta delta e sparkline',
+      (kpi.match(/<Sparkline\b/g) ?? []).length === 1
+        && /analisi\.trend !== null/.test(kpi)
+        && /arrowDown/.test(kpi) && /arrowUp/.test(kpi));
+    const cssKpi = leggiCss('src/styles/app.css');
+    const kpiAccent = cssKpi.match(/\.kpi\.accent\s*\{([^}]*)\}/)?.[1] ?? '';
+    check('la cella KPI attiva porta il filetto superiore blu',
+      /border-top:\s*3px solid var\(--accent\)/.test(kpiAccent)
+        && /active=\{nAttenzione > 0\}/.test(kpi));
     const paginaHome = senzaCommenti3(readFileSync(join(root, 'src/features/dashboard/HomePage.tsx'), 'utf8'));
     check('la Panoramica monta striscia, colonna dell\'attenzione e scheda in evidenza',
       /<KpiStrip\b/.test(paginaHome) && /<AttenzioneColumn\b/.test(paginaHome) && /<DocumentoInEvidenza\b/.test(paginaHome));

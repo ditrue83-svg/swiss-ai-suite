@@ -174,6 +174,7 @@ collegamento, e `docs:check` lo segnalava da tempo. Questo è l'indice vero.
 | Documento | Di che cosa parla |
 | --- | --- |
 | [`design-system.md`](docs/design-system.md) | Colori, spaziature, tema chiaro e scuro |
+| [`visual-checks/2026-09-06`](docs/visual-checks/2026-09-06/verification.md) | Screenshot Playwright del riallineamento Panoramica, confrontati col mockup |
 | [`revisione-traduzioni.md`](docs/revisione-traduzioni.md) | Come si rivedono i dizionari de/fr |
 | [`ai-inbox.md`](docs/ai-inbox.md) | Inbox: Gmail, modello di minaccia, limiti |
 | [`document-hub.md`](docs/document-hub.md) | Documenti: acquisizione, analisi, evidenze |

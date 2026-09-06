@@ -18,18 +18,12 @@ import type { TKey } from '@/i18n';
 // gli si chiuderebbe in faccia — e infatti la pagina, aperta per indirizzo,
 // spiega perché non può leggere invece di mostrare un elenco vuoto.
 //
-// ⚠️ CONTATORI: UNO SOLO, e arriva già caricato nella shell. Fino al
-// 2026-09-05 qui c'era il divieto dei numeri accanto alle voci: i conteggi
-// erano interrogazioni dedicate eseguite DENTRO le pagine, e un numero su
-// ogni schermata sarebbe costato una query in più per cambio pagina. Dal
-// 2026-09-06 (riferimento «panoramica-ai-swisse.html») la shell carica UN
-// conteggio condiviso (`useAttentionCount`, i documenti «da verificare»
-// attivi — la stessa definizione della colonna «Richiede attenzione» della
-// Panoramica) e quella spesa è già fatta: mostrarlo su «Documenti» non
-// costa niente di più. Il secondo numero che il mockup mostrava (la posta
-// non letta) resta fuori per la ragione di prima: la sua interrogazione
-// non esiste ancora nella shell, e un contatore comprato con query nuove è
-// rumore pagato due volte.
+// ⚠️ CONTATORI: SOLO INSIEMI CHE I SERVIZI SANNO GIÀ CONTARE. Fino al
+// 2026-09-05 qui c'era il divieto dei numeri accanto alle voci: un numero
+// ricavato dalle righe caricate di una pagina avrebbe spacciato una finestra
+// per il totale. Dal 2026-09-06 la shell usa `useNavCounts`: Inbox da gestire,
+// documenti attivi e attività aperte arrivano dalle funzioni di conteggio che
+// governano i rispettivi elenchi. Nessun servizio autorevole, nessun badge.
 export interface NavItem {
   id: string;
   labelKey: TKey;
