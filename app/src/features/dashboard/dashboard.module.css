@@ -44,7 +44,7 @@
 .dash-sorted { margin: -6px 0 var(--sp-2); }
 
 /* ---------- greeting / home operativa ---------- */
-.greeting { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.5px; }
+.greeting { font-family: var(--font-display); font-size: var(--fs-h1); font-weight: 600; letter-spacing: var(--ls-title); }
 /* Il sottotitolo della Panoramica è il gemello di `.page-desc` — stessa cosa,
    altro nome, perché qui il titolo è un saluto. Prende la stessa misura di
    lettura: correggere il tetto di uno solo dei due avrebbe lasciato in piedi
@@ -130,7 +130,7 @@
 /* La scheda del documento in evidenza: testata con titolo e chip pagine, poi
    due colonne — campi estratti e citazione di origine. */
 .spot-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); }
-.spot-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.2px; }
+.spot-title { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 600; letter-spacing: var(--ls-title); }
 .spot-chip {
   display: inline-flex; align-items: center; gap: var(--sp-1); flex-shrink: 0;
   padding: var(--sp-1) var(--sp-2); border: 1px solid var(--line);
