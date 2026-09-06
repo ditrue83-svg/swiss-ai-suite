@@ -17,7 +17,7 @@
    apriva l'app vedeva solo una parte delle voci: l'intero ARCHIVIO
    (Documenti, Contratti, Clienti, Finanze) esistevano solo dopo uno scroll.
    Qui il box account passa da 202 a 88: due righe invece di quattro. */
-.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); padding-left: var(--sp-4); padding-right: var(--sp-4); margin-left: calc(-1 * var(--sp-4)); margin-right: calc(-1 * var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-2); }
+.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-1); padding-left: var(--sp-4); padding-right: var(--sp-4); margin-left: calc(-1 * var(--sp-4)); margin-right: calc(-1 * var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-1); }
 /* Il filetto corre da bordo a bordo della colonna (mockup «Panoramica»,
    2026-09-03): i margini negativi annullano il padding della `.sidebar` — e
    del `.drawer`, che ha lo stesso --sp-4 — mentre i padding interni
@@ -55,7 +55,7 @@
    Dal 2026-09-03 un filetto la chiude IN BASSO (mockup «Panoramica»): è il
    confine fra la zona identità — marchio e azienda — e la navigazione
    operativa, non una cornice: tre lati su quattro non ci sono. */
-.company-switch { padding: var(--sp-1) var(--sp-3) var(--sp-3); margin-bottom: var(--sp-1); border-bottom: 1px solid var(--line); }
+.company-switch { padding: var(--sp-1) var(--sp-3) var(--sp-2); border-bottom: 1px solid var(--line); }
 .company-switch .cs-label { font-size: var(--fs-eyebrow); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ls-eyebrow); color: var(--muted); }
 /* ⚠️ UNA RIGA SOLA, come il nome dell'utente qui sotto. La ragione è che
    l'altezza della colonna non deve dipendere da COME SI CHIAMA IL CLIENTE:

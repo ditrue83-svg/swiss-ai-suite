@@ -130,6 +130,8 @@ export const fr: Dictionary = {
     openMenu: 'Ouvrir le menu de navigation',
     auditLog: 'Journal d’activité',
     closeMenu: 'Fermer le menu',
+    dataBoxTitle: 'Données en Suisse',
+    dataBoxNote: 'Traitement local, aucun envoi automatique.',
   },
   settings: {
     preferencesDesc: 'La langue et l’apparence valent pour vous sur cet ordinateur, pas pour l’entreprise.',

@@ -9,6 +9,7 @@ import { Icon } from '@/components/ui/Icon';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches } from './nav';
+import { useAttentionCount } from './useAttentionCount';
 import type { TKey } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -24,7 +25,7 @@ import { SettingsDialog } from '@/features/settings/SettingsDialog';
 // I ruoli restano in chiave: l'etichetta si traduce al render.
 const ROLE_KEY: Record<string, TKey> = { owner: 'roles.owner', admin: 'roles.admin', member: 'roles.member' };
 
-function NavList({ onNavigate, onSettings }: { onNavigate?: () => void; onSettings: () => void }) {
+function NavList({ onNavigate, onSettings, attentionCount = 0 }: { onNavigate?: () => void; onSettings: () => void; attentionCount?: number }) {
   const t = useT();
   // Le voci riservate spariscono per chi non è titolare o amministratore. Il
   // permesso però NON è questo: è la RLS della pagina (vedi nav.ts).
@@ -55,6 +56,14 @@ function NavList({ onNavigate, onSettings }: { onNavigate?: () => void; onSettin
           >
             <Icon name={entry.icon} />
             <span>{t(entry.labelKey)}</span>
+            {/* Il badge numerico del riferimento (2026-09-06): UNO SOLO, su
+                «Documenti», ed è il conteggio condiviso della shell (vedi
+                `useAttentionCount`): niente — come voleva nav.ts — una
+                interrogazione per voce. A zero non si mostra: «niente da
+                verificare» lo dice la pagina, non un distintivo. */}
+            {entry.id === 'documents' && attentionCount > 0 && (
+              <span className="nav-badge num" title={t('documents.states.to_verify')} aria-hidden="true">{attentionCount}</span>
+            )}
           </NavLink>
         ),
       )}
@@ -105,6 +114,19 @@ function CompanySwitch() {
           ))}
         </select>
       )}
+    </div>
+  );
+}
+
+function DataBox() {
+  const t = useT();
+  // Il riquadro di fiducia del riferimento «Panoramica» (2026-09-06): sta
+  // fra la navigazione e la scheda utente, ed è una promessa del prodotto
+  // scritta dove la si vede ogni giorno — non una voce, non un collegamento.
+  return (
+    <div className="data-box">
+      <p className="data-box-title"><Icon name="shieldCheck" className="ic-sm" />{t('nav.dataBoxTitle')}</p>
+      <p className="data-box-note">{t('nav.dataBoxNote')}</p>
     </div>
   );
 }
@@ -191,6 +213,9 @@ export function AppShell() {
   // interrogazioni per ogni caricamento, una delle quali per un pulsante che
   // nessuno può premere.
   const { count, setCount } = useUnreadCount(activeCompanyId);
+  // Il conteggio «da verificare»: uno solo per l'intera shell — pastiglia in
+  // topbar e badge su «Documenti» — con la stessa cadenza della campanella.
+  const attentionCount = useAttentionCount(activeCompanyId);
   // La finestra delle impostazioni vive QUI e non nei due NavList, per la
   // stessa ragione del conteggio della campanella: nell'albero i NavList sono
   // due — colonna e cassetto — e due finestre indipendenti vorrebbero dire due
@@ -199,6 +224,16 @@ export function AppShell() {
 
   // Chiudi il drawer al cambio pagina.
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
+
+  // Esc chiude il cassetto, come già fa per la campanella e le finestre: un
+  // pannello che si apre deve chiudersi anche da tastiera (riferimento
+  // 2026-09-06: chiusura con tap fuori / Esc).
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawerOpen]);
 
   // Blocca lo scroll del body quando il drawer è aperto.
   useEffect(() => {
@@ -236,7 +271,8 @@ export function AppShell() {
           <NotificationBell count={count} setCount={setCount} />
         </div>
         <CompanySwitch />
-        <NavList onSettings={() => setSettingsOpen(true)} />
+        <NavList onSettings={() => setSettingsOpen(true)} attentionCount={attentionCount} />
+        <DataBox />
         <AccountBox />
       </aside>
 
@@ -248,7 +284,8 @@ export function AppShell() {
           <BrandMark taglineKey="nav.workspace" caps />
         </div>
         <CompanySwitch />
-        <NavList onNavigate={() => setDrawerOpen(false)} onSettings={() => setSettingsOpen(true)} />
+        <NavList onNavigate={() => setDrawerOpen(false)} onSettings={() => setSettingsOpen(true)} attentionCount={attentionCount} />
+        <DataBox />
         <AccountBox />
       </aside>
 

@@ -285,15 +285,16 @@ section('3c. Il marchio ha DUE sedi, e finora non lo ricordava nessuno');
     .digest('hex')
     .slice(0, 16);
 
-  // L'impronta del marchio al 2026-08-27, dopo che la riga sotto il segno è
-  // diventata configurabile (`taglineKey`/`caps` per la didascalia di contesto
-  // della shell): la FORMA e il COLORE non si sono mossi — `brand:check` verde
-  // prima di riscrivere questo numero, come da rito. Cambiarla è il gesto che
-  // accompagna un cambiamento del segno, e va fatto dopo aver visto verde
-  // `npm run brand:check` — che è ciò che confronta i tracciati con la
+  // L'impronta del marchio al 2026-09-06. Storia: 2026-08-27 (riga sotto il
+  // segno configurabile, `taglineKey`/`caps`) → 2026-09-06 (il margine sopra la
+  // riga di contesto scende a --sp-05 per il bilancio di colonna col riquadro
+  // «Dati in Svizzera»: la FORMA e il COLORE non si sono mossi — `brand:check`
+  // verde prima di riscrivere questo numero, come da rito). Cambiarla è il
+  // gesto che accompagna un cambiamento del segno, e va fatto dopo aver visto
+  // verde `npm run brand:check` — che è ciò che confronta i tracciati con la
   // vetrina. Questa impronta da sola non prova l'allineamento: prova che il
   // segno non si è mosso senza che qualcuno lo decidesse.
-  const IMPRONTA_DICHIARATA = 'b7bf77795d1ab724';
+  const IMPRONTA_DICHIARATA = 'b379581935dbc2d0';
 
   check(
     'il marchio dell\'app è quello dichiarato — se cambia, la vetrina va cambiata con lui',
@@ -1809,12 +1810,15 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
 // riproduce ogni blocco al centesimo — voce 31,25 · sezione 34,59 · piede
 // 40,25 · marchio 81,32 · azienda 66,89 · box account 88,40.
 //
-// ⚠️ IL MARGINE È SOTTILE E VA DETTO: a 720 la colonna chiede ~716,5 e ne
-// avanzano ~3,5. Non è un caso fortunato, è un bilancio: chi aggiunge una riga
+// ⚠️ IL MARGINE È SOTTILE E VA DETTO: a 720 la colonna chiede ~715,7 e ne
+// avanzano ~4,3. Non è un caso fortunato, è un bilancio: chi aggiunge una riga
 // qui dentro deve toglierne un'altra, e questo controllo è il posto in cui se
-// ne accorge PRIMA di pubblicare. Dove stanno i pixel, se servissero: la riga
-// di sottotitolo del marchio (24), il passo di 2px fra le voci (24 in tutto),
-// il padding verticale della colonna (8).
+// ne accorge PRIMA di pubblicare. Il 2026-09-06 il riquadro «Dati in Svizzera»
+// (~74px) è stato pagato così: line-height 1,4 sulle voci di colonna (~18),
+// padding e margini di marchio/azienda/account/data-box (~16). Dove stanno i
+// pixel, se servissero ancora: la riga di sottotitolo del marchio (~20), il
+// passo di 2px fra le voci (24 in tutto), il padding verticale della colonna
+// (12).
 {
   const senzaCommenti = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '');
   const app = senzaCommenti(readFileSync(join(root, 'src/styles/app.css'), 'utf8'));
@@ -1880,7 +1884,6 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
   const colPad = verticali(gCol, 'padding');
   const marchioPad = verticali(gMarchio, 'padding');
   const aziendaPad = verticali(gAzienda, 'padding');
-  const aziendaMarg = verticali(gAzienda, 'margin-bottom');
   const sezionePad = verticali(gSezione, 'padding');
   const vocePad = verticali(gVoce, 'padding');
   const navGap = px(dichiarazione(gNav, 'gap'));
@@ -1891,6 +1894,16 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
   const logoW = px(dichiarazione(regola('.brand-logo'), 'width'));
   const subMarg = px(dichiarazione(regola('.brand-sub'), 'margin-top'));
   const campanella = px(dichiarazione(regola('.bell-btn'), 'height')) ?? 36;
+  // Il riquadro «Dati in Svizzera» (2026-09-06): bordo, padding, una riga di
+  // titolo e la nota su DUE righe — misurato a 236px, le tre lingue vanno a
+  // capo una volta (it 44, de 50, fr 44 caratteri su ~34 per riga). La nota
+  // ha un line-height proprio (1.35), letto dal foglio come gli altri.
+  const gDataBox = regola('.data-box');
+  const gDataNote = regola('.data-box-note');
+  const dataPad = verticali(gDataBox, 'padding');
+  const dataMarg = verticali(gDataBox, 'margin');
+  const dataNoteMarg = px(dichiarazione(gDataNote, 'margin-top'));
+  const dataNoteLh = Number(/(?:^|;)\s*line-height:\s*([\d.]+)/.exec(gDataNote)?.[1] ?? NaN);
   const vb = /MARCHIO_VIEWBOX\s*=\s*'([\d\s.]+)'/.exec(brandArt)?.[1]?.trim().split(/\s+/).map(Number);
 
   // ⚠️ CONTROPROVA DEL LETTORE, prima di ogni conto: se una geometria si
@@ -1899,12 +1912,15 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
   // a caccia nel posto sbagliato: qui si dice QUALE misura non si è letta.
   const letture: [string, unknown][] = [
     ['.sidebar padding', colPad], ['.brand padding', marchioPad],
-    ['.company-switch padding', aziendaPad], ['.company-switch margin-bottom', aziendaMarg],
+    ['.company-switch padding', aziendaPad],
     ['.nav gap', navGap], ['.nav-section padding', sezionePad],
     ['.sidebar .nav-btn padding', vocePad], ['.nav-foot padding-top', piedePad],
     ['.account-box gap', boxGap], ['.account-box padding-top', boxPad],
     ['.account-row padding', rigaPad], ['.brand-logo width', logoW],
     ['.brand-sub margin-top', subMarg], ['MARCHIO_VIEWBOX', vb?.length === 4 ? vb : null],
+    ['.data-box padding', dataPad], ['.data-box margin', dataMarg],
+    ['.data-box-note margin-top', dataNoteMarg],
+    ['.data-box-note line-height', Number.isFinite(dataNoteLh) ? dataNoteLh : null],
     ['body line-height', Number.isFinite(interlinea) ? interlinea : null],
   ];
   const illeggibili = letture.filter(([, v]) => v === null || v === undefined).map(([k]) => k);
@@ -1923,10 +1939,16 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
 
   const logoH = logoW! * (vb![3]! / vb![2]!);
   const marchio = marchioPad![0] + Math.max(logoH + subMarg! + riga('--fs-meta'), campanella) + marchioPad![1];
-  const azienda = aziendaPad![0] + riga('--fs-label') + riga('--fs-meta') * 2 + aziendaPad![1] + aziendaMarg![1];
-  const voce = riga('--fs-body') + vocePad![0] + vocePad![1];
-  const sezione = riga('--fs-label') + sezionePad![0] + sezionePad![1];
+  const azienda = aziendaPad![0] + riga('--fs-eyebrow') + riga('--fs-meta') * 2 + aziendaPad![1];
+  // La voce di colonna ha un line-height proprio (1,4 — voci su una riga,
+  // dal 2026-09-06): il conto usa quello, non l'interlinea del corpo.
+  const voceLh = Number(/(?:^|;)\s*line-height:\s*([\d.]+)/.exec(gVoce)?.[1] ?? NaN);
+  const voce = (scala.get('--fs-body') ?? NaN) * (Number.isFinite(voceLh) ? voceLh : interlinea) + vocePad![0] + vocePad![1];
+  const sezione = riga('--fs-eyebrow') + sezionePad![0] + sezionePad![1];
   const piede = BORDO + piedePad! + voce;
+  const dataBox = 2 * BORDO + dataPad![0] + dataPad![1] + riga('--fs-label')
+    + dataNoteMarg! + 2 * ((scala.get('--fs-meta') ?? NaN) * dataNoteLh!)
+    + dataMarg![0] + dataMarg![1];
 
   const nVoci = NAV.filter((e): e is NavItem => !isSection(e)).length;
   const nSezioni = NAV.filter(isSection).length;
@@ -1937,12 +1959,12 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
   const account = BORDO + boxPad! + rigaAccount + boxGap! + PREFS;
 
   const ALTEZZA = 720;                                          // 1280×720, lo schermo stretto di riferimento
-  const nFigliCol = 4;                                          // marchio, azienda, navigazione, box account
+  const nFigliCol = 5;                                          // marchio, azienda, navigazione, «Dati in Svizzera», box account
   const colGap = px(dichiarazione(gCol, 'gap'))!;
-  const totale = colPad![0] + marchio + azienda + navContenuto + account + colPad![1] + (nFigliCol - 1) * colGap;
+  const totale = colPad![0] + marchio + azienda + navContenuto + dataBox + account + colPad![1] + (nFigliCol - 1) * colGap;
   const avanzo = ALTEZZA - totale;
 
-  console.log(`  ${DIM}marchio ${marchio.toFixed(2)} · azienda ${azienda.toFixed(2)} · navigazione ${navContenuto.toFixed(2)} (${nVoci} voci da ${voce.toFixed(2)}, ${nSezioni} sezioni da ${sezione.toFixed(2)}, piede ${piede.toFixed(2)}) · account ${account.toFixed(2)} → ${totale.toFixed(2)} su ${ALTEZZA}${X}`);
+  console.log(`  ${DIM}marchio ${marchio.toFixed(2)} · azienda ${azienda.toFixed(2)} · navigazione ${navContenuto.toFixed(2)} (${nVoci} voci da ${voce.toFixed(2)}, ${nSezioni} sezioni da ${sezione.toFixed(2)}, piede ${piede.toFixed(2)}) · dati ${dataBox.toFixed(2)} · account ${account.toFixed(2)} → ${totale.toFixed(2)} su ${ALTEZZA}${X}`);
 
   check(`a ${ALTEZZA}px la colonna intera ci sta, senza scorrere`,
     totale <= ALTEZZA,
@@ -1950,7 +1972,7 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
 
   // Il conto sopra dice «ci sta». Questo dice CHE COSA ci sta: tutte e dieci le
   // voci, non otto. Sono la stessa disuguaglianza vista dalla parte del lettore.
-  const spazioNav = ALTEZZA - colPad![0] - marchio - azienda - account - colPad![1] - (nFigliCol - 1) * colGap;
+  const spazioNav = ALTEZZA - colPad![0] - marchio - azienda - dataBox - account - colPad![1] - (nFigliCol - 1) * colGap;
   const vociVisibili = Math.min(nVoci, Math.max(0, Math.floor((spazioNav - nSezioni * (sezione + navGap!) - piede - navGap!) / (voce + navGap!))));
   check(`si vedono tutte e ${nVoci} le voci senza toccare la rotella`,
     vociVisibili >= nVoci, `se ne vedrebbero ${vociVisibili}`);

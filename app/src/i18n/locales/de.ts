@@ -134,6 +134,8 @@ export const de: Dictionary = {
     openMenu: 'Navigationsmenü öffnen',
     auditLog: 'Aktivitätsprotokoll',
     closeMenu: 'Menü schliessen',
+    dataBoxTitle: 'Daten in der Schweiz',
+    dataBoxNote: 'Lokale Verarbeitung, kein automatischer Versand.',
   },
   settings: {
     preferencesDesc: 'Sprache und Erscheinungsbild gelten für Sie auf diesem Computer, nicht für das Unternehmen.',

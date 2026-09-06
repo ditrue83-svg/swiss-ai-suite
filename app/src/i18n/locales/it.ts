@@ -145,6 +145,10 @@ export const it = {
     mainNav: 'Navigazione principale',
     openMenu: 'Apri il menu di navigazione',
     closeMenu: 'Chiudi il menu',
+    // Il riquadro di fiducia in fondo alla colonna (riferimento 2026-09-06):
+    // una promessa del prodotto — i dati restano in Svizzera — non una voce.
+    dataBoxTitle: 'Dati in Svizzera',
+    dataBoxNote: 'Elaborazione locale, nessun invio automatico.',
   },
   settings: {
     preferencesDesc: 'Lingua e aspetto valgono per te su questo computer, non per l’azienda.',

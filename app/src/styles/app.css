@@ -495,13 +495,13 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .ic { width: 20px; height: 20px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .ic-sm { width: 16px; height: 16px; }
 
-/* 252px, la larghezza della colonna nel mockup «Panoramica» (2026-09-03). Erano
-   264, decisi quando il corpo era 15px e «Admin AI — Documenti» andava a capo:
-   a 13,5px di Manrope quella voce — la più lunga — misura 132,9px, e la colonna
-   da 252 ne lascia ~164 utili per l'etichetta (252 meno 32 di padding, 24 di
-   padding del pulsante, 20 di icona e 12 di gap). Restringere non disfa nulla:
-   la voce sta su una riga con 31px di margine. */
-.sidebar { width: 252px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
+/* 236px sotto i 1280, 252 da xl in su: le due larghezze della colonna nel
+   riferimento «panoramica-ai-swisse.html» (2026-09-06; era 252 fissa dal
+   2026-09-03, prima 264 quando il corpo era 15px e «Admin AI — Documenti»
+   andava a capo: a 13,5px di Manrope quella voce — la più lunga — misura
+   132,9px e sta su una riga in tutt'e due le misure). */
+.sidebar { width: 236px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-4) var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
+@media (min-width: 1280px) { .sidebar { width: 252px; } }
 /* Il padding inferiore è --sp-2 e non --sp-4: sotto il marchio comincia il
    selettore azienda, che ha già un padding suo — 16px erano due respiri
    sommati, e sopra una navigazione che scorreva valevano mezza voce. */
@@ -529,7 +529,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* Il solo blocco, dove la parola non starebbe. Quadrato per costruzione: il
    riquadro è 300×326, cioè il blocco e nient'altro. */
 .brand-block { display: block; width: 36px; height: auto; flex-shrink: 0; }
-.brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-1); }
+.brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
 /* La riga di CONTESTO della shell («Spazio di lavoro», modello Lovable
    2026-08-27) prende la forma «eyebrow» del riferimento 2026-09-06 — maiuscoletto
    spaziato, stessi token di .nav-section: è orientamento, non una frase. */
@@ -582,12 +582,15 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
 /* ⚠️ NELLA COLONNA LA VOCE È PIÙ BASSA CHE NEL DRAWER, e la differenza è
    voluta: di là si tocca con un dito, di qua si punta con un mouse. 8px sopra
-   e sotto facevano una voce da 39px; 4 ne fanno una da 31, e dieci voci
-   restituiscono 80px alla navigazione — due voci e mezzo. Il bersaglio resta
-   31×232, molto oltre i 24×24 di WCAG 2.2, che è la soglia per il puntatore;
-   quella da 44 vale per il dito, e il dito qui non arriva mai (sotto i 900px
-   la colonna non esiste, c'è il drawer, dove `.nav-btn` è rimasto com'era). */
-.sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); }
+   e sotto facevano una voce da 39px; 4 ne fanno una da 31, e dal 2026-09-06
+   il line-height scende a 1,4 (le voci stanno su una riga — l'eccezione è il
+   tedesco sillabato, che si stringe appena): voce da ~27, bersaglio 27×204,
+   sempre oltre i 24×24 di WCAG 2.2, che è la soglia per il puntatore. Quella
+   da 44 vale per il dito, e il dito qui non arriva mai (sotto i 900px la
+   colonna non esiste, c'è il drawer, dove `.nav-btn` è rimasto com'era).
+   I pixel recuperati pagano il riquadro «Dati in Svizzera»: il conto è la
+   sezione 13 di test:shell-unit. */
+.sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); line-height: 1.4; }
 /* ⚠️ LA VOCE ATTIVA È UNA PASTIGLIA CHIARA dal 2026-08-26 (restyling sul
    modello Lovable, scelta di Andrea), non più il riempimento pieno deciso il
    2026-08-17. Il vocabolario «fondo pieno = selezione, velatura =
@@ -622,6 +625,18 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    finestra che compare è una sorpresa. */
 .nav-ellipsis { margin-left: auto; color: var(--muted); font-weight: 400; }
 .nav-btn.active .nav-ellipsis { color: var(--accent-text); }
+/* Il badge numerico di voce (riferimento 2026-09-06): una pill di conteggio a
+   destra, neutra — riempimento «sunken», inchiostro graphite, cifre tabulari.
+   Non si colora MAI d'accento: un numero rosso o azzurro in ogni riga farebbe
+   gara con la voce attiva; chi vuole il perché del numero apre la pagina. */
+.nav-badge { margin-left: auto; background: var(--track); color: var(--muted); border-radius: 99px; padding: 0 var(--sp-05); min-width: 18px; text-align: center; font-size: var(--fs-meta); font-weight: 500; flex-shrink: 0; }
+/* Il riquadro «Dati in Svizzera» (riferimento 2026-09-06): fondo canvas dentro
+   la colonna chiara — un tono sotto, non una scheda sulla scheda. Sta fra la
+   navigazione e la scheda utente; il margine sotto lo dà il gap della colonna. */
+.data-box { border: 1px solid var(--line); background: var(--bg); border-radius: var(--radius-md); padding: var(--sp-2) var(--sp-3); margin: var(--sp-1) 0 0; }
+.data-box-title { display: flex; align-items: center; gap: var(--sp-05); font-size: var(--fs-label); font-weight: 600; color: var(--ink); }
+.data-box-title .ic { color: var(--green); }
+.data-box-note { margin-top: var(--sp-05); font-size: var(--fs-meta); line-height: 1.35; color: var(--muted); }
 /* ⚠️ QUI STAVANO `.nav-caret` E `.nav-subitem`, e sono state TOLTE il
    2026-08-17 — non per pulizia, ma perché erano diventate una BUGIA. Vestivano
    il gruppo «Impostazioni» che si apriva dentro la colonna: la freccia su/giù e
@@ -634,12 +649,13 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    Il guardiano che impedisce loro di tornare sta nella sezione 14 di
    `test:shell-unit`. */
 /* ⚠️ L'ETICHETTA DELLA VOCE SI SILLABA, e la barra ha una larghezza fissa
-   (252px dal 2026-09-03, prima 264) decisa dalla struttura della pagina, non
-   dal testo che contiene. In tedesco «Unternehmenseinstellungen» è una parola
-   sola di 25 caratteri senza punti di rottura naturali: a 13,5px di Manrope
-   misura 173,2px contro i ~164 utili nella colonna da 252 — esce di 9px, e
-   usciva di 7 già nel 2026 con lo stack di sistema. La sillabazione resta il
-   comportamento voluto, in tutti e due i formati che la barra ha avuto.
+   (236px, 252 da xl — dal 2026-09-06, prima 252 fissa e poi 264) decisa dalla
+   struttura della pagina, non dal testo che contiene. In tedesco
+   «Unternehmenseinstellungen» è una parola sola di 25 caratteri senza punti di
+   rottura naturali: a 13,5px di Manrope misura 173,2px contro i ~148-164 utili
+   nella colonna — esce, e usciva già nel 2026 con lo stack di sistema.
+   La sillabazione resta il comportamento voluto, in tutti e due i formati che
+   la barra ha avuto.
 
    `hyphens: auto` segue l'attributo `lang`, che `src/i18n` aggiorna a ogni cambio
    lingua: il risultato è «Unternehmenseinstel-lungen», con il trattino e su una
