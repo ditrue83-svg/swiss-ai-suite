@@ -564,8 +564,8 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
   const shellSrc = readFileSync(join(root, 'src/components/layout/AppShell.tsx'), 'utf8');
   check('sotto il marchio della shell c\'è il contesto, in maiuscoletto',
     /taglineKey="nav\.workspace" caps/.test(shellSrc));
-  check('la riga di contesto ha la forma delle etichette di gruppo, coi token',
-    /\.brand-sub\.caps\s*\{[^}]*--ls-label/.test(appCss));
+  check('la riga di contesto ha la forma «eyebrow» delle etichette di gruppo, coi token',
+    /\.brand-sub\.caps\s*\{[^}]*--ls-eyebrow/.test(appCss));
   check('la scheda utente in basso porta l\'azienda attiva, non l\'email',
     /activeCompany/.test(shellSrc)
       && /className="account-sub"/.test(shellSrc)
@@ -575,13 +575,21 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
       typeof d.workspace === 'string' && d.workspace.trim().length > 0);
   }
 
-  // L'etichetta di gruppo è orientamento, non una voce: pesa meno.
-  const sectionWeight = Number(appCss.match(/\.nav-section\s*\{[^}]*font-weight:\s*(\d+)/)?.[1] ?? NaN);
-  const btnWeight = Number(btnBlock.match(/font-weight:\s*(\d+)/)?.[1] ?? NaN);
+  // L'etichetta di gruppo è orientamento, non una voce. FINO AL 2026-09-05 la
+  // distinzione la faceva il peso (400 contro 500); dal riferimento approvato
+  // «panoramica-ai-swisse.html» (2026-09-06) la forma è «eyebrow»: 10,5px
+  // maiuscoletto spaziato 0,16em a peso 600 — più piccola della voce, non più
+  // leggera. La guardia misura quello: token eyebrow, e misura sotto la voce.
+  const sectionBlock = appCss.match(/\.nav-section\s*\{([^}]*)\}/)?.[1] ?? '';
+  const sectionSize = Number(sectionBlock.match(/--fs-eyebrow:\s*([\d.]+)px/)?.[1]
+    ?? appCss.match(/--fs-eyebrow:\s*([\d.]+)px/)?.[1] ?? NaN);
+  const btnSize = Number(btnBlock.match(/--fs-body:\s*([\d.]+)px/)?.[1]
+    ?? appCss.match(/--fs-body:\s*([\d.]+)px/)?.[1] ?? NaN);
   check(
-    'l\'etichetta di gruppo pesa meno delle voci',
-    Number.isFinite(sectionWeight) && Number.isFinite(btnWeight) && sectionWeight < btnWeight,
-    `sezione ${sectionWeight} · voce ${btnWeight}`,
+    'l\'etichetta di gruppo è una «eyebrow»: token dedicati, più piccola delle voci',
+    /var\(--fs-eyebrow\)/.test(sectionBlock) && /var\(--ls-eyebrow\)/.test(sectionBlock)
+      && Number.isFinite(sectionSize) && Number.isFinite(btnSize) && sectionSize < btnSize,
+    `sezione ${sectionSize}px · voce ${btnSize}px`,
   );
 
   // L'azienda attiva è contesto, non contenuto: niente cornice da scheda.
