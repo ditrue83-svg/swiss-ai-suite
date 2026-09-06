@@ -720,7 +720,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* ---- I tre livelli di superficie (token in :root) --------------------------
    `.card` È il livello 1: lo stesso selettore, non una copia. Due regole con
    gli stessi valori sarebbero due verità che divergono al primo ritocco. */
-.card, .surface-1 { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-6); box-shadow: var(--shadow-xs); }
+.card, .surface-1 { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-6); box-shadow: var(--shadow-sm); }
 .card + .card { margin-top: var(--sp-4); }
 /* Livello 2 — blocco piano. Nessun fondo, nessuna ombra, nessun angolo: dal
    precedente lo separa un filetto. Il primo della pila non lo porta, perché non
@@ -769,11 +769,16 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    `.grid-2` RESTA globale perché condivisa. */
 @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } .main { padding: var(--sp-6) var(--sp-4) var(--sp-12); } }
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; font-size: var(--fs-body); transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast); }
-.btn:hover { border-color: var(--line-strong); background: var(--bg); }
+/* I bottoni del mockup «Panoramica» (2026-09-03): il secondario è una voce
+   gentile — peso 500, inchiostro `--ink-soft`, pieno solo all'hover; il
+   primario porta peso 600, l'alone `--shadow-cta` e il sollevamento di un
+   pixel. La gerarchia fra i due la fanno riempimento e alone, non il peso
+   del secondario. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast), color var(--dur-fast), transform var(--dur-fast); }
+.btn:hover { border-color: var(--line-strong); background: var(--bg); color: var(--ink); }
 .btn .ic { color: var(--muted); }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-xs); }
-.btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; box-shadow: var(--shadow-cta); }
+.btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); transform: translateY(-1px); }
 .btn-primary .ic { color: var(--on-accent); }
 .btn-ghost { border-color: transparent; background: none; }
 .btn-ghost:hover { background: var(--bg); border-color: transparent; }
@@ -789,7 +794,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.badge { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-05) var(--sp-2); border-radius: 99px; font-size: var(--fs-label); font-weight: 600; }
+.badge { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-05) var(--sp-2); border-radius: 99px; font-size: var(--fs-meta); font-weight: 500; }
 .badge-alta { background: var(--red-soft); color: var(--red-dark); }
 .badge-media { background: var(--amber-soft); color: var(--amber); }
 .badge-bassa { background: var(--green-soft); color: var(--green); }
@@ -1270,7 +1275,15 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .empty-cta .ec-sub { color: var(--muted); font-size: var(--fs-meta); margin: var(--sp-1) auto var(--sp-4); max-width: var(--measure); }
 
 /* ---------- Dashboard ---------- */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
+/* DAL 2026-09-03 LA STRISCIA È UNA SCHEDA SOLA divisa da filetti (mockup
+   «Panoramica»: `gap-px bg-line`): quattro metriche della stessa striscia in
+   quattro schede separate sono quattro oggetti che competono; in una scheda
+   divisa sono UNA striscia. La griglia porta lei bordo, raggio e ombra; le
+   celle perdono i propri. Vale per ogni pagina che usa `.kpi-grid` — la
+   Panoramica come le Finanze — perché una striscia di numeri è sempre lo
+   stesso oggetto. */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+.kpi-grid > .kpi, .kpi-grid > .skel-kpi { border: none; border-radius: 0; box-shadow: none; }
 @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* ---- Gerarchia dichiarata: una metrica grande e quattro piccole ------------
@@ -1320,9 +1333,13 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* Due righe di spazio riservate all'etichetta: le traduzioni non hanno la
    stessa lunghezza — «Scadenze prossimi 7 giorni» diventa «Fristen in den
    nächsten 7 Tagen» — e quando una sola etichetta andava a capo il suo numero
-   scendeva di una riga, disallineando tutta la fila. */
-.kpi-label { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: flex-start; gap: var(--sp-2); min-height: 2.7em; line-height: 1.3; }
-.kpi-sub { margin-top: auto; }
+   scendeva di una riga, disallineando tutta la fila.
+   Dal 2026-09-03 l'etichetta è in minuscolo col peso 500 (mockup «Panoramica»):
+   maiuscoletto e spaziatura restano il mestiere di `.nav-section` e delle
+   etichette di gruppo — qui il numero sotto è già il segno più forte della
+   pagina, e un'etichetta che grida gli ruba la scena. */
+.kpi-label { font-size: var(--fs-label); font-weight: 500; color: var(--muted); display: flex; align-items: flex-start; gap: var(--sp-2); min-height: 2.7em; line-height: 1.3; }
+.kpi-sub { margin-top: auto; font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line-subtle); padding-top: var(--sp-2); }
 /* ⚠️ `tabular-nums`, e qui è lo scarto più grosso di tutta l'interfaccia.
    Dal 2026-09-03 il font è Sora (`--font-display`), che usa cifre PROPORZIONALI
    per default come Inter prima — solo peggio: il suo «1» è ancora più stretto.
@@ -1336,7 +1353,8 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    far correggere le scadenze era di 3,6px. */
 .kpi-value { font-family: var(--font-display); font-size: var(--fs-kpi); font-weight: 600; letter-spacing: var(--ls-kpi); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .kpi-value small { font-size: var(--fs-body); font-weight: 600; color: var(--muted); }
-.kpi-sub { font-size: var(--fs-meta); color: var(--muted); }
+/* La didascalia sotto il numero sta dietro un filetto (mockup «Panoramica»):
+   è nota metodologica («letti con confidenza media»), non parte del dato. */
 .kpi.accent { border-top: 3px solid var(--accent); }
 .kpi.alert { border-top: 3px solid var(--red); }
 .kpi .kpi-value.hot { color: var(--red-dark); }
@@ -1388,7 +1406,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    e site/ — il markup usa `.meter-track` nuda dentro i propri contenitori.
    Con `.meter-num` sono uscite le sue due righe da `test:shell-unit`
    (sezione «Cifre tabulari» e il confronto con il numero che conta di più). */
-.meter-track { flex: 1; background: var(--track); border-radius: 99px; height: 10px; overflow: hidden; }
+.meter-track { flex: 1; background: var(--track); border-radius: 99px; height: 6px; overflow: hidden; }
 .meter-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width var(--dur-slow) var(--ease); }
 
 /* `.chart-empty`, `.lang-card`, `.lang-title` e `.lang-chip` sono migrate il
@@ -1467,6 +1485,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   .toast.show { transform: none; }
   .skeleton { animation: none; }
   .btn:active:not(:disabled) { transform: none; }
+  .btn-primary:hover { transform: none; }
   .spinner, .spinner-lg { animation-duration: 1.6s; }
 }
 
