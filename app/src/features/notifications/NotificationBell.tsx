@@ -30,13 +30,15 @@ import type { AppNotification } from '@/types/models';
 /**
  * Il conteggio non lo tiene la campanella.
  *
- * ⚠️ Nell'AppShell la campanella è montata DUE volte — nella barra superiore
- * per il telefono e nella colonna laterale per il desktop — e il CSS ne nasconde
- * una delle due. Se ognuna tenesse il proprio conteggio, ogni caricamento di
- * pagina interrogherebbe il database due volte per la stessa risposta, e una
- * delle due richieste sarebbe per un pulsante che nessuno può premere.
+ * Dal 2026-09-06 la campanella è montata UNA volta sola — nella barra in cima,
+ * che esiste a ogni larghezza. Prima erano DUE mount (barra per il telefono,
+ * colonna per il desktop) e il CSS ne nascondeva uno: se ognuna avesse tenuto
+ * il proprio conteggio, ogni caricamento di pagina avrebbe interrogato il
+ * database due volte per la stessa risposta, e una delle due richieste sarebbe
+ * stata per un pulsante che nessuno poteva premere.
  * Lo stato vive quindi nell'AppShell, che è l'unico posto in cui c'è UNA sola
- * copia di tutto.
+ * copia di tutto — e resta lì anche a mount unico, accanto al conteggio
+ * «da verificare» che ha la stessa cadenza.
  */
 export function useUnreadCount(activeCompanyId: string | null) {
   const [count, setCount] = useState(0);

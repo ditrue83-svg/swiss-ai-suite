@@ -27,6 +27,12 @@ export const ICONS = {
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/>',
   checkCircle: '<circle cx="12" cy="12" r="8.5"/><path d="m8.4 12 2.5 2.5 4.7-5.2"/>',
   fileSearch: '<path d="M6.5 3h6l5 5v3.2"/><path d="M12.5 3v5h5"/><path d="M6.5 3A.5.5 0 0 0 6 3.5V21a.5.5 0 0 0 .5.5H12"/><circle cx="16.5" cy="16.5" r="2.7"/><path d="m18.6 18.6 1.9 1.9"/>',
+  // La lente NUDA del campo di ricerca in topbar (riferimento 2026-09-06, una
+  // Lucide). ⚠️ NON è un doppione di `fileSearch`: quella è la lente SUL
+  // documento e dice «analizza/verifica», questa è il segno universale di
+  // «cerca» e non promette un ambito. La regola «due cose diverse, due forme»
+  // qui lavora al contrario: due mestieri diversi, due lenti diverse.
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   star: '<path d="m12 4 2.35 4.76 5.25.76-3.8 3.7.9 5.23L12 16.9l-4.7 2.47.9-5.23-3.8-3.7 5.25-.76z"/>',
   alert: '<path d="M12 4.8 20.5 19.5a1 1 0 0 1-.87 1.5H4.37a1 1 0 0 1-.87-1.5Z"/><path d="M12 10v4.2M12 17.5h.01"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',

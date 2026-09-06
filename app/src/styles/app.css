@@ -446,8 +446,11 @@
 /* Le due sole regole del tema scuro che non sono un token. Stavano dentro la
    media query e restano qui, con lo stesso selettore del blocco sopra. */
 
-/* La barra laterale e il drawer usavano il bianco della card come superficie
-   propria: in scuro devono staccarsi dal fondo, non confondersi. */
+/* La barra laterale, il drawer e la barra in cima usavano il bianco della
+   card come superficie propria: in scuro devono staccarsi dal fondo, non
+   confondersi. Sulla barra in cima il fondo pieno sostituisce anche la
+   velatura (dichiarata nella regola base): qui la specificità più alta vince,
+   e su fondo scuro la trasparenza lascerebbe leggere il contenuto sotto. */
 :root[data-theme="dark"] .sidebar,
 :root[data-theme="dark"] .drawer,
 :root[data-theme="dark"] .topbar { background: var(--card); }
@@ -482,7 +485,7 @@ b, strong { font-weight: 600; }
    sono l'unico segnale che distingue un link da una parola qualsiasi. */
 a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; }
-.nav-btn:hover, .btn:hover, .brand:hover, .company-switch:hover { text-decoration: none; }
+.nav-btn:hover, .btn:hover, .brand:hover, .company-switch:hover, .topbar-attn:hover { text-decoration: none; }
 p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-note a {
   text-decoration: underline;
 }
@@ -681,28 +684,142 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    index.html e site/. Una regola per una classe che nessuno rende è un indizio
    falso per chi legge il foglio. */
 
-/* top bar mobile + drawer (nascosti su desktop) */
-.topbar { display: none; }
+/* ============================================================================
+   LA BARRA IN CIMA — dal 2026-09-06 esiste a OGNI larghezza, ed è quella del
+   riferimento «panoramica-ai-swisse.html»: il percorso della pagina, il campo
+   che apre la ricerca rapida (⌘K), la pastiglia «richiede attenzione», la
+   campanella e il caricamento di un documento. Fino a ieri era `display: none`
+   sopra i 900px e la campanella viveva nella colonna, montata DUE volte (una
+   per formato, il CSS ne nascondeva una): oggi il suo mount è UNO, qui.
+   ========================================================================== */
+
+/* La colonna destra della shell: la barra in cima + il contenuto, una sopra
+   l'altra. `min-width: 0` perché le tabelle larghe dentro `.main` non allarghino
+   la colonna oltre lo schermo — senza, un figlio flex non scende mai sotto la
+   propria larghezza intrinseca. */
+.shell-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* La barra resta appiccicata in cima mentre il contenuto scorre sotto. Dal
+   2026-09-03 è una VELATURA (mockup «Panoramica»: pannello all'85% + sfocatura):
+   `color-mix` prende l'85% della --card di qualunque tema senza bisogno di un
+   token nuovo; chi non la conosce tiene il fondo pieno dichiarato prima. In
+   tema scuro la regola dedicata in cima al foglio la riporta piena: la
+   velatura su fondo scuro lascerebbe leggere il contenuto in trasparenza. */
+.topbar {
+  display: flex; align-items: center; gap: var(--sp-3); height: var(--topbar-h);
+  padding: 0 var(--sp-4); background: var(--card); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Il PERCORSO della pagina: sezione › voce, la stessa struttura che la colonna
+   laterale mostra. La sezione è orientamento (muted), la pagina corrente ha
+   l'inchiostro pieno. Sparisce sotto i 900px: lì il «dove sono» lo porta già
+   il titolo della pagina, e lo spazio serve ai comandi. */
+.crumbs { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; font-size: var(--fs-label); color: var(--muted); white-space: nowrap; overflow: hidden; }
+.crumbs .crumb-current { color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.crumbs .ic { width: 12px; height: 12px; }
+
+/* Il CAMPO CHE APRE LA RICERCA RAPIDA. È un <button> vestito da campo: il
+   riferimento lo disegna come un input, ma ciò che fa è APRIRE un riquadro —
+   e un controllo che ne apre un altro è un pulsante, con un'etichetta per chi
+   non vede. `flex: 1` con tetto 380px e margini automatici: si prende lo
+   spazio fra il percorso e i comandi, restando centrato come nel riferimento.
+   Il «⌘K» sta nel markup e non nei dizionari: quel glifo non è nel
+   sottoinsieme dei caratteri serviti (fonts:check pesa i dizionari). */
+.topbar-search {
+  display: flex; align-items: center; gap: var(--sp-2); height: 36px; flex: 1;
+  max-width: 380px; margin: 0 auto; padding: 0 var(--sp-3);
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+  background: var(--bg); color: var(--muted); font-size: var(--fs-label);
+  text-align: left; transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.topbar-search:hover { border-color: var(--line-strong); background: var(--card); }
+.topbar-search .ic { width: 16px; height: 16px; }
+.topbar-search-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-search-kbd { font-size: var(--fs-eyebrow); font-weight: 500; padding: var(--sp-05) var(--sp-1); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); }
+
+/* La LENTE SOLA, per dove il campo non ci sta: appare sotto i 900px al posto
+   del campo e apre la stessa ricerca. Stessa scatola dell'hamburger: sono i
+   due comandi della barra su schermo stretto, si vestono uguali. */
+.topbar-search-icon { display: none; }
+
+/* Hamburger e marchio nella barra esistono SOLO su schermo stretto (regole
+   dentro la media query): sopra i 900px la navigazione è la colonna laterale
+   e il marchio sta lì — ripeterli qui sarebbe la stessa cosa due volte. */
+.hamburger { display: none; }
+.topbar .brand { display: none; }
+
+/* I comandi della barra: pastiglia, campanella, caricamento. Sotto i 900px,
+   sparito il campo, il gruppo si spinge a destra con il margine automatico
+   (è nella media query): sopra ci pensa il campo elastico. */
+.topbar-actions { display: flex; align-items: center; gap: var(--sp-2); }
+
+/* La PASTIGLIA «richiede attenzione» è un COLLEGAMENTO alla lista dei
+   documenti da verificare — la stessa destinazione e lo STESSO numero del
+   blocco della Panoramica (il conteggio condiviso della shell, vedi
+   `useAttentionCount`): un numero qui e un numero diverso là sarebbero due
+   verità. Ambra e non rossa: è lavoro ordinario che aspetta, non un allarme. */
+.topbar-attn { display: flex; align-items: center; gap: var(--sp-2); height: 36px; padding: 0 var(--sp-3); border-radius: 99px; background: var(--amber-soft); color: var(--amber); font-size: var(--fs-label); font-weight: 500; white-space: nowrap; }
+.topbar-attn .num { font-variant-numeric: tabular-nums; }
+/* Il punto che pulsa è quello del riferimento: due dischi sovrapposti, quello
+   sopra cresce e svanisce. Chi chiede meno movimento lo perde nel blocco
+   «movimento ridotto» — il disco fermo resta, il segnale no. */
+.attn-dot { position: relative; width: 6px; height: 6px; flex-shrink: 0; }
+.attn-dot > span { position: absolute; inset: 0; border-radius: 99px; background: var(--amber-fill); }
+.attn-dot > span + span { animation: attn-ping 1.6s var(--ease) infinite; }
+@keyframes attn-ping { 0% { transform: scale(1); opacity: 0.6; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
+
+/* ============================================================================
+   LA RICERCA RAPIDA (⌘K) — il velo e il pannello. Il componente sta in
+   `components/layout/CommandPalette.tsx` e spiega perché è un dialogo; qui
+   sta la sua forma. z-index 70: sopra il cassetto mobile (60) — la ricerca è
+   un compito a sé, non si somma ad altro — e sotto gli avvisi (80), che non
+   devono mai finire dietro niente.
+   ============================================================================ */
+.palette-scrim { position: fixed; inset: 0; z-index: 70; background: var(--scrim); display: flex; justify-content: center; align-items: flex-start; padding: 15vh var(--sp-4) var(--sp-4); }
+.palette-panel { width: 100%; max-width: 560px; max-height: 70vh; display: flex; flex-direction: column; overflow: hidden; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-lg); animation: fade-in var(--dur) var(--ease); }
+.palette-input-row { display: flex; align-items: center; gap: var(--sp-2); height: 52px; padding: 0 var(--sp-4); border-bottom: 1px solid var(--line); color: var(--muted); flex-shrink: 0; }
+.palette-input { flex: 1; min-width: 0; height: 100%; border: none; background: none; color: var(--ink); font-size: var(--fs-body); }
+/* L'anello del focus sta DENTRO il pannello: fuori, l'`overflow: hidden` che
+   arrotonda gli angoli lo taglierebbe. */
+.palette-input:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.palette-input::placeholder { color: var(--muted); }
+.palette-list { overflow-y: auto; padding: var(--sp-2); }
+/* L'intestazione di gruppo è l'«eyebrow» di `.nav-section`: orientamento fra
+   i risultati, non una voce. */
+.palette-group { font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: var(--ls-eyebrow); color: var(--muted); font-weight: 600; padding: var(--sp-3) var(--sp-3) var(--sp-1); }
+.palette-option { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius-md); color: var(--ink-soft); font-size: var(--fs-body); }
+.palette-option .ic { color: var(--muted); }
+/* L'opzione «corrente» (ci si arriva con le frecce o col puntatore) prende la
+   pastiglia della voce di navigazione attiva: stesso significato («è questa
+   quella che apriresti»), stessa forma. */
+.palette-option.is-active { background: var(--accent-soft); color: var(--accent-text); }
+.palette-option.is-active .ic { color: var(--accent-text); }
+.palette-option .opt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Le righe di servizio — caricamento, il guasto di UN gruppo, «nessun
+   risultato» — non sono opzioni: si leggono, non si premono. */
+.palette-note { padding: var(--sp-2) var(--sp-3); color: var(--muted); font-size: var(--fs-label); }
+.palette-foot { flex-shrink: 0; border-top: 1px solid var(--line); padding: var(--sp-2) var(--sp-4); color: var(--muted); font-size: var(--fs-meta); }
+
+/* Il cassetto e il suo velo nascono nascosti: esistono solo sotto i 900px. */
 .drawer { display: none; }
 .drawer-overlay { display: none; }
 @media (max-width: 900px) {
   body { flex-direction: column; }
   .sidebar { display: none; }
-  .topbar {
-    display: flex; align-items: center; gap: var(--sp-3); height: var(--topbar-h);
-    padding: 0 var(--sp-4); background: var(--card); border-bottom: 1px solid var(--line);
-    position: sticky; top: 0; z-index: 40;
-    /* Dal 2026-09-03 la barra è una VELATURA sul contenuto che ci scorre sotto
-       (mockup «Panoramica»: pannello all'85% + sfocatura). `color-mix` prende
-       l'85% della --card di qualunque tema senza bisogno di un token nuovo; chi
-       non la conosce tiene il fondo pieno dichiarato qui sopra. */
-    background: color-mix(in srgb, var(--card) 85%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-  .topbar .brand { padding: 0; }
+  /* Su schermo stretto la barra resta ma cambia mestiere: niente percorso né
+     campo (non c'è spazio — il «dove sono» lo dà il titolo della pagina, la
+     ricerca la apre la lente sola), tornano hamburger e marchio. */
+  .crumbs, .topbar-search { display: none; }
+  .topbar-actions { margin-left: auto; }
+  .topbar-search-icon { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
+  .topbar-search-icon:hover { background: var(--bg); }
+  .topbar .brand { display: flex; padding: 0; }
   /* Nella barra del telefono il marchio divide 375px con l'hamburger (40) e la
-     campanella (40): a 148px se ne prendeva il 39% e la barra diventava una
+     campanella (36): a 148px se ne prendeva il 39% e la barra diventava una
      insegna. 120 lasciano respiro attorno e il segno resta leggibile — sotto i
      100 la parola «Swisse» comincia a chiudersi. */
   .topbar .brand-logo { width: 120px; }
@@ -743,6 +860,15 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
      cassetto ha 343px utili, quindi la riga ci sta lo stesso. */
   .drawer .account-prefs select,
   .drawer .account-prefs .btn { min-height: 44px; }
+}
+
+/* Sotto i 600px la barra si stringe ancora: l'etichetta del caricamento cede
+   (l'icona resta, la parola la porta l'aria-label — l'azione è una e il
+   riferimento la nasconde allo stesso modo) e la pastiglia «richiede
+   attenzione» anche: il suo numero resta nel badge su «Documenti» del
+   cassetto, a un tocco di distanza. */
+@media (max-width: 600px) {
+  .topbar-cta-label, .topbar-attn { display: none; }
 }
 
 /* La cornice della tela, dal 2026-09-03 quella del mockup «Panoramica»: 24px
@@ -1574,6 +1700,10 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   .page.active { animation: none; }
+  .palette-panel { animation: none; }
+  /* Il disco che pulsa sparisce del tutto: un alone immobile sarebbe un
+     secondo punto, non un punto fermo. */
+  .attn-dot > span + span { animation: none; opacity: 0; }
   .meter-fill, .bar-fill { transition: none; }
   .drawer { transition: none; }
   .drawer-overlay { transition: none; }
@@ -1846,6 +1976,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
      niente. È la classe di difetto peggiore per questo caso d'uso, perché il
      foglio SEMBRA completo. */
   .app-shell,
+  .shell-body,
   .main,
   .ct-narrow {
     display: block !important;

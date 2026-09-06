@@ -1827,11 +1827,12 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
   const brandArt = readFileSync(join(root, 'src/components/ui/brandArt.ts'), 'utf8');
   const lingua = readFileSync(join(root, 'src/components/ui/LanguageSwitcher.tsx'), 'utf8');
   const aspetto = readFileSync(join(root, 'src/components/ui/ThemeSwitcher.tsx'), 'utf8');
-  // ⚠️ `.bell-btn` vive in `notifications.module.css` dal 2026-08-28 (issue
-  // #83): senza quel foglio la sua altezza cadrebbe sul ripiego `?? 36` più
-  // sotto, e il bilancio tornerebbe verde su una misura dedotta.
-  const notifiche = senzaCommenti(leggiCss('src/features/notifications/notifications.module.css'));
-  const css = `${app}\n${extra}\n${notifiche}`;
+  // ⚠️ La campanella NON si legge più qui: dal 2026-09-06 il suo mount è UNO
+  // e sta nella barra in cima, non più accanto al marchio — quindi la sua
+  // altezza non entra nel bilancio della colonna, e questo foglio torna a
+  // bastare. (Il suo stile resta sorvegliato dalla sezione 2, che legge
+  // `notifications.module.css`.)
+  const css = `${app}\n${extra}`;
 
   // La scala: i px dei token, così il modello parla la lingua dei fogli.
   const scala = new Map<string, number>();
@@ -1893,7 +1894,6 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
   const piedePad = px(dichiarazione(gPiede, 'padding-top'));
   const logoW = px(dichiarazione(regola('.brand-logo'), 'width'));
   const subMarg = px(dichiarazione(regola('.brand-sub'), 'margin-top'));
-  const campanella = px(dichiarazione(regola('.bell-btn'), 'height')) ?? 36;
   // Il riquadro «Dati in Svizzera» (2026-09-06): bordo, padding, una riga di
   // titolo e la nota su DUE righe — misurato a 236px, le tre lingue vanno a
   // capo una volta (it 44, de 50, fr 44 caratteri su ~34 per riga). La nota
@@ -1938,7 +1938,11 @@ section('13. Il bilancio in altezza della colonna — a 1280×720, contato');
   // numero diventerà un conto come gli altri.
 
   const logoH = logoW! * (vb![3]! / vb![2]!);
-  const marchio = marchioPad![0] + Math.max(logoH + subMarg! + riga('--fs-meta'), campanella) + marchioPad![1];
+  // L'altezza del marchio è marchio + sottotitolo e basta: fino al 2026-09-06
+  // si misurava anche contro la campanella che gli stava accanto (36px, e il
+  // ramo del logo vinceva sempre); la campanella ora vive nella barra in cima
+  // e qui non conta più.
+  const marchio = marchioPad![0] + logoH + subMarg! + riga('--fs-meta') + marchioPad![1];
   const azienda = aziendaPad![0] + riga('--fs-eyebrow') + riga('--fs-meta') * 2 + aziendaPad![1];
   // La voce di colonna ha un line-height proprio (1,4 — voci su una riga,
   // dal 2026-09-06): il conto usa quello, non l'interlinea del corpo.
@@ -2346,10 +2350,12 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   // ⚠️ È il difetto che questo controllo nasce per non far tornare: `94px` con
   // accanto un commento «30 + 64» quando i token facevano 80, e sotto i 900px
   // 68 dichiarati dove ne servivano 128 (la barra in cima non era contata).
+  // ⚠️ E DAL 2026-09-06 LA BARRA C'È A OGNI LARGHEZZA: sta in flusso sopra
+  // `.main` anche su schermo largo, quindi `--topbar-h` entra nella somma a
+  // TUTTI i punti di rottura — non contarla regalerebbe 68px che la pagina
+  // non ha, lo stesso difetto del 17 agosto col segno cambiato.
   const PUNTI: [string, string, string[]][] = [
-    ['schermo largo', gPage, ['--sp-6', '--sp-12']],
-    ['fino a 900px', regola('.as-page', bloccoMedia('900px', assistant, '--as-shell-y')),
-      ['--topbar-h', '--sp-6', '--sp-12']],
+    ['schermo largo', gPage, ['--topbar-h', '--sp-6', '--sp-12']],
     ['fino a 600px', regola('.as-page', bloccoMedia('600px', assistant, '--as-shell-y')),
       ['--topbar-h', '--sp-4', '--sp-12']],
   ];
@@ -2359,6 +2365,14 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
       usati.length === attesi.length && attesi.every((t, i) => usati[i] === t),
       `somma ${usati.length ? usati.join(' + ') : '«niente»'} — un numero scritto a mano qui invecchia in silenzio`);
   }
+  // ⚠️ A 900px NON C'È PIÙ UNA TERZA SOMMA, e l'assenza è la decisione: a
+  // quel punto di rottura `.main` cambia solo il padding ORIZZONTALE, quindi
+  // la somma giusta è già quella della regola base — riscriverla sarebbe la
+  // seconda fonte di verità che questo controllo nasce per impedire. Qui si
+  // verifica che NON torni.
+  check('a 900px nessuna copia della somma: vale la regola base',
+    bloccoMedia('900px', assistant, '--as-shell-y') === '',
+    'la barra in cima ormai c\'è a ogni larghezza: la somma di base è già quella giusta, duplicarla è un numero che invecchia in silenzio');
   // E i token dichiarati sono davvero quelli che `.main` usa là.
   const padMain900 = regola('.main', bloccoMedia('900px', app, '.main'));
   const padMain600 = regola('.main', bloccoMedia('600px', app, '.main'));
@@ -2368,8 +2382,10 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   };
   for (const [dove, corpoMain, corpoPage] of [
     ['schermo largo', gMain, gPage],
-    ['fino a 900px', padMain900, PUNTI[1]![1]],
-    ['fino a 600px', padMain600, PUNTI[2]![1]],
+    // A 900px la pagina vale la regola BASE (vedi il check qui sopra): si
+    // confronta quella col padding che `.main` ha là.
+    ['fino a 900px', padMain900, gPage],
+    ['fino a 600px', padMain600, PUNTI[1]![1]],
   ] as const) {
     const vert = vertDi(corpoMain).map((v) => /var\((--[a-z0-9-]+)\)/.exec(v)?.[1] ?? v);
     const usati = tokenDi(dichiarazione(corpoPage, '--as-shell-y')).filter((t) => t !== '--topbar-h');
@@ -2377,11 +2393,12 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
       vert.length === 2 && usati.length === 2 && vert[0] === usati[0] && vert[1] === usati[1],
       `.main ha [${vert.join(', ')}], --as-shell-y usa [${usati.join(', ')}]`);
   }
-  // La barra in cima esiste solo sotto i 900px: sopra NON va contata.
-  check('la barra in cima entra nel conto solo dove esiste (sotto i 900px)',
-    !tokenDi(dichiarazione(gPage, '--as-shell-y')).includes('--topbar-h')
-      && /@media \(max-width: 900px\)/.test(assistant),
-    'su desktop `.topbar` è `display: none`: contarla toglierebbe 68px per niente');
+  // La barra in cima è in flusso a OGNI larghezza dal 2026-09-06: va contata
+  // anche su schermo largo, non solo sotto i 900px come quando esisteva solo
+  // là — non contarla regalerebbe alla conversazione 68px che la pagina non ha.
+  check('la barra in cima entra nel conto a ogni larghezza, perché ormai c\'è ovunque',
+    tokenDi(dichiarazione(gPage, '--as-shell-y')).includes('--topbar-h'),
+    'su desktop `.topbar` non è più `display: none`: contarla qui è ciò che tiene il composer dentro lo schermo');
 
   // --- (e) IL PANNELLO DELLE FONTI: raggiungibile, e chiuso davvero ---------
   const gDrawer = regola('.as-drawer', assistant);
