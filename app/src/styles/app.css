@@ -29,9 +29,17 @@
      La sezione 12 di `test:shell-unit` pesa ogni coppia fondo/testo e non
      lascia rientrare la scrittura chiara su chiaro. */
   --accent: #37AEEF;                   /* = hsl(201, 85%, 58%) — riempimenti, filetti, stati attivi */
-  --accent-dark: hsl(201, 85%, 48%);   /* hover: qui l'accento è chiaro, quindi l'hover SCENDE      */
+  /* hover: qui l'accento è chiaro, quindi l'hover SCENDE. ⚠️ NON lo
+     «sky-deep» #0084C3 del riferimento: con il testo scuro `--on-accent`
+     farebbe 4,33:1, sotto AA — questo è il valore più fondo che resta sopra
+     (5,73:1). Il commento sta SOPRA la dichiarazione e non in coda alla
+     riga: un commento in coda che va a capo perde la chiusura nell'estrattore
+     della vetrina (`site/sync-tokens.mjs`), che della riga di dichiarazione
+     copia solo la prima riga — e il suo controllo di integrità ferma la
+     pubblicazione. */
+  --accent-dark: hsl(201, 85%, 48%);
   --accent-text: hsl(201, 85%, 27%);   /* testo e link: 7,92:1 su bianco                            */
-  --accent-soft: hsl(201, 65%, 95%);   /* fondi tenui, chip informativi                             */
+  --accent-soft: #E8F6FE;              /* «sky-soft» del riferimento            */
   --accent-line: hsl(201, 58%, 82%);   /* bordo di ciò che sta su --accent-soft                     */
 
   /* --- Il colore del MARCHIO — dal 2026-08-26 è il colore dell'azione --------
@@ -55,18 +63,25 @@
   --brand-word: #37AEEF;               /* la parola accanto: segue il tema      */
 
   /* --- Neutri --------------------------------------------------------------
-     Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti. */
-  --ink: hsl(213, 40%, 13%);           /* testo principale                      */
+     Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti.
+     DAL 2026-09-06 i valori sono quelli oklch del riferimento approvato
+     `panoramica-ai-swisse.html` (qui in sRGB, che è come il browser li
+     rasterizza: canvas 0.988/0.003/240, ink 0.235/0.021/249, graphite
+     0.468/0.022/249, line 0.923/0.007/245, line-strong 0.878/0.01/245).
+     Gerarchia invariata: `--ink-soft` resta più scuro del graphite dei
+     metadati — il riferimento ha due soli grigi, l'app ne ha tre e il
+     secondario non poteva scendere al livello del «muted». */
+  --ink: #161F28;                      /* testo principale                      */
   --on-ink: #ffffff;                   /* testo sopra il fondo --ink (toast)    */
   --ink-soft: hsl(213, 22%, 30%);      /* testo secondario                      */
-  --muted: hsl(213, 12%, 42%);         /* metadati, didascalie                  */
-  --line: hsl(210, 20%, 90%);
-  --line-strong: hsl(210, 20%, 78%);   /* bordi marcati: hover, stati attivi */
+  --muted: #515C66;                    /* metadati, didascalie (graphite)       */
+  --line: #E2E6EA;
+  --line-strong: #D2D8DD;              /* bordi marcati: hover, stati attivi */
   /* Separatore più tenue di --line, per righe DENTRO una scheda. Il grigio al
      50% con un'alfa bassa regge su chiaro e scuro senza bisogno di un valore
      per tema: per questo NON è ridefinito nel blocco scuro, ed è voluto. */
   --line-subtle: rgba(127, 127, 127, 0.15);
-  --bg: hsl(210, 20%, 98%);
+  --bg: #F9FBFD;                       /* canvas del riferimento                */
   --card: #ffffff;
   /* ⚠️ SCURO, e non è un refuso: dal 2026-08-17 `--accent` è l'azzurro chiaro
      #37AEEF, e il bianco sopra farebbe 2,48:1. Questo inchiostro ne fa 7,14.
@@ -82,8 +97,8 @@
      secondo `--surface-2` della stessa palette — lo stesso guasto di --amber
      usato sia per scrivere sia per riempire, che ha prodotto il marrone della
      barra «Media» che nessuno aveva scelto. */
-  --fill-subtle: hsl(210, 20%, 94%);
-  --track: hsl(210, 20%, 92%);         /* fondo delle barre di avanzamento  */
+  --fill-subtle: #F1F5F8;              /* «secondary» del riferimento: hover    */
+  --track: #E6EBEF;                    /* «sunken»: fondo barre di avanzamento  */
   --highlight: hsl(48, 100%, 78%);     /* evidenziazione della citazione     */
   --on-highlight: hsl(45, 60%, 12%);   /* testo sopra l'evidenziazione       */
 
@@ -111,23 +126,32 @@
      successiva. `--content-max` è la colonna che contiene una pagina di
      lettura. Sono due cose diverse: tabelle ed elenchi possono superare la
      prima (sono strutture, non prosa) ma non la seconda. */
-  /* ⚠️ 52ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
-     ZERO, e in Inter lo zero è largo 9,46px a 15px mentre il carattere medio di
-     una frase italiana vera ne misura 6,83. Scrivere `70ch` per «settanta
-     caratteri» dà una riga da 94 caratteri — trentaquattro in più di quelli
-     voluti, cioè esattamente il difetto che si stava correggendo. 52ch = 492px
-     = ~72 caratteri del testo reale, contati sul riassunto di un'analisi con il
-     font servito. Il conteggio dipende dal FONT, non dalla lingua: vale uguale
-     in de e fr. Se un giorno cambia il carattere, questo numero va rimisurato,
-     non tradotto. */
-  --measure: 52ch;
+  /* ⚠️ 56ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
+     ZERO, e in Manrope lo zero è largo 7,80px a 13,5px mentre il carattere
+     medio di una frase italiana vera ne misura 6,26. Scrivere `70ch` per
+     «settanta caratteri» darebbe una riga da 87 caratteri — diciassette in più
+     di quelli voluti, cioè esattamente il difetto che si stava correggendo.
+     56ch = 437px = ~70 caratteri del testo reale, contati sul riassunto di
+     un'analisi con il font servito. Rimisurato il 2026-09-03 nel passaggio da
+     Inter a Manrope (prima era 52ch, per lo zero largo 9,46px di Inter a 15px).
+     Il conteggio dipende dal FONT, non dalla lingua: vale uguale in de e fr.
+     Se un giorno cambia il carattere, questo numero va rimisurato, non
+     tradotto. */
+  --measure: 56ch;
   --content-max: 880px;
 
   /* --- Colori di stato -----------------------------------------------------
      NON sono decorazione: dicono quanto manca a una scadenza e se un'azione è
      stata svolta. Restano separati dal colore d'azione, così un pulsante non
-     compete mai con un avviso. (Valori invariati in questo passo: vanno
-     ritoccati insieme ai componenti che li usano, non prima.) */
+     compete mai con un avviso. DAL 2026-09-06 i valori chiari sono quelli del
+     riferimento approvato `panoramica-ai-swisse.html` (azzurro = info, ambra =
+     azione a breve, rosso = urgente, verde = verificato), in sRGB:
+       warn    #E8941B · warn-soft  #FFF1DA · warn-ink   #925303 (5,45:1 su soft)
+       danger  #DC3336 · danger-soft #FFEBEA · danger-ink #B31C21 (5,90:1)
+       ok      #419E6E · ok-soft    #E2F9EC · ok-ink     #1C6844 (6,10:1)
+     Gli inchiostri passano AA anche sul bianco (6,07 / 6,76 / 6,75): un tono
+     solo regge pastiglia e superficie piena. I tre «fill» sono i colori che si
+     RICONOSCONO (barre, pallini), i tre «ink» quelli che portano il testo. */
   /* ⚠️ I DUE ROSSI FANNO DUE MESTIERI, e confonderli costa una soglia.
      `--red` è il rosso che si RICONOSCE: barre, pallini, bordi, riempimenti —
      posti dove non c'è testo sopra, e dove serve che salti all'occhio.
@@ -153,21 +177,20 @@
      nei tre temi. Un colore che deve essere leggibile e un colore che deve
      essere riconoscibile non sono lo stesso colore — la stessa lezione che
      ambra e verde avevano già insegnato con il marrone della barra «Media». */
-  --red: hsl(0, 84%, 60%);
-  --red-soft: hsl(0, 84%, 96%);
-  --red-line: hsl(0, 84%, 86%);
-  --red-hover: hsl(0, 84%, 92%);
-  --red-dark: hsl(0, 72%, 45%);
-  /* Ambra e verde scuriti fino al minimo necessario per il contrasto AA sui
-     rispettivi fondi tenui: prima erano 3.31:1 e 4.00:1, cioè sotto la soglia
-     proprio sulle pastiglie che dicono quanto manca a una scadenza.
-     Il rosso resta com'è: lo usiamo per barre, bordi e riempimenti, dove il
-     contrasto del testo non c'entra. Per il testo esiste --red-dark. */
-  --green: hsl(151, 48%, 32%);      /* 4.69:1 su --green-soft */
-  --green-soft: #e6f4ec;
+  --red: #DC3336;
+  --red-soft: #FFEBEA;
+  --red-line: hsl(0, 71%, 86%);
+  --red-hover: hsl(0, 71%, 93%);
+  --red-dark: #B31C21;
+  /* Gli inchiostri di stato (il testo sulle pastiglie) e i loro fondi tenui,
+     dal riferimento del 2026-09-06: 6,10:1 il verde, 5,45:1 l'ambra sui
+     rispettivi «soft» — sopra AA senza scuriture oltre misura, e sopra AA
+     anche sul bianco pieno (6,75 e 6,07). */
+  --green: #1C6844;
+  --green-soft: #E2F9EC;
   --green-line: #c6e6d2;
-  --amber: hsl(35, 78%, 34%);       /* 4.61:1 su --amber-soft */
-  --amber-soft: #fdf3e0;
+  --amber: #925303;
+  --amber-soft: #FFF1DA;
   --amber-line: #ecd9ae;
   /* Riempimenti: barre, pallini, superfici piene. Sono l'altra metà della
      coppia che il rosso ha già (--red riempie, --red-dark scrive). Ambra e
@@ -175,25 +198,51 @@
      riempimento: da lì il marrone della barra «Media», che nessuno aveva
      scelto. Un colore che deve essere leggibile e un colore che deve essere
      riconoscibile non sono lo stesso colore. */
-  --amber-fill: hsl(35, 92%, 50%);
-  --green-fill: hsl(151, 52%, 40%);
+  --amber-fill: #E8941B;
+  --green-fill: #419E6E;
 
   /* --- Scala tipografica ---------------------------------------------------
-     Sei gradini, uno per compito. Se un testo non rientra in nessuno, il
-     problema è la gerarchia, non la scala. La base sale da 13px a 15px: chi
-     usa l'app legge importi e scadenze, spesso oltre i 45 anni e di fretta. */
-  --fs-label: 12px;    /* etichette maiuscole, con letter-spacing */
-  --fs-meta: 13px;     /* metadati e didascalie                   */
-  --fs-body: 15px;     /* corpo del testo                          */
-  --fs-strong: 17px;   /* titoli di scheda e di riga               */
-  --fs-h2: 22px;       /* titoli di sezione                        */
-  --fs-h1: 30px;       /* titoli di pagina                         */
+     Sei gradini per il testo più uno per i NUMERI GRANDI, uno per compito. Se
+     un testo non rientra in nessuno, il problema è la gerarchia, non la scala.
+     ⚠️ DAL 2026-09-03 LA BASE SCENDE da 15px a 13,5px — inversione della scelta
+     del 2026-08-10, che l'aveva alzata per «chi legge importi e scadenze».
+     I valori non sono aggiustati a occhio: sono contati sulle classi del mockup
+     «Panoramica» approvato da Andrea (corpo 13,5 · meta 11,5 · label 12,5 ·
+     titoli di scheda 14,5 · di sezione 16,5 · di pagina 17 · KPI 29 con
+     tracking −0,03em). La gerarchia cambia mestiere: non sono più i TITOLI a
+     portare il peso della pagina — il più grande è 17px — ma i NUMERI, in Sora
+     29px a cifre tabulari. Il corpo scende, il dato che conta sale: è la
+     densità da cruscotto del mockup, non un risparmio di pixel. E il corpo È
+     davvero più piccolo: l'occhio di Manrope (0,540em) è praticamente quello
+     di Inter (0,546em), quindi non c'è un guadagno di disegno a compensare —
+     la controprova che 13,5px basti è la verifica a schermo, non una misura
+     di font. */
+  /* etichette di gruppo maiuscole («eyebrow»): il gradino più piccolo — a
+     questa misura il maiuscoletto spaziato (0,16em) si legge come segno di
+     sezione, non come testo; dal riferimento 2026-09-06. In colonna e non in
+     coda alla riga, per la stessa ragione scritta sopra `--accent-dark`:
+     l'estrattore della vetrina non segue i commenti in coda che vanno a
+     capo. */
+  --fs-eyebrow: 10.5px;
+  --fs-label: 12.5px;  /* etichette maiuscole, con letter-spacing */
+  --fs-meta: 11.5px;   /* metadati e didascalie                   */
+  --fs-body: 13.5px;   /* corpo del testo                          */
+  --fs-strong: 14.5px; /* titoli di scheda e di riga               */
+  --fs-h2: 16.5px;     /* titoli di sezione                        */
+  --fs-h1: 17px;       /* titoli di pagina                         */
+  /* Il gradino FUORI scala: i numeri della Panoramica. Non è un settimo
+     titolo — è l'unico testo pensato per essere letto da lontano, e l'unico
+     che chiude il tracking fino a −0,03em. Sta fuori dai sei gradini perché
+     non è un compito del TESTO: è il dato che la pagina serve. */
+  --fs-kpi: 29px;
 
   --lh-tight: 1.25;    /* titoli                                   */
   --lh: 1.55;          /* testo corrente                           */
 
+  --ls-eyebrow: 0.16em; /* la spaziatura larga delle «eyebrow» del riferimento */
   --ls-label: 0.08em;  /* solo per le etichette maiuscole          */
   --ls-title: -0.01em; /* i titoli grandi respirano meglio stretti */
+  --ls-kpi: -0.03em;   /* il tracking chiuso dei KPI del mockup    */
 
   /* --- Ritmo delle spaziature ----------------------------------------------
      Multipli di 4 per il ritmo FRA gli elementi. --sp-05 è il mezzo gradino
@@ -205,14 +254,31 @@
   --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
   --sp-6: 24px;  --sp-8: 32px;  --sp-12: 48px;
 
-  --radius: 12px;
-  --radius-sm: 8px;
+  /* Raggi dal riferimento «Panoramica» (2026-09-06): la base è 0.625rem = 10px
+     (`rounded-lg`: pannelli, bottoni, campi); 8px è il gradino delle voci di
+     navigazione (`rounded-md`); 6 quello dei piccoli contenitori (`rounded-sm`).
+     Erano 12 e 8 prima del riferimento. */
+  --radius: 10px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
 
-  /* ombre molto leggere (look premium/fintech, non glow) */
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.12);  /* pannelli sospesi (popover) */
+  /* ombre molto leggere (look premium/fintech, non glow) — «shadow-panel» del
+     riferimento, tinta oklch(0.2 0.03 240) = rgb(8,24,34): un filo a contatto
+     e una sola ombra lunga e stretta (−18px di spread) che non sporca i lati. */
+  --shadow-xs: 0 1px 2px rgba(8, 24, 34, 0.05);
+  --shadow-sm: 0 1px 2px rgba(8, 24, 34, 0.04), 0 8px 24px -18px rgba(8, 24, 34, 0.14);
+  --shadow-panel-hover: 0 1px 2px rgba(8, 24, 34, 0.05), 0 14px 32px -20px rgba(8, 24, 34, 0.22);
+  --shadow-md: 0 4px 14px rgba(8, 24, 34, 0.08);
+  --shadow-lg: 0 10px 30px rgba(8, 24, 34, 0.12);  /* pannelli sospesi (popover) */
+  /* L'UNICA ombra colorata, dal mockup «Panoramica» (2026-09-03, geometria
+     aggiornata al riferimento del 2026-09-06): l'alone azzurro sotto il gesto
+     primario — nel mockup lo portano il blocco della sigla e il bottone della
+     topbar. Tinta #37AEEF (lo «sky» del riferimento è #44B3ED, ma il marchio
+     resta pinnato a #37AEEF: la tinta segue il marchio): si vede sul canvas
+     chiaro senza diventare il «glow» che la riga sopra vieta. La usano il
+     marchio e `.btn-primary`, e basta: un alone che distingue tutto non
+     distingue niente. */
+  --shadow-cta: 0 1px 2px rgba(55, 174, 239, 0.24), 0 8px 18px -10px rgba(55, 174, 239, 0.4);
 
   /* --- Movimento -------------------------------------------------------------
      Nominati il 2026-08-27: prima ogni transizione portava la sua durata a
@@ -242,7 +308,11 @@
      vede sulla superficie su cui compare più spesso. Questo azzurro, dello
      stesso tono ma più fondo, ne fa 3,94 su `--card` e 3,77 su `--bg`. */
   --focus: hsl(201, 88%, 42%);         /* anello del focus da tastiera */
-  --topbar-h: 56px;
+  /* 68px: l'altezza della barra in cima nel mockup «Panoramica» (2026-09-03;
+     era 56). La dichiara un token perché non è solo CSS: `assistant.module.css`
+     la somma in `--as-shell-y` per tenere il composer dentro lo schermo, e la
+     sezione 15 di `test:shell-unit` controlla che il conto resti allineato. */
+  --topbar-h: 68px;
 
   /* ⚠️ IL TEMA DEI CONTROLLI DEL SISTEMA, che i token non possono vestire.
      Barra di scorrimento, menu a tendina di una `select`, calendario di un
@@ -253,12 +323,14 @@
      una scheda bianca. Si dichiara UNA sola parola per tema, non `light dark`:
      dichiararne due significherebbe di nuovo «decida il sistema». */
   color-scheme: light;
-  /* Inter è dichiarato in `fonts.css` e servito da noi. La coda resta quella di
-     prima e non è decorativa: è ciò che si legge nel secondo che precede il
-     caricamento (`font-display: swap`) e ciò che disegna i caratteri che il
-     sottoinsieme non contiene — un nome di azienda in cirillico, un allegato
-     con un ideogramma. */
-  font-family: 'Inter', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Dal 2026-09-03 le famiglie sono DUE, dichiarate in `fonts.css` e servite da
+     noi (restyle sul mockup «Panoramica»): Manrope per il corpo del testo, Sora
+     per titoli e numeri grandi — il token `--font-display`. La coda di riserva
+     non è decorativa: è ciò che si legge nel secondo che precede il caricamento
+     (`font-display: swap`) e ciò che disegna i caratteri che i sottoinsiemi non
+     contengono — un nome di azienda in cirillico, un allegato con un ideogramma. */
+  --font-display: 'Sora', 'Manrope', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: 'Manrope', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 /* ============================================================================
    Tema scuro — dal 2026-08-16 una SCELTA, non più il riflesso del sistema.
@@ -358,10 +430,14 @@
     --on-highlight: hsl(45, 80%, 8%);
 
     /* Su fondo scuro un'ombra chiara non esiste: la profondità la dà il bordo,
-       quindi le ombre restano appena accennate e più profonde. */
+       quindi le ombre restano appena accennate e più profonde. L'alone azzurro
+       del gesto primario si abbassa al 35%: sul nero un 45% diventerebbe il
+       «glow» che la versione chiara dichiara vietato. */
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-panel-hover: 0 1px 2px rgba(0, 0, 0, 0.45), 0 14px 32px -20px rgba(0, 0, 0, 0.55);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --shadow-cta: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px -4px rgba(55, 174, 239, 0.35);
 
     --focus: hsl(201, 80%, 66%);
 
@@ -378,8 +454,11 @@
 /* Le due sole regole del tema scuro che non sono un token. Stavano dentro la
    media query e restano qui, con lo stesso selettore del blocco sopra. */
 
-/* La barra laterale e il drawer usavano il bianco della card come superficie
-   propria: in scuro devono staccarsi dal fondo, non confondersi. */
+/* La barra laterale, il drawer e la barra in cima usavano il bianco della
+   card come superficie propria: in scuro devono staccarsi dal fondo, non
+   confondersi. Sulla barra in cima il fondo pieno sostituisce anche la
+   velatura (dichiarata nella regola base): qui la specificità più alta vince,
+   e su fondo scuro la trasparenza lascerebbe leggere il contenuto sotto. */
 :root[data-theme="dark"] .sidebar,
 :root[data-theme="dark"] .drawer,
 :root[data-theme="dark"] .topbar { background: var(--card); }
@@ -414,7 +493,7 @@ b, strong { font-weight: 600; }
    sono l'unico segnale che distingue un link da una parola qualsiasi. */
 a { color: var(--accent-text); text-decoration: none; }
 a:hover { text-decoration: underline; }
-.nav-btn:hover, .btn:hover, .brand:hover, .company-switch:hover { text-decoration: none; }
+.nav-btn:hover, .btn:hover, .brand:hover, .company-switch:hover, .topbar-attn:hover { text-decoration: none; }
 p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-note a {
   text-decoration: underline;
 }
@@ -427,10 +506,13 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .ic { width: 20px; height: 20px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .ic-sm { width: 16px; height: 16px; }
 
-/* 264px e non 240: con il corpo a 15px la voce "Admin AI — Documenti" andava
-   a capo. Allargare la colonna costa nulla; rimpicciolire la navigazione
-   principale avrebbe disfatto il passo appena compiuto. */
-.sidebar { width: 264px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
+/* 236px sotto i 1280, 252 da xl in su: le due larghezze della colonna nel
+   riferimento «panoramica-ai-swisse.html» (2026-09-06; era 252 fissa dal
+   2026-09-03, prima 264 quando il corpo era 15px e «Admin AI — Documenti»
+   andava a capo: a 13,5px di Manrope quella voce — la più lunga — misura
+   132,9px e sta su una riga in tutt'e due le misure). */
+.sidebar { width: 236px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-4) var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
+@media (min-width: 1280px) { .sidebar { width: 252px; } }
 /* Il padding inferiore è --sp-2 e non --sp-4: sotto il marchio comincia il
    selettore azienda, che ha già un padding suo — 16px erano due respiri
    sommati, e sopra una navigazione che scorreva valevano mezza voce. */
@@ -458,17 +540,28 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* Il solo blocco, dove la parola non starebbe. Quadrato per costruzione: il
    riquadro è 300×326, cioè il blocco e nient'altro. */
 .brand-block { display: block; width: 36px; height: auto; flex-shrink: 0; }
-.brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-1); }
+.brand-sub { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-05); }
 /* La riga di CONTESTO della shell («Spazio di lavoro», modello Lovable
-   2026-08-27) prende la forma delle etichette di gruppo — maiuscoletto
+   2026-08-27) prende la forma «eyebrow» del riferimento 2026-09-06 — maiuscoletto
    spaziato, stessi token di .nav-section: è orientamento, non una frase. */
-.brand-sub.caps { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); }
+.brand-sub.caps { font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: var(--ls-eyebrow); font-weight: 600; }
 /* flex:1 + overflow: la navigazione prende lo spazio fra il selettore azienda
    e il box account, e quando non basta scorre LEI — così «Impostazioni» in
    fondo e il box account restano raggiungibili anche su uno schermo basso,
    invece di uscire dalla pagina. min-height: 0 è ciò che permette a un figlio
-   flex di diventare più basso del proprio contenuto. */
-.nav { display: flex; flex-direction: column; gap: var(--sp-05); flex: 1; min-height: 0; overflow-y: auto; }
+   flex di diventare più basso del proprio contenuto.
+   ⚠️ LA COPPIA padding-left/margin-left, e perché esiste (2026-09-06, prima
+   verifica visiva col browser: la barretta azzurra della voce attiva NON SI
+   VEDEVA). `overflow-y: auto` calcola `overflow-x` ad `auto`, e la scatola
+   taglia tutto ciò che esce dal proprio padding box: la barretta di
+   `.nav-btn.active::before`, a `left: calc(-1 * var(--sp-4))` dalla voce,
+   finiva 16px a sinistra della scatola — ritagliata, da sempre. La coppia
+   allunga la scatola della navigazione di 16px dentro il padding della
+   colonna (il margine negativo) e ne restituisce 16 al contenuto (il
+   padding): le voci restano al pixel dov'erano, ma la barretta a -16 torna
+   DENTRO il padding box e si vede. Stessa cosa nel cassetto, che divide
+   questa regola e ha lo stesso padding. */
+.nav { display: flex; flex-direction: column; gap: var(--sp-05); flex: 1; min-height: 0; overflow-y: auto; padding-left: var(--sp-4); margin-left: calc(-1 * var(--sp-4)); }
 /* ⚠️ LA BARRA DI SCORRIMENTO DELLA NAVIGAZIONE, e prima la misura che spiega
    perché esiste. Misurata il 2026-08-14 a 1280×720: la colonna chiede 910px in
    tutto — marchio 89 + selettore azienda 75 + navigazione 550 + box account 158
@@ -498,20 +591,28 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   background: var(--line-strong); border-radius: 99px;
 }
 .nav::-webkit-scrollbar-thumb:hover, .drawer::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-/* L'etichetta di gruppo è ORIENTAMENTO, non una voce: pesa meno delle voci
-   (400 contro 500 — prima era 600, e PIATTAFORMA gridava quanto le sue voci).
-   La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso. */
-.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-3) var(--sp-3) var(--sp-1); }
-.nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background var(--dur-fast), color var(--dur-fast); }
+/* L'etichetta di gruppo è ORIENTAMENTO, non una voce. DAL 2026-09-06 prende la
+   forma «eyebrow» del riferimento: 10,5px maiuscoletto spaziato 0,16em, peso
+   600 (a questa misura il peso tiene insieme le lettere distanziate — a 400
+   si sgranava, visto a schermo sul primo restyle). Il respiro resta quello del
+   mockup «Panoramica» (2026-09-03): 24px sopra — il confine fra due gruppi lo
+   dà lo spazio, non un filetto; la prima della pila torna a 8, perché sopra
+   c'è già il selettore azienda. */
+.nav-section { font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: var(--ls-eyebrow); color: var(--muted); font-weight: 600; padding: var(--sp-6) var(--sp-3) var(--sp-2); }
+.nav > .nav-section:first-child { padding-top: var(--sp-2); }
+.nav-btn { position: relative; display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius-md); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background var(--dur-fast), color var(--dur-fast); }
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
 /* ⚠️ NELLA COLONNA LA VOCE È PIÙ BASSA CHE NEL DRAWER, e la differenza è
    voluta: di là si tocca con un dito, di qua si punta con un mouse. 8px sopra
-   e sotto facevano una voce da 39px; 4 ne fanno una da 31, e dieci voci
-   restituiscono 80px alla navigazione — due voci e mezzo. Il bersaglio resta
-   31×232, molto oltre i 24×24 di WCAG 2.2, che è la soglia per il puntatore;
-   quella da 44 vale per il dito, e il dito qui non arriva mai (sotto i 900px
-   la colonna non esiste, c'è il drawer, dove `.nav-btn` è rimasto com'era). */
-.sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); }
+   e sotto facevano una voce da 39px; 4 ne fanno una da 31, e dal 2026-09-06
+   il line-height scende a 1,4 (le voci stanno su una riga — l'eccezione è il
+   tedesco sillabato, che si stringe appena): voce da ~27, bersaglio 27×204,
+   sempre oltre i 24×24 di WCAG 2.2, che è la soglia per il puntatore. Quella
+   da 44 vale per il dito, e il dito qui non arriva mai (sotto i 900px la
+   colonna non esiste, c'è il drawer, dove `.nav-btn` è rimasto com'era).
+   I pixel recuperati pagano il riquadro «Dati in Svizzera»: il conto è la
+   sezione 13 di test:shell-unit. */
+.sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); line-height: 1.4; }
 /* ⚠️ LA VOCE ATTIVA È UNA PASTIGLIA CHIARA dal 2026-08-26 (restyling sul
    modello Lovable, scelta di Andrea), non più il riempimento pieno deciso il
    2026-08-17. Il vocabolario «fondo pieno = selezione, velatura =
@@ -519,9 +620,22 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    laterale è l'eccezione registrata, perché nella navigazione l'azzurro pieno
    a tutta larghezza pesava più del contenuto che annunciava. La pastiglia è
    la coppia ammessa `--accent-soft`/`--accent-text`, angoli curvi su tutti i
-   lati: il filetto verticale e gli angoli squadrati se ne vanno con il fondo
-   pieno — una pastiglia non ha un lato di revisione. */
+   lati. */
 .nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+/* ⚠️ E DAL 2026-09-03 LA PASTIGLIA RIPRENDE UN SEGNO AL BORDO — la barretta
+   del mockup «Panoramica», non il filetto tolto il 26.08. Le differenze sono
+   la misura e la posizione: 3px arrotondati a destra, alti quanto il testo
+   (6px di respiro sopra e sotto), a FILO DEL BORDO SINISTRO della colonna —
+   staccata dalla pastiglia, non attaccata a essa. Il filetto di agosto era un
+   lato della voce e moriva con gli angoli squadrati; questa è un marcatore
+   sulla rotaia della navigazione, ed è un pseudo-elemento proprio perché non
+   è contenuto. `--sp-4` è il padding della colonna (e del cassetto): il
+   negativo porta la barretta sul bordo senza conoscerne la larghezza.
+   ⚠️ IL NEGATIVO DA SOLO NON BASTAVA: scritto il 03.09 e MAI visto a schermo
+   fino al 06.09 — `overflow-y: auto` sulla `.nav` tagliava la barretta fuori
+   dal padding box. La coppia padding/margine che la rende visibile è sulla
+   `.nav`, con il perché. */
+.nav-btn.active::before { content: ''; position: absolute; left: calc(-1 * var(--sp-4)); top: 6px; bottom: 6px; width: 3px; border-radius: 0 99px 99px 0; background: var(--accent); }
 /* Il piede della barra: separato da un filetto orizzontale e spinto in fondo
    (margin-top: auto dentro il flex della .nav) — le impostazioni non sono
    lavoro quotidiano e non stanno in mezzo.
@@ -537,6 +651,18 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    finestra che compare è una sorpresa. */
 .nav-ellipsis { margin-left: auto; color: var(--muted); font-weight: 400; }
 .nav-btn.active .nav-ellipsis { color: var(--accent-text); }
+/* Il badge numerico di voce (riferimento 2026-09-06): una pill di conteggio a
+   destra, neutra — riempimento «sunken», inchiostro graphite, cifre tabulari.
+   Non si colora MAI d'accento: un numero rosso o azzurro in ogni riga farebbe
+   gara con la voce attiva; chi vuole il perché del numero apre la pagina. */
+.nav-badge { margin-left: auto; background: var(--track); color: var(--muted); border-radius: 99px; padding: 0 var(--sp-05); min-width: 18px; text-align: center; font-size: var(--fs-meta); font-weight: 500; flex-shrink: 0; }
+/* Il riquadro «Dati in Svizzera» (riferimento 2026-09-06): fondo canvas dentro
+   la colonna chiara — un tono sotto, non una scheda sulla scheda. Sta fra la
+   navigazione e la scheda utente; il margine sotto lo dà il gap della colonna. */
+.data-box { border: 1px solid var(--line); background: var(--bg); border-radius: var(--radius-md); padding: var(--sp-2) var(--sp-3); margin: var(--sp-1) 0 0; }
+.data-box-title { display: flex; align-items: center; gap: var(--sp-05); font-size: var(--fs-label); font-weight: 600; color: var(--ink); }
+.data-box-title .ic { color: var(--green); }
+.data-box-note { margin-top: var(--sp-05); font-size: var(--fs-meta); line-height: 1.35; color: var(--muted); }
 /* ⚠️ QUI STAVANO `.nav-caret` E `.nav-subitem`, e sono state TOLTE il
    2026-08-17 — non per pulizia, ma perché erano diventate una BUGIA. Vestivano
    il gruppo «Impostazioni» che si apriva dentro la colonna: la freccia su/giù e
@@ -548,13 +674,14 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    marcatori sul bundle SERVITO, non una rilettura del codice.
    Il guardiano che impedisce loro di tornare sta nella sezione 14 di
    `test:shell-unit`. */
-/* ⚠️ L'ETICHETTA DELLA VOCE SI SILLABA, e la barra ha una larghezza fissa (264px)
-   che NON si tocca: è la struttura della pagina, non un contenitore di testo.
-   In tedesco «Unternehmenseinstellungen» è una parola sola di 25 caratteri senza
-   punti di rottura naturali: usciva dal proprio pulsante di 7px già con lo stack
-   di sistema, e con Inter — più largo di circa il 6% — di 15px, arrivando a 2px
-   dal bordo della barra invece dei 10 di prima. Misurato sull'app in produzione
-   il 2026-08-11, non dedotto.
+/* ⚠️ L'ETICHETTA DELLA VOCE SI SILLABA, e la barra ha una larghezza fissa
+   (236px, 252 da xl — dal 2026-09-06, prima 252 fissa e poi 264) decisa dalla
+   struttura della pagina, non dal testo che contiene. In tedesco
+   «Unternehmenseinstellungen» è una parola sola di 25 caratteri senza punti di
+   rottura naturali: a 13,5px di Manrope misura 173,2px contro i ~148-164 utili
+   nella colonna — esce, e usciva già nel 2026 con lo stack di sistema.
+   La sillabazione resta il comportamento voluto, in tutti e due i formati che
+   la barra ha avuto.
 
    `hyphens: auto` segue l'attributo `lang`, che `src/i18n` aggiorna a ogni cambio
    lingua: il risultato è «Unternehmenseinstel-lungen», con il trattino e su una
@@ -563,7 +690,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 
    ⚠️ La stessa dichiarazione è stata PROVATA E SCARTATA nelle celle di tabella
    (vedi docs/design-system.md § Il carattere): in una colonna da 66px spezza una
-   sillaba per riga e peggiora le cose. Qui la larghezza utile è ~179px e produce
+   sillaba per riga e peggiora le cose. Qui la larghezza utile è ~164px e produce
    UNA rottura pulita. La differenza è la misura, non l'opinione: la stessa
    proprietà è giusta di là e sbagliata di qua. */
 .nav-btn > span:last-child { hyphens: auto; }
@@ -580,21 +707,144 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    index.html e site/. Una regola per una classe che nessuno rende è un indizio
    falso per chi legge il foglio. */
 
-/* top bar mobile + drawer (nascosti su desktop) */
-.topbar { display: none; }
+/* ============================================================================
+   LA BARRA IN CIMA — dal 2026-09-06 esiste a OGNI larghezza, ed è quella del
+   riferimento «panoramica-ai-swisse.html»: il percorso della pagina, il campo
+   che apre la ricerca rapida (⌘K), la pastiglia «richiede attenzione», la
+   campanella e il caricamento di un documento. Fino a ieri era `display: none`
+   sopra i 900px e la campanella viveva nella colonna, montata DUE volte (una
+   per formato, il CSS ne nascondeva una): oggi il suo mount è UNO, qui.
+   ========================================================================== */
+
+/* La colonna destra della shell: la barra in cima + il contenuto, una sopra
+   l'altra. `min-width: 0` perché le tabelle larghe dentro `.main` non allarghino
+   la colonna oltre lo schermo — senza, un figlio flex non scende mai sotto la
+   propria larghezza intrinseca. */
+.shell-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* La barra resta appiccicata in cima mentre il contenuto scorre sotto. Dal
+   2026-09-03 è una VELATURA (mockup «Panoramica»: pannello all'85% + sfocatura):
+   `color-mix` prende l'85% della --card di qualunque tema senza bisogno di un
+   token nuovo; chi non la conosce tiene il fondo pieno dichiarato prima. In
+   tema scuro la regola dedicata in cima al foglio la riporta piena: la
+   velatura su fondo scuro lascerebbe leggere il contenuto in trasparenza. */
+.topbar {
+  display: flex; align-items: center; gap: var(--sp-3); height: var(--topbar-h);
+  padding: 0 var(--sp-4); background: var(--card); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Il PERCORSO della pagina: sezione › voce, la stessa struttura che la colonna
+   laterale mostra. La sezione è orientamento (muted), la pagina corrente ha
+   l'inchiostro pieno. Sparisce sotto i 900px: lì il «dove sono» lo porta già
+   il titolo della pagina, e lo spazio serve ai comandi. */
+.crumbs { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; font-size: var(--fs-label); color: var(--muted); white-space: nowrap; overflow: hidden; }
+.crumbs .crumb-current { color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.crumbs .ic { width: 12px; height: 12px; }
+
+/* Il CAMPO CHE APRE LA RICERCA RAPIDA. È un <button> vestito da campo: il
+   riferimento lo disegna come un input, ma ciò che fa è APRIRE un riquadro —
+   e un controllo che ne apre un altro è un pulsante, con un'etichetta per chi
+   non vede. `flex: 1` con tetto 380px e margini automatici: si prende lo
+   spazio fra il percorso e i comandi, restando centrato come nel riferimento.
+   Il «⌘K» sta nel markup e non nei dizionari: quel glifo non è nel
+   sottoinsieme dei caratteri serviti (fonts:check pesa i dizionari). */
+.topbar-search {
+  display: flex; align-items: center; gap: var(--sp-2); height: 36px; flex: 1;
+  max-width: 380px; margin: 0 auto; padding: 0 var(--sp-3);
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+  background: var(--bg); color: var(--muted); font-size: var(--fs-label);
+  text-align: left; transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.topbar-search:hover { border-color: var(--line-strong); background: var(--card); }
+.topbar-search .ic { width: 16px; height: 16px; }
+.topbar-search-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* `font-family: inherit` sul kbd — senza, <kbd> eredita il monospace del
+   browser e il «⌘K» non sarebbe vestito come il resto della barra. */
+.topbar-search-kbd { font-family: inherit; font-size: var(--fs-eyebrow); font-weight: 500; padding: var(--sp-05) var(--sp-1); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); }
+
+/* La LENTE SOLA, per dove il campo non ci sta: appare sotto i 900px al posto
+   del campo e apre la stessa ricerca. Stessa scatola dell'hamburger: sono i
+   due comandi della barra su schermo stretto, si vestono uguali. */
+.topbar-search-icon { display: none; }
+
+/* Hamburger e marchio nella barra esistono SOLO su schermo stretto (regole
+   dentro la media query): sopra i 900px la navigazione è la colonna laterale
+   e il marchio sta lì — ripeterli qui sarebbe la stessa cosa due volte. */
+.hamburger { display: none; }
+.topbar .brand { display: none; }
+
+/* I comandi della barra: pastiglia, campanella, caricamento. Sotto i 900px,
+   sparito il campo, il gruppo si spinge a destra con il margine automatico
+   (è nella media query): sopra ci pensa il campo elastico. */
+.topbar-actions { display: flex; align-items: center; gap: var(--sp-2); }
+
+/* La PASTIGLIA «richiede attenzione» è un COLLEGAMENTO alla lista dei
+   documenti da verificare — la stessa destinazione e lo STESSO numero del
+   blocco della Panoramica (il conteggio condiviso della shell, vedi
+   `useAttentionCount`): un numero qui e un numero diverso là sarebbero due
+   verità. Ambra e non rossa: è lavoro ordinario che aspetta, non un allarme. */
+.topbar-attn { display: flex; align-items: center; gap: var(--sp-2); height: 36px; padding: 0 var(--sp-3); border-radius: 99px; background: var(--amber-soft); color: var(--amber); font-size: var(--fs-label); font-weight: 500; white-space: nowrap; }
+.topbar-attn .num { font-variant-numeric: tabular-nums; }
+/* Il punto che pulsa è quello del riferimento: due dischi sovrapposti, quello
+   sopra cresce e svanisce. Chi chiede meno movimento lo perde nel blocco
+   «movimento ridotto» — il disco fermo resta, il segnale no. */
+.attn-dot { position: relative; width: 6px; height: 6px; flex-shrink: 0; }
+.attn-dot > span { position: absolute; inset: 0; border-radius: 99px; background: var(--amber-fill); }
+.attn-dot > span + span { animation: attn-ping 1.6s var(--ease) infinite; }
+@keyframes attn-ping { 0% { transform: scale(1); opacity: 0.6; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
+
+/* ============================================================================
+   LA RICERCA RAPIDA (⌘K) — il velo e il pannello. Il componente sta in
+   `components/layout/CommandPalette.tsx` e spiega perché è un dialogo; qui
+   sta la sua forma. z-index 70: sopra il cassetto mobile (60) — la ricerca è
+   un compito a sé, non si somma ad altro — e sotto gli avvisi (80), che non
+   devono mai finire dietro niente.
+   ============================================================================ */
+.palette-scrim { position: fixed; inset: 0; z-index: 70; background: var(--scrim); display: flex; justify-content: center; align-items: flex-start; padding: 15vh var(--sp-4) var(--sp-4); }
+.palette-panel { width: 100%; max-width: 560px; max-height: 70vh; display: flex; flex-direction: column; overflow: hidden; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-lg); animation: fade-in var(--dur) var(--ease); }
+.palette-input-row { display: flex; align-items: center; gap: var(--sp-2); height: 52px; padding: 0 var(--sp-4); border-bottom: 1px solid var(--line); color: var(--muted); flex-shrink: 0; }
+.palette-input { flex: 1; min-width: 0; height: 100%; border: none; background: none; color: var(--ink); font-size: var(--fs-body); }
+/* L'anello del focus sta DENTRO il pannello: fuori, l'`overflow: hidden` che
+   arrotonda gli angoli lo taglierebbe. */
+.palette-input:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.palette-input::placeholder { color: var(--muted); }
+.palette-list { overflow-y: auto; padding: var(--sp-2); }
+/* L'intestazione di gruppo è l'«eyebrow» di `.nav-section`: orientamento fra
+   i risultati, non una voce. */
+.palette-group { font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: var(--ls-eyebrow); color: var(--muted); font-weight: 600; padding: var(--sp-3) var(--sp-3) var(--sp-1); }
+.palette-option { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius-md); color: var(--ink-soft); font-size: var(--fs-body); }
+.palette-option .ic { color: var(--muted); }
+/* L'opzione «corrente» (ci si arriva con le frecce o col puntatore) prende la
+   pastiglia della voce di navigazione attiva: stesso significato («è questa
+   quella che apriresti»), stessa forma. */
+.palette-option.is-active { background: var(--accent-soft); color: var(--accent-text); }
+.palette-option.is-active .ic { color: var(--accent-text); }
+.palette-option .opt-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Le righe di servizio — caricamento, il guasto di UN gruppo, «nessun
+   risultato» — non sono opzioni: si leggono, non si premono. */
+.palette-note { padding: var(--sp-2) var(--sp-3); color: var(--muted); font-size: var(--fs-label); }
+.palette-foot { flex-shrink: 0; border-top: 1px solid var(--line); padding: var(--sp-2) var(--sp-4); color: var(--muted); font-size: var(--fs-meta); }
+
+/* Il cassetto e il suo velo nascono nascosti: esistono solo sotto i 900px. */
 .drawer { display: none; }
 .drawer-overlay { display: none; }
 @media (max-width: 900px) {
   body { flex-direction: column; }
   .sidebar { display: none; }
-  .topbar {
-    display: flex; align-items: center; gap: var(--sp-3); height: var(--topbar-h);
-    padding: 0 var(--sp-4); background: var(--card); border-bottom: 1px solid var(--line);
-    position: sticky; top: 0; z-index: 40;
-  }
-  .topbar .brand { padding: 0; }
+  /* Su schermo stretto la barra resta ma cambia mestiere: niente percorso né
+     campo (non c'è spazio — il «dove sono» lo dà il titolo della pagina, la
+     ricerca la apre la lente sola), tornano hamburger e marchio. */
+  .crumbs, .topbar-search { display: none; }
+  .topbar-actions { margin-left: auto; }
+  .topbar-search-icon { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
+  .topbar-search-icon:hover { background: var(--bg); }
+  .topbar .brand { display: flex; padding: 0; }
   /* Nella barra del telefono il marchio divide 375px con l'hamburger (40) e la
-     campanella (40): a 148px se ne prendeva il 39% e la barra diventava una
+     campanella (36): a 148px se ne prendeva il 39% e la barra diventava una
      insegna. 120 lasciano respiro attorno e il segno resta leggibile — sotto i
      100 la parola «Swisse» comincia a chiudersi. */
   .topbar .brand-logo { width: 120px; }
@@ -603,7 +853,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   /* `.topbar-demo` è stata CANCELLATA il 2026-08-28 (censimento regole morte,
      issue #83): zero usi in src/, scripts/, index.html e site/. */
   .drawer {
-    position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw;
+    position: fixed; top: 0; left: 0; bottom: 0; width: 252px; max-width: 84vw;
     background: var(--card); border-right: 1px solid var(--line); z-index: 60;
     padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05);
     transform: translateX(-100%); transition: transform var(--dur) var(--ease), visibility var(--dur); overflow-y: auto;
@@ -637,15 +887,29 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   .drawer .account-prefs .btn { min-height: 44px; }
 }
 
-/* La cornice della tela: lati più larghi del sopra (in orizzontale il vuoto
-   si percepisce più stretto), fondo a --sp-12 come nei breakpoint stretti —
-   era un 64px solo-desktop, deciso a schermo il 2026-08-10. */
-.main { flex: 1; padding: var(--sp-8) var(--sp-12) var(--sp-12); max-width: 1160px; width: 100%; }
+/* Sotto i 600px la barra si stringe ancora: l'etichetta del caricamento cede
+   (l'icona resta, la parola la porta l'aria-label — l'azione è una e il
+   riferimento la nasconde allo stesso modo) e la pastiglia «richiede
+   attenzione» anche: il suo numero resta nel badge su «Documenti» del
+   cassetto, a un tocco di distanza. */
+@media (max-width: 600px) {
+  .topbar-cta-label, .topbar-attn { display: none; }
+}
+
+/* La cornice della tela, dal 2026-09-03 quella del mockup «Panoramica»: 24px
+   sopra e ai lati (era 32 e 48 — la densità del cruscotto comincia dalla
+   cornice), fondo a --sp-12 come nei breakpoint stretti, perché l'ultima riga
+   non deve mai baciare il bordo dello schermo. Tela più larga: 1240px, il
+   max-width del mockup (era 1160). ⚠️ I due token verticali sono gli STESSI
+   che `assistant.module.css` somma in `--as-shell-y`: la sezione 15 di
+   `test:shell-unit` li confronta — cambiarli qui senza cambiarli là rompe il
+   conto che tiene il composer dentro lo schermo. */
+.main { flex: 1; padding: var(--sp-6) var(--sp-6) var(--sp-12); max-width: 1240px; width: 100%; }
 .page { display: none; }
 .page.active { display: block; animation: fade-in var(--dur) var(--ease); }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .page-head { margin-bottom: var(--sp-6); }
-.page-title { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.4px; }
+.page-title { font-family: var(--font-display); font-size: var(--fs-h1); font-weight: 600; letter-spacing: var(--ls-title); }
 /* ⚠️ `--measure` e non i 640px scritti a mano che stavano qui: a 15px di Inter
    640 pixel sono ~94 caratteri per riga — esattamente il numero che il commento
    di `--measure` (in cima a questo file) indica come il difetto da cui il token
@@ -656,7 +920,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* ---- I tre livelli di superficie (token in :root) --------------------------
    `.card` È il livello 1: lo stesso selettore, non una copia. Due regole con
    gli stessi valori sarebbero due verità che divergono al primo ritocco. */
-.card, .surface-1 { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-6); box-shadow: var(--shadow-xs); }
+.card, .surface-1 { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--sp-6); box-shadow: var(--shadow-sm); }
 .card + .card { margin-top: var(--sp-4); }
 /* Livello 2 — blocco piano. Nessun fondo, nessuna ombra, nessun angolo: dal
    precedente lo separa un filetto. Il primo della pila non lo porta, perché non
@@ -705,11 +969,16 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    `.grid-2` RESTA globale perché condivisa. */
 @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } .main { padding: var(--sp-6) var(--sp-4) var(--sp-12); } }
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; font-size: var(--fs-body); transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast); }
-.btn:hover { border-color: var(--line-strong); background: var(--bg); }
+/* I bottoni del mockup «Panoramica» (2026-09-03): il secondario è una voce
+   gentile — peso 500, inchiostro `--ink-soft`, pieno solo all'hover; il
+   primario porta peso 600, l'alone `--shadow-cta` e il sollevamento di un
+   pixel. La gerarchia fra i due la fanno riempimento e alone, non il peso
+   del secondario. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast), color var(--dur-fast), transform var(--dur-fast); }
+.btn:hover { border-color: var(--line-strong); background: var(--bg); color: var(--ink); }
 .btn .ic { color: var(--muted); }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-xs); }
-.btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; box-shadow: var(--shadow-cta); }
+.btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); transform: translateY(-1px); }
 .btn-primary .ic { color: var(--on-accent); }
 .btn-ghost { border-color: transparent; background: none; }
 .btn-ghost:hover { background: var(--bg); border-color: transparent; }
@@ -725,7 +994,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.badge { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-05) var(--sp-2); border-radius: 99px; font-size: var(--fs-label); font-weight: 600; }
+.badge { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-05) var(--sp-2); border-radius: 99px; font-size: var(--fs-meta); font-weight: 500; }
 .badge-alta { background: var(--red-soft); color: var(--red-dark); }
 .badge-media { background: var(--amber-soft); color: var(--amber); }
 .badge-bassa { background: var(--green-soft); color: var(--green); }
@@ -1157,7 +1426,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    `.ev-quote`, `.ax-progress` con `.pg-label` e `.meter-track`,
    `.action-item` con `.ai-main`/`.ai-text`, `.mini-btn`, `.draft-actions`. */
 .ax-head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
-.ax-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.3px; }
+.ax-title { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 600; letter-spacing: var(--ls-title); }
 .ax-badges { display: flex; gap: var(--sp-2); flex-wrap: wrap; flex-shrink: 0; }
 .ax-meta { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .ax-chip { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-1) var(--sp-3); }
@@ -1206,7 +1475,15 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .empty-cta .ec-sub { color: var(--muted); font-size: var(--fs-meta); margin: var(--sp-1) auto var(--sp-4); max-width: var(--measure); }
 
 /* ---------- Dashboard ---------- */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
+/* DAL 2026-09-03 LA STRISCIA È UNA SCHEDA SOLA divisa da filetti (mockup
+   «Panoramica»: `gap-px bg-line`): quattro metriche della stessa striscia in
+   quattro schede separate sono quattro oggetti che competono; in una scheda
+   divisa sono UNA striscia. La griglia porta lei bordo, raggio e ombra; le
+   celle perdono i propri. Vale per ogni pagina che usa `.kpi-grid` — la
+   Panoramica come le Finanze — perché una striscia di numeri è sempre lo
+   stesso oggetto. */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
+.kpi-grid > .kpi, .kpi-grid > .skel-kpi { border: none; border-radius: 0; box-shadow: none; }
 @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* ---- Gerarchia dichiarata: una metrica grande e quattro piccole ------------
@@ -1256,21 +1533,28 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* Due righe di spazio riservate all'etichetta: le traduzioni non hanno la
    stessa lunghezza — «Scadenze prossimi 7 giorni» diventa «Fristen in den
    nächsten 7 Tagen» — e quando una sola etichetta andava a capo il suo numero
-   scendeva di una riga, disallineando tutta la fila. */
-.kpi-label { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: flex-start; gap: var(--sp-2); min-height: 2.7em; line-height: 1.3; }
-.kpi-sub { margin-top: auto; }
+   scendeva di una riga, disallineando tutta la fila.
+   Dal 2026-09-03 l'etichetta è in minuscolo col peso 500 (mockup «Panoramica»):
+   maiuscoletto e spaziatura restano il mestiere di `.nav-section` e delle
+   etichette di gruppo — qui il numero sotto è già il segno più forte della
+   pagina, e un'etichetta che grida gli ruba la scena. */
+.kpi-label { font-size: var(--fs-label); font-weight: 500; color: var(--muted); display: flex; align-items: flex-start; gap: var(--sp-2); min-height: 2.7em; line-height: 1.3; }
+.kpi-sub { margin-top: auto; font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line-subtle); padding-top: var(--sp-2); }
 /* ⚠️ `tabular-nums`, e qui è lo scarto più grosso di tutta l'interfaccia.
-   Inter usa cifre PROPORZIONALI per default e il suo «1» è molto più stretto
-   degli altri. Misurato a 30px, peso 600, sui numeri veri della Panoramica:
-   «11» 24,4px · «40» 38,8px · «92» 36,9px — quattordici virgola quattro pixel
-   di scarto fra due numeri di due cifre. Con `tabular-nums` misurano tutti
-   37,8: scarto ZERO. Le quattro schede piccole stanno in una griglia 2×2 e
-   sotto i 600px in una colonna sola: i numeri si guardano uno sopra l'altro,
-   ed è lì che il difetto si vede. Per confronto, lo scarto che il 2026-08-10
-   era bastato a far correggere le scadenze era di 3,6px. */
-.kpi-value { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.5px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+   Dal 2026-09-03 il font è Sora (`--font-display`), che usa cifre PROPORZIONALI
+   per default come Inter prima — solo peggio: il suo «1» è ancora più stretto.
+   Misurato il 2026-09-03 a 29px, peso 600, sui numeri veri della Panoramica:
+   «11» 24,4px · «66» 38,2px — tredici virgola otto pixel di scarto fra due
+   numeri di due cifre (Inter a 30px ne dava 14,4). Con `tabular-nums` — la
+   feature `tnum` c'è in tutti e sei i file serviti, verificato — lo scarto è
+   ZERO. Le quattro schede piccole stanno in una griglia 2×2 e sotto i 600px
+   in una colonna sola: i numeri si guardano uno sopra l'altro, ed è lì che il
+   difetto si vede. Per confronto, lo scarto che il 2026-08-10 era bastato a
+   far correggere le scadenze era di 3,6px. */
+.kpi-value { font-family: var(--font-display); font-size: var(--fs-kpi); font-weight: 600; letter-spacing: var(--ls-kpi); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .kpi-value small { font-size: var(--fs-body); font-weight: 600; color: var(--muted); }
-.kpi-sub { font-size: var(--fs-meta); color: var(--muted); }
+/* La didascalia sotto il numero sta dietro un filetto (mockup «Panoramica»):
+   è nota metodologica («letti con confidenza media»), non parte del dato. */
 .kpi.accent { border-top: 3px solid var(--accent); }
 .kpi.alert { border-top: 3px solid var(--red); }
 .kpi .kpi-value.hot { color: var(--red-dark); }
@@ -1315,15 +1599,62 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .bar-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 
 /* meter completamento: RESTANO `.meter-track` e `.meter-fill`, vive (le
-   scrive `admin-ai` come stringhe globali).
+   scrive `admin-ai` come stringhe globali). DAL 2026-09-06 la traccia è 3px —
+   il «meter» sottile del riferimento (era 6px).
    `.meter` (il contenitore flex) e `.meter-num` (la percentuale grande, con il
    suo commento sul perché di `--fs-h2`) sono state CANCELLATE il 2026-08-28
    (censimento regole morte, issue #83): zero usi in src/, scripts/, index.html
    e site/ — il markup usa `.meter-track` nuda dentro i propri contenitori.
    Con `.meter-num` sono uscite le sue due righe da `test:shell-unit`
    (sezione «Cifre tabulari» e il confronto con il numero che conta di più). */
-.meter-track { flex: 1; background: var(--track); border-radius: 99px; height: 10px; overflow: hidden; }
+.meter-track { flex: 1; background: var(--track); border-radius: 99px; height: 3px; overflow: hidden; }
 .meter-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width var(--dur-slow) var(--ease); }
+/* A completamento pieno la barra è verde: «fatto» è lo stato verificato della
+   scala semantica, non una quantità d'accento in più. Sotto il 100% resta il
+   cielo del lavoro in corso. */
+.meter-fill.ok { background: var(--green-fill); }
+
+/* ============================================================================
+   UTILITY DEL RIFERIMENTO `panoramica-ai-swisse.html` (2026-09-06)
+   Controparti 1:1 delle sue `@utility`. Le sovrapposizioni con le classi
+   storiche sono dichiarate, non duplicate: `.card` È il `panel` (stesso fondo,
+   bordo, raggio e ombra), `.badge` con le sue cinque varianti È la `pill`,
+   `.meter-track`/`.meter-fill` È il `meter`. Qui sotto solo ciò che mancava.
+   ========================================================================== */
+/* .num — i numeri che si confrontano fra loro: Sora a cifre tabulari con
+   tracking chiuso. `.kpi-value` le porta già da sé; questa classe serve
+   ovunque altro (delta, conteggi nelle pill, importi e date in tabella). */
+.num { font-family: var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+/* .eyebrow — l'etichetta di sezione del riferimento. In shell la portano già
+   `.nav-section` e `.brand-sub.caps`; questa serve DENTRO le schede, negli
+   header di pannello. */
+.eyebrow { font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--muted); }
+/* .panel-hover — il sollevamento dell'ombra al passaggio. Non è di serie su
+   `.card`: lo porta chi risponde davvero al puntatore, non ogni scheda. */
+.panel-hover { transition: box-shadow var(--dur) var(--ease); }
+.panel-hover:hover { box-shadow: var(--shadow-panel-hover); }
+/* .row-hover — il fondo appena azzurrato della riga sotto il puntatore (70%
+   di sky-soft, come il riferimento; in scuro `--accent-soft` è già la
+   controparte del tema). */
+.row-hover { transition: background-color var(--dur-fast); }
+.row-hover:hover { background-color: color-mix(in srgb, var(--accent-soft) 70%, transparent); }
+/* .table — la tabella del riferimento («Prossime scadenze»): testata a fondo
+   canvas con intestazioni «eyebrow», corpo a righe divise da un filetto
+   tenue, hover di riga. Lo scorrimento orizzontale sta nel contenitore:
+   620px è la misura sotto la quale le colonne del riferimento si
+   schiacciano — si dichiara sulla tabella, che è ciò che scorre. */
+.table-scroll { overflow-x: auto; }
+.table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: var(--fs-body); text-align: left; }
+.table thead { background: var(--bg); }
+.table thead tr { border-bottom: 1px solid var(--line); }
+.table th, .table td { padding: var(--sp-3) var(--sp-4); }
+/* L'eyebrow è SOLO della testata: un `th scope="row"` nel corpo è il nome
+   della riga (una descrizione, un'aliquota), non un titolo di colonna —
+   maiuscoletto e grigio lo renderebbero irriconoscibile. */
+.table thead th { padding: var(--sp-2) var(--sp-4); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--muted); }
+.table tbody tr { border-top: 1px solid var(--line-subtle); }
+.table tbody tr:first-child { border-top: none; }
+.table tbody th { font-weight: 600; }
 
 /* `.chart-empty`, `.lang-card`, `.lang-title` e `.lang-chip` sono migrate il
    2026-08-28 in `src/features/documents/documents.module.css` (CSS Modules,
@@ -1394,6 +1725,10 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
   .page.active { animation: none; }
+  .palette-panel { animation: none; }
+  /* Il disco che pulsa sparisce del tutto: un alone immobile sarebbe un
+     secondo punto, non un punto fermo. */
+  .attn-dot > span + span { animation: none; opacity: 0; }
   .meter-fill, .bar-fill { transition: none; }
   .drawer { transition: none; }
   .drawer-overlay { transition: none; }
@@ -1401,6 +1736,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   .toast.show { transform: none; }
   .skeleton { animation: none; }
   .btn:active:not(:disabled) { transform: none; }
+  .btn-primary:hover { transform: none; }
   .spinner, .spinner-lg { animation-duration: 1.6s; }
 }
 
@@ -1440,7 +1776,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
      qui l'ingombro è di due righe e si vede tutto. */
   .filter-group { width: 100%; margin-left: 0; flex-wrap: wrap; }
   .filter-group .btn { flex: 1; }
-  .kpi-value { font-size: var(--fs-h1); }
+  .kpi-value { font-size: var(--fs-kpi); }
 }
 
 /* ---------- Inbox ----------
@@ -1665,6 +2001,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
      niente. È la classe di difetto peggiore per questo caso d'uso, perché il
      foglio SEMBRA completo. */
   .app-shell,
+  .shell-body,
   .main,
   .ct-narrow {
     display: block !important;

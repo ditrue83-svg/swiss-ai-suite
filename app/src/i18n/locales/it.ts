@@ -145,6 +145,13 @@ export const it = {
     mainNav: 'Navigazione principale',
     openMenu: 'Apri il menu di navigazione',
     closeMenu: 'Chiudi il menu',
+    // Il nome del breadcrumb della topbar per i lettori di schermo: il percorso
+    // visivo (sezione › pagina) si legge da sé, il contenitore va nominato.
+    breadcrumbAria: 'Percorso della pagina',
+    // Il riquadro di fiducia in fondo alla colonna (riferimento 2026-09-06):
+    // una promessa del prodotto — i dati restano in Svizzera — non una voce.
+    dataBoxTitle: 'Dati in Svizzera',
+    dataBoxNote: 'Elaborazione locale, nessun invio automatico.',
   },
   settings: {
     preferencesDesc: 'Lingua e aspetto valgono per te su questo computer, non per l’azienda.',
@@ -152,6 +159,23 @@ export const it = {
   },
   dialog: {
     close: 'Chiudi',
+  },
+  // La ricerca rapida della topbar (⌘K): le voci di menu, i documenti e le
+  // attività da un solo campo. «Ricerca rapida» e non «Command palette»:
+  // il nome dice che cosa fa, non come la chiama chi l'ha scritta.
+  // ⚠️ Niente glifi di tastiera (⌘, ↑, ↓) in queste stringhe: non stanno nel
+  // sottoinsieme dei caratteri serviti (fonts:check li pesa). Il «⌘K» del
+  // campo vive nel markup, i tasti dell'aiuto si scrivono in parole.
+  palette: {
+    dialogAria: 'Ricerca rapida',
+    openAria: 'Apri la ricerca rapida',
+    inputAria: 'Cerca documenti, attività e pagine',
+    // La frase del riferimento, pari pari: sono le tre cose che si cercano
+    // davvero da qui — un documento, un ente mittente, una scadenza.
+    placeholder: 'Cerca documenti, enti, scadenze…',
+    groupPages: 'Pagine',
+    empty: 'Nessun risultato per «{q}»',
+    hint: 'Frecce su e giù per muoversi · Invio per aprire · Esc per chiudere',
   },
   roles: {
     owner: 'Titolare',

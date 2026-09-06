@@ -18,11 +18,12 @@
       content="AI-Swisse trasforma lettere e moduli di Confederazione, Cantoni e Comuni in azioni concrete: spiegazioni semplici, scadenze e checklist."
     />
     <!--
-      Solo il peso 400 viene precaricato: è quello del corpo del testo, l'unico
-      che serve al primo dipinto. 500 e 600 li chiede il browser quando incontra
-      la prima etichetta o il primo titolo, e a quel punto la pagina è già viva.
-      Precaricarli tutti e tre metterebbe 75 KB davanti al contenuto per
-      guadagnare su ciò che si legge dopo.
+      Solo il peso 400 di Manrope viene precaricato: è quello del corpo del
+      testo, l'unico che serve al primo dipinto. Gli altri cinque file (500 e
+      600 di Manrope, i tre di Sora per titoli e KPI) li chiede il browser
+      quando incontra la prima etichetta o il primo titolo, e a quel punto la
+      pagina è già viva. Precaricarli tutti metterebbe 100 KB davanti al
+      contenuto per guadagnare su ciò che si legge dopo.
       `crossorigin` è obbligatorio anche per le risorse della propria origine:
       senza, il browser scarica il file DUE volte — una per il preload e una per
       il @font-face — perché le richieste di carattere viaggiano in modalità
@@ -30,7 +31,7 @@
     -->
     <link
       rel="preload"
-      href="/fonts/inter-400.woff2"
+      href="/fonts/manrope-400.woff2"
       as="font"
       type="font/woff2"
       crossorigin
@@ -40,7 +41,7 @@
       sigla «AI». Tre cose da sapere prima di toccarla.
 
       PERCHÉ IN CONTORNI E NON IN TESTO. Qui non si può scrivere <text>AI</text>
-      e chiedere Inter: un data: URI non carica risorse esterne — è tutto il
+      e chiedere Sora: un data: URI non carica risorse esterne — è tutto il
       punto della CSP — quindi il carattere lo sceglierebbe il browser, e il
       marchio sarebbe disegnato da un font di sistema diverso su ogni macchina.
 

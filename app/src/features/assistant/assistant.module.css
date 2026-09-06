@@ -63,8 +63,14 @@
    — finisce fuori schermo a ogni risposta. Misurato il 2026-07-30: 163px sotto
    la piega, con il pulsante «Chiedi» invisibile.
 
-   `--as-shell-y` sono le spaziature verticali di `.main` (app.css), ripetute
-   qui ai suoi stessi tre punti di rottura.
+   `--as-shell-y` è l'altezza di ciò che sta in flusso SOPRA la pagina: la
+   barra in cima (che dal 2026-09-06 esiste a OGNI larghezza — prima era solo
+   sotto i 900px, e qui si contava solo là) più le spaziature verticali di
+   `.main` (app.css), ripetute qui ai suoi stessi punti di rottura. Sotto i
+   900px non serve una riga propria: a quel punto di rottura `.main` cambia
+   solo il padding ORIZZONTALE, quindi la somma è identica alla base e
+   riscriverla sarebbe la seconda fonte di verità che questo file ha già
+   pagato. Resta quella dei 600px, dove il padding verticale cambia davvero.
 
    ⚠️⚠️ E SI RIPETONO COI TOKEN, NON COL RISULTATO. Fino al 2026-08-17 qui c'era
    scritto «94px», con accanto un commento che diceva «30 + 64»: due numeri che
@@ -77,7 +83,7 @@
    `dvh` con `vh` di riserva — su telefono la barra degli indirizzi entra ed
    esce, e con `100vh` il composer resterebbe sotto il bordo proprio mentre si
    scrive. Chi non conosce `dvh` ignora la seconda riga. */
-.as-page { --as-shell-y: calc(var(--sp-8) + var(--sp-12));
+.as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-6) + var(--sp-12));
   display: flex; flex-direction: column; min-height: 0;
   height: calc(100vh - var(--as-shell-y));
   height: calc(100dvh - var(--as-shell-y)); }
@@ -307,12 +313,15 @@
 
 @media (max-width: 900px) {
   /* Una colonna: le due laterali diventano pannelli.
-     ⚠️ E QUI C'È ANCHE LA BARRA IN CIMA, che su desktop non esiste: 56px in
-     flusso sopra `.main`. Non è mai stata contata — dichiarati 68 dove ne
-     servivano 128 — e su telefono la pagina sfondava di 60px, cioè proprio il
-     composer, che è la ragione per cui questa schermata sta dentro lo schermo.
-     Misurato al banco il 2026-08-17 a 800×900: documento 956 su 900. */
-  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-6) + var(--sp-12)); }
+     ⚠️ QUI NON C'È PIÙ la riga di `--as-shell-y`: dal 2026-09-06 la barra in
+     cima esiste a OGNI larghezza, quindi la somma giusta è già quella della
+     regola base — a questo punto di rottura `.main` cambia solo il padding
+     orizzontale, e riscrivere la stessa somma sarebbe una seconda fonte di
+     verità. La storia che la riga raccontava resta: fino al 2026-08-17 la
+     barra non era mai stata contata — dichiarati 68 dove ne servivano 128 —
+     e su telefono la pagina sfondava di 60px, cioè proprio il composer, che
+     è la ragione per cui questa schermata sta dentro lo schermo. Misurato al
+     banco il 2026-08-17 a 800×900: documento 956 su 900. */
   .as-layout { grid-template-columns: minmax(0, 1fr); }
   .as-side { display: none; }
   .as-only-narrow { display: inline-flex; align-self: flex-start; }
