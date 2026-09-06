@@ -111,16 +111,18 @@
      successiva. `--content-max` è la colonna che contiene una pagina di
      lettura. Sono due cose diverse: tabelle ed elenchi possono superare la
      prima (sono strutture, non prosa) ma non la seconda. */
-  /* ⚠️ 52ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
-     ZERO, e in Inter lo zero è largo 9,46px a 15px mentre il carattere medio di
-     una frase italiana vera ne misura 6,83. Scrivere `70ch` per «settanta
-     caratteri» dà una riga da 94 caratteri — trentaquattro in più di quelli
-     voluti, cioè esattamente il difetto che si stava correggendo. 52ch = 492px
-     = ~72 caratteri del testo reale, contati sul riassunto di un'analisi con il
-     font servito. Il conteggio dipende dal FONT, non dalla lingua: vale uguale
-     in de e fr. Se un giorno cambia il carattere, questo numero va rimisurato,
-     non tradotto. */
-  --measure: 52ch;
+  /* ⚠️ 56ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
+     ZERO, e in Manrope lo zero è largo 7,80px a 13,5px mentre il carattere
+     medio di una frase italiana vera ne misura 6,26. Scrivere `70ch` per
+     «settanta caratteri» darebbe una riga da 87 caratteri — diciassette in più
+     di quelli voluti, cioè esattamente il difetto che si stava correggendo.
+     56ch = 437px = ~70 caratteri del testo reale, contati sul riassunto di
+     un'analisi con il font servito. Rimisurato il 2026-09-03 nel passaggio da
+     Inter a Manrope (prima era 52ch, per lo zero largo 9,46px di Inter a 15px).
+     Il conteggio dipende dal FONT, non dalla lingua: vale uguale in de e fr.
+     Se un giorno cambia il carattere, questo numero va rimisurato, non
+     tradotto. */
+  --measure: 56ch;
   --content-max: 880px;
 
   /* --- Colori di stato -----------------------------------------------------
@@ -179,21 +181,39 @@
   --green-fill: hsl(151, 52%, 40%);
 
   /* --- Scala tipografica ---------------------------------------------------
-     Sei gradini, uno per compito. Se un testo non rientra in nessuno, il
-     problema è la gerarchia, non la scala. La base sale da 13px a 15px: chi
-     usa l'app legge importi e scadenze, spesso oltre i 45 anni e di fretta. */
-  --fs-label: 12px;    /* etichette maiuscole, con letter-spacing */
-  --fs-meta: 13px;     /* metadati e didascalie                   */
-  --fs-body: 15px;     /* corpo del testo                          */
-  --fs-strong: 17px;   /* titoli di scheda e di riga               */
-  --fs-h2: 22px;       /* titoli di sezione                        */
-  --fs-h1: 30px;       /* titoli di pagina                         */
+     Sei gradini per il testo più uno per i NUMERI GRANDI, uno per compito. Se
+     un testo non rientra in nessuno, il problema è la gerarchia, non la scala.
+     ⚠️ DAL 2026-09-03 LA BASE SCENDE da 15px a 13,5px — inversione della scelta
+     del 2026-08-10, che l'aveva alzata per «chi legge importi e scadenze».
+     I valori non sono aggiustati a occhio: sono contati sulle classi del mockup
+     «Panoramica» approvato da Andrea (corpo 13,5 · meta 11,5 · label 12,5 ·
+     titoli di scheda 14,5 · di sezione 16,5 · di pagina 17 · KPI 29 con
+     tracking −0,03em). La gerarchia cambia mestiere: non sono più i TITOLI a
+     portare il peso della pagina — il più grande è 17px — ma i NUMERI, in Sora
+     29px a cifre tabulari. Il corpo scende, il dato che conta sale: è la
+     densità da cruscotto del mockup, non un risparmio di pixel. E il corpo È
+     davvero più piccolo: l'occhio di Manrope (0,540em) è praticamente quello
+     di Inter (0,546em), quindi non c'è un guadagno di disegno a compensare —
+     la controprova che 13,5px basti è la verifica a schermo, non una misura
+     di font. */
+  --fs-label: 12.5px;  /* etichette maiuscole, con letter-spacing */
+  --fs-meta: 11.5px;   /* metadati e didascalie                   */
+  --fs-body: 13.5px;   /* corpo del testo                          */
+  --fs-strong: 14.5px; /* titoli di scheda e di riga               */
+  --fs-h2: 16.5px;     /* titoli di sezione                        */
+  --fs-h1: 17px;       /* titoli di pagina                         */
+  /* Il gradino FUORI scala: i numeri della Panoramica. Non è un settimo
+     titolo — è l'unico testo pensato per essere letto da lontano, e l'unico
+     che chiude il tracking fino a −0,03em. Sta fuori dai sei gradini perché
+     non è un compito del TESTO: è il dato che la pagina serve. */
+  --fs-kpi: 29px;
 
   --lh-tight: 1.25;    /* titoli                                   */
   --lh: 1.55;          /* testo corrente                           */
 
   --ls-label: 0.08em;  /* solo per le etichette maiuscole          */
   --ls-title: -0.01em; /* i titoli grandi respirano meglio stretti */
+  --ls-kpi: -0.03em;   /* il tracking chiuso dei KPI del mockup    */
 
   /* --- Ritmo delle spaziature ----------------------------------------------
      Multipli di 4 per il ritmo FRA gli elementi. --sp-05 è il mezzo gradino
@@ -213,6 +233,13 @@
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
   --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.12);  /* pannelli sospesi (popover) */
+  /* L'UNICA ombra colorata, dal mockup «Panoramica» (2026-09-03): l'alone
+     azzurro sotto il gesto primario — nel mockup lo portano il blocco della
+     sigla e il bottone della topbar. Tinta #37AEEF al 45%, sollevamento di 6px:
+     si vede sul canvas chiaro senza diventare il «glow» che la riga sopra
+     vieta. La usano il marchio e `.btn-primary`, e basta: un alone che
+     distingue tutto non distingue niente. */
+  --shadow-cta: 0 1px 2px rgba(16, 24, 40, 0.10), 0 6px 16px -4px rgba(55, 174, 239, 0.45);
 
   /* --- Movimento -------------------------------------------------------------
      Nominati il 2026-08-27: prima ogni transizione portava la sua durata a
@@ -253,12 +280,14 @@
      una scheda bianca. Si dichiara UNA sola parola per tema, non `light dark`:
      dichiararne due significherebbe di nuovo «decida il sistema». */
   color-scheme: light;
-  /* Inter è dichiarato in `fonts.css` e servito da noi. La coda resta quella di
-     prima e non è decorativa: è ciò che si legge nel secondo che precede il
-     caricamento (`font-display: swap`) e ciò che disegna i caratteri che il
-     sottoinsieme non contiene — un nome di azienda in cirillico, un allegato
-     con un ideogramma. */
-  font-family: 'Inter', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Dal 2026-09-03 le famiglie sono DUE, dichiarate in `fonts.css` e servite da
+     noi (restyle sul mockup «Panoramica»): Manrope per il corpo del testo, Sora
+     per titoli e numeri grandi — il token `--font-display`. La coda di riserva
+     non è decorativa: è ciò che si legge nel secondo che precede il caricamento
+     (`font-display: swap`) e ciò che disegna i caratteri che i sottoinsiemi non
+     contengono — un nome di azienda in cirillico, un allegato con un ideogramma. */
+  --font-display: 'Sora', 'Manrope', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: 'Manrope', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 /* ============================================================================
    Tema scuro — dal 2026-08-16 una SCELTA, non più il riflesso del sistema.
@@ -358,10 +387,13 @@
     --on-highlight: hsl(45, 80%, 8%);
 
     /* Su fondo scuro un'ombra chiara non esiste: la profondità la dà il bordo,
-       quindi le ombre restano appena accennate e più profonde. */
+       quindi le ombre restano appena accennate e più profonde. L'alone azzurro
+       del gesto primario si abbassa al 35%: sul nero un 45% diventerebbe il
+       «glow» che la versione chiara dichiara vietato. */
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --shadow-cta: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px -4px rgba(55, 174, 239, 0.35);
 
     --focus: hsl(201, 80%, 66%);
 
@@ -645,7 +677,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .page.active { display: block; animation: fade-in var(--dur) var(--ease); }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .page-head { margin-bottom: var(--sp-6); }
-.page-title { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.4px; }
+.page-title { font-family: var(--font-display); font-size: var(--fs-h1); font-weight: 600; letter-spacing: var(--ls-title); }
 /* ⚠️ `--measure` e non i 640px scritti a mano che stavano qui: a 15px di Inter
    640 pixel sono ~94 caratteri per riga — esattamente il numero che il commento
    di `--measure` (in cima a questo file) indica come il difetto da cui il token
@@ -1157,7 +1189,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    `.ev-quote`, `.ax-progress` con `.pg-label` e `.meter-track`,
    `.action-item` con `.ai-main`/`.ai-text`, `.mini-btn`, `.draft-actions`. */
 .ax-head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
-.ax-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.3px; }
+.ax-title { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 600; letter-spacing: var(--ls-title); }
 .ax-badges { display: flex; gap: var(--sp-2); flex-wrap: wrap; flex-shrink: 0; }
 .ax-meta { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .ax-chip { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-meta); color: var(--ink-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 99px; padding: var(--sp-1) var(--sp-3); }
@@ -1260,15 +1292,17 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .kpi-label { font-size: var(--fs-label); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: flex-start; gap: var(--sp-2); min-height: 2.7em; line-height: 1.3; }
 .kpi-sub { margin-top: auto; }
 /* ⚠️ `tabular-nums`, e qui è lo scarto più grosso di tutta l'interfaccia.
-   Inter usa cifre PROPORZIONALI per default e il suo «1» è molto più stretto
-   degli altri. Misurato a 30px, peso 600, sui numeri veri della Panoramica:
-   «11» 24,4px · «40» 38,8px · «92» 36,9px — quattordici virgola quattro pixel
-   di scarto fra due numeri di due cifre. Con `tabular-nums` misurano tutti
-   37,8: scarto ZERO. Le quattro schede piccole stanno in una griglia 2×2 e
-   sotto i 600px in una colonna sola: i numeri si guardano uno sopra l'altro,
-   ed è lì che il difetto si vede. Per confronto, lo scarto che il 2026-08-10
-   era bastato a far correggere le scadenze era di 3,6px. */
-.kpi-value { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.5px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+   Dal 2026-09-03 il font è Sora (`--font-display`), che usa cifre PROPORZIONALI
+   per default come Inter prima — solo peggio: il suo «1» è ancora più stretto.
+   Misurato il 2026-09-03 a 29px, peso 600, sui numeri veri della Panoramica:
+   «11» 24,4px · «66» 38,2px — tredici virgola otto pixel di scarto fra due
+   numeri di due cifre (Inter a 30px ne dava 14,4). Con `tabular-nums` — la
+   feature `tnum` c'è in tutti e sei i file serviti, verificato — lo scarto è
+   ZERO. Le quattro schede piccole stanno in una griglia 2×2 e sotto i 600px
+   in una colonna sola: i numeri si guardano uno sopra l'altro, ed è lì che il
+   difetto si vede. Per confronto, lo scarto che il 2026-08-10 era bastato a
+   far correggere le scadenze era di 3,6px. */
+.kpi-value { font-family: var(--font-display); font-size: var(--fs-kpi); font-weight: 600; letter-spacing: var(--ls-kpi); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .kpi-value small { font-size: var(--fs-body); font-weight: 600; color: var(--muted); }
 .kpi-sub { font-size: var(--fs-meta); color: var(--muted); }
 .kpi.accent { border-top: 3px solid var(--accent); }
@@ -1440,7 +1474,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
      qui l'ingombro è di due righe e si vede tutto. */
   .filter-group { width: 100%; margin-left: 0; flex-wrap: wrap; }
   .filter-group .btn { flex: 1; }
-  .kpi-value { font-size: var(--fs-h1); }
+  .kpi-value { font-size: var(--fs-kpi); }
 }
 
 /* ---------- Inbox ----------
