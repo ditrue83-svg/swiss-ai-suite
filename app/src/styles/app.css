@@ -541,8 +541,19 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    e il box account, e quando non basta scorre LEI — così «Impostazioni» in
    fondo e il box account restano raggiungibili anche su uno schermo basso,
    invece di uscire dalla pagina. min-height: 0 è ciò che permette a un figlio
-   flex di diventare più basso del proprio contenuto. */
-.nav { display: flex; flex-direction: column; gap: var(--sp-05); flex: 1; min-height: 0; overflow-y: auto; }
+   flex di diventare più basso del proprio contenuto.
+   ⚠️ LA COPPIA padding-left/margin-left, e perché esiste (2026-09-06, prima
+   verifica visiva col browser: la barretta azzurra della voce attiva NON SI
+   VEDEVA). `overflow-y: auto` calcola `overflow-x` ad `auto`, e la scatola
+   taglia tutto ciò che esce dal proprio padding box: la barretta di
+   `.nav-btn.active::before`, a `left: calc(-1 * var(--sp-4))` dalla voce,
+   finiva 16px a sinistra della scatola — ritagliata, da sempre. La coppia
+   allunga la scatola della navigazione di 16px dentro il padding della
+   colonna (il margine negativo) e ne restituisce 16 al contenuto (il
+   padding): le voci restano al pixel dov'erano, ma la barretta a -16 torna
+   DENTRO il padding box e si vede. Stessa cosa nel cassetto, che divide
+   questa regola e ha lo stesso padding. */
+.nav { display: flex; flex-direction: column; gap: var(--sp-05); flex: 1; min-height: 0; overflow-y: auto; padding-left: var(--sp-4); margin-left: calc(-1 * var(--sp-4)); }
 /* ⚠️ LA BARRA DI SCORRIMENTO DELLA NAVIGAZIONE, e prima la misura che spiega
    perché esiste. Misurata il 2026-08-14 a 1280×720: la colonna chiede 910px in
    tutto — marchio 89 + selettore azienda 75 + navigazione 550 + box account 158
@@ -611,7 +622,11 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    lato della voce e moriva con gli angoli squadrati; questa è un marcatore
    sulla rotaia della navigazione, ed è un pseudo-elemento proprio perché non
    è contenuto. `--sp-4` è il padding della colonna (e del cassetto): il
-   negativo porta la barretta sul bordo senza conoscerne la larghezza. */
+   negativo porta la barretta sul bordo senza conoscerne la larghezza.
+   ⚠️ IL NEGATIVO DA SOLO NON BASTAVA: scritto il 03.09 e MAI visto a schermo
+   fino al 06.09 — `overflow-y: auto` sulla `.nav` tagliava la barretta fuori
+   dal padding box. La coppia padding/margine che la rende visibile è sulla
+   `.nav`, con il perché. */
 .nav-btn.active::before { content: ''; position: absolute; left: calc(-1 * var(--sp-4)); top: 6px; bottom: 6px; width: 3px; border-radius: 0 99px 99px 0; background: var(--accent); }
 /* Il piede della barra: separato da un filetto orizzontale e spinto in fondo
    (margin-top: auto dentro il flex della .nav) — le impostazioni non sono
@@ -739,7 +754,9 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .topbar-search:hover { border-color: var(--line-strong); background: var(--card); }
 .topbar-search .ic { width: 16px; height: 16px; }
 .topbar-search-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.topbar-search-kbd { font-size: var(--fs-eyebrow); font-weight: 500; padding: var(--sp-05) var(--sp-1); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); }
+/* `font-family: inherit` sul kbd — senza, <kbd> eredita il monospace del
+   browser e il «⌘K» non sarebbe vestito come il resto della barra. */
+.topbar-search-kbd { font-family: inherit; font-size: var(--fs-eyebrow); font-weight: 500; padding: var(--sp-05) var(--sp-1); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); }
 
 /* La LENTE SOLA, per dove il campo non ci sta: appare sotto i 900px al posto
    del campo e apre la stessa ricerca. Stessa scatola dell'hamburger: sono i
