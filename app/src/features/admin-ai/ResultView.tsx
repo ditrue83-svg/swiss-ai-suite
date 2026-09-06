@@ -693,7 +693,7 @@ export function ResultView({ analysis, document, onRetry, onForceOcr }: {
             <div className="card-title">{t('adminAi.result.checklist')}</div>
             <div className="ax-progress">
               <span className="pg-label">{t('adminAi.result.checklistProgress', { done, total: tot })}</span>
-              <div className="meter-track" style={{ flex: 1 }}><div className="meter-fill" style={{ width: `${pct}%` }} /></div>
+              <div className="meter-track" style={{ flex: 1 }}><div className={cx('meter-fill', pct === 100 && 'ok')} style={{ width: `${pct}%` }} /></div>
             </div>
             <div>
               {actions.map((c) => (

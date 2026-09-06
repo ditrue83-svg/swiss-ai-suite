@@ -54,7 +54,7 @@ export function KpiStrip({ data }: { data: OverviewData }) {
   const importiParziale = data.date.attivi.parziale || data.date.archiviati.parziale;
 
   return (
-    <div className="kpi-grid" role="group" aria-label={t('home.kpiGroup')}>
+    <div className="kpi-grid panel-hover" role="group" aria-label={t('home.kpiGroup')}>
       {/* IMPORTI IN SCADENZA — la somma è `null` quando non è onesta: nessun
           importo estratto, o valute miste (CHF+EUR non si sommano). */}
       <KpiCard to="/documenti?scadenza=1&ordine=deadline" icon="banknote" label={t('home.kpiAmounts')}>

@@ -120,7 +120,7 @@ function BloccoDecisioni({ data }: { data: OverviewData }) {
   const tn = useTn();
   const ownership = data.ownership;
   return (
-    <section className="card mt-16 ov-block" aria-labelledby="ov-decisioni">
+    <section className="card panel-hover mt-16 ov-block" aria-labelledby="ov-decisioni">
       <h2 className="card-title" id="ov-decisioni">{t('home.blockDecisions')}</h2>
       {ownership === null ? (
         <div className="muted-sm">{t('home.ownershipUnknown')}</div>
@@ -212,7 +212,7 @@ function BloccoDaFare({ data }: { data: OverviewData }) {
 
   const primoData = s.primo ? (s.primo.dueDate ?? s.primo.appointmentDate) : null;
   return (
-    <section className="card mt-16 ov-block" aria-labelledby="ov-dafare">
+    <section className="card panel-hover mt-16 ov-block" aria-labelledby="ov-dafare">
       <h2 className="card-title" id="ov-dafare">{t('home.blockToDo')}</h2>
       {/* I TERMINI PER PRIMI: un obbligo con un giorno — magari già passato —
           vale più di un riepilogo di conteggi. */}
@@ -283,7 +283,7 @@ function BloccoSistema({ data }: { data: OverviewData }) {
     .filter((x): x is DocumentHubItem => x !== null)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
   return (
-    <section className="card mt-16 ov-block" aria-labelledby="ov-sistema">
+    <section className="card panel-hover mt-16 ov-block" aria-labelledby="ov-sistema">
       <h2 className="card-title" id="ov-sistema">{t('home.blockSystem')}</h2>
       {fallite.attivi > 0 && (
         <RigaConteggio count={fallite.attivi} base="home.sysFailed"
@@ -375,7 +375,7 @@ function OverviewBody({ data }: { data: OverviewData }) {
               controllato. Uno zero senza il suo insieme è indistinguibile da «non
               ho guardato» — è la domanda 1 del censimento, risolta dichiarando. */}
           {blocchi.vuotoOperativo && (
-            <section className="card mt-16 ov-block" aria-labelledby="ov-vuoto">
+            <section className="card panel-hover mt-16 ov-block" aria-labelledby="ov-vuoto">
               <h2 className="card-title" id="ov-vuoto">{t('home.emptyTitle')}</h2>
               <div className="ov-line">
                 {t('home.emptyChecked', {

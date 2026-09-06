@@ -224,8 +224,8 @@ export function FinanceIssuedDetailPage() {
           <dd><strong>{formatDecimal(invoice.totalAmount, invoice.currency, localeTag) ?? '—'}</strong></dd>
         </dl>
 
-        <div className={cx(styles.finTablewrap, 'mt-12')}>
-          <table className={styles.finTable}>
+        <div className={cx('table-scroll', 'mt-12')}>
+          <table className="table">
             <caption className="sr-only">{t('finance.issued.items')}</caption>
             <thead>
               <tr>
@@ -238,12 +238,12 @@ export function FinanceIssuedDetailPage() {
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id}>
+                <tr className="row-hover" key={item.id}>
                   <th scope="row">{item.description}</th>
-                  <td className={styles.finNum}>{item.quantity}</td>
-                  <td className={styles.finNum}>{formatDecimal(item.unitPrice, invoice.currency, localeTag) ?? '—'}</td>
-                  <td className={styles.finNum}>{item.vatRate}{'%'}</td>
-                  <td className={styles.finNum}>{formatDecimal(item.totalAmount, invoice.currency, localeTag) ?? '—'}</td>
+                  <td className={cx(styles.finNum, 'num')}>{item.quantity}</td>
+                  <td className={cx(styles.finNum, 'num')}>{formatDecimal(item.unitPrice, invoice.currency, localeTag) ?? '—'}</td>
+                  <td className={cx(styles.finNum, 'num')}>{item.vatRate}{'%'}</td>
+                  <td className={cx(styles.finNum, 'num')}>{formatDecimal(item.totalAmount, invoice.currency, localeTag) ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

@@ -1458,6 +1458,10 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    (sezione «Cifre tabulari» e il confronto con il numero che conta di più). */
 .meter-track { flex: 1; background: var(--track); border-radius: 99px; height: 3px; overflow: hidden; }
 .meter-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width var(--dur-slow) var(--ease); }
+/* A completamento pieno la barra è verde: «fatto» è lo stato verificato della
+   scala semantica, non una quantità d'accento in più. Sotto il 100% resta il
+   cielo del lavoro in corso. */
+.meter-fill.ok { background: var(--green-fill); }
 
 /* ============================================================================
    UTILITY DEL RIFERIMENTO `panoramica-ai-swisse.html` (2026-09-06)
@@ -1492,10 +1496,14 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: var(--fs-body); text-align: left; }
 .table thead { background: var(--bg); }
 .table thead tr { border-bottom: 1px solid var(--line); }
-.table th { font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--muted); padding: var(--sp-2) var(--sp-4); }
+.table th, .table td { padding: var(--sp-3) var(--sp-4); }
+/* L'eyebrow è SOLO della testata: un `th scope="row"` nel corpo è il nome
+   della riga (una descrizione, un'aliquota), non un titolo di colonna —
+   maiuscoletto e grigio lo renderebbero irriconoscibile. */
+.table thead th { padding: var(--sp-2) var(--sp-4); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--muted); }
 .table tbody tr { border-top: 1px solid var(--line-subtle); }
 .table tbody tr:first-child { border-top: none; }
-.table td { padding: var(--sp-3) var(--sp-4); }
+.table tbody th { font-weight: 600; }
 
 /* `.chart-empty`, `.lang-card`, `.lang-title` e `.lang-chip` sono migrate il
    2026-08-28 in `src/features/documents/documents.module.css` (CSS Modules,

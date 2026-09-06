@@ -101,7 +101,11 @@
   display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
   font-size: var(--fs-body); color: var(--ink); margin-top: var(--sp-05);
 }
-.fin-num { font-variant-numeric: tabular-nums; }
+/* Le cifre delle tabelle portano anche `.num` (Sora tabulare, globale) nel
+   markup; qui restano le cifre tabulari e l'allineamento a destra. La classe
+   vale anche fuori tabella (il valore di `.fin-field`), dove `text-align`
+   non ha effetto perché il contenitore è flex. */
+.fin-num { font-variant-numeric: tabular-nums; text-align: right; }
 /* Il bersaglio minimo di WCAG 2.2: `.btn-sm` da solo resta sotto i 24 pixel. */
 .fin-edit { margin-top: var(--sp-2); min-height: 24px; }
 .fin-edit-form { margin-top: var(--sp-2); max-width: 420px; }
@@ -120,19 +124,12 @@
 }
 
 /* ---- Dettaglio IVA -------------------------------------------------------
-   La tabella scorre DENTRO il proprio contenitore: la pagina non deve mai
-   scorrere in orizzontale (§97). */
-.fin-tablewrap { overflow-x: auto; }
-.fin-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
-.fin-table caption { text-align: left; }
-.fin-table th, .fin-table td {
-  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); text-align: left;
-}
-.fin-table thead th {
-  font-size: var(--fs-label); color: var(--muted); text-transform: uppercase;
-  letter-spacing: 0.04em; white-space: nowrap;
-}
-.fin-table .fin-num { text-align: right; font-variant-numeric: tabular-nums; }
+   DAL 2026-09-06 le due tabelle (aliquote qui, righe fattura in
+   `FinanceIssuedDetailPage`) sono la `.table` globale dentro `.table-scroll`
+   (app.css): testata canvas con eyebrow, righe a filetto, scorrimento DENTRO
+   il contenitore — la pagina non scorre mai in orizzontale (§97). Le regole
+   locali `.fin-tablewrap`/`.fin-table` sono sparite: due copie della stessa
+   tabella divergerebbero al primo ritocco. */
 
 /* ---- Schermi stretti ------------------------------------------------------
    Fino a 360 pixel senza scorrimento orizzontale: l'importo passa sotto e

@@ -103,29 +103,66 @@
 .kpi-trend { color: var(--green); font-weight: 600; margin-left: var(--sp-1); }
 .kpi-trend.down { color: var(--red-dark); }
 
-/* La colonna «Richiede attenzione»: un elenco di righe-collegamento, come
-   `.crm-row-link` ma con le cifre a destra — importo e data stanno insieme
-   perché rispondono alla stessa domanda («quanto, entro quando»). */
+/* La colonna «Richiede attenzione», dal riferimento (2026-09-06): ogni riga
+   è un collegamento su due righe — sopra il pallino di stato col titolo e
+   l'importo a destra, sotto il mittente con la data a destra; le cifre
+   portano `.num` nel markup. Il conteggio in testata è la pill ambra della
+   coda (`<Tag tone="attention">`: chiede un'azione, e il tono si dichiara
+   al componente — mai una classe `.badge` scritta a mano qui dentro). */
 .att-col :global(.card-title) { justify-content: space-between; }
-.att-count { font-weight: 400; }
 .att-list { display: flex; flex-direction: column; }
+/* Il fondo d'hover (`.row-hover`, globale) ha bisogno di respiro: la riga
+   esce di --sp-2 sui lati col suo raggio, e il filetto che la separa dalle
+   altre si allunga di altrettanto. */
 .att-row {
-  display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3);
-  padding: var(--sp-2) 0; border-top: 1px solid var(--line-subtle);
+  display: flex; flex-direction: column; gap: var(--sp-05);
+  margin: 0 calc(-1 * var(--sp-2)); padding: var(--sp-2);
+  border-top: 1px solid var(--line-subtle); border-radius: var(--radius-md);
   color: var(--ink); text-decoration: none;
 }
 .att-row:first-child { border-top: none; }
 .att-row:hover { text-decoration: none; }
 .att-row:hover .att-title { color: var(--accent-text); }
-.att-main { min-width: 0; display: flex; flex-direction: column; }
-.att-title { font-weight: 600; font-size: var(--fs-body); }
+.att-line { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+/* La seconda riga è rientrata: il mittente comincia pressoché sotto il
+   titolo, come nel riferimento (là sono 14px di pallino + distanza; qui il
+   gradino di scala più vicino). */
+.att-sub { padding-left: var(--sp-3); }
+.att-title-wrap { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+/* Il pallino di stato: rosso = termine già passato (urgente), ambra pieno =
+   nella coda (azione a breve). 6px, come il riferimento. */
+.att-dot { width: 6px; height: 6px; border-radius: 99px; flex-shrink: 0; }
+.att-dot-danger { background: var(--red); }
+.att-dot-warn { background: var(--amber-fill); }
+.att-title { font-weight: 600; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .att-sender { font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.att-figures { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
-.att-amount { font-weight: 600; font-size: var(--fs-body); font-variant-numeric: tabular-nums; }
-.att-date { font-size: var(--fs-meta); color: var(--muted); }
+.att-amount { font-weight: 600; font-size: var(--fs-body); flex-shrink: 0; }
+/* `margin-left: auto` tiene la data a destra anche quando il mittente manca
+   (space-between con un figlio solo la riporterebbe a sinistra). */
+.att-date { display: inline-flex; align-items: center; gap: var(--sp-05); flex-shrink: 0; margin-left: auto; font-size: var(--fs-meta); }
 /* Scaduta è rossa: i colori di stato dicono quanto manca, e «è già passata»
-   è lo stato che costa di più. */
+   è lo stato che costa di più. In coda ma non scaduta è ambra-inchiostro:
+   azione a breve. */
 .att-date.overdue { color: var(--red-dark); font-weight: 600; }
+.att-date.due-soon { color: var(--amber); font-weight: 500; }
+/* Il «vai» compare al passaggio e col focus da tastiera — lo spazio resta
+   riservato, la riga non si sposta. Dentro `.att-row` per battere `.ic`
+   (20px) senza contare sull'ordine dei fogli. */
+.att-row .att-chevron { width: 12px; height: 12px; opacity: 0; transition: opacity var(--dur-fast); }
+.att-row:hover .att-chevron, .att-row:focus-visible .att-chevron { opacity: 1; }
+/* «Vedi tutti»: il gesto in piedi alla scheda, a tutta larghezza col filetto
+   sopra — come il riferimento. I margini negativi annullano il padding della
+   scheda (--sp-6): l'hover riempie la riga fino al bordo, e il raggio sotto
+   è quello della scheda meno il suo bordo. */
+.att-see-all {
+  display: flex; align-items: center; gap: var(--sp-1);
+  margin: var(--sp-2) calc(-1 * var(--sp-6)) calc(-1 * var(--sp-6));
+  padding: var(--sp-2) var(--sp-6); border-top: 1px solid var(--line);
+  border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
+  color: var(--accent-text); font-weight: 600; font-size: var(--fs-body);
+  text-decoration: none;
+}
+.att-see-all:hover { background: var(--accent-soft); text-decoration: none; }
 
 /* La scheda del documento in evidenza: testata con titolo e chip pagine, poi
    due colonne — campi estratti e citazione di origine. */
