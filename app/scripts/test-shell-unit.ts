@@ -502,7 +502,7 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
     );
   }
 
-  // L'INGOMBRO: la barra è larga 264px e una voce deve stare su una riga.
+  // L'INGOMBRO: la barra è larga 252px e una voce deve stare su una riga.
   // 24 caratteri è la misura della voce più lunga che ci sta con l'icona
   // accanto (verificata a schermo, non calcolata); il tedesco ha la sua
   // asserzione perché è la lingua che ha già sfondato una volta
@@ -543,7 +543,16 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
     /background:\s*var\(--accent-soft\)/.test(activeBlock)
       && /color:\s*var\(--accent-text\)/.test(activeBlock),
     activeBlock.trim().slice(0, 120));
-  check('il filetto verticale se n\'è andato con il fondo pieno',
+  // Dal 2026-09-03 la pastiglia attiva porta ANCHE la barretta del mockup
+  // «Panoramica»: 3px arrotondati a destra, a filo del bordo sinistro della
+  // colonna, in un ::before — un marcatore sulla rotaia, non un lato della
+  // voce. Il `border-left` di agosto resta tolto: le due cose non si sommano.
+  const barBlock = appCss.match(/\.nav-btn\.active::before\s*\{([^}]*)\}/)?.[1] ?? '';
+  check('la voce attiva porta la barretta del mockup (::before, 3px, accento)',
+    /content:\s*''/.test(barBlock) && /width:\s*3px/.test(barBlock)
+      && /background:\s*var\(--accent\)/.test(barBlock) && /border-radius/.test(barBlock),
+    barBlock.trim().slice(0, 120));
+  check('il filetto verticale sulla voce resta tolto (niente border-left)',
     !/border-left/.test(btnBlock) && !/border-left/.test(activeBlock));
 
   // ⚠️ DAL 2026-08-27 LA SHELL DICHIARA IL CONTESTO (modello Lovable). Sotto
@@ -2301,14 +2310,14 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   check("il tetto di `.main` è tolto solo QUI, e solo dove c'è questa pagina",
     // Nel modulo la classe condivisa è nominata con `:global` (issue #83).
     /:global\(\.main\):has\(\.as-page\)\s*\{[^}]*max-width:\s*none/.test(assistant),
-    'senza, a 1920 la pagina si ferma a 1160 e lascia 496px di vuoto');
+    'senza, a 1920 la pagina si ferma a 1240 e lascia 428px di vuoto');
 
   // --- (d) L'ALTEZZA: gli stessi token del padding di `.main`, non due numeri -
   // ⚠️ È il difetto che questo controllo nasce per non far tornare: `94px` con
   // accanto un commento «30 + 64» quando i token facevano 80, e sotto i 900px
   // 68 dichiarati dove ne servivano 128 (la barra in cima non era contata).
   const PUNTI: [string, string, string[]][] = [
-    ['schermo largo', gPage, ['--sp-8', '--sp-12']],
+    ['schermo largo', gPage, ['--sp-6', '--sp-12']],
     ['fino a 900px', regola('.as-page', bloccoMedia('900px', assistant, '--as-shell-y')),
       ['--topbar-h', '--sp-6', '--sp-12']],
     ['fino a 600px', regola('.as-page', bloccoMedia('600px', assistant, '--as-shell-y')),
@@ -2342,7 +2351,7 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   check('la barra in cima entra nel conto solo dove esiste (sotto i 900px)',
     !tokenDi(dichiarazione(gPage, '--as-shell-y')).includes('--topbar-h')
       && /@media \(max-width: 900px\)/.test(assistant),
-    'su desktop `.topbar` è `display: none`: contarla toglierebbe 56px per niente');
+    'su desktop `.topbar` è `display: none`: contarla toglierebbe 68px per niente');
 
   // --- (e) IL PANNELLO DELLE FONTI: raggiungibile, e chiuso davvero ---------
   const gDrawer = regola('.as-drawer', assistant);

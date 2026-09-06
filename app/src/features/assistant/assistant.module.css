@@ -77,7 +77,7 @@
    `dvh` con `vh` di riserva — su telefono la barra degli indirizzi entra ed
    esce, e con `100vh` il composer resterebbe sotto il bordo proprio mentre si
    scrive. Chi non conosce `dvh` ignora la seconda riga. */
-.as-page { --as-shell-y: calc(var(--sp-8) + var(--sp-12));
+.as-page { --as-shell-y: calc(var(--sp-6) + var(--sp-12));
   display: flex; flex-direction: column; min-height: 0;
   height: calc(100vh - var(--as-shell-y));
   height: calc(100dvh - var(--as-shell-y)); }

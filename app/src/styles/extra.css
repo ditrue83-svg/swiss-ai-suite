@@ -17,7 +17,12 @@
    apriva l'app vedeva solo una parte delle voci: l'intero ARCHIVIO
    (Documenti, Contratti, Clienti, Finanze) esistevano solo dopo uno scroll.
    Qui il box account passa da 202 a 88: due righe invece di quattro. */
-.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
+.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); padding-left: var(--sp-4); padding-right: var(--sp-4); margin-left: calc(-1 * var(--sp-4)); margin-right: calc(-1 * var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-2); }
+/* Il filetto corre da bordo a bordo della colonna (mockup «Panoramica»,
+   2026-09-03): i margini negativi annullano il padding della `.sidebar` — e
+   del `.drawer`, che ha lo stesso --sp-4 — mentre i padding interni
+   riportano il contenuto dov'era. Il risultato: la riga dell'account è un
+   piede di pagina, non una riga fra le voci. */
 /* Niente padding verticale: chi lo dà è il box, e darlo due volte sono 8px in
    fondo a una colonna che ne cercava 242. */
 .account-row { display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-1); }
@@ -46,8 +51,11 @@
 
 /* ---- Selettore azienda (multi-tenant ready) ---- */
 /* Niente cornice né fondo: l'azienda attiva è CONTESTO, non contenuto — una
-   scatola da scheda la faceva concorrere con le voci di navigazione. */
-.company-switch { padding: var(--sp-1) var(--sp-3); margin-bottom: var(--sp-1); }
+   scatola da scheda la faceva concorrere con le voci di navigazione.
+   Dal 2026-09-03 un filetto la chiude IN BASSO (mockup «Panoramica»): è il
+   confine fra la zona identità — marchio e azienda — e la navigazione
+   operativa, non una cornice: tre lati su quattro non ci sono. */
+.company-switch { padding: var(--sp-1) var(--sp-3) var(--sp-3); margin-bottom: var(--sp-1); border-bottom: 1px solid var(--line); }
 .company-switch .cs-label { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 /* ⚠️ UNA RIGA SOLA, come il nome dell'utente qui sotto. La ragione è che
    l'altezza della colonna non deve dipendere da COME SI CHIAMA IL CLIENTE:

@@ -269,7 +269,11 @@
      vede sulla superficie su cui compare più spesso. Questo azzurro, dello
      stesso tono ma più fondo, ne fa 3,94 su `--card` e 3,77 su `--bg`. */
   --focus: hsl(201, 88%, 42%);         /* anello del focus da tastiera */
-  --topbar-h: 56px;
+  /* 68px: l'altezza della barra in cima nel mockup «Panoramica» (2026-09-03;
+     era 56). La dichiara un token perché non è solo CSS: `assistant.module.css`
+     la somma in `--as-shell-y` per tenere il composer dentro lo schermo, e la
+     sezione 15 di `test:shell-unit` controlla che il conto resti allineato. */
+  --topbar-h: 68px;
 
   /* ⚠️ IL TEMA DEI CONTROLLI DEL SISTEMA, che i token non possono vestire.
      Barra di scorrimento, menu a tendina di una `select`, calendario di un
@@ -459,10 +463,13 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .ic { width: 20px; height: 20px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .ic-sm { width: 16px; height: 16px; }
 
-/* 264px e non 240: con il corpo a 15px la voce "Admin AI — Documenti" andava
-   a capo. Allargare la colonna costa nulla; rimpicciolire la navigazione
-   principale avrebbe disfatto il passo appena compiuto. */
-.sidebar { width: 264px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
+/* 252px, la larghezza della colonna nel mockup «Panoramica» (2026-09-03). Erano
+   264, decisi quando il corpo era 15px e «Admin AI — Documenti» andava a capo:
+   a 13,5px di Manrope quella voce — la più lunga — misura 132,9px, e la colonna
+   da 252 ne lascia ~164 utili per l'etichetta (252 meno 32 di padding, 24 di
+   padding del pulsante, 20 di icona e 12 di gap). Restringere non disfa nulla:
+   la voce sta su una riga con 31px di margine. */
+.sidebar { width: 252px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05); position: sticky; top: 0; height: 100vh; }
 /* Il padding inferiore è --sp-2 e non --sp-4: sotto il marchio comincia il
    selettore azienda, che ha già un padding suo — 16px erano due respiri
    sommati, e sopra una navigazione che scorreva valevano mezza voce. */
@@ -532,9 +539,13 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .nav::-webkit-scrollbar-thumb:hover, .drawer::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 /* L'etichetta di gruppo è ORIENTAMENTO, non una voce: pesa meno delle voci
    (400 contro 500 — prima era 600, e PIATTAFORMA gridava quanto le sue voci).
-   La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso. */
-.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-3) var(--sp-3) var(--sp-1); }
-.nav-btn { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background var(--dur-fast), color var(--dur-fast); }
+   La distinzione la fanno il maiuscoletto, la misura e il colore, non il peso.
+   Respiro del mockup «Panoramica» (2026-09-03): 24px sopra — il doppio di
+   prima — perché il confine fra due gruppi lo dà lo spazio, non un filetto;
+   la prima della pila torna a 8, perché sopra c'è già il selettore azienda. */
+.nav-section { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: var(--ls-label); color: var(--muted); font-weight: 400; padding: var(--sp-6) var(--sp-3) var(--sp-2); }
+.nav > .nav-section:first-child { padding-top: var(--sp-2); }
+.nav-btn { position: relative; display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: var(--sp-2) var(--sp-3); border: none; background: none; border-radius: var(--radius); color: var(--ink-soft); font-weight: 500; font-size: var(--fs-body); transition: background var(--dur-fast), color var(--dur-fast); }
 .nav-btn:hover { background: var(--bg); color: var(--ink); }
 /* ⚠️ NELLA COLONNA LA VOCE È PIÙ BASSA CHE NEL DRAWER, e la differenza è
    voluta: di là si tocca con un dito, di qua si punta con un mouse. 8px sopra
@@ -551,9 +562,18 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    laterale è l'eccezione registrata, perché nella navigazione l'azzurro pieno
    a tutta larghezza pesava più del contenuto che annunciava. La pastiglia è
    la coppia ammessa `--accent-soft`/`--accent-text`, angoli curvi su tutti i
-   lati: il filetto verticale e gli angoli squadrati se ne vanno con il fondo
-   pieno — una pastiglia non ha un lato di revisione. */
+   lati. */
 .nav-btn.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+/* ⚠️ E DAL 2026-09-03 LA PASTIGLIA RIPRENDE UN SEGNO AL BORDO — la barretta
+   del mockup «Panoramica», non il filetto tolto il 26.08. Le differenze sono
+   la misura e la posizione: 3px arrotondati a destra, alti quanto il testo
+   (6px di respiro sopra e sotto), a FILO DEL BORDO SINISTRO della colonna —
+   staccata dalla pastiglia, non attaccata a essa. Il filetto di agosto era un
+   lato della voce e moriva con gli angoli squadrati; questa è un marcatore
+   sulla rotaia della navigazione, ed è un pseudo-elemento proprio perché non
+   è contenuto. `--sp-4` è il padding della colonna (e del cassetto): il
+   negativo porta la barretta sul bordo senza conoscerne la larghezza. */
+.nav-btn.active::before { content: ''; position: absolute; left: calc(-1 * var(--sp-4)); top: 6px; bottom: 6px; width: 3px; border-radius: 0 99px 99px 0; background: var(--accent); }
 /* Il piede della barra: separato da un filetto orizzontale e spinto in fondo
    (margin-top: auto dentro il flex della .nav) — le impostazioni non sono
    lavoro quotidiano e non stanno in mezzo.
@@ -580,13 +600,13 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    marcatori sul bundle SERVITO, non una rilettura del codice.
    Il guardiano che impedisce loro di tornare sta nella sezione 14 di
    `test:shell-unit`. */
-/* ⚠️ L'ETICHETTA DELLA VOCE SI SILLABA, e la barra ha una larghezza fissa (264px)
-   che NON si tocca: è la struttura della pagina, non un contenitore di testo.
-   In tedesco «Unternehmenseinstellungen» è una parola sola di 25 caratteri senza
-   punti di rottura naturali: usciva dal proprio pulsante di 7px già con lo stack
-   di sistema, e con Inter — più largo di circa il 6% — di 15px, arrivando a 2px
-   dal bordo della barra invece dei 10 di prima. Misurato sull'app in produzione
-   il 2026-08-11, non dedotto.
+/* ⚠️ L'ETICHETTA DELLA VOCE SI SILLABA, e la barra ha una larghezza fissa
+   (252px dal 2026-09-03, prima 264) decisa dalla struttura della pagina, non
+   dal testo che contiene. In tedesco «Unternehmenseinstellungen» è una parola
+   sola di 25 caratteri senza punti di rottura naturali: a 13,5px di Manrope
+   misura 173,2px contro i ~164 utili nella colonna da 252 — esce di 9px, e
+   usciva di 7 già nel 2026 con lo stack di sistema. La sillabazione resta il
+   comportamento voluto, in tutti e due i formati che la barra ha avuto.
 
    `hyphens: auto` segue l'attributo `lang`, che `src/i18n` aggiorna a ogni cambio
    lingua: il risultato è «Unternehmenseinstel-lungen», con il trattino e su una
@@ -595,7 +615,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 
    ⚠️ La stessa dichiarazione è stata PROVATA E SCARTATA nelle celle di tabella
    (vedi docs/design-system.md § Il carattere): in una colonna da 66px spezza una
-   sillaba per riga e peggiora le cose. Qui la larghezza utile è ~179px e produce
+   sillaba per riga e peggiora le cose. Qui la larghezza utile è ~164px e produce
    UNA rottura pulita. La differenza è la misura, non l'opinione: la stessa
    proprietà è giusta di là e sbagliata di qua. */
 .nav-btn > span:last-child { hyphens: auto; }
@@ -623,6 +643,13 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
     display: flex; align-items: center; gap: var(--sp-3); height: var(--topbar-h);
     padding: 0 var(--sp-4); background: var(--card); border-bottom: 1px solid var(--line);
     position: sticky; top: 0; z-index: 40;
+    /* Dal 2026-09-03 la barra è una VELATURA sul contenuto che ci scorre sotto
+       (mockup «Panoramica»: pannello all'85% + sfocatura). `color-mix` prende
+       l'85% della --card di qualunque tema senza bisogno di un token nuovo; chi
+       non la conosce tiene il fondo pieno dichiarato qui sopra. */
+    background: color-mix(in srgb, var(--card) 85%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
   .topbar .brand { padding: 0; }
   /* Nella barra del telefono il marchio divide 375px con l'hamburger (40) e la
@@ -635,7 +662,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   /* `.topbar-demo` è stata CANCELLATA il 2026-08-28 (censimento regole morte,
      issue #83): zero usi in src/, scripts/, index.html e site/. */
   .drawer {
-    position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw;
+    position: fixed; top: 0; left: 0; bottom: 0; width: 252px; max-width: 84vw;
     background: var(--card); border-right: 1px solid var(--line); z-index: 60;
     padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-05);
     transform: translateX(-100%); transition: transform var(--dur) var(--ease), visibility var(--dur); overflow-y: auto;
@@ -669,10 +696,15 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   .drawer .account-prefs .btn { min-height: 44px; }
 }
 
-/* La cornice della tela: lati più larghi del sopra (in orizzontale il vuoto
-   si percepisce più stretto), fondo a --sp-12 come nei breakpoint stretti —
-   era un 64px solo-desktop, deciso a schermo il 2026-08-10. */
-.main { flex: 1; padding: var(--sp-8) var(--sp-12) var(--sp-12); max-width: 1160px; width: 100%; }
+/* La cornice della tela, dal 2026-09-03 quella del mockup «Panoramica»: 24px
+   sopra e ai lati (era 32 e 48 — la densità del cruscotto comincia dalla
+   cornice), fondo a --sp-12 come nei breakpoint stretti, perché l'ultima riga
+   non deve mai baciare il bordo dello schermo. Tela più larga: 1240px, il
+   max-width del mockup (era 1160). ⚠️ I due token verticali sono gli STESSI
+   che `assistant.module.css` somma in `--as-shell-y`: la sezione 15 di
+   `test:shell-unit` li confronta — cambiarli qui senza cambiarli là rompe il
+   conto che tiene il composer dentro lo schermo. */
+.main { flex: 1; padding: var(--sp-6) var(--sp-6) var(--sp-12); max-width: 1240px; width: 100%; }
 .page { display: none; }
 .page.active { display: block; animation: fade-in var(--dur) var(--ease); }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
