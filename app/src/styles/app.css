@@ -206,17 +206,9 @@
      un testo non rientra in nessuno, il problema è la gerarchia, non la scala.
      ⚠️ DAL 2026-09-03 LA BASE SCENDE da 15px a 13,5px — inversione della scelta
      del 2026-08-10, che l'aveva alzata per «chi legge importi e scadenze».
-     I valori non sono aggiustati a occhio: sono contati sulle classi del mockup
-     «Panoramica» approvato da Andrea (corpo 13,5 · meta 11,5 · label 12,5 ·
-     titoli di scheda 14,5 · di sezione 16,5 · di pagina 17 · KPI 29 con
-     tracking −0,03em). La gerarchia cambia mestiere: non sono più i TITOLI a
-     portare il peso della pagina — il più grande è 17px — ma i NUMERI, in Sora
-     29px a cifre tabulari. Il corpo scende, il dato che conta sale: è la
-     densità da cruscotto del mockup, non un risparmio di pixel. E il corpo È
-     davvero più piccolo: l'occhio di Manrope (0,540em) è praticamente quello
-     di Inter (0,546em), quindi non c'è un guadagno di disegno a compensare —
-     la controprova che 13,5px basti è la verifica a schermo, non una misura
-     di font. */
+     Il riallineamento del 2026-09-06 chiude gli scarti residui misurati sulla
+     fotografia approvata: corpo 14px, titolo di pagina 30px nella barra e KPI
+     36px in Sora 600, sempre con cifre tabulari e tracking −0,03em. */
   /* etichette di gruppo maiuscole («eyebrow»): il gradino più piccolo — a
      questa misura il maiuscoletto spaziato (0,16em) si legge come segno di
      sezione, non come testo; dal riferimento 2026-09-06. In colonna e non in
@@ -226,15 +218,15 @@
   --fs-eyebrow: 10.5px;
   --fs-label: 12.5px;  /* etichette maiuscole, con letter-spacing */
   --fs-meta: 11.5px;   /* metadati e didascalie                   */
-  --fs-body: 13.5px;   /* corpo del testo                          */
+  --fs-body: 14px;     /* corpo del testo                          */
   --fs-strong: 14.5px; /* titoli di scheda e di riga               */
   --fs-h2: 16.5px;     /* titoli di sezione                        */
-  --fs-h1: 17px;       /* titoli di pagina                         */
+  --fs-h1: 30px;       /* titoli di pagina, compreso quello in barra */
   /* Il gradino FUORI scala: i numeri della Panoramica. Non è un settimo
      titolo — è l'unico testo pensato per essere letto da lontano, e l'unico
      che chiude il tracking fino a −0,03em. Sta fuori dai sei gradini perché
      non è un compito del TESTO: è il dato che la pagina serve. */
-  --fs-kpi: 29px;
+  --fs-kpi: 36px;
 
   --lh-tight: 1.25;    /* titoli                                   */
   --lh: 1.55;          /* testo corrente                           */
@@ -612,7 +604,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    colonna non esiste, c'è il drawer, dove `.nav-btn` è rimasto com'era).
    I pixel recuperati pagano il riquadro «Dati in Svizzera»: il conto è la
    sezione 13 di test:shell-unit. */
-.sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); line-height: 1.4; }
+.sidebar .nav-btn { padding: var(--sp-1) var(--sp-3); line-height: 1.36; }
 /* ⚠️ LA VOCE ATTIVA È UNA PASTIGLIA CHIARA dal 2026-08-26 (restyling sul
    modello Lovable, scelta di Andrea), non più il riempimento pieno deciso il
    2026-08-17. Il vocabolario «fondo pieno = selezione, velatura =
@@ -737,13 +729,15 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Il PERCORSO della pagina: sezione › voce, la stessa struttura che la colonna
-   laterale mostra. La sezione è orientamento (muted), la pagina corrente ha
-   l'inchiostro pieno. Sparisce sotto i 900px: lì il «dove sono» lo porta già
-   il titolo della pagina, e lo spazio serve ai comandi. */
-.crumbs { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; font-size: var(--fs-label); color: var(--muted); white-space: nowrap; overflow: hidden; }
+/* Il PERCORSO e il TITOLO della pagina: sezione › voce sopra, identità grande
+   sotto, come nel riferimento. Restano visibili a OGNI larghezza: la
+   Panoramica non ha più una testata duplicata nel contenuto, quindi
+   nasconderli sul telefono cancellerebbe del tutto il «dove sono». */
+.topbar-page { min-width: 0; display: flex; flex-direction: column; justify-content: center; line-height: 1; }
+.crumbs { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; font-size: var(--fs-meta); color: var(--muted); white-space: nowrap; overflow: hidden; }
 .crumbs .crumb-current { color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
 .crumbs .ic { width: 12px; height: 12px; }
+.topbar-title { margin-top: var(--sp-05); font-family: var(--font-display); font-size: var(--fs-h1); font-weight: 600; letter-spacing: var(--ls-title); line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Il CAMPO CHE APRE LA RICERCA RAPIDA. È un <button> vestito da campo: il
    riferimento lo disegna come un input, ma ciò che fa è APRIRE un riquadro —
@@ -782,18 +776,17 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    (è nella media query): sopra ci pensa il campo elastico. */
 .topbar-actions { display: flex; align-items: center; gap: var(--sp-2); }
 
-/* La PASTIGLIA «richiede attenzione» è un COLLEGAMENTO alla lista dei
-   documenti da verificare — la stessa destinazione e lo STESSO numero del
-   blocco della Panoramica (il conteggio condiviso della shell, vedi
-   `useAttentionCount`): un numero qui e un numero diverso là sarebbero due
-   verità. Ambra e non rossa: è lavoro ordinario che aspetta, non un allarme. */
-.topbar-attn { display: flex; align-items: center; gap: var(--sp-2); height: 36px; padding: 0 var(--sp-3); border-radius: 99px; background: var(--amber-soft); color: var(--amber); font-size: var(--fs-label); font-weight: 500; white-space: nowrap; }
+/* La PASTIGLIA «richiede attenzione» è un segnale, non un collegamento: il
+   totale condiviso copre attivi e archiviati, mentre Documenti li presenta in
+   due viste distinte. Blu e non rosso: è lavoro ordinario che aspetta, non un
+   allarme. */
+.topbar-attn { display: flex; align-items: center; gap: var(--sp-2); height: 36px; padding: 0 var(--sp-3); border-radius: 99px; background: var(--accent-soft); color: var(--accent-text); font-size: var(--fs-label); font-weight: 500; white-space: nowrap; }
 .topbar-attn .num { font-variant-numeric: tabular-nums; }
 /* Il punto che pulsa è quello del riferimento: due dischi sovrapposti, quello
    sopra cresce e svanisce. Chi chiede meno movimento lo perde nel blocco
    «movimento ridotto» — il disco fermo resta, il segnale no. */
 .attn-dot { position: relative; width: 6px; height: 6px; flex-shrink: 0; }
-.attn-dot > span { position: absolute; inset: 0; border-radius: 99px; background: var(--amber-fill); }
+.attn-dot > span { position: absolute; inset: 0; border-radius: 99px; background: var(--accent); }
 .attn-dot > span + span { animation: attn-ping 1.6s var(--ease) infinite; }
 @keyframes attn-ping { 0% { transform: scale(1); opacity: 0.6; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
 
@@ -835,19 +828,14 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 @media (max-width: 900px) {
   body { flex-direction: column; }
   .sidebar { display: none; }
-  /* Su schermo stretto la barra resta ma cambia mestiere: niente percorso né
-     campo (non c'è spazio — il «dove sono» lo dà il titolo della pagina, la
-     ricerca la apre la lente sola), tornano hamburger e marchio. */
-  .crumbs, .topbar-search { display: none; }
+  /* Su schermo stretto il percorso e il titolo restano: «sempre» comprende il
+     telefono. Il campo largo cede alla lente; il marchio è già nel drawer e
+     lascia il proprio posto all'identità della pagina. */
+  .topbar-page { display: flex; flex: 1; }
+  .topbar-search { display: none; }
   .topbar-actions { margin-left: auto; }
   .topbar-search-icon { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
   .topbar-search-icon:hover { background: var(--bg); }
-  .topbar .brand { display: flex; padding: 0; }
-  /* Nella barra del telefono il marchio divide 375px con l'hamburger (40) e la
-     campanella (36): a 148px se ne prendeva il 39% e la barra diventava una
-     insegna. 120 lasciano respiro attorno e il segno resta leggibile — sotto i
-     100 la parola «Swisse» comincia a chiudersi. */
-  .topbar .brand-logo { width: 120px; }
   .hamburger { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); }
   .hamburger:hover { background: var(--bg); }
   /* `.topbar-demo` è stata CANCELLATA il 2026-08-28 (censimento regole morte,
@@ -890,9 +878,12 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* Sotto i 600px la barra si stringe ancora: l'etichetta del caricamento cede
    (l'icona resta, la parola la porta l'aria-label — l'azione è una e il
    riferimento la nasconde allo stesso modo) e la pastiglia «richiede
-   attenzione» anche: il suo numero resta nel badge su «Documenti» del
-   cassetto, a un tocco di distanza. */
+   attenzione» anche: i conteggi operativi restano nei badge del cassetto,
+   a un tocco di distanza. */
 @media (max-width: 600px) {
+  .topbar { gap: var(--sp-2); padding-inline: var(--sp-3); }
+  .topbar-title { font-size: var(--fs-h2); }
+  .hamburger, .topbar-search-icon { width: 36px; height: 36px; }
   .topbar-cta-label, .topbar-attn { display: none; }
 }
 
@@ -1485,6 +1476,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
 .kpi-grid > .kpi, .kpi-grid > .skel-kpi { border: none; border-radius: 0; box-shadow: none; }
 @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .kpi-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Gerarchia dichiarata: una metrica grande e quattro piccole ------------
    Cinque schede su una griglia da quattro colonne davano un 3+2 con un buco in
@@ -1539,6 +1531,8 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    etichette di gruppo — qui il numero sotto è già il segno più forte della
    pagina, e un'etichetta che grida gli ruba la scena. */
 .kpi-label { font-size: var(--fs-label); font-weight: 500; color: var(--muted); display: flex; align-items: flex-start; gap: var(--sp-2); min-height: 2.7em; line-height: 1.3; }
+.kpi-main { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-3); }
+.kpi-reading { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
 .kpi-sub { margin-top: auto; font-size: var(--fs-meta); color: var(--muted); border-top: 1px solid var(--line-subtle); padding-top: var(--sp-2); }
 /* ⚠️ `tabular-nums`, e qui è lo scarto più grosso di tutta l'interfaccia.
    Dal 2026-09-03 il font è Sora (`--font-display`), che usa cifre PROPORZIONALI
@@ -1672,11 +1666,8 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    2026-08-28 (censimento regole morte, issue #83): zero usi in src/, scripts/,
    index.html e site/. */
 
-/* ---------- greeting / home operativa ----------
-   `.greeting` e `.greeting-sub` (con il loro commento e la riga di `.greeting`
-   nella `@media (max-width: 600px)` più sotto) sono migrate il 2026-08-28 in
-   `src/features/dashboard/dashboard.module.css` (CSS Modules, issue #83):
-   le usa solo la Panoramica (`features/dashboard/`). */
+/* Il saluto `.greeting` e la sua riga secondaria sono stati rimossi il
+   2026-09-06: titolo e azioni della Panoramica vivono nella topbar comune. */
 
 /* La famiglia «righe azione con priorità» (`.action-row` con `:first-child`,
    `.is-link` e le sue `:hover`, `.action-ico` con `.p-alta`/`.p-media`/

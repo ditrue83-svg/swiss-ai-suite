@@ -226,21 +226,17 @@ scala. Dal 2026-09-06 i valori sono quelli contati sulle classi del mockup
 | `--fs-eyebrow` | 10,5px | etichette di gruppo maiuscole, con `--ls-eyebrow` 0,16em |
 | `--fs-label` | 12,5px | etichette, pastiglie |
 | `--fs-meta` | 11,5px | metadati, didascalie |
-| `--fs-body` | 13,5px | corpo del testo |
+| `--fs-body` | 14px | corpo del testo |
 | `--fs-strong` | 14,5px | titoli di scheda e di riga |
 | `--fs-h2` | 16,5px | titoli di sezione |
-| `--fs-h1` | 17px | titoli di pagina |
-| `--fs-kpi` | 29px | i numeri della Panoramica — **fuori scala**, con `--ls-kpi` −0,03em e cifre tabulari |
+| `--fs-h1` | 30px | titoli di pagina, compreso quello nella topbar |
+| `--fs-kpi` | 36px | i numeri della Panoramica — **fuori scala**, con `--ls-kpi` −0,03em e cifre tabulari |
 
-⚠️ **La base è SCESA da 15px a 13,5px** — inversione della scelta del
-2026-08-10, che l'aveva alzata per «chi legge importi e scadenze». Non è un
-risparmio di pixel: è la densità da cruscotto del mockup, dove la gerarchia
-cambia mestiere — non sono più i **titoli** a portare il peso della pagina (il
-più grande è 17px) ma i **numeri**, in Sora 29px a cifre tabulari. E il corpo
-è davvero più piccolo: l'occhio di Manrope (0,540em) è praticamente quello di
-Inter (0,546em), quindi non c'è un guadagno di disegno a compensare. La
-controprova che 13,5px basti è la verifica a schermo — in coda al restyle —
-non una misura di font.
+⚠️ **La base si è assestata a 14px.** Il primo restyle l'aveva portata da 15 a
+13,5px; il confronto pixel del 2026-09-06 ha misurato il mezzo pixel residuo e
+lo ha corretto senza aggiungere un nuovo gradino. La gerarchia da cruscotto
+resta: titolo pagina e numeri sono ora i due segni visivi forti, a 30 e 36px,
+mentre meta, label, titoli di scheda e di sezione conservano i propri compiti.
 
 ⚠️ **Una gerarchia si dichiara con i gradini che ci sono, non aggiungendone uno
 di troppo** — e la storia di questa riga ha tre atti. La Panoramica aveva
@@ -253,7 +249,7 @@ della stessa misura non dicono quale guardare per primo. Primo atto
 diventa «Attività aperte», in un rapporto 1:2. Terzo atto (2026-09-06): il
 mockup fonde la striscia in **una scheda sola divisa da filetti** (`.kpi-grid`,
 l'eccezione del gap da 1px è dichiarata nel CSS: è lo spessore del filetto,
-non spaziatura) e tutti i numeri stanno a `--fs-kpi`. Il 29px non contraddice
+non spaziatura) e tutti i numeri stanno a `--fs-kpi`. Il 36px non contraddice
 la lezione: non è un settimo titolo — è l'unico testo pensato per essere letto
 da lontano, e sta fuori dai sei gradini perché non è un compito del testo, è
 il dato che la pagina serve. Il gradino che manca è quasi sempre un gradino di
@@ -430,17 +426,13 @@ riferimento; era 264. La voce attiva è una pastiglia `--accent-soft` con la
 è la forma del mockup, non il filetto tolto il 26.08 — la differenza è la
 misura e la posizione. In fondo, sopra il box account, c'è il riquadro «**Dati
 in Svizzera**» (`.data-box`, scudo con spunta, tradotto nelle tre lingue): una
-promessa del prodotto, non una voce di navigazione. Il badge numerico è **UNO
-SOLO**, su «Documenti»: porta il conteggio condiviso della shell
-(`useAttentionCount`, i documenti «da verificare» attivi) — la stessa
-definizione della colonna «Richiede attenzione» della Panoramica e della
-destinazione del suo collegamento (`/documenti?stato=to_verify`), perché un
-numero qui e un numero diverso là sarebbero due verità. Una sola
-interrogazione, rinfrescata al cambio di azienda e di pagina: un badge per voce
-costerebbe una richiesta per voce per cambio pagina, ed è la ragione per cui il
-secondo numero del mockup — la posta non letta — resta fuori. **Esc chiude il
-drawer**, come già faceva per la campanella e le finestre: un tasto chiude una
-cosa sola.
+promessa del prodotto, non una voce di navigazione. I badge numerici compaiono
+su **Inbox, Documenti e Scadenze e attività**, e solo lì: `useNavCounts` usa i
+conteggi reali degli elenchi — da gestire, documenti attivi, attività aperte —
+e lascia il badge assente se una lettura fallisce. Non esiste un numero di
+facciata per Incentivi o per una voce senza servizio autorevole. **Esc chiude
+il drawer**, come già faceva per la campanella e le finestre: un tasto chiude
+una cosa sola.
 
 **La barra in cima** è alta 68px (`--topbar-h`), resta appiccicata mentre il
 contenuto scorre sotto, ed è una **velatura**: `color-mix` all'85% della
@@ -448,10 +440,11 @@ contenuto scorre sotto, ed è una **velatura**: `color-mix` all'85% della
 senza bisogno di un token nuovo; in tema scuro torna piena, perché la
 trasparenza lascerebbe leggere il contenuto in trasparenza. Da sinistra porta:
 
-- il **percorso** della pagina (`.crumbs`): sezione › voce, letto da `NAV` e
-  `NAV_SETTINGS` — la stessa struttura che mostra la colonna. Sparisce sotto i
-  900px: lì il «dove sono» lo porta già il titolo della pagina, e lo spazio
-  serve ai comandi;
+- l'**identità** della pagina (`.topbar-page`): percorso sezione › voce e,
+  sotto, titolo a 30px. Le voci prima del primo gruppo usano la sezione
+  operativa esplicita; il blocco resta a ogni larghezza. Sotto i 600px il
+  titolo usa il gradino `--fs-h2`, per convivere con hamburger e comandi senza
+  troncare il percorso;
 - il **campo che apre la ricerca rapida** (⌘K): un `<button>` vestito da
   campo. Il riferimento lo disegna come un input, ma ciò che fa è *aprire* un
   riquadro — e un controllo che ne apre un altro è un pulsante, con
@@ -459,10 +452,9 @@ trasparenza lascerebbe leggere il contenuto in trasparenza. Da sinistra porta:
   stessa scatola dell'hamburger. Il «⌘K» è un'espressione JSX apposta: quel
   glifo non è nel sottoinsieme dei caratteri serviti, quindi non può vivere
   nei dizionari che `fonts:check` pesa;
-- la **pastiglia «richiede attenzione»**: un collegamento alla lista filtrata,
-  con **lo stesso numero** del blocco della Panoramica — il conteggio
-  condiviso della shell. Ambra e non rossa: è lavoro ordinario che aspetta,
-  non un allarme. Il punto che pulsa è quello del riferimento (due dischi
+- la **pastiglia «richiede attenzione»**: un segnale blu col totale di attivi e
+  archiviati. Non è un collegamento, perché Documenti separa le due popolazioni
+  in viste distinte. Il punto che pulsa è quello del riferimento (due dischi
   sovrapposti, quello sopra cresce e svanisce); chi chiede meno movimento
   perde l'alone e tiene il disco fermo. A zero non si mostra: «niente da
   verificare» non è un segnale;
@@ -860,6 +852,23 @@ persona) resta testo, perché dice quale modulo l'ha creata e **non** se il
 documento chiedesse quella cosa.
 
 ## Regole che valgono per chi lavora qui dopo
+
+### Riallineamento finale al riferimento — audit responsive 2026-09-07
+
+| | Stato al 2026-09-06 |
+|---|---|
+| Implementato | **sì — sul branch `design/mockup-pixel-align`**. La scala usa corpo 14 px, titolo pagina 30 px e KPI 36 px Sora 600; la topbar compone percorso e titolo a ogni larghezza; a 375 px i KPI sono impilati come nel riferimento; la Panoramica non duplica più identità e CTA; i KPI mostrano delta e sparkline solo quando esiste una serie storica reale |
+| Deployato | **no** — il branch attende revisione e merge |
+| Configurato | nessuna configurazione: sono componenti, token e query di conteggio già esistenti |
+| Testato | **sì** — guardie offline per scala, geometria 720 px, topbar, badge, due popolazioni `to_verify` e KPI; suite completa nel commit finale |
+| Provato contro la cosa reale | **sì** — produzione letta senza mutazioni (`to_verify`: 0 attivi, 16 archiviati) e [confronto Playwright](visual-checks/2026-09-06/verification.md) a 1440/375, chiaro/scuro, col mockup alle stesse misure |
+| Disponibile a clienti esterni | **no** — nessuna disponibilità prima del deploy di `main` |
+
+Decisioni bloccate: `#37AEEF` non cambia; sopra l'accento resta
+`--on-accent` scuro; il suo hover resta `--accent-dark` con contrasto AA; un
+badge di navigazione compare solo se il servizio della destinazione restituisce
+un totale autorevole. Il segnale di attenzione somma attivi e archiviati perché
+la produzione ha dimostrato che una delle due popolazioni può essere vuota.
 
 1. **Nessun valore scritto a mano**: misure e colori vengono dai token.
    Dal 2026-08-09 non è un'esortazione: `npm run design:lint` **blocca la CI**

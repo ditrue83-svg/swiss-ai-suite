@@ -1,34 +1,35 @@
 // ============================================================================
-// useAttentionCount — il numero dei documenti «da verificare» ATTIVI, per la
-// pastiglia della topbar e il badge su «Documenti» (riferimento 2026-09-06).
+// useAttentionCount — il numero dei documenti «da verificare», per la
+// pastiglia della topbar (riferimento 2026-09-06).
 //
-// ⚠️ UNA SOLA INTERROGAZIONE CONDIVISA, e il perché sta nel commento di
-// `nav.ts`: un badge per voce costerebbe una richiesta per voce per cambio
-// pagina. Qui il numero è UNO, vive nella shell, e la sua definizione è la
-// stessa della colonna «Richiede attenzione» della Panoramica e della pagina
-// d'arrivo del suo collegamento (`/documenti?stato=to_verify`) — il numero
-// della shell e il numero della destinazione non possono divergere.
-// Il conteggio arriva dalla funzione finestra di `list_documents` (limit 1:
-// le righe non servono, serve il totale), con la stessa cadenza della
-// campanella: al cambio azienda e al cambio pagina, perché è lì che qualcosa
-// può essere successo.
+// Qui il numero è UNO e vive nella shell. Copre attivi e archiviati come il
+// censimento della Panoramica; la pagina Documenti separa invece le due
+// popolazioni in viste distinte, quindi le righe operative restano nei loro
+// due collegamenti dentro «Limiti del sistema». Il conteggio arriva dalle due
+// funzioni finestra di `list_documents` (limit 1: servono i totali, non le
+// righe), con la stessa cadenza della campanella: al cambio azienda e al cambio
+// pagina, perché è lì che qualcosa può essere successo.
 // ============================================================================
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { documentHubService } from '@/services/documentHubService';
 
-export function useAttentionCount(activeCompanyId: string | null): number {
-  const [count, setCount] = useState(0);
+export function useAttentionCount(activeCompanyId: string | null): number | null {
+  const [count, setCount] = useState<number | null>(null);
   const location = useLocation();
 
   const refresh = useCallback(async () => {
-    if (!activeCompanyId) { setCount(0); return; }
+    if (!activeCompanyId) { setCount(null); return; }
     try {
-      const { attivi } = await documentHubService.stateTotals(activeCompanyId, 'to_verify');
-      setCount(attivi);
+      const { attivi, archiviati } = await documentHubService.stateTotals(activeCompanyId, 'to_verify');
+      // La Panoramica conta entrambe le popolazioni: in produzione i sedici
+      // documenti da verificare erano tutti archiviati, quindi leggere i soli
+      // attivi trasformava un dato reale in zero e nascondeva la pastiglia.
+      setCount(attivi + archiviati);
     } catch {
-      // Un conteggio che non si riesce a leggere resta com'era: «zero
-      // documenti da verificare» è un'affermazione, e non la sappiamo.
+      // Un conteggio che non si riesce a leggere resta ignoto: zero sarebbe
+      // un'affermazione e nasconderebbe di nuovo il segnale.
+      setCount(null);
     }
   }, [activeCompanyId]);
 
@@ -36,7 +37,7 @@ export function useAttentionCount(activeCompanyId: string | null): number {
   // azzerato mostrerebbe il numero dell'azienda precedente sotto il nome
   // della nuova — non un ritardo, un'informazione falsa.
   useEffect(() => {
-    setCount(0);
+    setCount(null);
     void refresh();
   }, [activeCompanyId, refresh]);
 

@@ -96,6 +96,7 @@ export const it = {
     assistant: 'Chiedi ad AI-Swisse',
     contracts: 'Contratti',
     clients: 'Clienti',
+    sectionOverview: 'Operativo',
     // I gruppi sono la giornata di chi amministra, non l'architettura del
     // software: LAVORO è il flusso in entrata, ARCHIVIO è dove si ritrova.
     sectionWork: 'Lavoro',
@@ -1064,19 +1065,11 @@ export const it = {
     configMissing: 'Configurazione mancante: imposta VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY nel file .env.',
   },
   home: {
-    greetingMorning: 'Buongiorno', greetingAfternoon: 'Buon pomeriggio', greetingEvening: 'Buonasera',
-    // Con il nome, quando il profilo è stato letto. Frasi INTERE e non
-    // «{saluto}, {nome}» composto nel codice: la virgola cade dove la lingua
-    // vuole, non dove capita.
-    greetingMorningNamed: 'Buongiorno, {name}',
-    greetingAfternoonNamed: 'Buon pomeriggio, {name}',
-    greetingEveningNamed: 'Buonasera, {name}',
-    // --- La testata e la striscia KPI (restyling 2026-08-26, modello Lovable) --
+    // --- La topbar e la striscia KPI (restyling 2026-08-26, modello Lovable) --
     // «Carica documento» è un'AZIONE e non ripete la voce della barra
     // («Analizza documento»): il modello la chiama così, e il gesto è caricare —
     // l'analisi parte da sola. Le due frasi convivono perché fanno due mestieri.
     uploadDoc: 'Carica documento',
-    updatedAt: 'Aggiornata oggi alle {time}',
     attentionPillOne: '1 documento richiede attenzione',
     attentionPillMany: '{n} documenti richiedono attenzione',
     kpiGroup: 'Indicatori principali',

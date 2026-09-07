@@ -13,6 +13,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { NAV, NAV_SETTINGS, isSection, navItemMatches } from './nav';
 import { CommandPalette } from './CommandPalette';
 import { useAttentionCount } from './useAttentionCount';
+import { useNavCounts, type NavCounts } from './useNavCounts';
 import type { TKey } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -28,7 +29,11 @@ import { SettingsDialog } from '@/features/settings/SettingsDialog';
 // I ruoli restano in chiave: l'etichetta si traduce al render.
 const ROLE_KEY: Record<string, TKey> = { owner: 'roles.owner', admin: 'roles.admin', member: 'roles.member' };
 
-function NavList({ onNavigate, onSettings, attentionCount = 0 }: { onNavigate?: () => void; onSettings: () => void; attentionCount?: number }) {
+function NavList({ onNavigate, onSettings, counts }: {
+  onNavigate?: () => void;
+  onSettings: () => void;
+  counts: NavCounts;
+}) {
   const t = useT();
   // Le voci riservate spariscono per chi non è titolare o amministratore. Il
   // permesso però NON è questo: è la RLS della pagina (vedi nav.ts).
@@ -59,13 +64,14 @@ function NavList({ onNavigate, onSettings, attentionCount = 0 }: { onNavigate?: 
           >
             <Icon name={entry.icon} />
             <span>{t(entry.labelKey)}</span>
-            {/* Il badge numerico del riferimento (2026-09-06): UNO SOLO, su
-                «Documenti», ed è il conteggio condiviso della shell (vedi
-                `useAttentionCount`): niente — come voleva nav.ts — una
-                interrogazione per voce. A zero non si mostra: «niente da
-                verificare» lo dice la pagina, non un distintivo. */}
-            {entry.id === 'documents' && attentionCount > 0 && (
-              <span className="nav-badge num" title={t('documents.states.to_verify')} aria-hidden="true">{attentionCount}</span>
+            {/* Solo conteggi provenienti dai servizi delle rispettive pagine.
+                `null` significa «non letto»: in quel caso il distintivo non
+                compare, perché zero sarebbe un dato inventato. */}
+            {entry.id in counts && counts[entry.id as keyof NavCounts] !== null
+              && counts[entry.id as keyof NavCounts]! > 0 && (
+              <span className="nav-badge num" aria-hidden="true">
+                {counts[entry.id as keyof NavCounts]}
+              </span>
             )}
           </NavLink>
         ),
@@ -134,35 +140,31 @@ function DataBox() {
   );
 }
 
-/** Il percorso della pagina nella barra in cima (riferimento 2026-09-06):
+/** Il percorso e il titolo della pagina nella barra in cima.
  *  sezione › voce, la stessa struttura che la colonna laterale mostra — chi
  *  cambia formato non deve reimparare dove stanno le cose. La sezione è
  *  l'ultima intestazione vista scorrendo NAV fino alla voce che combacia;
- *  Panoramica e «Chiedi ad AI-Swisse» stanno PRIMA delle sezioni, quindi il
- *  loro percorso è il solo nome. Le voci nascoste (permessi, moduli fuori
- *  perimetro) non possono comparire qui: la regola è la stessa di NavList. */
-function Breadcrumb() {
+ *  Le voci prima della prima sezione appartengono a «Operativo»: non essere
+ *  precedute da un'intestazione nel menu non significa essere senza sezione. */
+function PageIdentity() {
   const t = useT();
   const { isAdmin } = useCompany();
   const { pathname } = useLocation();
 
-  let sezione: TKey | null = null;
+  let sezione: TKey = 'nav.sectionOverview';
   for (const entry of NAV) {
     if (isSection(entry)) { sezione = entry.sectionKey; continue; }
     if ((entry.adminOnly && !isAdmin) || (entry.legacyOnly && !LEGACY_MODULES_ENABLED)) continue;
     if (navItemMatches(entry, pathname)) {
       return (
-        <nav className="crumbs" aria-label={t('nav.breadcrumbAria')}>
-          {sezione === null ? (
+        <div className="topbar-page">
+          <nav className="crumbs" aria-label={t('nav.breadcrumbAria')}>
+            <span>{t(sezione)}</span>
+            <Icon name="chevronRight" />
             <span className="crumb-current">{t(entry.labelKey)}</span>
-          ) : (
-            <>
-              <span>{t(sezione)}</span>
-              <Icon name="chevronRight" />
-              <span className="crumb-current">{t(entry.labelKey)}</span>
-            </>
-          )}
-        </nav>
+          </nav>
+          <div className="topbar-title">{t(entry.labelKey)}</div>
+        </div>
       );
     }
   }
@@ -172,11 +174,14 @@ function Breadcrumb() {
     navItemMatches(item, pathname) && (!item.adminOnly || isAdmin) && (!item.legacyOnly || LEGACY_MODULES_ENABLED));
   if (!impostazione) return null;
   return (
-    <nav className="crumbs" aria-label={t('nav.breadcrumbAria')}>
-      <span>{t('nav.settings')}</span>
-      <Icon name="chevronRight" />
-      <span className="crumb-current">{t(impostazione.labelKey)}</span>
-    </nav>
+    <div className="topbar-page">
+      <nav className="crumbs" aria-label={t('nav.breadcrumbAria')}>
+        <span>{t('nav.settings')}</span>
+        <Icon name="chevronRight" />
+        <span className="crumb-current">{t(impostazione.labelKey)}</span>
+      </nav>
+      <div className="topbar-title">{t(impostazione.labelKey)}</div>
+    </div>
   );
 }
 
@@ -268,6 +273,7 @@ export function AppShell() {
   // Il conteggio «da verificare»: uno solo per l'intera shell — pastiglia in
   // topbar e badge su «Documenti» — con la stessa cadenza della campanella.
   const attentionCount = useAttentionCount(activeCompanyId);
+  const navCounts = useNavCounts(activeCompanyId);
   // La finestra delle impostazioni vive QUI e non nei due NavList, per la
   // stessa ragione del conteggio della campanella: nell'albero i NavList sono
   // due — colonna e cassetto — e due finestre indipendenti vorrebbero dire due
@@ -326,7 +332,7 @@ export function AppShell() {
           <BrandMark taglineKey="nav.workspace" caps />
         </div>
         <CompanySwitch />
-        <NavList onSettings={() => setSettingsOpen(true)} attentionCount={attentionCount} />
+        <NavList onSettings={() => setSettingsOpen(true)} counts={navCounts} />
         <DataBox />
         <AccountBox />
       </aside>
@@ -347,7 +353,7 @@ export function AppShell() {
           <div className="brand">
             <BrandMark tagline={false} />
           </div>
-          <Breadcrumb />
+          <PageIdentity />
           {/* Il campo che APRE la ricerca rapida: è un pulsante vestito da
               campo (il perché sta in app.css). Il «⌘K» è un'espressione JSX
               apposta: quel glifo non sta nei caratteri serviti, quindi non può
@@ -363,15 +369,15 @@ export function AppShell() {
             <button className="topbar-search-icon" onClick={() => setPaletteOpen(true)} aria-label={t('palette.openAria')}>
               <Icon name="search" />
             </button>
-            {/* La pastiglia porta alla lista filtrata: il numero è DENTRO la
-                frase («N documenti richiedono attenzione»), non un contatore a
-                sé — così si legge da sola in tutte e tre le lingue. A zero non
-                si mostra: «niente da verificare» non è un segnale. */}
-            {attentionCount > 0 && (
-              <Link className="topbar-attn" to="/documenti?stato=to_verify">
+            {/* Il numero è DENTRO la frase («N documenti richiedono
+                attenzione»), non un contatore a sé. È un segnale, non un
+                collegamento: il totale copre attivi e archiviati, che
+                Documenti espone in due viste distinte. */}
+            {attentionCount !== null && attentionCount > 0 && (
+              <div className="topbar-attn">
                 <span className="attn-dot" aria-hidden="true"><span /><span /></span>
                 <span className="num">{tn('home.attentionPill', attentionCount)}</span>
-              </Link>
+              </div>
             )}
             {/* La campanella: mount UNICO della shell (dal 2026-09-06 — prima
                 stava anche accanto al marchio della colonna). */}
@@ -406,7 +412,7 @@ export function AppShell() {
           <BrandMark taglineKey="nav.workspace" caps />
         </div>
         <CompanySwitch />
-        <NavList onNavigate={() => setDrawerOpen(false)} onSettings={() => setSettingsOpen(true)} attentionCount={attentionCount} />
+        <NavList onNavigate={() => setDrawerOpen(false)} onSettings={() => setSettingsOpen(true)} counts={navCounts} />
         <DataBox />
         <AccountBox />
       </aside>

@@ -937,12 +937,12 @@ conta il caso dichiara la frase attesa. Autoverifica da 30 a **38 casi**.
 
 ## Il carattere dell'interfaccia — deployato il 2026-08-11 e PROVATO SUL DOMINIO
 
-> ⚠️ **Dal 2026-09-03 le famiglie sono DUE — Manrope per il corpo, Sora per
-> titoli e numeri grandi — self-hosted come Inter, con U+202F trapiantato in
-> entrambe e U+2192 in Sora** (commit `5a08a80`). Il cambio vive sul branch
-> `design/lovable-restyle`: **la produzione serve ancora Inter**, e questa
-> sezione resta vera di ciò che è in esercizio finché il branch non è unito.
-> Stato del restyle: §«Il restyle sul riferimento «Panoramica»».
+> ⚠️ **Dal merge del 2026-09-06 (PR #104, `1f78d91`) la produzione serve le
+> due famiglie nuove — Manrope per il corpo, Sora per titoli e numeri grandi —
+> self-hosted come Inter, con U+202F trapiantato in entrambe e U+2192 in
+> Sora** (font in `5a08a80`, 03.09). Questa sezione descrive l'interfaccia
+> PRECEDENTE e resta come sua storia. Stato del restyle: §«Il restyle sul
+> riferimento «Panoramica»».
 
 **Inter, ospitato da noi** (`inter-ui@4.1.1`, SIL OFL), al posto dello stack di
 sistema. Il come e il perché stanno in [`design-system.md`](design-system.md);
@@ -1438,12 +1438,13 @@ la mostra — le righe stanno bene). Si chiuderebbe con un `flex-wrap: wrap` su
 
 ## La colonna mostra tutte le sue voci — IN PRODUZIONE dal 2026-08-17
 
-> ⚠️ **Sul branch del restyle (2026-09-06) la colonna è cambiata**: 236px — 252
-> da ≥1280px — invece di 264, riquadro «Dati in Svizzera» in fondo, badge
-> numerico UNICO su «Documenti» dal conteggio condiviso della shell
-> (`useAttentionCount`), Esc che chiude il drawer, bilancio di §13 ribasato
-> (line-height voce 1,4). La produzione resta quella descritta qui sotto;
-> stato completo: §«Il restyle sul riferimento «Panoramica»».
+> ⚠️ **Dal merge del 2026-09-06 (PR #104) la colonna in produzione è quella
+> nuova**: 236px — 252 da ≥1280px — invece di 264, riquadro «Dati in
+> Svizzera» in fondo, badge numerici su Inbox, Documenti e Attività soltanto
+> quando i rispettivi servizi hanno un conteggio reale, Esc che chiude il
+> drawer, bilancio di §13 ribasato (line-height voce 1,36). Quanto segue descrive la
+> colonna precedente e resta come sua storia; stato completo: §«Il restyle
+> sul riferimento «Panoramica»».
 
 La barra laterale ha dieci voci in tre gruppi. A 1280×720 se ne vedevano
 **sei**: la colonna chiedeva 962px e ne aveva 720, e la navigazione — l'unica
@@ -1738,7 +1739,7 @@ Tolte con la PR #63, e la sezione 14 ora pretende che non tornino — né nel
 foglio né in un componente, con la controprova che il lettore dei componenti
 non sia a vuoto.
 
-## Il restyle sul riferimento «Panoramica» — sul branch `design/lovable-restyle`, NON in produzione (2026-09-06)
+## Il restyle sul riferimento «Panoramica» — IN PRODUZIONE dal 2026-09-06
 
 L'interfaccia è stata rifatta sul mockup `panoramica-ai-swisse.html` approvato:
 **Manrope + Sora** self-hosted al posto di Inter, scala tipografica e densità
@@ -1753,23 +1754,37 @@ lo stato, con le sei parole.
 
 | | Stato al 2026-09-06 |
 |---|---|
-| Implementato | **sì — sul branch `design/lovable-restyle`**, dieci commit: `5a08a80` (i font, 03.09) e i nove del 06.09 — `24d173c` token `:root`, `a874f8a` shell, `d5af08d` classi globali, `5f55402` moduli feature, `fda3064` token e utility sul riferimento, `fac5e72` sidebar, `8163ef4` componenti, `5b37378` topbar a ogni larghezza, `792d7c5` i due ritocchi usciti dalla prima occhiata col browser |
-| Deployato | **NO** — il branch non è pushato e nessuna PR è aperta: la produzione serve l'interfaccia di `main`, Inter compreso. Push e PR **solo su approvazione del titolare** |
+| Implementato | **sì — in produzione dal 2026-09-06**: PR [#104](https://github.com/ditrue83-svg/swiss-ai-suite/pull/104) unita con merge commit `1f78d91`, branch `design/lovable-restyle` chiuso. Dodici commit: `5a08a80` (i font, 03.09) e gli undici del 06.09 — `24d173c` token `:root`, `a874f8a` shell, `d5af08d` classi globali, `5f55402` moduli feature, `fda3064` token e utility sul riferimento, `fac5e72` sidebar, `8163ef4` componenti, `5b37378` topbar a ogni larghezza, `792d7c5` i due ritocchi usciti dalla prima occhiata col browser, `bb8d6c1` i documenti, `ce9d469` il pre-volo vetrina |
+| Deployato | **sì — dal 2026-09-06.** Push, PR e merge approvati dal titolare («ok pubblica e aggiorna tutto»). Verificato nel bundle SERVITO su app.ai-swisse.com: `assets/index-CVOpNDRz.css` contiene i segni nuovi (`--fs-eyebrow: 10.5px`, `.shell-body`, `#E8F6FE`, Manrope e Sora) e i sei woff2 (`manrope-400/500/600`, `sora-400/500/600`) rispondono 200. CI su `main` verde dopo il merge (run 34044232369: qualità+unità e database effimero success, suite manuali saltate per design); vetrina ripubblicata coi token nuovi (run 34044232372 «Vetrina → GitHub Pages» success) |
 | Configurato | non richiede configurazione: nessun segreto, nessuno scheduler |
 | Testato | **sì** — `npm run ci` **verde a ogni commit** (quality 12/12, unit 35/35, shell-unit **523/523**); `fonts:check` verde sulle sei impronte (copertura sull'**intersezione** delle due famiglie: 333 codepoint — né Manrope né Sora disegnano U+202F, e Sora non ha U+2192: glifi trapiantati dagli Inter storici); `brand:check` verde; `design:lint` senza eccezioni morte; le sezioni di `test:shell-unit` che contano geometrie e contrasti (§12, §13, §16) ribasate sulle misure nuove |
 | Provato contro la cosa reale | **sì — il 2026-09-06, dopo i dieci commit.** Login reale come utente demo (`pilota.demo@swissai-suite.ch`) su Chromium headless (Playwright — Safari non si presta all'automazione: `do JavaScript` è spento e le finestre dell'utente non si toccano): Panoramica chiara e scura a 1440px; 375px con hamburger, drawer ed Esc; palette ⌘K aperta, con risultati e col vuoto dichiarato; Attività, Documenti, Finanze e la CTA che apre davvero l'uploader su `/admin?carica=1`; emulazione di stampa (cornice nascosta, contenuto pulito); le tre lingue IT/DE/FR senza sfori né glifi mancanti; confronto col riferimento `panoramica-ai-swisse.html` fotografato alla stessa misura — NON con `05-Design/preview-screenshot.png`, che è il mockup della vecchia demo «SwissAI Suite», un artefatto superato. È il giro che ha pescato il difetto della barretta (`792d7c5`) e ne ha verificato la cura su colonna e cassetto |
-| Disponibile a clienti esterni | **no** — non è in produzione |
+| Disponibile a clienti esterni | **sì — dal merge del 2026-09-06**: è l'interfaccia che app.ai-swisse.com serve oggi |
 
-⚠️ **Le sezioni di design più sotto descrivono la produzione, e la produzione
-non è cambiata.** «Il carattere dell'interfaccia», «Il marchio e i pesi del
-carattere», «La colonna mostra tutte le sue voci» e «L'azzurro #37AEEF» restano
-vere di ciò che `main` serve oggi; le misure nuove valgono sul branch e
-diventano stato di produzione solo con il merge. Decisioni bloccate del
-restyle, perché non si riscoprano: azzurro invariato `#37AEEF` (`brand:check`),
-testo **scuro** `--on-accent` sui bottoni sky (il bianco farebbe 2,48:1),
-hover primario `--accent-dark` a 5,73:1 invece dello «sky-deep» del file
-(4,33:1, sotto AA), nessuna palette nuova, nessun testo cambiato, il sito
-vetrina non si tocca.
+⚠️ **Dal merge del 2026-09-06 la produzione È il restyle.** Le sezioni di
+design più sotto — «Il carattere dell'interfaccia», «Il marchio e i pesi del
+carattere», «La colonna mostra tutte le sue voci» e «L'azzurro #37AEEF» —
+descrivono l'interfaccia PRECEDENTE (Inter, colonna 264px) e restano come
+sua storia; le famiglie e le misure nuove sono quelle in esercizio.
+Decisioni bloccate del restyle, perché non si riscoprano: azzurro invariato
+`#37AEEF` (`brand:check`), testo **scuro** `--on-accent` sui bottoni sky (il
+bianco farebbe 2,48:1), hover primario `--accent-dark` a 5,73:1 invece dello
+«sky-deep» del file (4,33:1, sotto AA), nessuna palette nuova, nessun testo
+cambiato. La vetrina non è ridisegnata, ma il suo `tokens.css` deve stare in
+pari con l'app — lo esige `sync-tokens --check` in CI: rigenerato in
+`ce9d469`, con l'estrattore sistemato perché copiava solo la prima riga dei
+commenti in coda alle dichiarazioni.
+
+## Riallineamento pixel sul mockup — branch `design/mockup-pixel-align` (audit 2026-09-07)
+
+| | Stato al 2026-09-06 |
+|---|---|
+| Implementato | **sì — sul branch `design/mockup-pixel-align`**: base 14 px, titolo pagina 30 px nella topbar, KPI 36 px; percorso `sezione › voce` a ogni larghezza e anche per le voci prima dei gruppi; a 375 px KPI in una colonna come nel riferimento; KPI senza icone decorative; badge di navigazione dai soli conteggi reali; rimossa la testata duplicata della Panoramica |
+| Deployato | **no** — il branch non è unito a `main`; la PR viene aperta soltanto dopo tutti i verdi |
+| Configurato | non richiede configurazione, segreti o migrazioni |
+| Testato | **sì** — `test:shell-unit` ribasato e verde **538/538**; `npm run ci` e controllo token vetrina registrati nel commit finale |
+| Provato contro la cosa reale | **sì** — lettura di sola testata sulla produzione: i `to_verify` sono **0 attivi + 16 archiviati**, il caso che nascondeva la pastiglia è riprodotto e corretto. Playwright su utente demo reale a 1440 × 900 e 375 × 800, chiaro/scuro e movimento ridotto; [fotogrammi e confronto col riferimento](visual-checks/2026-09-06/verification.md) |
+| Disponibile a clienti esterni | **no** — lo diventa solo dopo revisione, merge e deploy della PR |
 
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 

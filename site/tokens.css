@@ -229,17 +229,9 @@
      un testo non rientra in nessuno, il problema è la gerarchia, non la scala.
      ⚠️ DAL 2026-09-03 LA BASE SCENDE da 15px a 13,5px — inversione della scelta
      del 2026-08-10, che l'aveva alzata per «chi legge importi e scadenze».
-     I valori non sono aggiustati a occhio: sono contati sulle classi del mockup
-     «Panoramica» approvato da Andrea (corpo 13,5 · meta 11,5 · label 12,5 ·
-     titoli di scheda 14,5 · di sezione 16,5 · di pagina 17 · KPI 29 con
-     tracking −0,03em). La gerarchia cambia mestiere: non sono più i TITOLI a
-     portare il peso della pagina — il più grande è 17px — ma i NUMERI, in Sora
-     29px a cifre tabulari. Il corpo scende, il dato che conta sale: è la
-     densità da cruscotto del mockup, non un risparmio di pixel. E il corpo È
-     davvero più piccolo: l'occhio di Manrope (0,540em) è praticamente quello
-     di Inter (0,546em), quindi non c'è un guadagno di disegno a compensare —
-     la controprova che 13,5px basti è la verifica a schermo, non una misura
-     di font. */
+     Il riallineamento del 2026-09-06 chiude gli scarti residui misurati sulla
+     fotografia approvata: corpo 14px, titolo di pagina 30px nella barra e KPI
+     36px in Sora 600, sempre con cifre tabulari e tracking −0,03em. */
   /* etichette di gruppo maiuscole («eyebrow»): il gradino più piccolo — a
      questa misura il maiuscoletto spaziato (0,16em) si legge come segno di
      sezione, non come testo; dal riferimento 2026-09-06. In colonna e non in
@@ -249,15 +241,15 @@
   --fs-eyebrow: 10.5px;
   --fs-label: 12.5px;  /* etichette maiuscole, con letter-spacing */
   --fs-meta: 11.5px;   /* metadati e didascalie                   */
-  --fs-body: 13.5px;   /* corpo del testo                          */
+  --fs-body: 14px;     /* corpo del testo                          */
   --fs-strong: 14.5px; /* titoli di scheda e di riga               */
   --fs-h2: 16.5px;     /* titoli di sezione                        */
-  --fs-h1: 17px;       /* titoli di pagina                         */
+  --fs-h1: 30px;       /* titoli di pagina, compreso quello in barra */
   /* Il gradino FUORI scala: i numeri della Panoramica. Non è un settimo
      titolo — è l'unico testo pensato per essere letto da lontano, e l'unico
      che chiude il tracking fino a −0,03em. Sta fuori dai sei gradini perché
      non è un compito del TESTO: è il dato che la pagina serve. */
-  --fs-kpi: 29px;
+  --fs-kpi: 36px;
 
   --lh-tight: 1.25;    /* titoli                                   */
   --lh: 1.55;          /* testo corrente                           */
