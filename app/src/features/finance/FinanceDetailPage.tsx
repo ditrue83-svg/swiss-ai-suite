@@ -785,8 +785,8 @@ function VatPanel({ ctx }: { ctx: FieldContext }) {
       {/* Il dettaglio per aliquota, quando il documento ce l'ha. Gli importi
           restano STRINGHE decimali: non passano da un double (§48). */}
       {lines.length > 0 && (
-        <div className={cx('table-scroll', 'mt-12')}>
-          <table className="table">
+        <div className={cx(styles.finTablewrap, 'mt-12')}>
+          <table className={styles.finTable}>
             <caption className="sr-only">{t('finance.detail.tabsVat')}</caption>
             <thead>
               <tr>
@@ -798,10 +798,10 @@ function VatPanel({ ctx }: { ctx: FieldContext }) {
             </thead>
             <tbody>
               {lines.map((line, i) => (
-                <tr className="row-hover" key={`${line.rate}-${i}`}>
-                  <th scope="row" className={cx(styles.finNum, 'num')}>{line.rate}</th>
-                  <td className={cx(styles.finNum, 'num')}>{formatDecimal(line.taxableBase, item.currency, localeTag) ?? '—'}</td>
-                  <td className={cx(styles.finNum, 'num')}>{formatDecimal(line.taxAmount, item.currency, localeTag) ?? '—'}</td>
+                <tr key={`${line.rate}-${i}`}>
+                  <th scope="row" className={styles.finNum}>{line.rate}</th>
+                  <td className={styles.finNum}>{formatDecimal(line.taxableBase, item.currency, localeTag) ?? '—'}</td>
+                  <td className={styles.finNum}>{formatDecimal(line.taxAmount, item.currency, localeTag) ?? '—'}</td>
                   <td>{L.fieldSource(line.source)}</td>
                 </tr>
               ))}

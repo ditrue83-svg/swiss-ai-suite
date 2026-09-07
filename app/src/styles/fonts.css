@@ -1,7 +1,5 @@
 /* ============================================================================
-   I caratteri del prodotto: MANROPE per il testo, SORA per i titoli,
-   OSPITATI QUI. Dal 2026-09-03; prima c'era solo Inter (i file storici e la
-   loro storia sono nella cronologia git di questo foglio).
+   Il carattere del prodotto: Inter, OSPITATO QUI.
 
    PERCHÉ NON DA GOOGLE FONTS, e non è una preferenza. Un `<link>` a
    fonts.googleapis.com farebbe partire, dal browser di ogni cliente, una
@@ -11,82 +9,53 @@
    `font-src 'self' data:` e nient'altro. Caricarlo da fuori renderebbe falsa
    una dichiarazione fatta ai clienti — che è peggio del carattere di sistema.
 
-   PERCHÉ DUE FAMIGLIE. Il design system del 2026-09 (mockup «Panoramica»)
-   divide i mestieri: Manrope porta il corpo — bottoni, tabelle, moduli — e
-   Sora porta ciò che si guarda prima — titoli, sigla, numeri dei KPI. Tutte
-   e due hanno le cifre tabulari (`tnum`, verificato nei file e non dedotto
-   dalla documentazione): importi, aliquote e scadenze restano allineati in
-   colonna in qualunque contesto.
+   PERCHÉ INTER. Le tre lingue del prodotto vivono nella stessa schermata, e i
+   numeri contano quanto le parole: importi, aliquote, termini di disdetta.
+   Inter ha le cifre tabulari (`tnum`, verificato nel file e non dedotto dalla
+   documentazione) e distingue le forme che qui si confondono di più — 1/l/I,
+   0/O — in un testo che si legge di fretta.
 
-   I FILE. Derivati dai variabili ufficiali di google/fonts (SIL OFL, licenza
-   in `public/fonts/LICENSE-OFL.txt`), fermati ai pesi 400/500/600 e ridotti
-   ai caratteri che il prodotto usa davvero: ~360 glifi, 16-18 KB per peso.
+   I FILE. Sottoinsieme di `inter-ui@4.1.1` (SIL OFL, licenza in
+   `public/fonts/LICENSE-OFL.txt`), ridotto ai caratteri che il prodotto usa
+   davvero: 445 su 2852, 25 KB per peso invece di 108. Come si rigenera e come
+   si verifica: `npm run fonts:check` e la testata di `scripts/fonts-check.mjs`.
 
-   ⚠️⚠️ NÉ MANROPE NÉ SORA DISEGNANO U+202F, e Sora non ha nemmeno U+2192
-   (la freccia «→»). U+202F è lo spazio fine insecabile che TUTTA
-   l'interfaccia francese usa davanti a : ; ! ? e dentro i guillemets
-   (`i18n:typography` lo impone): senza, ogni etichetta francese avrebbe quel
-   carattere disegnato da un altro font. I sei file qui sotto portano quei
-   due glifi TRAPIANTATI dai file Inter storici, riscalati all'em di
-   destinazione — il trapianto è parte della rigenerazione, descritta passo
-   per passo nella testata di `scripts/fonts-check.mjs`. Misurato aprendo i
-   file con `npm run fonts:check`, non letto nella documentazione.
+   ⚠️ IL SOTTOINSIEME DI GOOGLE NON ANDAVA BENE, ed è la ragione per cui questi
+   file non vengono da lì: il suo «latin» NON contiene U+202F, lo spazio fine
+   insecabile che tutta l'interfaccia francese usa davanti a : ; ! ? e dentro i
+   guillemets (`i18n:typography` lo impone). Ogni etichetta francese avrebbe
+   avuto quel singolo carattere disegnato da un altro carattere tipografico.
+   Misurato aprendo i file, non letto nella documentazione.
 
-   TRE PESI PER FAMIGLIA, PERCHÉ TRE. 400 il corpo del testo, 500 le
-   etichette e le intestazioni di tabella, 600 i titoli e i numeri che vanno
-   visti per primi. Un peso in più è un file in più su una connessione che
-   non conosciamo.
+   TRE PESI, PERCHÉ TRE. 400 il corpo del testo, 500 le etichette e le
+   intestazioni di tabella, 600 i titoli e i numeri che vanno visti per primi.
+   Un peso in più è un file in più su una connessione che non conosciamo.
 
-   `font-display: swap`: il testo si legge subito con il carattere di sistema
-   e cambia quando il font è pronto. Su questa applicazione si leggono
-   scadenze: meglio un secondo di carattere diverso che un secondo di pagina
-   vuota.
+   `font-display: swap`: il testo si legge subito con il carattere di sistema e
+   cambia quando Inter è pronto. Su questa applicazione si leggono scadenze:
+   meglio un secondo di carattere diverso che un secondo di pagina vuota.
    ========================================================================== */
 
 @font-face {
-  font-family: 'Manrope';
+  font-family: 'Inter';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/manrope-400.woff2') format('woff2');
+  src: url('/fonts/inter-400.woff2') format('woff2');
 }
 
 @font-face {
-  font-family: 'Manrope';
+  font-family: 'Inter';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/manrope-500.woff2') format('woff2');
+  src: url('/fonts/inter-500.woff2') format('woff2');
 }
 
 @font-face {
-  font-family: 'Manrope';
+  font-family: 'Inter';
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/manrope-600.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Sora';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/sora-400.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Sora';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/sora-500.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Sora';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/sora-600.woff2') format('woff2');
+  src: url('/fonts/inter-600.woff2') format('woff2');
 }

@@ -17,7 +17,6 @@
 // ============================================================================
 import { Link } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
-import { Tag } from '@/components/ui/Tag';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { useDocumentLabel } from '@/i18n/documentLabel';
 import { useT, useTn } from '@/i18n';
@@ -37,11 +36,11 @@ export function AttenzioneColumn({ data }: { data: OverviewData }) {
   if (attenzione !== null && attenzione.total === 0) return null;
 
   return (
-    <section className={cx('card', 'panel-hover', styles.attCol)} aria-labelledby="att-col-title">
+    <section className={cx('card', styles.attCol)} aria-labelledby="att-col-title">
       <h2 className="card-title" id="att-col-title">
         {t('home.attentionTitle')}
         {attenzione !== null && (
-          <Tag tone="attention">{tn('home.attentionItems', attenzione.total)}</Tag>
+          <span className={cx(styles.attCount, 'muted-sm')}>{tn('home.attentionItems', attenzione.total)}</span>
         )}
       </h2>
 
@@ -53,32 +52,26 @@ export function AttenzioneColumn({ data }: { data: OverviewData }) {
             {attenzione.items.map((item) => {
               const scaduta = item.deadline !== null && item.deadline < data.today;
               return (
-                <Link key={item.id} to={`/documenti/${item.id}`} className={cx(styles.attRow, 'row-hover')}>
-                  <span className={styles.attLine}>
-                    <span className={styles.attTitleWrap}>
-                      <span className={cx(styles.attDot, scaduta ? styles.attDotDanger : styles.attDotWarn)} aria-hidden="true" />
-                      <span className={styles.attTitle}>{etichetta(item.label)}</span>
-                    </span>
+                <Link key={item.id} to={`/documenti/${item.id}`} className={styles.attRow}>
+                  <span className={styles.attMain}>
+                    <span className={styles.attTitle}>{etichetta(item.label)}</span>
+                    {item.sender && <span className={styles.attSender}>{item.sender}</span>}
+                  </span>
+                  <span className={styles.attFigures}>
                     {item.amount !== null && (
-                      <span className={cx(styles.attAmount, 'num')}>{formatCurrency(item.amount, item.amountCurrency)}</span>
+                      <span className={styles.attAmount}>{formatCurrency(item.amount, item.amountCurrency)}</span>
+                    )}
+                    {item.deadline !== null && (
+                      <span className={cx(styles.attDate, scaduta && styles.overdue)}>
+                        {formatDate(item.deadline)}
+                      </span>
                     )}
                   </span>
-                  {(item.sender || item.deadline !== null) && (
-                    <span className={cx(styles.attLine, styles.attSub)}>
-                      {item.sender && <span className={styles.attSender}>{item.sender}</span>}
-                      {item.deadline !== null && (
-                        <span className={cx(styles.attDate, 'num', scaduta ? styles.overdue : styles.dueSoon)}>
-                          {formatDate(item.deadline)}
-                          <Icon name="chevronRight" className={styles.attChevron} />
-                        </span>
-                      )}
-                    </span>
-                  )}
                 </Link>
               );
             })}
           </div>
-          <Link className={styles.attSeeAll} to="/documenti?stato=to_verify">
+          <Link className="btn btn-sm mt-10" to="/documenti?stato=to_verify">
             {t('home.attentionSeeAll')} <Icon name="arrowRight" className="ic-sm" />
           </Link>
         </>

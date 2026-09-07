@@ -1,9 +1,8 @@
 // ============================================================================
 // HomePage — la Panoramica. Dal 2026-08-26 la FORMA è quella del modello
-// Lovable voluto da Andrea: una striscia di quattro KPI, poi due colonne — il
-// lavoro a sinistra, la lista «Richiede attenzione» a destra. Dal 2026-09-06
-// identità della pagina e gesti primari vivono nella topbar comune: ripeterli
-// qui creava due titoli, due caricamenti e due segnali di attenzione.
+// Lovable voluto da Andrea: testata con l'istante della lettura e i gesti
+// primari, una striscia di quattro KPI, poi due colonne — il lavoro a
+// sinistra, la lista «Richiede attenzione» a destra.
 //
 // Ciò che NON è cambiato è la disciplina dei numeri (censimento 2026-08-19):
 // questa resta la schermata che dice cosa il sistema sa, cosa non ha potuto
@@ -14,6 +13,8 @@
 // decorazione» resta vero: per questo le altre tre card NON hanno sparkline.
 //
 // LA STRUTTURA:
+//   · testata (`home-head`): saluto + «aggiornata alle», pastiglia attenzione,
+//     «Carica documento» (→ /admin);
 //   · striscia KPI (`KpiStrip`);
 //   · colonna principale: documento in evidenza (`DocumentoInEvidenza`) poi i
 //     tre blocchi storici — decisioni, lavoro e limiti del sistema — la cui
@@ -39,12 +40,36 @@ import {
 import { KpiStrip } from './KpiStrip';
 import { AttenzioneColumn } from './AttenzioneColumn';
 import { DocumentoInEvidenza } from './DocumentoInEvidenza';
-import { formatDate, formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime, formatTime } from '@/lib/format';
 import { documentLabelText } from '@/i18n/documentLabel';
+import { useAuth } from '@/contexts/AuthContext';
 import { useT, useTn, type PluralBase, type TKey } from '@/i18n';
 import type { DataDocumentoRiga } from '@/services/documentHubService';
 import type { DocumentHubItem } from '@/types/models';
 import styles from './dashboard.module.css';
+
+/**
+ * Il saluto, con il nome quando lo sappiamo.
+ *
+ * ⚠️ DUE CHIAVI PER FASCIA E NON UNA CON IL SEGNAPOSTO VUOTO: «Buongiorno, »
+ * con la virgola e il vuoto dopo è la forma che si ottiene interpolando un nome
+ * che non c'è, e in tedesco e francese la punteggiatura non cade nello stesso
+ * posto. Il profilo può mancare — arriva da `profiles`, che è leggibile solo
+ * dal proprietario e in una frazione di secondo dopo il login non c'è ancora —
+ * e in quel caso si saluta senza nome, che è una frase intera lo stesso.
+ */
+const GREETING: Record<'morning' | 'afternoon' | 'evening', { plain: TKey; named: TKey }> = {
+  morning: { plain: 'home.greetingMorning', named: 'home.greetingMorningNamed' },
+  afternoon: { plain: 'home.greetingAfternoon', named: 'home.greetingAfternoonNamed' },
+  evening: { plain: 'home.greetingEvening', named: 'home.greetingEveningNamed' },
+};
+
+function greetingSlot(): keyof typeof GREETING {
+  const h = new Date().getHours();
+  if (h < 12) return 'morning';
+  if (h < 18) return 'afternoon';
+  return 'evening';
+}
 
 /** L'esempio di un blocco: la voce più recente, col nome deciso dalla regola
  *  del titolo (`label`) — la prima riga di questa pagina è già stata «2.5». */
@@ -95,7 +120,7 @@ function BloccoDecisioni({ data }: { data: OverviewData }) {
   const tn = useTn();
   const ownership = data.ownership;
   return (
-    <section className="card panel-hover mt-16 ov-block" aria-labelledby="ov-decisioni">
+    <section className="card mt-16 ov-block" aria-labelledby="ov-decisioni">
       <h2 className="card-title" id="ov-decisioni">{t('home.blockDecisions')}</h2>
       {ownership === null ? (
         <div className="muted-sm">{t('home.ownershipUnknown')}</div>
@@ -187,7 +212,7 @@ function BloccoDaFare({ data }: { data: OverviewData }) {
 
   const primoData = s.primo ? (s.primo.dueDate ?? s.primo.appointmentDate) : null;
   return (
-    <section className="card panel-hover mt-16 ov-block" aria-labelledby="ov-dafare">
+    <section className="card mt-16 ov-block" aria-labelledby="ov-dafare">
       <h2 className="card-title" id="ov-dafare">{t('home.blockToDo')}</h2>
       {/* I TERMINI PER PRIMI: un obbligo con un giorno — magari già passato —
           vale più di un riepilogo di conteggi. */}
@@ -258,7 +283,7 @@ function BloccoSistema({ data }: { data: OverviewData }) {
     .filter((x): x is DocumentHubItem => x !== null)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
   return (
-    <section className="card panel-hover mt-16 ov-block" aria-labelledby="ov-sistema">
+    <section className="card mt-16 ov-block" aria-labelledby="ov-sistema">
       <h2 className="card-title" id="ov-sistema">{t('home.blockSystem')}</h2>
       {fallite.attivi > 0 && (
         <RigaConteggio count={fallite.attivi} base="home.sysFailed"
@@ -350,7 +375,7 @@ function OverviewBody({ data }: { data: OverviewData }) {
               controllato. Uno zero senza il suo insieme è indistinguibile da «non
               ho guardato» — è la domanda 1 del censimento, risolta dichiarando. */}
           {blocchi.vuotoOperativo && (
-            <section className="card panel-hover mt-16 ov-block" aria-labelledby="ov-vuoto">
+            <section className="card mt-16 ov-block" aria-labelledby="ov-vuoto">
               <h2 className="card-title" id="ov-vuoto">{t('home.emptyTitle')}</h2>
               <div className="ov-line">
                 {t('home.emptyChecked', {
@@ -397,11 +422,43 @@ function OverviewBody({ data }: { data: OverviewData }) {
 
 export function HomePage() {
   const t = useT();
+  const tn = useTn();
+  const { profile } = useAuth();
   const { loading, error, data, reload } = useOverview();
+
+  const slot = GREETING[greetingSlot()];
+  const name = profile?.firstName?.trim();
+  // La pastiglia dichiara il numero della colonna «Richiede attenzione» e porta
+  // alla stessa destinazione: `attenzione.total` è il conteggio esatto della
+  // finestra di `list_documents` con `stato=to_verify`. Se la lettura è fallita
+  // la pastiglia non c'è — la colonna sotto dichiara il guasto.
+  const nAttenzione = data?.attenzione?.total ?? 0;
 
   return (
     <div id="home-body">
-      <div>
+      {/* LA TESTATA (restyling 2026-08-26, modello Lovable): a sinistra il
+          saluto — che è l'identità della pagina — con sotto l'istante della
+          lettura; a destra la pastiglia di ciò che richiede attenzione e il
+          gesto primario, «Carica documento». */}
+      <div className={styles.homeHead}>
+        <div className="page-head">
+          <div className={styles.greeting}>{name ? t(slot.named, { name }) : t(slot.plain)}</div>
+          {data && (
+            <div className={styles.greetingSub}>{t('home.updatedAt', { time: formatTime(data.loadedAt) })}</div>
+          )}
+        </div>
+        <div className={styles.homeHeadActions}>
+          {nAttenzione > 0 && (
+            <Link className={styles.attPill} to="/documenti?stato=to_verify">
+              <Icon name="alert" className="ic-sm" />
+              {tn('home.attentionPill', nAttenzione)}
+            </Link>
+          )}
+          <Link className="btn btn-primary" to="/admin"><Icon name="upload" className="ic-sm" /> {t('home.uploadDoc')}</Link>
+        </div>
+      </div>
+
+      <div className="mt-16">
         {/* Lo scheletro somiglia a ciò che arriva: la striscia KPI e i blocchi,
             non una griglia fissa da riempire. */}
         {loading && <><SkeletonCard /><div className="mt-16"><SkeletonCard /></div></>}

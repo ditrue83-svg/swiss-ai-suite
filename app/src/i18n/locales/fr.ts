@@ -93,7 +93,6 @@ export const fr: Dictionary = {
     assistant: 'Demandez à AI-Swisse',
     contracts: 'Contrats',
     clients: 'Clients',
-    sectionOverview: 'Opérations',
     sectionWork: 'Travail',
     sectionArchive: 'Archives',
     automations: 'Automatisations',
@@ -131,10 +130,6 @@ export const fr: Dictionary = {
     openMenu: 'Ouvrir le menu de navigation',
     auditLog: 'Journal d’activité',
     closeMenu: 'Fermer le menu',
-    // Le nom du fil d’Ariane de la barre supérieure pour les lecteurs d’écran.
-    breadcrumbAria: 'Fil d’Ariane',
-    dataBoxTitle: 'Données en Suisse',
-    dataBoxNote: 'Traitement local, aucun envoi automatique.',
   },
   settings: {
     preferencesDesc: 'La langue et l’apparence valent pour vous sur cet ordinateur, pas pour l’entreprise.',
@@ -142,24 +137,6 @@ export const fr: Dictionary = {
   },
   dialog: {
     close: 'Fermer',
-  },
-  // La recherche rapide de la barre supérieure (⌘K) : entrées de menu,
-  // documents et tâches depuis un seul champ.
-  // ⚠️ Pas de glyphes de clavier (⌘, ↑, ↓) dans ces chaînes : ils manquent
-  // au sous-ensemble des fontes servies (fonts:check les pèse). Le « ⌘K »
-  // du champ vit dans le balisage, les touches de l’aide sont en toutes
-  // lettres.
-  palette: {
-    dialogAria: 'Recherche rapide',
-    openAria: 'Ouvrir la recherche rapide',
-    inputAria: 'Rechercher des documents, tâches et pages',
-    // La formule de la référence, mot pour mot : les trois choses qu’on
-    // cherche vraiment d’ici — un document, un organisme expéditeur,
-    // une échéance.
-    placeholder: 'Rechercher documents, organismes, échéances…',
-    groupPages: 'Pages',
-    empty: 'Aucun résultat pour « {q} »',
-    hint: 'Flèches haut et bas pour naviguer · Entrée pour ouvrir · Échap pour fermer',
   },
   roles: {
     owner: 'Propriétaire',
@@ -992,7 +969,12 @@ export const fr: Dictionary = {
     configMissing: 'Configuration manquante : définissez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans le fichier .env.',
   },
   home: {
+    greetingMorning: 'Bonjour', greetingAfternoon: 'Bon après-midi', greetingEvening: 'Bonsoir',
+    greetingMorningNamed: 'Bonjour {name}',
+    greetingAfternoonNamed: 'Bon après-midi {name}',
+    greetingEveningNamed: 'Bonsoir {name}',
     uploadDoc: 'Importer un document',
+    updatedAt: 'Mise à jour aujourd’hui à {time}',
     attentionPillOne: '1 document requiert votre attention',
     attentionPillMany: '{n} documents requièrent votre attention',
     kpiGroup: 'Indicateurs principaux',

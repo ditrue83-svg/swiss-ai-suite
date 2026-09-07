@@ -136,7 +136,7 @@
    Con `tabular-nums` tornano identiche (49,1), e le date passano da uno scarto
    di 3,6px a zero. È la stessa dichiarazione che gli importi usano già in
    `.fin-num`: qui mancava perché il carattere di prima non la richiedeva. */
-.dl-date { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 600; letter-spacing: var(--ls-title); font-variant-numeric: tabular-nums; }
+.dl-date { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
 .dl-rem { font-size: var(--fs-meta); margin-top: var(--sp-05); }
 :global(.lvl-scaduta) .dl-ico { background: var(--red-soft); color: var(--red-dark); } :global(.lvl-scaduta) .dl-rem { color: var(--red-dark); font-weight: 600; }
 :global(.lvl-urgente) .dl-ico { background: var(--red-soft); color: var(--red-dark); } :global(.lvl-urgente) .dl-rem { color: var(--red-dark); font-weight: 600; }

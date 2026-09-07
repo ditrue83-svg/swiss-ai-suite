@@ -142,7 +142,6 @@ const EXCEPTIONS = [
   { file: 'src/features/print/print.module.css', contesto: '.print-kv dt', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
   { file: 'src/features/print/print.module.css', contesto: '.print-url', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
   { file: 'src/features/print/print.module.css', contesto: '.print-foot', frammento: 'color: #333', motivo: 'grigio dell\'etichetta su carta: fra --muted (sfuma in retinatura) e --ink (ruberebbe il nero al valore) la palette di stampa non nomina un gradino' },
-  { file: 'src/styles/app.css', contesto: '.kpi-grid', frammento: 'gap: 1px', motivo: 'non è spaziatura, è lo SPESSORE del filetto fra le celle: il fondo --line della griglia traspare dal passo — la tecnica `gap-px bg-line` del mockup «Panoramica» (2026-09-03)' },
   // `.verify-box li::before` non è più qui: il blocco «da verificare» è la
   // `.verify-note` delle marcature (2026-08-12), e il «?» è un glifo SVG, non
   // un carattere da dimensionare a mano.
