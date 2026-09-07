@@ -41,7 +41,7 @@ function writeStored(id: string | null) {
 }
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<CompanyMembership[]>([]);
@@ -86,6 +86,17 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   // Ricarica le membership al cambio utente.
   useEffect(() => {
     if (!user) {
+      // ⚠️ «DISCONNESSO» NON È «NON ANCORA SAPUTO» (2026-09-06, bug del
+      //    ricaricamento). Finché `authLoading` è vero la sessione non è stata
+      //    ancora risolta: `user === null` qui significa «non sappiamo», non
+      //    «nessuno». Prima di questa guardia il ramo eseguiva comunque
+      //    `setActiveCompanyId(null)`, e l'effetto di persistenza sotto
+      //    scriveva quel null in localStorage — CANCELLANDO la preferenza a
+      //    ogni caricamento di pagina. Chi aveva due aziende si trovava sulla
+      //    prima dopo ogni refresh, senza nessun segnale: documenti, scadenze
+      //    e contratti dell'azienda sbagliata sembravano i suoi.
+      //    Il reset resta, ma solo a sessione RISOLTA: logout vero.
+      if (authLoading) return;
       setMemberships([]);
       setActiveCompanyId(null);
       // ⚠️ `loadedFor` torna a `null` e NON diventa «letto»: senza utente non
@@ -95,12 +106,19 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       return;
     }
     void loadMemberships();
-  }, [user, loadMemberships]);
+  }, [user, authLoading, loadMemberships]);
 
   // Persisti la scelta dell'azienda attiva.
   useEffect(() => {
+    // ⚠️ NON SCRIVERE FINCHÉ NON SI SA CHI È SEDUTO. Senza questa guardia il
+    //    primo render — stato iniziale letto, poi azzerato dal ramo «niente
+    //    utente» prima che la sessione arrivasse — persisteva `null` e la
+    //    preferenza moriva a ogni refresh. Scrivere comincia quando la
+    //    sessione è risolta: con un utente (la scelta) o senza (il logout la
+    //    cancella davvero, ed è giusto così).
+    if (authLoading && !user) return;
     writeStored(activeCompanyId);
-  }, [activeCompanyId]);
+  }, [activeCompanyId, authLoading, user]);
 
   const active = useMemo(
     () => memberships.find((m) => m.company.id === activeCompanyId) ?? null,
