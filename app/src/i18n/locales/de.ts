@@ -94,7 +94,6 @@ export const de: Dictionary = {
     assistant: 'Frag AI-Swisse',
     contracts: 'Verträge',
     clients: 'Kunden',
-    sectionOverview: 'Betrieb',
     sectionWork: 'Arbeit',
     sectionArchive: 'Archiv',
     automations: 'Automatisierungen',
@@ -135,10 +134,6 @@ export const de: Dictionary = {
     openMenu: 'Navigationsmenü öffnen',
     auditLog: 'Aktivitätsprotokoll',
     closeMenu: 'Menü schliessen',
-    // Der Name des Brotkrümelpfads der Kopfzeile für Screenreader.
-    breadcrumbAria: 'Navigationspfad',
-    dataBoxTitle: 'Daten in der Schweiz',
-    dataBoxNote: 'Lokale Verarbeitung, kein automatischer Versand.',
   },
   settings: {
     preferencesDesc: 'Sprache und Erscheinungsbild gelten für Sie auf diesem Computer, nicht für das Unternehmen.',
@@ -146,23 +141,6 @@ export const de: Dictionary = {
   },
   dialog: {
     close: 'Schliessen',
-  },
-  // Die Schnellsuche der Kopfzeile (⌘K): Menüeinträge, Dokumente und
-  // Aufgaben aus einem einzigen Feld.
-  // ⚠️ Keine Tastatur-Glyphen (⌘, ↑, ↓) in diesen Zeichenketten: sie fehlen
-  // im Untermenge der ausgelieferten Fonts (fonts:check wägt sie). Das «⌘K»
-  // des Felds lebt im Markup, die Tasten der Hilfe stehen in Worten.
-  palette: {
-    dialogAria: 'Schnellsuche',
-    openAria: 'Schnellsuche öffnen',
-    inputAria: 'Dokumente, Aufgaben und Seiten suchen',
-    // Die Wendung der Vorlage, eins zu eins: das sind die drei Dinge, die von
-    // hier wirklich gesucht werden — ein Dokument, eine absendende Stelle,
-    // eine Frist.
-    placeholder: 'Dokumente, Ämter, Fristen suchen…',
-    groupPages: 'Seiten',
-    empty: 'Keine Treffer für „{q}“',
-    hint: 'Pfeiltasten hoch und runter zum Bewegen · Eingabetaste öffnet · Esc schliesst',
   },
   roles: {
     owner: 'Inhaber:in',
@@ -995,7 +973,12 @@ export const de: Dictionary = {
     configMissing: 'Konfiguration fehlt: Setzen Sie VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY in der Datei .env.',
   },
   home: {
+    greetingMorning: 'Guten Morgen', greetingAfternoon: 'Guten Tag', greetingEvening: 'Guten Abend',
+    greetingMorningNamed: 'Guten Morgen, {name}',
+    greetingAfternoonNamed: 'Guten Tag, {name}',
+    greetingEveningNamed: 'Guten Abend, {name}',
     uploadDoc: 'Dokument hochladen',
+    updatedAt: 'Heute um {time} aktualisiert',
     attentionPillOne: '1 Dokument erfordert Aufmerksamkeit',
     attentionPillMany: '{n} Dokumente erfordern Aufmerksamkeit',
     kpiGroup: 'Wichtigste Kennzahlen',

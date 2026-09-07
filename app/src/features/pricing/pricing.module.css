@@ -10,13 +10,10 @@
 
 .price-card { position: relative; display: flex; flex-direction: column; }
 .price-card.featured { border-color: var(--accent); box-shadow: var(--shadow-md); }
-/* Il prezzo è un NUMERO GRANDE, non un titolo: dal 2026-09-03 prende il
-   gradino fuori scala `--fs-kpi` e la faccia `--font-display`, come i numeri
-   della Panoramica — stesso mestiere, stessi token. */
-.price-tag { font-family: var(--font-display); font-size: var(--fs-kpi); font-weight: 600; letter-spacing: var(--ls-kpi); font-variant-numeric: tabular-nums; }
+.price-tag { font-size: var(--fs-h1); font-weight: 600; letter-spacing: -0.5px; }
 .price-tag small { font-size: var(--fs-body); font-weight: 500; color: var(--muted); }
 .price-target { font-size: var(--fs-body); color: var(--muted); margin-bottom: var(--sp-3); }
-.price-custom { font-family: var(--font-display); font-size: var(--fs-h2); }
+.price-custom { font-size: var(--fs-h2); }
 .price-feats { list-style: none; margin: var(--sp-4) 0 var(--sp-4); flex: 1; }
 .price-feats li { padding: var(--sp-2) 0 var(--sp-2) var(--sp-6); position: relative; font-size: var(--fs-body); }
 .price-feats li::before { content: '✓'; position: absolute; left: 4px; color: var(--accent-text); font-weight: 600; }

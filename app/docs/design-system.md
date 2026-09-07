@@ -22,38 +22,31 @@ oltre i quarantacinque anni, di fretta.
 
 ## Il carattere
 
-**Due famiglie, ospitate da noi, dal 2026-09-03**: **Manrope** per il corpo del
-testo e **Sora** per titoli e numeri grandi. La divisione dei mestieri viene
-dal mockup «Panoramica» approvato: Manrope porta bottoni, tabelle e moduli;
-Sora porta ciò che si guarda prima — titoli e numeri dei KPI — dietro il token
-`--font-display`. Prima c'era **Inter**, solo, dal 2026-08-10: i suoi file sono
-stati rimossi con il cambio, e la loro storia resta nella cronologia git di
-`fonts.css`. Prima ancora c'era lo stack di sistema (`-apple-system`, Segoe UI,
-Helvetica…), che dava un prodotto diverso su ogni macchina.
+**Inter**, ospitato da noi, dal 2026-08-10. Prima c'era lo stack di sistema
+(`-apple-system`, Segoe UI, Helvetica…), che dava un prodotto diverso su ogni
+macchina.
 
 **Non da Google Fonts, e non è una preferenza.** Un `<link>` a
 `fonts.googleapis.com` farebbe partire dal browser di ogni cliente una richiesta
 verso un servizio estero che ne vede l'indirizzo IP. L'informativa privacy
 dichiara che l'applicazione non carica risorse esterne, e `public/_headers` lo
 dice anche alla macchina: la CSP ammette `font-src 'self' data:`. Caricarlo da
-fuori renderebbe falsa una dichiarazione fatta ai clienti. Vale per le due
-famiglie di oggi come valeva per Inter.
+fuori renderebbe falsa una dichiarazione fatta ai clienti.
 
 | | |
 |---|---|
-| Famiglie | **Manrope** sul `:root` (`font-family`) e **Sora** su `--font-display` — ciascuna con lo stack di sistema come ripiego (`app.css`, `:root`) |
-| Origine | i variabili ufficiali di `google/fonts` (SIL OFL, licenza in `public/fonts/`), fermati ai tre pesi |
-| Ospitati | **da noi**, `public/fonts/` — mai da un CDN, vedi sopra |
-| Pesi | **400** corpo · **500** etichette e navigazione · **600** titoli, numeri e grassetto, **per ciascuna famiglia**: sei file, e non ne esistono altri — il CSS non può chiederne |
-| Peso dei file | ~104 KB in tutto (16-18 KB a peso) — il sottoinsieme dei caratteri che il prodotto usa davvero |
-| Caricamento | `font-display: swap`; **precaricato il solo Manrope 400**, con `crossorigin` |
-| Controllo | `npm run fonts:check` (sei impronte, copertura **letta dalla cmap dei file**, cablaggio, pesi chiesti) |
+| Famiglia | **Inter**, poi lo stack di sistema come ripiego: `'Inter', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif` (`app.css`, `:root`) |
+| Origine | `inter-ui@4.1.1` (SIL OFL, licenza in `public/fonts/`) |
+| Ospitato | **da noi**, `public/fonts/` — mai da un CDN, vedi sopra |
+| Pesi | **400** corpo · **500** etichette e navigazione · **600** titoli, numeri e grassetto. **Non ne esistono altri**, e il CSS non può chiederne |
+| Peso dei file | 25 KB ciascuno — sottoinsieme di 445 caratteri su 2852 |
+| Caricamento | `font-display: swap`; **precaricato il solo 400**, con `crossorigin` |
+| Controllo | `npm run fonts:check` (impronte, copertura **letta dalla cmap dei file**, cablaggio, pesi chiesti) |
 
-⚠️⚠️ **TRE PESI PER FAMIGLIA VUOL DIRE CHE 700 E 800 NON ESISTONO, e per tre
-giorni i fogli di stile li hanno chiesti in 58 regole.** Era l'epoca di Inter,
-ma la lezione non è del carattere: misurato a schermo il 2026-08-13, a 40 px la
-stessa stringa occupava **257,73 px identici** a 600, 700, 800 e 900. Il
-browser **non sintetizza** un grassetto — sceglie la faccia più vicina e
+⚠️⚠️ **TRE PESI VUOL DIRE CHE 700 E 800 NON ESISTONO, e per tre giorni i fogli
+di stile li hanno chiesti in 58 regole.** Misurato a schermo il 2026-08-13: a
+40 px la stessa stringa occupa **257,73 px identici** a 600, 700, 800 e 900.
+Il browser **non sintetizza** un grassetto — sceglie la faccia più vicina e
 disegna **seicento**. Quindi `.kpi-value` a 800 e `.kpi-label` a 600 erano lo
 stesso peso: un gradino di gerarchia scritto nel codice e **inesistente sullo
 schermo**, che nessun controllo vedeva perché nessuno confrontava le due liste.
@@ -68,17 +61,14 @@ peso, lo fa solo sembrare.
 
 ⚠️ **La copertura si misura aprendo i binari, non leggendo la gamma chiesta al
 subsetter.** Fino al 2026-08-13 `fonts:check` confrontava i dizionari con la
-costante `GAMMA` — che chiede 556 codepoint, mentre i file di allora ne
-disegnavano **445**. Centoundici erano dichiarati e assenti: un carattere fra
-quelli sarebbe passato verde e a schermo l'avrebbe disegnato un altro font.
-Oggi il controllo legge la tabella `cmap` dentro i `.woff2` (decompressione
-brotli, tabella non trasformata) e verifica che **dentro ogni famiglia i tre
-pesi coprano gli stessi caratteri** — altrimenti una parola in grassetto
-cambierebbe carattere a metà. Con due famiglie c'è una domanda in più, e la
-risposta è la più stretta possibile: la copertura dei dizionari si misura
-sull'**intersezione** delle due cmap (Manrope 362 glifi, Sora 342, intersezione
-**333**, letti dal controllo), perché un titolo può portare qualunque stringa
-del corpo — e i dizionari ci stanno.
+costante `GAMMA` — che chiede 556 codepoint, mentre i file ne disegnano **445**.
+Centoundici erano dichiarati e assenti: un carattere fra quelli sarebbe passato
+verde e a schermo l'avrebbe disegnato un altro font. Oggi il controllo legge la
+tabella `cmap` dentro i `.woff2` (decompressione brotli, tabella non
+trasformata) e verifica anche che **i tre pesi coprano gli stessi caratteri** —
+altrimenti una parola in grassetto cambierebbe carattere a metà. Nessun
+carattere dei dizionari era davvero scoperto: il difetto era il metodo, non il
+risultato.
 
 ⚠️ **Il sottoinsieme «latin» di Google non andava bene, e il perché vale più
 della scelta**: non contiene **U+202F**, lo spazio fine insecabile che tutta
@@ -89,89 +79,80 @@ binario**, dove nessuna rilettura del codice arriva: è emerso aprendo i `.woff2
 e chiedendo loro quali caratteri contenessero. `fonts:check` fa quella domanda a
 ogni esecuzione della CI.
 
-⚠️⚠️ **E la domanda andava rifatta sui file NUOVI, perché la risposta era
-cambiata: né Manrope né Sora disegnano U+202F, e Sora non ha nemmeno U+2192**
-(la freccia «→»). Scoperto il 2026-09-03 aprendo i candidati, non leggendo la
-documentazione. I sei file serviti portano quei due glifi **trapiantati dai
-file Inter storici**, riscalati all'em di destinazione — le unità per em sono
-diverse (Manrope 2000, Sora 1000, Inter 2048), quindi il trapianto non è una
-copia: è una conversione, descritta passo per passo nella testata di
-`scripts/fonts-check.mjs`. La copertura dell'intersezione qui sopra include
-quei due codepoint: se una rigenerazione li perdesse, il controllo diventerebbe
-rosso sui dizionari francesi di domani, non su un ricordo.
-
 ### Che cosa il cambio ha spostato davvero — misurato, non previsto
 
-- ⚠️⚠️ **Sora e Manrope hanno cifre PROPORZIONALI di default, come Inter —
-  solo peggio.** Misurato il 2026-09-03 sui file: il «1» di Sora è largo
-  0,42 em contro gli 0,659 em del «6». A 29 px, peso 600, sui numeri veri della
-  Panoramica: «11» **24,4 px** contro «66» **38,2 px** — **13,8 px** di scarto
-  fra due numeri di due cifre (Inter a 30 px ne dava 14,4: il suo «1» era
-  stretto, quello di Sora lo è di più). I numeri della striscia stanno uno
-  accanto all'altro e si confrontano a colpo d'occhio: senza intervento
-  ballerebbero. Con `font-variant-numeric: tabular-nums` — la feature `tnum`
-  c'è in tutti e sei i file, verificato — lo scarto è **zero**. La dichiara
-  `.kpi-value`, e il commento accanto racconta la misura; per gli altri numeri
-  che si confrontano (delta, importi e date in tabella, conteggi nelle
-  pastiglie) c'è la classe `.num`, che porta Sora tabulare ovunque serva.
-  **La regola scritta non basta: c'è un controllo** — `test:shell-unit` §8
-  elenca le classi i cui numeri stanno in colonna e pretende la dichiarazione
-  su ciascuna.
-- **La larghezza di riga del testo è stata rimisurata, non tradotta.** `ch` è
-  la larghezza dello **zero**: in Manrope lo zero misura 7,80 px a 13,5 px
-  mentre il carattere medio di una frase italiana vera ne misura 6,26.
-  `--measure` è passato da 52ch (per lo zero largo 9,46 px di Inter a 15 px) a
-  **56ch** = 437 px ≈ **70 caratteri** del testo reale, contati sul riassunto
-  di un'analisi con il font servito. Il dettaglio sta in «Colonna di lettura».
-- ⚠️ **`hyphens: auto` nelle CELLE DI TABELLA era stato provato e SCARTATO ai
-  tempi di Inter, e la sentenza non è cambiata.** In una colonna da 66 px
-  spezza «Aus-glei-chs-kas-se» una sillaba per riga e porta l'intestazione da
-  35 px a 128 px: peggiora ciò che dovrebbe risolvere. Le larghezze restano
-  automatiche (regola 6) e non è stata introdotta nessuna misura fissa.
-- ✅ **La stessa dichiarazione resta GIUSTA nella barra laterale**, ed è la
-  prova che la regola non è la proprietà ma la misura. Rimisurato su Manrope
-  il 2026-09-06: `Unternehmenseinstellungen` — parola sola di 25 caratteri,
-  nessun punto di rottura naturale — misura **173,2 px** a 13,5 px contro i
-  ~148-164 utili nella colonna (che dal restyle è 236 px, 252 da ≥1280 px:
-  vedi «La cornice»). Usciva già con lo stack di sistema e con Inter. Con
-  `hyphens: auto` sull'etichetta la voce diventa «Unternehmenseinstel-lungen»,
-  con il trattino su una sillaba valida; `overflow-wrap: break-word` avrebbe
-  dato «Unternehmenseinstellun|gen», che in tedesco è sbagliato.
-- ⚠️ **Le cifre tabulari sono più LARGHE, e una colonna fissa se ne accorge** —
-  storia del 2026-08, ancora vera. `.bar-val` stava in una traccia di griglia
-  di 42 px (34 sotto i 600 px): «100 %» misurava 38,3 px con le cifre tabulari
-  — e ne misurava già **35,7** senza, quindi sul telefono usciva dalla propria
-  colonna **da prima**. La traccia è passata a `max-content`, che in una
-  griglia vale per tutta la colonna: le barre restano allineate fra loro e la
-  colonna prende la misura del numero più largo. Regola 6: mai una larghezza
-  fissa attorno a un contenuto che può crescere.
-- **La stampa non tocca il carattere**: il blocco `@media print` cambia i
-  colori, non `font-family`, e `test:print-unit` lo presidia. L'ultima prova
-  su un PDF vero — i pesi incorporati come sottoinsiemi, U+202F e
-  `é à œ « » —` presenti nel documento — è del periodo Inter: con due famiglie
-  va riaperta, e questa riga è il promemoria.
+Confrontando le due famiglie sulla stessa pagina, con le stringhe vere dei tre
+dizionari:
+
+- **Inter è circa il 6 % più largo** dello stack di sistema («Ausgleichskasse»:
+  111,7 px → 118,9 px a 15 px). A 1280, 768 e 375 px, in tutte e tre le lingue:
+  **nessun elemento tagliato, nessuno scorrimento orizzontale**, e la barra
+  laterale, le pastiglie, le intestazioni di tabella e i pulsanti
+  restano dentro i propri riquadri. In colonne molto strette
+  qualche frase lunga prende una riga in più: è riflusso, non troncamento.
+- ⚠️ **`hyphens: auto` nelle CELLE DI TABELLA è stato provato e SCARTATO.** In
+  una colonna da 66 px spezza «Aus-glei-chs-kas-se» una sillaba per riga e porta
+  l'intestazione da 35 px a 128 px: peggiora ciò che dovrebbe risolvere. Le
+  larghezze restano automatiche (regola 6) e non è stata introdotta nessuna
+  misura fissa.
+- ✅ **La stessa dichiarazione è invece GIUSTA nella barra laterale**, ed è la
+  prova che la regola non è la proprietà ma la misura. `Unternehmenseinstellungen`
+  — parola sola di 25 caratteri, nessun punto di rottura naturale — usciva dal
+  proprio pulsante di 7 px già con lo stack di sistema e di **15 px con Inter**,
+  arrivando a 2 px dal bordo della barra invece dei 10 di prima (misurato
+  sull'app in **produzione** il 2026-08-11). Con `hyphens: auto` sull'etichetta
+  la sporgenza va a **zero** e la voce diventa «Unternehmenseinstel-lungen», con
+  il trattino su una sillaba valida; `overflow-wrap: break-word` avrebbe dato
+  «Unternehmenseinstellun|gen», che in tedesco è sbagliato. La larghezza utile è
+  ~179 px contro i 66 della colonna: **la stessa proprietà è giusta di qua e
+  sbagliata di là.** La barra resta a 264 px — è struttura di pagina, non un
+  contenitore di testo.
+- ⚠️⚠️ **Le cifre volevano un intervento, e non era prevedibile.** Lo stack di
+  sistema incolonnava le cifre da sé: a 22 px «11 %», «92 %» e «88 %» misuravano
+  tutte **45 px esatti**. Inter usa cifre **proporzionali** per default — il suo
+  «1» è molto più stretto — e le stesse tre danno **39,2 · 48,4 · 48,8**. In una
+  pila di scadenze i numeri ballano da una riga all'altra.
+  Aggiunto `font-variant-numeric: tabular-nums` a `.dl-date` (la scadenza) e a
+  `.rb-num` (la percentuale di rilevanza): tornano identiche a **49,1**, e le
+  date passano da uno scarto di 3,6 px a **zero**. Gli importi lo avevano già
+  (`.fin-num`): lì non è cambiato niente.
+- ⚠️⚠️ **E il posto peggiore era rimasto scoperto per tre giorni: i KPI della
+  Panoramica.** Quella correzione ha coperto ciò a cui qualcuno aveva pensato,
+  non ciò che il difetto toccava. Misurato il 2026-08-13 a 30 px, peso 600, sui
+  numeri veri: «11» **24,4** · «40» **38,8** · «92» **36,9** — **14,4 px** di
+  scarto fra due numeri di due cifre, quattro volte quello che era bastato a
+  far correggere le scadenze. Le quattro schede piccole stanno in una griglia
+  2×2, e sotto i 600 px in una colonna sola: i numeri si guardano uno sopra
+  l'altro. Ora dichiarano le cifre tabulari `.kpi-value`, `.meter-num`,
+  `.bar-val` e `.crm-kv dd` (la colonna dei valori di CRM, dove
+  stanno gli importi e le scadenze fuori da Finanze). **La regola scritta non è
+  bastata: ora c'è un controllo** — `test:shell-unit` §8 elenca le classi i cui
+  numeri stanno in colonna e pretende la dichiarazione su ciascuna.
+- ⚠️ **Le cifre tabulari sono più LARGHE, e una colonna fissa se ne accorge.**
+  `.bar-val` stava in una traccia di griglia di 42 px (34 sotto i 600 px):
+  «100 %» misura 38,3 px con le cifre tabulari — e ne misurava già **35,7**
+  senza, quindi sul telefono usciva dalla propria colonna **da prima**. La
+  traccia è passata a `max-content`, che in una griglia vale per tutta la
+  colonna: le barre restano allineate fra loro e la colonna prende la misura
+  del numero più largo. Regola 6: mai una larghezza fissa attorno a un
+  contenuto che può crescere.
+- **La stampa è stata provata producendo un PDF vero** con Chrome: i tre pesi
+  sono **incorporati come sottoinsiemi** (`FontFile2` × 3, `Inter-Regular`,
+  `Inter-Medium`, `Inter-SemiBold`) e nel PDF ci sono U+202F, `é à œ « » —`.
+  Il blocco `@media print` non tocca `font-family`: cambia i colori, non il
+  carattere.
 
 ## Il marchio
 
-Un **wordmark**, non un'icona: blocco pieno con la sigla **AI**, poi la parola
-**Swisse**. Sta in `BrandMark.tsx` e compare in nove punti (barra laterale,
-barra del telefono, drawer, le quattro schermate di autenticazione,
+Un **wordmark**, non un'icona: blocco pieno con la sigla **AI**, poi **Swisse**
+composto in Inter 600. Sta in `BrandMark.tsx` e compare in nove punti (barra
+laterale, barra del telefono, drawer, le quattro schermate di autenticazione,
 la configurazione mancante, l'onboarding).
 
-**Non è un segno inventato qui, e dal 2026-08-14 non è nemmeno un segno
-ricomposto.** Fino a quel giorno il componente lo riscriveva come testo in
-Inter — blocco, sigla e parola — con la motivazione che il prodotto parlava in
-Inter. Il difetto si vedeva nella stessa scheda del browser: la favicon
-portava già i contorni veri del marchio e la barra ne mostrava una
-ricostruzione, due disegni dello stesso segno a due centimetri di distanza.
-Un marchio ricomposto è un marchio somigliante, e un marchio somigliante è un
-secondo marchio. Ora il segno è **uno**: i contorni stanno in `brandArt.ts`,
-copiati dall'artefatto che il titolare serve su ai-swisse.com e sorvegliati
-glifo per glifo da `npm run brand:check`. Chi arriva dalla vetrina e apre
-l'applicazione riconosce lo stesso marchio, non ne crede due. La scelta non
-dipende dal carattere del momento: è passata indenne attraverso Inter e il
-passaggio a Manrope e Sora del 2026-09-03 proprio perché il segno non è
-composto in nessun font.
+**Non è un segno inventato qui**: è il marchio che il titolare usa già sulla
+vetrina e sul dominio, ricomposto nel carattere del prodotto invece che nei
+tracciati Poppins di `site/`. Chi arriva da ai-swisse.com e apre l'applicazione
+deve riconoscere lo stesso marchio, non crederne due.
 
 Che cosa c'era prima, e perché non andava:
 
@@ -179,16 +160,13 @@ Che cosa c'era prima, e perché non andava:
 |---|---|
 | fino al 2026-08-12 | il path di `plus` in un quadrato accent — un **comando** nella posizione del nome |
 | dal 2026-08-12 | una «S» a tratto nello stesso quadrato — la forma dell'**avatar**, e una lettera che il marchio non usa |
-| dal 2026-08-13 | il wordmark, ricomposto come testo |
-| dal 2026-08-14 | il wordmark **in contorni**, copiato dall'artefatto del titolare |
+| dal 2026-08-13 | il wordmark |
 
 ⚠️ **Il difetto che nessuna delle due sostituzioni aveva tolto**: il contenitore
 pesava quanto la campanella accanto. Un quadrato pieno di 32 px e un pulsante di
 40 px affiancati sono **due scatole di pari grado**, e il marchio non è un
 accessorio della campanella. Togliendo la scatola, il grado torna a dirsi da sé:
-il nome è il wordmark, la campanella è un glifo senza fondo. (Dal 2026-09-06 i
-due non dividono nemmeno più una riga: la campanella vive nella barra in cima,
-a mount unico — vedi «La cornice».)
+il nome è testo a `--fs-strong`, la campanella è un glifo di 18 px senza fondo.
 
 ⚠️ **Il raggio del blocco NON è `--radius-sm`.** Quello è il raggio dei
 controlli — pulsanti, hamburger, campi. Un blocco con lo stesso raggio dei
@@ -201,13 +179,14 @@ scritto a mano da nessuna parte (`i18n:coverage` uscirebbe 1). `test:shell-unit`
 §3b pretende che tutti e tre i dizionari si dividano e che il nome sia identico
 nelle tre lingue.
 
-⚠️ **La favicon è il posto in cui la scelta dei contorni è NATA, e la ragione è
-tecnica, non estetica.** Un `data:` URI non carica risorse esterne — è tutto il
-punto della CSP — quindi un `<text>` lì dentro sarebbe disegnato dal carattere
-di sistema, diverso su ogni macchina. Il segno va in **contorni**, e i contorni
-sono gli stessi di `brandArt.ts` e della vetrina: una scheda aperta su
-ai-swisse.com e una aperta sull'applicazione mostrano lo stesso segno.
-`test:shell-unit` §3 lega i due colori ai token e rifiuta un `<text>`.
+⚠️ **La favicon è l'unico punto del prodotto in cui il marchio NON è composto in
+Inter, ed è una conseguenza tecnica, non una scelta.** Un `data:` URI non carica
+risorse esterne — è tutto il punto della CSP — quindi un `<text>` lì dentro
+sarebbe disegnato dal carattere di sistema, diverso su ogni macchina. Il segno
+va in **contorni**, e i contorni usati sono quelli del marchio del titolare, gli
+stessi che la vetrina serve: una scheda aperta su ai-swisse.com e una aperta
+sull'applicazione mostrano lo stesso segno. `test:shell-unit` §3 lega i due
+colori ai token e rifiuta un `<text>`.
 
 **Che cosa NON è sorvegliato, e va detto**: che il segno dell'app e quello della
 vetrina restino uguali. `site/` è una base di codice separata, invisibile da
@@ -216,44 +195,27 @@ due posti si aggiornano a mano, e sono due.
 
 ## Scala tipografica
 
-Sei gradini per il testo più **uno fuori scala per i numeri grandi**, uno per
-compito. Se un testo non rientra in nessuno, il problema è la gerarchia, non la
-scala. Dal 2026-09-06 i valori sono quelli contati sulle classi del mockup
-«Panoramica» approvato — non aggiustamenti a occhio:
+Sei gradini, uno per compito. Se un testo non rientra in nessuno, il problema è
+la gerarchia, non la scala.
 
 | Token | Valore | Uso |
 |---|---|---|
-| `--fs-eyebrow` | 10,5px | etichette di gruppo maiuscole, con `--ls-eyebrow` 0,16em |
-| `--fs-label` | 12,5px | etichette, pastiglie |
-| `--fs-meta` | 11,5px | metadati, didascalie |
-| `--fs-body` | 14px | corpo del testo |
-| `--fs-strong` | 14,5px | titoli di scheda e di riga |
-| `--fs-h2` | 16,5px | titoli di sezione |
-| `--fs-h1` | 30px | titoli di pagina, compreso quello nella topbar |
-| `--fs-kpi` | 36px | i numeri della Panoramica — **fuori scala**, con `--ls-kpi` −0,03em e cifre tabulari |
+| `--fs-label` | 12px | etichette maiuscole, pastiglie |
+| `--fs-meta` | 13px | metadati, didascalie |
+| `--fs-body` | 15px | corpo del testo |
+| `--fs-strong` | 17px | titoli di scheda e di riga |
+| `--fs-h2` | 22px | titoli di sezione |
+| `--fs-h1` | 30px | titoli di pagina |
 
-⚠️ **La base si è assestata a 14px.** Il primo restyle l'aveva portata da 15 a
-13,5px; il confronto pixel del 2026-09-06 ha misurato il mezzo pixel residuo e
-lo ha corretto senza aggiungere un nuovo gradino. La gerarchia da cruscotto
-resta: titolo pagina e numeri sono ora i due segni visivi forti, a 30 e 36px,
-mentre meta, label, titoli di scheda e di sezione conservano i propri compiti.
-
-⚠️ **Una gerarchia si dichiara con i gradini che ci sono, non aggiungendone uno
-di troppo** — e la storia di questa riga ha tre atti. La Panoramica aveva
-cinque schede numeriche identiche su una griglia da quattro colonne — un 3+2
-con un buco in fondo, una forma che nessuno aveva scelto — e cinque numeri
-della stessa misura non dicono quale guardare per primo. Primo atto
-(2026-08-11): la metrica principale tiene `--fs-h1` e le altre **scendono** a
-`--fs-h2` — trenta contro ventidue, più il doppio di superficie. Secondo atto
-(2026-08-14): «Azioni da completare» esce (regola 13) e la scheda grande
-diventa «Attività aperte», in un rapporto 1:2. Terzo atto (2026-09-06): il
-mockup fonde la striscia in **una scheda sola divisa da filetti** (`.kpi-grid`,
-l'eccezione del gap da 1px è dichiarata nel CSS: è lo spessore del filetto,
-non spaziatura) e tutti i numeri stanno a `--fs-kpi`. Il 36px non contraddice
-la lezione: non è un settimo titolo — è l'unico testo pensato per essere letto
-da lontano, e sta fuori dai sei gradini perché non è un compito del testo, è
-il dato che la pagina serve. Il gradino che manca è quasi sempre un gradino di
-troppo da qualche altra parte.
+⚠️ **Una gerarchia si dichiara CON i sei gradini, non aggiungendone un settimo.**
+La Panoramica aveva cinque schede numeriche identiche su una griglia da quattro
+colonne — un 3+2 con un buco in fondo, una forma che nessuno aveva scelto — e
+cinque numeri della stessa misura non dicono quale guardare per primo. La
+tentazione era un gradino «display» per il numero che conta di più. Non serve:
+la metrica principale tiene `--fs-h1` e le altre quattro **scendono** a
+`--fs-h2`. Trenta contro ventidue, più il doppio di superficie, e «il numero più
+grande della schermata» diventa un fatto misurabile. Il gradino che manca è
+quasi sempre un gradino di troppo da qualche altra parte.
 
 Quante regole rispettino la scala non lo dice questo file: lo dice
 `npm run design:lint`, che fallisce su ogni `font-size` in pixel. Un conteggio
@@ -311,22 +273,6 @@ CRM, l'organizzazione, le informazioni tecniche, l'eliminazione **e** l'origine
 identici non fanno gerarchia: la fanno sparire, e a quel punto a dire che cosa
 conta resta solo la posizione, che è un ripiego.
 
-**La forma del livello 1 è quella del «panel» del riferimento** (dal
-2026-09-06): fondo `--card`, bordo `--line`, raggio `--radius` e ombra
-`--shadow-sm` — che **è** la `shadow-panel` del file, tradotta in sRGB: un filo
-a contatto e una sola ombra lunga e stretta (−18px di spread), tinta
-`rgb(8, 24, 34)`, perché non sporchi i lati. Al passaggio del puntatore, chi
-risponde davvero porta `.panel-hover` e l'ombra sale a
-`--shadow-panel-hover` — non è di serie su `.card`: un sollevamento che
-distingue tutto non distingue niente. I raggi sono tre, dal riferimento:
-**`--radius: 10px`** per pannelli, bottoni e campi, **`--radius-md: 8px`** per
-le voci di navigazione, **`--radius-sm: 6px`** per i piccoli contenitori
-(erano 12 e 8). L'unica ombra colorata è **`--shadow-cta`**, tinta `#37AEEF`:
-la portano il marchio e `.btn-primary`, e basta — nel mockup sta sotto il
-blocco della sigla e il bottone della barra in cima. In tema scuro si abbassa
-al 35%: sul nero pieno diventerebbe il «glow» che la versione chiara dichiara
-vietato.
-
 ⚠️ **`--surface-2` è un nome riciclato, e la storia è la solita.** Fino al
 2026-08-11 quel nome apparteneva al riempimento tenue delle pastiglie neutre e
 degli hover — un **colore**, non un livello. Nominando i tre livelli sarebbe
@@ -347,23 +293,20 @@ un'analisi per tutta la larghezza dello schermo:
 
 | Token | Valore | Che cosa limita |
 |---|---|---|
-| `--measure` | `56ch` | il **testo corrente** (`.prose`): circa settanta caratteri |
+| `--measure` | `52ch` | il **testo corrente** (`.prose`): circa settanta caratteri |
 | `--content-max` | `880px` | la **colonna di contenuto** (`.reading-col`) di una pagina di lettura |
 
 Tabelle ed elenchi possono superare la prima — sono strutture, non prosa — ma
 non la seconda.
 
-⚠️ **`56ch` e non `70ch`, ed è misurato, non stimato.** `ch` è la larghezza
-dello **zero**, e in Manrope lo zero misura 7,80 px a 13,5 px mentre il
-carattere medio di una frase italiana vera ne misura 6,26. Scrivere `70ch` per
-«settanta caratteri» darebbe una riga da **87** caratteri: diciassette in più
-di quelli voluti, cioè il difetto che si stava correggendo. `56ch` = 437 px ≈
-**70 caratteri**, contati sul riassunto di un'analisi con il font servito. Il
-valore è stato **rimisurato il 2026-09-03** nel passaggio da Inter a Manrope —
-era 52ch, per lo zero largo 9,46 px di Inter a 15 px — esattamente come la
-riga qui sotto prescriveva: il conteggio dipende dal **carattere**, non dalla
-lingua, e quando cambia il carattere questo numero va **rimisurato**, non
-tradotto.
+⚠️ **`52ch` e non `70ch`, ed è misurato, non stimato.** `ch` è la larghezza
+dello **zero**, e in Inter lo zero misura 9,46 px a 15 px mentre il carattere
+medio di una frase italiana vera ne misura 6,83. Scrivere `70ch` per «settanta
+caratteri» dà una riga da **94** caratteri: ventiquattro in più di quelli
+voluti, cioè il difetto che si stava correggendo. `52ch` = 492 px = **72
+caratteri**, contati sul riassunto di un'analisi con il font servito. Il
+conteggio dipende dal **carattere**, non dalla lingua: vale uguale in de e fr.
+Se un giorno cambia il font, questo numero va **rimisurato**, non tradotto.
 
 ## Una sola azione primaria per schermata
 
@@ -404,156 +347,30 @@ soltanto quello che si sta guardando. Lo stato premuto ora è una superficie
 (`.btn-toggle[aria-pressed="true"]`), e i due estremi si toccano (`.segmented`)
 perché sono un interruttore, non due pulsanti vicini.
 
-⚠️ **Dal 2026-09-06 esiste un primario che sta SOPRA la schermata, e non è un
-concorrente di questa regola.** «Carica documento» vive nella barra in cima
-(vedi «La cornice»), su ogni pagina: porta ad «Analizza documento» con il
-modulo di caricamento già aperto — il gesto da cui comincia il lavoro del
-prodotto. Appartiene alla cornice, non al contenuto: la regola dei tre posti
-continua a valere **dentro** la schermata, dove la primaria resta quella che
-«Prossimo passo» indica.
-
-## La cornice: la colonna e la barra in cima
-
-Dal 2026-09-06 la struttura è quella del riferimento `panoramica-ai-swisse.html`:
-una colonna laterale a sinistra e — **a ogni larghezza** — una barra in cima
-alla colonna di contenuto. La colonna destra che le contiene entrambe è nuova
-(`.shell-body`): prima la barra era `display: none` sopra i 900px e il telefono
-ne aveva una tutta sua.
-
-**La colonna** è larga 236px, 252 da ≥1280px — le due larghezze del
-riferimento; era 264. La voce attiva è una pastiglia `--accent-soft` con la
-**barretta** `::before` di 3px a filo del bordo sinistro, alta quanto il testo:
-è la forma del mockup, non il filetto tolto il 26.08 — la differenza è la
-misura e la posizione. In fondo, sopra il box account, c'è il riquadro «**Dati
-in Svizzera**» (`.data-box`, scudo con spunta, tradotto nelle tre lingue): una
-promessa del prodotto, non una voce di navigazione. I badge numerici compaiono
-su **Inbox, Documenti e Scadenze e attività**, e solo lì: `useNavCounts` usa i
-conteggi reali degli elenchi — da gestire, documenti attivi, attività aperte —
-e lascia il badge assente se una lettura fallisce. Non esiste un numero di
-facciata per Incentivi o per una voce senza servizio autorevole. **Esc chiude
-il drawer**, come già faceva per la campanella e le finestre: un tasto chiude
-una cosa sola.
-
-**La barra in cima** è alta 68px (`--topbar-h`), resta appiccicata mentre il
-contenuto scorre sotto, ed è una **velatura**: `color-mix` all'85% della
-`--card` di qualunque tema più sfocatura — il `bg-panel/85` del riferimento,
-senza bisogno di un token nuovo; in tema scuro torna piena, perché la
-trasparenza lascerebbe leggere il contenuto in trasparenza. Da sinistra porta:
-
-- l'**identità** della pagina (`.topbar-page`): percorso sezione › voce e,
-  sotto, titolo a 30px. Le voci prima del primo gruppo usano la sezione
-  operativa esplicita; il blocco resta a ogni larghezza. Sotto i 600px il
-  titolo usa il gradino `--fs-h2`, per convivere con hamburger e comandi senza
-  troncare il percorso;
-- il **campo che apre la ricerca rapida** (⌘K): un `<button>` vestito da
-  campo. Il riferimento lo disegna come un input, ma ciò che fa è *aprire* un
-  riquadro — e un controllo che ne apre un altro è un pulsante, con
-  un'etichetta per chi non vede. Sotto i 900px lo sostituisce la lente sola,
-  stessa scatola dell'hamburger. Il «⌘K» è un'espressione JSX apposta: quel
-  glifo non è nel sottoinsieme dei caratteri serviti, quindi non può vivere
-  nei dizionari che `fonts:check` pesa;
-- la **pastiglia «richiede attenzione»**: un segnale blu col totale di attivi e
-  archiviati. Non è un collegamento, perché Documenti separa le due popolazioni
-  in viste distinte. Il punto che pulsa è quello del riferimento (due dischi
-  sovrapposti, quello sopra cresce e svanisce); chi chiede meno movimento
-  perde l'alone e tiene il disco fermo. A zero non si mostra: «niente da
-  verificare» non è un segnale;
-- la **campanella**, a mount **UNICO**: fino al 2026-09-05 stava anche accanto
-  al marchio della colonna — montata due volte, una per formato, e il CSS ne
-  nascondeva una;
-- la **CTA «Carica documento»** → `/admin?carica=1`, che apre direttamente il
-  modulo di caricamento. L'etichetta sparisce sotto i 600px, l'`aria-label`
-  no.
-
-**La ricerca rapida** (`components/layout/CommandPalette.tsx`, nuova) è un
-dialogo modale in un **portale**: la barra in cui nasce ha `backdrop-filter`,
-e un antenato con filtro diventa il blocco di contenimento per
-`position: fixed` — il velo coprirebbe la barra e basta. È un **combobox**
-secondo il pattern APG: il fuoco è uno solo, il campo; le frecce muovono
-l'opzione corrente (`aria-activedescendant`), Invio la apre, Esc chiude in
-cattura — sotto potrebbe esserci il drawer, che ha il suo Esc. Tre gruppi —
-**Pagine, Documenti, Attività**, alimentati dai servizi veri — cinque voci per
-gruppo: è un lanciatore, non un archivio. Le ricerche partono dopo **200ms** di
-silenzio, non a ogni tasto («con», «cont», «contr» sarebbero tre
-interrogazioni per una sola intenzione); un guasto di **un** servizio spegne
-**un** gruppo, che dichiara perché è vuoto invece di fingersi senza risultati.
-Ogni apertura riparte da campo e lista vuoti: una ricerca che mostra la query
-di ieri sembra una risposta già data — e non lo è. Tradotta nelle tre lingue.
-
-## Le utility del riferimento
-
-Il restyle non ha copiato il mockup classe per classe: ha cercato le
-**controparti**, e dove esistevano già la sovrapposizione è dichiarata nel
-CSS, non duplicata:
-
-| Riferimento | Nell'app |
-|---|---|
-| `panel` | **È `.card`** — stesso fondo, bordo, raggio e ombra (e già identica a `.surface-1`) |
-| `pill` | **È `.badge`** con le sue varianti, dietro il componente `Tag` |
-| `meter` | **È `.meter-track` + `.meter-fill`** — traccia da 3px dal 2026-09-06; `.meter-fill.ok` verde a completamento: «fatto» è lo stato verificato, non una quantità d'accento in più |
-| `num` | `.num`, **nuova**: Sora a cifre tabulari e tracking chiuso, per i numeri che si confrontano fuori dai KPI |
-| `eyebrow` | `.eyebrow`, **nuova**, per gli header di pannello — in shell la portano già `.nav-section` e `.brand-sub.caps` |
-| `panel-hover` | `.panel-hover`, **nuova**: il sollevamento dell'ombra, solo per chi risponde davvero al puntatore |
-| `row-hover` | `.row-hover`, **nuova**: il fondo appena azzurrato della riga (70% di `--accent-soft`) |
-| `table` | `.table` + `.table-scroll`, **nuove**: testata a fondo canvas con eyebrow, corpo a filetti tenui, hover di riga; `min-width: 620px`, e lo scorrimento orizzontale sta nel contenitore — che è ciò che scorre |
-
-Dove si vedono: la colonna «**Richiede attenzione**» della Panoramica — pallino
-di stato (rosso se il termine è già passato, ambra pieno se è in coda),
-`.row-hover` sulle righe, importi e date `.num`, il chevron «vai» che compare
-all'hover **e al focus da tastiera**, «Vedi tutti» a tutta larghezza con il
-filetto sopra; `.panel-hover` sulle schede della Panoramica e sulla striscia
-KPI; le tabelle IVA e le righe delle fatture migrate alla `.table` globale, con
-l'eyebrow **solo in testata**: un `th scope="row"` nel corpo è il nome della
-riga, non un titolo di colonna, e maiuscoletto grigio lo renderebbe
-irriconoscibile.
-
 ## Colore
-
-Dal 2026-09-06 neutri e stati sono i **valori sRGB calcolati dagli oklch del
-riferimento** `panoramica-ai-swisse.html` (canvas `0.988/0.003/240`, ink
-`0.235/0.021/249`, graphite `0.468/0.022/249`, line `0.923/0.007/245`): l'sRGB
-è come il browser li rasterizza. Un'eccezione dichiarata: lo «sky» del file è
-`#44B3ED`, ma **`--accent` resta `#37AEEF`** — il colore scelto dal titolare il
-2026-08-17, pinnato da `brand:check`: la tinta segue il marchio, non il mockup.
 
 | Token | Valore | Ruolo |
 |---|---|---|
-| `--accent` | `#37AEEF` | riempimenti, filetti, stati attivi — sopra ci si scrive **scuro** |
-| `--accent-dark` | `hsl(201, 85%, 48%)` | hover del primario: qui l'accento è chiaro, quindi l'hover **scende** |
-| `--accent-text` | `hsl(201, 85%, 27%)` | testo e collegamenti (7,92:1 su bianco) |
-| `--accent-soft` / `--accent-line` | `#E8F6FE` / `hsl(201, 58%, 82%)` | fondi tenui / bordo di ciò che vi sta sopra |
-| `--on-accent` | `hsl(213, 35%, 10%)` | testo sopra l'azzurro (7,14:1; il bianco farebbe **2,48:1**) |
-| `--ink` | `#161F28` | testo principale |
+| `--accent` | `hsl(207, 88%, 39%)` | fondo dei pulsanti, elementi attivi |
+| `--accent-text` | `hsl(207, 90%, 30%)` | testo e collegamenti |
+| `--ink` | `hsl(213, 40%, 13%)` | testo principale |
 | `--ink-soft` | `hsl(213, 22%, 30%)` | testo secondario |
-| `--muted` | `#515C66` | metadati (il «graphite» del riferimento) |
-| `--bg` / `--card` | `#F9FBFD` / `#ffffff` | canvas del riferimento / superficie delle schede |
-| `--line` / `--line-strong` | `#E2E6EA` / `#D2D8DD` | bordi / bordi marcati (hover, stati attivi) |
-| `--fill-subtle` / `--track` | `#F1F5F8` / `#E6EBEF` | hover neutri («secondary») / fondo delle barre («sunken») |
-| `--red` / `--red-dark` | `#DC3336` / `#B31C21` | **urgente**: il primo riempie, il secondo porta testo |
-| `--amber` / `--amber-fill` | `#925303` / `#E8941B` | **azione a breve**: scrive / riempie |
-| `--green` / `--green-fill` | `#1C6844` / `#419E6E` | **verificato**: scrive / riempie |
-| `--red-soft` / `--amber-soft` / `--green-soft` | `#FFEBEA` / `#FFF1DA` / `#E2F9EC` | fondi tenui degli stati |
+| `--muted` | `hsl(213, 12%, 42%)` | metadati |
+| `--red` / `--amber` / `--green` | `hsl(0, 84%, 60%)` / `hsl(35, 78%, 34%)` / `hsl(151, 48%, 32%)` | urgenza, attenzione, assolto |
+| `--amber-fill` / `--green-fill` | `hsl(35, 92%, 50%)` / `hsl(151, 52%, 40%)` | riempimenti: barre, pallini |
+| `--accent-line` | `hsl(207, 58%, 82%)` | bordo di ciò che sta su `--accent-soft` |
 | `--line-subtle` | `rgba(127, 127, 127, 0.15)` | separatori dentro una scheda; il grigio al 50% con alfa bassa regge su entrambi i temi, e per questo non ha una variante scura |
 | `--scrim` | `rgba(16, 24, 40, 0.4)` | velo dietro un cassetto aperto (era scritto due volte, con due valori diversi) |
 | `--on-highlight` | `hsl(45, 60%, 12%)` | testo sopra l'evidenziazione della citazione |
-| `--focus` | `hsl(201, 88%, 42%)` | anello del focus da tastiera |
+| `--focus` | `hsl(207, 88%, 42%)` | anello del focus da tastiera |
 
-La gerarchia dei grigi resta a tre: `--ink-soft` non è sceso al livello del
-graphite dei metadati — il riferimento ha due soli grigi, l'app ne ha tre e il
-secondario non poteva confondersi col «muted».
+L'accento è più fondo dell'azzurro precedente (`hsl(199,100%,50%)`), che era
+saturo quasi al massimo: qui accompagna solleciti dell'AFC e termini di
+pagamento, non un prodotto consumer.
 
-**La scala semantica è quella del riferimento**: azzurro = informazione,
-ambra = azione a breve, rosso = urgente, verde = verificato. Non è
-decorazione: dice quanto manca a una scadenza e se un'azione è stata svolta.
-Resta separata dal colore d'azione, così un pulsante non compete mai con un
-avviso.
-
-⚠️ **L'hover del primario NON è lo «sky-deep» del riferimento, e la deviazione
-è voluta — «fedele ma accessibile».** Quel valore (oklch `0.585/0.135/240`, il
-`--color-sky-deep` del file) con il testo scuro `--on-accent` farebbe
-**4,33:1**, sotto la soglia AA di 4,5. `--accent-dark` è il valore più fondo
-che resta sopra: **5,73:1** (conto e motivo nel commento del token, in
-`app.css`).
+**Rosso, ambra e verde non sono decorazione**: dicono quanto manca a una
+scadenza e se un'azione è stata svolta. Restano separati dal colore d'azione,
+così un pulsante non compete mai con un avviso.
 
 ⚠️ `--red` serve a barre, bordi e riempimenti. Per il **testo** si usa
 `--red-dark`: il primo non raggiunge il contrasto minimo su fondo chiaro.
@@ -569,41 +386,37 @@ e un colore che deve essere riconoscibile non sono lo stesso colore.**
 ## Contrasti
 
 Verificati con il calcolo WCAG, non a occhio, e **ricalcolati dai token il
-2026-09-06** — neutri e stati nuovi, stessa formula della sezione 12 di
-`test:shell-unit`, che li ripesa a ogni esecuzione.
+2026-08-13** con il carattere nuovo in esercizio.
 
 ⚠️ **La colonna del fondo non è un dettaglio**: fino al 2026-08-13 questa
 tabella non diceva contro quale superficie fossero misurati i rapporti, e i
 numeri si riproducono solo su `--card`. Le stesse tinte su `--bg` danno valori
-diversi (16.06 · 7.64 · 6.59): una tabella senza il fondo è una tabella che non
+diversi (15.76 · 7.52 · 5.28): una tabella senza il fondo è una tabella che non
 si può verificare.
 
 | coppia | fondo | chiaro | scuro |
 |---|---|---|---|
-| testo principale (`--ink`) | `--card` | **16.66:1** | **13.47:1** |
-| collegamenti (`--accent-text`) | `--card` | **7.92:1** | **8.68:1** |
-| testo sul pulsante (`--on-accent`) | `--accent` | **7.14:1** | **7.14:1** |
-| hover del primario (`--on-accent`) | `--accent-dark` | **5,73:1** — letta in `app.css` | **8.54:1** |
-| metadati (`--muted`) | `--card` | **6.83:1** | **6.19:1** |
-| pastiglia «media» (`--amber`) | `--amber-soft` | **5.45:1** | **7.57:1** |
-| pastiglia «bassa» (`--green`) | `--green-soft` | **6.10:1** | **7.32:1** |
-| eyebrow 10,5px e label 12,5px (`--muted`) | `--card` | **6.83:1** | **6.19:1** |
-| testo su fondo pagina (`--ink`) | `--bg` | **16.06:1** | **16.35:1** |
-| metadati su fondo pagina (`--muted`) | `--bg` | **6.59:1** | **7.51:1** |
-| rosso di testo (`--red-dark`) | `--red-soft` | **5.90:1** | **6.36:1** |
-| evidenziazione (`--on-highlight`) | `--highlight` | **12.02:1** | **5.60:1** |
+| testo principale (`--ink`) | `--card` | **16.48:1** | **13.49:1** |
+| collegamenti (`--accent-text`) | `--card` | **7.87:1** | **7.91:1** |
+| testo sul pulsante (`--on-accent`) | `--accent` | **5.40:1** | **6.02:1** |
+| metadati (`--muted`) | `--card` | **5.52:1** | **6.21:1** |
+| pastiglia «media» (`--amber`) | `--amber-soft` | **4.61:1** — era 3.31 | **7.57:1** |
+| pastiglia «bassa» (`--green`) | `--green-soft` | **4.69:1** — era 4.00 | **7.27:1** |
+| etichette 12px: KPI, RILEVANZA, sezioni | `--card` | **5.52:1** | **6.21:1** |
+| **sigla del marchio** (`--on-accent`) | `--accent` | **5.40:1** | **6.02:1** |
+| testo su fondo pagina | `--bg` | **15.76:1** | **16.37:1** |
+| metadati su fondo pagina | `--bg` | **5.28:1** | **7.54:1** |
+| rosso di testo (`--red-dark`) | `--red-soft` | **5.10:1** | **6.37:1** |
+| evidenziazione (`--on-highlight`) | `--highlight` | **12.01:1** | **5.64:1** |
 
 **Tutte a 4.5:1 o sopra, in tutti e due i temi** — soglia del testo normale,
-quindi valgono anche per i gradini piccoli. I valori si sono mossi rispetto a
-prima perché sono cambiati i token (neutri e stati agli sRGB del riferimento),
-ed è il compito di questa tabella: riportare i rapporti che il codice ha
-oggi, non conservare quelli che aveva.
+quindi valgono anche per i gradini piccoli. Le prime sei righe riproducono
+esattamente i numeri di prima: il rapporto WCAG è funzione dei soli colori, e
+nessun token è cambiato.
 
-⚠️ **La sigla del marchio NON è più in questa tabella, e non è una svista.**
-Il bianco su `#37AEEF` fa 2,48:1 — ma la sigla non è testo: è un disegno in
-contorni (`brandArt.ts`), e WCAG 1.4.3 misura il testo, non i segni. La sua
-sorveglianza è la **forma** — `brand:check` la confronta glifo per glifo con
-l'artefatto del titolare — non un rapporto di luminanza.
+Le ultime due erano sotto soglia proprio sulle pastiglie che comunicano
+l'urgenza. Sono state scurite del minimo necessario, mantenendo la tinta: non un
+colore diverso, lo stesso colore reso leggibile.
 
 ⚠️ **Il carattere non sposta un contrasto di un decimale** — il rapporto WCAG è
 funzione dei soli colori. Ciò che il carattere cambia è lo **spessore
@@ -614,26 +427,18 @@ scritta.** Diceva che i gradini piccoli restano leggibili «perché usano già p
 600–700, non 400»: `.nav-section` è passata a 400 il 2026-08-13, e altre regole
 a 12 px stanno a 400 per eredità. La frase giusta è più corta e si regge da
 sola: **ogni coppia della tabella supera 4,5:1, cioè la soglia del testo
-normale** — quella che vale a 400 come a 600, a 17px come a 10,5. Non c'è
-nessun contrasto che dipenda dal peso per stare in regola, e quindi nessuna
-giustificazione da tenere aggiornata.
+normale** — quella che vale a 400 e a 12 px. Non c'è nessun contrasto che
+dipenda dal peso per stare in regola, e quindi nessuna giustificazione da
+tenere aggiornata.
 
 ## Tema scuro
 
-Dal 2026-08-16 è una **scelta**, non il riflesso del sistema: il predefinito è
-il chiaro, la preferenza (chiaro / scuro / come il sistema) vive in
-`lib/theme.ts` e arriva al CSS come `data-theme` già risolto. Senza JavaScript
-si vede il `:root` nudo — che è esattamente il predefinito voluto.
+Segue `prefers-color-scheme`, senza interruttore nell'app: una preferenza in
+meno da spiegare e ricordare.
 
-Non è un'inversione. **L'accento è lo stesso `#37AEEF` dei due temi** — la sua
-luminosità era già quella giusta per staccarsi dal fondo scuro — e il testo
-sopra resta **scuro** (`--on-accent`); è l'hover che si ribalta (`--accent-dark`
-schiarisce invece di scendere), e `--red-dark`, che è colore di testo,
-schiarisce invece di scurire. Il blocco ridefinisce anche ciò che il restyle
-ha aggiunto: le ombre nuove (`--shadow-panel-hover`, e `--shadow-cta` che si
-abbassa al 35% per non diventare «glow») e la velatura della barra in cima,
-che in scuro torna un fondo pieno — la trasparenza lascerebbe leggere il
-contenuto sotto.
+Non è un'inversione. Su fondo scuro l'accento **si schiarisce** per staccarsi, e
+il testo sopra diventa **scuro** (`--on-accent`); `--red-dark`, che è colore di
+testo, schiarisce invece di scurire.
 
 ⚠️ La soglia WCAG di 3:1 vale per i **controlli** (campi, select, aree di
 caricamento), non per i bordi decorativi delle schede: quelle si staccano per
@@ -661,24 +466,13 @@ l'outline segue da sé la forma dell'elemento. Prima la regola globale imponeva
 segnare il passo corrente dello stepper, e così il segnale «sei qui con la
 tastiera» perdeva significato. Ora quel passo ha un alone dell'accento suo.
 
-⚠️ **Ciò che il puntatore mostra, la tastiera lo mostra uguale.** Nella colonna
-«Richiede attenzione» il chevron «vai» è nascosto a riposo e compare sia
-all'hover sia al `:focus-visible` della riga — lo spazio resta riservato, la
-riga non si sposta. E nella ricerca rapida l'anello sta **dentro** il pannello
-(`outline-offset` negativo): l'`overflow: hidden` che arrotonda gli angoli del
-riquadro taglierebbe quello esterno.
-
 ## Movimento ridotto
 
 `prefers-reduced-motion: reduce` disattiva gli **spostamenti**, non il feedback:
 la pagina non scivola più a ogni cambio, lo scheletro di caricamento non pulsa,
-la barra non cresce, il pulsante non si abbassa — e, dal restyle, non si
-**solleva** più all'hover, il pannello della ricerca rapida non entra più con
-un'animazione, e il punto della pastiglia «richiede attenzione» smette di
-pulsare: il disco fermo resta, l'alone no (un alone immobile sarebbe un secondo
-punto, non un punto fermo). Le transizioni di colore restano, e lo spinner
-continua a girare — è l'unico segnale che qualcosa sta ancora lavorando — solo
-più lento.
+la barra non cresce, il pulsante non si abbassa. Le transizioni di colore
+restano, e lo spinner continua a girare — è l'unico segnale che qualcosa sta
+ancora lavorando — solo più lento.
 
 ## Dati: la forma non deve dire più di quello che si sa
 
@@ -852,23 +646,6 @@ persona) resta testo, perché dice quale modulo l'ha creata e **non** se il
 documento chiedesse quella cosa.
 
 ## Regole che valgono per chi lavora qui dopo
-
-### Riallineamento finale al riferimento — audit responsive 2026-09-07
-
-| | Stato al 2026-09-06 |
-|---|---|
-| Implementato | **sì — sul branch `design/mockup-pixel-align`**. La scala usa corpo 14 px, titolo pagina 30 px e KPI 36 px Sora 600; la topbar compone percorso e titolo a ogni larghezza; a 375 px i KPI sono impilati come nel riferimento; la Panoramica non duplica più identità e CTA; i KPI mostrano delta e sparkline solo quando esiste una serie storica reale |
-| Deployato | **no** — il branch attende revisione e merge |
-| Configurato | nessuna configurazione: sono componenti, token e query di conteggio già esistenti |
-| Testato | **sì** — guardie offline per scala, geometria 720 px, topbar, badge, due popolazioni `to_verify` e KPI; suite completa nel commit finale |
-| Provato contro la cosa reale | **sì** — produzione letta senza mutazioni (`to_verify`: 0 attivi, 16 archiviati) e [confronto Playwright](visual-checks/2026-09-06/verification.md) a 1440/375, chiaro/scuro, col mockup alle stesse misure |
-| Disponibile a clienti esterni | **no** — nessuna disponibilità prima del deploy di `main` |
-
-Decisioni bloccate: `#37AEEF` non cambia; sopra l'accento resta
-`--on-accent` scuro; il suo hover resta `--accent-dark` con contrasto AA; un
-badge di navigazione compare solo se il servizio della destinazione restituisce
-un totale autorevole. Il segnale di attenzione somma attivi e archiviati perché
-la produzione ha dimostrato che una delle due popolazioni può essere vuota.
 
 1. **Nessun valore scritto a mano**: misure e colori vengono dai token.
    Dal 2026-08-09 non è un'esortazione: `npm run design:lint` **blocca la CI**

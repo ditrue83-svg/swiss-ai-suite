@@ -67,7 +67,7 @@ export function DocumentoInEvidenza({ item, today }: { item: DocumentHubItem; to
   const importo = formatCurrency(item.amount, item.amountCurrency);
 
   return (
-    <section className={cx('card', 'panel-hover', styles.spot)} aria-labelledby="spot-title">
+    <section className={cx('card', styles.spot)} aria-labelledby="spot-title">
       <div className={styles.spotHead}>
         <div className={styles.spotHeadMain}>
           <h2 className={styles.spotTitle} id="spot-title">{etichetta(item.label)}</h2>

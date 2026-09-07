@@ -18,12 +18,14 @@ import type { TKey } from '@/i18n';
 // gli si chiuderebbe in faccia — e infatti la pagina, aperta per indirizzo,
 // spiega perché non può leggere invece di mostrare un elenco vuoto.
 //
-// ⚠️ CONTATORI: SOLO INSIEMI CHE I SERVIZI SANNO GIÀ CONTARE. Fino al
-// 2026-09-05 qui c'era il divieto dei numeri accanto alle voci: un numero
-// ricavato dalle righe caricate di una pagina avrebbe spacciato una finestra
-// per il totale. Dal 2026-09-06 la shell usa `useNavCounts`: Inbox da gestire,
-// documenti attivi e attività aperte arrivano dalle funzioni di conteggio che
-// governano i rispettivi elenchi. Nessun servizio autorevole, nessun badge.
+// ⚠️ NESSUN CONTATORE accanto alle voci. «Posta in arrivo» e «Scadenze e
+// attività» ne meriterebbero uno (non letti, in scadenza), ma i conteggi che
+// esistono oggi sono interrogazioni dedicate (`inboxService.counts`,
+// `taskService.list`) eseguite DENTRO le rispettive pagine: la barra sta su
+// ogni schermata, e un numero lì significherebbe una query in più per ogni
+// cambio pagina. Il giorno in cui un conteggio arriverà già caricato nella
+// shell, il numero si potrà mostrare; fino ad allora, un contatore comprato
+// con query nuove è rumore pagato due volte.
 export interface NavItem {
   id: string;
   labelKey: TKey;

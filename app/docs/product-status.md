@@ -937,13 +937,6 @@ conta il caso dichiara la frase attesa. Autoverifica da 30 a **38 casi**.
 
 ## Il carattere dell'interfaccia — deployato il 2026-08-11 e PROVATO SUL DOMINIO
 
-> ⚠️ **Dal merge del 2026-09-06 (PR #104, `1f78d91`) la produzione serve le
-> due famiglie nuove — Manrope per il corpo, Sora per titoli e numeri grandi —
-> self-hosted come Inter, con U+202F trapiantato in entrambe e U+2192 in
-> Sora** (font in `5a08a80`, 03.09). Questa sezione descrive l'interfaccia
-> PRECEDENTE e resta come sua storia. Stato del restyle: §«Il restyle sul
-> riferimento «Panoramica»».
-
 **Inter, ospitato da noi** (`inter-ui@4.1.1`, SIL OFL), al posto dello stack di
 sistema. Il come e il perché stanno in [`design-system.md`](design-system.md);
 qui c'è solo lo stato, con le sei parole.
@@ -990,10 +983,7 @@ le lingue: la riserva di due righe della regola 6 regge anche in tedesco.
 «Unternehmenseinstellungen» sporgeva dal proprio pulsante — 7 px già con lo stack
 di sistema, **15 px con Inter** — lasciando 2 px dal bordo della barra invece di
 10. Corretto con `hyphens: auto` sull'etichetta, che dà
-«Unternehmenseinstel-lungen»; la barra resta a 264 px. *(Dal 2026-09-06, sul
-branch del restyle, la barra è 236 px — 252 da ≥1280 px — e la misura è stata
-rifatta su Manrope: 173,2 px contro ~148-164 utili. La dichiarazione non è
-cambiata.)*
+«Unternehmenseinstel-lungen»; la barra resta a 264 px.
 
 ⚠️⚠️ **Che cosa resta NON osservato, e va detto invece di essere sottinteso**: i
 dati a cui è stato aggiunto `tabular-nums` non compaiono tutti nell'azienda di
@@ -1064,11 +1054,8 @@ persona, non dedotto.
 ## Il marchio e i pesi del carattere — IN PRODUZIONE dal 2026-08-13
 
 Il marchio non è più una lettera in un quadrato: è il wordmark che il titolare
-usa già sulla vetrina («AI» in un blocco, poi «Swisse») — ricomposto in Inter
-alla prima versione, **in contorni dal 2026-08-14** (`brandArt.ts`, copiati
-dall'artefatto della vetrina e sorvegliati da `brand:check`: un marchio
-ricomposto è un marchio somigliante). E sotto ci sono tre difetti del carattere
-che nessun controllo vedeva. Il come e
+usa già sulla vetrina («AI» in un blocco, poi «Swisse»), ricomposto in Inter. E
+sotto ci sono tre difetti del carattere che nessun controllo vedeva. Il come e
 il perché stanno in [`design-system.md`](design-system.md); qui c'è lo stato.
 
 | | Stato al 2026-08-14 |
@@ -1091,13 +1078,11 @@ font incorporati.
 ### ✅ La doppia sede del marchio adesso è NOMINATA da qualcosa — dal 2026-08-14
 
 Il marchio vive in **due basi di codice**: qui (`BrandMark.tsx` più le regole
-`.brand-*`, **in contorni** da `brandArt.ts` — la ricomposizione in Inter è
-durata un giorno) e nella vetrina (`site/static/logo-ai-swisse.svg`). I due
-blu **non divergono più**: dal 2026-08-26 il marchio ha lasciato `#00AEEF` per
-`#37AEEF`, lo stesso azzurro di `--accent` — scelta di Andrea: due azzurri che
-si somigliano restano due segni. La **forma è una sola**, e `site/` è
-invisibile da questo albero. Fino al 2026-08-14, se il marchio cambiava, i
-posti da toccare erano due e **niente lo
+`.brand-*`, composto in Inter sul token `--accent`) e nella vetrina
+(`site/static/logo-ai-swisse.svg`, un tracciato Poppins sul blu del titolare
+`#00AEEF`). I due **blu divergono per scelta** — la vetrina tiene i colori del
+marchio — ma la **forma è una sola**, e `site/` è invisibile da questo albero.
+Fino a ieri, se il marchio cambiava, i posti da toccare erano due e **niente lo
 ricordava**: lo si sarebbe scoperto guardando le due pagine affiancate, cioè per
 caso.
 
@@ -1106,15 +1091,12 @@ dichiarazioni CSS delle regole `.brand-*` e le classi che il componente monta �
 e diventa rossa quando si muove, **nominando la seconda sede** e il comando per
 raggiungerla. L'impronta ignora i commenti di proposito: un controllo che
 diventa rosso quando si riscrive una spiegazione insegna a rifare il numero
-senza guardare. *(Rifatta il 2026-09-06 dopo il restyle, `brand:check` verde:
-commit `fac5e72`.)*
+senza guardare.
 
 ⚠️ E dove la vetrina è raggiungibile — nel monorepo, quindi **in CI** — il
-controllo la **guarda** invece di crederci: `brand:check` confronta i tracciati
-di `brandArt.ts` con il logo della vetrina **come stringhe**, la favicon di
-`index.html` con `site/static/favicon.svg`, e il colore `--brand` con quello
-che la vetrina dipinge. Dove la seconda sede non è raggiungibile la riga lo
-dichiara, invece di fingere un verde.
+controllo la **guarda** invece di crederci: verifica che il logo porti ancora
+`#00AEEF` e il blocco della sigla. Da `~/swiss-ai-suite-app` la riga dichiara
+che la seconda sede non è raggiungibile, invece di fingere un verde.
 **Controprova eseguita**: cambiando il raggio del blocco della sigla
 (`--sp-1` → `--radius-sm`) il controllo diventa rosso e stampa i due indirizzi.
 
@@ -1438,14 +1420,6 @@ la mostra — le righe stanno bene). Si chiuderebbe con un `flex-wrap: wrap` su
 
 ## La colonna mostra tutte le sue voci — IN PRODUZIONE dal 2026-08-17
 
-> ⚠️ **Dal merge del 2026-09-06 (PR #104) la colonna in produzione è quella
-> nuova**: 236px — 252 da ≥1280px — invece di 264, riquadro «Dati in
-> Svizzera» in fondo, badge numerici su Inbox, Documenti e Attività soltanto
-> quando i rispettivi servizi hanno un conteggio reale, Esc che chiude il
-> drawer, bilancio di §13 ribasato (line-height voce 1,36). Quanto segue descrive la
-> colonna precedente e resta come sua storia; stato completo: §«Il restyle
-> sul riferimento «Panoramica»».
-
 La barra laterale ha dieci voci in tre gruppi. A 1280×720 se ne vedevano
 **sei**: la colonna chiedeva 962px e ne aveva 720, e la navigazione — l'unica
 parte elastica — ne nascondeva 242. Sotto la piega finivano
@@ -1534,13 +1508,12 @@ bianco fa lo stesso. Sotto ogni soglia. Non c'era modo di «mettere il colore
 nuovo» e basta: o l'azzurro riempie e ci si scrive sopra scuro, o resta
 l'identità e i pieni usano un tono più fondo. **Andrea ha scelto il primo** —
 l'azzurro esatto, con l'inchiostro scuro sopra — e ha deciso che **il marchio
-resta #00AEEF**. *(Decisione superata il 2026-08-26: anche il marchio è passato
-a #37AEEF — un solo azzurro, vedi §«La doppia sede del marchio».)*
+resta #00AEEF**.
 
 | | Stato al 2026-08-17 |
 |---|---|
 | Implementato | sì — `app.css` (i sei token della famiglia nei tre temi, `--on-accent`, il nuovo `--on-red`, `--focus`), `extra.css` (il pallino, due segni di testo), le cinque caselle native |
-| Deployato | **sì** — PR #60 unita (merge `537daf1`); **verificato nel bundle SERVITO**: `index-o1BPt9S2.css` porta `--accent: #37AEEF`, `--on-red`, tutta la famiglia su `hsl(201, …)`, `.nav-btn.active{background:var(--accent);color:var(--on-accent)…}` e `.nav-btn.active .ic{color:var(--on-accent)}` — e **non porta più** né `hsl(207` né `#0c6cbb`. Il marchio `#00AEEF` è ancora lì, invariato *(lo resta fino al 2026-08-26, quando anche il marchio passa a `#37AEEF`)*. La **vetrina servita** da `ai-swisse.com` porta gli stessi token |
+| Deployato | **sì** — PR #60 unita (merge `537daf1`); **verificato nel bundle SERVITO**: `index-o1BPt9S2.css` porta `--accent: #37AEEF`, `--on-red`, tutta la famiglia su `hsl(201, …)`, `.nav-btn.active{background:var(--accent);color:var(--on-accent)…}` e `.nav-btn.active .ic{color:var(--on-accent)}` — e **non porta più** né `hsl(207` né `#0c6cbb`. Il marchio `#00AEEF` è ancora lì, invariato. La **vetrina servita** da `ai-swisse.com` porta gli stessi token |
 | Configurato | non richiede configurazione |
 | Testato | **sì** — `test:shell-unit` 215 passi. Sei controlli nuovi, provati su **sei mutazioni** che DEVONO farli fallire: un segno che torna a scrivere con `--accent` (1 rosso), una casella nativa che torna sul riempimento (1), il pallino che torna a `--on-accent` (2), il bianco rimesso sopra l'azzurro (1), `--accent-line` scuro lasciato sul tono vecchio (1), `--focus` lasciato indietro (1) |
 | Provato contro la cosa reale | **sì per la vetrina, in parte per l'app.** La **vetrina in produzione** è stata aperta e misurata: pulsante primario 7,14:1, chip 7,15, spunta del mockup 7,14, riferimento 5,81. Per l'app: misurato a schermo su un banco che monta le classi vere dei fogli veri, nei due temi. ⚠️ L'app dietro autenticazione non è stata aperta |
@@ -1738,53 +1711,6 @@ sottovoci, e chi rifà il conto della sezione 13 se le aspetta nel bilancio.
 Tolte con la PR #63, e la sezione 14 ora pretende che non tornino — né nel
 foglio né in un componente, con la controprova che il lettore dei componenti
 non sia a vuoto.
-
-## Il restyle sul riferimento «Panoramica» — IN PRODUZIONE dal 2026-09-06
-
-L'interfaccia è stata rifatta sul mockup `panoramica-ai-swisse.html` approvato:
-**Manrope + Sora** self-hosted al posto di Inter, scala tipografica e densità
-del mockup (base 13,5px, KPI 29px), neutri e stati agli sRGB calcolati dai suoi
-oklch (sky **resta** `#37AEEF`), colonna 236/252px con riquadro «Dati in
-Svizzera» e badge numerico su «Documenti», **barra in cima a ogni larghezza**
-con percorso, ricerca rapida ⌘K (`CommandPalette` nuova), pastiglia «richiede
-attenzione», campanella a mount unico e CTA «Carica documento», e le utility
-del riferimento (`.num`, `.eyebrow`, `.panel-hover`, `.row-hover`, `.table`).
-Il come e il perché stanno in [`design-system.md`](design-system.md); qui c'è
-lo stato, con le sei parole.
-
-| | Stato al 2026-09-06 |
-|---|---|
-| Implementato | **sì — in produzione dal 2026-09-06**: PR [#104](https://github.com/ditrue83-svg/swiss-ai-suite/pull/104) unita con merge commit `1f78d91`, branch `design/lovable-restyle` chiuso. Dodici commit: `5a08a80` (i font, 03.09) e gli undici del 06.09 — `24d173c` token `:root`, `a874f8a` shell, `d5af08d` classi globali, `5f55402` moduli feature, `fda3064` token e utility sul riferimento, `fac5e72` sidebar, `8163ef4` componenti, `5b37378` topbar a ogni larghezza, `792d7c5` i due ritocchi usciti dalla prima occhiata col browser, `bb8d6c1` i documenti, `ce9d469` il pre-volo vetrina |
-| Deployato | **sì — dal 2026-09-06.** Push, PR e merge approvati dal titolare («ok pubblica e aggiorna tutto»). Verificato nel bundle SERVITO su app.ai-swisse.com: `assets/index-CVOpNDRz.css` contiene i segni nuovi (`--fs-eyebrow: 10.5px`, `.shell-body`, `#E8F6FE`, Manrope e Sora) e i sei woff2 (`manrope-400/500/600`, `sora-400/500/600`) rispondono 200. CI su `main` verde dopo il merge (run 34044232369: qualità+unità e database effimero success, suite manuali saltate per design); vetrina ripubblicata coi token nuovi (run 34044232372 «Vetrina → GitHub Pages» success) |
-| Configurato | non richiede configurazione: nessun segreto, nessuno scheduler |
-| Testato | **sì** — `npm run ci` **verde a ogni commit** (quality 12/12, unit 35/35, shell-unit **523/523**); `fonts:check` verde sulle sei impronte (copertura sull'**intersezione** delle due famiglie: 333 codepoint — né Manrope né Sora disegnano U+202F, e Sora non ha U+2192: glifi trapiantati dagli Inter storici); `brand:check` verde; `design:lint` senza eccezioni morte; le sezioni di `test:shell-unit` che contano geometrie e contrasti (§12, §13, §16) ribasate sulle misure nuove |
-| Provato contro la cosa reale | **sì — il 2026-09-06, dopo i dieci commit.** Login reale come utente demo (`pilota.demo@swissai-suite.ch`) su Chromium headless (Playwright — Safari non si presta all'automazione: `do JavaScript` è spento e le finestre dell'utente non si toccano): Panoramica chiara e scura a 1440px; 375px con hamburger, drawer ed Esc; palette ⌘K aperta, con risultati e col vuoto dichiarato; Attività, Documenti, Finanze e la CTA che apre davvero l'uploader su `/admin?carica=1`; emulazione di stampa (cornice nascosta, contenuto pulito); le tre lingue IT/DE/FR senza sfori né glifi mancanti; confronto col riferimento `panoramica-ai-swisse.html` fotografato alla stessa misura — NON con `05-Design/preview-screenshot.png`, che è il mockup della vecchia demo «SwissAI Suite», un artefatto superato. È il giro che ha pescato il difetto della barretta (`792d7c5`) e ne ha verificato la cura su colonna e cassetto |
-| Disponibile a clienti esterni | **sì — dal merge del 2026-09-06**: è l'interfaccia che app.ai-swisse.com serve oggi |
-
-⚠️ **Dal merge del 2026-09-06 la produzione È il restyle.** Le sezioni di
-design più sotto — «Il carattere dell'interfaccia», «Il marchio e i pesi del
-carattere», «La colonna mostra tutte le sue voci» e «L'azzurro #37AEEF» —
-descrivono l'interfaccia PRECEDENTE (Inter, colonna 264px) e restano come
-sua storia; le famiglie e le misure nuove sono quelle in esercizio.
-Decisioni bloccate del restyle, perché non si riscoprano: azzurro invariato
-`#37AEEF` (`brand:check`), testo **scuro** `--on-accent` sui bottoni sky (il
-bianco farebbe 2,48:1), hover primario `--accent-dark` a 5,73:1 invece dello
-«sky-deep» del file (4,33:1, sotto AA), nessuna palette nuova, nessun testo
-cambiato. La vetrina non è ridisegnata, ma il suo `tokens.css` deve stare in
-pari con l'app — lo esige `sync-tokens --check` in CI: rigenerato in
-`ce9d469`, con l'estrattore sistemato perché copiava solo la prima riga dei
-commenti in coda alle dichiarazioni.
-
-## Riallineamento pixel sul mockup — branch `design/mockup-pixel-align` (audit 2026-09-07)
-
-| | Stato al 2026-09-06 |
-|---|---|
-| Implementato | **sì — sul branch `design/mockup-pixel-align`**: base 14 px, titolo pagina 30 px nella topbar, KPI 36 px; percorso `sezione › voce` a ogni larghezza e anche per le voci prima dei gruppi; a 375 px KPI in una colonna come nel riferimento; KPI senza icone decorative; badge di navigazione dai soli conteggi reali; rimossa la testata duplicata della Panoramica |
-| Deployato | **no** — il branch non è unito a `main`; la PR viene aperta soltanto dopo tutti i verdi |
-| Configurato | non richiede configurazione, segreti o migrazioni |
-| Testato | **sì** — `test:shell-unit` ribasato e verde **538/538**; `npm run ci` e controllo token vetrina registrati nel commit finale |
-| Provato contro la cosa reale | **sì** — lettura di sola testata sulla produzione: i `to_verify` sono **0 attivi + 16 archiviati**, il caso che nascondeva la pastiglia è riprodotto e corretto. Playwright su utente demo reale a 1440 × 900 e 375 × 800, chiaro/scuro e movimento ridotto; [fotogrammi e confronto col riferimento](visual-checks/2026-09-06/verification.md) |
-| Disponibile a clienti esterni | **no** — lo diventa solo dopo revisione, merge e deploy della PR |
 
 ## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
 

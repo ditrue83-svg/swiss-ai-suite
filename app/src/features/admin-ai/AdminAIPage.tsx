@@ -71,19 +71,6 @@ export function AdminAIPage() {
   const [uploaderOpen, setUploaderOpen] = useState(false);
   const [drag, setDrag] = useState(false);
 
-  // La CTA «Carica documento» della barra in cima porta qui con `?carica=1`:
-  // il modulo di caricamento si apre da sé, e il parametro si toglie SUBITO
-  // (replace, non push) perché un refresh o un «indietro» non lo riaprano —
-  // un comando, non uno stato della pagina.
-  const caricaParam = searchParams.get('carica');
-  useEffect(() => {
-    if (caricaParam !== '1') return;
-    setUploaderOpen(true);
-    const next = new URLSearchParams(searchParams);
-    next.delete('carica');
-    setSearchParams(next, { replace: true });
-  }, [caricaParam, searchParams, setSearchParams]);
-
   const [document, setDocument] = useState<DocumentRecord | null>(null);
   const [analysis, setAnalysis] = useState<DocumentAnalysis | null>(null);
   const [loadingDoc, setLoadingDoc] = useState(false);

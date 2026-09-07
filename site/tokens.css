@@ -52,17 +52,9 @@
      La sezione 12 di `test:shell-unit` pesa ogni coppia fondo/testo e non
      lascia rientrare la scrittura chiara su chiaro. */
   --accent: #37AEEF;                   /* = hsl(201, 85%, 58%) — riempimenti, filetti, stati attivi */
-  /* hover: qui l'accento è chiaro, quindi l'hover SCENDE. ⚠️ NON lo
-     «sky-deep» #0084C3 del riferimento: con il testo scuro `--on-accent`
-     farebbe 4,33:1, sotto AA — questo è il valore più fondo che resta sopra
-     (5,73:1). Il commento sta SOPRA la dichiarazione e non in coda alla
-     riga: un commento in coda che va a capo perde la chiusura nell'estrattore
-     della vetrina (`site/sync-tokens.mjs`), che della riga di dichiarazione
-     copia solo la prima riga — e il suo controllo di integrità ferma la
-     pubblicazione. */
-  --accent-dark: hsl(201, 85%, 48%);
+  --accent-dark: hsl(201, 85%, 48%);   /* hover: qui l'accento è chiaro, quindi l'hover SCENDE      */
   --accent-text: hsl(201, 85%, 27%);   /* testo e link: 7,92:1 su bianco                            */
-  --accent-soft: #E8F6FE;              /* «sky-soft» del riferimento            */
+  --accent-soft: hsl(201, 65%, 95%);   /* fondi tenui, chip informativi                             */
   --accent-line: hsl(201, 58%, 82%);   /* bordo di ciò che sta su --accent-soft                     */
 
   /* --- Il colore del MARCHIO — dal 2026-08-26 è il colore dell'azione --------
@@ -86,25 +78,18 @@
   --brand-word: #37AEEF;               /* la parola accanto: segue il tema      */
 
   /* --- Neutri --------------------------------------------------------------
-     Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti.
-     DAL 2026-09-06 i valori sono quelli oklch del riferimento approvato
-     `panoramica-ai-swisse.html` (qui in sRGB, che è come il browser li
-     rasterizza: canvas 0.988/0.003/240, ink 0.235/0.021/249, graphite
-     0.468/0.022/249, line 0.923/0.007/245, line-strong 0.878/0.01/245).
-     Gerarchia invariata: `--ink-soft` resta più scuro del graphite dei
-     metadati — il riferimento ha due soli grigi, l'app ne ha tre e il
-     secondario non poteva scendere al livello del «muted». */
-  --ink: #161F28;                      /* testo principale                      */
+     Grigi con una punta di blu: accanto al fondo chiaro non sembrano spenti. */
+  --ink: hsl(213, 40%, 13%);           /* testo principale                      */
   --on-ink: #ffffff;                   /* testo sopra il fondo --ink (toast)    */
   --ink-soft: hsl(213, 22%, 30%);      /* testo secondario                      */
-  --muted: #515C66;                    /* metadati, didascalie (graphite)       */
-  --line: #E2E6EA;
-  --line-strong: #D2D8DD;              /* bordi marcati: hover, stati attivi */
+  --muted: hsl(213, 12%, 42%);         /* metadati, didascalie                  */
+  --line: hsl(210, 20%, 90%);
+  --line-strong: hsl(210, 20%, 78%);   /* bordi marcati: hover, stati attivi */
   /* Separatore più tenue di --line, per righe DENTRO una scheda. Il grigio al
      50% con un'alfa bassa regge su chiaro e scuro senza bisogno di un valore
      per tema: per questo NON è ridefinito nel blocco scuro, ed è voluto. */
   --line-subtle: rgba(127, 127, 127, 0.15);
-  --bg: #F9FBFD;                       /* canvas del riferimento                */
+  --bg: hsl(210, 20%, 98%);
   --card: #ffffff;
   /* ⚠️ SCURO, e non è un refuso: dal 2026-08-17 `--accent` è l'azzurro chiaro
      #37AEEF, e il bianco sopra farebbe 2,48:1. Questo inchiostro ne fa 7,14.
@@ -120,8 +105,8 @@
      secondo `--surface-2` della stessa palette — lo stesso guasto di --amber
      usato sia per scrivere sia per riempire, che ha prodotto il marrone della
      barra «Media» che nessuno aveva scelto. */
-  --fill-subtle: #F1F5F8;              /* «secondary» del riferimento: hover    */
-  --track: #E6EBEF;                    /* «sunken»: fondo barre di avanzamento  */
+  --fill-subtle: hsl(210, 20%, 94%);
+  --track: hsl(210, 20%, 92%);         /* fondo delle barre di avanzamento  */
   --highlight: hsl(48, 100%, 78%);     /* evidenziazione della citazione     */
   --on-highlight: hsl(45, 60%, 12%);   /* testo sopra l'evidenziazione       */
 
@@ -149,32 +134,23 @@
      successiva. `--content-max` è la colonna che contiene una pagina di
      lettura. Sono due cose diverse: tabelle ed elenchi possono superare la
      prima (sono strutture, non prosa) ma non la seconda. */
-  /* ⚠️ 56ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
-     ZERO, e in Manrope lo zero è largo 7,80px a 13,5px mentre il carattere
-     medio di una frase italiana vera ne misura 6,26. Scrivere `70ch` per
-     «settanta caratteri» darebbe una riga da 87 caratteri — diciassette in più
-     di quelli voluti, cioè esattamente il difetto che si stava correggendo.
-     56ch = 437px = ~70 caratteri del testo reale, contati sul riassunto di
-     un'analisi con il font servito. Rimisurato il 2026-09-03 nel passaggio da
-     Inter a Manrope (prima era 52ch, per lo zero largo 9,46px di Inter a 15px).
-     Il conteggio dipende dal FONT, non dalla lingua: vale uguale in de e fr.
-     Se un giorno cambia il carattere, questo numero va rimisurato, non
-     tradotto. */
-  --measure: 56ch;
+  /* ⚠️ 52ch e NON 70ch, e la differenza è misurata: `ch` è la larghezza dello
+     ZERO, e in Inter lo zero è largo 9,46px a 15px mentre il carattere medio di
+     una frase italiana vera ne misura 6,83. Scrivere `70ch` per «settanta
+     caratteri» dà una riga da 94 caratteri — trentaquattro in più di quelli
+     voluti, cioè esattamente il difetto che si stava correggendo. 52ch = 492px
+     = ~72 caratteri del testo reale, contati sul riassunto di un'analisi con il
+     font servito. Il conteggio dipende dal FONT, non dalla lingua: vale uguale
+     in de e fr. Se un giorno cambia il carattere, questo numero va rimisurato,
+     non tradotto. */
+  --measure: 52ch;
   --content-max: 880px;
 
   /* --- Colori di stato -----------------------------------------------------
      NON sono decorazione: dicono quanto manca a una scadenza e se un'azione è
      stata svolta. Restano separati dal colore d'azione, così un pulsante non
-     compete mai con un avviso. DAL 2026-09-06 i valori chiari sono quelli del
-     riferimento approvato `panoramica-ai-swisse.html` (azzurro = info, ambra =
-     azione a breve, rosso = urgente, verde = verificato), in sRGB:
-       warn    #E8941B · warn-soft  #FFF1DA · warn-ink   #925303 (5,45:1 su soft)
-       danger  #DC3336 · danger-soft #FFEBEA · danger-ink #B31C21 (5,90:1)
-       ok      #419E6E · ok-soft    #E2F9EC · ok-ink     #1C6844 (6,10:1)
-     Gli inchiostri passano AA anche sul bianco (6,07 / 6,76 / 6,75): un tono
-     solo regge pastiglia e superficie piena. I tre «fill» sono i colori che si
-     RICONOSCONO (barre, pallini), i tre «ink» quelli che portano il testo. */
+     compete mai con un avviso. (Valori invariati in questo passo: vanno
+     ritoccati insieme ai componenti che li usano, non prima.) */
   /* ⚠️ I DUE ROSSI FANNO DUE MESTIERI, e confonderli costa una soglia.
      `--red` è il rosso che si RICONOSCE: barre, pallini, bordi, riempimenti —
      posti dove non c'è testo sopra, e dove serve che salti all'occhio.
@@ -200,20 +176,21 @@
      nei tre temi. Un colore che deve essere leggibile e un colore che deve
      essere riconoscibile non sono lo stesso colore — la stessa lezione che
      ambra e verde avevano già insegnato con il marrone della barra «Media». */
-  --red: #DC3336;
-  --red-soft: #FFEBEA;
-  --red-line: hsl(0, 71%, 86%);
-  --red-hover: hsl(0, 71%, 93%);
-  --red-dark: #B31C21;
-  /* Gli inchiostri di stato (il testo sulle pastiglie) e i loro fondi tenui,
-     dal riferimento del 2026-09-06: 6,10:1 il verde, 5,45:1 l'ambra sui
-     rispettivi «soft» — sopra AA senza scuriture oltre misura, e sopra AA
-     anche sul bianco pieno (6,75 e 6,07). */
-  --green: #1C6844;
-  --green-soft: #E2F9EC;
+  --red: hsl(0, 84%, 60%);
+  --red-soft: hsl(0, 84%, 96%);
+  --red-line: hsl(0, 84%, 86%);
+  --red-hover: hsl(0, 84%, 92%);
+  --red-dark: hsl(0, 72%, 45%);
+  /* Ambra e verde scuriti fino al minimo necessario per il contrasto AA sui
+     rispettivi fondi tenui: prima erano 3.31:1 e 4.00:1, cioè sotto la soglia
+     proprio sulle pastiglie che dicono quanto manca a una scadenza.
+     Il rosso resta com'è: lo usiamo per barre, bordi e riempimenti, dove il
+     contrasto del testo non c'entra. Per il testo esiste --red-dark. */
+  --green: hsl(151, 48%, 32%);      /* 4.69:1 su --green-soft */
+  --green-soft: #e6f4ec;
   --green-line: #c6e6d2;
-  --amber: #925303;
-  --amber-soft: #FFF1DA;
+  --amber: hsl(35, 78%, 34%);       /* 4.61:1 su --amber-soft */
+  --amber-soft: #fdf3e0;
   --amber-line: #ecd9ae;
   /* Riempimenti: barre, pallini, superfici piene. Sono l'altra metà della
      coppia che il rosso ha già (--red riempie, --red-dark scrive). Ambra e
@@ -221,43 +198,25 @@
      riempimento: da lì il marrone della barra «Media», che nessuno aveva
      scelto. Un colore che deve essere leggibile e un colore che deve essere
      riconoscibile non sono lo stesso colore. */
-  --amber-fill: #E8941B;
-  --green-fill: #419E6E;
+  --amber-fill: hsl(35, 92%, 50%);
+  --green-fill: hsl(151, 52%, 40%);
 
   /* --- Scala tipografica ---------------------------------------------------
-     Sei gradini per il testo più uno per i NUMERI GRANDI, uno per compito. Se
-     un testo non rientra in nessuno, il problema è la gerarchia, non la scala.
-     ⚠️ DAL 2026-09-03 LA BASE SCENDE da 15px a 13,5px — inversione della scelta
-     del 2026-08-10, che l'aveva alzata per «chi legge importi e scadenze».
-     Il riallineamento del 2026-09-06 chiude gli scarti residui misurati sulla
-     fotografia approvata: corpo 14px, titolo di pagina 30px nella barra e KPI
-     36px in Sora 600, sempre con cifre tabulari e tracking −0,03em. */
-  /* etichette di gruppo maiuscole («eyebrow»): il gradino più piccolo — a
-     questa misura il maiuscoletto spaziato (0,16em) si legge come segno di
-     sezione, non come testo; dal riferimento 2026-09-06. In colonna e non in
-     coda alla riga, per la stessa ragione scritta sopra `--accent-dark`:
-     l'estrattore della vetrina non segue i commenti in coda che vanno a
-     capo. */
-  --fs-eyebrow: 10.5px;
-  --fs-label: 12.5px;  /* etichette maiuscole, con letter-spacing */
-  --fs-meta: 11.5px;   /* metadati e didascalie                   */
-  --fs-body: 14px;     /* corpo del testo                          */
-  --fs-strong: 14.5px; /* titoli di scheda e di riga               */
-  --fs-h2: 16.5px;     /* titoli di sezione                        */
-  --fs-h1: 30px;       /* titoli di pagina, compreso quello in barra */
-  /* Il gradino FUORI scala: i numeri della Panoramica. Non è un settimo
-     titolo — è l'unico testo pensato per essere letto da lontano, e l'unico
-     che chiude il tracking fino a −0,03em. Sta fuori dai sei gradini perché
-     non è un compito del TESTO: è il dato che la pagina serve. */
-  --fs-kpi: 36px;
+     Sei gradini, uno per compito. Se un testo non rientra in nessuno, il
+     problema è la gerarchia, non la scala. La base sale da 13px a 15px: chi
+     usa l'app legge importi e scadenze, spesso oltre i 45 anni e di fretta. */
+  --fs-label: 12px;    /* etichette maiuscole, con letter-spacing */
+  --fs-meta: 13px;     /* metadati e didascalie                   */
+  --fs-body: 15px;     /* corpo del testo                          */
+  --fs-strong: 17px;   /* titoli di scheda e di riga               */
+  --fs-h2: 22px;       /* titoli di sezione                        */
+  --fs-h1: 30px;       /* titoli di pagina                         */
 
   --lh-tight: 1.25;    /* titoli                                   */
   --lh: 1.55;          /* testo corrente                           */
 
-  --ls-eyebrow: 0.16em; /* la spaziatura larga delle «eyebrow» del riferimento */
   --ls-label: 0.08em;  /* solo per le etichette maiuscole          */
   --ls-title: -0.01em; /* i titoli grandi respirano meglio stretti */
-  --ls-kpi: -0.03em;   /* il tracking chiuso dei KPI del mockup    */
 
   /* --- Ritmo delle spaziature ----------------------------------------------
      Multipli di 4 per il ritmo FRA gli elementi. --sp-05 è il mezzo gradino
@@ -269,31 +228,14 @@
   --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
   --sp-6: 24px;  --sp-8: 32px;  --sp-12: 48px;
 
-  /* Raggi dal riferimento «Panoramica» (2026-09-06): la base è 0.625rem = 10px
-     (`rounded-lg`: pannelli, bottoni, campi); 8px è il gradino delle voci di
-     navigazione (`rounded-md`); 6 quello dei piccoli contenitori (`rounded-sm`).
-     Erano 12 e 8 prima del riferimento. */
-  --radius: 10px;
-  --radius-md: 8px;
-  --radius-sm: 6px;
+  --radius: 12px;
+  --radius-sm: 8px;
 
-  /* ombre molto leggere (look premium/fintech, non glow) — «shadow-panel» del
-     riferimento, tinta oklch(0.2 0.03 240) = rgb(8,24,34): un filo a contatto
-     e una sola ombra lunga e stretta (−18px di spread) che non sporca i lati. */
-  --shadow-xs: 0 1px 2px rgba(8, 24, 34, 0.05);
-  --shadow-sm: 0 1px 2px rgba(8, 24, 34, 0.04), 0 8px 24px -18px rgba(8, 24, 34, 0.14);
-  --shadow-panel-hover: 0 1px 2px rgba(8, 24, 34, 0.05), 0 14px 32px -20px rgba(8, 24, 34, 0.22);
-  --shadow-md: 0 4px 14px rgba(8, 24, 34, 0.08);
-  --shadow-lg: 0 10px 30px rgba(8, 24, 34, 0.12);  /* pannelli sospesi (popover) */
-  /* L'UNICA ombra colorata, dal mockup «Panoramica» (2026-09-03, geometria
-     aggiornata al riferimento del 2026-09-06): l'alone azzurro sotto il gesto
-     primario — nel mockup lo portano il blocco della sigla e il bottone della
-     topbar. Tinta #37AEEF (lo «sky» del riferimento è #44B3ED, ma il marchio
-     resta pinnato a #37AEEF: la tinta segue il marchio): si vede sul canvas
-     chiaro senza diventare il «glow» che la riga sopra vieta. La usano il
-     marchio e `.btn-primary`, e basta: un alone che distingue tutto non
-     distingue niente. */
-  --shadow-cta: 0 1px 2px rgba(55, 174, 239, 0.24), 0 8px 18px -10px rgba(55, 174, 239, 0.4);
+  /* ombre molto leggere (look premium/fintech, non glow) */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 14px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.12);  /* pannelli sospesi (popover) */
 
   /* --- Movimento -------------------------------------------------------------
      Nominati il 2026-08-27: prima ogni transizione portava la sua durata a
@@ -323,24 +265,4 @@
      vede sulla superficie su cui compare più spesso. Questo azzurro, dello
      stesso tono ma più fondo, ne fa 3,94 su `--card` e 3,77 su `--bg`. */
   --focus: hsl(201, 88%, 42%);         /* anello del focus da tastiera */
-  /* 68px: l'altezza della barra in cima nel mockup «Panoramica» (2026-09-03;
-     era 56). La dichiara un token perché non è solo CSS: `assistant.module.css`
-     la somma in `--as-shell-y` per tenere il composer dentro lo schermo, e la
-     sezione 15 di `test:shell-unit` controlla che il conto resti allineato. */
-
-  /* ⚠️ IL TEMA DEI CONTROLLI DEL SISTEMA, che i token non possono vestire.
-     Barra di scorrimento, menu a tendina di una `select`, calendario di un
-     `input[type=date]`, riquadro dell'autocompletamento: li disegna il browser,
-     e senza questa riga li disegna secondo il SISTEMA OPERATIVO. Finché il tema
-     dell'app seguiva il sistema i due concordavano sempre; da quando l'app
-     sceglie, `chiaro` su una macchina in tema scuro darebbe campi neri dentro
-     una scheda bianca. Si dichiara UNA sola parola per tema, non `light dark`:
-     dichiararne due significherebbe di nuovo «decida il sistema». */
-  /* Dal 2026-09-03 le famiglie sono DUE, dichiarate in `fonts.css` e servite da
-     noi (restyle sul mockup «Panoramica»): Manrope per il corpo del testo, Sora
-     per titoli e numeri grandi — il token `--font-display`. La coda di riserva
-     non è decorativa: è ciò che si legge nel secondo che precede il caricamento
-     (`font-display: swap`) e ciò che disegna i caratteri che i sottoinsiemi non
-     contengono — un nome di azienda in cirillico, un allegato con un ideogramma. */
-  --font-display: 'Sora', 'Manrope', -apple-system, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }

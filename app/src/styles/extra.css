@@ -17,12 +17,7 @@
    apriva l'app vedeva solo una parte delle voci: l'intero ARCHIVIO
    (Documenti, Contratti, Clienti, Finanze) esistevano solo dopo uno scroll.
    Qui il box account passa da 202 a 88: due righe invece di quattro. */
-.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-1); padding-left: var(--sp-4); padding-right: var(--sp-4); margin-left: calc(-1 * var(--sp-4)); margin-right: calc(-1 * var(--sp-4)); display: flex; flex-direction: column; gap: var(--sp-1); }
-/* Il filetto corre da bordo a bordo della colonna (mockup «Panoramica»,
-   2026-09-03): i margini negativi annullano il padding della `.sidebar` — e
-   del `.drawer`, che ha lo stesso --sp-4 — mentre i padding interni
-   riportano il contenuto dov'era. Il risultato: la riga dell'account è un
-   piede di pagina, non una riga fra le voci. */
+.account-box { margin-top: auto; border-top: 1px solid var(--line); padding-top: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
 /* Niente padding verticale: chi lo dà è il box, e darlo due volte sono 8px in
    fondo a una colonna che ne cercava 242. */
 .account-row { display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-1); }
@@ -51,12 +46,9 @@
 
 /* ---- Selettore azienda (multi-tenant ready) ---- */
 /* Niente cornice né fondo: l'azienda attiva è CONTESTO, non contenuto — una
-   scatola da scheda la faceva concorrere con le voci di navigazione.
-   Dal 2026-09-03 un filetto la chiude IN BASSO (mockup «Panoramica»): è il
-   confine fra la zona identità — marchio e azienda — e la navigazione
-   operativa, non una cornice: tre lati su quattro non ci sono. */
-.company-switch { padding: var(--sp-1) var(--sp-3) var(--sp-2); border-bottom: 1px solid var(--line); }
-.company-switch .cs-label { font-size: var(--fs-eyebrow); font-weight: 600; text-transform: uppercase; letter-spacing: var(--ls-eyebrow); color: var(--muted); }
+   scatola da scheda la faceva concorrere con le voci di navigazione. */
+.company-switch { padding: var(--sp-1) var(--sp-3); margin-bottom: var(--sp-1); }
+.company-switch .cs-label { font-size: var(--fs-label); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 /* ⚠️ UNA RIGA SOLA, come il nome dell'utente qui sotto. La ragione è che
    l'altezza della colonna non deve dipendere da COME SI CHIAMA IL CLIENTE:
    «Rossi SA» sta in una riga, «Müller & Partner Treuhand AG» ne prendeva due, e
@@ -181,14 +173,12 @@
    numeri sono lo stesso difetto che il 2026-08-10 è bastato a far correggere le
    scadenze (là erano 3,6). Ora TUTTE le schede sono collegamenti, quindi
    sarebbe stata l'intera fila a scivolare. */
-.kpi-link { color: var(--ink); text-decoration: none; display: flex; position: relative; transition: background var(--dur-fast); }
+.kpi-link { color: var(--ink); text-decoration: none; display: flex; position: relative; transition: border-color .12s, background .12s; }
 /* L'hover parla il vocabolario delle altre superfici premibili — `.nav-btn` e
    `.action-row.is-link` usavano ENTRAMBE `--bg` (la seconda cancellata il
-   2026-08-28: zero usi), e questa è la terza: il fondo scende al colore della
-   pagina. Prima colorava anche il bordo del blu tenue, ma dal 2026-09-03 la
-   striscia è una scheda sola divisa da filetti (`.kpi-grid`): la cella un
-   bordo non ce l'ha più. Nessuna ombra e nessun sollevamento — una scheda
-   numerica non deve sembrare un pulsante.
+   2026-08-28: zero usi), e questa è la terza: il bordo si
+   colora del blu tenue e il fondo scende al colore della pagina. Nessuna ombra
+   e nessun sollevamento — una scheda numerica non deve sembrare un pulsante.
    ⚠️⚠️ `text-decoration: none` ANCHE QUI, e non è una ripetizione: la regola
    globale `a:hover` sottolinea, e `.kpi-link` la spegneva solo a riposo. Visto
    a schermo il 2026-08-14 passando sopra la scheda: etichetta, numero e
@@ -197,7 +187,7 @@
    c'era già dal 2026-08-11 sulla sola scheda del Calendario, l'unica collegata;
    ora che lo sono tutte sarebbe stata l'intera fila. Stessa forma della riga
    282 di app.css, che fa la stessa cosa per `.nav-btn`, `.btn` e `.brand`. */
-.kpi-link:hover { background: var(--bg); text-decoration: none; }
+.kpi-link:hover { border-color: var(--accent-line); background: var(--bg); text-decoration: none; }
 /* La freccia `.kpi-go` (con la sua `:hover`, le sue righe nella
    `@media (prefers-reduced-motion)` e il `padding-inline-end` di
    `.kpi-link .kpi-sub` che le lasciava il posto) è stata CANCELLATA il
@@ -492,7 +482,7 @@
   padding: var(--sp-4) var(--sp-6);
   border-bottom: 1px solid var(--line); flex-shrink: 0;
 }
-.dialog-title { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 600; letter-spacing: var(--ls-title); margin: 0; }
+.dialog-title { font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.2px; margin: 0; }
 .dialog-close {
   margin-left: auto; width: 34px; height: 34px; flex-shrink: 0;
   display: grid; place-items: center;
@@ -529,10 +519,12 @@
    ---------------------------------------------------------------------------
    La sezione è migrata il 2026-08-28 in
    `src/features/dashboard/dashboard.module.css` (CSS Modules, issue #83),
-   commenti compresi — le due colonne (`home-grid`), il segno del trend (`kpi-trend`), la colonna
+   commenti compresi — la testata (`home-head`), la pastiglia (`att-pill`),
+   le due colonne (`home-grid`), il segno del trend (`kpi-trend`), la colonna
    «Richiede attenzione» (`att-*`), la scheda in evidenza (`spot-*`) e
-   `.dash-sorted`, che stava più sopra. Le classi figlie condivise (`.card`,
-   `.card-title`) là dentro sono nominate con `:global`.
+   `.dash-sorted`, che stava più sopra. Con loro, da `app.css`, sono migrate
+   `.greeting` e `.greeting-sub`. Le classi figlie condivise (`.page-head`,
+   `.btn`, `.card`, `.card-title`) là dentro sono nominate con `:global`.
    RESTANO qui le tre regole della sparkline, perché il suo markup è di
    `components/ui/Sparkline.tsx`, fuori dalla feature.
    ⚠️ `design-lint.mjs` dichiara un'eccezione su `.dash-sorted` in QUESTO
@@ -546,7 +538,6 @@
    Il segno del trend (`.kpi-trend`, con `.down`) è migrato il 2026-08-28 in
    `src/features/dashboard/dashboard.module.css`; la sparkline RESTA qui. */
 .kpi .sparkline { margin-top: var(--sp-2); }
-.kpi .kpi-main .sparkline { margin: 0 0 var(--sp-05) auto; flex-shrink: 0; }
 /* La sparkline colora coi token, non coi numeri: il tema scuro la segue da sé. */
 .sparkline-line { fill: none; stroke: var(--accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .sparkline-area { fill: var(--accent-soft); }

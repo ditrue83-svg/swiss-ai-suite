@@ -18,7 +18,7 @@
   margin-bottom: var(--sp-4);
 }
 .cal-nav { display: flex; align-items: center; gap: var(--sp-1); }
-.cal-title { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 600; letter-spacing: var(--ls-title); }
+.cal-title { font-size: var(--fs-h2); font-weight: 600; }
 .cal-title::first-letter { text-transform: uppercase; }
 .cal-filters { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-left: auto; }
 

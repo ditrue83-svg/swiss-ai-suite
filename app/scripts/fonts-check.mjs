@@ -19,7 +19,7 @@
 // del progetto fa al codice — «l'hai provato, o l'hai dedotto?».
 //
 // LE TRE DOMANDE
-//   1. INTEGRITÀ  i sei .woff2 sono ancora i byte che sono stati verificati?
+//   1. INTEGRITÀ  i tre .woff2 sono ancora i byte che sono stati verificati?
 //                 Le impronte sono fissate qui: sostituire un file senza
 //                 accorgersene fa fallire il controllo. (E se si rigenerano
 //                 davvero, `public/_headers` spiega perché vanno RINOMINATI.)
@@ -37,20 +37,13 @@
 // scriviamo NOI.
 //
 // Come si rigenerano i file (serve python3 con fontTools, che NON è nella
-// catena di questo repository: i file sono committati apposta). Dal
-// 2026-09-03 le famiglie sono due — Manrope per il corpo, Sora per titoli e
-// KPI — e la procedura ha un passo in più rispetto all'Inter di prima:
-// NÉ Manrope NÉ Sora disegnano U+202F (lo spazio fine insecabile del
-// francese) e Sora non ha U+2192 («→»); quei glifi vengono TRAPIANTATI dai
-// file Inter storici, riscalati all'em di destinazione. La ricetta completa
-// è lo script che ha prodotto i file attuali, in cronologia git accanto a
-// questo cambiamento; la forma è:
-//   1. scaricare i variabili ufficiali da google/fonts (ofl/manrope, ofl/sora)
-//   2. fonttools varLib.instancer … wght=400|500|600
-//   3. trapiantare U+202F (entrambe) e U+2192 (solo Sora) dal file Inter del
-//      peso corrispondente, scalando di emDest/emInter
-//   4. pyftsubset --unicodes="<la gamma qui sotto>" \
-//        --layout-features+=tnum,frac,case --flavor=woff2
+// catena di questo repository: i file sono committati apposta):
+//   npm pack inter-ui@4.1.1 && tar -xzf inter-ui-4.1.1.tgz
+//   python3 -m fontTools.subset package/web/Inter-Regular.woff2 \
+//     --unicodes="<la gamma qui sotto>" \
+//     --layout-features+=tnum,zero,frac,case \
+//     --flavor=woff2 --output-file=inter-400.woff2
+//   (Medium → 500, SemiBold → 600.)
 // ⚠️ `--layout-features+=tnum` con il PIÙ prima dell'uguale. Scrivendo
 // `--layout-features="+tnum"` la funzione viene scartata in silenzio: il primo
 // giro di questo lavoro ha prodotto file senza cifre tabulari, e il file
@@ -68,23 +61,16 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const G = '\x1b[32m', R = '\x1b[31m', B = '\x1b[1m', DIM = '\x1b[2m', X = '\x1b[0m';
 
 // ---------------------------------------------------------------------------
-// 1. I FILE, con la loro impronta. DUE famiglie dal 2026-09-03: Manrope è il
-//    corpo del testo, Sora i titoli e i numeri dei KPI. La copertura si
-//    misura sull'INTERSEZIONE delle sei cmap: un titolo può portare qualunque
-//    stringa dei dizionari, quindi ciò che manca a Sora manca al prodotto.
+// 1. I FILE, con la loro impronta.
 // ---------------------------------------------------------------------------
 export const CARATTERI = [
-  { peso: 400, file: 'public/fonts/manrope-400.woff2', sha256: 'fa5c4810629b9291de2d507e7cef3a5cb577ea022cf489462d4f9d461351afcb' },
-  { peso: 500, file: 'public/fonts/manrope-500.woff2', sha256: '74fa4bfc7b55c24084842e668c3a6d3ebfbd03058c5df21e92d8c7938bdefbd8' },
-  { peso: 600, file: 'public/fonts/manrope-600.woff2', sha256: 'f81e1c74d92f196d6eea72a875bed2c9650f8558e4419126e4be334586834c48' },
-  { peso: 400, file: 'public/fonts/sora-400.woff2', sha256: '82eef7b8a9a62787f27ac38880d0c6e2d24106eb3e56e2167e05c116ce843e67' },
-  { peso: 500, file: 'public/fonts/sora-500.woff2', sha256: '632d48955d199294606dcf72fa88c96ca4b7d041b10f64f3992150f0c6848da3' },
-  { peso: 600, file: 'public/fonts/sora-600.woff2', sha256: 'e45f1a5dc1ec944fc10fd5023fb6f8acb6f93834cc057a29bcbc15b54b282561' },
+  { peso: 400, file: 'public/fonts/inter-400.woff2', sha256: 'edecd01198efa14809a24d46681653a243f3d0fb6753bc4714864993e371cdfb' },
+  { peso: 500, file: 'public/fonts/inter-500.woff2', sha256: 'e4dab64ea243f32b6588a75a16ec30275a57e5ef6d24b41d9b59b0831fd266c3' },
+  { peso: 600, file: 'public/fonts/inter-600.woff2', sha256: '8847a7369472e5597c597016825ad401d5da51f1c42650ca15b570e323ac41ae' },
 ];
 
 /** Il peso PRECARICATO in index.html: uno solo, ed è il corpo del testo. */
 const PESO_PRECARICATO = 400;
-const FILE_PRECARICATO = 'manrope';
 
 // ---------------------------------------------------------------------------
 // 2. LA GAMMA CHIESTA AL SUBSETTER — la stessa passata sulla riga di comando.
@@ -368,16 +354,11 @@ for (const c of CARATTERI) {
 // labels.ts non è un locale: è il file delle etichette condivise, e resta.
 const DIZIONARI = dizionari().concat('src/i18n/labels.ts');
 
-// La cmap VERA di ogni file. Due misure distinte:
-//  - dentro OGNI famiglia i tre pesi devono coprire gli stessi caratteri: un
-//    carattere che il 400 disegna e il 600 no comparirebbe in grassetto con un
-//    altro carattere tipografico, più difficile da vedere che se mancasse
-//    ovunque;
-//  - fra le DUE famiglie le gamme possono differire (Sora è un disegno più
-//    povero di Manrope): conta l'INTERSEZIONE, perché un titolo può portare
-//    qualunque stringa dei dizionari — ciò che manca a Sora manca al prodotto.
+// La cmap VERA di ogni peso. Si intersecano: un carattere che il 400 disegna e
+// il 600 no comparirebbe in grassetto con un altro carattere tipografico, e
+// sarebbe più difficile da vedere che se mancasse ovunque.
 let copertiDaTutti = null;
-const perFile = [];
+const perPeso = [];
 for (const c of CARATTERI) {
   const percorso = resolve(ROOT, c.file);
   if (!existsSync(percorso)) continue;
@@ -388,7 +369,7 @@ for (const c of CARATTERI) {
       + 'Senza aprire il file, la copertura sarebbe una dichiarazione, non una misura.');
     continue;
   }
-  perFile.push({ file: c.file.replace(/^public\/fonts\//, '').replace(/\.woff2$/, ''), n: insieme.size });
+  perPeso.push({ peso: c.peso, n: insieme.size });
   copertiDaTutti = copertiDaTutti === null
     ? insieme
     : new Set([...copertiDaTutti].filter((cp) => insieme.has(cp)));
@@ -397,17 +378,10 @@ if (copertiDaTutti === null) {
   problemi.push('nessun file leggibile: la copertura non è stata misurata');
   copertiDaTutti = new Set();
 }
-const famiglie = new Map();
-for (const p of perFile) {
-  const famiglia = p.file.split('-')[0];
-  famiglie.set(famiglia, [...(famiglie.get(famiglia) ?? []), p]);
-}
-for (const [famiglia, pesi] of famiglie) {
-  if (pesi.some((p) => p.n !== pesi[0].n)) {
-    problemi.push(`${famiglia}: i pesi non coprono gli stessi caratteri (${pesi.map((p) => `${p.file}→${p.n}`).join(', ')})\n`
-      + '      Una parola in grassetto cambierebbe carattere a metà. '
-      + `Rigenerare i tre file di ${famiglia} con la stessa gamma.`);
-  }
+const disallineati = perPeso.filter((p) => p.n !== perPeso[0]?.n);
+if (disallineati.length) {
+  problemi.push(`i tre pesi non coprono gli stessi caratteri: ${perPeso.map((p) => `${p.peso}→${p.n}`).join(', ')}\n`
+    + '      Una parola in grassetto cambierebbe carattere a metà. Rigenerare i tre file con la stessa gamma.');
 }
 
 const copre = (cp) => copertiDaTutti.has(cp);
@@ -437,7 +411,7 @@ for (const c of CARATTERI) {
   if (!css.includes(url)) problemi.push(`fonts.css non cita ${url}: quel file non lo carica nessuno`);
 }
 const precaricati = [...html.matchAll(/rel="preload"[^>]*href="(\/fonts\/[^"]+)"/g)].map((m) => m[1]);
-const attesoPreload = `/fonts/${FILE_PRECARICATO}-${PESO_PRECARICATO}.woff2`;
+const attesoPreload = `/fonts/inter-${PESO_PRECARICATO}.woff2`;
 if (JSON.stringify(precaricati) !== JSON.stringify([attesoPreload])) {
   problemi.push(`index.html precarica ${precaricati.length ? precaricati.join(', ') : 'niente'}, `
     + `atteso il solo ${attesoPreload}`);
@@ -488,7 +462,7 @@ for (const percorso of fogliDiStile) {
 if (problemi.length === 0) {
   const kb = CARATTERI.reduce((n, c) => n + readFileSync(resolve(ROOT, c.file)).length, 0) / 1024;
   console.log(`  ${G}Nessun problema${X}: ${CARATTERI.length} pesi (${kb.toFixed(0)} KB in tutto, `
-    + `precaricato il solo ${FILE_PRECARICATO}-${PESO_PRECARICATO}), impronte corrispondenti,`);
+    + `precaricato il solo ${PESO_PRECARICATO}), impronte corrispondenti,`);
   console.log(`  ogni carattere dei dizionari è disegnato dai file (${copertiDaTutti.size} codepoint, letti dalla cmap `
     + 'di ciascun peso) o è dichiarato al ripiego,\n  e nessuna regola chiede un peso che non esista come file.\n');
   console.log(`  ${DIM}⚠️ Questo controllo NON sa che aspetto abbia il testo a schermo: quello`);

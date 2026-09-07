@@ -22,7 +22,7 @@
 // blocchi e vale anche qui.
 // ============================================================================
 import { Link } from 'react-router-dom';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { formatCurrency } from '@/lib/format';
 import { useT, useTn } from '@/i18n';
@@ -31,12 +31,15 @@ import type { OverviewData } from './useOverview';
 import { cx } from '@/lib/cx';
 import styles from './dashboard.module.css';
 
-function KpiCard({ to, label, active = false, children }: {
-  to: string; label: string; active?: boolean; children: React.ReactNode;
+function KpiCard({ to, icon, label, children }: {
+  to: string; icon: IconName; label: string; children: React.ReactNode;
 }) {
   return (
-    <Link to={to} className={cx('kpi kpi-link', active && 'accent')}>
-      <div className="kpi-label">{label}</div>
+    <Link to={to} className="kpi kpi-link">
+      <div className="kpi-label">
+        <Icon name={icon} className="ic-sm" />
+        <span>{label}</span>
+      </div>
       {children}
     </Link>
   );
@@ -51,10 +54,10 @@ export function KpiStrip({ data }: { data: OverviewData }) {
   const importiParziale = data.date.attivi.parziale || data.date.archiviati.parziale;
 
   return (
-    <div className="kpi-grid panel-hover" role="group" aria-label={t('home.kpiGroup')}>
+    <div className="kpi-grid" role="group" aria-label={t('home.kpiGroup')}>
       {/* IMPORTI IN SCADENZA — la somma è `null` quando non è onesta: nessun
           importo estratto, o valute miste (CHF+EUR non si sommano). */}
-      <KpiCard to="/documenti?scadenza=1&ordine=deadline" label={t('home.kpiAmounts')}>
+      <KpiCard to="/documenti?scadenza=1&ordine=deadline" icon="banknote" label={t('home.kpiAmounts')}>
         <div className="kpi-value">
           {importi.totale !== null ? formatCurrency(importi.totale, importi.valuta) : '—'}
         </div>
@@ -70,7 +73,7 @@ export function KpiStrip({ data }: { data: OverviewData }) {
 
       {/* RICHIEDONO ATTENZIONE — da verificare + non riuscite, le due
           popolazioni sommate come già dichiara il piè di pagina. */}
-      <KpiCard to="/documenti?stato=to_verify" label={t('home.kpiAttention')} active={nAttenzione > 0}>
+      <KpiCard to="/documenti?stato=to_verify" icon="alert" label={t('home.kpiAttention')}>
         <div className="kpi-value">{nAttenzione}</div>
         <div className="kpi-sub">
           {t('home.kpiAttentionCaption', {
@@ -82,7 +85,7 @@ export function KpiStrip({ data }: { data: OverviewData }) {
       {/* DOCUMENTI ANALIZZATI — la sola con sparkline: la serie settimanale
           esiste (`created_at` delle analisi). Trend solo quando è onesto
           (settimana precedente > 0). Lettura fallita: «—» e lo dice. */}
-      <KpiCard to="/documenti" label={t('home.kpiAnalyzed')}>
+      <KpiCard to="/documenti" icon="fileSearch" label={t('home.kpiAnalyzed')}>
         {analisi === null ? (
           <>
             <div className="kpi-value">—</div>
@@ -90,27 +93,22 @@ export function KpiStrip({ data }: { data: OverviewData }) {
           </>
         ) : (
           <>
-            <div className="kpi-main">
-              <div className="kpi-reading">
-                <div className="kpi-value">{analisi.ultimi30}</div>
-                {analisi.trend !== null && (
-                  <span className={cx(styles.kpiTrend, analisi.trend < 0 && styles.down)}>
-                    <Icon name={analisi.trend < 0 ? 'arrowDown' : 'arrowUp'} className="ic-sm" />
-                    {t(analisi.trend < 0 ? 'home.kpiAnalyzedTrendDown' : 'home.kpiAnalyzedTrend', { n: Math.abs(analisi.trend) })}
-                  </span>
-                )}
-              </div>
-              <Sparkline data={analisi.settimane} />
-            </div>
+            <div className="kpi-value">{analisi.ultimi30}</div>
             <div className="kpi-sub">
               {t('home.kpiAnalyzedCaption')}
+              {analisi.trend !== null && (
+                <span className={cx(styles.kpiTrend, analisi.trend < 0 && styles.down)}>
+                  {t(analisi.trend < 0 ? 'home.kpiAnalyzedTrendDown' : 'home.kpiAnalyzedTrend', { n: Math.abs(analisi.trend) })}
+                </span>
+              )}
             </div>
+            <Sparkline data={analisi.settimane} />
           </>
         )}
       </KpiCard>
 
       {/* APPARTENENZA DA CONFERMARE — `null` = non leggibile, mai zero finto. */}
-      <KpiCard to="/documenti?appartenenza=1" label={t('home.kpiOwnership')}>
+      <KpiCard to="/documenti?appartenenza=1" icon="user" label={t('home.kpiOwnership')}>
         <div className="kpi-value">{ownership === null ? '—' : ownership.count}</div>
         <div className="kpi-sub">
           {ownership === null

@@ -27,12 +27,6 @@ export const ICONS = {
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/>',
   checkCircle: '<circle cx="12" cy="12" r="8.5"/><path d="m8.4 12 2.5 2.5 4.7-5.2"/>',
   fileSearch: '<path d="M6.5 3h6l5 5v3.2"/><path d="M12.5 3v5h5"/><path d="M6.5 3A.5.5 0 0 0 6 3.5V21a.5.5 0 0 0 .5.5H12"/><circle cx="16.5" cy="16.5" r="2.7"/><path d="m18.6 18.6 1.9 1.9"/>',
-  // La lente NUDA del campo di ricerca in topbar (riferimento 2026-09-06, una
-  // Lucide). ⚠️ NON è un doppione di `fileSearch`: quella è la lente SUL
-  // documento e dice «analizza/verifica», questa è il segno universale di
-  // «cerca» e non promette un ambito. La regola «due cose diverse, due forme»
-  // qui lavora al contrario: due mestieri diversi, due lenti diverse.
-  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   star: '<path d="m12 4 2.35 4.76 5.25.76-3.8 3.7.9 5.23L12 16.9l-4.7 2.47.9-5.23-3.8-3.7 5.25-.76z"/>',
   alert: '<path d="M12 4.8 20.5 19.5a1 1 0 0 1-.87 1.5H4.37a1 1 0 0 1-.87-1.5Z"/><path d="M12 10v4.2M12 17.5h.01"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
@@ -48,9 +42,6 @@ export const ICONS = {
   arrowLeft: '<path d="M19 12H6M11.5 6.5 5 12l6.5 5.5"/>',
   arrowUp: '<path d="M12 19V6M6.5 12.5 12 6l5.5 6.5"/>',
   arrowDown: '<path d="M12 5v13M6.5 11.5 12 18l5.5-6.5"/>',
-  // Il «vai» di una riga-collegamento (riferimento 2026-09-06): compare al
-  // passaggio, non porta testo — la riga intera è già il collegamento.
-  chevronRight: '<path d="m9 18 6-6-6-6"/>',
   building: '<rect x="5" y="3.5" width="14" height="17" rx="1.2"/><path d="M9 7.5h.01M15 7.5h.01M9 11h.01M15 11h.01M9 14.5h.01M15 14.5h.01M10 20.5v-3h4v3"/>',
   inbox: '<path d="M4 13.5 6 5.5a1.5 1.5 0 0 1 1.45-1.1h9.1A1.5 1.5 0 0 1 18 5.5l2 8"/><path d="M4 13.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5.5h-5l-1.2 2H9.2L8 13.5Z"/>',
   logout: '<path d="M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3"/><path d="M10 8 6 12l4 4M6 12h11"/>',
@@ -71,9 +62,6 @@ export const ICONS = {
   // l'app, l'altra fuori.
   upload: '<path d="M12 15V5M8 9l4-4 4 4"/><path d="M5 19h14"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M4.9 7.8l1.7 1M17.4 15.2l1.7 1M4.9 16.2l1.7-1M17.4 8.8l1.7-1"/>',
-  // «Dati in Svizzera» (riferimento 2026-09-06): lo scudo con la spunta di
-  // Lucide — protezione verificata, non allarme.
-  shieldCheck: '<path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-3 8 3z"/><path d="m9 12 2 2 4-4"/>',
   // Chiedi ad AI-Swisse (0027): un fumetto con un punto interrogativo.
   // ⚠️ NON una scintilla, una bacchetta magica o una testa di robot: quelle
   // icone promettono un'intelligenza che decide, e questo modulo non decide —
