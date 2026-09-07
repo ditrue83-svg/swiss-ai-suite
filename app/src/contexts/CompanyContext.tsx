@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { companyService } from '@/services/companyService';
 import { toUserMessage } from '@/lib/errors';
 import { useAuth } from './AuthContext';
+import { canCommitCompanySelection } from './companySelection';
 import type { Company, CompanyMembership, MemberRole } from '@/types/models';
 
 const ACTIVE_KEY = 'swissai.activeCompanyId'; // preferenza UI non sensibile
@@ -42,6 +43,7 @@ function writeStored(id: string | null) {
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
+  const selectionOwnerResolved = canCommitCompanySelection(authLoading, user !== null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [memberships, setMemberships] = useState<CompanyMembership[]>([]);
@@ -96,7 +98,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       //    prima dopo ogni refresh, senza nessun segnale: documenti, scadenze
       //    e contratti dell'azienda sbagliata sembravano i suoi.
       //    Il reset resta, ma solo a sessione RISOLTA: logout vero.
-      if (authLoading) return;
+      if (!selectionOwnerResolved) return;
       setMemberships([]);
       setActiveCompanyId(null);
       // ⚠️ `loadedFor` torna a `null` e NON diventa «letto»: senza utente non
@@ -106,7 +108,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       return;
     }
     void loadMemberships();
-  }, [user, authLoading, loadMemberships]);
+  }, [user, selectionOwnerResolved, loadMemberships]);
 
   // Persisti la scelta dell'azienda attiva.
   useEffect(() => {
@@ -116,9 +118,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     //    preferenza moriva a ogni refresh. Scrivere comincia quando la
     //    sessione è risolta: con un utente (la scelta) o senza (il logout la
     //    cancella davvero, ed è giusto così).
-    if (authLoading && !user) return;
+    if (!selectionOwnerResolved) return;
     writeStored(activeCompanyId);
-  }, [activeCompanyId, authLoading, user]);
+  }, [activeCompanyId, selectionOwnerResolved]);
 
   const active = useMemo(
     () => memberships.find((m) => m.company.id === activeCompanyId) ?? null,
