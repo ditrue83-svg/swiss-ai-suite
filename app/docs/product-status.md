@@ -1712,7 +1712,7 @@ Tolte con la PR #63, e la sezione 14 ora pretende che non tornino — né nel
 foglio né in un componente, con la controprova che il lettore dei componenti
 non sia a vuoto.
 
-## L'azienda attiva sopravvive al ricaricamento — RISOLTO NEL CODICE, NON ANCORA DEPLOYATO (2026-09-07)
+## L'azienda attiva sopravvive al ricaricamento — IN PRODUZIONE dal 2026-09-07; prova a due aziende ancora aperta
 
 Trovato il 2026-08-14 guardando la produzione con **due** aziende. **Non è
 corretto**: è un cambio di comportamento in un contesto centrale, e la
@@ -1742,9 +1742,13 @@ segnale, perché dal punto di vista dell'applicazione quella È l'azienda attiva
 sessione è in ripristino non azzera la scelta in memoria e non scrive su
 `localStorage`; quando l'autenticazione conclude senza un utente, il logout la
 cancella ancora. La decisione vive in `contexts/companySelection.ts` ed è
-coperta da tre controprove in `test:routing`. ⚠️ Non ancora provato a schermo
-con due aziende e non ancora pubblicato: fino al deploy la produzione conserva
-il difetto descritto sopra.
+coperta da tre controprove in `test:routing`. PR [#108](https://github.com/ditrue83-svg/swiss-ai-suite/pull/108)
+unita nel merge `6e066ad`; CI su `main` verde (run 34155980207: qualità e
+unità, database effimero) e deploy Cloudflare riuscito. Il bundle SERVITO
+`assets/index-CoVJRttI.js` contiene `swissai.activeCompanyId`; l'app autenticata
+è stata ricaricata con successo. ⚠️ L'account disponibile appartiene alla sola
+Rossi SA: il caso discriminante — scegliere la seconda azienda e ricaricare —
+resta da provare con un utente che abbia davvero due membership.
 
 ## ⚠️ APERTO — valori attaccati senza separatore in `.list-sub`
 
