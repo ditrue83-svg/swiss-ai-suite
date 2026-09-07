@@ -28,6 +28,7 @@
 // ANCORA, e la guardia leggeva quel `false` come una risposta.
 // ============================================================================
 import { routeGate, type GateInput } from '../src/components/layout/routeGate.ts';
+import { canCommitCompanySelection } from '../src/contexts/companySelection.ts';
 
 const G = '\x1b[32m', R = '\x1b[31m', DIM = '\x1b[2m', B = '\x1b[1m', X = '\x1b[0m';
 let pass = 0, fail = 0;
@@ -168,6 +169,17 @@ for (const companyReady of [true, false]) {
   }
 }
 check('chi HA un\'azienda non finisce mai all\'onboarding', !bugia);
+
+// ===========================================================================
+section('7. La scelta dell\'azienda sopravvive al ripristino della sessione');
+// È la guardia usata SIA dal reset in memoria SIA dalla scrittura su disco:
+// proteggerne uno soltanto lascerebbe aperta metà della stessa corsa.
+check('sessione non ancora risolta e nessun utente: la scelta NON si tocca',
+  !canCommitCompanySelection(true, false));
+check('sessione risolta e nessun utente: il logout può cancellare la scelta',
+  canCommitCompanySelection(false, false));
+check('utente presente: la sua scelta può essere aggiornata e persistita',
+  canCommitCompanySelection(false, true));
 
 // ===========================================================================
 console.log(`\n${B}Risultato:${X} ${G}${pass} passati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}\n`);

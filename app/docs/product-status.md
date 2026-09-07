@@ -1712,7 +1712,7 @@ Tolte con la PR #63, e la sezione 14 ora pretende che non tornino — né nel
 foglio né in un componente, con la controprova che il lettore dei componenti
 non sia a vuoto.
 
-## ⛔ APERTO — l'azienda attiva non sopravvive a un ricaricamento
+## L'azienda attiva sopravvive al ricaricamento — RISOLTO NEL CODICE, NON ANCORA DEPLOYATO (2026-09-07)
 
 Trovato il 2026-08-14 guardando la produzione con **due** aziende. **Non è
 corretto**: è un cambio di comportamento in un contesto centrale, e la
@@ -1729,13 +1729,22 @@ risolta, quindi `user` è `null`; il ramo «niente utente» (righe 88-100) esegu
 subito quel `null`, **cancellando la preferenza**. Quando l'utente arriva,
 `loadMemberships` trova `prev === null` e sceglie `list[0]`.
 
-**La causa in una frase**: quel ramo non distingue **«disconnesso»** da **«non
-ancora saputo»**, e distrugge una preferenza a ogni caricamento di pagina.
+**La causa in una frase**: quel ramo non distingueva **«disconnesso»** da **«non
+ancora saputo»**, e distruggeva una preferenza a ogni caricamento di pagina.
 
 ⚠️ **Perché non l'aveva visto nessuno**: si vede solo con **più di un'azienda**,
 e in produzione ce n'era una sola. Chi ne ha due legge documenti, scadenze e
 contratti dell'azienda sbagliata **senza accorgersene** — non c'è nessun
 segnale, perché dal punto di vista dell'applicazione quella È l'azienda attiva.
+
+**Correzione del 2026-09-07.** `CompanyContext` legge anche `loading` da
+`AuthContext` e usa una sola decisione per i due punti della corsa: finché la
+sessione è in ripristino non azzera la scelta in memoria e non scrive su
+`localStorage`; quando l'autenticazione conclude senza un utente, il logout la
+cancella ancora. La decisione vive in `contexts/companySelection.ts` ed è
+coperta da tre controprove in `test:routing`. ⚠️ Non ancora provato a schermo
+con due aziende e non ancora pubblicato: fino al deploy la produzione conserva
+il difetto descritto sopra.
 
 ## ⚠️ APERTO — valori attaccati senza separatore in `.list-sub`
 
