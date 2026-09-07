@@ -157,6 +157,7 @@ scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · t
                   test-validate · test-uid · check-auth-config · bundle-migrations
                   test-workflows · test-finance · test-contracts · test-assistant
                   (+ le versioni -unit, offline) · eval-assistant
+                  audit-company-data (inventario tenant in sola lettura)
                   docs-check (la documentazione descrive il codice che c'è davvero?)
 docs/             design-system.md · revisione-traduzioni.md · ai-inbox.md · document-hub.md
                   calendar-notifications.md · workflow-automation.md · finance-operations.md
@@ -187,6 +188,7 @@ collegamento, e `docs:check` lo segnalava da tempo. Questo è l'indice vero.
 | [`ai-output-parsing.md`](docs/ai-output-parsing.md) | Il contratto di lettura dell'output dei modelli: che cosa il parser condiviso tollera, che cosa non ripara, dove finisce la sintassi e comincia il dominio |
 | [`stati-documento.md`](docs/stati-documento.md) | **Il censimento degli stati di un documento, con i numeri e la data accanto a ognuno**: i quattro assi, i campi di stato e chi li scrive, gli stati morti nei due sensi, le etichette e che cosa leggono, i campi che dicono la stessa cosa, se separare gli assi richieda una migrazione — e l'archiviazione attraverso tutti i moduli. Si rimisura con `npm run stati:censimento` |
 | [`appartenenza-del-documento.md`](docs/appartenenza-del-documento.md) | Il cancello dell'appartenenza (dove viveva, chi non lo ereditava, dov'è adesso) e i due difetti che la fattura di prova del 21 agosto ha portato a galla: la doppia lettura dello stesso PDF e la riga di quota che non si chiudeva |
+| [`company-data-separation.md`](docs/company-data-separation.md) | Inventario e proposta per distinguere aziende reali, demo e tenant tecnici senza classificazioni o cancellazioni automatiche |
 
 ## Setup
 
@@ -1169,6 +1171,11 @@ npm run eval:stability:self-test     # la matematica della dispersione, senza sp
 npm run test:operations # ogni Edge Function ha un invocante? ogni scheduler è inventariato,
                         #   dichiara il timeout di pg_net e punta a una funzione che esiste?
 npm run test:operations -- --self-test  # verifica che il CONTROLLO sappia fallire (11 casi)
+npm run company:audit -- --id <uuid>    # inventario in SOLA LETTURA del tenant: membri,
+                             #   provenienza documenti e conteggi di tutte le tabelle con
+                             #   company_id. Non legge contenuti o file; le identità complete
+                             #   richiedono --include-identities. Richiede .env.test
+npm run company:audit -- --self-test    # prova offline il rilevamento delle tabelle aziendali
 npm run status               # LO STATO, MISURATO ADESSO, in un file solo (`stato-attuale.md`):
                              #   quanto viene usato ogni modulo (conteggi dalla produzione),
                              #   migrazioni sul disco e applicate, bundle servito dal dominio,

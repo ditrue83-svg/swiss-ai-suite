@@ -320,6 +320,11 @@ const GROUPS = {
       // contiene il lavoro recente» era fisso, e a lavoro tutto unito
       // mentiva. Funzioni pure, provate sui casi che DEVONO farle tacere.
       { script: 'status:self-test' },
+      // L'inventario vero attraversa il progetto Supabase e resta un rapporto,
+      // non un test. Qui si prova la parte pura che ricava dallo schema tutte
+      // le tabelle con company_id: dimenticarne una renderebbe incompleto un
+      // rapporto che si presenta come completo.
+      { script: 'company:audit', args: ['--self-test'] },
       // La coda di revisione del catalogo: il giudizio è una funzione pura, e
       // provarlo qui evita di dover invecchiare una riga vera per vederlo
       // reagire.
