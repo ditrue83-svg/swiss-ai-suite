@@ -1,4 +1,4 @@
-# Verifica visiva — riallineamento Panoramica (2026-09-06)
+# Verifica visiva — riallineamento Panoramica (audit responsive 2026-09-07)
 
 Confronto Playwright a dimensione identica fra l'app locale costruita dal
 branch `design/mockup-pixel-align` e `panoramica-ai-swisse.html`. Le acquisizioni
@@ -19,7 +19,8 @@ Esito del confronto:
   l'unica CTA; la vecchia testata duplicata nel contenuto non compare più;
 - le etichette KPI non hanno icone, i valori usano Sora 600 a 36 px e la
   sparkline resta soltanto sulla serie storica realmente disponibile;
-- a 375 px la striscia passa a 2 × 2 senza overflow, in entrambi i temi;
+- a 375 px percorso e titolo restano nella topbar e la striscia passa a una
+  colonna, come nel riferimento, senza overflow in entrambi i temi;
 - azzurro `#37AEEF`, inchiostro scuro `--on-accent` e geometrie della shell
   restano invariati rispetto alle decisioni del restyle.
 

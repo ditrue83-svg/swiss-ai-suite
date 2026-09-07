@@ -1775,14 +1775,14 @@ pari con l'app — lo esige `sync-tokens --check` in CI: rigenerato in
 `ce9d469`, con l'estrattore sistemato perché copiava solo la prima riga dei
 commenti in coda alle dichiarazioni.
 
-## Riallineamento pixel sul mockup — branch `design/mockup-pixel-align` (2026-09-06)
+## Riallineamento pixel sul mockup — branch `design/mockup-pixel-align` (audit 2026-09-07)
 
 | | Stato al 2026-09-06 |
 |---|---|
-| Implementato | **sì — sul branch `design/mockup-pixel-align`**: base 14 px, titolo pagina 30 px nella topbar, KPI 36 px; percorso `sezione › voce` anche per le voci prima dei gruppi; KPI senza icone decorative; badge di navigazione dai soli conteggi reali; rimossa la testata duplicata della Panoramica |
+| Implementato | **sì — sul branch `design/mockup-pixel-align`**: base 14 px, titolo pagina 30 px nella topbar, KPI 36 px; percorso `sezione › voce` a ogni larghezza e anche per le voci prima dei gruppi; a 375 px KPI in una colonna come nel riferimento; KPI senza icone decorative; badge di navigazione dai soli conteggi reali; rimossa la testata duplicata della Panoramica |
 | Deployato | **no** — il branch non è unito a `main`; la PR viene aperta soltanto dopo tutti i verdi |
 | Configurato | non richiede configurazione, segreti o migrazioni |
-| Testato | **sì** — `test:shell-unit` ribasato e verde **536/536**; `npm run ci` e controllo token vetrina registrati nel commit finale |
+| Testato | **sì** — `test:shell-unit` ribasato e verde **538/538**; `npm run ci` e controllo token vetrina registrati nel commit finale |
 | Provato contro la cosa reale | **sì** — lettura di sola testata sulla produzione: i `to_verify` sono **0 attivi + 16 archiviati**, il caso che nascondeva la pastiglia è riprodotto e corretto. Playwright su utente demo reale a 1440 × 900 e 375 × 800, chiaro/scuro e movimento ridotto; [fotogrammi e confronto col riferimento](visual-checks/2026-09-06/verification.md) |
 | Disponibile a clienti esterni | **no** — lo diventa solo dopo revisione, merge e deploy della PR |
 

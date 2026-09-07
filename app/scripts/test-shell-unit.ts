@@ -588,6 +588,13 @@ section('5. La barra — la struttura del lavoro, non l\'architettura');
       && /className="topbar-title"/.test(shellSrc));
   check('prima della prima intestazione il percorso parte da nav.sectionOverview',
     /let sezione: TKey = 'nav\.sectionOverview'/.test(shellSrc));
+  const stretta = appCss.match(/@media \(max-width: 900px\)\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+  check('percorso e titolo restano nella topbar anche sotto i 900px',
+    /\.topbar-page\s*\{[^}]*display:\s*flex/.test(stretta)
+      && !/\.topbar-page[^}]*display:\s*none/.test(stretta));
+  const telefono = appCss.match(/@media \(max-width: 600px\)\s*\{([\s\S]*?)\n\}/g)?.join('\n') ?? '';
+  check('a 375px i KPI seguono il mockup in una sola colonna',
+    /\.kpi-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/.test(telefono));
 
   // I badge di navigazione sono ammessi soltanto se un servizio conta lo
   // stesso insieme della pagina. I tre insiemi reali sono Inbox da gestire,
@@ -1145,7 +1152,7 @@ section('8. Cifre tabulari — dove i numeri stanno in colonna');
   // 2026-08-28: classe cancellata col censimento delle regole morte (zero
   // usi).
   const NUMERICHE: { selettore: string; file: string; perche: string }[] = [
-    { selettore: '.kpi-value', file: 'src/styles/app.css', perche: 'griglia 2×2, e una colonna sola sotto i 600px' },
+    { selettore: '.kpi-value', file: 'src/styles/app.css', perche: 'quattro colonne larghe, due intermedie e una sola sotto i 600px' },
     { selettore: '.bar-val', file: 'src/styles/app.css', perche: 'colonna fissa da 42px allineata a destra' },
     { selettore: '.dl-date', file: 'src/features/admin-ai/admin-ai.module.css', perche: 'pila di scadenze' },
     { selettore: '.doc-row-date', file: 'src/features/documents/documents.module.css', perche: 'colonna delle date nell\'elenco documenti' },

@@ -442,8 +442,9 @@ trasparenza lascerebbe leggere il contenuto in trasparenza. Da sinistra porta:
 
 - l'**identità** della pagina (`.topbar-page`): percorso sezione › voce e,
   sotto, titolo a 30px. Le voci prima del primo gruppo usano la sezione
-  operativa esplicita; l'intero blocco sparisce sotto i 900px, dove il «dove
-  sono» lo porta la testata nel contenuto e lo spazio serve ai comandi;
+  operativa esplicita; il blocco resta a ogni larghezza. Sotto i 600px il
+  titolo usa il gradino `--fs-h2`, per convivere con hamburger e comandi senza
+  troncare il percorso;
 - il **campo che apre la ricerca rapida** (⌘K): un `<button>` vestito da
   campo. Il riferimento lo disegna come un input, ma ciò che fa è *aprire* un
   riquadro — e un controllo che ne apre un altro è un pulsante, con
@@ -852,11 +853,11 @@ documento chiedesse quella cosa.
 
 ## Regole che valgono per chi lavora qui dopo
 
-### Riallineamento finale al riferimento — 2026-09-06
+### Riallineamento finale al riferimento — audit responsive 2026-09-07
 
 | | Stato al 2026-09-06 |
 |---|---|
-| Implementato | **sì — sul branch `design/mockup-pixel-align`**. La scala usa corpo 14 px, titolo pagina 30 px e KPI 36 px Sora 600; la topbar compone percorso e titolo; la Panoramica non duplica più identità e CTA; i KPI mostrano delta e sparkline solo quando esiste una serie storica reale |
+| Implementato | **sì — sul branch `design/mockup-pixel-align`**. La scala usa corpo 14 px, titolo pagina 30 px e KPI 36 px Sora 600; la topbar compone percorso e titolo a ogni larghezza; a 375 px i KPI sono impilati come nel riferimento; la Panoramica non duplica più identità e CTA; i KPI mostrano delta e sparkline solo quando esiste una serie storica reale |
 | Deployato | **no** — il branch attende revisione e merge |
 | Configurato | nessuna configurazione: sono componenti, token e query di conteggio già esistenti |
 | Testato | **sì** — guardie offline per scala, geometria 720 px, topbar, badge, due popolazioni `to_verify` e KPI; suite completa nel commit finale |
