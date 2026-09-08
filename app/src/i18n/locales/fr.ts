@@ -2136,7 +2136,7 @@ export const fr: Dictionary = {
       empty: 'Rien à vérifier.', reason: 'Pourquoi',
       unnamed: 'Sans nom',
       reasonWith: 'Pourquoi : {reason}',
-      fromContract: 'Depuis le contrat', fromFinance: 'Depuis la facture',
+      fromContract: 'Depuis le contrat', fromFinance: 'Depuis la facture', fromEmail: 'Depuis l’e-mail',
       createFrom: 'Créer la fiche',
       more: '{n} autres à vérifier.',
     },

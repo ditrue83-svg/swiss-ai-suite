@@ -2137,7 +2137,7 @@ export const de: Dictionary = {
       empty: 'Nichts zu prüfen.', reason: 'Grund',
       unnamed: 'Ohne Namen',
       reasonWith: 'Grund: {reason}',
-      fromContract: 'Aus dem Vertrag', fromFinance: 'Aus der Rechnung',
+      fromContract: 'Aus dem Vertrag', fromFinance: 'Aus der Rechnung', fromEmail: 'Aus der E-Mail',
       createFrom: 'Eintrag anlegen',
       more: 'Weitere {n} zu prüfen.',
     },

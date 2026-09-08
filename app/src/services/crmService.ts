@@ -1474,6 +1474,13 @@ export const crmService = {
       await crmService.linkContract(suggestion.sourceEntityId, organizationId);
     } else if (suggestion.sourceEntityType === 'finance_item') {
       await crmService.linkFinanceItem(suggestion.sourceEntityId, organizationId);
+    } else if (suggestion.sourceEntityType === 'email_message') {
+      const { data, error } = await requireSupabase().from('email_messages')
+        .select('company_id').eq('id', suggestion.sourceEntityId).limit(1);
+      if (error) fail(error);
+      const companyId = ((data ?? []) as Array<{ company_id: string }>)[0]?.company_id;
+      if (!companyId) throw new Error('crm.errors.suggestionNotFound');
+      await crmService.linkEmail(companyId, organizationId, suggestion.sourceEntityId);
     } else {
       // Le altre entità hanno percorsi di collegamento propri (documento,
       // email, attività) e questa funzione non li conosce. Meglio un errore

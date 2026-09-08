@@ -107,6 +107,9 @@ supabase/
                 0057_crm_pipeline_completion — completa la Fase 2 CRM: permanenza
                                          osservata per fase, esiti e motivi di perdita;
                                          filtro cliente nella lista delle Attività.
+                0058_crm_email_suggestions — avvia la Fase 3: applica al candidato
+                                         CRM il filtro anti-rumore già misurato
+                                         nell'Inbox e propone i mittenti azionabili.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

@@ -2278,7 +2278,7 @@ export const it = {
       empty: 'Niente da verificare.', reason: 'Perché',
       unnamed: 'Senza nome',
       reasonWith: 'Perché: {reason}',
-      fromContract: 'Dal contratto', fromFinance: 'Dalla fattura',
+      fromContract: 'Dal contratto', fromFinance: 'Dalla fattura', fromEmail: 'Dall’email',
       createFrom: 'Crea la scheda',
       more: 'Altri {n} da verificare.',
     },

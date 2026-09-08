@@ -1086,10 +1086,12 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   **caricamento**: `documents` non ha una colonna di data, e la data del documento è
   un valore effettivo che vive nell'analisi. Chiamare `created_at` «data del
   documento» sarebbe più comodo e falso.
-- **Nessun suggerimento dalle EMAIL.** `deservesSuggestion()` esiste, è misurata
-  sulle 117 email vere e non la chiama nessuno: il candidato automatico della 0030
-  legge contratti e Finanze, non l'Inbox. È il prossimo passo naturale, e ha già
-  il proprio filtro scritto e provato.
+- **I suggerimenti dalle email sono implementati nella 0058.** Il candidato
+  automatico riusa gli stessi segnali di `deservesSuggestion()` già misurati
+  sulle 117 email vere: rilevanza dell'Inbox, posta massiva e caselle di servizio.
+  Propone un indirizzo esatto, il dominio aziendale oppure una nuova scheda; non
+  crea né collega nulla senza conferma. Deploy e prova sul database reale sono
+  ancora da eseguire.
 - **Nessun collegamento automatico nemmeno sull'identità forte.** Il §25
   autorizzerebbe `uid_exact` e `email_exact` a collegare da soli; il candidato non
   lo fa, perché le sue due sorgenti portano un NOME letto su un documento, non

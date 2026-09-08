@@ -406,6 +406,20 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 - **Disponibile a clienti esterni:** tecnicamente sì sul dominio pubblico;
   adozione da parte di una PMI pilota non ancora misurata.
 
+### Fase 3.3 CRM — suggerimenti dalle email (in verifica)
+
+- **Implementato nel ramo:** sì — migrazione 0058, collegamento al worker,
+  accettazione dalla scheda CRM e origine apribile nell'Inbox.
+- **Comportamento:** usa la classificazione già esistente; email non
+  classificata, informativa, massiva o proveniente da una casella di servizio
+  non diventa una proposta. Nessuna anagrafica e nessun collegamento sono
+  automatici.
+- **Testato offline:** sì — suite unit completa verde; il controllo CRM confronta
+  anche l'elenco delle caselle di servizio e la chiave di idempotenza fra SQL e
+  TypeScript.
+- **Deployato / verificato sul database reale:** non ancora. La prova integrata
+  della 0058 è pronta e deve passare sul database effimero prima del rilascio.
+
 ## Registro attività (0039) — applicato, provato sul database vero e DEPLOYATO il 2026-08-09
 
 Non ha una riga nella tabella qui sopra perché **non è un modulo di prodotto**:
