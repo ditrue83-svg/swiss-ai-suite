@@ -152,6 +152,7 @@ export type CrmOpportunityStage =
   | 'lead' | 'contacted' | 'proposal' | 'negotiation' | 'won' | 'lost';
 export type CrmQuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
 export type CrmQuoteLanguage = 'it' | 'de' | 'fr';
+export type CompanyUsageKind = 'unclassified' | 'live' | 'demo' | 'technical';
 // 0053 — le fatture EMESSE verso i clienti. La bozza si modifica, dopo
 // l'emissione niente si tocca: le correzioni passano per annullo (`voided`)
 // più nota di credito, numerata a parte. `overdue` non è uno stato che una
@@ -398,9 +399,15 @@ export interface Database {
         Relationships: [];
       };
       companies: {
-        Row: { id: string; legal_name: string; uid_che: string | null; canton: string | null; municipality: string | null; legal_form: string | null; street: string | null; postal_code: string | null; city: string | null; country_code: string | null; logo_storage_path: string | null; logo_mime_type: string | null; bank_iban: string | null; created_at: string; updated_at: string };
-        Insert: { id?: string; legal_name: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null; bank_iban?: string | null };
-        Update: { legal_name?: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null; bank_iban?: string | null };
+        Row: { id: string; legal_name: string; uid_che: string | null; canton: string | null; municipality: string | null; legal_form: string | null; street: string | null; postal_code: string | null; city: string | null; country_code: string | null; logo_storage_path: string | null; logo_mime_type: string | null; bank_iban: string | null; usage_kind: CompanyUsageKind; created_at: string; updated_at: string };
+        Insert: { id?: string; legal_name: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null; bank_iban?: string | null; usage_kind?: CompanyUsageKind };
+        Update: { legal_name?: string; uid_che?: string | null; canton?: string | null; municipality?: string | null; legal_form?: string | null; street?: string | null; postal_code?: string | null; city?: string | null; country_code?: string | null; logo_storage_path?: string | null; logo_mime_type?: string | null; bank_iban?: string | null; usage_kind?: CompanyUsageKind };
+        Relationships: [];
+      };
+      company_usage_kind_events: {
+        Row: { id: string; company_id: string; before_kind: CompanyUsageKind; after_kind: CompanyUsageKind; changed_by: string | null; created_at: string };
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
       company_members: {
@@ -2072,6 +2079,7 @@ export interface Database {
       crm_linked_entity: CrmLinkedEntity;
       crm_quote_status: CrmQuoteStatus;
       crm_quote_language: CrmQuoteLanguage;
+      company_usage_kind: CompanyUsageKind;
       finance_issued_invoice_status: FinanceIssuedInvoiceStatus;
       finance_issued_invoice_doc_kind: FinanceIssuedInvoiceDocKind;
       finance_issued_invoice_language: FinanceIssuedInvoiceLanguage;

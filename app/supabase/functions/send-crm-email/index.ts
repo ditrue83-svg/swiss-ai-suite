@@ -10,6 +10,7 @@ import {
   userClient,
 } from '../_shared/calendar/runtime.ts';
 import { createResendProvider } from '../_shared/calendar/email.ts';
+import { canContactExternal } from '../_shared/company/usage.ts';
 
 type RequestBody = {
   companyId?: string;
@@ -54,6 +55,17 @@ Deno.serve(async (req: Request) => {
   if (!companyId || !recipientMethodId || !subject || !bodyText || !idempotencyKey || !documentIds) return failure('BAD_REQUEST', 400);
   if (!(await assertMember(auth, companyId))) return failure('FORBIDDEN', 403);
 
+  const sb = adminClient() as any;
+  const { data: company, error: companyError } = await sb.from('companies')
+    .select('usage_kind').eq('id', companyId).maybeSingle();
+  if (companyError || !company) return failure('COMPANY_USAGE_LOOKUP_FAILED', 500);
+  // Il gate è server-side e precede qualunque destinatario, allegato o riga di
+  // invio. Demo, tenant tecnici e aziende non ancora classificate non possono
+  // produrre effetti esterni per errore.
+  if (!canContactExternal(company.usage_kind)) {
+    return failure('EMAIL_DISABLED_FOR_COMPANY_USAGE', 403);
+  }
+
   // La lettura passa dalla RLS dell'utente: anche il service role non deve
   // trasformare un id che il browser non puo' vedere in un destinatario.
   const sbUser = userClient(auth.authHeader) as any;
@@ -63,7 +75,6 @@ Deno.serve(async (req: Request) => {
   if (error) return failure('RECIPIENT_LOOKUP_FAILED', 500);
   if (!method) return failure('RECIPIENT_NOT_REGISTERED', 422);
 
-  const sb = adminClient() as any;
   const { data: sender, error: senderError } = await sb.from('crm_email_senders')
     .select('display_name, from_address').eq('company_id', companyId).maybeSingle();
   const apiKey = env('NOTIFICATION_EMAIL_API_KEY');

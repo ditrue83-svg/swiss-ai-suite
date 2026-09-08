@@ -4,7 +4,7 @@
 // ============================================================================
 import { requireSupabase } from '@/lib/supabase';
 import { AppError, toUserMessage } from '@/lib/errors';
-import type { Company, CompanyMembership, MemberRole } from '@/types/models';
+import type { Company, CompanyMembership, CompanyUsageKind, MemberRole } from '@/types/models';
 import type { Database } from '@/types/database';
 import { translate as tr } from '@/i18n';
 
@@ -25,6 +25,7 @@ function toCompany(row: CompanyRow): Company {
     logoStoragePath: row.logo_storage_path,
     logoMimeType: row.logo_mime_type,
     bankIban: row.bank_iban,
+    usageKind: row.usage_kind,
     createdAt: row.created_at,
   };
 }
@@ -43,6 +44,7 @@ export interface CreateCompanyInput {
    *  la verifica il database (`company_bank_iban_invalid`); la schermata la
    *  controlla prima, con lo stesso algoritmo. */
   bankIban?: string | null;
+  usageKind?: Exclude<CompanyUsageKind, 'technical'>;
 }
 
 export const companyService = {
@@ -94,6 +96,7 @@ export const companyService = {
         city: patch.city,
         country_code: patch.countryCode,
         bank_iban: patch.bankIban,
+        usage_kind: patch.usageKind,
       })
       .eq('id', companyId);
     if (error) {
