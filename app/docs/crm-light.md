@@ -1,11 +1,11 @@
 # CRM Light — Clienti e controparti
 
 Stato: **in esercizio dal 2026-07-30**, interfaccia compresa.
-Migrazioni fino alla **0050** applicate. La **0057** è implementata nel branch
-`improve/phase2-pipeline-completion`, non ancora applicata. Le sequenze di follow-up sono nel
-database reale e `automation-worker` è stato ridistribuito il 2026-09-01.
-Test: `npm run test:crm-unit` **260/260** offline · `npm run test:crm`
-**191/191** sul database reale dopo la 0050, con pulizia verificata.
+Migrazioni fino alla **0057** applicate. La Fase 2 è stata unita con la PR #112
+e pubblicata il 2026-09-08. Le sequenze di follow-up sono nel database reale e
+`automation-worker` è stato ridistribuito il 2026-09-01. Test:
+`npm run test:crm-unit` **261/261** offline · `npm run test:crm` **197/197** sul
+database reale dopo la 0057, con pulizia verificata.
 
 ---
 

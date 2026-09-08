@@ -382,7 +382,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
   lingue. Le verifiche a schermo 375 px e tema chiaro/scuro non sono ancora
   state eseguite.
 
-### Fase 2 CRM 0057 — implementata sul branch, non deployata (2026-09-08)
+### Fase 2 CRM 0057 — deployata e verificata (2026-09-08)
 
 - **Reporting pipeline:** permanenza media nella fase corrente, tasso osservato
   vinte/perse e motivi di perdita aggregati. Tutto calcolato in SQL dai fatti
@@ -391,11 +391,20 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
   per tastiera e touch. `lost` resta un esito e non diventa una sesta colonna.
 - **Work Hub:** filtro per cliente nell'URL e nella funzione `list_tasks`, con
   firma, revoke e grant rifatti dalla migrazione 0057.
-- **Implementato:** sì, su `improve/phase2-pipeline-completion`.
-- **Testato offline:** sì — `test:crm-unit` 260/260, typecheck e copertura i18n
-  verdi al 2026-09-08.
-- **Deployato / verificato sul database reale / provato a schermo:** **no**. La
-  migrazione 0057 non è applicata e non è stato chiesto alcun deploy.
+- **Implementato:** sì, commit `9b58e89`, unito in `main` dalla PR #112
+  (`a39f9a1`).
+- **Deployato:** sì — migrazione 0057 applicata al progetto Supabase collegato;
+  deploy Cloudflare Pages del merge commit concluso con successo.
+- **Testato offline:** sì — `test:crm-unit` 261/261; `test:all` verde nei
+  quattro gruppi quality, unit, db e production il 2026-09-08.
+- **Verificato sul database reale:** sì — `test:crm` 197/197, comprese le sei
+  prove della 0057 e la pulizia senza residui.
+- **Provato a schermo:** parzialmente — sessione autenticata sul dominio
+  pubblico, pipeline e Work Hub in italiano su desktop chiaro, nuove sezioni e
+  filtro visibili, zero errori console. Restano da provare 375 px, tema scuro e
+  le interfacce tedesca e francese.
+- **Disponibile a clienti esterni:** tecnicamente sì sul dominio pubblico;
+  adozione da parte di una PMI pilota non ancora misurata.
 
 ## Registro attività (0039) — applicato, provato sul database vero e DEPLOYATO il 2026-08-09
 
