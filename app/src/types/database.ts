@@ -1652,6 +1652,21 @@ export interface Database {
           opportunity_count: number; total_amount: number | null;
         }[];
       };
+      crm_pipeline_stage_metrics: {
+        Args: { p_company_id: string };
+        Returns: {
+          stage: CrmOpportunityStage; opportunity_count: number;
+          average_days_in_stage: number;
+        }[];
+      };
+      crm_pipeline_outcomes: {
+        Args: { p_company_id: string };
+        Returns: { won_count: number; lost_count: number; win_rate: number | null }[];
+      };
+      crm_pipeline_loss_reasons: {
+        Args: { p_company_id: string };
+        Returns: { reason: string | null; opportunity_count: number }[];
+      };
       /**
        * ⚠️ Torna ZERO righe a chi non è membro dell'azienda, non una riga di
        * zeri. Il servizio deve distinguere i due casi: «il CRM è vuoto» e «non
@@ -1830,7 +1845,7 @@ export interface Database {
           p_company_id: string; p_view?: string; p_status?: TaskStatus | null;
           p_priority?: TaskPriority | null; p_source?: TaskSource | null;
           p_assignee?: string | null; p_search?: string | null;
-          p_limit?: number; p_offset?: number;
+          p_limit?: number; p_offset?: number; p_crm_organization_id?: string | null;
         };
         Returns: (Database['public']['Tables']['tasks']['Row'] & {
           assignee_name: string | null; email_message_id: string | null; total_count: number;

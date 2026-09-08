@@ -1,9 +1,10 @@
 # CRM Light — Clienti e controparti
 
 Stato: **in esercizio dal 2026-07-30**, interfaccia compresa.
-Migrazioni fino alla **0050** applicate. Le sequenze di follow-up sono nel
+Migrazioni fino alla **0050** applicate. La **0057** è implementata nel branch
+`improve/phase2-pipeline-completion`, non ancora applicata. Le sequenze di follow-up sono nel
 database reale e `automation-worker` è stato ridistribuito il 2026-09-01.
-Test: `npm run test:crm-unit` **254/254** offline · `npm run test:crm`
+Test: `npm run test:crm-unit` **260/260** offline · `npm run test:crm`
 **191/191** sul database reale dopo la 0050, con pulizia verificata.
 
 ---
@@ -270,6 +271,25 @@ prossimo passo + data, motivo della perdita, timbri `won_at`/`lost_at`.
 - **Il prossimo passo non è un'attività** (§50): è la sintesi commerciale. Il
   pulsante «Crea attività dal prossimo passo» le collega, e se l'attività esiste
   già la **mostra** invece di crearne una seconda.
+
+### Lettura della pipeline e cambio fase (0057, Fase 2)
+
+La board conserva cinque colonne (`lost` resta un esito, non una colonna) e ora
+permette di spostare una trattativa trascinandola. Lo stesso gesto è sempre
+disponibile nella tendina della scheda: tastiera e schermi touch non dipendono
+dal drag-and-drop.
+
+Le nuove misure non assegnano probabilità alle fasi:
+
+- la permanenza media parte dall'ultimo ingresso registrato nella **fase
+  corrente**, oppure da `created_at` se la trattativa non ha mai cambiato fase;
+- il tasso vinte/perse usa solo opportunità concluse, comprese le archiviate;
+- i motivi di perdita sono aggregati senza eliminare il gruppo «non indicato».
+
+Il valore resta separato per valuta e continua a essere una stima, non un
+ricavo. Le funzioni `crm_pipeline_stage_metrics`, `crm_pipeline_outcomes` e
+`crm_pipeline_loss_reasons` sono `security invoker`, filtrano l'appartenenza e
+sono revocate ad `anon`.
 
 Lo storico dei passaggi conserva **da dove** e **verso dove**: senza il «da», la
 domanda «questa trattativa è tornata indietro?» non ha risposta.
@@ -1050,10 +1070,10 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   renderebbe inservibile una regola che dica «più di novanta giorni», perché
   quando l'evento arriva i giorni sono trenta. Gli altri tre modelli (§136–§138)
   sono in `automationModel.ts` accanto ai cinque preesistenti.
-- **Il filtro per cliente nel Work Hub** (§82): richiede un parametro nuovo in
-  `list_tasks`, quindi `drop function` con la firma a 9 argomenti e i grant
-  rifatti. È una migrazione a sé. Nel frattempo le attività di ogni controparte si
-  vedono dalla sua scheda.
+- ✅ **Il filtro per cliente nel Work Hub è implementato nella 0057**: la
+  funzione a nove argomenti viene sostituita esplicitamente, il nuovo parametro
+  `p_crm_organization_id` filtra nel database e revoke/grant sono rifatti sulla
+  firma a dieci argomenti. La scelta resta nell'URL (`?cliente=<uuid>`).
 - Dal **0048_crm_send_email.sql** `email_messages.direction` distingue `in` e
   `out`: tutte le righe preesistenti sono `in`. Le uscenti sono registrate con
   stato `sent` / `delivered` / `failed`; il contenuto resta fuori da

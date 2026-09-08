@@ -26,6 +26,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '@/components/ui/Icon';
 import { useCompany } from '@/contexts/CompanyContext';
 import { EmptyCta, ErrorState, SkeletonKpiGrid, SkeletonLine } from '@/components/ui/states';
+import { useToast } from '@/components/ui/Toast';
 import { crmService } from '@/services/crmService';
 import { memberService } from '@/services/memberService';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -33,6 +34,7 @@ import { useT, type TFunction, type TKey } from '@/i18n';
 import { useLabels } from '@/i18n/labels';
 import type {
   AssignableMember, CrmHomeSummary, CrmOpportunity, CrmOrganization, CrmPipelineCell,
+  CrmPipelineLossReason, CrmPipelineOutcomes, CrmPipelineStageMetric,
 } from '@/types/models';
 import type {
   CrmOpportunityStage, CrmOrganizationRole, CrmRelationshipStatus,
@@ -40,7 +42,7 @@ import type {
 import { SuggestionsCard } from './SuggestionsCard';
 import {
   CRM_PAGE_SIZE, CRM_SORTS, CRM_VIEWS, DEFAULT_STALE_DAYS, MAX_QUERY_LENGTH,
-  PIPELINE_STAGES, countByStage, daysSince, filtersFromParams, hasActiveFilters,
+  ALL_STAGES, PIPELINE_STAGES, countByStage, daysSince, filtersFromParams, hasActiveFilters, isOpen,
   organizationState, organizationStateKey, opportunityState, opportunityStateKey,
   paramsFromFilters, pipelineByCurrency, secondaryName,
   type CrmFilters, type CrmOrganizationState, type CrmSort, type CrmView,
@@ -100,6 +102,7 @@ export function ClientsPage() {
   const { activeCompany: company } = useCompany();
   const t = useT();
   const L = useLabels();
+  const { showToast } = useToast();
   const [params, setParams] = useSearchParams();
 
   const filters = useMemo(() => filtersFromParams(params), [params]);
@@ -108,6 +111,11 @@ export function ClientsPage() {
   const [summary, setSummary] = useState<CrmHomeSummary | null>(null);
   const [pipeline, setPipeline] = useState<CrmPipelineCell[]>([]);
   const [deals, setDeals] = useState<CrmOpportunity[]>([]);
+  const [pipelineHealth, setPipelineHealth] = useState<{
+    stages: CrmPipelineStageMetric[];
+    outcomes: CrmPipelineOutcomes | null;
+    lossReasons: CrmPipelineLossReason[];
+  } | null>(null);
   const [dealTotal, setDealTotal] = useState(0);
   const [members, setMembers] = useState<AssignableMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +131,8 @@ export function ClientsPage() {
   // nuova: non esiste alcuna invalidazione globale di cache in questo prodotto,
   // e ogni schermata deve portarsi la propria chiave (come `useDocumentList`).
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const [movingDeal, setMovingDeal] = useState<string | null>(null);
 
   const isPipeline = filters.view === 'pipeline';
   const staleDays = filters.staleDays ?? DEFAULT_STALE_DAYS;
@@ -137,7 +147,7 @@ export function ClientsPage() {
     setError(null);
     (async () => {
       try {
-        const [page, sum, cells, dir, board] = await Promise.all([
+        const [page, sum, cells, dir, board, health] = await Promise.all([
           crmService.list(key, filters),
           crmService.homeSummary(key, staleDays),
           crmService.pipeline(key),
@@ -145,6 +155,7 @@ export function ClientsPage() {
           isPipeline
             ? crmService.opportunities(key, { limit: BOARD_LIMIT, sort: 'updated' })
             : Promise.resolve({ items: [] as CrmOpportunity[], total: 0 }),
+          isPipeline ? crmService.pipelineHealth(key) : Promise.resolve(null),
         ]);
         if (cancelled) return;
         setItems(page.items);
@@ -154,6 +165,7 @@ export function ClientsPage() {
         setMembers(dir);
         setDeals(board.items);
         setDealTotal(board.total);
+        setPipelineHealth(health);
         setLoadedFor(key);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -162,7 +174,22 @@ export function ClientsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [company, filters, staleDays, isPipeline]);
+  }, [company, filters, staleDays, isPipeline, refresh]);
+
+  async function moveDeal(deal: CrmOpportunity, stage: CrmOpportunityStage) {
+    if (movingDeal || deal.stage === stage) return;
+    setMovingDeal(deal.id);
+    try {
+      await crmService.setStage(deal.id, stage);
+      showToast(t('crm.pipeline.stageChanged'));
+      setRefresh((value) => value + 1);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
+    } finally {
+      setMovingDeal(null);
+    }
+  }
 
   function update(patch: Partial<CrmFilters>) {
     // Cambiando un filtro si torna alla prima pagina: restare a pagina tre di
@@ -391,6 +418,8 @@ export function ClientsPage() {
         <PipelineBoard
           deals={deals} loading={loading && !fresh} stageCounts={stageCounts}
           perCurrency={perCurrency} loadedCount={deals.length} total={dealTotal}
+          health={pipelineHealth} movingDeal={movingDeal}
+          onMove={(deal, stage) => void moveDeal(deal, stage)}
           t={t} L={L}
         />
       ) : loading && !fresh ? (
@@ -560,9 +589,8 @@ function OrganizationRow(props: {
 /**
  * La vista a colonne.
  *
- * ⚠️ §54 — NESSUN TRASCINAMENTO. Il cambio di fase avviene dalla scheda
- * dell'opportunità con una tendina: è accessibile da tastiera senza lavoro in
- * più, e non richiede alcuna libreria.
+ * Il trascinamento usa l'API nativa del browser. Ogni scheda conserva anche una
+ * tendina equivalente: tastiera e touch non dipendono dal drag-and-drop.
  *
  * ⚠️ I CONTEGGI DELLE COLONNE VENGONO DAL DATABASE (`crm_pipeline_summary`), non
  * dalle caselle caricate: si caricano al massimo cento opportunità, e se ce ne
@@ -574,6 +602,13 @@ function PipelineBoard(props: {
   stageCounts: Record<CrmOpportunityStage, number>;
   perCurrency: Array<{ currency: string | null; opportunityCount: number; totalAmount: number | null }>;
   loadedCount: number; total: number;
+  health: {
+    stages: CrmPipelineStageMetric[];
+    outcomes: CrmPipelineOutcomes | null;
+    lossReasons: CrmPipelineLossReason[];
+  } | null;
+  movingDeal: string | null;
+  onMove: (deal: CrmOpportunity, stage: CrmOpportunityStage) => void;
   t: TFunction; L: ReturnType<typeof useLabels>;
 }) {
   const { t, L } = props;
@@ -589,6 +624,45 @@ function PipelineBoard(props: {
 
   return (
     <>
+      <div className={styles.pipelineHealth}>
+        <div className={styles.pipelineHealthCell}>
+          <strong>{t('crm.pipeline.outcomes')}</strong>
+          {props.health?.outcomes && props.health.outcomes.winRate !== null ? (
+            <span>
+              {t('crm.pipeline.winRate', { rate: props.health.outcomes.winRate })}
+              {' · '}{t('crm.pipeline.wonLost', {
+                won: props.health.outcomes.wonCount, lost: props.health.outcomes.lostCount,
+              })}
+            </span>
+          ) : <span className="muted-sm">{t('crm.pipeline.noOutcomes')}</span>}
+        </div>
+        <div className={styles.pipelineHealthCell}>
+          <strong>{t('crm.pipeline.timeInStage')}</strong>
+          <div className="row-wrap">
+            {(props.health?.stages ?? []).filter((metric) => isOpen(metric.stage)).map((metric) => (
+              <Tag key={metric.stage}>
+                {L.crmStage(metric.stage)} · {t('crm.pipeline.averageDays', { days: metric.averageDaysInStage })}
+              </Tag>
+            ))}
+            {!(props.health?.stages ?? []).some((metric) => isOpen(metric.stage)) && (
+              <span className="muted-sm">{t('crm.pipeline.noOpenDeals')}</span>
+            )}
+          </div>
+        </div>
+        <div className={styles.pipelineHealthCell}>
+          <strong>{t('crm.pipeline.lossReasons')}</strong>
+          {(props.health?.lossReasons ?? []).length ? (
+            <div className="row-wrap">
+              {props.health!.lossReasons.map((item, index) => (
+                <Tag key={`${item.reason ?? 'none'}-${index}`}>
+                  {item.reason ?? t('crm.pipeline.reasonMissing')} · {item.opportunityCount}
+                </Tag>
+              ))}
+            </div>
+          ) : <span className="muted-sm">{t('crm.pipeline.noLosses')}</span>}
+        </div>
+      </div>
+
       {/* §45 — il valore per VALUTA, e nessun totale unico. */}
       <div className={styles.crmAsk}>
         <div className="crm-sec-head">
@@ -627,7 +701,19 @@ function PipelineBoard(props: {
         {PIPELINE_STAGES.map((stage) => {
           const cards = props.deals.filter((d) => d.stage === stage);
           return (
-            <div className={styles.crmCol} key={stage}>
+            <div
+              className={styles.crmCol} key={stage}
+              onDragOver={(event) => {
+                if (props.movingDeal) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const deal = props.deals.find((item) => item.id === event.dataTransfer.getData('text/plain'));
+                if (deal) props.onMove(deal, stage);
+              }}
+            >
               <div className={styles.crmColHead}>
                 <span className={styles.crmColTitle}>{L.crmStage(stage)}</span>
                 <span className={styles.crmColN}>{props.stageCounts[stage]}</span>
@@ -637,11 +723,21 @@ function PipelineBoard(props: {
               ) : cards.map((d) => {
                 const st = opportunityState(d);
                 return (
-                  <Link
+                  <div
                     key={d.id} className={styles.crmCard}
-                    to={`/clienti/${d.organizationId}/opportunita/${d.id}`}
+                    draggable={props.movingDeal === null}
+                    aria-busy={props.movingDeal === d.id || undefined}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move';
+                      event.dataTransfer.setData('text/plain', d.id);
+                    }}
                   >
-                    <span className={styles.crmCardTitle}>{d.title}</span>
+                    <Link
+                      className={styles.crmCardLink}
+                      to={`/clienti/${d.organizationId}/opportunita/${d.id}`}
+                    >
+                      <span className={styles.crmCardTitle}>{d.title}</span>
+                    </Link>
                     <span className={styles.crmCardSub}>{d.organizationName}</span>
                     {/* ⚠️ `formatCurrency` e non `toLocaleString('de-CH')`: la
                         riga inchiodava la Svizzera TEDESCA anche a chi usa
@@ -657,7 +753,20 @@ function PipelineBoard(props: {
                     {(st === 'overdue_step' || st === 'no_step') && (
                       <Tag tone="attention">{t(opportunityStateKey(st))}</Tag>
                     )}
-                  </Link>
+                    <div className={cx('field', styles.crmCardMove)}>
+                      <label className="sr-only" htmlFor={`move-${d.id}`}>
+                        {t('crm.pipeline.moveDeal', { title: d.title })}
+                      </label>
+                      <select
+                        id={`move-${d.id}`} value={d.stage} disabled={props.movingDeal !== null}
+                        onChange={(event) => props.onMove(d, event.target.value as CrmOpportunityStage)}
+                      >
+                        {ALL_STAGES.map((option) => (
+                          <option key={option} value={option}>{L.crmStage(option)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 );
               })}
             </div>

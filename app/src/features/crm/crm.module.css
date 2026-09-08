@@ -55,9 +55,13 @@
 .crm-row-link:hover :global(.list-title) { color: var(--accent-text); }
 .crm-roles { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-05); }
 
-/* La board della pipeline. §54 — colonne semplici, nessun trascinamento:
-   il cambio di fase avviene da una tendina, che è accessibile da tastiera
-   senza alcun lavoro in più. */
+/* La board della pipeline. La scheda si trascina con il puntatore e conserva
+   una tendina equivalente per tastiera e schermi touch. */
+.pipeline-health { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3); margin-top: var(--sp-4); }
+.pipeline-health-cell { display: grid; align-content: start; gap: var(--sp-2);
+  padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--card); }
 .crm-board { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr));
   gap: var(--sp-3); overflow-x: auto; padding-bottom: var(--sp-2); }
 .crm-col { background: var(--fill-subtle); border: 1px solid var(--line);
@@ -72,8 +76,14 @@
 .crm-col-n { font-size: var(--fs-meta); color: var(--muted); }
 .crm-card { display: block; background: var(--card); border: 1px solid var(--line);
   border-radius: 8px; padding: var(--sp-3); margin-bottom: var(--sp-2);
-  color: var(--ink); text-decoration: none; }
+  color: var(--ink); }
+.crm-card[draggable="true"] { cursor: grab; }
+.crm-card[draggable="true"]:active { cursor: grabbing; }
 .crm-card:hover { border-color: var(--accent); }
+.crm-card-link { color: var(--ink); text-decoration: none; }
+.crm-card-link:hover .crm-card-title { color: var(--accent-text); }
+.crm-card-move { margin: var(--sp-2) 0 0; }
+.crm-card-move select { min-height: 2rem; padding-block: var(--sp-1); font-size: var(--fs-meta); }
 /* ⚠️⚠️ `display: block`, E SENZA QUESTA PAROLA IL TABELLONE ERA ILLEGGIBILE.
    `.crm-card` è un blocco e i suoi quattro figli sono `<span>`: in flusso
    inline finivano tutti su una riga sola, incollati, e il `margin-top` qui
@@ -132,6 +142,7 @@
    righe di `.crm-kv`, che resta condivisa; qui è
    venuta solo `.crm-board`. */
 @media (max-width: 720px) {
+  .pipeline-health { grid-template-columns: 1fr; }
   .crm-board { grid-template-columns: repeat(5, minmax(70vw, 1fr)); }
   .quote-line { grid-template-columns: 1fr 1fr; }
   .quote-line > :first-child { grid-column: 1 / -1; }

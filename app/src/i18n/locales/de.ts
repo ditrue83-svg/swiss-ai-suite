@@ -269,6 +269,7 @@ export const de: Dictionary = {
     searchPlaceholder: 'Nach Titel, Beschreibung oder Behörde suchen',
     filterPriority: 'Priorität',
     filterAssignee: 'Zuständig',
+    filterCustomer: 'Kunde',
     filterSource: 'Herkunft',
     filterAny: 'Alle',
     countShown: '{shown} von {total}',
@@ -2047,6 +2048,14 @@ export const de: Dictionary = {
       overdueFollowUps: 'Überfällige Follow-ups', stale: 'Ohne kürzlichen Kontakt',
       staleNote: 'Seit mehr als {n} Tagen',
       suggestions: 'Zu prüfen',
+    },
+    pipeline: {
+      outcomes: 'Beobachtete Abschlüsse', winRate: 'Gewonnen: {rate} %',
+      wonLost: '{won} gewonnen, {lost} verloren', noOutcomes: 'Noch kein abgeschlossenes Geschäft.',
+      timeInStage: 'Durchschnittliche Dauer in der aktuellen Phase', averageDays: '{days} Tage',
+      noOpenDeals: 'Keine offene Verkaufschance.', lossReasons: 'Verlustgründe',
+      reasonMissing: 'Kein Grund angegeben', noLosses: 'Keine verlorene Verkaufschance.',
+      moveDeal: '„{title}“ in eine andere Phase verschieben', stageChanged: 'Phase der Verkaufschance aktualisiert.',
     },
     states: {
       archived: 'Archiviert', merged: 'Mit einem anderen Eintrag zusammengeführt',

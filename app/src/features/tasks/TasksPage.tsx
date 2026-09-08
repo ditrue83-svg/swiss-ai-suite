@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { taskService, type TaskView } from '@/services/taskService';
+import { crmService } from '@/services/crmService';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
@@ -35,7 +36,7 @@ import { TaskCreateForm } from './TaskCreateForm';
 import {
   EMPTY_TASK_FORM, createSubmitLatch, safeDatePrefill, taskFormSubmission, type TaskFormValues,
 } from './taskCreateModel';
-import type { TaskPriority, TaskWithPeople } from '@/types/models';
+import type { CrmOrganizationOption, TaskPriority, TaskWithPeople } from '@/types/models';
 
 const PAGE_SIZE = 25;
 const VIEWS: { id: TaskView; key: TKey }[] = [
@@ -72,7 +73,19 @@ export function TasksPage() {
   const [debounced, setDebounced] = useState('');
   const [priority, setPriority] = useState<TaskPriority | ''>('');
   const [assignee, setAssignee] = useState('');
+  const organizationId = params.get('cliente') || '';
+  const [organizations, setOrganizations] = useState<CrmOrganizationOption[]>([]);
   const [limit, setLimit] = useState(PAGE_SIZE);
+
+  useEffect(() => {
+    let cancelled = false;
+    void crmService.options(companyId).then((rows) => {
+      if (!cancelled) setOrganizations(rows);
+    }).catch(() => {
+      if (!cancelled) setOrganizations([]);
+    });
+    return () => { cancelled = true; };
+  }, [companyId]);
 
   // Debounce: si cerca quando la persona smette di scrivere, non a ogni tasto.
   useEffect(() => {
@@ -82,18 +95,33 @@ export function TasksPage() {
 
   // Cambiando vista o filtro si riparte dalla prima pagina: mostrare la pagina
   // tre di un elenco diverso confonderebbe e basta.
-  useEffect(() => { setLimit(PAGE_SIZE); }, [view, debounced, priority, assignee]);
+  useEffect(() => { setLimit(PAGE_SIZE); }, [view, debounced, priority, assignee, organizationId]);
 
   const { loading, error, data, reload } = useAsync(
     () => taskService.list(companyId, {
       view,
       priority: priority || null,
       assigneeUserId: assignee || null,
+      crmOrganizationId: organizationId || null,
       search: debounced || null,
       limit,
     }),
-    [companyId, view, priority, assignee, debounced, limit],
+    [companyId, view, priority, assignee, organizationId, debounced, limit],
   );
+
+  function setOrganizationFilter(value: string) {
+    const next = new URLSearchParams(params);
+    if (value) next.set('cliente', value);
+    else next.delete('cliente');
+    setParams(next);
+  }
+
+  function setTaskView(nextView: TaskView) {
+    const next = new URLSearchParams(params);
+    if (nextView === 'todo') next.delete('vista');
+    else next.set('vista', nextView);
+    setParams(next);
+  }
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -211,7 +239,7 @@ export function TasksPage() {
           <span className="filter-group">
             {VIEWS.map((v) => (
               <button key={v.id} className="btn btn-sm btn-toggle"
-                onClick={() => setParams(v.id === 'todo' ? {} : { vista: v.id })} aria-pressed={view === v.id}>
+                onClick={() => setTaskView(v.id)} aria-pressed={view === v.id}>
                 {t(v.key)}
               </button>
             ))}
@@ -236,6 +264,18 @@ export function TasksPage() {
               <option value="">{t('tasks.filterAssignee')}: {t('tasks.filterAny')}</option>
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field m-0">
+            <select
+              id="f-customer" className="select-inline" value={organizationId}
+              aria-label={t('tasks.filterCustomer')}
+              onChange={(e) => setOrganizationFilter(e.target.value)}
+            >
+              <option value="">{t('tasks.filterCustomer')}: {t('tasks.filterAny')}</option>
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>{organization.displayName}</option>
               ))}
             </select>
           </div>

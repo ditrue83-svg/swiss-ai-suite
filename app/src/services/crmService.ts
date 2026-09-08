@@ -35,6 +35,7 @@ import type {
   CrmFieldDefinition, CrmFieldEntry, CrmFieldValue,
   CrmFinanceLink, CrmHomeSummary, CrmInteraction, CrmLinkSuggestion,
   CrmOpportunity, CrmOrganization, CrmOrganizationDetail, CrmOrganizationOption,
+  CrmPipelineLossReason, CrmPipelineOutcomes, CrmPipelineStageMetric,
   CrmPerson, CrmPipelineCell, CrmTimelineEntry,
 } from '@/types/models';
 import { CRM_PAGE_SIZE, CRM_TIMELINE_PAGE_SIZE, effectiveRole, safeWebsite, type CrmFilters } from '@/features/crm/crmModel';
@@ -1048,6 +1049,39 @@ export const crmService = {
       opportunityCount: int(r.opportunity_count),
       totalAmount: num(r.total_amount),
     }));
+  },
+
+  async pipelineHealth(companyId: string): Promise<{
+    stages: CrmPipelineStageMetric[];
+    outcomes: CrmPipelineOutcomes | null;
+    lossReasons: CrmPipelineLossReason[];
+  }> {
+    const sb = requireSupabase();
+    const [stageResult, outcomeResult, reasonResult] = await Promise.all([
+      sb.rpc('crm_pipeline_stage_metrics', { p_company_id: companyId }),
+      sb.rpc('crm_pipeline_outcomes', { p_company_id: companyId }),
+      sb.rpc('crm_pipeline_loss_reasons', { p_company_id: companyId }),
+    ]);
+    if (stageResult.error) fail(stageResult.error);
+    if (outcomeResult.error) fail(outcomeResult.error);
+    if (reasonResult.error) fail(reasonResult.error);
+    const outcome = outcomeResult.data?.[0];
+    return {
+      stages: (stageResult.data ?? []).map((row) => ({
+        stage: row.stage,
+        opportunityCount: int(row.opportunity_count),
+        averageDaysInStage: num(row.average_days_in_stage) ?? 0,
+      })),
+      outcomes: outcome ? {
+        wonCount: int(outcome.won_count),
+        lostCount: int(outcome.lost_count),
+        winRate: num(outcome.win_rate),
+      } : null,
+      lossReasons: (reasonResult.data ?? []).map((row) => ({
+        reason: row.reason,
+        opportunityCount: int(row.opportunity_count),
+      })),
+    };
   },
 
   // -------------------------------------------------------------------------
