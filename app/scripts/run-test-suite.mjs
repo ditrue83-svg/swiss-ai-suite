@@ -324,7 +324,7 @@ const GROUPS = {
       // non un test. Qui si prova la parte pura che ricava dallo schema tutte
       // le tabelle con company_id: dimenticarne una renderebbe incompleto un
       // rapporto che si presenta come completo.
-      { script: 'company:audit', args: ['--self-test'] },
+      { script: 'company:audit:self-test' },
       // La coda di revisione del catalogo: il giudizio è una funzione pura, e
       // provarlo qui evita di dover invecchiare una riga vera per vederlo
       // reagire.
@@ -522,6 +522,7 @@ const ALL = ['quality', 'unit', 'db', 'production'];
 // del suo passo, non qui.
 // ---------------------------------------------------------------------------
 const FUORI_SUITE = {
+  'company:audit': 'legge metadati e conteggi del progetto reale: è un rapporto, non un test; il parser dello schema è provato da company:audit:self-test, in unit',
   // Il ciclo di lavoro: non termina, o non ha un esito da leggere.
   dev: 'il server di sviluppo: non termina, non ha un esito',
   preview: "l'anteprima del build: non termina, non ha un esito",

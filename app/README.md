@@ -1179,7 +1179,7 @@ npm run company:audit -- --id <uuid>    # inventario in SOLA LETTURA del tenant:
                              #   provenienza documenti e conteggi di tutte le tabelle con
                              #   company_id. Non legge contenuti o file; le identità complete
                              #   richiedono --include-identities. Richiede .env.test
-npm run company:audit -- --self-test    # prova offline il rilevamento delle tabelle aziendali
+npm run company:audit:self-test         # prova offline il rilevamento delle tabelle aziendali
 npm run status               # LO STATO, MISURATO ADESSO, in un file solo (`stato-attuale.md`):
                              #   quanto viene usato ogni modulo (conteggi dalla produzione),
                              #   migrazioni sul disco e applicate, bundle servito dal dominio,
