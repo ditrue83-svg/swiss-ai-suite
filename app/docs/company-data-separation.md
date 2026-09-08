@@ -1,8 +1,8 @@
 # Separazione fra dati reali, demo e tecnici
 
-Stato della decisione: implementata nel branch `chore/company-data-audit` il
-08.09.2026; applicazione in produzione ancora da verificare. Nessuna riga è
-stata cancellata.
+Stato della decisione: **implementata, integrata e applicata in produzione** il
+08.09.2026 con la PR #110. La produzione è allineata alle migrazioni
+`0001–0056`; nessuna riga aziendale è stata cancellata.
 
 ## Problema osservato
 
@@ -36,7 +36,8 @@ Audit in sola lettura eseguito sull'azienda
 `e0eb21d8-80cd-407e-92db-ba58f2cf7cf1`:
 
 - un solo membro, Andrea Cavalieri, con ruolo `owner`;
-- `usage_kind` non esiste nello schema, quindi lo scopo è non classificato;
+- al momento dell'audit `usage_kind` non esisteva ancora nello schema, quindi
+  lo scopo non era classificato;
 - 20 documenti: 17 da email, 2 upload e 1 testo incollato;
 - 148 email, 27 allegati e una connessione email;
 - 4 attività, 6 eventi finanziari e 2 conversazioni con l'assistente;
@@ -65,7 +66,7 @@ impone di trattare i dati come **misti e potenzialmente reali**.
    La classificazione riduce il rischio, ma non sostituisce la separazione
    infrastrutturale.
 
-## Implementazione 0056
+## Implementazione e rilascio 0056
 
 La migrazione `0056_company_usage_kind.sql` realizza i primi tre confini:
 
@@ -80,19 +81,29 @@ La migrazione `0056_company_usage_kind.sql` realizza i primi tre confini:
   tedesco e francese;
 - lo script usa-e-getta crea da ora tenant marcati `technical`.
 
+Verifica di produzione del 08.09.2026:
+
+- storico Supabase allineato da `0001` a `0056`;
+- `send-crm-email` ACTIVE v8 con `verify_jwt=true`;
+- frontend di `main` pubblicato da Cloudflare Pages;
+- CI della PR e di `main` verde, inclusa la ricostruzione del database
+  effimero.
+
 Le notifiche calendario restano non configurate in produzione e non sono un
 canale disponibile. Prima di attivarle dovranno applicare lo stesso gate.
 
 ## Trattamento di Rossi SA
 
 Il proprietario ha deciso l'08.09.2026 che Rossi SA è una **demo persistente**.
-La classificazione da applicare è quindi `demo`. I record già presenti restano
-al loro posto: quelli dubbi non sono automaticamente “fasulli” e non vengono
-cancellati in blocco.
+La classificazione `demo` è stata applicata in produzione allo stesso tenant
+inventariato. Il registro append-only contiene la transizione
+`unclassified → demo`. I record già presenti restano al loro posto: quelli
+dubbi non sono automaticamente “fasulli” e non vengono cancellati in blocco.
 
 ## Criterio di completamento
 
-- ogni azienda ha uno scopo esplicito;
+- ogni azienda ha un campo di scopo esplicito, anche quando resta
+  `unclassified` in attesa della decisione del proprietario;
 - demo e tenant tecnici non possono contattare persone reali per errore;
 - i test non lasciano tenant orfani;
 - Rossi SA è classificata con una decisione del proprietario e i suoi dati
