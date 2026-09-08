@@ -406,9 +406,9 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 - **Disponibile a clienti esterni:** tecnicamente sì sul dominio pubblico;
   adozione da parte di una PMI pilota non ancora misurata.
 
-### Fase 3.3 CRM — suggerimenti dalle email (in verifica)
+### Fase 3.3 CRM — suggerimenti dalle email (deployata il 2026-09-08)
 
-- **Implementato nel ramo:** sì — migrazione 0058, collegamento al worker,
+- **Implementato:** sì — migrazione 0058, collegamento al worker,
   accettazione dalla scheda CRM e origine apribile nell'Inbox.
 - **Comportamento:** usa la classificazione già esistente; email non
   classificata, informativa, massiva o proveniente da una casella di servizio
@@ -417,8 +417,15 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 - **Testato offline:** sì — suite unit completa verde; il controllo CRM confronta
   anche l'elenco delle caselle di servizio e la chiave di idempotenza fra SQL e
   TypeScript.
-- **Deployato / verificato sul database reale:** non ancora. La prova integrata
-  della 0058 è pronta e deve passare sul database effimero prima del rilascio.
+- **Database effimero:** verde dalla PR #114; tutte le 58 migrazioni applicate
+  da zero.
+- **Deployato:** sì — migrazione 0058 applicata e `automation-worker`
+  ridistribuito sul progetto collegato.
+- **Prima esecuzione reale:** 14 proposte create: 2 appartenevano al tenant
+  temporaneo della prova e sono state eliminate dalla pulizia; 12 provenivano
+  da email reali e restano in attesa di una decisione umana. La suite ha
+  confermato abbinamento esatto, nuova scheda, esclusione della posta massiva,
+  idempotenza, divieto di chiamata dal browser e pulizia senza residui.
 
 ## Registro attività (0039) — applicato, provato sul database vero e DEPLOYATO il 2026-08-09
 

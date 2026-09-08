@@ -1090,8 +1090,9 @@ Nessun secret nuovo, nessuna Edge Function nuova, nessun job cron nuovo.
   automatico riusa gli stessi segnali di `deservesSuggestion()` già misurati
   sulle 117 email vere: rilevanza dell'Inbox, posta massiva e caselle di servizio.
   Propone un indirizzo esatto, il dominio aziendale oppure una nuova scheda; non
-  crea né collega nulla senza conferma. Deploy e prova sul database reale sono
-  ancora da eseguire.
+  crea né collega nulla senza conferma. La 0058 e il worker sono deployati; la
+  prima scansione reale ha creato 12 proposte reali oltre alle 2 del tenant di
+  prova, senza trasformarle in anagrafiche.
 - **Nessun collegamento automatico nemmeno sull'identità forte.** Il §25
   autorizzerebbe `uid_exact` e `email_exact` a collegare da soli; il candidato non
   lo fa, perché le sue due sorgenti portano un NOME letto su un documento, non

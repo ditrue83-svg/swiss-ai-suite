@@ -702,11 +702,16 @@ async function main() {
     !actionableEmail.error && !bulkEmail.error && !newEmail.error,
     `${msg(actionableEmail.error)} ${msg(bulkEmail.error)} ${msg(newEmail.error)}`);
 
+  const emailSuggestionsBefore = ((await admin.from('crm_link_suggestions')
+    .select('id').eq('company_id', A.companyId).eq('source_entity_type', 'email_message')).data ?? []).length;
   const emailScan1 = await admin.rpc('crm_scan_email_link_suggestions' as never, {
     p_limit: 200,
   } as never);
-  check('la scansione email crea soltanto i due suggerimenti azionabili',
-    !emailScan1.error && emailScan1.data === 2,
+  // Il conteggio della RPC è globale perché il worker serve tutte le aziende:
+  // su produzione può includere email reali. La prova isola quindi il tenant
+  // temporaneo, come ogni altra asserzione di questa suite.
+  check('la scansione email termina e dichiara quante proposte globali ha creato',
+    !emailScan1.error && typeof emailScan1.data === 'number' && emailScan1.data >= 2,
     `${msg(emailScan1.error)} creati ${String(emailScan1.data)}`);
   const emailSuggestionRows = (await admin.from('crm_link_suggestions')
     .select('source_entity_id, suggested_organization_id, suggested_name, suggested_email, reason')
@@ -716,6 +721,9 @@ async function main() {
   const newEmailId = (newEmail.data as { id?: string } | null)?.id;
   const exactEmailSuggestion = emailSuggestionRows.find((r) => r.source_entity_id === actionableEmailId);
   const newEmailSuggestion = emailSuggestionRows.find((r) => r.source_entity_id === newEmailId);
+  check('nel tenant di prova nascono soltanto i due suggerimenti azionabili',
+    emailSuggestionRows.length === emailSuggestionsBefore + 2,
+    `prima ${emailSuggestionsBefore}, dopo ${emailSuggestionRows.length}`);
   check('l’indirizzo esatto propone la scheda esistente',
     exactEmailSuggestion?.reason === 'email_exact'
     && exactEmailSuggestion?.suggested_organization_id === emailTarget,
@@ -730,8 +738,11 @@ async function main() {
   const emailScan2 = await admin.rpc('crm_scan_email_link_suggestions' as never, {
     p_limit: 200,
   } as never);
-  check('la seconda scansione email è idempotente', emailScan2.data === 0,
-    `${msg(emailScan2.error)} creati ${String(emailScan2.data)}`);
+  const tenantSuggestionsAfterSecondScan = ((await admin.from('crm_link_suggestions')
+    .select('id').eq('company_id', A.companyId).eq('source_entity_type', 'email_message')).data ?? []).length;
+  check('la seconda scansione email è idempotente nel tenant di prova',
+    !emailScan2.error && tenantSuggestionsAfterSecondScan === emailSuggestionRows.length,
+    `${msg(emailScan2.error)} prima ${emailSuggestionRows.length}, dopo ${tenantSuggestionsAfterSecondScan}`);
   const emailScanAsUser = await A.client.rpc('crm_scan_email_link_suggestions' as never, {
     p_limit: 10,
   } as never);
