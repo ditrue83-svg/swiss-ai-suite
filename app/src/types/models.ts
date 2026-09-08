@@ -17,7 +17,7 @@ import type {
   CrmOrganizationRole, CrmRelationshipStatus, CrmSource, CrmContactMethodType,
   CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
   CrmLinkStatus, CrmEventKind, CrmLinkedEntity, CrmFieldEntity, CrmFieldType,
-  CrmQuoteStatus, CrmQuoteLanguage,
+  CrmQuoteStatus, CrmQuoteLanguage, CompanyUsageKind,
   FinanceIssuedInvoiceStatus, FinanceIssuedInvoiceDocKind, FinanceIssuedInvoiceLanguage,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
@@ -41,7 +41,7 @@ export type {
   CrmOrganizationRole, CrmRelationshipStatus, CrmSource, CrmContactMethodType,
   CrmOpportunityStage, CrmInteractionType, CrmDocumentRelation, CrmMatchReason,
   CrmLinkStatus, CrmEventKind, CrmLinkedEntity, CrmFieldEntity, CrmFieldType,
-  CrmQuoteStatus, CrmQuoteLanguage,
+  CrmQuoteStatus, CrmQuoteLanguage, CompanyUsageKind,
   FinanceIssuedInvoiceStatus, FinanceIssuedInvoiceDocKind, FinanceIssuedInvoiceLanguage,
   FinanceExtractionStatus, FinanceQualityFlag, FinanceEventKind,
   ContractType, ContractReviewStatus, ContractLifecycleStatus, ContractDocumentRelation,
@@ -75,6 +75,8 @@ export interface Company {
   logoMimeType: string | null;
   /** 0053 — il conto che finisce nella polizza QR delle fatture emesse. */
   bankIban: string | null;
+  /** 0056 — lo scopo del tenant, mai dedotto dal contenuto dei suoi dati. */
+  usageKind: CompanyUsageKind;
   createdAt?: string;
 }
 

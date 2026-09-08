@@ -6,6 +6,7 @@ import { crmService } from '@/services/crmService';
 import { useT } from '@/i18n';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/contexts/CompanyContext';
 
 type Recipient = { id: string; label: string };
 type Attachment = { id: string; label: string };
@@ -15,7 +16,7 @@ export function CrmEmailComposer({ companyId, organizationId, opportunityId, sug
   companyId: string; organizationId: string; opportunityId?: string | null;
   suggestedTemplateId?: string | null; onSent: () => void;
 }) {
-  const t = useT(); const { locale } = useI18n(); const { user } = useAuth(); const [open, setOpen] = useState(false); const [to, setTo] = useState('');
+  const t = useT(); const { locale } = useI18n(); const { user } = useAuth(); const { activeCompany } = useCompany(); const [open, setOpen] = useState(false); const [to, setTo] = useState('');
   const [subject, setSubject] = useState(''); const [body, setBody] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [recipients, setRecipients] = useState<Recipient[]>([]); const [attachments, setAttachments] = useState<Attachment[]>([]); const [templates, setTemplates] = useState<Template[]>([]); const [documentIds, setDocumentIds] = useState<string[]>([]); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
@@ -46,13 +47,17 @@ export function CrmEmailComposer({ companyId, organizationId, opportunityId, sug
     }
     setBusy(false); if (invokeError || data?.status === 'failed' || code) {
       setError(code === 'EMAIL_NOT_CONFIGURED' ? t('crm.email.unavailable')
+        : code === 'EMAIL_DISABLED_FOR_COMPANY_USAGE' ? t('crm.email.demoDisabled')
         : code === 'QUOTE_PDF_STALE' ? t('crm.email.quoteStale')
         : code === 'INVOICE_PDF_STALE' ? t('crm.email.invoiceStale')
         : t('crm.email.sendFailed')); return;
     }
     setOpen(false); setSubject(''); setBody(''); setSelectedTemplate(''); setDocumentIds([]); onSent();
   }
-  return <><button type="button" className="btn btn-sm btn-primary" onClick={() => setOpen(true)}>{t('crm.email.compose')}</button>
+  const externalEmailAllowed = activeCompany?.usageKind === 'live';
+  return <><button type="button" className="btn btn-sm btn-primary" disabled={!externalEmailAllowed}
+    title={!externalEmailAllowed ? t('crm.email.demoDisabled') : undefined}
+    onClick={() => setOpen(true)}>{t('crm.email.compose')}</button>
     <Dialog open={open} onClose={() => !busy && setOpen(false)} title={t('crm.email.compose')}>
       <form onSubmit={submit}>
         <Select id="crm-email-to" label={t('crm.email.to')} value={to} onChange={(e) => setTo(e.target.value)} disabled={busy}>

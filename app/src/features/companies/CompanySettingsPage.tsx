@@ -24,6 +24,7 @@ import { toUserMessage } from '@/lib/errors';
 import { formatUid, isValidUid } from '@/lib/uid';
 import { checkIban } from '../../../supabase/functions/_shared/finance/checksums.ts';
 import { companyService } from '@/services/companyService';
+import type { CompanyUsageKind } from '@/types/models';
 import { RegistryLookup, type RegistryFields } from '@/features/companies/RegistryLookup';
 import { CANTONI, FORME_GIURIDICHE } from './companyOptions';
 
@@ -69,6 +70,7 @@ export function CompanySettings({ sede }: { sede: Sede }) {
   const [countryCode, setCountryCode] = useState('CH');
   // 0053 — l'IBAN che le fatture emesse fotografano sulla polizza QR.
   const [bankIban, setBankIban] = useState('');
+  const [usageKind, setUsageKind] = useState<CompanyUsageKind>('unclassified');
 
   const [savingCompany, setSavingCompany] = useState(false);
   const [savingLogo, setSavingLogo] = useState(false);
@@ -94,6 +96,7 @@ export function CompanySettings({ sede }: { sede: Sede }) {
     setCity(activeCompany.city ?? activeCompany.municipality ?? '');
     setCountryCode(activeCompany.countryCode ?? 'CH');
     setBankIban(activeCompany.bankIban ?? '');
+    setUsageKind(activeCompany.usageKind);
   }, [activeCompany]);
 
   function applyRegistryFields(f: RegistryFields) {
@@ -129,6 +132,7 @@ export function CompanySettings({ sede }: { sede: Sede }) {
         countryCode: countryCode.trim().toUpperCase() || null,
         // Si salva la forma compatta e maiuscola: quella che va sulla polizza.
         bankIban: ibanCheck?.valid ? ibanCheck.normalized : null,
+        usageKind: usageKind === 'technical' ? undefined : usageKind,
       });
       await refresh();
       showToast(t('companySettings.savedCompany'));
@@ -186,6 +190,18 @@ export function CompanySettings({ sede }: { sede: Sede }) {
         )}
 
         <div className="grid-2">
+          <Select id="cs-usage-kind" label={t('companySettings.usageKind')}
+            disabled={!isAdmin || activeCompany?.usageKind === 'technical'}
+            value={usageKind}
+            onChange={(e) => setUsageKind(e.target.value as CompanyUsageKind)}
+            hint={t('companySettings.usageKindHint')}>
+            {activeCompany?.usageKind === 'technical' && (
+              <option value="technical">{t('companySettings.usageKinds.technical')}</option>
+            )}
+            <option value="unclassified">{t('companySettings.usageKinds.unclassified')}</option>
+            <option value="live">{t('companySettings.usageKinds.live')}</option>
+            <option value="demo">{t('companySettings.usageKinds.demo')}</option>
+          </Select>
           <Input id="cs-name" label={t('onboarding.legalName')} required disabled={!isAdmin} value={legalName}
             onChange={(e) => setLegalName(e.target.value)} placeholder={t('onboarding.legalNamePlaceholder')} />
           <div className="field">

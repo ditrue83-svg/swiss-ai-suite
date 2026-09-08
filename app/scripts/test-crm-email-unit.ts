@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createResendProvider } from '../supabase/functions/_shared/calendar/email.ts';
 import { parseDeliveryEvent, verifyResendWebhook } from '../supabase/functions/_shared/crm-email/webhook.ts';
+import { canContactExternal } from '../supabase/functions/_shared/company/usage.ts';
 
 let passed = 0;
 let failed = 0;
@@ -22,7 +25,26 @@ async function signature(secretBytes: Uint8Array, id: string, timestamp: string,
   return `v1,${base64(new Uint8Array(signed))}`;
 }
 
-console.log('CRM email — webhook e provider simulato\n');
+console.log('CRM email — webhook, provider simulato e confine demo\n');
+
+ok(canContactExternal('live'), 'solo un tenant reale può contattare destinatari esterni');
+ok(!canContactExternal('demo'), 'una demo non può inviare email esterne');
+ok(!canContactExternal('technical'), 'un tenant tecnico non può inviare email esterne');
+ok(!canContactExternal('unclassified'), 'una scelta ancora assente non autorizza un invio');
+
+const root = join(import.meta.dirname, '..');
+const sendFunction = readFileSync(join(root, 'supabase/functions/send-crm-email/index.ts'), 'utf8');
+const usageLookup = sendFunction.indexOf(".select('usage_kind')");
+const usageGate = sendFunction.indexOf('canContactExternal(company.usage_kind)');
+const providerCreation = sendFunction.indexOf('createResendProvider({');
+ok(usageLookup >= 0 && usageGate > usageLookup && providerCreation > usageGate,
+  'la Edge Function applica il gate prima di creare il provider di invio');
+
+const migration = readFileSync(join(root, 'supabase/migrations/0056_company_usage_kind.sql'), 'utf8');
+ok(migration.includes("not null default 'unclassified'")
+  && migration.includes('company_usage_kind_events')
+  && migration.includes('company_usage_kind_technical_reserved'),
+'la migrazione non indovina gli esistenti, registra i cambi e riserva i tenant tecnici al server');
 const secretBytes = crypto.getRandomValues(new Uint8Array(32));
 const secret = `whsec_${base64(secretBytes)}`;
 const nowMs = Date.parse('2026-08-30T12:00:00.000Z');

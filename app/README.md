@@ -100,6 +100,10 @@ supabase/
                                          RESTRICT bloccava l'eliminazione dell'azienda
                                          (la classe della 0023, trovata dal primo giro
                                          di test:finance).
+                0056_company_usage_kind — distingue tenant reali, demo, tecnici e
+                                         non classificati; registra ogni cambio e
+                                         riserva `technical` al server. Solo `live`
+                                         può inviare comunicazioni esterne.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

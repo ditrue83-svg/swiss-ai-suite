@@ -570,7 +570,12 @@ section('9 · L’urgenza: la copia deve coincidere con l’originale');
   let dayMismatches = 0;
   const dayDetail: string[] = [];
   for (const offset of offsets) {
-    const iso = new Date(realNow.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+    // Si costruisce e si formatta il giorno nel calendario LOCALE. Usare
+    // `toISOString()` qui trasformava il campione in UTC: fra mezzanotte e le
+    // 02:00 in Svizzera tutte le date diventavano il giorno precedente e il
+    // test falliva di uno pur con l'implementazione corretta.
+    const date = new Date(realNow.getFullYear(), realNow.getMonth(), realNow.getDate() + offset);
+    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const atteso = offset;
     const avuto = calendarDaysUntil(iso, realNow);
     if (avuto !== atteso) { dayMismatches++; dayDetail.push(`${offset}: ${avuto} ≠ ${atteso}`); }

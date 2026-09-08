@@ -103,7 +103,7 @@ async function semina(email) {
   const giorni = (n) => new Date(oggi.getTime() + n * 86400000).toISOString().slice(0, 10);
 
   const { data: az, error: ce } = await admin.from('companies')
-    .insert({ legal_name: `${MARCA} Verifica Pastiglie SA`, canton: 'Ticino', municipality: 'Lugano', legal_form: 'SA' })
+    .insert({ legal_name: `${MARCA} Verifica Pastiglie SA`, canton: 'Ticino', municipality: 'Lugano', legal_form: 'SA', usage_kind: 'technical' })
     .select('id').single();
   ok(ce, 'azienda');
   const C = az.id;

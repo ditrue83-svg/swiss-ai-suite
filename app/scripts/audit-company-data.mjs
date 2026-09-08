@@ -95,7 +95,7 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   let companyQuery = admin.from('companies')
-    .select('id, legal_name, uid_che, created_at, updated_at');
+    .select('id, legal_name, uid_che, usage_kind, created_at, updated_at');
   companyQuery = id ? companyQuery.eq('id', id) : companyQuery.eq('legal_name', name);
   const { data: companies, error: companyError } = await companyQuery.limit(2);
   if (companyError) throw new Error(`companies: ${companyError.message}`);
@@ -135,9 +135,6 @@ async function main() {
     mode: 'read_only',
     company: {
       ...company,
-      usage_kind: company.legal_name.startsWith('ZZ-USA-E-GETTA')
-        ? 'technical_by_name_marker'
-        : 'unclassified_schema_has_no_field',
     },
     members: members.map((member) => {
       const profile = profilesById.get(member.user_id);

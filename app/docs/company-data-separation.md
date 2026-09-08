@@ -1,7 +1,8 @@
 # Separazione fra dati reali, demo e tecnici
 
-Stato della decisione: proposta, 08.09.2026. Nessuna riga di produzione è
-stata riclassificata o cancellata.
+Stato della decisione: implementata nel branch `chore/company-data-audit` il
+08.09.2026; applicazione in produzione ancora da verificare. Nessuna riga è
+stata cancellata.
 
 ## Problema osservato
 
@@ -64,12 +65,29 @@ impone di trattare i dati come **misti e potenzialmente reali**.
    La classificazione riduce il rischio, ma non sostituisce la separazione
    infrastrutturale.
 
+## Implementazione 0056
+
+La migrazione `0056_company_usage_kind.sql` realizza i primi tre confini:
+
+- `usage_kind` parte da `unclassified`, senza riclassificazioni implicite;
+- owner e admin possono scegliere `live` o `demo`; `technical` è riservato al
+  service role;
+- ogni transizione è registrata in `company_usage_kind_events`, append-only per
+  i ruoli applicativi;
+- `send-crm-email` consente effetti esterni solo a `live`, con un controllo
+  server-side eseguito prima di creare il provider o registrare il messaggio;
+- le Impostazioni azienda mostrano e spiegano la classificazione in italiano,
+  tedesco e francese;
+- lo script usa-e-getta crea da ora tenant marcati `technical`.
+
+Le notifiche calendario restano non configurate in produzione e non sono un
+canale disponibile. Prima di attivarle dovranno applicare lo stesso gate.
+
 ## Trattamento di Rossi SA
 
-Rossi SA resta `unclassified` finché il proprietario non decide se sia il
-proprio spazio reale o una demo persistente. I record già presenti vanno
-inventariati per provenienza e intervallo temporale. Quelli dubbi vengono
-segnalati per revisione umana; non sono automaticamente “fasulli” e non vengono
+Il proprietario ha deciso l'08.09.2026 che Rossi SA è una **demo persistente**.
+La classificazione da applicare è quindi `demo`. I record già presenti restano
+al loro posto: quelli dubbi non sono automaticamente “fasulli” e non vengono
 cancellati in blocco.
 
 ## Criterio di completamento
