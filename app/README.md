@@ -104,6 +104,9 @@ supabase/
                                          non classificati; registra ogni cambio e
                                          riserva `technical` al server. Solo `live`
                                          può inviare comunicazioni esterne.
+                0057_crm_pipeline_completion — completa la Fase 2 CRM: permanenza
+                                         osservata per fase, esiti e motivi di perdita;
+                                         filtro cliente nella lista delle Attività.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)

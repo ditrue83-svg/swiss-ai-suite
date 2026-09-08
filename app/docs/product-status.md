@@ -382,6 +382,21 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
   lingue. Le verifiche a schermo 375 px e tema chiaro/scuro non sono ancora
   state eseguite.
 
+### Fase 2 CRM 0057 — implementata sul branch, non deployata (2026-09-08)
+
+- **Reporting pipeline:** permanenza media nella fase corrente, tasso osservato
+  vinte/perse e motivi di perdita aggregati. Tutto calcolato in SQL dai fatti
+  registrati; nessuna probabilità assegnata alle fasi e nessuna somma fra valute.
+- **Board:** cambio fase tramite trascinamento nativo, con tendina equivalente
+  per tastiera e touch. `lost` resta un esito e non diventa una sesta colonna.
+- **Work Hub:** filtro per cliente nell'URL e nella funzione `list_tasks`, con
+  firma, revoke e grant rifatti dalla migrazione 0057.
+- **Implementato:** sì, su `improve/phase2-pipeline-completion`.
+- **Testato offline:** sì — `test:crm-unit` 260/260, typecheck e copertura i18n
+  verdi al 2026-09-08.
+- **Deployato / verificato sul database reale / provato a schermo:** **no**. La
+  migrazione 0057 non è applicata e non è stato chiesto alcun deploy.
+
 ## Registro attività (0039) — applicato, provato sul database vero e DEPLOYATO il 2026-08-09
 
 Non ha una riga nella tabella qui sopra perché **non è un modulo di prodotto**:

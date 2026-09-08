@@ -2,7 +2,7 @@
 // AI-Swisse — CRM Light: test d'integrazione sul DATABASE REALE.
 //   npm run test:crm
 //
-// Richiede le migrazioni 0026, 0028, 0030, 0047, 0048, 0049 e 0050 applicate, e `.env.test`
+// Richiede le migrazioni 0026, 0028, 0030, 0047–0050 e 0057 applicate, e `.env.test`
 // valorizzato.
 // ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 16 FALLISCE, perché
 // lo storico del CRM impedisce la cancellazione di un'azienda. È il difetto
@@ -14,7 +14,7 @@
 // relazione manca.
 //
 // Non prova che il codice sia scritto bene: prova che le GARANZIE siano in
-// vigore. Sono diciannove sezioni, e stanno tutte nel DATABASE, perché un servizio ben
+// vigore. Sono venti sezioni, e stanno tutte nel DATABASE, perché un servizio ben
 // educato non è una garanzia — è la lezione della 0014, dove i permessi di
 // colonna dichiarati nei commenti non restringevano nulla e il difetto è emerso
 // solo ESEGUENDO.
@@ -42,7 +42,8 @@
 //   16. EMAIL CRM — esiti idempotenti e fuori ordine; solo delivered è contatto.
 //   17. PREVENTIVI — decimali, sequenze, RLS, invio e versioni immutabili.
 //   18. SEQUENZE FOLLOW-UP — silenzio, stop, idempotenza e confini tenant.
-//   19. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
+//   19. PIPELINE FASE 2 — permanenza, esiti, motivi e filtro attività per cliente.
+//   20. CASCATA — cancellata l'azienda non resta niente, tabella per tabella.
 //
 // ⚠️ LA PULIZIA CONTROLLA IL PROPRIO ESITO, e l'ORDINE non è indifferente:
 // PRIMA l'azienda, POI l'utente. Al contrario, cancellare l'utente porta via a
@@ -1487,7 +1488,81 @@ async function main() {
   void replyOutgoing;
 
   // -------------------------------------------------------------------------
-  section('19. Cascata — cancellata l’azienda non resta niente');
+  section('19. Fase 2 — salute pipeline e filtro attività per cliente (0057)');
+
+  const lostOne = await A.client.from('crm_opportunities').insert({
+    company_id: A.companyId, organization_id: orgA, title: 'Trattativa persa uno',
+    stage: 'lost', lost_reason: 'Budget rinviato',
+  }).select('id').single();
+  const lostTwo = await A.client.from('crm_opportunities').insert({
+    company_id: A.companyId, organization_id: orgA, title: 'Trattativa persa due',
+    stage: 'lost', lost_reason: 'Budget rinviato',
+  }).select('id').single();
+  check('due opportunità perse con lo stesso motivo entrano senza alterarlo',
+    !lostOne.error && !lostTwo.error, msg(lostOne.error) || msg(lostTwo.error));
+
+  const stageMetrics = await A.client.rpc('crm_pipeline_stage_metrics' as never, {
+    p_company_id: A.companyId,
+  } as never);
+  const stageRows = (stageMetrics.data ?? []) as Array<{
+    stage: string; opportunity_count: number; average_days_in_stage: number;
+  }>;
+  const contactedMetric = stageRows.find((row) => row.stage === 'contacted');
+  check('la permanenza nella fase usa l’ingresso storico registrato',
+    !stageMetrics.error && Boolean(contactedMetric)
+    && Number(contactedMetric?.opportunity_count) >= 1
+    && Number(contactedMetric?.average_days_in_stage) >= 7,
+    msg(stageMetrics.error) || JSON.stringify(contactedMetric));
+
+  const outcomes = await A.client.rpc('crm_pipeline_outcomes' as never, {
+    p_company_id: A.companyId,
+  } as never);
+  const outcome = ((outcomes.data ?? []) as Array<{
+    won_count: number; lost_count: number; win_rate: number | null;
+  }>)[0];
+  check('il tasso deriva soltanto dalle trattative concluse',
+    !outcomes.error && Number(outcome?.won_count) >= 1 && Number(outcome?.lost_count) >= 2
+    && Number(outcome?.win_rate) === Number((
+      100 * Number(outcome?.won_count)
+      / (Number(outcome?.won_count) + Number(outcome?.lost_count))
+    ).toFixed(1)), msg(outcomes.error) || JSON.stringify(outcome));
+
+  const lossReasons = await A.client.rpc('crm_pipeline_loss_reasons' as never, {
+    p_company_id: A.companyId,
+  } as never);
+  const budgetReason = ((lossReasons.data ?? []) as Array<{
+    reason: string | null; opportunity_count: number;
+  }>).find((row) => row.reason === 'Budget rinviato');
+  check('i motivi di perdita uguali vengono aggregati dal database',
+    !lossReasons.error && Number(budgetReason?.opportunity_count) === 2,
+    msg(lossReasons.error) || JSON.stringify(lossReasons.data));
+
+  const taskForOrgA = await A.client.from('tasks').insert({
+    company_id: A.companyId, created_by: A.userId, title: 'Attività Rossi',
+    crm_organization_id: orgA,
+  }).select('id').single();
+  const taskForOtherOrg = await A.client.from('tasks').insert({
+    company_id: A.companyId, created_by: A.userId, title: 'Attività altra controparte',
+    crm_organization_id: followUpOrg,
+  }).select('id').single();
+  const filteredTasks = await A.client.rpc('list_tasks' as never, {
+    p_company_id: A.companyId, p_view: 'all', p_crm_organization_id: orgA,
+  } as never);
+  const filteredIds = new Set(((filteredTasks.data ?? []) as Array<{ id: string }>).map((row) => row.id));
+  check('il Work Hub restituisce soltanto le attività della controparte scelta',
+    !taskForOrgA.error && !taskForOtherOrg.error && !filteredTasks.error
+    && filteredIds.has((taskForOrgA.data as { id?: string } | null)?.id ?? NIL)
+    && !filteredIds.has((taskForOtherOrg.data as { id?: string } | null)?.id ?? NIL),
+    msg(taskForOrgA.error) || msg(taskForOtherOrg.error) || msg(filteredTasks.error));
+  const crossTenantTasks = await A.client.rpc('list_tasks' as never, {
+    p_company_id: A.companyId, p_view: 'all', p_crm_organization_id: orgB,
+  } as never);
+  check('un id cliente di un altro tenant non fa filtrare dati altrui',
+    !crossTenantTasks.error && ((crossTenantTasks.data ?? []) as unknown[]).length === 0,
+    msg(crossTenantTasks.error));
+
+  // -------------------------------------------------------------------------
+  section('20. Cascata — cancellata l’azienda non resta niente');
 
   const tables: Array<[string, string]> = [
     ['crm_organizations', 'company_id'],

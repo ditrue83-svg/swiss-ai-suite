@@ -1908,6 +1908,26 @@ export interface CrmPipelineCell {
   totalAmount: number | null;
 }
 
+/** Misure osservate della pipeline: permanenza ed esiti, mai probabilità assegnate. */
+export interface CrmPipelineStageMetric {
+  stage: CrmOpportunityStage;
+  opportunityCount: number;
+  averageDaysInStage: number;
+}
+
+export interface CrmPipelineOutcomes {
+  wonCount: number;
+  lostCount: number;
+  /** null quando non esiste ancora alcuna opportunità conclusa. */
+  winRate: number | null;
+}
+
+export interface CrmPipelineLossReason {
+  /** null quando la persona ha chiuso la trattativa senza indicare il motivo facoltativo. */
+  reason: string | null;
+  opportunityCount: number;
+}
+
 /** Un documento collegato alla controparte, con il ruolo che ha nel rapporto. */
 export interface CrmDocumentLink {
   id: string;

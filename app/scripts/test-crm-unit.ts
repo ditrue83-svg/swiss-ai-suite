@@ -81,6 +81,12 @@ const MIGRATION = readFileSync(
   join(HERE, '..', 'supabase', 'migrations', '0026_crm_light.sql'), 'utf8');
 const FOLLOW_UP_MIGRATION = readFileSync(
   join(HERE, '..', 'supabase', 'migrations', '0050_crm_follow_up_sequences.sql'), 'utf8');
+const PHASE_2_MIGRATION = readFileSync(
+  join(HERE, '..', 'supabase', 'migrations', '0057_crm_pipeline_completion.sql'), 'utf8');
+const CLIENTS_PAGE = readFileSync(
+  join(HERE, '..', 'src', 'features', 'crm', 'ClientsPage.tsx'), 'utf8');
+const TASKS_PAGE = readFileSync(
+  join(HERE, '..', 'src', 'features', 'tasks', 'TasksPage.tsx'), 'utf8');
 
 // ---------------------------------------------------------------------------
 section('1. Coerenza TS ↔ SQL — gli elenchi scritti due volte');
@@ -1147,6 +1153,43 @@ check('il workflow gestito usa solo attività e notifica: nessuna azione di cont
   && !managedActions.includes('send_email') && !managedActions.includes('reply_email'));
 check('il template email è un suggerimento e non un comando di invio',
   FOLLOW_UP_MIGRATION.includes('Suggerimento per il composer umano'));
+
+// ---------------------------------------------------------------------------
+section('21. Fase 2 — salute pipeline, board operativa e filtro cliente');
+
+check('le tre misure della pipeline sono funzioni SQL protette',
+  ['crm_pipeline_stage_metrics', 'crm_pipeline_outcomes', 'crm_pipeline_loss_reasons'].every(
+    (name) => PHASE_2_MIGRATION.includes(`function public.${name}`)
+      && PHASE_2_MIGRATION.includes(`revoke all on function public.${name}(uuid)`)
+      && PHASE_2_MIGRATION.includes(`grant execute on function public.${name}(uuid) to authenticated`),
+  ));
+check('la permanenza parte dall’ultimo ingresso nella fase, non dall’ultimo aggiornamento generico',
+  PHASE_2_MIGRATION.includes("e.kind = 'opportunity_stage_changed'")
+  && PHASE_2_MIGRATION.includes("e.detail ->> 'to' = p.stage::text")
+  && PHASE_2_MIGRATION.includes('), p.created_at) as entered_at')
+  && !PHASE_2_MIGRATION.includes('p.updated_at) as entered_at'));
+check('il tasso usa solo esiti reali: le opportunità aperte non entrano nel denominatore',
+  PHASE_2_MIGRATION.includes("p.stage in ('won', 'lost')")
+  && PHASE_2_MIGRATION.includes("where p.stage = 'won'")
+  && !PHASE_2_MIGRATION.toLowerCase().includes('probability'));
+check('i motivi vuoti restano un gruppo dichiarato, non vengono eliminati',
+  PHASE_2_MIGRATION.includes("nullif(btrim(p.lost_reason), '') as reason")
+  && PHASE_2_MIGRATION.includes("group by nullif(btrim(p.lost_reason), '')"));
+check('la board offre sia trascinamento sia cambio fase da tastiera',
+  CLIENTS_PAGE.includes('draggable={props.movingDeal === null}')
+  && CLIENTS_PAGE.includes('onDrop={(event) =>')
+  && CLIENTS_PAGE.includes("t('crm.pipeline.moveDeal'")
+  && CLIENTS_PAGE.includes('<select'));
+check('il Work Hub passa il cliente dall’URL fino alla funzione SQL',
+  TASKS_PAGE.includes("params.get('cliente')")
+  && TASKS_PAGE.includes('crmOrganizationId: organizationId || null')
+  && PHASE_2_MIGRATION.includes('p_crm_organization_id uuid default null')
+  && PHASE_2_MIGRATION.includes('t.crm_organization_id = p_crm_organization_id'));
+check('il filtro cliente resta nell’URL quando si cambia vista del Work Hub',
+  TASKS_PAGE.includes('function setTaskView(nextView: TaskView)')
+  && TASKS_PAGE.includes("next.delete('vista')")
+  && TASKS_PAGE.includes("next.set('vista', nextView)")
+  && TASKS_PAGE.includes('onClick={() => setTaskView(v.id)}'));
 
 // ---------------------------------------------------------------------------
 console.log(`\n${B}Risultato${X}: ${G}${pass} superati${X}${fail ? `, ${R}${fail} falliti${X}` : ''}`);

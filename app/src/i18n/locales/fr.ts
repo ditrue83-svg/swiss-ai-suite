@@ -265,6 +265,7 @@ export const fr: Dictionary = {
     searchPlaceholder: 'Rechercher par titre, description ou autorité',
     filterPriority: 'Priorité',
     filterAssignee: 'Responsable',
+    filterCustomer: 'Client',
     filterSource: 'Origine',
     filterAny: 'Toutes',
     countShown: '{shown} sur {total}',
@@ -2046,6 +2047,14 @@ export const fr: Dictionary = {
       overdueFollowUps: 'Relances échues', stale: 'Sans contact récent',
       staleNote: 'Depuis plus de {n} jours',
       suggestions: 'À vérifier',
+    },
+    pipeline: {
+      outcomes: 'Résultats observés', winRate: 'Gagnées : {rate} %',
+      wonLost: '{won} gagnées, {lost} perdues', noOutcomes: 'Aucune affaire conclue.',
+      timeInStage: 'Durée moyenne dans l’étape actuelle', averageDays: '{days} jours',
+      noOpenDeals: 'Aucune opportunité ouverte.', lossReasons: 'Motifs de perte',
+      reasonMissing: 'Motif non indiqué', noLosses: 'Aucune opportunité perdue.',
+      moveDeal: 'Déplacer « {title} » vers une autre étape', stageChanged: 'Étape de l’opportunité mise à jour.',
     },
     states: {
       archived: 'Archivée', merged: 'Fusionnée avec une autre fiche',

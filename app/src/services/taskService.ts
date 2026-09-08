@@ -37,6 +37,7 @@ export interface TaskFilters {
   source?: TaskSource | null;
   assigneeUserId?: string | null;
   search?: string | null;
+  crmOrganizationId?: string | null;
   limit?: number;
   offset?: number;
 }
@@ -175,6 +176,7 @@ export const taskService = {
       p_search: filters.search ?? null,
       p_limit: filters.limit ?? 25,
       p_offset: filters.offset ?? 0,
+      p_crm_organization_id: filters.crmOrganizationId ?? null,
     });
     if (error) throw new AppError(taskErrorMessage(error), error);
     const rows = (data ?? []) as ListRow[];

@@ -290,6 +290,7 @@ export const it = {
     searchPlaceholder: 'Cerca per titolo, descrizione o ente',
     filterPriority: 'Priorità',
     filterAssignee: 'Responsabile',
+    filterCustomer: 'Cliente',
     filterSource: 'Origine',
     filterAny: 'Tutte',
     countShown: '{shown} di {total}',
@@ -2178,6 +2179,14 @@ export const it = {
       overdueFollowUps: 'Follow-up scaduti', stale: 'Senza contatto recente',
       staleNote: 'Da più di {n} giorni',
       suggestions: 'Da verificare',
+    },
+    pipeline: {
+      outcomes: 'Esiti osservati', winRate: 'Vinte: {rate}%',
+      wonLost: '{won} vinte, {lost} perse', noOutcomes: 'Nessuna trattativa conclusa.',
+      timeInStage: 'Permanenza media nella fase corrente', averageDays: '{days} giorni',
+      noOpenDeals: 'Nessuna opportunità aperta.', lossReasons: 'Motivi di perdita',
+      reasonMissing: 'Motivo non indicato', noLosses: 'Nessuna opportunità persa.',
+      moveDeal: 'Sposta “{title}” in un’altra fase', stageChanged: 'Fase dell’opportunità aggiornata.',
     },
     states: {
       archived: 'Archiviata', merged: 'Unita a un’altra scheda', overdueTasks: 'Attività scadute',
