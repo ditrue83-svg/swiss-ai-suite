@@ -605,6 +605,18 @@ che oggi lo ferma davvero.
 | Email CRM (0048, Fase 1.1) | migrazione **applicata in produzione il 2026-08-30**; `send-crm-email` e `crm-email-webhook` **ACTIVE e configurate** | l'Inbox resta Gmail/Microsoft readonly; l'invio umano CRM passa da Resend, non dalla Gmail API. `send-crm-email` rifiuta destinatari non registrati; ogni azienda deve scegliere nella propria schermata nome e indirizzo mittente sul dominio verificato. `crm-email-webhook` verifica la firma Svix, deduplica `svix-id`, protegge dagli eventi fuori ordine e rende visibili `inviata` / `consegnata` / `fallita`; solo la consegna aggiorna l'ultimo contatto. Verificato il 2026-08-30: prova offline 12/12 senza invii veri; `test:crm` **154/154 sul database reale**, inclusa pulizia senza residui; funzioni attive con i flag JWT previsti; richiesta non firmata `401 INVALID_SIGNATURE`, evento tecnico firmato `200 ignored`; webhook Resend abilitato per `email.sent`, `email.delivered`, `email.failed`, `email.bounced`; pagina pubblicata verificata in it/de/fr e a 375 px senza scorrimento orizzontale nei temi chiaro e scuro. Il 2026-08-31 l'amministratore ha configurato e verificato dopo ricaricamento il mittente di `Rossi SA`: `Ai-Swisse <andrea@ai-swisse.com>`. **Nessuna email reale è stata inviata**. |
 | Preventivi CRM (0049, Fase 1.2) | **solo codice locale nel branch `improve/crm-quotes`; migrazione non applicata, Edge Function non pubblicata** | PDF A4 in lingua documento, numerazione per azienda, importi `numeric`, aliquote AFC con fonte, versioni immutabili e allegato tramite Email CRM. Offline: PDF/contratto **35/35**, provider finto **12/12**, CI quality+unit **49 passi verdi**; nessun invio vero. Il database locale effimero non è eseguibile su questa macchina perché mancano Docker e Podman. Prima di dichiararlo online servono applicazione di 0049, deploy di `generate-crm-quote` e `send-crm-email`, suite sul database reale e prova browser autenticata in chiaro/scuro. |
 
+### Confine tenant per gli invii esterni (0056)
+
+Dal **08.09.2026** ogni azienda dichiara `usage_kind` (`unclassified`, `live`,
+`demo`, `technical`) e ogni transizione resta in
+`company_usage_kind_events`. `send-crm-email` consente l'invio soltanto a
+`live`; il controllo è server-side e precede la creazione del provider e del
+messaggio. Migrazioni `0001–0056` allineate in produzione,
+`send-crm-email` **ACTIVE v8** con `verify_jwt=true`, CI e deploy Cloudflare di
+`main` verdi. Rossi SA è stata classificata `demo` per decisione del
+proprietario; i dati preesistenti sono rimasti intatti e l'evento
+`unclassified → demo` è registrato.
+
 ## ⚠️ `calendar-sync` era deployata con `verify_jwt=true`, e lo scheduler non poteva funzionare
 
 Trovato accendendo gli scheduler il 2026-07-31, provando il segreto **prima** di
