@@ -2,7 +2,7 @@
 // AI-Swisse — CRM Light: test d'integrazione sul DATABASE REALE.
 //   npm run test:crm
 //
-// Richiede le migrazioni 0026, 0028, 0030, 0047–0050 e 0057 applicate, e `.env.test`
+// Richiede le migrazioni 0026, 0028, 0030, 0047–0050 e 0057–0058 applicate, e `.env.test`
 // valorizzato.
 // ⚠️ La 0028 non è un dettaglio: senza di essa la sezione 16 FALLISCE, perché
 // lo storico del CRM impedisce la cancellazione di un'azienda. È il difetto
@@ -657,6 +657,86 @@ async function main() {
     .select('id').eq('company_id', A.companyId).eq('source_entity_id', (cMatch as { id: string }).id);
   check('cancellato il contratto, il suggerimento in sospeso non resta orfano',
     ((orphan ?? []) as unknown[]).length === 0);
+
+  // 0058 — la stessa disciplina arriva alle email, ma usa i segnali che
+  // l'Inbox ha già calcolato: non classifica una seconda volta.
+  const emailConnection = await admin.from('email_connections').insert({
+    company_id: A.companyId, connected_by: A.userId, provider: 'google',
+    provider_account_id: `suggestions-${stamp}`,
+    email_address: `suggestions-${stamp}@example.ch`,
+  }).select('id').single();
+  const emailConnectionId = (emailConnection.data as { id?: string } | null)?.id ?? '';
+  check('la casella di prova per i suggerimenti email esiste',
+    !emailConnection.error && Boolean(emailConnectionId), msg(emailConnection.error));
+
+  const emailTarget = await makeOrg(A.client, A.companyId, `Email Target ${stamp} SA`);
+  await A.client.from('crm_contact_methods').insert({
+    company_id: A.companyId, organization_id: emailTarget, type: 'email',
+    value: `laura-${stamp}@target-example.ch`, is_primary: true,
+  });
+  const actionableEmail = await admin.from('email_messages').insert({
+    company_id: A.companyId, connection_id: emailConnectionId,
+    provider_message_id: `suggestion-actionable-${stamp}`, subject: 'Richiesta offerta',
+    sender_name: 'Laura Bianchi', sender_email: `laura-${stamp}@target-example.ch`,
+    received_at: '2026-09-01T10:00:00.000Z', body_text: 'Vorrei una proposta',
+    body_preview: 'Vorrei una proposta', direction: 'in', is_bulk: false,
+    relevance: 'likely_actionable', processing_status: 'done',
+  }).select('id').single();
+  const bulkEmail = await admin.from('email_messages').insert({
+    company_id: A.companyId, connection_id: emailConnectionId,
+    provider_message_id: `suggestion-bulk-${stamp}`, subject: 'Newsletter',
+    sender_name: 'Laura Bianchi', sender_email: `bulk-${stamp}@target-example.ch`,
+    received_at: '2026-09-01T09:00:00.000Z', body_text: 'Newsletter',
+    body_preview: 'Newsletter', direction: 'in', is_bulk: true,
+    relevance: 'likely_actionable', processing_status: 'done',
+  }).select('id').single();
+  const newEmail = await admin.from('email_messages').insert({
+    company_id: A.companyId, connection_id: emailConnectionId,
+    provider_message_id: `suggestion-new-${stamp}`, subject: 'Primo contatto',
+    sender_name: 'Nuova Impresa', sender_email: `persona-${stamp}@new-example.ch`,
+    received_at: '2026-09-01T08:00:00.000Z', body_text: 'Possiamo sentirci?',
+    body_preview: 'Possiamo sentirci?', direction: 'in', is_bulk: false,
+    relevance: 'possibly_actionable', processing_status: 'done',
+  }).select('id').single();
+  check('i tre messaggi di prova sono stati registrati',
+    !actionableEmail.error && !bulkEmail.error && !newEmail.error,
+    `${msg(actionableEmail.error)} ${msg(bulkEmail.error)} ${msg(newEmail.error)}`);
+
+  const emailScan1 = await admin.rpc('crm_scan_email_link_suggestions' as never, {
+    p_limit: 200,
+  } as never);
+  check('la scansione email crea soltanto i due suggerimenti azionabili',
+    !emailScan1.error && emailScan1.data === 2,
+    `${msg(emailScan1.error)} creati ${String(emailScan1.data)}`);
+  const emailSuggestionRows = (await admin.from('crm_link_suggestions')
+    .select('source_entity_id, suggested_organization_id, suggested_name, suggested_email, reason')
+    .eq('company_id', A.companyId).eq('source_entity_type', 'email_message')).data ?? [];
+  const actionableEmailId = (actionableEmail.data as { id?: string } | null)?.id;
+  const bulkEmailId = (bulkEmail.data as { id?: string } | null)?.id;
+  const newEmailId = (newEmail.data as { id?: string } | null)?.id;
+  const exactEmailSuggestion = emailSuggestionRows.find((r) => r.source_entity_id === actionableEmailId);
+  const newEmailSuggestion = emailSuggestionRows.find((r) => r.source_entity_id === newEmailId);
+  check('l’indirizzo esatto propone la scheda esistente',
+    exactEmailSuggestion?.reason === 'email_exact'
+    && exactEmailSuggestion?.suggested_organization_id === emailTarget,
+    JSON.stringify(exactEmailSuggestion));
+  check('il mittente sconosciuto propone una nuova scheda con nome ed email',
+    newEmailSuggestion?.reason === 'extracted_name'
+    && newEmailSuggestion?.suggested_name === 'Nuova Impresa'
+    && newEmailSuggestion?.suggested_email === `persona-${stamp}@new-example.ch`,
+    JSON.stringify(newEmailSuggestion));
+  check('la posta massiva non produce suggerimenti',
+    !emailSuggestionRows.some((r) => r.source_entity_id === bulkEmailId));
+  const emailScan2 = await admin.rpc('crm_scan_email_link_suggestions' as never, {
+    p_limit: 200,
+  } as never);
+  check('la seconda scansione email è idempotente', emailScan2.data === 0,
+    `${msg(emailScan2.error)} creati ${String(emailScan2.data)}`);
+  const emailScanAsUser = await A.client.rpc('crm_scan_email_link_suggestions' as never, {
+    p_limit: 10,
+  } as never);
+  check('un utente autenticato NON può avviare la scansione email',
+    Boolean(emailScanAsUser.error), `${msg(emailScanAsUser.error)} ${code(emailScanAsUser.error)}`);
 
   // -------------------------------------------------------------------------
   section('14. Import CSV — la riga entra intera, il doppione duro si ferma');

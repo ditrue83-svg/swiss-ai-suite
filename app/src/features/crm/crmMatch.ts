@@ -160,7 +160,7 @@ export function isPublicDomain(domain: string | null | undefined): boolean {
  * indirizzo generico appartiene all'organizzazione, non a una persona). Un
  * elenco troppo largo scarterebbe i mittenti che contano.
  */
-const SERVICE_LOCAL_PARTS: readonly string[] = [
+export const SERVICE_LOCAL_PARTS: readonly string[] = [
   'noreply', 'no-reply', 'donotreply', 'do-not-reply', 'noresponse',
   'newsletter', 'newsletters',
   'mailer', 'mailer-daemon', 'mailing', 'mailings',

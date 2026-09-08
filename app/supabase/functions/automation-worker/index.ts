@@ -134,10 +134,11 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // (1-quater) Il candidato automatico (0030): legge le controparti dei
-    //     contratti e i fornitori di Finanze e PROPONE. Non crea anagrafiche e
-    //     non collega niente — scrive righe `crm_link_suggestions` in attesa
-    //     di un sì (§21).
+    // (1-quater) Il candidato automatico (0030 + 0058): legge le controparti
+    //     dei contratti, i fornitori di Finanze e i mittenti email che hanno
+    //     già superato il filtro anti-rumore dell'Inbox. PROPONE: non crea
+    //     anagrafiche e non collega niente — scrive righe
+    //     `crm_link_suggestions` in attesa di un sì (§21).
     //
     //     ⚠️ NON EMETTE EVENTI, quindi non alimenta la coda che segue: un
     //     suggerimento non è un fatto dell'azienda, è un'ipotesi del prodotto,
@@ -150,7 +151,15 @@ Deno.serve(async (req: Request) => {
         p_limit: CRM_SUGGESTION_SCAN_LIMIT,
       });
       if (scanError) throw new Error(`crm_scan: ${(scanError as { message?: string }).message ?? 'errore'}`);
-      report.crmSuggestionsCreated = typeof suggested === 'number' ? suggested : 0;
+      const { data: emailSuggested, error: emailScanError } = await sb.rpc(
+        'crm_scan_email_link_suggestions',
+        { p_limit: CRM_SUGGESTION_SCAN_LIMIT },
+      );
+      if (emailScanError) {
+        throw new Error(`crm_email_scan: ${(emailScanError as { message?: string }).message ?? 'errore'}`);
+      }
+      report.crmSuggestionsCreated = (typeof suggested === 'number' ? suggested : 0)
+        + (typeof emailSuggested === 'number' ? emailSuggested : 0);
     } catch (error) {
       report.crmSuggestionsError = codeOf(error);
       logEvent('automation-worker', { code: report.crmSuggestionsError, phase: 'crm_suggestions' });

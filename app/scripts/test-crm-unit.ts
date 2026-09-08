@@ -33,7 +33,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
-  PUBLIC_EMAIL_DOMAINS, AUTO_LINK_REASONS,
+  PUBLIC_EMAIL_DOMAINS, SERVICE_LOCAL_PARTS, AUTO_LINK_REASONS,
   normEmail, normDomain, normPhone, normUid, isPublicDomain, isServiceAddress,
   deservesSuggestion, canAutoLink, reasonRank, pickAutoLink, domainSuggests, suggestionKey,
   type MatchCandidate,
@@ -83,6 +83,10 @@ const FOLLOW_UP_MIGRATION = readFileSync(
   join(HERE, '..', 'supabase', 'migrations', '0050_crm_follow_up_sequences.sql'), 'utf8');
 const PHASE_2_MIGRATION = readFileSync(
   join(HERE, '..', 'supabase', 'migrations', '0057_crm_pipeline_completion.sql'), 'utf8');
+const EMAIL_SUGGESTIONS_MIGRATION = readFileSync(
+  join(HERE, '..', 'supabase', 'migrations', '0058_crm_email_suggestions.sql'), 'utf8');
+const AUTOMATION_WORKER = readFileSync(
+  join(HERE, '..', 'supabase', 'functions', 'automation-worker', 'index.ts'), 'utf8');
 const CLIENTS_PAGE = readFileSync(
   join(HERE, '..', 'src', 'features', 'crm', 'ClientsPage.tsx'), 'utf8');
 const TASKS_PAGE = readFileSync(
@@ -105,6 +109,19 @@ check('i domini pubblici sono gli stessi in SQL e in TypeScript',
   `SQL ${sqlDomains.length}, TS ${PUBLIC_EMAIL_DOMAINS.length}; solo in SQL: `
   + `${sqlDomains.filter((d) => !PUBLIC_EMAIL_DOMAINS.includes(d)).join(', ') || '—'}; solo in TS: `
   + `${PUBLIC_EMAIL_DOMAINS.filter((d) => !sqlDomains.includes(d)).join(', ') || '—'}`);
+
+// 0058 porta lo stesso filtro anti-rumore nel database. I trattini sono tolti
+// su entrambe le copie perché `no-reply` e `noreply` sono la stessa parola.
+const sqlServiceWords = (() => {
+  const start = EMAIL_SUGGESTIONS_MIGRATION.indexOf('service_words(word)');
+  const end = EMAIL_SUGGESTIONS_MIGRATION.indexOf('select p.email is not null', start);
+  return [...EMAIL_SUGGESTIONS_MIGRATION.slice(start, end).matchAll(/\('([^']+)'\)/g)]
+    .map((m) => m[1]!).sort();
+})();
+const tsServiceWords = [...new Set(SERVICE_LOCAL_PARTS.map((word) => word.replace(/-/g, '')))].sort();
+check('le caselle di servizio sono le stesse nel filtro SQL e TypeScript',
+  JSON.stringify(sqlServiceWords) === JSON.stringify(tsServiceWords),
+  `SQL: ${sqlServiceWords.join(', ')}; TS: ${tsServiceWords.join(', ')}`);
 
 const sqlEnum = (name: string): string[] => {
   const i = MIGRATION.indexOf(`create type public.${name} as enum (`);
@@ -613,6 +630,25 @@ check('la scansione è revocata a public, anon e authenticated',
 check('il candidato non scrive MAI su crm_organizations, contracts o finance_items',
   !/insert into public\.crm_organizations|update public\.(contracts|finance_items|crm_organizations)/
     .test(CANDIDATE));
+
+const emailSqlKey = EMAIL_SUGGESTIONS_MIGRATION.match(
+  /v_key := '([^']+)' \|\| r\.id::text \|\| ':' \|\| v_reason::text \|\| ':'\s*\|\| coalesce\(v_target::text, '([^']+)'\)/,
+);
+check('il candidato email usa la stessa chiave idempotente del client',
+  Boolean(emailSqlKey)
+  && suggestionKey('email_message', 'mail-1', 'domain_match', 'org-1')
+    === `${emailSqlKey?.[1]}mail-1:domain_match:org-1`
+  && emailSqlKey?.[2] === 'new');
+check('il candidato email propone senza creare o collegare anagrafiche',
+  !/insert into public\.crm_organizations|insert into public\.crm_(organization|contact)_emails/
+    .test(EMAIL_SUGGESTIONS_MIGRATION));
+check('il worker esegue la scansione email nello stesso giro del candidato CRM',
+  AUTOMATION_WORKER.includes("'crm_scan_link_suggestions'")
+  && AUTOMATION_WORKER.includes("'crm_scan_email_link_suggestions'"));
+check('la scansione email non è eseguibile dal browser',
+  EMAIL_SUGGESTIONS_MIGRATION.includes('auth.uid() is not null')
+  && /revoke all on function public\.crm_scan_email_link_suggestions\(integer\)\s+from public, anon, authenticated/
+    .test(EMAIL_SUGGESTIONS_MIGRATION));
 
 // ---------------------------------------------------------------------------
 section('12. Il sito web è un link, e un link può essere codice');

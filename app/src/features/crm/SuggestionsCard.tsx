@@ -44,6 +44,9 @@ function sourceLink(s: CrmLinkSuggestion): { to: string; key: TKey } | null {
   if (s.sourceEntityType === 'finance_item') {
     return { to: `/finanze/${s.sourceEntityId}`, key: 'crm.suggestions.fromFinance' };
   }
+  if (s.sourceEntityType === 'email_message') {
+    return { to: `/inbox?msg=${s.sourceEntityId}`, key: 'crm.suggestions.fromEmail' };
+  }
   return null;
 }
 
