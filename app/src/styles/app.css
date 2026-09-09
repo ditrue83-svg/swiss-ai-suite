@@ -640,7 +640,22 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* La cornice della tela: lati più larghi del sopra (in orizzontale il vuoto
    si percepisce più stretto), fondo a --sp-12 come nei breakpoint stretti —
    era un 64px solo-desktop, deciso a schermo il 2026-08-10. */
-.main { flex: 1; padding: var(--sp-8) var(--sp-12) var(--sp-12); max-width: 1160px; width: 100%; }
+/* ⚠️⚠️ `min-width: 0`, E SENZA QUESTA PAROLA OGNI CONTENUTO LARGO ALLARGA LA
+   PAGINA. `.main` è il flex item accanto alla colonna laterale: senza il
+   minimo a zero il suo minimo AUTOMATICO è il min-content della pagina che
+   ospita, e basta una griglia con piste minime larghe — la board della
+   pipeline, 5×180px = 948px — perché la cornice smetta di restringersi:
+   fra 901 e 1423px il documento misurava 1308px (264 di colonna + 948 + i
+   padding) e si scrollava nel vuoto. `overflow-x: auto` sulla griglia non
+   basta: taglia la PITTURA, non il min-content che risale. Lo zero qui è
+   inerte dove il contenuto è stretto (misurato su Panoramica, Clienti,
+   Attività, Finanze, Documenti: stesse larghezze al pixel), perché non una
+   pagina presente ma ogni pagina FUTURA con un figlio largo ci cadrebbe
+   dentro — la trappola è la coppia «flex item + min-width: auto». Sotto i
+   901px la shell è a colonna e la regola non ha asse su cui agire.
+   Diagnosticato in produzione il 2026-09-09; il gemello mobile (375px) è la
+   `position: relative` di `.crm-card-move` in `crm.module.css`. */
+.main { flex: 1; min-width: 0; padding: var(--sp-8) var(--sp-12) var(--sp-12); max-width: 1160px; width: 100%; }
 .page { display: none; }
 .page.active { display: block; animation: fade-in var(--dur) var(--ease); }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
