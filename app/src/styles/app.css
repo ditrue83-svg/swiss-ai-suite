@@ -1206,8 +1206,18 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 .empty-cta .ec-sub { color: var(--muted); font-size: var(--fs-meta); margin: var(--sp-1) auto var(--sp-4); max-width: var(--measure); }
 
 /* ---------- Dashboard ---------- */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); }
-@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+/* ⚠️ `minmax(0, 1fr)` e non `1fr` nuda: `1fr` vale `minmax(auto, 1fr)`, e il
+   minimo `auto` è il min-content della scheda più larga della traccia — che
+   non si restringe. Misurato il 2026-09-10 sulla Panoramica: il minimo della
+   griglia era 613px, spingeva `main` a 709 e il documento a 973, e lo scroll
+   orizzontale tornava su tutta la banda 901–972 (la prima che ha `main`
+   più stretto di quel minimo — è la stessa forma del difetto corretto con
+   `.main { min-width: 0 }`, ma la sorgente qui è dentro la pagina). Con il
+   minimo a zero le tracce si restringono e il testo dentro va a capo: le
+   etichette hanno già due righe riservate (`.kpi-label`). Stessa cura già
+   scritta per `.kpi-lead`/`.kpi-lead-rest` qui sotto. */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
+@media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---- Gerarchia dichiarata: una metrica grande e quattro piccole ------------
    Cinque schede su una griglia da quattro colonne davano un 3+2 con un buco in
