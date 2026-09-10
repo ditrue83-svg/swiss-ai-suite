@@ -82,7 +82,21 @@
 .crm-card:hover { border-color: var(--accent); }
 .crm-card-link { color: var(--ink); text-decoration: none; }
 .crm-card-link:hover .crm-card-title { color: var(--accent-text); }
-.crm-card-move { margin: var(--sp-2) 0 0; }
+/* ⚠️⚠️ `position: relative`, E SENZA QUESTA PAROLA LA PAGINA MOBILE SI ALLARGA
+   A 1140px. La `<label>` della tendina è `.sr-only`: assoluta, 1×1px, testo
+   lungo e `nowrap` («Sposta "…" in un'altra fase»). Senza un antenato
+   posizionato il suo blocco contenitore è la PAGINA, e i 430px di testo
+   tagliato restano overflow di scrolling del documento: in caricamento Chrome
+   mobile (shrink-to-fit) lo legge come contenuto più largo dello schermo e
+   espande il layout viewport — da 375 a 1140px, in modo appiccicoso, con
+   l'overlay del cassetto (`inset: 0`) che poi ci si ancora. La pagina diventa
+   trascinabile nel vuoto o si carica rimpicciolita. Con il contenitore qui
+   l'overflow resta dentro la scheda, che ha già il suo `overflow`: le misure
+   usate non cambiano di un pixel (board 343/1361, etichetta 1px), lo screen
+   reader legge come prima. Diagnosticato per bisezione il 2026-09-09: la
+   colpa non era della griglia a 5×70vw — con la board vuota la pagina restava
+   a 375 — ma di QUESTA etichetta. */
+.crm-card-move { position: relative; margin: var(--sp-2) 0 0; }
 .crm-card-move select { min-height: 2rem; padding-block: var(--sp-1); font-size: var(--fs-meta); }
 /* ⚠️⚠️ `display: block`, E SENZA QUESTA PAROLA IL TABELLONE ERA ILLEGGIBILE.
    `.crm-card` è un blocco e i suoi quattro figli sono `<span>`: in flusso
