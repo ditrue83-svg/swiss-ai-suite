@@ -69,6 +69,10 @@ const FEATURES = {
   'contracts':   { moduleName: 'Contratti' },
   'crm':         { moduleName: 'Clienti' },
   'assistant':   { moduleName: 'Chiedi ad AI-Swisse' },
+  // La home da mobilità (0059, Fase 3.1): una rotta propria e un gesto proprio
+  // — la nota rapida — quindi è un modulo, anche se i dati che mostra restano
+  // delle Attività e del CRM.
+  'today':       { moduleName: 'Oggi' },
   // Non sono moduli: sono parti dell'impalcatura, e nessun cliente le sceglie.
   'auth':          { moduleName: null, why: 'accesso e registrazione, non un modulo' },
   'companies':     { moduleName: null, why: 'onboarding e impostazioni azienda' },

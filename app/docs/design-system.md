@@ -502,6 +502,34 @@ un `<label>` legato alla casella: si spunta cliccando la frase.
 ⚠️ Quando una riga diventa un `<a>`, il colore va riportato a `var(--ink)`:
 altrimenti la regola globale dei collegamenti tinge di blu tutto il contenuto.
 
+## La barra inferiore del telefono (Fase 3.1, 2026-09-10)
+
+Fino a 900 px la navigazione principale scende **sotto il pollice**: tre mete
+(Oggi, Scadenze e attività, Clienti), un'azione (il ✚) e la voce «Menu» che
+apre il cassetto di sempre. Sopra i 900 px non esiste: `display` lo decide la
+media query, e solo lei — niente JavaScript che mostra o nasconde.
+
+Le regole, tutte misurate nel file (`app.css`, blocco `.bottombar`):
+
+- **56 px di bersaglio** (`--bottombar-h`), icona sopra e parola sotto: la
+  parola dice la meta prima del gesto. Attiva solo per inchiostro e peso,
+  **senza fondo tenue**: la barra è stretta, un riempimento per voce la farebbe
+  a scacchi.
+- **Mai badge, mai contatori**: la barra è una porta, non un quadro
+  strumenti; un numero rosso lì chiederebbe attenzione a ogni sblocco.
+- **Il ✚ è l'unica AZIONE** e si veste da tale: tondo, pieno, 48 px, sollevato
+  di mezzo gradino. Apre un **foglio** (action sheet) che nasce in fondo e
+  copre la barra, su un velo che chiude al tocco ed Esc — non una pagina.
+- **La tacca di casa non copre i comandi**: `env(safe-area-inset-bottom)` si
+  AGGIUNGE all'altezza della barra. Perché il contenuto non finisca sotto, il
+  fondo di `.main` sul telefono è `--main-bottom-mobile` = altezza della barra
+  + un gradino di respiro + l'area sicura. Chi aggiunge una schermata nuova
+  non deve pensare alla barra: il margine c'è già.
+- **La scala di profondità del telefono** è assegnata una volta sola: top bar
+  40 · bottom bar 45 · velo del cassetto 55 · velo del foglio 56 · foglio 58 ·
+  cassetto 60 · toast 80. Un livello nuovo si conquista il suo numero qui, non
+  con un `z-index: 9999` nel proprio file.
+
 ## Il vocabolario della fiducia — le marcature
 
 Il vantaggio del prodotto è dire **da dove viene ogni affermazione** — e fino

@@ -15,7 +15,12 @@
   X-Frame-Options: DENY
 
   # Nessuna delle API sensibili del browser serve all'app: le neghiamo tutte.
-  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+  # ⚠️ ECCEZIONE dal 2026-09-10 (Fase 3.1): `microphone=(self)` — la dettatura
+  # della nota rapida (/oggi?nota=1&dettatura=1) è Web Speech API e parla con il
+  # servizio di riconoscimento del BROWSER: nessun audio transita sui nostri
+  # server. `(self)` ammette solo questa origine: un contenuto terzo, anche
+  # dentro l'app, il microfono continua a non averlo.
+  Permissions-Policy: geolocation=(), microphone=(self), camera=(), payment=(), usb=()
 
   # Solo HTTPS per un anno. Sicuro su pages.dev e sul dominio definitivo, che
   # nascono già in HTTPS: non esiste traffico http legittimo da rompere.
@@ -62,6 +67,20 @@
 # accorgersene fa fallire la CI, ed è lì che si legge questa nota.
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Le icone della PWA stanno in public/ come i caratteri: stessa disciplina.
+# Sono fissate per impronta da `npm run icons:check`; se un giorno si
+# rigenerano, si RINOMINANO (apple-180-v2.png) e si aggiornano manifest e
+# index.html — sostituire i byte a parità di nome lascerebbe i clienti con
+# l'icona vecchia per un anno.
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Il manifest cambia con le versioni dell'app (nome, icone, colori): come
+# index.html non deve restare in cache, o un telefono che ha già installato
+# l'app non vedrebbe mai l'icona nuova.
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
 
 # index.html invece NON va messo in cache: è il file che indica quale bundle
 # caricare. Se resta in cache, dopo un deploy l'utente continua a vedere la

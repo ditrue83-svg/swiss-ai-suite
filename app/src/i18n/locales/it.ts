@@ -143,6 +143,11 @@ export const it = {
       sistema: 'Sistema',
     },
     mainNav: 'Navigazione principale',
+    // La barra inferiore del telefono (Fase 3.1, 2026-09-10): `today` è la sua
+    // prima voce (la pagina /oggi), `bottomNav` l'aria-label — quella barra è
+    // una seconda navigazione e il lettore di schermo deve poterla nominare.
+    today: 'Oggi',
+    bottomNav: 'Navigazione rapida',
     openMenu: 'Apri il menu di navigazione',
     closeMenu: 'Chiudi il menu',
   },
@@ -383,6 +388,68 @@ export const it = {
       titleRequired: 'Inserisci un titolo per l’attività.',
     },
     priority: { high: 'alta', medium: 'media', low: 'bassa' },
+  },
+
+  // ---- Oggi (/oggi) — la home da mobilità (Fase 3.1, 0059) -------------------
+  // Tre domande di chi non è alla scrivania: cosa scade oggi, quale trattativa
+  // aspetta un prossimo passo, che numero ha questo cliente. NON una seconda
+  // Panoramica: niente KPI, la lista delle cose da fare adesso.
+  today: {
+    title: 'Oggi',
+    tasksTitle: 'In scadenza oggi',
+    tasksEmpty: 'Niente in scadenza oggi',
+    tasksEmptySub: 'Le attività con scadenza di oggi compaiono qui.',
+    allTasks: 'Vai a tutte le attività',
+    stepsTitle: 'Trattative in attesa di un prossimo passo',
+    stepsEmpty: 'Ogni trattativa aperta ha il suo prossimo passo.',
+    stepOverdue: 'In ritardo dal {date}',
+    stepMissing: 'Manca il prossimo passo',
+    stepSet: 'Imposta',
+    stepField: 'Prossimo passo',
+    stepPlaceholder: 'Es. Inviare il preventivo',
+    stepDate: 'Entro il',
+    stepSaved: 'Prossimo passo salvato',
+    callTitle: 'Chiama un cliente',
+    callSearch: 'Nome o ragione sociale',
+    callNoResults: 'Nessun cliente con questo nome.',
+    callNoPhone: 'Nessun numero di telefono registrato per {name}.',
+    callNow: 'Chiama',
+    callOpen: 'Apri la scheda',
+  },
+
+  // ---- Azioni rapide — il ✚ della barra inferiore (Fase 3.1, 2026-09-10) ----
+  // Il foglio offre GESTI, non luoghi: ogni voce porta a una rotta vera con il
+  // modulo già aperto (?nota=1, ?carica=1), così il gesto sopravvive a un
+  // ricaricamento e sta in un segnalibro.
+  quick: {
+    title: 'Azione rapida',
+    newNote: 'Nuova nota',
+    dictateNote: 'Detta una nota',
+  },
+
+  // ---- Nota rapida (il foglio del ✚ → /oggi?nota=1, Fase 3.1) ----------------
+  // Il cliente è OBBLIGATORIO: una nota salvata è una riga della cronologia di
+  // una scheda cliente, e una nota senza scheda è un ricordo che non si ritrova.
+  quicknote: {
+    title: 'Nota rapida',
+    client: 'Cliente',
+    clientSearch: 'Cerca il cliente…',
+    clientChange: 'Cambia',
+    clientNoResults: 'Nessun cliente con questo nome.',
+    opportunity: 'Trattativa',
+    opportunityNone: 'Nessuna trattativa',
+    subject: 'Oggetto',
+    subjectPlaceholder: 'Di che cosa si è parlato',
+    text: 'Testo',
+    textPlaceholder: 'Scrivi o detta la nota…',
+    dictate: 'Detta',
+    dictating: 'Ascolto… tocca per fermare',
+    structure: 'Struttura con AI',
+    structuring: 'Strutturo…',
+    // Il tono degli errori di invio: la colpa non è di chi scrive, e il testo
+    // NON è perso — la metà importante del messaggio è la seconda frase.
+    structureFailed: 'Non è stato possibile strutturare la nota. Il testo resta com’è: puoi salvarlo così o riprovare.',
+    saved: 'Nota salvata',
   },
 
   // ---- Archivio ------------------------------------------------------------
@@ -2215,7 +2282,7 @@ export const it = {
       overview: 'Panoramica', people: 'Persone', opportunities: 'Opportunità', tasks: 'Attività',
       communications: 'Comunicazioni', documents: 'Documenti', contracts: 'Contratti',
       finance: 'Finanze', history: 'Storico',
-      edit: 'Modifica', archive: 'Archivia', restore: 'Ripristina', merge: 'Unisci a un’altra scheda',
+      edit: 'Modifica', archive: 'Archivia', restore: 'Ripristina', call: 'Chiama', merge: 'Unisci a un’altra scheda',
       newTask: 'Nuova attività', linkItem: 'Collega un elemento',
       owner: 'Responsabile della relazione', roles: 'Ruoli', identifiers: 'Identificativi',
       address: 'Indirizzo', contactMethods: 'Recapiti', notes: 'Note interne',

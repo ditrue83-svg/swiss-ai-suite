@@ -243,6 +243,18 @@
      stesso tono ma più fondo, ne fa 3,94 su `--card` e 3,77 su `--bg`. */
   --focus: hsl(201, 88%, 42%);         /* anello del focus da tastiera */
   --topbar-h: 56px;
+  /* La barra inferiore del telefono (Fase 3.1, 2026-09-10): la stessa altezza
+     di quella superiore — i due bordi orizzontali della stessa tela. La usano
+     le voci della barra (min-height) e il fondo di `.main`, che la deve
+     lasciare scoperta: una misura sola, o i due conti divergono al primo
+     ritocco. */
+  --bottombar-h: 56px;
+  /* Il fondo di `.main` sul telefono: la barra inferiore è fissa e va lasciata
+     scoperta (la sua altezza + l'area sicura della tacca), poi il respiro di
+     sempre (--sp-12). UN token solo, perché lo stesso conto lo rifà
+     `--as-shell-y` della pagina «Chiedi»: due copie scritte a mano divergono —
+     è il difetto che la sezione 15 di test:shell-unit è nata per impedire. */
+  --main-bottom-mobile: calc(var(--bottombar-h) + var(--sp-12) + env(safe-area-inset-bottom));
 
   /* ⚠️ IL TEMA DEI CONTROLLI DEL SISTEMA, che i token non possono vestire.
      Barra di scorrimento, menu a tendina di una `select`, calendario di un
@@ -637,6 +649,74 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   .drawer .account-prefs .btn { min-height: 44px; }
 }
 
+/* ---- Bottom bar + foglio delle azioni rapide (Fase 3.1, 2026-09-10) --------
+   Su schermo stretto la navigazione era solo il cassetto dell'hamburger: due
+   tocchi per qualunque destinazione. Le mete di ogni giorno (Oggi, Attività,
+   Clienti) e il ✚ stanno ora sotto il pollice; tutto il resto resta nel
+   cassetto, che la voce «Menu» apre. Nascosta su desktop come la top bar:
+   `display` lo decide la media query, e solo lei.
+   La scala di profondità del telefono, con i numeri già assegnati:
+   top bar 40 · bottom bar 45 · velo del cassetto 55 · velo del foglio 56 ·
+   foglio 58 · cassetto 60 · toast 80. */
+.bottombar, .qsheet, .qsheet-overlay { display: none; }
+@media (max-width: 900px) {
+  .bottombar {
+    display: flex; align-items: stretch;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+    background: var(--card); border-top: 1px solid var(--line);
+    /* La tacca di casa (iPhone) non copre i comandi: l'area sicura si AGGIUNGE
+       all'altezza della barra, invece di mangiarsi l'ultima riga. */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Icona sopra, parola sotto: --bottombar-h dà al pollice 56px di bersaglio
+     (WCAG 2.2 ne chiede 44), la parola dice la meta prima del gesto. */
+  .bb-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: var(--sp-05); min-height: var(--bottombar-h);
+    background: none; border: none; border-radius: 0;
+    color: var(--ink-soft); font-size: var(--fs-meta); font-weight: 500; text-decoration: none;
+  }
+  .bb-item .ic { color: var(--muted); }
+  /* Attivo come nella colonna laterale (stesso inchiostro) ma SENZA il fondo
+     tenue: la barra è stretta, e un riempimento per voce la farebbe a scacchi. */
+  .bb-item.active { color: var(--accent-text); font-weight: 600; }
+  .bb-item.active .ic { color: var(--accent-text); }
+  /* Il ✚ è l'unica AZIONE della barra e si veste da tale: tondo, pieno,
+     sollevato di mezzo gradino sopra la barra. 48px perché è il bersaglio che
+     si preme di più; --on-accent sopra --accent è la coppia misurata in :root. */
+  .bb-fab {
+    align-self: center; width: 48px; height: 48px; margin: 0 var(--sp-2);
+    border: none; border-radius: 50%; background: var(--accent); color: var(--on-accent);
+    display: grid; place-items: center; box-shadow: var(--shadow-md);
+    transform: translateY(calc(-1 * var(--sp-2)));
+  }
+  .bb-fab .ic { color: var(--on-accent); }
+  /* Il foglio è un action sheet: nasce in fondo e COPRE la barra (così la sua
+     altezza non serve conoscerla), su un velo che chiude al tocco. */
+  .qsheet-overlay { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 56; }
+  .qsheet {
+    display: block; position: fixed; z-index: 58;
+    left: var(--sp-2); right: var(--sp-2);
+    bottom: calc(env(safe-area-inset-bottom) + var(--sp-2));
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: var(--sp-2);
+  }
+  .qsheet-title {
+    padding: var(--sp-2) var(--sp-3);
+    font-size: var(--fs-label); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--muted);
+  }
+  /* Righe da dito anche qui: il foglio si apre con il pollice e con il pollice
+     si sceglie — 44px come i comandi del cassetto. */
+  .qsheet-action {
+    display: flex; align-items: center; gap: var(--sp-3); width: 100%;
+    min-height: 44px; padding: var(--sp-2) var(--sp-3);
+    background: none; border: none; border-radius: var(--radius-sm);
+    color: var(--ink); font-size: var(--fs-body); font-weight: 500; text-align: left;
+  }
+  .qsheet-action:hover { background: var(--bg); }
+  .qsheet-action .ic { color: var(--muted); }
+}
+
 /* La cornice della tela: lati più larghi del sopra (in orizzontale il vuoto
    si percepisce più stretto), fondo a --sp-12 come nei breakpoint stretti —
    era un 64px solo-desktop, deciso a schermo il 2026-08-10. */
@@ -718,7 +798,12 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
    issue #83): la prima la usa solo `features/crm/`, la seconda solo
    `features/pricing/`. Trovate nella ricognizione finale del lotto 6;
    `.grid-2` RESTA globale perché condivisa. */
-@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } .main { padding: var(--sp-6) var(--sp-4) var(--sp-12); } }
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  /* Il fondo di `.main` lascia scoperta la barra inferiore e poi respira come
+     prima: il conto (barra + tacca + --sp-12) sta nel token, scritto una volta. */
+  .main { padding: var(--sp-6) var(--sp-4) var(--main-bottom-mobile); }
+}
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; font-size: var(--fs-body); transition: background var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast); }
 .btn:hover { border-color: var(--line-strong); background: var(--bg); }
@@ -1432,7 +1517,7 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
 /* ---------- responsive fine (<600px) ---------- */
 @media (max-width: 600px) {
   body { font-size: var(--fs-body); }
-  .main { padding: var(--sp-4) var(--sp-4) var(--sp-12); }
+  .main { padding: var(--sp-4) var(--sp-4) var(--main-bottom-mobile); }
   .page-title { font-size: var(--fs-h1); }
   /* `.greeting { font-size: var(--fs-h1); }` è migrata il 2026-08-28 in
      `src/features/dashboard/dashboard.module.css` (CSS Modules, issue #83),
@@ -1668,6 +1753,11 @@ p a, .muted-sm a, .footnote a, .warn-box a, .info-box a, .auth-sub a, .legal-not
   .topbar,
   .drawer,
   .drawer-overlay,
+  /* La barra inferiore e il suo foglio (Fase 3.1): comandi del telefono,
+     sulla carta sarebbero inviti a premere ciò che non si può premere. */
+  .bottombar,
+  .qsheet,
+  .qsheet-overlay,
   .nav,
   .nav-btn,
   .company-switch,

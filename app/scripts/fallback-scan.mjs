@@ -282,12 +282,15 @@ function tuttiIFile(dir) {
 //     193 → 147   un grep, ma CIECO su `email/store.ts` (il byte NUL)
 //     137         la prima stesura di questo file, a regex, che ne mancava ~28%
 //     190 → 175   questo, col parser TypeScript; il secondo numero segue D-13
+//     175 → 176   2026-09-10: il gate membership di `structure-note` non lega
+//                 `error` DI PROPOSITO — con la RLS «nessuna riga» e «non sei
+//                 dei loro» coincidono, la stessa scelta di `assertAdmin`
 // Vale l'ultimo, e vale perché lo si rifà.
 // ---------------------------------------------------------------------------
 export const ATTESI = {
-  totale: 175,
+  totale: 176,
   quando: '2026-09-01, col parser TypeScript, dopo la rimozione D-13 — compreso `email/store.ts`, '
-    + 'che resta nel perimetro misurato',
+    + 'che resta nel perimetro misurato; +1 il 2026-09-10 per il gate membership di `structure-note`',
 };
 
 // ---------------------------------------------------------------------------

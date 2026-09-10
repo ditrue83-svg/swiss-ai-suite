@@ -55,6 +55,10 @@ const admin = createClient(URL, KEY, { auth: { persistSession: false } });
 const TABELLE = [
   'company_members', 'crm_organizations', 'crm_organization_roles',
   'crm_opportunities', 'contracts', 'workflow_definitions',
+  // /oggi (0059): attività che scadono oggi e una persona col telefono, più le
+  // interazioni se durante la prova si salva una nota rapida dalla schermata.
+  'tasks', 'crm_contacts', 'crm_contact_methods', 'crm_contact_organizations',
+  'crm_interactions',
 ];
 
 const ok = (e, dove) => { if (e) throw new Error(`${dove}: ${e.message}`); };
@@ -144,6 +148,46 @@ async function semina(email) {
       value_amount: o.importo, value_currency: 'CHF',
       next_step: o.passo, next_step_due_date: o.scadenza, expected_close_date: o.chiusura,
     })).error, `opportunità ${o.titolo}`);
+  }
+
+  // --- Le persone, coi RECAPITI: /oggi e la scheda cliente offrono «Chiama»
+  //     sul numero che sceglie `scegliTelefono`, e una schermata vuota non lo
+  //     mostra. Primaria con mobile, secondaria con fisso, e una ARCHIVIATA
+  //     che NON deve comparire: sono i tre casi della regola.
+  const PERSONE = [
+    { i: 0, nome: 'Laura Bertoli', ruolo: 'Titolare', primaria: true, metodi: [['mobile', '+41 79 555 01 12'], ['email', 'laura.bertoli@example.ch']] },
+    { i: 0, nome: 'Marco Bertoli', ruolo: 'Ufficio tecnico', primaria: false, metodi: [['phone', '+41 91 555 34 08']] },
+    { i: 1, nome: 'Sara Moretti', ruolo: 'Amministrazione', primaria: true, archiviata: true, metodi: [['mobile', '+41 76 555 77 21']] },
+  ];
+  for (const p of PERSONE) {
+    const { data: contatto, error: ce2 } = await admin.from('crm_contacts').insert({
+      company_id: C, display_name: p.nome,
+      archived_at: p.archiviata ? new Date().toISOString() : null,
+    }).select('id').single();
+    ok(ce2, `contatto ${p.nome}`);
+    ok((await admin.from('crm_contact_organizations').insert({
+      company_id: C, contact_id: contatto.id, organization_id: org[p.i],
+      job_title: p.ruolo, is_primary: p.primaria,
+    })).error, `legame ${p.nome}`);
+    ok((await admin.from('crm_contact_methods').insert(
+      p.metodi.map(([type, value]) => ({
+        company_id: C, contact_id: contatto.id, type, value, is_primary: true,
+      })),
+    )).error, `recapiti ${p.nome}`);
+  }
+
+  // --- Le attività di /oggi: DUE che scadono oggi (una urgente) e una DOMANI,
+  //     che nella vista «today» NON deve comparire — è la controprova a schermo.
+  const TASKS = [
+    { titolo: 'Chiamare Laura Bertoli per l’offerta rivista', priorita: 'high', scadenza: giorni(0) },
+    { titolo: 'Inviare il preventivo al Comune di Massagno', priorita: 'medium', scadenza: giorni(0) },
+    { titolo: 'Rinnovo assicurazione RC: richiedere la polizza', priorita: 'low', scadenza: giorni(1) },
+  ];
+  for (const a of TASKS) {
+    ok((await admin.from('tasks').insert({
+      company_id: C, created_by: u.id, assignee_user_id: u.id, title: a.titolo,
+      status: 'open', priority: a.priorita, source: 'manual', due_date: a.scadenza,
+    })).error, `attività ${a.titolo}`);
   }
 
   // --- Contratti: cinque tipi diversi, perché l'etichetta del tipo è una delle

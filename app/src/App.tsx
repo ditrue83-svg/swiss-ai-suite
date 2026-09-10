@@ -18,6 +18,7 @@ import { HomePage } from '@/features/dashboard/HomePage';
 import { AssistantPage } from '@/features/assistant/AssistantPage';
 import { TasksPage } from '@/features/tasks/TasksPage';
 import { TaskDetailPage } from '@/features/tasks/TaskDetailPage';
+import { TodayPage } from '@/features/today/TodayPage';
 import { CalendarPage } from '@/features/calendar/CalendarPage';
 import { CalendarSettingsPage } from '@/features/calendar/CalendarSettingsPage';
 import { InboxPage } from '@/features/inbox/InboxPage';
@@ -117,6 +118,10 @@ export default function App() {
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/inbox/account" element={<EmailAccountsPage />} />
             <Route path="/attivita" element={<TasksPage />} />
+            {/* Oggi (Fase 3.1): la home da mobilità — tre domande di chi non è
+                alla scrivania, non una seconda Panoramica. Le sezioni CRM
+                compaiono solo a moduli attivi (D-10), dentro la pagina. */}
+            <Route path="/oggi" element={<TodayPage />} />
             <Route path="/attivita/:id" element={<TaskDetailPage />} />
             {/* I vecchi collegamenti allo Scadenziario devono continuare a
                 funzionare: sono in email, appunti e segnalibri delle persone.

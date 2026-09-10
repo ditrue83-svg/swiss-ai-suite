@@ -131,6 +131,10 @@ export const de: Dictionary = {
       sistema: 'System',
     },
     mainNav: 'Hauptnavigation',
+    // Die untere Leiste des Telefons (Fase 3.1, 2026-09-10): `today` ist ihre
+    // erste Stimme (die Seite /oggi), `bottomNav` das aria-label.
+    today: 'Heute',
+    bottomNav: 'Schnellnavigation',
     openMenu: 'Navigationsmenü öffnen',
     auditLog: 'Aktivitätsprotokoll',
     closeMenu: 'Menü schliessen',
@@ -357,6 +361,62 @@ export const de: Dictionary = {
       titleRequired: 'Bitte geben Sie einen Titel für die Aufgabe ein.',
     },
     priority: { high: 'hoch', medium: 'mittel', low: 'niedrig' },
+  },
+
+  // ---- Oggi (/oggi) — la home da mobilità (Fase 3.1, 0059) -------------------
+  today: {
+    title: 'Heute',
+    tasksTitle: 'Heute fällig',
+    tasksEmpty: 'Heute fällt nichts an',
+    tasksEmptySub: 'Aufgaben mit heutiger Frist erscheinen hier.',
+    allTasks: 'Zu allen Aufgaben',
+    stepsTitle: 'Geschäfte, die auf einen nächsten Schritt warten',
+    stepsEmpty: 'Jedes offene Geschäft hat seinen nächsten Schritt.',
+    stepOverdue: 'Überfällig seit {date}',
+    stepMissing: 'Nächster Schritt fehlt',
+    stepSet: 'Festlegen',
+    stepField: 'Nächster Schritt',
+    stepPlaceholder: 'Z. B. Offerte senden',
+    stepDate: 'Bis am',
+    stepSaved: 'Nächster Schritt gespeichert',
+    callTitle: 'Kunden anrufen',
+    callSearch: 'Name oder Firma',
+    callNoResults: 'Kein Kunde mit diesem Namen.',
+    callNoPhone: 'Keine Telefonnummer für {name} erfasst.',
+    callNow: 'Anrufen',
+    callOpen: 'Karte öffnen',
+  },
+
+  // ---- Schnellaktionen — das ✚ der unteren Leiste (Fase 3.1, 2026-09-10) ----
+  // Das Blatt bietet GESTEN, keine Orte: jede Stimme führt zu einer echten
+  // Route mit bereits offenem Formular (?nota=1, ?carica=1).
+  quick: {
+    title: 'Schnellaktion',
+    newNote: 'Neue Notiz',
+    dictateNote: 'Notiz diktieren',
+  },
+
+  // ---- Kurznotiz (Blatt des ✚ → /oggi?nota=1, Fase 3.1) ----------------------
+  // Der Kunde ist PFLICHT: eine gespeicherte Notiz ist eine Zeile im Verlauf
+  // einer Kundenkarte; eine Notiz ohne Karte findet niemand wieder.
+  quicknote: {
+    title: 'Kurznotiz',
+    client: 'Kunde',
+    clientSearch: 'Kunden suchen…',
+    clientChange: 'Ändern',
+    clientNoResults: 'Kein Kunde mit diesem Namen.',
+    opportunity: 'Geschäft',
+    opportunityNone: 'Kein Geschäft',
+    subject: 'Betreff',
+    subjectPlaceholder: 'Worum es ging',
+    text: 'Text',
+    textPlaceholder: 'Notiz schreiben oder diktieren…',
+    dictate: 'Diktieren',
+    dictating: 'Ich höre… Tippen zum Stoppen',
+    structure: 'Mit KI strukturieren',
+    structuring: 'Strukturiere…',
+    structureFailed: 'Die Notiz konnte nicht strukturiert werden. Der Text bleibt, wie er ist: Speichern Sie ihn so oder versuchen Sie es erneut.',
+    saved: 'Notiz gespeichert',
   },
 
   documents: {
@@ -2076,7 +2136,7 @@ export const de: Dictionary = {
       overview: 'Überblick', people: 'Personen', opportunities: 'Verkaufschancen', tasks: 'Aufgaben',
       communications: 'Kommunikation', documents: 'Dokumente', contracts: 'Verträge',
       finance: 'Finanzen', history: 'Verlauf',
-      edit: 'Bearbeiten', archive: 'Archivieren', restore: 'Wiederherstellen',
+      edit: 'Bearbeiten', archive: 'Archivieren', restore: 'Wiederherstellen', call: 'Anrufen',
       merge: 'Mit einem anderen Eintrag zusammenführen',
       newTask: 'Neue Aufgabe', linkItem: 'Element verknüpfen',
       owner: 'Verantwortlich für die Beziehung', roles: 'Rollen', identifiers: 'Kennungen',

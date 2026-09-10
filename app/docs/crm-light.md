@@ -294,6 +294,25 @@ sono revocate ad `anon`.
 Lo storico dei passaggi conserva **da dove** e **verso dove**: senza il «da», la
 domanda «questa trattativa è tornata indietro?» non ha risposta.
 
+### La home da mobilità /oggi (0059, Fase 3.1)
+
+`/oggi` elenca le trattative aperte che aspettano un prossimo passo — prima le
+scadute dalla data più lontana, poi quelle senza passo dalla meno recente — e
+il passo si **scrive da lì**: è il primo uso di `updateOpportunity` fuori dalla
+scheda. Come altrove, il passo lo decide una persona: la pagina propone il
+lavoro, non lo svolge.
+
+Due regole di casa, ribadite dalla pagina:
+
+- **«quale numero si offre» è regola del CRM**, non di /oggi:
+  `scegliTelefono` vive in `crmModel.ts` e serve sia la ricerca «Chiama un
+  cliente» sia il «Chiama» in testata alla scheda — il referente principale
+  prima, una persona archiviata mai. UNA regola, due porte.
+- **la nota rapida è una `crm_interactions`** (tipo `note`): il cliente è
+  obbligatorio, la trattativa facoltativa; anche dettata, il testo resta
+  editabile e non si invia da solo. «Struttura con AI» riscrive i campi della
+  finestra, non il database (§35).
+
 ### Sequenze di follow-up (0050, Fase 1.3)
 
 Una sequenza è configurazione dell'azienda, non codice: nome, fase aperta

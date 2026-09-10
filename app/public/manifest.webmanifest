@@ -1,0 +1,21 @@
+{
+  "name": "AI-Swisse — Admin AI per le PMI svizzere",
+  "short_name": "AI-Swisse",
+  "description": "AI-Swisse trasforma lettere e moduli di Confederazione, Cantoni e Comuni in azioni concrete: spiegazioni semplici, scadenze e checklist.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "/icons/any-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/any-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

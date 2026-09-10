@@ -261,6 +261,11 @@ const GROUPS = {
       // binario — il sottoinsieme «latin» di Google non ha U+202F, lo spazio
       // che tutto il francese usa — dove nessuna rilettura del codice arriva.
       { script: 'fonts:check' },
+      // Fratello di `fonts:check` sulle icone della PWA: altri binari
+      // committati, stessa domanda — «sono i byte verificati, e chi li cita
+      // punta davvero a loro?». In più la zona sicura della maskable e
+      // l'opacità della touch-icon si MISURANO sui pixel, non si dichiarano.
+      { script: 'icons:check' },
       // Il MARCHIO, che vive in due repository e fino al 2026-08-14 era
       // disegnato in tre modi diversi nella stessa pagina (barra in Inter,
       // favicon con un riquadro suo, vetrina con l'artefatto vero). Confronta i
@@ -351,6 +356,9 @@ const GROUPS = {
       // cornice. Entrambi trovati confrontando l'elenco col codice vero.
       { script: 'i18n:orphans:self-test' },
       { script: 'fonts:check:self-test' },
+      // Le icone PWA si provano sui casi che DEVONO reagire: segno fuori zona
+      // sicura, pixel con alfa nella touch-icon, manifest senza maskable.
+      { script: 'icons:check:self-test' },
       // ⚠️ L'autoverifica di `brand:check` conta DOPPIO qui: dall'albero di
       // sviluppo il controllo vero non trova la vetrina e non confronta niente,
       // quindi senza questa riga il suo rilevatore non sarebbe provato da
@@ -382,6 +390,12 @@ const GROUPS = {
       { script: 'test:ai-json-parser-unit' },
       { script: 'test:inbox-unit' },
       { script: 'test:tasks-unit' },
+      // Il modello puro di «Oggi» (Fase 3.1): quale telefono si offre e in
+      // che ordine stanno le trattative — regole provate senza schermo.
+      { script: 'test:today-unit' },
+      // Il contratto di «Struttura con AI» (Fase 3.1): la richiesta al modello
+      // e il validatore della risposta, provati senza spendere una chiamata.
+      { script: 'test:note-unit' },
       { script: 'test:documents-unit' },
       { script: 'test:calendar-unit' },
       // Il motore di sincronizzazione ESEGUITO contro finzioni: è la suite che

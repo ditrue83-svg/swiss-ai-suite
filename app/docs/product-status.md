@@ -365,6 +365,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
 | Contratti | `/contratti` | sì | sì | sì | sì | sì | parziale | Anthropic | ⛔ **Il tasso per campo è NON MISURABILE al 2026-08-15**: la rilettura è stata chiesta e **saltata**, perché `eval:contracts` spende credito e il credito è esaurito (rimisurato oggi). Storico, non sostituito: ✅ **letti tre contratti verosimili il 2026-08-03** (locazione it, fornitura de, mandato fr), `npm run eval:contracts`: **70 campi esatti su 79 — 88,6 %**, tasso per campo qui sotto — misura di PRIMA della correzione delle date. ⚠️ **Il prompt NON era il problema**: due difetti erano nel nostro codice e sono corretti (nome dell'azienda mai letto, numerale composto letto sbagliato). ⚠️ **Restano 9 campi rossi, 7 dei quali sono la stessa cosa**: le date scritte a parole non vengono convertite (§sotto). ✅ **Le correzioni sono DEPLOYATE dal 2026-08-09** (`contract-worker` v19). ⚠️ **La rilettura dal capo alla coda resta non eseguibile** (credito esaurito, rimisurato il 2026-08-15). In produzione `contract_extractions` è a **0 righe**, rimisurato il 2026-08-15: nessun contratto di un'azienda reale è mai stato letto — le esecuzioni dell'eval creano e cancellano la loro azienda tecnica, quindi non lasciano verbali. Rieseguite il **2026-08-15** le prove che non spendono credito, invariate: `test:contracts` **69/69** sul database vero, `eval:contracts --self-test` **8/8** |
 | Clienti | `/clienti` | sì | — | sì | sì | sì | sì | Zefix (facoltativo), Resend per email | L'abbinamento automatico propone e non collega mai da solo. Import CSV e campi personalizzati sono applicati e provati. ✅ **Preventivi PDF (0049, Fase 1.2)**: migrazione applicata, `generate-crm-quote` ACTIVE v1 e `send-crm-email` ACTIVE v4. ✅ **Sequenze follow-up (0050, Fase 1.3)**: migrazione applicata e `automation-worker` ridistribuito il 2026-09-01; configurazione per fase e passi, silenzio misurato da `direction`, attività + notifica e template solo proposto. Nessun invio automatico. Verifiche: `test:crm-unit` **254/254**, `test:workflows-unit` **151/151**, `test:crm` **191/191** sul database reale con pulizia verificata. La UI autenticata delle sequenze a 375 px e nei temi chiaro/scuro resta da verificare sul frontend pubblicato. |
 | Chiedi ad AI-Swisse | `/assistente` | sì | sì | sì | **sì** | sì | sì | Anthropic | `eval:assistant` chiudeva **15/16** con un caso diverso a ogni esecuzione; la causa era un difetto del **seed** (una versione dei termini duplicata, con l'errore scartato). ✅ **Rieseguita la sera del 2026-07-31 con `--runs 3`: 16/16, tutte e 48 le esecuzioni verdi.** ⚠️ Verde non vuol dire deterministico: su due casi l'ESITO cambia fra un giro e l'altro (vedi la sezione dedicata). Sola lettura, retention 180 giorni attiva |
+| Oggi | `/oggi` | sì | — | sì | sì | sì | **no** | Anthropic (struttura nota), Web Speech API del browser (dettatura) | Nel branch `improve/mobile-pwa` fino all'unione e al deploy del frontend; la migrazione 0059 e `structure-note` (v1, gate JWT dichiarato) sono in produzione — ✅ **prova reale superata il 2026-09-10**: 401 senza sessione, contratto {subject, notes} rispettato con la sessione del pilota. La dettatura non esiste su Firefox: il microfono non compare, il resto funziona |
 
 ### Sequenze CRM 0050 — stato distinto al 2026-09-01
 
@@ -446,6 +447,41 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
   da email reali e restano in attesa di una decisione umana. La suite ha
   confermato abbinamento esatto, nuova scheda, esclusione della posta massiva,
   idempotenza, divieto di chiamata dal browser e pulizia senza residui.
+
+### Fase 3.1 — /oggi, PWA e la home da mobilità (branch `improve/mobile-pwa`, misurato il 2026-09-10)
+
+- **Implementato:** sì — manifest e icone PWA verificate sui pixel
+  (`icons:check`), service worker minimale a contratto, migrazione 0059 (vista
+  «today» di `list_tasks`: scade oggi, non fatta, non archiviata; le scadute
+  restano a «overdue»), pagina `/oggi`, barra inferiore con foglio ✚, nota
+  rapida con dettatura, edge function `structure-note`, «Chiama» in scheda
+  cliente. La regola «quale numero si offre» vive in `crmModel.scegliTelefono`:
+  UNA regola, due porte (/oggi e la scheda), contata dalla sezione 27 di
+  `test:shell-unit`.
+- **Deployato:** la migrazione 0059 è applicata al progetto Supabase collegato
+  e `structure-note` è deployata dal 2026-09-10 (v1, gate JWT dichiarato in
+  `config.toml` come gli altri percorsi AI; `verify:deploy` verde). Prova
+  reale superata lo stesso giorno: 401 senza sessione, e con la sessione del
+  pilota la funzione distribuita risponde col contratto {subject, notes}.
+  ⚠️ Il frontend NON è deployato: il branch attende l'unione.
+- **Testato offline:** sì — `test:today-unit` 18/18, `test:note-unit` 18/18,
+  `test:shell-unit` 560/560 (sezioni 24–27 nuove); `test:all` verde nei quattro
+  gruppi quality, unit, db e production il 2026-09-10, dopo due riparazioni
+  trovate dalla qualità stessa: i PNG delle icone non erano fra i binari
+  dichiarati di `bytes:check` (`e6912c5`) e il conteggio di `fallback:scan` è
+  salito a 176 per il gate membership di `structure-note`, voluto (`e15f0e4`).
+- **Sul database reale:** sì — `test:tasks` 35/35 con la vista «today» applicata.
+- **Provato a schermo:** sì — 2026-09-10, tenant usa-e-getta seminato e rimosso
+  (residui zero su undici tabelle), sessione autenticata via magic link con
+  Playwright: /oggi a 375 px in chiaro e scuro e in italiano, tedesco e
+  francese, il foglio ✚, la nota rapida con gli stati disabilitati corretti
+  (niente salvataggio senza cliente, niente AI senza testo), la scheda cliente
+  col «Chiama» in testata, 1440 px senza barra inferiore, e l'ultima carta
+  interamente sopra la barra in fondo alla pagina. Zero errori console in ogni
+  contesto. NON provato: la dettatura vera al microfono (Web Speech API non è
+  automatizzabile) e l'installazione PWA su un telefono vero.
+- **Disponibile a clienti esterni:** no — finché il branch non è unito e
+  pubblicato.
 
 ## Registro attività (0039) — applicato, provato sul database vero e DEPLOYATO il 2026-08-09
 
@@ -2092,10 +2128,10 @@ guasto sparisce e `data` vale `null` esattamente come quando la riga non c'è.
 
 | Forma | Punti |
 |---|---|
-| **l'errore non viene nemmeno chiesto** — la destrutturazione non prende `error`: è irraggiungibile | 77 |
+| **l'errore non viene nemmeno chiesto** — la destrutturazione non prende `error`: è irraggiungibile | 78 |
 | **il risultato non viene raccolto** — `await sb…` come istruzione a sé: l'oggetto `{data, error}` è distrutto appena creato | 81 |
 | **l'errore è lì e non lo guarda nessuno** — il risultato è legato per intero, ma in tutta la funzione non c'è una lettura di `.error` | 17 |
-| **TOTALE**, in 30 file su 95 | **175** |
+| **TOTALE**, in 31 file su 100 | **176** |
 
 ⚠️ **Alcuni punti restano FUORI da questo numero, ed è una scelta.** Sono quelli
 in cui l'errore *è* letto e poi collassato su un valore plausibile — `if (error
@@ -2107,7 +2143,7 @@ falsi positivi non lo si può usare come cricca. Fuori anche l'errore guardato
 solo attraverso un campo (`if (code && code !== '23505')`), di cui ce n'è uno
 vero in `upsertMessage`.
 
-⚠️⚠️ **E QUESTO 175 NON SI SOTTRAE AL 147, né al 189.** Sono misure con criteri
+⚠️⚠️ **E QUESTO 176 NON SI SOTTRAE AL 147, né al 189.** Sono misure con criteri
 diversi, e mescolarle sarebbe il terzo errore della stessa famiglia:
 
 | | Punti | |
@@ -2115,7 +2151,7 @@ diversi, e mescolarle sarebbe il terzo errore della stessa famiglia:
 | triage a otto letture parallele | 189 | criteri di ciascun lettore |
 | un `grep`, il 2026-08-11 | 193 → 147 | **cieco su `email/store.ts`** |
 | la prima stesura di `fallback:scan`, a regex | 137 | ne mancava circa il 28% |
-| **`npm run fallback:scan`, col parser** | **190 → 175** | il secondo valore segue la rimozione D-13; regole scritte ed eseguibili |
+| **`npm run fallback:scan`, col parser** | **190 → 175 → 176** | il secondo valore segue la rimozione D-13; il +1 del 2026-09-10 è il gate membership di `structure-note`, voluto — la stessa scelta di `assertAdmin` |
 
 ⚠️ **La stesura a regex è durata mezz'ora e va raccontata, perché ha ripetuto lo
 stesso errore in piccolo.** Contava 137 e ne mancava più di un quarto: non vedeva

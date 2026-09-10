@@ -2307,12 +2307,15 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   // ⚠️ È il difetto che questo controllo nasce per non far tornare: `94px` con
   // accanto un commento «30 + 64» quando i token facevano 80, e sotto i 900px
   // 68 dichiarati dove ne servivano 128 (la barra in cima non era contata).
+  // Dal 2026-09-10 (Fase 3.1) sotto i 900px il fondo di `.main` è il token
+  // `--main-bottom-mobile` — bottom bar fissa + area sicura + --sp-12 — scritto
+  // UNA volta in :root proprio perché il conto qui e là resti lo stesso.
   const PUNTI: [string, string, string[]][] = [
     ['schermo largo', gPage, ['--sp-8', '--sp-12']],
     ['fino a 900px', regola('.as-page', bloccoMedia('900px', assistant, '--as-shell-y')),
-      ['--topbar-h', '--sp-6', '--sp-12']],
+      ['--topbar-h', '--sp-6', '--main-bottom-mobile']],
     ['fino a 600px', regola('.as-page', bloccoMedia('600px', assistant, '--as-shell-y')),
-      ['--topbar-h', '--sp-4', '--sp-12']],
+      ['--topbar-h', '--sp-4', '--main-bottom-mobile']],
   ];
   for (const [dove, corpo, attesi] of PUNTI) {
     const usati = tokenDi(dichiarazione(corpo, '--as-shell-y'));
@@ -3239,6 +3242,233 @@ section('23. Una sola aritmetica dei giorni — nessuna copia che divida istanti
     definizioni.length === 1, definizioni.join(', '));
   check('e quel posto è `_shared`, raggiungibile dai due runtime',
     definizioni[0] === 'supabase/functions/_shared/calendarDays.ts', String(definizioni[0]));
+}
+
+section('24. Il service worker — la prima cache del progetto, a contratto');
+
+// ⚠️ PERCHÉ A CONTRATTO (2026-09-10, Fase 3.1). `public/sw.js` è la PRIMA
+// cache che questo progetto introduce: fino a quel giorno ogni byte arrivava
+// dalla rete a ogni visita. Una cache scritta male non fallisce in revisione
+// — fallisce sul telefono del cliente una settimana dopo, mostrando la
+// versione di una app che non esiste più. Quello che il worker promette sta
+// scritto nella sua testata; qui si pretende che il codice la mantenga,
+// perché «network-first» in un commento e cache-first nel codice sarebbero
+// la stessa bugia di una scala tipografica raccontata e mai misurata.
+{
+  const sw = readFileSync(join(root, 'public/sw.js'), 'utf8');
+  const swNudo = sw.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1');
+  const pwa = readFileSync(join(root, 'src/lib/pwa.ts'), 'utf8');
+  const ingresso = readFileSync(join(root, 'src/main.tsx'), 'utf8');
+
+  check('il worker esiste ed è servito dalla radice (public/sw.js)',
+    existsSync(join(root, 'public/sw.js')));
+
+  check('la cache ha una VERSIONE dichiarata, e la testata ricorda di alzarla',
+    /const VERSIONE_CACHE = '[a-z0-9-]+-v\d+'/.test(swNudo)
+    && sw.includes('si incrementa VERSIONE_CACHE'));
+
+  check('il worker tocca solo GET e solo la propria origine',
+    swNudo.includes("request.method !== 'GET'")
+    && swNudo.includes('url.origin !== self.location.origin'));
+
+  // L'ORDINE è il contratto: nel ramo di navigazione la RETE viene prima
+  // della cache; nel ramo degli asset immutabili il contrario.
+  const ramoNav = swNudo.split("request.mode === 'navigate'")[1] ?? '';
+  check('le navigazioni sono network-first (la cache è il paracadute)',
+    ramoNav.includes('fetch(request)')
+    && ramoNav.indexOf('fetch(request)') < ramoNav.indexOf("caches.match('/')"),
+    ramoNav.includes('fetch(request)') ? '' : 'ramo navigazione assente');
+
+  const ramoAsset = swNudo.split('PERCORSI_IMMODIFICABILI.test')[1] ?? '';
+  check('gli asset immutabili sono cache-first (hash nel nome, disciplina _headers)',
+    ramoAsset.includes('caches.match(request)')
+    && ramoAsset.indexOf('caches.match(request)') < ramoAsset.indexOf('fetch(request)'));
+
+  check('il worker nuovo sostituisce il vecchio subito, e svuota le cache morte',
+    swNudo.includes('self.skipWaiting()')
+    && swNudo.includes('self.clients.claim()')
+    && swNudo.includes('caches.delete'));
+
+  // ⚠️ Supabase non si tocca: né le chiamate dati né le Edge Function possono
+  // passare da una cache. Il divieto vero sta nel controllo d'origine, ma qui
+  // si pretende che NESSUNA stringa del sorgente — nemmeno per sbaglio in un
+  // futuro ramo nuovo — nomini l'host dei dati.
+  check('nessun ramo del worker nomina l’origine dei dati',
+    !swNudo.includes('supabase'));
+
+  check('la registrazione è solo in produzione e solo dove l’API esiste',
+    pwa.includes('import.meta.env.PROD') && pwa.includes("'serviceWorker' in navigator"));
+
+  check('il ricaricamento all’aggiornamento è UNA VOLTA, e mai al primo avvio',
+    pwa.includes('controllerchange')
+    && pwa.includes('controller !== null')
+    && pwa.includes('ricaricato'));
+
+  check('`registerServiceWorker` è chiamata davvero, nel punto di ingresso',
+    ingresso.includes('registerServiceWorker();'));
+}
+
+section('25. La barra inferiore del telefono — le mete sotto il pollice, a contratto');
+
+// ⚠️ PERCHÉ A CONTRATTO (Fase 3.1, 2026-09-10). La bottom bar è il secondo
+// sistema di navigazione dell'app: se si rompe, sul telefono non resta che il
+// cassetto — cioè si torna ai due tocchi per ogni destinazione da cui si
+// veniva. Le promesse sono nella testata di BottomBar.tsx; qui si pretende
+// che il codice le mantenga: le stesse voci, lo stesso divieto di contatori
+// di `nav.ts`, la dettatura che compare solo dove può funzionare.
+{
+  const shell = readFileSync(join(root, 'src/components/layout/AppShell.tsx'), 'utf8');
+  const barra = readFileSync(join(root, 'src/components/layout/BottomBar.tsx'), 'utf8');
+  // Il codice SENZA i commenti: una parola proibita detta in una spiegazione
+  // non è una violazione — è la lezione del token fantasma di design:lint.
+  const barraNuda = barra.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1');
+  const dett = readFileSync(join(root, 'src/lib/dettatura.ts'), 'utf8');
+  const admin = readFileSync(join(root, 'src/features/admin-ai/AdminAIPage.tsx'), 'utf8');
+  const css = leggiCss('src/styles/app.css');
+
+  check('la shell monta la barra, una volta sola',
+    (shell.match(/<BottomBar\b/g) ?? []).length === 1
+    && shell.includes("from './BottomBar'"));
+
+  check('la voce «Menu» della barra apre lo stesso cassetto dell’hamburger',
+    shell.includes('onMenu={() => setDrawerOpen(true)}'));
+
+  check('le mete di ogni giorno: /oggi e /attivita, con /calendario acceso',
+    barraNuda.includes("path: '/oggi'")
+    && barraNuda.includes("path: '/attivita'")
+    && barraNuda.includes("alsoMatches: ['/calendario']"));
+
+  check('«Clienti» segue i moduli legacy (D-10), come nella colonna laterale',
+    barraNuda.includes('LEGACY_MODULES_ENABLED') && barraNuda.includes("path: '/clienti'"));
+
+  // La regola scritta in testa a `nav.ts` vale anche sotto: un numero in barra
+  // è una query in più per ogni cambio pagina. La campanella e il suo conteggio
+  // restano nella barra SUPERIORE, dove stanno da sempre.
+  check('nessun contatore in barra: la regola di nav.ts vale anche qui',
+    !/useUnreadCount|NotificationBell|bb-badge/.test(barraNuda));
+
+  check('il ✚ dichiara di aprire un riquadro, e il foglio è un dialog',
+    barraNuda.includes('aria-haspopup="dialog"') && barraNuda.includes('role="dialog"'));
+
+  check('Esc chiude il foglio, come chiude il cassetto',
+    barraNuda.includes("'Escape'"));
+
+  check('le azioni del foglio sono rotte vere: /oggi?nota=1 e /admin?carica=1',
+    barraNuda.includes("'/oggi?nota=1'") && barraNuda.includes("'/admin?carica=1'"));
+
+  check('la dettatura è feature-detected: niente API, niente voce nel foglio',
+    dett.includes('webkitSpeechRecognition')
+    && barraNuda.includes('speechRecognition()'));
+
+  check('/admin?carica=1 apre il modulo di caricamento e pulisce l’indirizzo',
+    admin.includes("searchParams.get('carica')") && admin.includes("next.delete('carica')"));
+
+  check('la barra è nascosta su desktop e fissa in basso sul telefono',
+    /\.bottombar, \.qsheet, \.qsheet-overlay \{ display: none; \}/.test(css)
+    && /\.bottombar \{[^}]*position: fixed/s.test(css));
+
+  check('l’area sicura della tacca conta: nella barra, nel foglio e nel fondo mobile di .main',
+    (css.match(/env\(safe-area-inset-bottom\)/g) ?? []).length >= 3
+    && /\.main \{[^}]*var\(--main-bottom-mobile\)/.test(css));
+
+  check('la barra e il suo foglio non vanno su carta',
+    /@media print[\s\S]*\.bottombar,/.test(css));
+}
+
+section('26. La nota rapida — un gesto, una scheda, mai un invio da solo');
+
+// ⚠️ PERCHÉ A CONTRATTO (Fase 3.1, 2026-09-10). La nota rapida è il gesto
+// vocale del prodotto: due cose NON devono succedere mai — che il dettato
+// sparisca o parta da solo (il testo resta editabile finché non si preme
+// «Salva»), e che una nota si salvi senza la sua scheda (sarebbe un ricordo
+// che non si ritrova). Le promesse stanno nella testata di QuickNote.tsx.
+{
+  const qn = readFileSync(join(root, 'src/features/today/QuickNote.tsx'), 'utf8');
+  const qnNudo = qn.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1');
+  const today = readFileSync(join(root, 'src/features/today/TodayPage.tsx'), 'utf8');
+  const headers = readFileSync(join(root, 'public/_headers'), 'utf8');
+  const service = readFileSync(join(root, 'src/services/noteService.ts'), 'utf8');
+
+  check('la finestra si apre da un collegamento (?nota=1) e chiudendosi pulisce l’indirizzo',
+    today.includes("searchParams.get('nota') === '1'")
+    && today.includes("next.delete('nota')")
+    && today.includes("next.delete('dettatura')"));
+
+  check('è una finestra (Dialog), non una pagina: la nota è un lampo',
+    qnNudo.includes('<Dialog') && qnNudo.includes("t('quicknote.title')"));
+
+  check('il cliente è OBBLIGATORIO: senza, il salvataggio resta chiuso',
+    qnNudo.includes('disabled={busy !== null || !cliente || !testo.trim()}'));
+
+  check('la nota si salva come interazione «note», con la trattativa se c’è',
+    qnNudo.includes("type: 'note'") && qnNudo.includes('opportunityId: trattativaId || null'));
+
+  check('il testo ha un tetto di 5000 caratteri, dichiarato nel campo',
+    qnNudo.includes('maxLength={5000}'));
+
+  check('la dettatura parte da sola SOLO se il gesto l’ha chiesta, e nella lingua dell’interfaccia',
+    qnNudo.includes('if (dettatura && Ctor) avviaDettatura()')
+    && qnNudo.includes('linguaDettatura(locale)'));
+
+  check('il salvataggio è UNO e sta nel gesto «Salva», mai dentro la dettatura',
+    (qnNudo.match(/addInteraction/g) ?? []).length === 1
+    && qnNudo.includes('onClick={() => void salva()}'));
+
+  check('«Struttura con AI» riscrive i CAMPI, non il database',
+    qnNudo.includes('setOggetto(s.subject)') && qnNudo.includes('setTesto(s.notes)'));
+
+  check('il microfono è ammesso dalla Permissions-Policy, solo da questa origine',
+    headers.includes('microphone=(self)'));
+
+  check('la funzione è `structure-note`, e la sua risposta si valida prima di toccare i campi',
+    service.includes("'structure-note'") && service.includes("typeof data?.subject !== 'string'"));
+}
+
+section('27. Il telefono del cliente — una regola sola, due porte');
+
+// ⚠️ PERCHÉ A CONTRATTO (Fase 3.1, 2026-09-10). «Quale numero chiamo» è una
+// REGOLA del CRM, non della pagina /oggi dove è nata: riscritta nella scheda
+// cliente, le due copie inizierebbero a divergere il giorno in cui una delle
+// due impara una preferenza nuova — la storia già vista nella sezione 23. La
+// regola vive in `crmModel.scegliTelefono`; /oggi e la scheda cliente sono le
+// due PORTE, e qui si contano sia le porte sia la regola.
+{
+  const senzaCommenti = (src: string): string =>
+    src.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1');
+
+  const sorgenti: string[] = [];
+  const cammina = (dir: string) => {
+    for (const voce of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${voce.name}`;
+      if (voce.isDirectory()) { cammina(rel); continue; }
+      if (/\.(ts|tsx)$/.test(voce.name)) sorgenti.push(rel);
+    }
+  };
+  cammina('src');
+
+  // Non un elenco scritto qui: si chiede al sorgente quanti file la DEFINISCONO.
+  const definizioni = sorgenti.filter((rel) =>
+    /export function scegliTelefono\s*\(/.test(senzaCommenti(readFileSync(join(root, rel), 'utf8'))));
+  check('`scegliTelefono` è definita in un posto solo',
+    definizioni.length === 1, definizioni.join(', '));
+  check('e quel posto è il modello del CRM, non la pagina /oggi',
+    definizioni[0] === 'src/features/crm/crmModel.ts', String(definizioni[0]));
+
+  const today = readFileSync(join(root, 'src/features/today/TodayPage.tsx'), 'utf8');
+  const todayModel = senzaCommenti(readFileSync(join(root, 'src/features/today/todayModel.ts'), 'utf8'));
+  const scheda = readFileSync(join(root, 'src/features/crm/ClientDetailPage.tsx'), 'utf8');
+
+  check('/oggi la prende dal modello CRM: il suo `todayModel` non la nomina più',
+    today.includes("import { scegliTelefono } from '../crm/crmModel'")
+    && !/scegliTelefono/.test(todayModel));
+
+  check('la scheda cliente offre il collegamento tel: in testata, sullo stesso numero',
+    scheda.includes('scegliTelefono(people)') && scheda.includes('href={`tel:${telefono.value}`}'));
+
+  check('il gesto ha un nome nelle tre lingue',
+    readFileSync(join(root, 'src/i18n/locales/it.ts'), 'utf8').includes("call: 'Chiama'")
+    && readFileSync(join(root, 'src/i18n/locales/de.ts'), 'utf8').includes("call: 'Anrufen'")
+    && readFileSync(join(root, 'src/i18n/locales/fr.ts'), 'utf8').includes("call: 'Appeler'"));
 }
 
 // ---------------------------------------------------------------------------

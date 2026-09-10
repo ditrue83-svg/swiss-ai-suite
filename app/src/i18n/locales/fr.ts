@@ -127,6 +127,10 @@ export const fr: Dictionary = {
       sistema: 'Système',
     },
     mainNav: 'Navigation principale',
+    // La barre inférieure du téléphone (Fase 3.1, 2026-09-10) : `today` est sa
+    // première entrée (la page /oggi), `bottomNav` son aria-label.
+    today: 'Aujourd’hui',
+    bottomNav: 'Navigation rapide',
     openMenu: 'Ouvrir le menu de navigation',
     auditLog: 'Journal d’activité',
     closeMenu: 'Fermer le menu',
@@ -353,6 +357,62 @@ export const fr: Dictionary = {
       titleRequired: 'Veuillez saisir un titre pour l’activité.',
     },
     priority: { high: 'haute', medium: 'moyenne', low: 'basse' },
+  },
+
+  // ---- Oggi (/oggi) — la home da mobilità (Fase 3.1, 0059) -------------------
+  today: {
+    title: 'Aujourd’hui',
+    tasksTitle: 'Échéances du jour',
+    tasksEmpty: 'Rien n’arrive à échéance aujourd’hui',
+    tasksEmptySub: 'Les tâches dont l’échéance est aujourd’hui apparaissent ici.',
+    allTasks: 'Voir toutes les tâches',
+    stepsTitle: 'Affaires en attente d’une prochaine étape',
+    stepsEmpty: 'Chaque affaire ouverte a sa prochaine étape.',
+    stepOverdue: 'En retard depuis le {date}',
+    stepMissing: 'Prochaine étape manquante',
+    stepSet: 'Définir',
+    stepField: 'Prochaine étape',
+    stepPlaceholder: 'Ex. Envoyer le devis',
+    stepDate: 'Pour le',
+    stepSaved: 'Prochaine étape enregistrée',
+    callTitle: 'Appeler un client',
+    callSearch: 'Nom ou raison sociale',
+    callNoResults: 'Aucun client avec ce nom.',
+    callNoPhone: 'Aucun numéro de téléphone enregistré pour {name}.',
+    callNow: 'Appeler',
+    callOpen: 'Ouvrir la fiche',
+  },
+
+  // ---- Actions rapides — le ✚ de la barre inférieure (Fase 3.1, 2026-09-10) --
+  // Le panneau propose des GESTES, pas des lieux : chaque entrée mène à une
+  // vraie route avec le formulaire déjà ouvert (?nota=1, ?carica=1).
+  quick: {
+    title: 'Action rapide',
+    newNote: 'Nouvelle note',
+    dictateNote: 'Dicter une note',
+  },
+
+  // ---- Note rapide (panneau du ✚ → /oggi?nota=1, Fase 3.1) -------------------
+  // Le client est OBLIGATOIRE : une note enregistrée est une ligne de
+  // l’historique d’une fiche client ; une note sans fiche ne se retrouve pas.
+  quicknote: {
+    title: 'Note rapide',
+    client: 'Client',
+    clientSearch: 'Rechercher le client…',
+    clientChange: 'Changer',
+    clientNoResults: 'Aucun client avec ce nom.',
+    opportunity: 'Affaire',
+    opportunityNone: 'Aucune affaire',
+    subject: 'Objet',
+    subjectPlaceholder: 'De quoi il a été question',
+    text: 'Texte',
+    textPlaceholder: 'Écrivez ou dictez la note…',
+    dictate: 'Dicter',
+    dictating: 'J’écoute… touchez pour arrêter',
+    structure: 'Structurer avec l’IA',
+    structuring: 'Structuration…',
+    structureFailed: 'Impossible de structurer la note. Le texte reste tel quel : enregistrez-le ainsi ou réessayez.',
+    saved: 'Note enregistrée',
   },
 
   documents: {
@@ -2075,7 +2135,7 @@ export const fr: Dictionary = {
       overview: 'Aperçu', people: 'Personnes', opportunities: 'Opportunités', tasks: 'Tâches',
       communications: 'Communications', documents: 'Documents', contracts: 'Contrats',
       finance: 'Finances', history: 'Historique',
-      edit: 'Modifier', archive: 'Archiver', restore: 'Restaurer',
+      edit: 'Modifier', archive: 'Archiver', restore: 'Restaurer', call: 'Appeler',
       merge: 'Fusionner avec une autre fiche',
       newTask: 'Nouvelle tâche', linkItem: 'Lier un élément',
       owner: 'Responsable de la relation', roles: 'Rôles', identifiers: 'Identifiants',

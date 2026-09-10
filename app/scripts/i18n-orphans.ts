@@ -115,7 +115,8 @@ export const ECCEZIONI: { chiave: string; motivo: string }[] = [
   { chiave: 'tasks.subtitle', motivo: MOTIVO_RIVELATE },
   { chiave: 'tasks.empty', motivo: MOTIVO_RIVELATE },
   { chiave: 'tasks.emptySub', motivo: MOTIVO_RIVELATE },
-  { chiave: 'tasks.markDone', motivo: MOTIVO_RIVELATE },
+  // tasks.markDone: SMALTITA il 2026-09-10 — la chiama il gesto «Completa»
+  // della pagina /oggi (Fase 3.1). Il conteggio del gruppo scende a 36.
   { chiave: 'tasks.reopen', motivo: MOTIVO_RIVELATE },
   { chiave: 'tasks.completed', motivo: MOTIVO_RIVELATE },
   { chiave: 'tasks.noDueDate', motivo: MOTIVO_RIVELATE },

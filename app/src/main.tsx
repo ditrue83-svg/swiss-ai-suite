@@ -7,9 +7,14 @@ import { CompanyProvider } from './contexts/CompanyContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { I18nProvider } from './i18n';
+import { registerServiceWorker } from './lib/pwa';
 import './styles/fonts.css';
 import './styles/app.css';
 import './styles/extra.css';
+
+// Il service worker si registra qui, una volta per avvio: in sviluppo e dove
+// l'API manca la chiamata non fa nulla (le guardie sono dentro la funzione).
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
