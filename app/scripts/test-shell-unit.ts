@@ -3241,6 +3241,70 @@ section('23. Una sola aritmetica dei giorni — nessuna copia che divida istanti
     definizioni[0] === 'supabase/functions/_shared/calendarDays.ts', String(definizioni[0]));
 }
 
+section('24. Il service worker — la prima cache del progetto, a contratto');
+
+// ⚠️ PERCHÉ A CONTRATTO (2026-09-10, Fase 3.1). `public/sw.js` è la PRIMA
+// cache che questo progetto introduce: fino a quel giorno ogni byte arrivava
+// dalla rete a ogni visita. Una cache scritta male non fallisce in revisione
+// — fallisce sul telefono del cliente una settimana dopo, mostrando la
+// versione di una app che non esiste più. Quello che il worker promette sta
+// scritto nella sua testata; qui si pretende che il codice la mantenga,
+// perché «network-first» in un commento e cache-first nel codice sarebbero
+// la stessa bugia di una scala tipografica raccontata e mai misurata.
+{
+  const sw = readFileSync(join(root, 'public/sw.js'), 'utf8');
+  const swNudo = sw.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1');
+  const pwa = readFileSync(join(root, 'src/lib/pwa.ts'), 'utf8');
+  const ingresso = readFileSync(join(root, 'src/main.tsx'), 'utf8');
+
+  check('il worker esiste ed è servito dalla radice (public/sw.js)',
+    existsSync(join(root, 'public/sw.js')));
+
+  check('la cache ha una VERSIONE dichiarata, e la testata ricorda di alzarla',
+    /const VERSIONE_CACHE = '[a-z0-9-]+-v\d+'/.test(swNudo)
+    && sw.includes('si incrementa VERSIONE_CACHE'));
+
+  check('il worker tocca solo GET e solo la propria origine',
+    swNudo.includes("request.method !== 'GET'")
+    && swNudo.includes('url.origin !== self.location.origin'));
+
+  // L'ORDINE è il contratto: nel ramo di navigazione la RETE viene prima
+  // della cache; nel ramo degli asset immutabili il contrario.
+  const ramoNav = swNudo.split("request.mode === 'navigate'")[1] ?? '';
+  check('le navigazioni sono network-first (la cache è il paracadute)',
+    ramoNav.includes('fetch(request)')
+    && ramoNav.indexOf('fetch(request)') < ramoNav.indexOf("caches.match('/')"),
+    ramoNav.includes('fetch(request)') ? '' : 'ramo navigazione assente');
+
+  const ramoAsset = swNudo.split('PERCORSI_IMMODIFICABILI.test')[1] ?? '';
+  check('gli asset immutabili sono cache-first (hash nel nome, disciplina _headers)',
+    ramoAsset.includes('caches.match(request)')
+    && ramoAsset.indexOf('caches.match(request)') < ramoAsset.indexOf('fetch(request)'));
+
+  check('il worker nuovo sostituisce il vecchio subito, e svuota le cache morte',
+    swNudo.includes('self.skipWaiting()')
+    && swNudo.includes('self.clients.claim()')
+    && swNudo.includes('caches.delete'));
+
+  // ⚠️ Supabase non si tocca: né le chiamate dati né le Edge Function possono
+  // passare da una cache. Il divieto vero sta nel controllo d'origine, ma qui
+  // si pretende che NESSUNA stringa del sorgente — nemmeno per sbaglio in un
+  // futuro ramo nuovo — nomini l'host dei dati.
+  check('nessun ramo del worker nomina l’origine dei dati',
+    !swNudo.includes('supabase'));
+
+  check('la registrazione è solo in produzione e solo dove l’API esiste',
+    pwa.includes('import.meta.env.PROD') && pwa.includes("'serviceWorker' in navigator"));
+
+  check('il ricaricamento all’aggiornamento è UNA VOLTA, e mai al primo avvio',
+    pwa.includes('controllerchange')
+    && pwa.includes('controller !== null')
+    && pwa.includes('ricaricato'));
+
+  check('`registerServiceWorker` è chiamata davvero, nel punto di ingresso',
+    ingresso.includes('registerServiceWorker();'));
+}
+
 // ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);
