@@ -292,7 +292,14 @@ export const it = {
     filterAssignee: 'Responsabile',
     filterCustomer: 'Cliente',
     filterSource: 'Origine',
-    filterAny: 'Tutte',
+    // L'opzione vuota di ogni filtro è una chiave a sé: l'aggettivo concorda
+    // col sostantivo («Tutte» le priorità, «Tutti» i responsabili e i
+    // clienti) e i due punti stanno DENTRO la stringa — in francese vogliono
+    // davanti lo spazio fine insécable ( ). Stessa forma delle chiavi
+    // `calendar.filterPriorityAny` e sorelle.
+    filterPriorityAny: 'Priorità: Tutte',
+    filterAssigneeAny: 'Responsabile: Tutti',
+    filterCustomerAny: 'Cliente: Tutti',
     countShown: '{shown} di {total}',
     loadMore: 'Mostra altre',
     assignee: 'Responsabile',

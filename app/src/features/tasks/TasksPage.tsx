@@ -251,7 +251,7 @@ export function TasksPage() {
             <select id="f-prio" className="select-inline" value={priority}
               aria-label={t('tasks.filterPriority')}
               onChange={(e) => setPriority(e.target.value as TaskPriority | '')}>
-              <option value="">{t('tasks.filterPriority')}: {t('tasks.filterAny')}</option>
+              <option value="">{t('tasks.filterPriorityAny')}</option>
               <option value="high">{L.urgency('alta')}</option>
               <option value="medium">{L.urgency('media')}</option>
               <option value="low">{L.urgency('bassa')}</option>
@@ -261,7 +261,7 @@ export function TasksPage() {
             <select id="f-assignee" className="select-inline" value={assignee}
               aria-label={t('tasks.filterAssignee')}
               onChange={(e) => setAssignee(e.target.value)}>
-              <option value="">{t('tasks.filterAssignee')}: {t('tasks.filterAny')}</option>
+              <option value="">{t('tasks.filterAssigneeAny')}</option>
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{m.name || t('tasks.unnamedMember')}</option>
               ))}
@@ -273,7 +273,7 @@ export function TasksPage() {
               aria-label={t('tasks.filterCustomer')}
               onChange={(e) => setOrganizationFilter(e.target.value)}
             >
-              <option value="">{t('tasks.filterCustomer')}: {t('tasks.filterAny')}</option>
+              <option value="">{t('tasks.filterCustomerAny')}</option>
               {organizations.map((organization) => (
                 <option key={organization.id} value={organization.id}>{organization.displayName}</option>
               ))}
