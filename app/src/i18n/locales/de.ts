@@ -396,6 +396,29 @@ export const de: Dictionary = {
     dictateNote: 'Notiz diktieren',
   },
 
+  // ---- Kurznotiz (Blatt des ✚ → /oggi?nota=1, Fase 3.1) ----------------------
+  // Der Kunde ist PFLICHT: eine gespeicherte Notiz ist eine Zeile im Verlauf
+  // einer Kundenkarte; eine Notiz ohne Karte findet niemand wieder.
+  quicknote: {
+    title: 'Kurznotiz',
+    client: 'Kunde',
+    clientSearch: 'Kunden suchen…',
+    clientChange: 'Ändern',
+    clientNoResults: 'Kein Kunde mit diesem Namen.',
+    opportunity: 'Geschäft',
+    opportunityNone: 'Kein Geschäft',
+    subject: 'Betreff',
+    subjectPlaceholder: 'Worum es ging',
+    text: 'Text',
+    textPlaceholder: 'Notiz schreiben oder diktieren…',
+    dictate: 'Diktieren',
+    dictating: 'Ich höre… Tippen zum Stoppen',
+    structure: 'Mit KI strukturieren',
+    structuring: 'Strukturiere…',
+    structureFailed: 'Die Notiz konnte nicht strukturiert werden. Der Text bleibt, wie er ist: Speichern Sie ihn so oder versuchen Sie es erneut.',
+    saved: 'Notiz gespeichert',
+  },
+
   documents: {
     title: 'Dokumente',
     subtitle: 'Das Archiv des Unternehmens: Hier finden Sie wieder, was eingegangen, hochgeladen und analysiert wurde.',

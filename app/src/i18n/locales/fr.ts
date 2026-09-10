@@ -392,6 +392,29 @@ export const fr: Dictionary = {
     dictateNote: 'Dicter une note',
   },
 
+  // ---- Note rapide (panneau du ✚ → /oggi?nota=1, Fase 3.1) -------------------
+  // Le client est OBLIGATOIRE : une note enregistrée est une ligne de
+  // l’historique d’une fiche client ; une note sans fiche ne se retrouve pas.
+  quicknote: {
+    title: 'Note rapide',
+    client: 'Client',
+    clientSearch: 'Rechercher le client…',
+    clientChange: 'Changer',
+    clientNoResults: 'Aucun client avec ce nom.',
+    opportunity: 'Affaire',
+    opportunityNone: 'Aucune affaire',
+    subject: 'Objet',
+    subjectPlaceholder: 'De quoi il a été question',
+    text: 'Texte',
+    textPlaceholder: 'Écrivez ou dictez la note…',
+    dictate: 'Dicter',
+    dictating: 'J’écoute… touchez pour arrêter',
+    structure: 'Structurer avec l’IA',
+    structuring: 'Structuration…',
+    structureFailed: 'Impossible de structurer la note. Le texte reste tel quel : enregistrez-le ainsi ou réessayez.',
+    saved: 'Note enregistrée',
+  },
+
   documents: {
     title: 'Documents',
     subtitle: 'Les archives de l’entreprise : vous y retrouvez tout ce qui a été reçu, chargé et analysé.',

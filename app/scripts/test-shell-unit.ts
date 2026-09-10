@@ -3375,6 +3375,55 @@ section('25. La barra inferiore del telefono — le mete sotto il pollice, a con
     /@media print[\s\S]*\.bottombar,/.test(css));
 }
 
+section('26. La nota rapida — un gesto, una scheda, mai un invio da solo');
+
+// ⚠️ PERCHÉ A CONTRATTO (Fase 3.1, 2026-09-10). La nota rapida è il gesto
+// vocale del prodotto: due cose NON devono succedere mai — che il dettato
+// sparisca o parta da solo (il testo resta editabile finché non si preme
+// «Salva»), e che una nota si salvi senza la sua scheda (sarebbe un ricordo
+// che non si ritrova). Le promesse stanno nella testata di QuickNote.tsx.
+{
+  const qn = readFileSync(join(root, 'src/features/today/QuickNote.tsx'), 'utf8');
+  const qnNudo = qn.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1');
+  const today = readFileSync(join(root, 'src/features/today/TodayPage.tsx'), 'utf8');
+  const headers = readFileSync(join(root, 'public/_headers'), 'utf8');
+  const service = readFileSync(join(root, 'src/services/noteService.ts'), 'utf8');
+
+  check('la finestra si apre da un collegamento (?nota=1) e chiudendosi pulisce l’indirizzo',
+    today.includes("searchParams.get('nota') === '1'")
+    && today.includes("next.delete('nota')")
+    && today.includes("next.delete('dettatura')"));
+
+  check('è una finestra (Dialog), non una pagina: la nota è un lampo',
+    qnNudo.includes('<Dialog') && qnNudo.includes("t('quicknote.title')"));
+
+  check('il cliente è OBBLIGATORIO: senza, il salvataggio resta chiuso',
+    qnNudo.includes('disabled={busy !== null || !cliente || !testo.trim()}'));
+
+  check('la nota si salva come interazione «note», con la trattativa se c’è',
+    qnNudo.includes("type: 'note'") && qnNudo.includes('opportunityId: trattativaId || null'));
+
+  check('il testo ha un tetto di 5000 caratteri, dichiarato nel campo',
+    qnNudo.includes('maxLength={5000}'));
+
+  check('la dettatura parte da sola SOLO se il gesto l’ha chiesta, e nella lingua dell’interfaccia',
+    qnNudo.includes('if (dettatura && Ctor) avviaDettatura()')
+    && qnNudo.includes('linguaDettatura(locale)'));
+
+  check('il salvataggio è UNO e sta nel gesto «Salva», mai dentro la dettatura',
+    (qnNudo.match(/addInteraction/g) ?? []).length === 1
+    && qnNudo.includes('onClick={() => void salva()}'));
+
+  check('«Struttura con AI» riscrive i CAMPI, non il database',
+    qnNudo.includes('setOggetto(s.subject)') && qnNudo.includes('setTesto(s.notes)'));
+
+  check('il microfono è ammesso dalla Permissions-Policy, solo da questa origine',
+    headers.includes('microphone=(self)'));
+
+  check('la funzione è `structure-note`, e la sua risposta si valida prima di toccare i campi',
+    service.includes("'structure-note'") && service.includes("typeof data?.subject !== 'string'"));
+}
+
 // ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);

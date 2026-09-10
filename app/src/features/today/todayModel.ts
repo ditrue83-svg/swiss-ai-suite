@@ -80,3 +80,18 @@ export function fondeInAttesa(
     return a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0;
   });
 }
+
+/**
+ * Unisce ciò che era già scritto con ciò che arriva dalla dettatura: UNO
+ * spazio fra le due parti, mai doppio, mai in testa. La Web Speech API
+ * restituisce frammenti che cominciano e finiscono alla cieca (« la chiamata
+ * », «ho parlato»): chi detta non deve poi ripulire gli spazi a mano, e chi
+ * aveva già scritto non deve trovarsi le parole incollate.
+ * Il testo dettato resta EDITABILE: questa funzione decide solo gli spazi.
+ */
+export function unisciDettatura(base: string, aggiunta: string): string {
+  if (!aggiunta) return base;
+  const a = base.replace(/\s+$/, '');
+  const b = aggiunta.replace(/^\s+/, '');
+  return a ? `${a} ${b}` : b;
+}

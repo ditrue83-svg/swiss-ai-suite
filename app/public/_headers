@@ -15,7 +15,12 @@
   X-Frame-Options: DENY
 
   # Nessuna delle API sensibili del browser serve all'app: le neghiamo tutte.
-  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+  # ⚠️ ECCEZIONE dal 2026-09-10 (Fase 3.1): `microphone=(self)` — la dettatura
+  # della nota rapida (/oggi?nota=1&dettatura=1) è Web Speech API e parla con il
+  # servizio di riconoscimento del BROWSER: nessun audio transita sui nostri
+  # server. `(self)` ammette solo questa origine: un contenuto terzo, anche
+  # dentro l'app, il microfono continua a non averlo.
+  Permissions-Policy: geolocation=(), microphone=(self), camera=(), payment=(), usb=()
 
   # Solo HTTPS per un anno. Sicuro su pages.dev e sul dominio definitivo, che
   # nascono già in HTTPS: non esiste traffico http legittimo da rompere.

@@ -14,8 +14,12 @@
 //      lontana), poi i senza-passo (dalla meno recente): è l'ordine in cui
 //      una persona lavora la lista. E la fusione delle due risposte della
 //      RPC non può mostrare la stessa trattativa due volte.
+//
+//   3. IL DETTATO — si unisce al testo già scritto con UNO spazio, mai due,
+//      mai in testa: la Web Speech API taglia i frammenti alla cieca, e chi
+//      detta non deve poi ripulire gli spazi a mano.
 // ============================================================================
-import { fondeInAttesa, passoInRitardo, scegliTelefono } from '../src/features/today/todayModel.ts';
+import { fondeInAttesa, passoInRitardo, scegliTelefono, unisciDettatura } from '../src/features/today/todayModel.ts';
 import type { CrmOpportunity, CrmPerson } from '../src/types/models.ts';
 
 let pass = 0, fail = 0;
@@ -117,6 +121,20 @@ section('3. La lista fusa — scadute prima, senza duplicati');
     doppia.filter((o) => o.id === 'si').length === 1 && doppia.length === 2,
     doppia.map((o) => o.id).join(','));
 }
+
+// ---- 4. Il dettato si unisce al testo ----------------------------------------
+section('4. Il dettato si unisce al testo — uno spazio, mai due, mai in testa');
+
+check('il dettato si attacca al già scritto con UNO spazio',
+  unisciDettatura('Ho parlato con Marta', 'e abbiamo deciso') === 'Ho parlato con Marta e abbiamo deciso');
+check('gli spazi ai bordi dei frammenti non ne fanno due',
+  unisciDettatura('Ho parlato ', ' e abbiamo') === 'Ho parlato e abbiamo');
+check('su casella vuota il dettato non comincia con uno spazio',
+  unisciDettatura('', ' il cliente ha detto') === 'il cliente ha detto');
+check('un frammento vuoto non tocca ciò che è scritto',
+  unisciDettatura('Resta così', '') === 'Resta così');
+check('il frammento finale e il parziale possono passare nella stessa aggiunta',
+  unisciDettatura('Base', 'finale e parziale ') === 'Base finale e parziale ');
 
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${pass + fail} passi`);
 process.exit(fail === 0 ? 0 : 1);

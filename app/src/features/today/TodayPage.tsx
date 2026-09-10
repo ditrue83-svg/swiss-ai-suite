@@ -15,7 +15,7 @@
 // niente KPI, niente grafici — è la lista delle cose da FARE adesso.
 // ============================================================================
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { taskService } from '@/services/taskService';
 import { crmService } from '@/services/crmService';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -28,6 +28,7 @@ import { toUserMessage } from '@/lib/errors';
 import { LEGACY_MODULES_ENABLED } from '@/lib/env';
 import { useT } from '@/i18n';
 import { fondeInAttesa, passoInRitardo, scegliTelefono } from './todayModel';
+import { QuickNote } from './QuickNote';
 import type { CrmOpportunity, CrmOrganizationOption, CrmPerson } from '@/types/models';
 
 export function TodayPage() {
@@ -35,6 +36,17 @@ export function TodayPage() {
   const { activeCompanyId } = useCompany();
   const { showToast } = useToast();
   const companyId = activeCompanyId as string;
+
+  // La nota rapida si apre da un COLLEGAMENTO (?nota=1, il ✚ della barra
+  // inferiore), non da uno stato nascosto: il gesto sopravvive a un
+  // ricaricamento, come `?nuova=` delle Attività e `?carica=` di Admin AI.
+  const [searchParams, setSearchParams] = useSearchParams();
+  function chiudiNota() {
+    const next = new URLSearchParams(searchParams);
+    next.delete('nota');
+    next.delete('dettatura');
+    setSearchParams(next, { replace: true });
+  }
 
   // ---- 1. Attività di oggi ---------------------------------------------------
   const tasks = useAsync(
@@ -103,6 +115,12 @@ export function TodayPage() {
             onSaved={() => passi.reload()}
           />
           <ChiamaCard companyId={companyId} />
+          <QuickNote
+            open={searchParams.get('nota') === '1'}
+            dettatura={searchParams.get('dettatura') === '1'}
+            onClose={chiudiNota}
+            companyId={companyId}
+          />
         </>
       )}
     </>

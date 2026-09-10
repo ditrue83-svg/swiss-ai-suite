@@ -427,6 +427,31 @@ export const it = {
     dictateNote: 'Detta una nota',
   },
 
+  // ---- Nota rapida (il foglio del ✚ → /oggi?nota=1, Fase 3.1) ----------------
+  // Il cliente è OBBLIGATORIO: una nota salvata è una riga della cronologia di
+  // una scheda cliente, e una nota senza scheda è un ricordo che non si ritrova.
+  quicknote: {
+    title: 'Nota rapida',
+    client: 'Cliente',
+    clientSearch: 'Cerca il cliente…',
+    clientChange: 'Cambia',
+    clientNoResults: 'Nessun cliente con questo nome.',
+    opportunity: 'Trattativa',
+    opportunityNone: 'Nessuna trattativa',
+    subject: 'Oggetto',
+    subjectPlaceholder: 'Di che cosa si è parlato',
+    text: 'Testo',
+    textPlaceholder: 'Scrivi o detta la nota…',
+    dictate: 'Detta',
+    dictating: 'Ascolto… tocca per fermare',
+    structure: 'Struttura con AI',
+    structuring: 'Strutturo…',
+    // Il tono degli errori di invio: la colpa non è di chi scrive, e il testo
+    // NON è perso — la metà importante del messaggio è la seconda frase.
+    structureFailed: 'Non è stato possibile strutturare la nota. Il testo resta com’è: puoi salvarlo così o riprovare.',
+    saved: 'Nota salvata',
+  },
+
   // ---- Archivio ------------------------------------------------------------
   documents: {
     title: 'Documenti',
