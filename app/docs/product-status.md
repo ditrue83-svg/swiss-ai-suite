@@ -448,6 +448,38 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
   confermato abbinamento esatto, nuova scheda, esclusione della posta massiva,
   idempotenza, divieto di chiamata dal browser e pulizia senza residui.
 
+### Fase 3.1 — /oggi, PWA e la home da mobilità (branch `improve/mobile-pwa`, misurato il 2026-09-10)
+
+- **Implementato:** sì — manifest e icone PWA verificate sui pixel
+  (`icons:check`), service worker minimale a contratto, migrazione 0059 (vista
+  «today» di `list_tasks`: scade oggi, non fatta, non archiviata; le scadute
+  restano a «overdue»), pagina `/oggi`, barra inferiore con foglio ✚, nota
+  rapida con dettatura, edge function `structure-note`, «Chiama» in scheda
+  cliente. La regola «quale numero si offre» vive in `crmModel.scegliTelefono`:
+  UNA regola, due porte (/oggi e la scheda), contata dalla sezione 27 di
+  `test:shell-unit`.
+- **Deployato:** la migrazione 0059 è applicata al progetto Supabase collegato.
+  ⚠️ Il frontend e `structure-note` NON sono deployati: il branch attende
+  l'unione, la funzione attende la delega al deploy.
+- **Testato offline:** sì — `test:today-unit` 18/18, `test:note-unit` 18/18,
+  `test:shell-unit` 560/560 (sezioni 24–27 nuove); `test:all` verde nei quattro
+  gruppi quality, unit, db e production il 2026-09-10, dopo due riparazioni
+  trovate dalla qualità stessa: i PNG delle icone non erano fra i binari
+  dichiarati di `bytes:check` (`e6912c5`) e il conteggio di `fallback:scan` è
+  salito a 176 per il gate membership di `structure-note`, voluto (`e15f0e4`).
+- **Sul database reale:** sì — `test:tasks` 35/35 con la vista «today» applicata.
+- **Provato a schermo:** sì — 2026-09-10, tenant usa-e-getta seminato e rimosso
+  (residui zero su undici tabelle), sessione autenticata via magic link con
+  Playwright: /oggi a 375 px in chiaro e scuro e in italiano, tedesco e
+  francese, il foglio ✚, la nota rapida con gli stati disabilitati corretti
+  (niente salvataggio senza cliente, niente AI senza testo), la scheda cliente
+  col «Chiama» in testata, 1440 px senza barra inferiore, e l'ultima carta
+  interamente sopra la barra in fondo alla pagina. Zero errori console in ogni
+  contesto. NON provato: la dettatura vera al microfono (Web Speech API non è
+  automatizzabile) e l'installazione PWA su un telefono vero.
+- **Disponibile a clienti esterni:** no — finché il branch non è unito e
+  pubblicato.
+
 ## Registro attività (0039) — applicato, provato sul database vero e DEPLOYATO il 2026-08-09
 
 Non ha una riga nella tabella qui sopra perché **non è un modulo di prodotto**:
