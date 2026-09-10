@@ -131,6 +131,10 @@ export const de: Dictionary = {
       sistema: 'System',
     },
     mainNav: 'Hauptnavigation',
+    // Die untere Leiste des Telefons (Fase 3.1, 2026-09-10): `today` ist ihre
+    // erste Stimme (die Seite /oggi), `bottomNav` das aria-label.
+    today: 'Heute',
+    bottomNav: 'Schnellnavigation',
     openMenu: 'Navigationsmenü öffnen',
     auditLog: 'Aktivitätsprotokoll',
     closeMenu: 'Menü schliessen',
@@ -381,6 +385,15 @@ export const de: Dictionary = {
     callNoPhone: 'Keine Telefonnummer für {name} erfasst.',
     callNow: 'Anrufen',
     callOpen: 'Karte öffnen',
+  },
+
+  // ---- Schnellaktionen — das ✚ der unteren Leiste (Fase 3.1, 2026-09-10) ----
+  // Das Blatt bietet GESTEN, keine Orte: jede Stimme führt zu einer echten
+  // Route mit bereits offenem Formular (?nota=1, ?carica=1).
+  quick: {
+    title: 'Schnellaktion',
+    newNote: 'Neue Notiz',
+    dictateNote: 'Notiz diktieren',
   },
 
   documents: {

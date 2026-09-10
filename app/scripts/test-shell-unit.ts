@@ -2307,12 +2307,15 @@ section('16. Il bilancio in larghezza di «Chiedi ad AI-Swisse» — a 1440×900
   // ⚠️ È il difetto che questo controllo nasce per non far tornare: `94px` con
   // accanto un commento «30 + 64» quando i token facevano 80, e sotto i 900px
   // 68 dichiarati dove ne servivano 128 (la barra in cima non era contata).
+  // Dal 2026-09-10 (Fase 3.1) sotto i 900px il fondo di `.main` è il token
+  // `--main-bottom-mobile` — bottom bar fissa + area sicura + --sp-12 — scritto
+  // UNA volta in :root proprio perché il conto qui e là resti lo stesso.
   const PUNTI: [string, string, string[]][] = [
     ['schermo largo', gPage, ['--sp-8', '--sp-12']],
     ['fino a 900px', regola('.as-page', bloccoMedia('900px', assistant, '--as-shell-y')),
-      ['--topbar-h', '--sp-6', '--sp-12']],
+      ['--topbar-h', '--sp-6', '--main-bottom-mobile']],
     ['fino a 600px', regola('.as-page', bloccoMedia('600px', assistant, '--as-shell-y')),
-      ['--topbar-h', '--sp-4', '--sp-12']],
+      ['--topbar-h', '--sp-4', '--main-bottom-mobile']],
   ];
   for (const [dove, corpo, attesi] of PUNTI) {
     const usati = tokenDi(dichiarazione(corpo, '--as-shell-y'));
@@ -3303,6 +3306,73 @@ section('24. Il service worker — la prima cache del progetto, a contratto');
 
   check('`registerServiceWorker` è chiamata davvero, nel punto di ingresso',
     ingresso.includes('registerServiceWorker();'));
+}
+
+section('25. La barra inferiore del telefono — le mete sotto il pollice, a contratto');
+
+// ⚠️ PERCHÉ A CONTRATTO (Fase 3.1, 2026-09-10). La bottom bar è il secondo
+// sistema di navigazione dell'app: se si rompe, sul telefono non resta che il
+// cassetto — cioè si torna ai due tocchi per ogni destinazione da cui si
+// veniva. Le promesse sono nella testata di BottomBar.tsx; qui si pretende
+// che il codice le mantenga: le stesse voci, lo stesso divieto di contatori
+// di `nav.ts`, la dettatura che compare solo dove può funzionare.
+{
+  const shell = readFileSync(join(root, 'src/components/layout/AppShell.tsx'), 'utf8');
+  const barra = readFileSync(join(root, 'src/components/layout/BottomBar.tsx'), 'utf8');
+  // Il codice SENZA i commenti: una parola proibita detta in una spiegazione
+  // non è una violazione — è la lezione del token fantasma di design:lint.
+  const barraNuda = barra.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1');
+  const dett = readFileSync(join(root, 'src/lib/dettatura.ts'), 'utf8');
+  const admin = readFileSync(join(root, 'src/features/admin-ai/AdminAIPage.tsx'), 'utf8');
+  const css = leggiCss('src/styles/app.css');
+
+  check('la shell monta la barra, una volta sola',
+    (shell.match(/<BottomBar\b/g) ?? []).length === 1
+    && shell.includes("from './BottomBar'"));
+
+  check('la voce «Menu» della barra apre lo stesso cassetto dell’hamburger',
+    shell.includes('onMenu={() => setDrawerOpen(true)}'));
+
+  check('le mete di ogni giorno: /oggi e /attivita, con /calendario acceso',
+    barraNuda.includes("path: '/oggi'")
+    && barraNuda.includes("path: '/attivita'")
+    && barraNuda.includes("alsoMatches: ['/calendario']"));
+
+  check('«Clienti» segue i moduli legacy (D-10), come nella colonna laterale',
+    barraNuda.includes('LEGACY_MODULES_ENABLED') && barraNuda.includes("path: '/clienti'"));
+
+  // La regola scritta in testa a `nav.ts` vale anche sotto: un numero in barra
+  // è una query in più per ogni cambio pagina. La campanella e il suo conteggio
+  // restano nella barra SUPERIORE, dove stanno da sempre.
+  check('nessun contatore in barra: la regola di nav.ts vale anche qui',
+    !/useUnreadCount|NotificationBell|bb-badge/.test(barraNuda));
+
+  check('il ✚ dichiara di aprire un riquadro, e il foglio è un dialog',
+    barraNuda.includes('aria-haspopup="dialog"') && barraNuda.includes('role="dialog"'));
+
+  check('Esc chiude il foglio, come chiude il cassetto',
+    barraNuda.includes("'Escape'"));
+
+  check('le azioni del foglio sono rotte vere: /oggi?nota=1 e /admin?carica=1',
+    barraNuda.includes("'/oggi?nota=1'") && barraNuda.includes("'/admin?carica=1'"));
+
+  check('la dettatura è feature-detected: niente API, niente voce nel foglio',
+    dett.includes('webkitSpeechRecognition')
+    && barraNuda.includes('speechRecognition()'));
+
+  check('/admin?carica=1 apre il modulo di caricamento e pulisce l’indirizzo',
+    admin.includes("searchParams.get('carica')") && admin.includes("next.delete('carica')"));
+
+  check('la barra è nascosta su desktop e fissa in basso sul telefono',
+    /\.bottombar, \.qsheet, \.qsheet-overlay \{ display: none; \}/.test(css)
+    && /\.bottombar \{[^}]*position: fixed/s.test(css));
+
+  check('l’area sicura della tacca conta: nella barra, nel foglio e nel fondo mobile di .main',
+    (css.match(/env\(safe-area-inset-bottom\)/g) ?? []).length >= 3
+    && /\.main \{[^}]*var\(--main-bottom-mobile\)/.test(css));
+
+  check('la barra e il suo foglio non vanno su carta',
+    /@media print[\s\S]*\.bottombar,/.test(css));
 }
 
 // ---------------------------------------------------------------------------

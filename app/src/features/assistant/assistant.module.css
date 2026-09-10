@@ -311,8 +311,11 @@
      flusso sopra `.main`. Non è mai stata contata — dichiarati 68 dove ne
      servivano 128 — e su telefono la pagina sfondava di 60px, cioè proprio il
      composer, che è la ragione per cui questa schermata sta dentro lo schermo.
-     Misurato al banco il 2026-08-17 a 800×900: documento 956 su 900. */
-  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-6) + var(--sp-12)); }
+     Misurato al banco il 2026-08-17 a 800×900: documento 956 su 900.
+     ⚠️ E DAL 2026-09-10 C'È ANCHE LA BARRA IN FONDO (Fase 3.1): il fondo di
+     `.main` conta la sua altezza e l'area sicura della tacca dentro il token
+     `--main-bottom-mobile` — lo STESSO token, o la sezione 15 torna rossa. */
+  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-6) + var(--main-bottom-mobile)); }
   .as-layout { grid-template-columns: minmax(0, 1fr); }
   .as-side { display: none; }
   .as-only-narrow { display: inline-flex; align-self: flex-start; }
@@ -332,7 +335,7 @@
 }
 
 @media (max-width: 600px) {
-  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-4) + var(--sp-12)); }
+  .as-page { --as-shell-y: calc(var(--topbar-h) + var(--sp-4) + var(--main-bottom-mobile)); }
 }
 
 /* Chi ha chiesto meno movimento non deve vedere i pannelli scorrere. */

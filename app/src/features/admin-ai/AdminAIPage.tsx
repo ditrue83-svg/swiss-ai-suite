@@ -114,6 +114,19 @@ export function AdminAIPage() {
     return () => { active = false; };
   }, [docParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Apertura dal ✚ della barra inferiore del telefono (?carica=1, Fase 3.1):
+  // il modulo di caricamento si apre da sé e il parametro esce dall'indirizzo.
+  // Lo stesso patto di `?nuova=` delle Attività: il gesto è un collegamento
+  // vero, non uno stato nascosto — sopravvive a un ricaricamento e si può
+  // tenere nei segnalibri.
+  useEffect(() => {
+    if (!searchParams.get('carica')) return;
+    setUploaderOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('carica');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   function scrollToResult() {
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   }

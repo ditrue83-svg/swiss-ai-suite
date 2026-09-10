@@ -143,6 +143,11 @@ export const it = {
       sistema: 'Sistema',
     },
     mainNav: 'Navigazione principale',
+    // La barra inferiore del telefono (Fase 3.1, 2026-09-10): `today` è la sua
+    // prima voce (la pagina /oggi), `bottomNav` l'aria-label — quella barra è
+    // una seconda navigazione e il lettore di schermo deve poterla nominare.
+    today: 'Oggi',
+    bottomNav: 'Navigazione rapida',
     openMenu: 'Apri il menu di navigazione',
     closeMenu: 'Chiudi il menu',
   },
@@ -410,6 +415,16 @@ export const it = {
     callNoPhone: 'Nessun numero di telefono registrato per {name}.',
     callNow: 'Chiama',
     callOpen: 'Apri la scheda',
+  },
+
+  // ---- Azioni rapide — il ✚ della barra inferiore (Fase 3.1, 2026-09-10) ----
+  // Il foglio offre GESTI, non luoghi: ogni voce porta a una rotta vera con il
+  // modulo già aperto (?nota=1, ?carica=1), così il gesto sopravvive a un
+  // ricaricamento e sta in un segnalibro.
+  quick: {
+    title: 'Azione rapida',
+    newNote: 'Nuova nota',
+    dictateNote: 'Detta una nota',
   },
 
   // ---- Archivio ------------------------------------------------------------

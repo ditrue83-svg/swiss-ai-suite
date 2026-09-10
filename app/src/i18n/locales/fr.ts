@@ -127,6 +127,10 @@ export const fr: Dictionary = {
       sistema: 'Système',
     },
     mainNav: 'Navigation principale',
+    // La barre inférieure du téléphone (Fase 3.1, 2026-09-10) : `today` est sa
+    // première entrée (la page /oggi), `bottomNav` son aria-label.
+    today: 'Aujourd’hui',
+    bottomNav: 'Navigation rapide',
     openMenu: 'Ouvrir le menu de navigation',
     auditLog: 'Journal d’activité',
     closeMenu: 'Fermer le menu',
@@ -377,6 +381,15 @@ export const fr: Dictionary = {
     callNoPhone: 'Aucun numéro de téléphone enregistré pour {name}.',
     callNow: 'Appeler',
     callOpen: 'Ouvrir la fiche',
+  },
+
+  // ---- Actions rapides — le ✚ de la barre inférieure (Fase 3.1, 2026-09-10) --
+  // Le panneau propose des GESTES, pas des lieux : chaque entrée mène à une
+  // vraie route avec le formulaire déjà ouvert (?nota=1, ?carica=1).
+  quick: {
+    title: 'Action rapide',
+    newNote: 'Nouvelle note',
+    dictateNote: 'Dicter une note',
   },
 
   documents: {

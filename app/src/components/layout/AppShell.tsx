@@ -20,6 +20,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 import { NotificationBell, useUnreadCount } from '@/features/notifications/NotificationBell';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
+import { BottomBar } from './BottomBar';
 
 // I ruoli restano in chiave: l'etichetta si traduce al render.
 const ROLE_KEY: Record<string, TKey> = { owner: 'roles.owner', admin: 'roles.admin', member: 'roles.member' };
@@ -267,6 +268,15 @@ export function AppShell() {
           <Outlet />
         </ErrorBoundary>
       </main>
+
+      {/* La barra inferiore del telefono (Fase 3.1): il CSS la mostra solo
+          sotto i 900px, come fa con la barra superiore. Sta DOPO il contenuto
+          nell'albero — chi tabula arriva prima al lavoro, poi alle mete — e
+          FUORI dalla rete di ErrorBoundary, come il resto della navigazione:
+          il guasto di una schermata non deve spegnere la via d'uscita.
+          La voce «Menu» apre lo STESSO cassetto dell'hamburger: due ingressi,
+          un solo menu. */}
+      <BottomBar onMenu={() => setDrawerOpen(true)} />
     </div>
   );
 }
