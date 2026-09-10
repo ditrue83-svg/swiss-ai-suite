@@ -80,9 +80,7 @@ self.addEventListener('fetch', (evento) => {
           }
           return risposta;
         })
-        .catch(() =>
-          caches.match('/').then((shell) => shell || Response.error()),
-        ),
+        .catch(() => caches.match('/').then((shell) => shell || Response.error())),
     );
     return;
   }
