@@ -39,11 +39,12 @@ export const noteService = {
   /**
    * Struttura un testo libero in { oggetto, note }. `lang` è la lingua
    * DELL'INTERFACCIA: la nota si scrive nella lingua in cui si sta lavorando.
-   * Il testo NON viene salvato dalla funzione: torna qui e resta editabile.
+   * `companyId` serve alla funzione per la quota AI e la membership — il testo
+   * NON viene salvato dal server: torna qui e resta editabile.
    */
-  async structure(text: string, lang: string): Promise<StructuredNote> {
+  async structure(input: { text: string; lang: string; companyId: string }): Promise<StructuredNote> {
     const { data, error } = await requireSupabase().functions.invoke<StructureNoteResponse>('structure-note', {
-      body: { text, lang },
+      body: { text: input.text, lang: input.lang, companyId: input.companyId },
     });
     if (error) throw new AppError(await readFunctionError(error, tr('quicknote.structureFailed')), error);
     // La risposta è un CONTRATTO: un JSON con due stringhe. Qualunque altra

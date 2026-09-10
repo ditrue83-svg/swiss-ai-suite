@@ -139,7 +139,7 @@ export function QuickNote({ open, dettatura, onClose, companyId }: {
     if (!testo.trim()) return;
     setBusy('ai');
     try {
-      const s = await noteService.structure(testo.trim(), locale);
+      const s = await noteService.structure({ text: testo.trim(), lang: locale, companyId });
       setOggetto(s.subject);
       setTesto(s.notes);
     } catch (e) {

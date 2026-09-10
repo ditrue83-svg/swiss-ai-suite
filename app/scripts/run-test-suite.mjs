@@ -393,6 +393,9 @@ const GROUPS = {
       // Il modello puro di «Oggi» (Fase 3.1): quale telefono si offre e in
       // che ordine stanno le trattative — regole provate senza schermo.
       { script: 'test:today-unit' },
+      // Il contratto di «Struttura con AI» (Fase 3.1): la richiesta al modello
+      // e il validatore della risposta, provati senza spendere una chiamata.
+      { script: 'test:note-unit' },
       { script: 'test:documents-unit' },
       { script: 'test:calendar-unit' },
       // Il motore di sincronizzazione ESEGUITO contro finzioni: è la suite che
