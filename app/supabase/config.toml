@@ -291,3 +291,9 @@ verify_jwt = true
 # HMAC Svix verificata sul corpo grezzo con RESEND_WEBHOOK_SECRET.
 [functions.crm-email-webhook]
 verify_jwt = false
+
+# Struttura della nota rapida (Fase 3.1): gesto umano dal browser con il JWT
+# dell'utente; la membership si verifica via RLS PRIMA di spendere la quota AI.
+# Gate acceso, dichiarato come gli altri percorsi AI (generate-crm-quote).
+[functions.structure-note]
+verify_jwt = true
