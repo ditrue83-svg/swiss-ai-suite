@@ -63,6 +63,20 @@
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Le icone della PWA stanno in public/ come i caratteri: stessa disciplina.
+# Sono fissate per impronta da `npm run icons:check`; se un giorno si
+# rigenerano, si RINOMINANO (apple-180-v2.png) e si aggiornano manifest e
+# index.html — sostituire i byte a parità di nome lascerebbe i clienti con
+# l'icona vecchia per un anno.
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Il manifest cambia con le versioni dell'app (nome, icone, colori): come
+# index.html non deve restare in cache, o un telefono che ha già installato
+# l'app non vedrebbe mai l'icona nuova.
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
 # index.html invece NON va messo in cache: è il file che indica quale bundle
 # caricare. Se resta in cache, dopo un deploy l'utente continua a vedere la
 # versione vecchia finché non svuota la cache.

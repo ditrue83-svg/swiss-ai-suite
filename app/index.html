@@ -67,6 +67,24 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='20 20 300 326'%3E %3Crect x='20' y='20' width='300' height='326' fill='%2337AEEF'/%3E %3Cpath d='M166.34302325581393 231.61627906976744H109.98255813953489L100.94767441860465 258.2906976744186H62.44186046511628L117.0813953488372 107.27906976744185H159.67441860465118L214.31395348837208 258.2906976744186H175.37790697674419ZM156.87790697674419 203.22093023255815 138.1627906976744 147.93604651162792 119.66279069767441 203.22093023255815Z M267.6627906976744 107.27906976744185V258.2906976744186H230.87790697674419V107.27906976744185Z' fill='%23ffffff'/%3E %3C/svg%3E"
     />
     <!--
+      La PWA (Fase 3.1 della roadmap CRM, 2026-09-10). Il manifest rende l'app
+      INSTALLABILE: stessa sessione, stesso indirizzo, ma una finestra propria
+      senza la cornice del browser — è ciò che un telefono chiede per trattare
+      un sito come un'applicazione. Le icone in /icons/ sono PNG committati,
+      generati dal marchio SVG (blocco #37AEEF + sigla in contorni, lo stesso
+      della favicon qui sopra) e fissati per impronta da `npm run icons:check`:
+      come per i caratteri, il difetto che sfugge sta DENTRO un binario.
+      Quella «maskable» porta la sigla all'82% della superficie: i launcher
+      Android ritagliano l'icona in cerchio e taglierebbero i bordi del segno.
+      I meta apple-* servono a iOS, che il manifest lo ignora da sempre:
+      la touch-icon deve essere OPACA (niente alfa) o iOS la dipinge su nero.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="AI-Swisse" />
+    <!--
       ⚠️ `theme-color` non è decorazione: è il colore che il telefono dipinge
       attorno alla pagina (barra di stato su Android, bordo della scheda). Senza,
       resta bianco anche in tema scuro e l'app sembra tagliata a metà. Il valore
