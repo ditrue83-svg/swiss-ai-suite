@@ -2092,10 +2092,10 @@ guasto sparisce e `data` vale `null` esattamente come quando la riga non c'è.
 
 | Forma | Punti |
 |---|---|
-| **l'errore non viene nemmeno chiesto** — la destrutturazione non prende `error`: è irraggiungibile | 77 |
+| **l'errore non viene nemmeno chiesto** — la destrutturazione non prende `error`: è irraggiungibile | 78 |
 | **il risultato non viene raccolto** — `await sb…` come istruzione a sé: l'oggetto `{data, error}` è distrutto appena creato | 81 |
 | **l'errore è lì e non lo guarda nessuno** — il risultato è legato per intero, ma in tutta la funzione non c'è una lettura di `.error` | 17 |
-| **TOTALE**, in 30 file su 95 | **175** |
+| **TOTALE**, in 31 file su 100 | **176** |
 
 ⚠️ **Alcuni punti restano FUORI da questo numero, ed è una scelta.** Sono quelli
 in cui l'errore *è* letto e poi collassato su un valore plausibile — `if (error
@@ -2107,7 +2107,7 @@ falsi positivi non lo si può usare come cricca. Fuori anche l'errore guardato
 solo attraverso un campo (`if (code && code !== '23505')`), di cui ce n'è uno
 vero in `upsertMessage`.
 
-⚠️⚠️ **E QUESTO 175 NON SI SOTTRAE AL 147, né al 189.** Sono misure con criteri
+⚠️⚠️ **E QUESTO 176 NON SI SOTTRAE AL 147, né al 189.** Sono misure con criteri
 diversi, e mescolarle sarebbe il terzo errore della stessa famiglia:
 
 | | Punti | |
@@ -2115,7 +2115,7 @@ diversi, e mescolarle sarebbe il terzo errore della stessa famiglia:
 | triage a otto letture parallele | 189 | criteri di ciascun lettore |
 | un `grep`, il 2026-08-11 | 193 → 147 | **cieco su `email/store.ts`** |
 | la prima stesura di `fallback:scan`, a regex | 137 | ne mancava circa il 28% |
-| **`npm run fallback:scan`, col parser** | **190 → 175** | il secondo valore segue la rimozione D-13; regole scritte ed eseguibili |
+| **`npm run fallback:scan`, col parser** | **190 → 175 → 176** | il secondo valore segue la rimozione D-13; il +1 del 2026-09-10 è il gate membership di `structure-note`, voluto — la stessa scelta di `assertAdmin` |
 
 ⚠️ **La stesura a regex è durata mezz'ora e va raccontata, perché ha ripetuto lo
 stesso errore in piccolo.** Contava 137 e ne mancava più di un quarto: non vedeva
