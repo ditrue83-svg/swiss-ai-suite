@@ -3424,6 +3424,53 @@ section('26. La nota rapida — un gesto, una scheda, mai un invio da solo');
     service.includes("'structure-note'") && service.includes("typeof data?.subject !== 'string'"));
 }
 
+section('27. Il telefono del cliente — una regola sola, due porte');
+
+// ⚠️ PERCHÉ A CONTRATTO (Fase 3.1, 2026-09-10). «Quale numero chiamo» è una
+// REGOLA del CRM, non della pagina /oggi dove è nata: riscritta nella scheda
+// cliente, le due copie inizierebbero a divergere il giorno in cui una delle
+// due impara una preferenza nuova — la storia già vista nella sezione 23. La
+// regola vive in `crmModel.scegliTelefono`; /oggi e la scheda cliente sono le
+// due PORTE, e qui si contano sia le porte sia la regola.
+{
+  const senzaCommenti = (src: string): string =>
+    src.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1');
+
+  const sorgenti: string[] = [];
+  const cammina = (dir: string) => {
+    for (const voce of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${voce.name}`;
+      if (voce.isDirectory()) { cammina(rel); continue; }
+      if (/\.(ts|tsx)$/.test(voce.name)) sorgenti.push(rel);
+    }
+  };
+  cammina('src');
+
+  // Non un elenco scritto qui: si chiede al sorgente quanti file la DEFINISCONO.
+  const definizioni = sorgenti.filter((rel) =>
+    /export function scegliTelefono\s*\(/.test(senzaCommenti(readFileSync(join(root, rel), 'utf8'))));
+  check('`scegliTelefono` è definita in un posto solo',
+    definizioni.length === 1, definizioni.join(', '));
+  check('e quel posto è il modello del CRM, non la pagina /oggi',
+    definizioni[0] === 'src/features/crm/crmModel.ts', String(definizioni[0]));
+
+  const today = readFileSync(join(root, 'src/features/today/TodayPage.tsx'), 'utf8');
+  const todayModel = senzaCommenti(readFileSync(join(root, 'src/features/today/todayModel.ts'), 'utf8'));
+  const scheda = readFileSync(join(root, 'src/features/crm/ClientDetailPage.tsx'), 'utf8');
+
+  check('/oggi la prende dal modello CRM: il suo `todayModel` non la nomina più',
+    today.includes("import { scegliTelefono } from '../crm/crmModel'")
+    && !/scegliTelefono/.test(todayModel));
+
+  check('la scheda cliente offre il collegamento tel: in testata, sullo stesso numero',
+    scheda.includes('scegliTelefono(people)') && scheda.includes('href={`tel:${telefono.value}`}'));
+
+  check('il gesto ha un nome nelle tre lingue',
+    readFileSync(join(root, 'src/i18n/locales/it.ts'), 'utf8').includes("call: 'Chiama'")
+    && readFileSync(join(root, 'src/i18n/locales/de.ts'), 'utf8').includes("call: 'Anrufen'")
+    && readFileSync(join(root, 'src/i18n/locales/fr.ts'), 'utf8').includes("call: 'Appeler'"));
+}
+
 // ---------------------------------------------------------------------------
 const total = pass + fail;
 console.log(`\n${B}ESITO${X}: ${fail === 0 ? `${G}verde${X}` : `${R}rosso${X}`} — ${pass}/${total} passi`);

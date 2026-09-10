@@ -27,12 +27,10 @@ import { crmService } from '@/services/crmService';
 import { noteService } from '@/services/noteService';
 import { linguaDettatura, speechRecognition, type SpeechRecognitionLike } from '@/lib/dettatura';
 import { unisciDettatura } from './todayModel';
+import { isOpen } from '../crm/crmModel';
 import { toUserMessage } from '@/lib/errors';
 import { useI18n, useT } from '@/i18n';
 import type { CrmOpportunity, CrmOrganizationOption } from '@/types/models';
-
-// Le trattative «in corso»: vinte e perse non prendono più note di lavoro.
-const APERTE = (o: CrmOpportunity) => o.stage !== 'won' && o.stage !== 'lost';
 
 export function QuickNote({ open, dettatura, onClose, companyId }: {
   open: boolean;
@@ -129,7 +127,9 @@ export function QuickNote({ open, dettatura, onClose, companyId }: {
     if (!cliente) { setTrattative([]); return; }
     let cancelled = false;
     void crmService.opportunities(companyId, { organizationId: cliente.id, limit: 50 })
-      .then((r) => { if (!cancelled) setTrattative(r.items.filter(APERTE)); })
+      // Solo le trattative in corso: vinte e perse non prendono più note di
+      // lavoro (la regola è `isOpen` del modello CRM, UNA sola porta).
+      .then((r) => { if (!cancelled) setTrattative(r.items.filter((o) => isOpen(o.stage))); })
       .catch(() => { if (!cancelled) setTrattative([]); });
     return () => { cancelled = true; };
   }, [companyId, cliente]);

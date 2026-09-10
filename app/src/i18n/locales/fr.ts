@@ -2135,7 +2135,7 @@ export const fr: Dictionary = {
       overview: 'Aperçu', people: 'Personnes', opportunities: 'Opportunités', tasks: 'Tâches',
       communications: 'Communications', documents: 'Documents', contracts: 'Contrats',
       finance: 'Finances', history: 'Historique',
-      edit: 'Modifier', archive: 'Archiver', restore: 'Restaurer',
+      edit: 'Modifier', archive: 'Archiver', restore: 'Restaurer', call: 'Appeler',
       merge: 'Fusionner avec une autre fiche',
       newTask: 'Nouvelle tâche', linkItem: 'Lier un élément',
       owner: 'Responsable de la relation', roles: 'Rôles', identifiers: 'Identifiants',

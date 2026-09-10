@@ -17,7 +17,7 @@ import type {
   CrmOrganizationRole, CrmOpportunityStage, CrmInteractionType,
   CrmMatchReason, CrmSource, CrmRelationshipStatus,
 } from '@/types/database';
-import type { CrmOrganization, CrmOpportunity, CrmPipelineCell } from '@/types/models';
+import type { CrmOrganization, CrmOpportunity, CrmPerson, CrmPipelineCell } from '@/types/models';
 // ⚠️ La MEDESIMA funzione che l'Inbox usa sui link di una email, non una seconda
 // scritta qui: lo schema di un URL si LEGGE con un parser, non si cerca con un
 // pattern — `java\tscript:` inganna un pattern, non `new URL()`. Due guardie
@@ -403,4 +403,41 @@ export function compareTimeline(
 ): number {
   if (a.occurredAt !== b.occurredAt) return a.occurredAt < b.occurredAt ? 1 : -1;
   return a.id < b.id ? 1 : -1;
+}
+
+// ---------------------------------------------------------------------------
+// Le persone e il telefono
+// ---------------------------------------------------------------------------
+
+export interface TelefonoScelto {
+  /** Il numero com'è registrato: `tel:` lo compone così com'è scritto. */
+  value: string;
+  /** La persona a cui appartiene — sapere CHI si chiama conta quanto il numero. */
+  personName: string;
+}
+
+/**
+ * Il numero da offrire per «chiama»: il primo telefono (fisso o mobile)
+ * trovato fra le persone, con il referente PRIMARIO davanti agli altri.
+ * L'organizzazione non ha un telefono proprio — il dato vive sulle persone
+ * (`crm_contact_methods`) — e inventare un campo a livello organizzazione
+ * sarebbe un secondo posto in cui tenere lo stesso numero.
+ *
+ * ⚠️ UNA SOLA PORTA, per scelta (2026-09-10): la usano la home mobile
+ * (`/oggi`, «Chiama un cliente») e la testata della scheda cliente. Nata in
+ * `features/today/todayModel.ts`, traslocata qui appena è servita a due
+ * pagine: una regola sulle PERSONE sta nel modello del CRM.
+ */
+export function scegliTelefono(people: CrmPerson[]): TelefonoScelto | null {
+  const ordinate = [...people].sort((a, b) => {
+    const ap = a.organizations[0]?.isPrimary ? 0 : 1;
+    const bp = b.organizations[0]?.isPrimary ? 0 : 1;
+    return ap - bp;
+  });
+  for (const p of ordinate) {
+    if (p.contact.archivedAt) continue;
+    const tel = p.methods.find((m) => m.type === 'phone' || m.type === 'mobile');
+    if (tel) return { value: tel.value, personName: p.contact.displayName };
+  }
+  return null;
 }

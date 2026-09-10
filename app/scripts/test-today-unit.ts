@@ -2,13 +2,14 @@
 // AI-Swisse — «Oggi» (home da mobilità, Fase 3.1): test OFFLINE del modello.
 //   npm run test:today-unit
 //
-// Niente database, niente rete. Prova le due regole pure di
-// `features/today/todayModel.ts`:
+// Niente database, niente rete. Prova le regole pure dietro la pagina:
 //
 //   1. IL TELEFONO — «chiama un cliente» offre UN numero, non un elenco da
 //      scartare: il referente primario viene prima, una persona archiviata
 //      non si chiama, e «mobile» vale quanto «phone». Se la regola si rompe,
-//      la pagina propone il numero di chi non lavora più lì.
+//      la pagina propone il numero di chi non lavora più lì. La regola è del
+//      CRM, non di /oggi: vive in `features/crm/crmModel.ts` (`scegliTelefono`)
+//      e serve anche la scheda cliente — qui si prova il suo contratto.
 //
 //   2. L'ORDINE DELLE TRATTATIVE — prima i passi SCADUTI (dalla data più
 //      lontana), poi i senza-passo (dalla meno recente): è l'ordine in cui
@@ -19,7 +20,8 @@
 //      mai in testa: la Web Speech API taglia i frammenti alla cieca, e chi
 //      detta non deve poi ripulire gli spazi a mano.
 // ============================================================================
-import { fondeInAttesa, passoInRitardo, scegliTelefono, unisciDettatura } from '../src/features/today/todayModel.ts';
+import { fondeInAttesa, passoInRitardo, unisciDettatura } from '../src/features/today/todayModel.ts';
+import { scegliTelefono } from '../src/features/crm/crmModel.ts';
 import type { CrmOpportunity, CrmPerson } from '../src/types/models.ts';
 
 let pass = 0, fail = 0;

@@ -27,7 +27,8 @@ import { formatDate } from '@/lib/format';
 import { toUserMessage } from '@/lib/errors';
 import { LEGACY_MODULES_ENABLED } from '@/lib/env';
 import { useT } from '@/i18n';
-import { fondeInAttesa, passoInRitardo, scegliTelefono } from './todayModel';
+import { fondeInAttesa, passoInRitardo } from './todayModel';
+import { scegliTelefono } from '../crm/crmModel';
 import { QuickNote } from './QuickNote';
 import type { CrmOpportunity, CrmOrganizationOption, CrmPerson } from '@/types/models';
 

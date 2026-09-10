@@ -2282,7 +2282,7 @@ export const it = {
       overview: 'Panoramica', people: 'Persone', opportunities: 'Opportunità', tasks: 'Attività',
       communications: 'Comunicazioni', documents: 'Documenti', contracts: 'Contratti',
       finance: 'Finanze', history: 'Storico',
-      edit: 'Modifica', archive: 'Archivia', restore: 'Ripristina', merge: 'Unisci a un’altra scheda',
+      edit: 'Modifica', archive: 'Archivia', restore: 'Ripristina', call: 'Chiama', merge: 'Unisci a un’altra scheda',
       newTask: 'Nuova attività', linkItem: 'Collega un elemento',
       owner: 'Responsabile della relazione', roles: 'Ruoli', identifiers: 'Identificativi',
       address: 'Indirizzo', contactMethods: 'Recapiti', notes: 'Note interne',

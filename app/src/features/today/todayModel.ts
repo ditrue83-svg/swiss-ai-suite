@@ -3,41 +3,18 @@
 //
 // La pagina `/oggi` risponde a tre domande di chi è in giro: cosa scade oggi,
 // quale trattativa aspetta un prossimo passo, che numero ha questo cliente.
-// Qui sta la parte che si può provare SENZA lo schermo: quale telefono si
-// offre, e in che ordine stanno le trattative. La resa a video sta in
-// `TodayPage.tsx`; il confine fra i due file è la stessa regola di
+// Qui sta la parte che si può provare SENZA lo schermo: in che ordine stanno
+// le trattative, e come il dettato si unisce al testo scritto. La resa a video
+// sta in `TodayPage.tsx`; il confine fra i due file è la stessa regola di
 // `overviewBlocks.ts` per la Panoramica.
+//
+// ⚠️ IL TELEFONO NON STA PIÙ QUI (2026-09-10): «quale numero si offre per
+// chiamare un cliente» è una regola del CRM — serve alla home mobile E alla
+// scheda cliente — e vive in `features/crm/crmModel.ts` (`scegliTelefono`).
+// Due copie della stessa scelta divergono: la prima resta indietro.
 // ============================================================================
 import { calendarDaysUntil } from '@/lib/calendarDays';
-import type { CrmOpportunity, CrmPerson } from '@/types/models';
-
-export interface TelefonoScelto {
-  /** Il numero com'è registrato: `tel:` lo compone così com'è scritto. */
-  value: string;
-  /** La persona a cui appartiene — sapere CHI si chiama conta quanto il numero. */
-  personName: string;
-}
-
-/**
- * Il numero da offrire per «chiama un cliente»: il primo telefono (fisso o
- * mobile) trovato, con il referente PRIMARIO davanti agli altri. L'organizzazione
- * non ha un telefono proprio — il dato vive sulle persone (`crm_contact_methods`),
- * e inventare un campo a livello organizzazione per questa pagina sarebbe un
- * secondo posto in cui tenere lo stesso numero.
- */
-export function scegliTelefono(people: CrmPerson[]): TelefonoScelto | null {
-  const ordinate = [...people].sort((a, b) => {
-    const ap = a.organizations[0]?.isPrimary ? 0 : 1;
-    const bp = b.organizations[0]?.isPrimary ? 0 : 1;
-    return ap - bp;
-  });
-  for (const p of ordinate) {
-    if (p.contact.archivedAt) continue;
-    const tel = p.methods.find((m) => m.type === 'phone' || m.type === 'mobile');
-    if (tel) return { value: tel.value, personName: p.contact.displayName };
-  }
-  return null;
-}
+import type { CrmOpportunity } from '@/types/models';
 
 /** Vero se il prossimo passo è scritto e la sua data è già passata. */
 export function passoInRitardo(opp: CrmOpportunity): boolean {

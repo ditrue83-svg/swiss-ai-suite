@@ -11,9 +11,11 @@
 // totali». Finanze gestisce fatture FORNITORE e spese: un valore di opportunità
 // è una stima e un contratto non è un incasso.
 //
-// ⚠️ §57 — non esiste «Invia campagna», «Avvia sequenza», «Chiama». Le uniche
-// azioni sono: nuova attività, nuova opportunità, aggiungi contatto, collega,
-// modifica, archivia.
+// ⚠️ §57 — non esiste «Invia campagna», «Avvia sequenza», nessuna AUTOMAZIONE
+// di chiamata. Le uniche azioni sono: nuova attività, nuova opportunità,
+// aggiungi contatto, collega, modifica, archivia. Il «Chiama» in testata è un
+// collegamento `tel:` sul numero scelto da `scegliTelefono` — la stessa uscita
+// manuale del tab Persone (§162), non un gesto che l'app compie al posto tuo.
 //
 // La pagina risponde in meno di dieci secondi a: chi sono le persone, che lavoro
 // è aperto, che cosa ci siamo scritti, quali contratti ci legano, a che punto
@@ -46,7 +48,7 @@ import { CrmEmailComposer } from './CrmEmailComposer';
 import {
   CRM_TIMELINE_PAGE_SIZE, DEFAULT_STALE_DAYS, daysSince,
   organizationState, organizationStateKey, opportunityState, opportunityStateKey,
-  safeWebsite, secondaryName,
+  safeWebsite, scegliTelefono, secondaryName,
 } from './crmModel';
 import { cx } from '@/lib/cx';
 import styles from './crm.module.css';
@@ -180,6 +182,9 @@ export function ClientDetailPage() {
   }
 
   const legal = useMemo(() => (org ? secondaryName(org) : null), [org]);
+  // «Chiama» in testata: UN numero, scelto dalla stessa regola di /oggi. Le
+  // persone sono già caricate da `load`: nessuna richiesta in più.
+  const telefono = useMemo(() => scegliTelefono(people), [people]);
 
   if (!company) return null;
   // §117 — non si distingue «non esiste» da «è di un'altra azienda»: la seconda
@@ -208,6 +213,13 @@ export function ClientDetailPage() {
           </div>
         </div>
         <div className="row-wrap">
+          {/* Il gesto da mobilità anche dentro la scheda: stesso numero che
+              offre /oggi, nel titolo il nome di chi risponde. */}
+          {telefono && !org.archivedAt && (
+            <a className="btn" href={`tel:${telefono.value}`} title={telefono.personName}>
+              <Icon name="phone" className="ic-sm" /> {t('crm.detail.call')}
+            </a>
+          )}
           {!org.archivedAt && <CrmEmailComposer companyId={company.id} organizationId={org.id} onSent={() => void load()} />}
           {/* §120 — la domanda parte dalla scheda che si sta guardando. */}
           <AskAbout type="crm_organization" id={org.id} label={org.displayName} />
