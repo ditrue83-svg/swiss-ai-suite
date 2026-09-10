@@ -110,6 +110,11 @@ supabase/
                 0058_crm_email_suggestions — avvia la Fase 3: applica al candidato
                                          CRM il filtro anti-rumore già misurato
                                          nell'Inbox e propone i mittenti azionabili.
+                0059_tasks_today_view — la vista «today» di list_tasks: scade OGGI,
+                                         non è fatta, non è messa via (`current_date`
+                                         lato database, non filtrata dal browser).
+                                         Le scadute restano alla vista «overdue»,
+                                         non qui. È la spina di /oggi.
   functions/
     _shared/           cervello AI condiviso Edge/test (schema, prompt, validate, pipeline, persist,
                        extract) + email/ (adapter provider, normalizzazione, classificazione, sync)
@@ -151,17 +156,22 @@ supabase/
                           (text/event-stream) — l'unica del prodotto — perché §112 chiede di
                           mostrare che cosa sta succedendo e §114 di poterlo interrompere.
                           ⚠️ Si pubblica SENZA --no-verify-jwt: la chiama sempre una persona
+    structure-note        «Struttura con AI» della nota rapida (/oggi): riscrive oggetto
+                          e testo nella RISPOSTA, non nel database — propone, la persona
+                          decide (§35). Membership via RLS PRIMA di spendere, quota 'note'
 src/
   lib/            supabase, env, errori, hash (SHA-256), uid (IDI), formattazione
   types/          database.ts (schema) · models.ts (dominio)
   services/       auth · company · document · documentHub · analysis · task · reply
                   correction · companyLookup · emailConnection · inbox
                   calendar · calendarConnection · notification · assistant · crmFollowUp
+                  note (la nota rapida di /oggi)
   contexts/       AuthContext · CompanyContext (multi-tenant, nessuna company hardcoded)
   features/       auth · companies · admin-ai · tasks · documents · dashboard · pricing
                   inbox · calendar · notifications · automations · finance · contracts · crm
                   assistant (Chiedi ad AI-Swisse)
                   audit (Registro attività: una schermata, non un modulo — 0039)
+                  today (Oggi: la home da mobilità — 0059)
 scripts/          test-phase1 · test-phase2 · test-async · test-pipeline · test-inbox · test-inbox-unit
                   eval-admin-ai
                   test-validate · test-uid · check-auth-config · bundle-migrations
@@ -985,6 +995,12 @@ npm run test:ai-json-parser-unit  # Il parser CONDIVISO dell'output dei modelli,
 npm run test:inbox-unit # Inbox offline: XSS, normalizzazione, adapter, crypto, ripresa (151 test)
 npm run test:tasks-unit # Attività offline: scadenze, ritardo, ordinamento, etichette (35 test)
 npm run test:tasks      # Attività su DB: isolamento, assegnazione, autore, completamento
+npm run test:today-unit # /oggi offline: l'ordine delle trattative (scadute prima, poi le
+                        #   senza-passo), la fusione senza doppioni, l'unione del dettato, e
+                        #   il contratto di `scegliTelefono` dalla sua casa in crmModel (18 test)
+npm run test:note-unit  # «Struttura con AI» offline: il prompt col recinto DATO, il
+                        #   validatore del contratto {subject, notes}, il tetto di 5000
+                        #   caratteri uguale fra client e funzione (18 test)
 npm run test:inbox      # Inbox su DB reale: RLS, isolamento, permessi, vincoli
 npm run test:documents-unit  # Documenti offline: stati, ricerca, estratti, indirizzo (60 test)
 npm run test:documents       # Documenti su DB: isolamento della RICERCA, categorie, etichette, archivio
@@ -1134,6 +1150,11 @@ npm run fonts:check     # i .woff2 serviti sono quelli verificati (impronta sha2
                         #   sottoinsieme «latin» di Google non contiene U+202F, lo spazio che
                         #   tutto il francese usa
 npm run fonts:check:self-test        # verifica che il rilevatore sappia fallire (15 casi)
+npm run icons:check     # le icone della PWA servite sono quelle verificate (impronta sha256),
+                        #   le dimensioni sono quelle dichiarate, la maskable resta dentro la
+                        #   zona sicura e la touch-icon è opaca — MISURATE sui pixel — e
+                        #   manifest, index.html e _headers puntano a file che esistono
+npm run icons:check:self-test        # verifica che il rilevatore sappia fallire (11 casi)
 npm run brand:check     # il MARCHIO dell'app è quello del titolare, carattere per carattere:
                         #   i due tracciati di `src/components/ui/brandArt.ts` e il documento
                         #   della favicon in `index.html` contro `site/static/*.svg` della
