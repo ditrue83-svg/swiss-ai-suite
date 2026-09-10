@@ -390,6 +390,9 @@ const GROUPS = {
       { script: 'test:ai-json-parser-unit' },
       { script: 'test:inbox-unit' },
       { script: 'test:tasks-unit' },
+      // Il modello puro di «Oggi» (Fase 3.1): quale telefono si offre e in
+      // che ordine stanno le trattative — regole provate senza schermo.
+      { script: 'test:today-unit' },
       { script: 'test:documents-unit' },
       { script: 'test:calendar-unit' },
       // Il motore di sincronizzazione ESEGUITO contro finzioni: è la suite che

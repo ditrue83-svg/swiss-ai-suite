@@ -69,6 +69,14 @@ export const ICONS = {
   // ce l'ha già, e due voci di menu con la stessa forma si confondono a colpo
   // d'occhio (la regola che ha dato `receipt` a Finanze e `user` a Clienti).
   askAi: '<path d="M20.5 12.2a7.6 7.6 0 0 1-7.7 7.5 8.3 8.3 0 0 1-3.2-.6L4.5 20.5l1.4-4.4a7.3 7.3 0 0 1-1.4-4.3A7.6 7.6 0 0 1 12.4 4a7.7 7.7 0 0 1 8.1 8.2Z"/><path d="M10.3 9.6a2.2 2.2 0 0 1 4.2.7c0 1.5-2.1 1.9-2.1 3.1M12.4 16h.01"/>',
+  // Fase 3.1 (mobile/PWA, 2026-09-10). Tre forme nuove, nessuna riusata:
+  // `sun` è la pagina «Oggi» (NON `clock`, che è già l'orario di un appuntamento);
+  // `phone` è la cornetta del gesto «chiama»; `mic` è il microfono della
+  // dettatura — un corpo pieno su un'asta, non un'onda sonora: l'onda
+  // prometterebbe la registrazione di un file, e qui non si registra niente.
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2.5 12h2.5M19 12h2.5M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
+  phone: '<path d="M5.2 4h3.6a1 1 0 0 1 1 .8l1 4a1 1 0 0 1-.3 1L9 11.3a13 13 0 0 0 3.7 3.7l1.5-1.5a1 1 0 0 1 1-.3l4 1a1 1 0 0 1 .8 1v3.6a1 1 0 0 1-1.1 1A16.5 16.5 0 0 1 4.2 5.1a1 1 0 0 1 1-1.1Z"/>',
+  mic: '<rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.8 21h6.4"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -385,6 +385,33 @@ export const it = {
     priority: { high: 'alta', medium: 'media', low: 'bassa' },
   },
 
+  // ---- Oggi (/oggi) — la home da mobilità (Fase 3.1, 0059) -------------------
+  // Tre domande di chi non è alla scrivania: cosa scade oggi, quale trattativa
+  // aspetta un prossimo passo, che numero ha questo cliente. NON una seconda
+  // Panoramica: niente KPI, la lista delle cose da fare adesso.
+  today: {
+    title: 'Oggi',
+    tasksTitle: 'In scadenza oggi',
+    tasksEmpty: 'Niente in scadenza oggi',
+    tasksEmptySub: 'Le attività con scadenza di oggi compaiono qui.',
+    allTasks: 'Vai a tutte le attività',
+    stepsTitle: 'Trattative in attesa di un prossimo passo',
+    stepsEmpty: 'Ogni trattativa aperta ha il suo prossimo passo.',
+    stepOverdue: 'In ritardo dal {date}',
+    stepMissing: 'Manca il prossimo passo',
+    stepSet: 'Imposta',
+    stepField: 'Prossimo passo',
+    stepPlaceholder: 'Es. Inviare il preventivo',
+    stepDate: 'Entro il',
+    stepSaved: 'Prossimo passo salvato',
+    callTitle: 'Chiama un cliente',
+    callSearch: 'Nome o ragione sociale',
+    callNoResults: 'Nessun cliente con questo nome.',
+    callNoPhone: 'Nessun numero di telefono registrato per {name}.',
+    callNow: 'Chiama',
+    callOpen: 'Apri la scheda',
+  },
+
   // ---- Archivio ------------------------------------------------------------
   documents: {
     title: 'Documenti',

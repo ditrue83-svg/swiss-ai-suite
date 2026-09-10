@@ -359,6 +359,30 @@ export const de: Dictionary = {
     priority: { high: 'hoch', medium: 'mittel', low: 'niedrig' },
   },
 
+  // ---- Oggi (/oggi) — la home da mobilità (Fase 3.1, 0059) -------------------
+  today: {
+    title: 'Heute',
+    tasksTitle: 'Heute fällig',
+    tasksEmpty: 'Heute fällt nichts an',
+    tasksEmptySub: 'Aufgaben mit heutiger Frist erscheinen hier.',
+    allTasks: 'Zu allen Aufgaben',
+    stepsTitle: 'Geschäfte, die auf einen nächsten Schritt warten',
+    stepsEmpty: 'Jedes offene Geschäft hat seinen nächsten Schritt.',
+    stepOverdue: 'Überfällig seit {date}',
+    stepMissing: 'Nächster Schritt fehlt',
+    stepSet: 'Festlegen',
+    stepField: 'Nächster Schritt',
+    stepPlaceholder: 'Z. B. Offerte senden',
+    stepDate: 'Bis am',
+    stepSaved: 'Nächster Schritt gespeichert',
+    callTitle: 'Kunden anrufen',
+    callSearch: 'Name oder Firma',
+    callNoResults: 'Kein Kunde mit diesem Namen.',
+    callNoPhone: 'Keine Telefonnummer für {name} erfasst.',
+    callNow: 'Anrufen',
+    callOpen: 'Karte öffnen',
+  },
+
   documents: {
     title: 'Dokumente',
     subtitle: 'Das Archiv des Unternehmens: Hier finden Sie wieder, was eingegangen, hochgeladen und analysiert wurde.',

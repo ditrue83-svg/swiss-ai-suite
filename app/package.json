@@ -55,6 +55,7 @@
     "stati:censimento": "node --env-file=.env.test scripts/stati-censimento.mjs",
     "stati:censimento:self-test": "node scripts/stati-censimento.mjs --self-test",
     "test:tasks-unit": "node --import tsx scripts/test-tasks-unit.ts",
+    "test:today-unit": "node --import tsx scripts/test-today-unit.ts",
     "test:tasks": "node --env-file=.env.test scripts/test-tasks.mjs",
     "test:documents-unit": "node --import tsx scripts/test-documents-unit.ts",
     "test:documents": "node --env-file=.env.test scripts/test-documents.mjs",
