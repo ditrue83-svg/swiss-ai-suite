@@ -382,7 +382,7 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
   lingue. Le verifiche a schermo 375 px e tema chiaro/scuro non sono ancora
   state eseguite.
 
-### Fase 2 CRM 0057 — deployata e verificata (2026-09-08)
+### Fase 2 CRM 0057 — deployata e verificata (2026-09-08; prova a schermo chiusa il 2026-09-10)
 
 - **Reporting pipeline:** permanenza media nella fase corrente, tasso osservato
   vinte/perse e motivi di perdita aggregati. Tutto calcolato in SQL dai fatti
@@ -399,10 +399,30 @@ Un **sì** in una colonna non implica niente sulle altre. È il punto.
   quattro gruppi quality, unit, db e production il 2026-09-08.
 - **Verificato sul database reale:** sì — `test:crm` 197/197, comprese le sei
   prove della 0057 e la pulizia senza residui.
-- **Provato a schermo:** parzialmente — sessione autenticata sul dominio
-  pubblico, pipeline e Work Hub in italiano su desktop chiaro, nuove sezioni e
-  filtro visibili, zero errori console. Restano da provare 375 px, tema scuro e
-  le interfacce tedesca e francese.
+- **Provato a schermo:** sì — completata il 2026-09-10 sul dominio pubblico,
+  sessione autenticata via Playwright: pipeline a 375 px in chiaro e scuro,
+  pipeline e Panoramica a 901 e 1160 px, Work Hub in italiano e francese,
+  disclaimer pipeline in tedesco, zero errori console in ogni prova. La
+  sessione ha trovato tre difetti, curati e ri-verificati in produzione il
+  giorno stesso: la pagina pipeline a 375 px si allargava a 1140 px (la label
+  sr-only della tendina di cambio fase, assoluta e senza antenato posizionato,
+  espandeva il layout viewport di Chrome mobile) e lo scroll orizzontale nel
+  vuoto fra 901 e 1423 px (minimo automatico di `.main` pari al min-content
+  della board) — entrambi dalla PR #116; di nuovo scroll fra 901 e 972 px
+  sulla Panoramica (tracce `1fr` della griglia KPI, che valgono
+  `minmax(auto, 1fr)` e non si restringono) — PR #117; etichette dei filtri
+  del Work Hub non concordate («Cliente: Tutte», «Client: Toutes») e spazio
+  fine insécable mancante prima dei due punti in francese, più la frase
+  tedesca del disclaimer troncata — PR #118. Misure dopo la cura: 375/375,
+  901/901 e 1160/1160 ovunque, board con il solo scroll interno previsto
+  (343/1361 a 375 px, 541/948 a 901, 800/948 a 1160); francese con U+202F
+  letto sui codepoint («Priorité : Toutes», «Responsable : Tous», «Client :
+  Tous»), italiano «Cliente: Tutti», tedesco «Er wird es erst mit der
+  ausgestellten Rechnung…». Non provato: interazioni touch reali e
+  trascinamento col puntatore — il cambio fase è coperto dai test e dalla
+  tendina equivalente, non da un dito vero. Osservato una volta al login
+  l'errore transitorio «JWT issued at future», sparito al secondo tentativo:
+  da tenere d'occhio.
 - **Disponibile a clienti esterni:** tecnicamente sì sul dominio pubblico;
   adozione da parte di una PMI pilota non ancora misurata.
 
