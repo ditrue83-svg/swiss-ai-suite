@@ -27,8 +27,10 @@ import type { Database } from '@/types/database';
 
 type TaskRow = Database['public']['Tables']['tasks']['Row'];
 
-/** Le viste della lista. Sono cinque perché rispondono a cinque domande diverse. */
-export type TaskView = 'todo' | 'mine' | 'overdue' | 'completed' | 'archived' | 'all';
+/** Le viste della lista. Ognuna risponde a una domanda diversa; «today»
+ *  (0059) è la domanda della home da mobilità: scade OGGI, né fatta né messa
+ *  via. Non sta fra le VIEWS di TasksPage: vive in `/oggi`. */
+export type TaskView = 'todo' | 'mine' | 'overdue' | 'today' | 'completed' | 'archived' | 'all';
 
 export interface TaskFilters {
   view?: TaskView;

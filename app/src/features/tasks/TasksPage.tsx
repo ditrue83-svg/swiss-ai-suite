@@ -51,6 +51,9 @@ const EMPTY_KEY: Record<TaskView, TKey> = {
   todo: 'tasks.emptyTodo',
   mine: 'tasks.emptyMine',
   overdue: 'tasks.emptyOverdue',
+  // «today» non è una vista di QUESTA pagina: vive in /oggi (0059). La riga
+  // c'è perché il Record è completo per tipo — il ripiego non si vedrà mai.
+  today: 'tasks.emptyTodo',
   completed: 'tasks.emptyCompleted',
   archived: 'tasks.emptyArchived',
   all: 'tasks.emptyTodo',

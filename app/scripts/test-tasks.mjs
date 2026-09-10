@@ -2,7 +2,9 @@
 // AI-Swisse — Attività (Work Hub): test d'integrazione sul DATABASE REALE.
 //   npm run test:tasks
 //
-// Richiede la migrazione 0016 applicata e `.env.test` valorizzato.
+// Richiede la migrazione 0016 applicata e `.env.test` valorizzato; la
+// sezione 9 (vista «Oggi») richiede la 0059 — e senza di essa fallirebbe
+// COMPORTAMENTALMENTE, non per errore: il case cadrebbe nel ramo `else`.
 //
 // Non prova che il codice sia scritto bene: prova che le GARANZIE siano in
 // vigore. Sono quattro, e tutte e quattro sono state scritte come regole del
@@ -266,6 +268,44 @@ async function main() {
   const { data: dirB } = await clientA.rpc('company_member_directory', { p_company_id: companyB });
   check('A NON vede i membri di un\'altra azienda', (dirB ?? []).length === 0,
     `righe: ${(dirB ?? []).length}`);
+
+  // ---- 9. La vista «Oggi» (0059) ------------------------------------------
+  // ⚠️ La prova è COMPORTAMENTALE per forza: senza la 0059 `p_view: 'today'`
+  // non darebbe errore — cadrebbe nel ramo `else` del case e risponderebbe
+  // con TUTTE le attività non archiviate. Solo contare che cosa torna
+  // distingue la vista vera dalla sua assenza.
+  section('9 · La vista «Oggi» — scade oggi, né fatta né messa via (0059)');
+  const oggi = new Date(); // il fuso della funzione è current_date del server: UTC
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const ieri = new Date(oggi); ieri.setUTCDate(oggi.getUTCDate() - 1);
+  const domani = new Date(oggi); domani.setUTCDate(oggi.getUTCDate() + 1);
+  const perData = [
+    { title: 'Scade oggi', due_date: iso(oggi) },
+    { title: 'Scade domani', due_date: iso(domani) },
+    { title: 'Scaduta ieri', due_date: iso(ieri) },
+    { title: 'Di oggi ma fatta', due_date: iso(oggi), status: 'completed' },
+    { title: 'Di oggi ma archiviata', due_date: iso(oggi), archived_at: new Date().toISOString() },
+    { title: 'Senza scadenza' },
+  ];
+  const { error: insErr } = await admin.from('tasks').insert(
+    perData.map((t) => ({
+      company_id: companyA, created_by: userA.id,
+      status: 'open', priority: 'medium', source: 'manual', ...t,
+    })),
+  );
+  check('le sei attività della prova si creano', !insErr, insErr?.message);
+  const { data: oggiViste, error: oggiErr } = await clientA.rpc('list_tasks', {
+    p_company_id: companyA, p_view: 'today',
+  });
+  const titoliOggi = (oggiViste ?? []).map((r) => r.title);
+  check('la vista risponde senza errore', !oggiErr, oggiErr?.message);
+  check('dentro c\'è «Scade oggi»', titoliOggi.includes('Scade oggi'), titoliOggi.join(', '));
+  check('fuori: domani, ieri, la fatta, l\'archiviata, la senza scadenza',
+    ['Scade domani', 'Scaduta ieri', 'Di oggi ma fatta', 'Di oggi ma archiviata', 'Senza scadenza']
+      .every((titolo) => !titoliOggi.includes(titolo)),
+    titoliOggi.join(', '));
+  check('e non una riga di più (se la 0059 manca, qui arriverebbe TUTTO il non archiviato)',
+    titoliOggi.length === 1, `righe: ${titoliOggi.length}`);
 
   await cleanup();
   console.log(`\n${B}Riepilogo${X}  ${G}${pass} superati${X}${fail ? `  ${R}${fail} falliti${X}` : ''}\n`);
