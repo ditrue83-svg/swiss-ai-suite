@@ -72,6 +72,7 @@ const G = '\x1b[32m', R = '\x1b[31m', B = '\x1b[1m', DIM = '\x1b[2m', X = '\x1b[
 const BINARI = [
   { est: '.woff2', perche: 'i tre pesi di Inter: byte verificati per impronta da fonts:check' },
   { est: '.pdf', perche: 'i modelli di fattura usati come materiale di prova' },
+  { est: '.png', perche: 'le icone della PWA: byte verificati per pixel, zona sicura e opacità da icons:check' },
 ];
 
 // I byte ammessi fra quelli di controllo: tabulazione, a-capo, ritorno a capo.
